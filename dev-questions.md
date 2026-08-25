@@ -127,6 +127,82 @@ outline — which keeps rotation, zoom and procedural asset generation.
 and the commit whose sweep measured it. They were tuned for a different demand model, a different
 map size and no multiplayer, so they are a starting point and never a shipped balance.
 
+### A8 — Advisor tone (Q2)
+**Answered** P8. Happy, cheerful, overly optimistic. **Alternate personas later:** British
+sarcastic, German strict.
+
+**Changed:** ruling 010. The consequence is structural rather than cosmetic — dialogue data is
+keyed by `persona` from the first line written, so alternates are a data pack rather than a
+retrofit. Default persona `sunny`.
+
+### A9 — Music (Q3)
+**Answered** P8. Three ambience tracks; sound on/off and volume adjustable.
+
+**Changed:** `gamedesign.md` §29 mixer requirement confirmed; content lane C4 target set at three
+tracks.
+
+### A10 — Localisation (Q4)
+**Answered** P8. Norwegian and English from the start, localisation from the get-go.
+
+**Changed:** ruling 008. No user-facing string is ever written inline; every one goes through the
+catalogue from slice 0.1, with key parity enforced by test. Retrofitting i18n is the expensive
+version of this and the whole reason it is ruled now.
+
+### A11 — Room privacy (Q5)
+**Answered** P8. A room is either **private** — join code, with a QR representation — or **public**
+and open to anyone.
+
+**Changed:** `gamedesign.md` §26.3; slice 5.2. QR generation will be hand-rolled to keep the
+zero-dependency rule (see Q15).
+
+### A12 — Communication vocabulary (Q6)
+**Answered** P8. Location pings plus standard commands — *remove*, *I'm working here* — and an
+**AFK status**.
+
+**Changed:** `gamedesign.md` §28. AFK is a player-state field, not a chat message, so it shows in
+the roster and can gate request auto-policies. Free-text chat stays optional and off the game
+record.
+
+### A13 — Derelict and absence thresholds (Q7)
+**Answered** P8. Try **5 city years** for both.
+
+**Changed:** `data/balance.json` defaults; `gamedesign.md` §25.4, §25.7. "Try" is taken literally —
+these are era-0 values for the sweep to challenge.
+
+### A14 — Hosting (Q8)
+**Answered** P8. Self-hosted and LAN only for now; note the master server for later.
+
+**Changed:** ruling 009. Slice 6.4 loses the master index and keeps systemd, TLS, deploy, backups
+and room restore. LAN discovery is in scope; the index is a documented later addition with its
+hooks named.
+
+### A15 — Mobile map size (Q10)
+**Answered** P8. Advise a lower map size on mobile.
+
+**Changed:** ruling 011. The lobby detects a coarse pointer and low memory, recommends a size,
+warns above it, and never silently forbids — a phone may still join a large region someone else
+made, and that path degrades rather than breaks.
+
+### A16 — Shared City treasury (Q11)
+**Answered** P8. A game option: shared treasury, **or a fixed split of income**.
+
+**Changed:** `gamedesign.md` §26.1, §26.3; `data/modes.json`. See Q17 — the split rule itself still
+needs picking.
+
+### A17 — Campaign scenarios (Q12)
+**Answered** P8. After v1, **but plan where they hook into the code now.**
+
+**Changed:** ruling 012. Six hook points are named and built as part of their own slices rather
+than bolted on later: scenario-defined starting state, objective evaluation, restriction rules,
+scripted events, completion tiers, and region progression.
+
+### A18 — User-selectable art style (Q13)
+**Answered** P8. Yes. For art: make placeholders and a list of what needs drawing.
+
+**Changed:** ruling 013. Two consequences: the `RenderStyle` seam becomes a v1 requirement rather
+than a nicety, and `specs/asset-list.md` is the drawing brief — every placeholder names the asset
+it stands in for, so the list is generated from the code that consumes it and cannot drift.
+
 ---
 
 ---
@@ -136,16 +212,13 @@ map size and no multiplayer, so they are a starting point and never a shipped ba
 *Nothing below is decided. Each item names what it blocks and when an answer is actually needed —
 none of them block the next slice. `plan-v1.md` carries the same numbers.*
 
-| # | Question | Blocks | Needed by |
+*Q2–Q13 were all answered in P8 and have moved to the answered section above. These four are new,
+and arose from those answers. None blocks the current work — each has a stated assumption being
+built against, and each is cheap to change while it stays small.*
+
+| # | Question | Assumption being built against | Needed by |
 |---|---|---|---|
-| **Q2** | The advisor's character — name, tone, and how much personality is too much for a voice the player hears on every tutorial step and every milestone for hours? | Slice 4.2, content lane C3 | Wave 4 |
-| **Q3** | Music: three ambient tracks, or ambience only and no score? | Content lane C4 | Wave 4 |
-| **Q4** | Is Norwegian a first-class launch locale, or a later addition? Key-identical catalogs are enforced by test either way; this decides how much writing is in scope. | Content lane C5 | Wave 4 |
-| **Q5** | Default room privacy: are public rooms with strangers a supported case at v1, or is v1 friends-only by join code? This decides how much moderation tooling slice 5.3 must carry. | Slice 5.3 | Wave 5 |
-| **Q6** | Should chat exist at v1 at all, or are location pings enough? Pings need no moderation and work across languages. | Slice 5.3 | Wave 5 |
-| **Q7** | Derelict-property threshold and absence grace period — five city years each, or longer? | Slice 5.4 | Wave 5 |
-| **Q8** | Do you want a hosted public server, or is v1 self-host and LAN only? Decides whether the master index in slice 6.4 is built at all. | Slice 6.4 | Wave 6 |
-| **Q10** | If measurement says 128×128 with sixteen seats cannot hold the frame budget on mid-range mobile, do we cut the map size or ship it desktop-only? | Slice 6.3 | Wave 6, decided with numbers |
-| **Q11** | Should Shared City default to a shared treasury or separate ones? This changes how co-operative play feels more than any other single option. | Slice 6.1 | Wave 6 |
-| **Q12** | Confirm that the Guided Campaign scenarios (`gamedesign.md` §4.1) are post-v1 scope. | Scope | Before Wave 7 planning |
-| **Q13** | Post-v1 only: is a drawn-sprite pipeline ever funded — four sprite sets per building state, hand-drawn, needing an artist — and is user-selectable style a Wave 7 goal? | Wave 7 | After the 1.2b probe |
+| **Q14** | Alternate advisor personas (British sarcastic, German strict) — are they a free settings toggle, a cosmetic unlock earned by mayor rank, or a later content pack? Also: do they change *only* wording, or also which advice is emphasised? | Free toggle in settings, wording only. Dialogue is keyed by persona from day one either way, so this is a data question, not a code one | Wave 4 |
+| **Q15** | QR generation for private room codes — hand-rolled (about 300 lines, keeps the zero-dependency rule) or a dependency? | Hand-rolled, in `client/`, never in `engine/` | Slice 5.2 |
+| **Q16** | Norwegian strings — do you write them, or do I draft them for your review? You are the native speaker and the advisor's voice is the hardest part to get right in translation. | I draft, you review. Key parity is enforced by test regardless | Wave 4, content lane C5 |
+| **Q17** | "Fixed split of income" (Q11) — split how? Equal shares per seat, proportional to population served, or proportional to land owned? Equal is simplest and most co-operative; proportional rewards the player carrying the region | Equal shares per seat, as the option's default, with the rule in `data/modes.json` so it is one line to change | Slice 6.1 |

@@ -117,3 +117,40 @@ rotation-capable candidates.
 **Standing practice from this prompt:** every future user prompt that carries a product decision
 is appended here verbatim, with what it produced. Every question put to the user is recorded in
 `dev-questions.md`, and open ones live in its bottom section.
+
+---
+
+## P8 — 2026-08-25 — The questionnaire, answered
+
+> Q2 tone happy cheerful, overly optimistic. Add later opportunity to change advisor to be british
+> sarcastic or german strict Q3: three ambinent tracks, sound on/off and volume adjustable
+> Q4. Language Norwegian and English for starters. localization from the get go Q5: room can be
+> private with join code and QR code representation, or public where anyone can join, Q6: Location
+> pings and a set of standard commands i.e remove, I'm working here, and AFK status Q7: we'll try 5
+> city years Q8: self hosted and LAN game only for now, make a note of master server for later
+> Q10: advice map size to be lower for mobile Q11: Game option, shared or a fixed split of income.
+> Q12: Campaign scenarios after v1 ok, but plan them in where they need ot be hooked into code
+> Q13, user selectable style yes, for art, make placeholders and list of which assets needs to be
+> drawn. Anything else before I step away for 6 hours and you build all the slices you can?
+
+**Produced:** rulings 008–013; `dev-questions.md` A8–A18; amendments to `specs/gamedesign.md`;
+`specs/asset-list.md`; and the autonomous build session logged in `dev-log.md`.
+
+**Answers in full:**
+
+| Q | Answer |
+|---|---|
+| Q2 | Advisor is happy, cheerful, overly optimistic. Alternate personas later: British sarcastic, German strict |
+| Q3 | Three ambience tracks; sound on/off and volume adjustable |
+| Q4 | Norwegian and English from the start — localisation from the get-go |
+| Q5 | Rooms are private by join code (with a QR representation) **or** public and open to anyone |
+| Q6 | Location pings plus a set of standard commands — *remove*, *I'm working here* — and an AFK status |
+| Q7 | Derelict and absence thresholds: try 5 city years |
+| Q8 | Self-hosted and LAN only for now; note the master server for later |
+| Q10 | Advise a lower map size on mobile |
+| Q11 | Game option: shared treasury, or a fixed split of income |
+| Q12 | Campaign scenarios after v1, but plan where they hook into the code now |
+| Q13 | User-selectable style: yes. For art, make placeholders and a list of what needs drawing |
+
+**Standing authorisation from this prompt:** build as many slices as possible unattended over a
+six-hour window.

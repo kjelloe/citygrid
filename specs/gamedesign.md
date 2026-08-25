@@ -1707,4 +1707,19 @@ Art direction is settled once, before the first model: silhouette first, flat co
 | §17 Notifications | Adds request, ping, contract and player-presence notifications, all mutable. |
 | §18 Simulation timing | In a shared region the clock is owned by the room: speed by vote, no global pause (§25.8). |
 | §21 Save system | Adds room persistence with periodic checkpoints, and a build identifier in every save so that an outdated client cannot silently corrupt a region. |
-| §22 MVP scope | The first playable version is **singleplayer**, as scoped in §22. The first multiplayer release adds Shared City, drop-in and demolition requests. |
+| §22 MVP scope | The first playable version is **singleplayer**, as scoped in §22. The first multiplayer release adds Shared City, drop-in and demolition requests. Guided Campaign scenarios (§4.1) are post-v1, but their six engine hooks are built with the slices that own them (ruling 012). |
+
+### 33.1 Further rulings (P8)
+
+| Topic | Ruling |
+|---|---|
+| **Advisor tone** (§11.2) | Default persona **cheerful, optimistic to a fault** — relentlessly positive about a city that is on fire. Alternate personas planned: British sarcastic, German strict. Dialogue is keyed by persona from the first line, and persona is a client display preference that never reaches game state (ruling 010). |
+| **Music** (§29) | Three ambience tracks. Sound on/off and volume adjustable, as separate master, effects, ambience and music controls. |
+| **Localisation** (§30) | English and Norwegian from the first string. No user-facing text is ever written inline; key parity between catalogues is enforced by test (ruling 008). |
+| **Room privacy** (§26.3) | A room is **private** — join code, with a QR representation for sharing to a phone — **or public**, open to anyone with the address. Public does not mean listed: there is no global directory at v1 (ruling 009). |
+| **Communication** (§28) | Location pings, a set of standard commands (*remove*, *I'm working here*), and an **AFK status**. AFK is a player-state field shown in the roster, not a chat message, so it can gate request auto-policies. |
+| **Derelict and absence** (§25.4, §25.7) | Both thresholds start at **5 city years**, era 0, for the sweep to challenge. |
+| **Hosting** (§26) | Self-hosted and LAN only. Reachable by join code, direct address, or LAN discovery. A master index is a documented later addition with inert hooks in place (ruling 009). |
+| **Map size on mobile** (§26.2) | The lobby **advises** a smaller region on a phone and warns above it, but never forbids — a phone must be able to join a large region someone else made, degrading rather than breaking (ruling 011). |
+| **Shared City money** (§26.1) | Game option: one shared treasury, **or a fixed split of income** between seats. The split rule lives in `data/modes.json`. |
+| **Art** (§3) | User-selectable style is a goal, so the render-style seam is a v1 requirement. Until the real art exists, every asset is a deliberately unfinished placeholder, and `specs/asset-list.md` is the generated brief for what needs drawing (ruling 013). |

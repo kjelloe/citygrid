@@ -203,17 +203,10 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q13 | Post-v1 only: is a drawn-sprite pipeline ever funded — four sprite sets per building state, hand-drawn, needing an artist — and is user-selectable style a Wave 7 goal? (Q1 is otherwise answered: one style at v1, mesh pipeline, chosen by probe 1.2b) | Wave 7 |
-| Q2 | Advisor's character — name, tone, and how much personality is too much for a repeated tutorial voice? | 4.2 |
-| Q3 | Music: three ambient tracks, or ambience only? | C4 |
-| Q4 | Is Norwegian a first-class launch locale or a later addition? | C5 scope |
-| Q5 | Default room privacy: are public rooms with strangers a supported case at v1, or is v1 friends-only by join code? Decides how much moderation tooling 5.3 needs | 5.3 |
-| Q6 | Should chat exist at v1 at all, or are pings enough? | 5.3 |
-| Q7 | Derelict threshold and abandonment grace — five city years each, or longer? | 5.4 |
-| Q8 | Do you want a hosted public server, or is v1 self-host and LAN only? Decides whether 6.4 needs the master index at all | 6.4 |
-| Q10 | If measurement says 128×128 with sixteen seats cannot hold the frame budget on mid mobile, do we cut the map size or ship it desktop-only? | 6.3 |
-| Q11 | Should Shared City default to a shared treasury or separate ones? It changes how co-op feels more than any other single option | 6.1 |
-| Q12 | Campaign scenarios (`gamedesign.md` §4.1) are not in v1. Confirm they are post-v1 | scope |
+| Q14 | Alternate advisor personas (British sarcastic, German strict) — settings toggle, rank unlock, or later content pack? Wording only, or emphasis too? | C3 |
+| Q15 | QR generation for private room codes — hand-rolled (~300 lines, keeps zero-dependency) or a dependency? | 5.2 |
+| Q16 | Norwegian strings — you write them, or I draft for your review? | C5 |
+| Q17 | "Fixed split of income" — equal shares per seat, by population served, or by land owned? | 6.1 |
 
 ## What would make us stop and re-plan
 
