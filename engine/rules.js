@@ -17,7 +17,7 @@ var RULES = {
     pipeOverWater: 30, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
     clearForest: 3,
   },
-  upkeep: { road: 1, wire: 1, pipe: 1, policeStation: 100, fireStation: 100, hospital: 120 },
+  upkeep: { road: 1, wire: 0, pipe: 0, policeStation: 100, fireStation: 100, hospital: 120 },
   difficulty: {
     relaxed: { buildCostPercent: 70, taxYieldPercent: 140, upkeepPercent: 80, startingTreasury: 30000, disasterOneIn: 479, demandElasticity: 120 },
     steady: { buildCostPercent: 90, taxYieldPercent: 120, upkeepPercent: 100, startingTreasury: 20000, disasterOneIn: 239, demandElasticity: 100 },
@@ -57,7 +57,10 @@ var RULES = {
     roadWeight: 30,
     landValueWeight: 40,
     crowdingWeight: 25,
+    unsuppliedScore: 500,
+    supplyReach: 4,
   },
+  economy: { residentialDivisor: 150, commercialDivisor: 120, industrialDivisor: 140 },
   population: { workingAgePercent: 55, shoppersPerCommercialJob: 12, industryPerWorkerPercent: 45 },
 };
 

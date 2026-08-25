@@ -1,6 +1,6 @@
 {
   "era": 0,
-  "note": "ERA 0, UNTUNED. Starting values derived from specs/referencedata.md 13 (ruling 007). They were tuned for a 120x100 map, a different demand model, a broken traffic router and no multiplayer. Nothing here is a shipped balance until a sweep says so, and every value that survives names the era and commit that measured it.",
+  "note": "ERA 0, UNTUNED. Starting values derived from specs/referencedata.md 13 (ruling 007). They were tuned for a 120x100 map, a different demand model, a broken traffic router and no multiplayer. Nothing here is a shipped balance until a sweep says so, and every value that survives names the era and commit that measured it. Distribution is built once and maintained as part of the street it follows: one street, one bill. Charging wire and pipe their own per-tile upkeep (invented here, not in the reference) put the median city on a permanent deficit.",
   "build": {
     "road": 10,
     "roadOverWater": 50,
@@ -16,8 +16,8 @@
   },
   "upkeep": {
     "road": 1,
-    "wire": 1,
-    "pipe": 1,
+    "wire": 0,
+    "pipe": 0,
     "policeStation": 100,
     "fireStation": 100,
     "hospital": 120
@@ -158,11 +158,18 @@
     "demandWeight": 60,
     "roadWeight": 30,
     "landValueWeight": 40,
-    "crowdingWeight": 25
+    "crowdingWeight": 25,
+    "unsuppliedScore": 500,
+    "supplyReach": 4
   },
   "population": {
     "workingAgePercent": 55,
     "shoppersPerCommercialJob": 12,
     "industryPerWorkerPercent": 45
+  },
+  "economy": {
+    "residentialDivisor": 150,
+    "commercialDivisor": 120,
+    "industrialDivisor": 140
   }
 }

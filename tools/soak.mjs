@@ -12,12 +12,15 @@ import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { hashState } from "../engine/state.js";
 import { census } from "../engine/development.js";
+import { budgetFor } from "../engine/economy.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { assertHashable } from "../shared/canonical.js";
 import { CMD_TICK, CMD_JOIN } from "../engine/commands.js";
 import { TICKS_PER_YEAR, TICKS_PER_MONTH } from "../engine/constants.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
+import "../engine/utilities.js";
+import "../engine/economy.js";
 
 const DEFAULT_SEEDS = [1001, 1002, 1003, 1004, 1005];
 
@@ -103,7 +106,9 @@ export function soakOne({ seed, years = 40, size = 64, seats = 1, doctrine = "ex
     treasury: state.players[0].treasury,
     bankruptAt,
     demand: state.demand,
-    deputies: deputies.map((d) => ({ built: d.built, zoned: d.zoned, refusals: d.refusals })),
+    deputies: deputies.map((d) => ({ built: d.built, zoned: d.zoned, utilities: d.utilities, refusals: d.refusals })),
+    supply: state.supply,
+    net: budgetFor(state, 1).net,
     checkpoints,
     hash: hashState(state),
   };
@@ -129,8 +134,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       `housing ${String(result.housing).padStart(5)} jobs ${String(result.jobs).padStart(5)} ` +
       `lots R${result.lots.residential}/C${result.lots.commercial}/I${result.lots.industrial} ` +
       `funds ${String(result.treasury).padStart(7)} ` +
-      `demand R${result.demand.residential} C${result.demand.commercial} I${result.demand.industrial} ` +
-      `hash ${result.hash}`,
+      `pow ${result.supply.power.capacity}/${result.supply.power.demand} ` +
+      `wat ${result.supply.water.capacity}/${result.supply.water.demand} ` +
+      `util ${result.deputies[0].utilities} net ${String(result.net).padStart(6)} hash ${result.hash}`,
     );
   }
   console.log(failed === 0 ? `\nsoak ok — ${results.length} cities, ${years} years each` : `\nSOAK FAILED — ${failed} of ${results.length}`);

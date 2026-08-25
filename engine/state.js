@@ -76,6 +76,13 @@ export function createState(options) {
     // Regional demand pool (ruling 001). Residents and firms belong to the
     // region, not to a player; allocation between seats happens at the lot.
     demand: { residential: 0, commercial: 0, industrial: 0 },
+    // Derived every month from hashed inputs, so it is deliberately NOT
+    // hashed: it cannot diverge unless its inputs already have, and hashing
+    // it would only add a second place to forget when it changes shape.
+    supply: {
+      power: { capacity: 0, demand: 0, served: 0, starved: 0, components: 0 },
+      water: { capacity: 0, demand: 0, served: 0, starved: 0, components: 0 },
+    },
   };
 }
 
@@ -109,6 +116,17 @@ export function copyState(state) {
       commercial: state.demand.commercial,
       industrial: state.demand.industrial,
     },
+    supply: {
+      power: copySupply(state.supply.power),
+      water: copySupply(state.supply.water),
+    },
+  };
+}
+
+function copySupply(s) {
+  return {
+    capacity: s.capacity, demand: s.demand, served: s.served,
+    starved: s.starved, components: s.components,
   };
 }
 

@@ -9,7 +9,9 @@ import "../engine/build-commands.js";
 import {
   developmentPass, computeDemand, census, hasRoadAccess, landValueAt,
 } from "../engine/development.js";
-import { CMD_JOIN, CMD_PAINT_ZONE, CMD_DEZONE, CMD_TICK, CMD_BULLDOZE } from "../engine/commands.js";
+import { CMD_JOIN, CMD_PAINT_ZONE, CMD_DEZONE, CMD_TICK, CMD_BULLDOZE, CMD_PLACE_BUILDING } from "../engine/commands.js";
+import { utilitiesPass } from "../engine/utilities.js";
+import "../engine/utilities.js";
 import { RESULT } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import { NET_PRESENT } from "../engine/network.js";
@@ -20,6 +22,9 @@ import {
 
 const W = 20;
 const at = (x, y) => tileAt(W, x, y);
+/** Placed buildings (plants, pumps) are buildings too, so a count of "what
+ * grew" has to exclude them. */
+const lots = (state) => state.buildings.filter((b) => b.zone !== ZONE_NONE);
 
 function city(over) {
   const state = createState(defaultOptions({ width: W, height: W, seed: 3, seats: 2, ...over }));
@@ -29,14 +34,60 @@ function city(over) {
   return state;
 }
 
-/** A road along y, with the row above it zoned. */
+/** A road along y, carrying power and water, with the row above it zoned.
+ * Utilities are part of a street now: nothing develops where nothing can be
+ * supplied (gamedesign 8.2), so a test fixture that only lays tarmac builds
+ * a city that can never grow. */
 function street(state, y, zone, x0 = 2, x1 = 12, actor = 1) {
   const road = [];
   for (let x = x0; x <= x1; x += 1) road.push(at(x, y));
-  for (const index of road) state.tiles.road[index] = NET_PRESENT;
+  for (const index of road) {
+    state.tiles.road[index] = NET_PRESENT;
+    state.tiles.wire[index] = NET_PRESENT;
+    state.tiles.pipe[index] = NET_PRESENT;
+  }
   const cells = [];
   for (let x = x0; x <= x1; x += 1) cells.push(at(x, y - 1));
-  return apply(state, { type: CMD_PAINT_ZONE, actor, runs: encodeRuns(cells), zone });
+  const result = apply(state, { type: CMD_PAINT_ZONE, actor, runs: encodeRuns(cells), zone });
+  supply(state, actor);
+  return result;
+}
+
+/** A plant and a pump on a spine at x=15, with every street wired into it.
+ * Carriers have to actually reach the producer — a stretch of wire with no
+ * plant on it supplies nothing, which is the point of the whole system. */
+function supply(state, actor = 1) {
+  if (!state.buildings.some((b) => b.def === "coalPlant")) {
+    apply(state, { type: CMD_PLACE_BUILDING, actor, def: "coalPlant", x: 16, y: 2 });
+    apply(state, { type: CMD_PLACE_BUILDING, actor, def: "groundwaterPump", x: 16, y: 8 });
+    for (let y = 0; y < W; y += 1) {
+      state.tiles.wire[at(15, y)] = NET_PRESENT;
+      state.tiles.pipe[at(15, y)] = NET_PRESENT;
+    }
+  }
+  // Join any row that already carries a network to the spine, bridging the
+  // whole gap. Filling only the last few columns left streets that stop short
+  // of the spine as separate components — three networks, one plant, nothing
+  // supplied.
+  for (let y = 0; y < W; y += 1) {
+    let last = -1;
+    for (let x = 0; x < 15; x += 1) if (state.tiles.wire[at(x, y)] !== 0) last = x;
+    if (last < 0) continue;
+    for (let x = last; x <= 15; x += 1) {
+      state.tiles.wire[at(x, y)] = NET_PRESENT;
+      state.tiles.pipe[at(x, y)] = NET_PRESENT;
+    }
+  }
+  utilitiesPass(state);
+}
+
+/** Development needs the supply pass to have run, exactly as the monthly
+ * tick order does it. */
+function months(state, count) {
+  for (let i = 0; i < count; i += 1) {
+    utilitiesPass(state);
+    developmentPass(state);
+  }
 }
 
 test("zoning costs money and claims unowned ground", () => {
@@ -81,8 +132,8 @@ test("a developed lot must be demolished, not dezoned", () => {
   // door, bypassing the permission the whole design rests on.
   const state = city();
   street(state, 5, ZONE_RESIDENTIAL);
-  for (let i = 0; i < 6; i += 1) developmentPass(state);
-  const built = state.buildings[0];
+  months(state, 6);
+  const built = lots(state)[0];
   assert.ok(built, "nothing developed");
   const index = at(built.x, built.y);
   assert.equal(apply(state, { type: CMD_DEZONE, actor: 1, runs: encodeRuns([index]) }).result,
@@ -94,8 +145,9 @@ test("nothing develops without road access", () => {
   const cells = [];
   for (let x = 2; x < 10; x += 1) cells.push(at(x, 8));
   apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(cells), zone: ZONE_RESIDENTIAL });
-  for (let i = 0; i < 12; i += 1) developmentPass(state);
-  assert.equal(state.buildings.length, 0, "buildings appeared with no road");
+  supply(state, 1);
+  months(state, 12);
+  assert.equal(lots(state).length, 0, "buildings appeared with no road");
 });
 
 test("road access is measured around the whole footprint", () => {
@@ -109,28 +161,33 @@ test("road access is measured around the whole footprint", () => {
 test("zoned land beside a road develops", () => {
   const state = city();
   street(state, 5, ZONE_RESIDENTIAL);
-  for (let i = 0; i < 10; i += 1) developmentPass(state);
-  assert.ok(state.buildings.length > 0, "nothing developed beside a road");
-  assert.ok(state.buildings.every((b) => b.zone === ZONE_RESIDENTIAL));
+  months(state, 10);
+  assert.ok(lots(state).length > 0, "nothing developed beside a road");
+  assert.ok(lots(state).every((b) => b.zone === ZONE_RESIDENTIAL));
 });
 
 test("a wide block of zoning grows into larger lots", () => {
   // Footprints are tried largest first, so dense zoning produces few large
   // lots rather than many small ones (gamedesign 6.3).
   const state = city();
-  for (let x = 2; x <= 12; x += 1) state.tiles.road[at(x, 10)] = NET_PRESENT;
+  for (let x = 2; x <= 12; x += 1) {
+    state.tiles.road[at(x, 10)] = NET_PRESENT;
+    state.tiles.wire[at(x, 10)] = NET_PRESENT;
+    state.tiles.pipe[at(x, 10)] = NET_PRESENT;
+  }
   const cells = [];
   for (let y = 8; y <= 9; y += 1) for (let x = 2; x <= 12; x += 1) cells.push(at(x, y));
   apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(cells), zone: ZONE_RESIDENTIAL });
-  for (let i = 0; i < 12; i += 1) developmentPass(state);
-  assert.ok(state.buildings.some((b) => b.w * b.h > 1), "no lot larger than one tile appeared");
+  supply(state, 1);
+  months(state, 12);
+  assert.ok(lots(state).some((b) => b.w * b.h > 1), "no lot larger than one tile appeared");
 });
 
 test("a building owns every tile of its footprint, and only those", () => {
   const state = city();
   street(state, 5, ZONE_RESIDENTIAL);
-  for (let i = 0; i < 10; i += 1) developmentPass(state);
-  for (const building of state.buildings) {
+  months(state, 10);
+  for (const building of lots(state)) {
     for (let dy = 0; dy < building.h; dy += 1) {
       for (let dx = 0; dx < building.w; dx += 1) {
         assert.equal(state.tiles.buildingId[at(building.x + dx, building.y + dy)], building.id);
@@ -144,8 +201,8 @@ test("demand is regional, not per-player (ruling 001)", () => {
   const state = city();
   street(state, 5, ZONE_RESIDENTIAL, 2, 8, 1);
   street(state, 9, ZONE_RESIDENTIAL, 2, 8, 2);
-  for (let i = 0; i < 10; i += 1) developmentPass(state);
-  const owners = new Set(state.buildings.map((b) => b.owner));
+  months(state, 10);
+  const owners = new Set(lots(state).map((b) => b.owner));
   assert.ok(owners.size > 1, "both players should be developing from the same pool");
   assert.equal(typeof state.demand.residential, "number");
 });
@@ -197,7 +254,7 @@ test("demand moves toward its target rather than jumping", () => {
 
 test("demand stays inside its caps", () => {
   const state = city();
-  for (let i = 0; i < 200; i += 1) developmentPass(state);
+  months(state, 200);
   assert.ok(Math.abs(state.demand.residential) <= 2000);
   assert.ok(Math.abs(state.demand.commercial) <= 1500);
   assert.ok(Math.abs(state.demand.industrial) <= 1500);
@@ -206,7 +263,7 @@ test("demand stays inside its caps", () => {
 test("occupancy never exceeds housing", () => {
   const state = city();
   street(state, 5, ZONE_RESIDENTIAL);
-  for (let i = 0; i < 40; i += 1) developmentPass(state);
+  months(state, 40);
   const counts = census(state);
   assert.ok(state.population <= counts.housing, `${state.population} people in ${counts.housing} homes`);
 });
@@ -235,17 +292,18 @@ test("the development pass is deterministic", () => {
 test("development runs on the monthly tick, not every tick", () => {
   const state = city();
   street(state, 5, ZONE_RESIDENTIAL);
+  const placed = state.buildings.length;
   for (let i = 0; i < TICKS_PER_MONTH - 1; i += 1) apply(state, { type: CMD_TICK });
-  assert.equal(state.buildings.length, 0, "development ran early");
+  assert.equal(state.buildings.length, placed, "development ran early");
   for (let i = 0; i < TICKS_PER_MONTH * 12; i += 1) apply(state, { type: CMD_TICK });
-  assert.ok(state.buildings.length > 0, "development never ran");
+  assert.ok(lots(state).length > 0, "development never ran");
 });
 
 test("demolishing a lot frees its tiles for something else", () => {
   const state = city();
   street(state, 5, ZONE_RESIDENTIAL);
-  for (let i = 0; i < 10; i += 1) developmentPass(state);
-  const building = state.buildings[0];
+  months(state, 10);
+  const building = lots(state)[0];
   const cells = [];
   for (let dy = 0; dy < building.h; dy += 1) {
     for (let dx = 0; dx < building.w; dx += 1) cells.push(at(building.x + dx, building.y + dy));

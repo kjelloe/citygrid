@@ -10,9 +10,11 @@ import { generateWorld } from "../engine/worldgen.js";
 import { apply } from "../engine/reducer.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
+import "../engine/utilities.js";
+import "../engine/economy.js";
 import { toSave, fromSave, encodeLayer, decodeLayer, saveSize, registerMigration } from "../engine/save.js";
 import { SAVE_VERSION } from "../shared/protocol.js";
-import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PAINT_ZONE } from "../engine/commands.js";
+import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_BUILDING } from "../engine/commands.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import { ZONE_RESIDENTIAL } from "../engine/constants.js";
 import { u8 } from "../shared/arrays.js";
@@ -26,6 +28,17 @@ function livedInCity() {
   const road = [];
   for (let x = 4; x < 20; x += 1) road.push(tileAt(32, x, 10));
   apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns(road) });
+  // Nothing develops where nothing can be supplied, so the fixture needs
+  // utilities as well as tarmac.
+  state.players[0].treasury = 500000;
+  apply(state, { type: CMD_PLACE_WIRE, actor: 1, runs: encodeRuns(road) });
+  apply(state, { type: CMD_PLACE_PIPE, actor: 1, runs: encodeRuns(road) });
+  apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 21, y: 9 });
+  apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "groundwaterPump", x: 21, y: 13 });
+  const spine = [];
+  for (let y = 9; y <= 14; y += 1) spine.push(tileAt(32, 20, y));
+  apply(state, { type: CMD_PLACE_WIRE, actor: 1, runs: encodeRuns(spine) });
+  apply(state, { type: CMD_PLACE_PIPE, actor: 1, runs: encodeRuns(spine) });
   const zone = [];
   for (let x = 4; x < 20; x += 1) zone.push(tileAt(32, x, 9));
   apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(zone), zone: ZONE_RESIDENTIAL });

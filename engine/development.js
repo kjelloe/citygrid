@@ -19,7 +19,7 @@ import { nextInt, chance } from "../shared/prng.js";
 import { isIntArray, isIntInRange } from "./validate.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
-  OWNER_NATURE, FLAG_ZONE_CENTRE,
+  OWNER_NATURE, FLAG_ZONE_CENTRE, FLAG_POWERED, FLAG_WATERED,
 } from "./constants.js";
 
 // --- zoning ----------------------------------------------------------------
@@ -230,6 +230,27 @@ export function landValueAt(state, index) {
   return clamp(value, 1, 250);
 }
 
+/** Is there a working supply within reach of this tile? Reach is generous —
+ * a lot connects to a nearby line rather than needing one on its doorstep. */
+function couldBeSupplied(state, x, y) {
+  var reach = rules().development.supplyReach;
+  var power = false;
+  var water = false;
+  for (var dy = -reach; dy <= reach; dy += 1) {
+    for (var dx = -reach; dx <= reach; dx += 1) {
+      var nx = x + dx;
+      var ny = y + dy;
+      if (!inBounds(state.width, state.height, nx, ny)) continue;
+      var index = tileAt(state.width, nx, ny);
+      var flags = state.tiles.flags[index];
+      if (hasNet(state.tiles.wire[index]) && (flags & FLAG_POWERED) !== 0) power = true;
+      if (hasNet(state.tiles.pipe[index]) && (flags & FLAG_WATERED) !== 0) water = true;
+      if (power && water) return true;
+    }
+  }
+  return false;
+}
+
 function scoreLot(state, index, zone) {
   var development = rules().development;
   var demand = demandFor(state, zone);
@@ -327,6 +348,11 @@ export function developmentPass(state) {
       if (zone === ZONE_NONE) continue;
       if (state.tiles.buildingId[index] !== 0) continue;
       if (demandFor(state, zone) <= 0) continue;
+      // gamedesign 8.2 lists electricity and water as development conditions:
+      // nothing is built where nothing can be supplied. Without this, decayed
+      // lots regrew the same month they were abandoned and an unpowered
+      // district looked healthy while cycling through ruins.
+      if (!couldBeSupplied(state, x, y)) continue;
       if (scoreLot(state, index, zone) < development.growthThreshold) continue;
       if (!chance(state.rng, development.growthOneIn)) continue;
 
@@ -342,8 +368,25 @@ export function developmentPass(state) {
   var doomed = [];
   for (i = 0; i < state.buildings.length; i += 1) {
     var building = state.buildings[i];
+    // Only ZONED lots grow and decay. A power plant, a pump or a fire station
+    // is placed deliberately and stays until it is demolished deliberately.
+    // Without this guard they scored as abandoned zoned lots — zone NONE means
+    // no demand, and the unsupplied penalty finished the job — and the
+    // deputy's power stations were quietly torn down the month after they
+    // were built. Ten built, ten demolished, capacity permanently zero.
+    if (building.zone === ZONE_NONE) continue;
     var centre = tileAt(state.width, building.x, building.y);
     var score = scoreLot(state, centre, building.zone);
+    // An unsupplied lot cannot grow and will eventually be left. This is the
+    // teaching loop the whole utility system exists for: zone, watch it
+    // develop, watch it fail, connect it.
+    // Forced negative rather than penalised: with demand high enough, a
+    // penalty is simply absorbed and an unpowered tower block keeps growing.
+    // Nobody lives without power because the housing market is tight.
+    var flags = state.tiles.flags[centre];
+    if ((flags & FLAG_POWERED) === 0 || (flags & FLAG_WATERED) === 0) {
+      score = -development.unsuppliedScore;
+    }
     building.valueTier = tierFor(state.tiles.landValue[centre]);
 
     if (score >= development.growthThreshold && building.level < development.levels) {
