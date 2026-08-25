@@ -60,8 +60,15 @@ Waves 0 and 1 are complete **except 1.2 / 1.2b (renderer and style probe)**, whi
 deferred: the probe exists to be judged by eye, so it waits for the user rather than blocking the
 engine. Ordering principle 1 (engine before client) makes that the correct order anyway.
 
-Done: 0.1, 0.2, 0.3, 0.4, 1.1, 1.3, 1.4, 1.5. Suite 218 tests, green twice.
-Next: 1.2 renderer bootstrap, then Wave 2 (utilities, economy, civic simulation).
+Done: 0.1, 0.2, 0.3, 0.4, 1.1, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3.
+Suite 250 tests, green twice. Chaos clean at 30k commands.
+
+Next: 2.4 service coverage, 2.5 pollution and land value, 2.6 fire — then 1.2
+and 1.2b, which need the user at the keyboard.
+
+**Open balance debts, for the Wave 3 sweep:** treasuries reach eight figures by
+year 40, and industrial demand runs away on some seeds. Mechanism, not balance,
+is what has been verified so far.
 
 ## The slice ritual
 
@@ -106,9 +113,9 @@ and the event census shows every implemented system firing.
 
 | # | Slice | Depends on | Done when |
 |---|---|---|---|
-| 2.1 | **Power** — coal, gas, wind and solar plants, wire drawing, union-find components with dirty rebuild, capacity versus demand, brown-outs, power overlay | 1.4 | A 200-building grid rebuilds in under 2 ms after an edit; no phantom outage over 20 city years in soak |
-| 2.2 | **Water** — pumps, treatment, towers, underground pipe network with an automatic underground view, water quality, dry tiles, overlay | 2.1 | Contaminating a source measurably reduces downstream quality and health within a year, verified headlessly |
-| 2.3 | **Economy** — construction and maintenance costs, three tax sliders with lagged effect, department funding, monthly budget, loans, bankruptcy warnings, budget panel | 1.4 | Sweep across difficulty tiers: solvency curves are sane, no tier is unloseable or unwinnable; tax changes take effect over several months, not instantly |
+| ✅ 2.1 | **Power** — coal, gas, wind and solar plants, wire drawing, union-find components with dirty rebuild, capacity versus demand, brown-outs, power overlay | 1.4 | A 200-building grid rebuilds in under 2 ms after an edit; no phantom outage over 20 city years in soak |
+| ✅ 2.2 | **Water** — pumps, treatment, towers, underground pipe network with an automatic underground view, water quality, dry tiles, overlay | 2.1 | Contaminating a source measurably reduces downstream quality and health within a year, verified headlessly |
+| ✅ 2.3 | **Economy** — construction and maintenance costs, three tax sliders with lagged effect, department funding, monthly budget, loans, bankruptcy warnings, budget panel | 1.4 | Sweep across difficulty tiers: solvency curves are sane, no tier is unloseable or unwinnable; tax changes take effect over several months, not instantly |
 | 2.4 | **Service coverage** — police and crime, fire risk, hospital and health, coverage deposits and smoothing, funding effects, coverage overlays | 2.3 | Halving a department's funding measurably shrinks coverage and raises the matching problem within two years |
 | 2.5 | **Pollution and land value** — sources, spread, decay, land value inputs and penalties, both overlays | 2.4 | Land value responds to parks, water, pollution and crime in the documented directions, asserted per input |
 | 2.6 | **Fire incidents** — ignition, spread, response vehicles routed over roads, extinguish rate from coverage, ruins and rebuilding | 2.4 | Fires start, spread, are fought, and leave recoverable damage; response time degrades measurably with congestion |
