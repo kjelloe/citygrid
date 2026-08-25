@@ -124,3 +124,122 @@ landing in slice 1.3.
 
 **Next:** slice 0.1 (repo skeleton and static serve) and 0.2 (deterministic primitives with pinned
 vectors).
+
+## 2026-08-25/26 — Autonomous build session: Waves 0 and 1 (P8)
+
+Eight slices, 218 tests, suite green twice at every commit. Engine-first, so
+1.2 (renderer) and 1.2b (style probe) are deliberately **not** done — the probe
+exists to be judged by eye and waits for the user, and ordering principle 1
+says engine before client anyway.
+
+**0.1 repo skeleton** — no-build ESM client, importmap, static server, i18n
+from the first string (ruling 008) with `en`/`no` key parity enforced by test.
+Switched from bare specifiers to relative imports: `shared/prng.js` will not
+resolve in Node without a loader, and relative paths work unchanged in both
+Node and the browser, which is worth more than tidy-looking imports.
+
+**0.2 primitives** — xorshift32 with its state in state, rejection sampling in
+`nextInt` (modulo bias is small but *deterministic*, which makes it a permanent
+thumb on the scale of every map ever generated), integer/fixed-point maths,
+grid helpers with RLE, canonical little-endian writers, FNV-1a 64 in two 32-bit
+lanes.
+
+*Measured:* three pinned vectors I authored by hand were wrong. FNV's three
+published vectors passed, which is what proved the lane arithmetic; the ones I
+invented did not. **Never author a pin — compute it.**
+
+`shared/arrays.js` exists because the subset guard refuses `new` in `engine/`.
+Allocation moved to the adapter layer, which is where a Luau twin would want it
+anyway. The guard produced a better design than the design would have.
+
+**0.3 / 0.4 state, reducer, chaos** — SoA with `owner` and `district` present
+from the first allocation. `hashState` walks an explicit ordered field list,
+and a test varies every option and every tile layer to prove each reaches the
+hash.
+
+`apply()` mutates and returns a result envelope rather than copying. The
+pure-copy version was rejected against the cadence: ~300 KB per copy at sixteen
+fast ticks a second is 5 MB/s of memcpy for nothing, and placement already gets
+all-or-nothing from the staging buffer.
+
+*Three bugs, all found by tests before any gameplay existed:*
+- **JOIN could never succeed.** `apply()` required the actor to exist, but JOIN
+  is what creates the actor. Found by the first seat test.
+- **`{type:"constructor"}` was called as a handler.** `HANDLERS[command.type]`
+  resolved through the prototype chain. Found by `tools/chaos.mjs` on its
+  first run, which is exactly what it is for.
+- **`{status: undefined}` passed a range check** — `undefined < 0` and
+  `undefined > 3` are both false — and landed in hashed state. Chaos again.
+
+**1.1 terrain and districts** — integer value-noise elevation, river carving
+that follows valleys, lakes/coast/archipelago, shoreline and beaches, forest by
+random walk. Districts partition by capacity-constrained growth and pass a
+fairness gate or the seed is re-rolled.
+
+*Measured, 200 regions per size, all five water styles:*
+
+| size / seats | accepted | spread median | p50 gen |
+|---|---|---|---|
+| 48×48 / 4 | 93% | 95% | 0.74 ms |
+| 64×64 / 8 | 94% | 80% | 1.31 ms |
+| 96×96 / 12 | 93% | 72% | 2.98 ms |
+| 128×128 / 16 | 93% | 69% | 5.97 ms |
+
+*Three findings, all from the sweep rather than review:*
+- **Distance-based growth was rejected by its own gate on 81% of regions.**
+  When a river cuts the map, whoever starts on the larger side simply gets
+  more, and no threshold fixes that. Quota-driven growth took median spread
+  from 49% to 80%. This is the clearest case so far for "five seeds tell you a
+  system fires; a battery tells you what is fair".
+- **Seeds were claimed during init**, so `step()` skipped them as already-owned
+  and never expanded. Every district was exactly one tile. Invisible to the
+  fairness gate, which happily reported that one-tile districts were unequal.
+- **Per-district surface water was a hard gate** and refused 116 of 200
+  perfectly playable regions. Groundwater pumps work anywhere
+  (`gamedesign.md` §7.5), so it is a reported metric now. A hard gate that
+  rejects most valid input is not a gate, it is a bug with good intentions.
+
+**1.3 roads and the permission gate** — one staging buffer for every placement:
+stage, price the whole edit, commit all or none. A 400-tile drag is one RLE
+command. Auto-connect keeps a 4-neighbour mask in the tile and reshapes
+neighbours after every change, so a corner becomes a corner when the next tile
+arrives.
+
+Ownership is created at placement. The permission matrix test asserts every
+command against every ownership relation, and asserts the invariant directly:
+**no command ever mutates a tile the actor does not own.**
+
+**1.4 zoning, demand, development** — ruling 001 implemented: one regional pool
+that lots draw from by attractiveness. Same code at one seat and at sixteen.
+
+*Three era-0 calibration faults, all found by the soak:*
+- **Zoning was priced per tile at the reference's per-3×3-zone price** — nine
+  times too dear. 20,000 bought ten blocks.
+- **Growth was unreachable.** Base land value 60 against a neutral of 100 put
+  every lot 32 points below the threshold. Nothing ever grew, and the soak
+  reported a perfectly healthy run of empty cities.
+- **Vacancy suppression at full weight counted buildings still filling up** and
+  strangled every city at ~450 residents.
+
+Demand also needed the lag the design already asked for (§9.3); without it the
+pool slammed between its caps every month.
+
+*Gate:* 5 pinned seeds, 20 years, all self-sustaining. Then — because picking
+parameters on the gate's own seeds is the overfitting the discipline warns
+about — validated on **20 seeds it was not tuned against: 20/20 above 500
+residents, min 547, median 756.** Real balance tuning stays deferred to the
+Wave 3 sweep (ruling 007).
+
+**1.5 saves** — run-length encoded layers. Measured: 48×48 13.5 KB, 64×64
+22 KB, 96×96 48.5 KB, 128×128 83.2 KB, which keeps yearly checkpoints
+affordable for a persistent room. Every save carries its own hash and is
+refused if it does not match. The strongest test is not that a save loads but
+that the *future* is the same afterwards.
+
+**Known and deferred:** cities plateau around 40 years because the deputy
+spends down to its reserve and there is no tax income yet — that is slice 2.3.
+`specs/asset-list.md` is hand-authored until `tools/asset_report.mjs` can
+generate it from real catalogues.
+
+**Next:** 1.2 renderer bootstrap and the 1.2b style probe (needs the user's
+eye), then Wave 2 — power, water, economy, services.

@@ -54,6 +54,15 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 5. **Tooling lands with the wave that needs it**, never as a retrofit.
 6. **Design-blocked items are flagged, not scheduled** (questionnaire at the end).
 
+## Progress
+
+Waves 0 and 1 are complete **except 1.2 / 1.2b (renderer and style probe)**, which are deliberately
+deferred: the probe exists to be judged by eye, so it waits for the user rather than blocking the
+engine. Ordering principle 1 (engine before client) makes that the correct order anyway.
+
+Done: 0.1, 0.2, 0.3, 0.4, 1.1, 1.3, 1.4, 1.5. Suite 218 tests, green twice.
+Next: 1.2 renderer bootstrap, then Wave 2 (utilities, economy, civic simulation).
+
 ## The slice ritual
 
 Every slice, without exception: tests written first → implementation → suite double-run green →
@@ -68,10 +77,10 @@ No gameplay. This wave exists so that every later slice has a gate to run.
 
 | # | Slice | Depends on | Done when |
 |---|---|---|---|
-| 0.1 | **Repo and harness** — layout per `plan.md` §1, importmap, no-build static serve, `run.sh`, `test.sh`, `node --test` wired, `CLAUDE.md` working rules, `dev-log.md` started | — | `./test.sh` runs green twice in a row on an empty suite; the client serves a blank page with no console errors |
-| 0.2 | **Deterministic primitives** — `prng.js` (xorshift32, state in game state), `idiv.js`, `grid.js` (index and neighbour helpers), `canonical.js`, `statehash.js` (FNV-1a 64, rejects float/null/NaN), `protocol.js` (version + build hash) | 0.1 | Pinned test vectors for the PRNG sequence and for three known state hashes; the hash function refuses an illegal value in a test |
-| 0.3 | **State and reducer skeleton** — SoA allocation including `owner` and `district`, `GameOptions` record hashed into initial state, command envelope with `actor`, `TICK`, `copyState` with deep copies, the restricted-subset lint for `engine/` | 0.2 | 1000 empty ticks are hash-stable and allocation-free; the subset lint fails on a planted `class` and a planted `Map` |
-| 0.4 | **Test drivers** — JSON fixture runner, soak driver skeleton, chaos injector skeleton, event-census probe | 0.3 | `test/fixtures/empty.json` passes; the chaos injector fires 10k random malformed commands without corrupting state or throwing |
+| ✅ 0.1 | **Repo and harness** — layout per `plan.md` §1, importmap, no-build static serve, `run.sh`, `test.sh`, `node --test` wired, `CLAUDE.md` working rules, `dev-log.md` started | — | `./test.sh` runs green twice in a row on an empty suite; the client serves a blank page with no console errors |
+| ✅ 0.2 | **Deterministic primitives** — `prng.js` (xorshift32, state in game state), `idiv.js`, `grid.js` (index and neighbour helpers), `canonical.js`, `statehash.js` (FNV-1a 64, rejects float/null/NaN), `protocol.js` (version + build hash) | 0.1 | Pinned test vectors for the PRNG sequence and for three known state hashes; the hash function refuses an illegal value in a test |
+| ✅ 0.3 | **State and reducer skeleton** — SoA allocation including `owner` and `district`, `GameOptions` record hashed into initial state, command envelope with `actor`, `TICK`, `copyState` with deep copies, the restricted-subset lint for `engine/` | 0.2 | 1000 empty ticks are hash-stable and allocation-free; the subset lint fails on a planted `class` and a planted `Map` |
+| ✅ 0.4 | **Test drivers** — JSON fixture runner, soak driver skeleton, chaos injector skeleton, event-census probe | 0.3 | `test/fixtures/empty.json` passes; the chaos injector fires 10k random malformed commands without corrupting state or throwing |
 
 ---
 
@@ -81,12 +90,12 @@ The wave that answers "is this a game". Everything here is singleplayer, one sea
 
 | # | Slice | Depends on | Done when |
 |---|---|---|---|
-| 1.1 | **Terrain generation** — seeded, with style (flat/rolling/hilly), water (none/lakes/river/coastal/archipelago) and tree density; district partition following terrain with a fairness score; region identity naming | 0.3 | Same seed and options produce an identical map hash on two runs; a 200-seed sweep reports fairness spread and zero degenerate maps (no buildable land, no water) |
+| ✅ 1.1 | **Terrain generation** — seeded, with style (flat/rolling/hilly), water (none/lakes/river/coastal/archipelago) and tree density; district partition following terrain with a fairness score; region identity naming | 0.3 | Same seed and options produce an identical map hash on two runs; a 200-seed sweep reports fairness spread and zero degenerate maps (no buildable land, no water) |
 | 1.2 | **Renderer bootstrap** — vendored three.js, WebGL2 probe with an honest unsupported screen, chunked terrain geometry, orthographic camera with snapped yaw and zoom-to-cursor, grid picking by ray-plane maths, ghost preview, 2D minimap painted from state | 1.1 | A screenshot test renders a known seed identically under SwiftShader; picking returns the correct tile at four zoom levels and all four yaw angles |
 | 1.2b | **Style probe** — one pinned 16×16 city block from a real save, rendered through the real renderer in three candidates, all within the mesh pipeline so all four camera angles work: **(a) clean low-poly toy diorama** — flat colour, baked shading, cozy palette; **(b) pixel-art post-process** — the same meshes rendered to a low-resolution target with nearest upscale, palette quantisation, dither and outline, for the look of the reference screenshot with rotation intact; **(c) higher-detail hand-painted atlas** — richer silhouettes and texture, closest to a modern isometric builder | 1.2 | Three candidates × two zoom levels × phone and desktop, screenshotted; draw calls, triangles and frame time measured for each; a written note on cost per building state and on how each survives the territory overlay and sixteen player colours. **Style chosen and `specs/art-direction.md` settled** |
-| 1.3 | **Roads and the permission gate** — `PLACE_ROAD` with path input, auto-connect shape table, instanced road rendering, transactional commit with cost preview, `BULLDOZE`, undo of one transaction, **`engine/permissions.js` with every command routed through it**, `owner` written by every placement | 1.2 | The permission matrix test passes (every command × every ownership relation); a drag of 400 tiles is **one** command; an illegal edit is refused identically by two independent engine instances |
-| 1.4 | **Zoning, lots and development** — zone paint (pencil, rectangle, brush), road-access check, lot aggregation to 1×2 and 2×2, **regional RCI demand pool**, growth and decay scoring, building instancing keyed by category/level/value tier | 1.3 | Soak: five pinned seeds each grow a self-sustaining town of 500 residents within 20 city years with no manual intervention; the demand pool allocates correctly with one seat (the multi-seat path is tested in 6.1) |
-| 1.5 | **Save and load** — IndexedDB, schema v1, three rotating autosaves plus five manual slots, export and import, migration framework and the fixture corpus | 1.4 | Save → reload → hash identical; a planted v0 save migrates and hashes correctly; the corpus test runs on every suite |
+| ✅ 1.3 | **Roads and the permission gate** — `PLACE_ROAD` with path input, auto-connect shape table, instanced road rendering, transactional commit with cost preview, `BULLDOZE`, undo of one transaction, **`engine/permissions.js` with every command routed through it**, `owner` written by every placement | 1.2 | The permission matrix test passes (every command × every ownership relation); a drag of 400 tiles is **one** command; an illegal edit is refused identically by two independent engine instances |
+| ✅ 1.4 | **Zoning, lots and development** — zone paint (pencil, rectangle, brush), road-access check, lot aggregation to 1×2 and 2×2, **regional RCI demand pool**, growth and decay scoring, building instancing keyed by category/level/value tier | 1.3 | Soak: five pinned seeds each grow a self-sustaining town of 500 residents within 20 city years with no manual intervention; the demand pool allocates correctly with one seat (the multi-seat path is tested in 6.1) |
+| ✅ 1.5 | **Save and load** — IndexedDB, schema v1, three rotating autosaves plus five manual slots, export and import, migration framework and the fixture corpus | 1.4 | Save → reload → hash identical; a planted v0 save migrates and hashes correctly; the corpus test runs on every suite |
 
 **Wave gate:** the soak driver grows five seeds for 40 city years with per-tick invariants green,
 and the event census shows every implemented system firing.
