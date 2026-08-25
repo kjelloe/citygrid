@@ -4,8 +4,8 @@
 // at module evaluation, BEFORE the boot canonicalizes the URL — a module that
 // reads them later finds them already stripped.
 
-import { loadLocale, localise, t } from "client/i18n.js";
-import { hasWebGL2, preferredLocale, prefersReducedMotion } from "client/capabilities.js";
+import { loadLocale, localise, t } from "./i18n.js";
+import { hasWebGL2, preferredLocale, prefersReducedMotion } from "./capabilities.js";
 
 const params = new URLSearchParams(globalThis.location?.search ?? "");
 export const config = Object.freeze({
@@ -47,7 +47,7 @@ async function boot() {
   </div>`);
 
   if (config.debug) {
-    const { runDebugChecks } = await import("client/debug.js");
+    const { runDebugChecks } = await import("./debug.js");
     await runDebugChecks();
   }
 }
