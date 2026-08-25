@@ -6,7 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { jsFilesIn, findViolations } from "./helpers/sources.js";
+import { jsFilesIn, findViolations, stripCommentsAndStrings } from "./helpers/sources.js";
 
 const engine = () => jsFilesIn("engine");
 
@@ -36,7 +36,10 @@ test("engine/ divides through idiv(), never bare `/` on integers we care about",
   // division imports idiv — the reviewable half of the rule.
   const offenders = [];
   for (const file of jsFilesIn("engine")) {
-    const usesDivision = /[^/*]\/[^/*=]/.test(file.source.replace(/\/\/.*$/gm, ""));
+    const code = stripCommentsAndStrings(file.source);
+    // A bare `/` between two non-operator characters. Regex literals are the
+    // remaining false positive, and engine/ has no reason to contain one.
+    const usesDivision = /[\w)\]]\s*\/\s*[\w(]/.test(code);
     const importsIdiv = /idiv/.test(file.source);
     if (usesDivision && !importsIdiv) offenders.push(file.path);
   }
