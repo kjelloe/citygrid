@@ -1,0 +1,101 @@
+/* Minimal shell styling. The real interface arrives with slice 4.1;
+   what matters here is that the accessibility rules hold from the start. */
+
+:root {
+  --bg: #f4f1ea;
+  --fg: #23201c;
+  --muted: #6b655c;
+  --accent: #2f6f4f;
+  --warn: #a8641c;
+  --bad: #a33224;
+  --panel: #ffffff;
+  --line: #d9d3c7;
+  --radius: 10px;
+  --touch: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #16181a;
+    --fg: #e9e6df;
+    --muted: #9a948a;
+    --accent: #6bbf92;
+    --warn: #e0a24d;
+    --bad: #e0705f;
+    --panel: #21252a;
+    --line: #333a41;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #16181a;
+  --fg: #e9e6df;
+  --muted: #9a948a;
+  --accent: #6bbf92;
+  --warn: #e0a24d;
+  --bad: #e0705f;
+  --panel: #21252a;
+  --line: #333a41;
+}
+
+:root[data-contrast="high"] {
+  --bg: #000000;
+  --fg: #ffffff;
+  --muted: #d0d0d0;
+  --panel: #101010;
+  --line: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* The canvas owns gestures; the page itself must not pan or bounce. */
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+}
+
+.boot { color: var(--muted); }
+
+.notice {
+  max-width: 34rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.notice h1 { margin: 0 0 .5rem; font-size: 1.25rem; }
+.notice p { margin: 0; color: var(--muted); }
+
+button, [role="button"] {
+  min-height: var(--touch);
+  min-width: var(--touch);
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+:root[data-motion="reduced"] * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}

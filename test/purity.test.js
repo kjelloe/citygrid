@@ -16,7 +16,6 @@ const BANS = [
   ["new Date", /\bnew\s+Date\b/],
   ["performance.now", /\bperformance\s*\.\s*now\b/],
   ["setTimeout/setInterval", /\bset(Timeout|Interval)\b/],
-  ["null literals in state", /\bnull\b/],
   ["fetch", /\bfetch\s*\(/],
   ["DOM access", /\b(document|window|localStorage|indexedDB)\b/],
 ];
@@ -27,6 +26,15 @@ for (const [label, pattern] of BANS) {
     assert.deepEqual(hits, [], `${label} breaks determinism:\n  ${hits.join("\n  ")}`);
   });
 }
+
+test("engine/ contains no null literals", () => {
+  // The ban is on null *in state*: JSON null becomes nil in Lua and vanishes
+  // from tables, which is the nastiest cross-language trap there is.
+  // shared/ is exempt because shared/statehash.js has to name null in order to
+  // reject it.
+  const hits = findViolations(jsFilesIn("engine"), /\bnull\b/);
+  assert.deepEqual(hits, [], `null is not allowed in engine/:\n  ${hits.join("\n  ")}`);
+});
 
 test("engine/ and shared/ contain no float literals", () => {
   // Integer state only; fixed point at FP = 256 where fractions are needed.
