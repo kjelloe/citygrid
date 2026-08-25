@@ -243,3 +243,72 @@ generate it from real catalogues.
 
 **Next:** 1.2 renderer bootstrap and the 1.2b style probe (needs the user's
 eye), then Wave 2 — power, water, economy, services.
+
+## 2026-08-26 — Wave 2 part one: power, water, economy (P8, same session)
+
+Slices 2.1, 2.2 and 2.3. Suite 250 tests, green twice. Power and water are one
+implementation, because they are one problem.
+
+**The design decision that mattered:** development now depends on supply
+(`gamedesign.md` §8.2). Nothing is built where nothing can be supplied, and a
+lot that loses its supply decays. That turns utilities from decoration into the
+teaching loop the design describes — zone, watch it develop, watch it fail,
+connect it — and it invalidated half the Wave-1 test fixtures, which had been
+building cities with no power. They now build supplied cities, which is what
+the game asks of a player.
+
+**Five bugs, each found by the soak rather than by review:**
+
+1. **The development pass demolished placed buildings.** A power plant has no
+   zone, so it scored as an abandoned lot and the unsupplied penalty finished
+   it off. Ten plants built, ten torn down the following month, capacity
+   permanently zero. Invisible in the unit tests because nothing there placed a
+   plant and then waited a year.
+2. **The deputy built a power station before its first house** — 34 of them —
+   because `demand + margin > capacity` is true when both are zero.
+3. **It then built plants before it had a cursor**, so the connecting wire ran
+   toward coordinate −1 and never landed.
+4. **`supplyPass` counted only connected consumers**, so demand read zero and
+   nothing ever decided a plant was needed. An unconnected consumer is unmet
+   demand, not absent demand.
+5. **A component with no producer has no demand**, so `capacity >= demand`
+   marked every stretch of unconnected wire as powered.
+
+**The one that took real measurement.** After all five were fixed, only 7 of 20
+unseen seeds reached 500 residents; the median city had 54 people. The obvious
+reading was cost — a plant, a pump and utilities on every road tile, all before
+income exists. Three cost variants were measured and moved the median from 54
+to 74. That is the signature of a wrong diagnosis: the intervention barely
+moves the number.
+
+The actual cause was **connectivity**. The deputy laid utilities along each
+block without joining the blocks, so the map filled with separate networks that
+had no power station on any of them. Giving it a grid hub that every block
+connects back to:
+
+| | median pop | ≥500 | median net |
+|---|---|---|---|
+| before | 54 | 7/20 | −489 |
+| after | 1148 | 16/20 | +7596 |
+
+**Then the honest bit.** The two cost changes had been made while chasing the
+wrong cause, so they were re-tested afterwards rather than kept. Reverting them
+gave median 649 and a median *deficit* of −304 — the median city slowly dying.
+Keeping them gave a city too rich. The rule that survived is a principled one
+rather than a tuned one: wire and pipe cost to build but not to maintain,
+because distribution is maintained as part of the street it follows — one
+street, one bill. That per-tile charge was invented here and is not in the
+reference.
+
+Final, 20 seeds not used for tuning, 20 years: pop p25 566, median 870, p75
+3018; 16/20 above 500; net median +4891.
+
+**Known and deferred to the Wave 3 sweep (ruling 007):** treasuries reach eight
+figures by year 40, and industrial demand runs away on some seeds — one city
+finished with 3959 jobs against 442 residents. Both are balance rather than
+mechanism, and tuning them against 20 seeds now would be precisely the
+overfitting the discipline forbids. They are written down here so the sweep
+knows what to look for.
+
+**Next:** 2.4 service coverage, 2.5 pollution and land value, 2.6 fire — then
+the renderer and the style probe, which need the user's eye.
