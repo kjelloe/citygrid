@@ -1,0 +1,22 @@
+node_modules/
+
+# Sweep and soak output — results are regenerated, never committed.
+# A committed CSV outlives its balance era and gets cited after it is void.
+*.csv
+reports/*.csv
+debugging/out/
+
+# Build-step bakes: generated on the dev machine, never committed, guarded by a
+# hash pin so a stale bake degrades gracefully instead of corrupting anything.
+assets/baked/
+client/assets/generated/
+
+# Local saves and room state
+saves/
+rooms/
+
+# Config with secrets; sanitized templates are committed instead
+*.local.json
+deploy/secrets/
+
+.DS_Store
