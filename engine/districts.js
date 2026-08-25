@@ -245,7 +245,8 @@ export function fairness(stats, requireWater) {
   } else if (spread < 45) {
     verdict.ok = false;
     verdict.reason = "districts are too unequal";
-  } else if (isolated.length > 0) {
+  } else if (isolated.length > 0 && stats.length > 1) {
+    // Meaningless with a single district, which is the singleplayer case.
     verdict.ok = false;
     verdict.reason = "a district touches no other";
   } else if (dry.length > 0 && requireWater === true) {

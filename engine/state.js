@@ -70,6 +70,7 @@ export function createState(options) {
     contracts: [],
     nextId: 1,
     treasury: options.startingTreasury,
+    tax: 7,
     population: 0,
     jobs: 0,
     // Regional demand pool (ruling 001). Residents and firms belong to the
@@ -100,6 +101,7 @@ export function copyState(state) {
     contracts: copyContracts(state.contracts),
     nextId: state.nextId,
     treasury: state.treasury,
+    tax: state.tax,
     population: state.population,
     jobs: state.jobs,
     demand: {
@@ -135,8 +137,11 @@ export function copyBuildings(buildings) {
     out.push({
       id: b.id,
       def: b.def,
+      zone: b.zone,
       x: b.x,
       y: b.y,
+      w: b.w,
+      h: b.h,
       owner: b.owner,
       level: b.level,
       valueTier: b.valueTier,
@@ -202,6 +207,7 @@ export function writeState(sink, state) {
   writeI32(sink, state.width);
   writeI32(sink, state.height);
   writeI64(sink, state.treasury);
+  writeU8(sink, state.tax);
   writeI32(sink, state.population);
   writeI32(sink, state.jobs);
   writeI32(sink, state.demand.residential);
@@ -227,8 +233,11 @@ export function writeState(sink, state) {
     var building = state.buildings[b];
     writeI32(sink, building.id);
     writeString(sink, building.def);
+    writeU8(sink, building.zone);
     writeI32(sink, building.x);
     writeI32(sink, building.y);
+    writeU8(sink, building.w);
+    writeU8(sink, building.h);
     writeU8(sink, building.owner);
     writeU8(sink, building.level);
     writeU8(sink, building.valueTier);
