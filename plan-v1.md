@@ -60,13 +60,17 @@ Waves 0 and 1 are complete **except 1.2 / 1.2b (renderer and style probe)**, whi
 deferred: the probe exists to be judged by eye, so it waits for the user rather than blocking the
 engine. Ordering principle 1 (engine before client) makes that the correct order anyway.
 
-**Waves 0, 1 and 2 are complete** except 1.2 / 1.2b.
-Done: 0.1–0.4, 1.1, 1.3, 1.4, 1.5, 2.1–2.6. Suite 270 tests, green twice.
-Chaos clean at 30k commands.
+**Waves 0, 1 and 2 are complete.** Done: 0.1–0.4, 1.1, 1.2, 1.3, 1.4, 1.5,
+2.1–2.6. Suite 272 tests green twice; chaos clean at 30k commands; client smoke
+green on four style/zoom combinations.
 
-Next: **1.2 renderer bootstrap and the 1.2b style probe**, which need the user
-at the keyboard — the probe exists to be judged by eye. Then Wave 3: events and
-disasters, traffic, maturity, and the first real balance sweep.
+**1.2b is waiting on the user.** The three candidates are rendered from the same
+city, seed and camera in `reports/probe-close-{plain,pixel,painted}.png`. The
+probe cannot be finished without a decision, and `specs/art-direction.md` §3
+stays empty until it is — which blocks the content lane, by design.
+
+Next once the style is chosen: Wave 3 — events and disasters, traffic,
+maturity, and the first real balance sweep.
 
 **Open balance debts, for the Wave 3 sweep:** treasuries reach eight figures by
 year 40, and industrial demand runs away on some seeds. Mechanism, not balance,
@@ -100,7 +104,7 @@ The wave that answers "is this a game". Everything here is singleplayer, one sea
 | # | Slice | Depends on | Done when |
 |---|---|---|---|
 | ✅ 1.1 | **Terrain generation** — seeded, with style (flat/rolling/hilly), water (none/lakes/river/coastal/archipelago) and tree density; district partition following terrain with a fairness score; region identity naming | 0.3 | Same seed and options produce an identical map hash on two runs; a 200-seed sweep reports fairness spread and zero degenerate maps (no buildable land, no water) |
-| 1.2 | **Renderer bootstrap** — vendored three.js, WebGL2 probe with an honest unsupported screen, chunked terrain geometry, orthographic camera with snapped yaw and zoom-to-cursor, grid picking by ray-plane maths, ghost preview, 2D minimap painted from state | 1.1 | A screenshot test renders a known seed identically under SwiftShader; picking returns the correct tile at four zoom levels and all four yaw angles |
+| ✅ 1.2 | **Renderer bootstrap** — vendored three.js, WebGL2 probe with an honest unsupported screen, chunked terrain geometry, orthographic camera with snapped yaw and zoom-to-cursor, grid picking by ray-plane maths, ghost preview, 2D minimap painted from state | 1.1 | A screenshot test renders a known seed identically under SwiftShader; picking returns the correct tile at four zoom levels and all four yaw angles |
 | 1.2b | **Style probe** — one pinned 16×16 city block from a real save, rendered through the real renderer in three candidates, all within the mesh pipeline so all four camera angles work: **(a) clean low-poly toy diorama** — flat colour, baked shading, cozy palette; **(b) pixel-art post-process** — the same meshes rendered to a low-resolution target with nearest upscale, palette quantisation, dither and outline, for the look of the reference screenshot with rotation intact; **(c) higher-detail hand-painted atlas** — richer silhouettes and texture, closest to a modern isometric builder | 1.2 | Three candidates × two zoom levels × phone and desktop, screenshotted; draw calls, triangles and frame time measured for each; a written note on cost per building state and on how each survives the territory overlay and sixteen player colours. **Style chosen and `specs/art-direction.md` settled** |
 | ✅ 1.3 | **Roads and the permission gate** — `PLACE_ROAD` with path input, auto-connect shape table, instanced road rendering, transactional commit with cost preview, `BULLDOZE`, undo of one transaction, **`engine/permissions.js` with every command routed through it**, `owner` written by every placement | 1.2 | The permission matrix test passes (every command × every ownership relation); a drag of 400 tiles is **one** command; an illegal edit is refused identically by two independent engine instances |
 | ✅ 1.4 | **Zoning, lots and development** — zone paint (pencil, rectangle, brush), road-access check, lot aggregation to 1×2 and 2×2, **regional RCI demand pool**, growth and decay scoring, building instancing keyed by category/level/value tier | 1.3 | Soak: five pinned seeds each grow a self-sustaining town of 500 residents within 20 city years with no manual intervention; the demand pool allocates correctly with one seat (the multi-seat path is tested in 6.1) |

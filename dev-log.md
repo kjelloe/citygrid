@@ -424,3 +424,57 @@ decided and the design had not, so the two do not quietly diverge.
 `specs/plan.md` §3.8 now carries measured numbers where measurements exist.
 The permission matrix grew rows for zoning and placement, plus a test that
 fails when a registered command has no permission assertion at all.
+
+## 2026-08-27 — Slice 1.2: the renderer, and the probe images
+
+three.js r169 vendored and pinned. Chunked terrain with dirty-rebuild,
+instanced networks and buildings, orthographic camera with four snapped yaw
+angles, tile picking by ray-plane maths, and the `RenderStyle` seam carrying
+each style's camera constraints. **A city of 236 buildings renders in 24 draw
+calls** — the entire reason instancing is there.
+
+Headless screenshots through Playwright and SwiftShader, which is correctness
+only: frame times from a software rasteriser mean nothing, and real numbers
+need a native run. `tools/client_smoke.mjs` is the gate — page errors, zero
+draw calls, a fixture city that grew nothing, or draw calls climbing past 60,
+which would mean instancing had quietly stopped working.
+
+**Four rendering bugs, none of them visible to any existing test.** All four
+were found by looking at the picture, which is the entire argument for having a
+screenshot harness at all.
+
+1. **The ground faced downward.** Quads wound clockwise seen from +Y, so the
+   normal pointed at -Y and the whole terrain was backface-culled. The first
+   screenshot was a city of roads and buildings floating on an empty sky, and
+   every number in the report — chunks rebuilt, vertex counts, draw calls —
+   was correct.
+2. **Seams.** Each tile drawn at its own flat height left a vertical gap
+   wherever two neighbours differed, so the map rendered with thin horizontal
+   stripes of sky. Corners are shared now: continuous surface, per-tile colour.
+3. **Pipes were above ground.** They are underground (`gamedesign.md` §7.5) and
+   now appear only in the underground view.
+4. **Every post-processed style was a third too dark.** A render target holds
+   LINEAR colour and the pass-through shader wrote it straight to a canvas that
+   expects sRGB.
+
+The fourth is the one worth remembering, because it looks exactly like a
+lighting bug and I spent two iterations tuning the outline and the palette
+before measuring. **Measured: a post-process with no effect whatsoever —
+no quantisation, no outline, no dither — dropped mean image brightness from 78
+to 25.** That is not a look, that is a missing conversion. Setting
+`texture.colorSpace` on the target did not take; the shader encodes explicitly
+now, and pass-through matches plain at 78 exactly.
+
+**The probe (1.2b) is rendered and waiting on a decision.** Same city, same
+seed, same camera, three candidates in `reports/probe-close-*.png`. Two
+findings for whoever judges them:
+
+- The pixel candidate needs **divisor 2, not 4**. At 4 a whole building fits
+  inside one pixel, the edge test fires on nearly every pixel, and the image
+  turns to mud regardless of palette.
+- It also implies a **closer default camera**. A whole 64×64 region at pixel
+  resolution has features smaller than a pixel; the reference screenshot Kjell
+  supplied is framed on a few blocks, and that is not a coincidence.
+
+The claim from ruling 006 holds: the pixel-art look survives inside the mesh
+pipeline, with four-angle rotation and continuous-ish zoom intact.
