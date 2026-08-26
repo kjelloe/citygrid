@@ -19,7 +19,7 @@ import { nextInt, chance } from "../shared/prng.js";
 import { isIntArray, isIntInRange } from "./validate.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
-  OWNER_NATURE, FLAG_ZONE_CENTRE, FLAG_POWERED, FLAG_WATERED,
+  OWNER_NATURE, FLAG_ZONE_CENTRE, FLAG_POWERED, FLAG_WATERED, FLAG_RUINED,
 } from "./constants.js";
 
 // --- zoning ----------------------------------------------------------------
@@ -211,9 +211,9 @@ function chooseFootprint(state, x, y, zone, owner) {
   return undefined;
 }
 
-/** Land value: a base, plus proximity to water and greenery, minus crowding.
- * The full model arrives with slice 2.5; this is enough for growth to prefer
- * pleasant ground over the middle of an industrial block. */
+/** The simple land value that carried slice 1.4 before civic.js existed. Kept
+ * only so a test can drive development without the whole civic pass; the real
+ * model lives in civic.js and runs first every month. */
 export function landValueAt(state, index) {
   var development = rules().development;
   var value = development.baseLandValue;
@@ -325,10 +325,6 @@ export function developmentPass(state) {
   var development = rules().development;
   var i;
 
-  for (i = 0; i < state.tiles.landValue.length; i += 1) {
-    state.tiles.landValue[i] = landValueAt(state, i);
-  }
-
   // Demand moves toward its target rather than jumping to it: "changes should
   // not produce their full effect instantly; the response should occur over
   // several simulation periods" (gamedesign 9.3). Without this the pool
@@ -353,6 +349,9 @@ export function developmentPass(state) {
       // lots regrew the same month they were abandoned and an unpowered
       // district looked healthy while cycling through ruins.
       if (!couldBeSupplied(state, x, y)) continue;
+      // Ruins block the ground until someone clears them, which is what makes
+      // rebuilding after a fire an act rather than a wait.
+      if ((state.tiles.flags[index] & FLAG_RUINED) !== 0) continue;
       if (scoreLot(state, index, zone) < development.growthThreshold) continue;
       if (!chance(state.rng, development.growthOneIn)) continue;
 
@@ -432,4 +431,4 @@ export function developmentPass(state) {
   return events;
 }
 
-registerMonthly("development", developmentPass);
+registerMonthly("development", developmentPass, 30);

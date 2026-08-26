@@ -11,7 +11,7 @@ import { placeNetwork, removeNetwork, cellsFromRuns, hasNet, NETWORKS } from "./
 import { canDemolish } from "./permissions.js";
 import { buildCost } from "./rules.js";
 import { isWater } from "./terrain.js";
-import { TERRAIN_FOREST, TERRAIN_GRASS, OWNER_NATURE, OWNER_COMMONS } from "./constants.js";
+import { TERRAIN_FOREST, TERRAIN_GRASS, OWNER_NATURE, OWNER_COMMONS, FLAG_RUINED } from "./constants.js";
 import { isIntArray } from "./validate.js";
 
 /** Undo is one deep, per player, and only for their own last action. Deeper
@@ -95,6 +95,10 @@ export function bulldozeInto(tx, indices) {
     }
     if (state.tiles.terrain[index] === TERRAIN_FOREST) {
       stage(tx, index, "terrain", TERRAIN_GRASS);
+      didSomething = true;
+    }
+    if ((state.tiles.flags[index] & FLAG_RUINED) !== 0) {
+      stage(tx, index, "flags", state.tiles.flags[index] & ~FLAG_RUINED);
       didSomething = true;
     }
 

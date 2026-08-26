@@ -83,6 +83,10 @@ export function createState(options) {
       power: { capacity: 0, demand: 0, served: 0, starved: 0, components: 0 },
       water: { capacity: 0, demand: 0, served: 0, starved: 0, components: 0 },
     },
+    civic: {
+      crimeAverage: 0, pollutionAverage: 0, landValueAverage: 0,
+      healthRiskAverage: 0, firePercent: 0, policePercent: 0, developed: 0,
+    },
   };
 }
 
@@ -119,6 +123,15 @@ export function copyState(state) {
     supply: {
       power: copySupply(state.supply.power),
       water: copySupply(state.supply.water),
+    },
+    civic: {
+      crimeAverage: state.civic.crimeAverage,
+      pollutionAverage: state.civic.pollutionAverage,
+      landValueAverage: state.civic.landValueAverage,
+      healthRiskAverage: state.civic.healthRiskAverage,
+      firePercent: state.civic.firePercent,
+      policePercent: state.civic.policePercent,
+      developed: state.civic.developed,
     },
   };
 }

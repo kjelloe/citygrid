@@ -189,7 +189,7 @@ export function utilitiesPass(state) {
   return events;
 }
 
-registerMonthly("utilities", utilitiesPass);
+registerMonthly("utilities", utilitiesPass, 20);
 
 // --- placing a building ----------------------------------------------------
 

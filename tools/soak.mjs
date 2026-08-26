@@ -21,6 +21,8 @@ import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
 import "../engine/economy.js";
+import "../engine/civic.js";
+import "../engine/fire.js";
 
 const DEFAULT_SEEDS = [1001, 1002, 1003, 1004, 1005];
 
@@ -71,9 +73,11 @@ export function soakOne({ seed, years = 40, size = 64, seats = 1, doctrine = "ex
   const checkpoints = {};
   let peakPopulation = 0;
   let bankruptAt = -1;
+  let fires = 0;
 
   for (let tick = 1; tick <= ticks; tick += 1) {
-    apply(state, { type: CMD_TICK });
+    const tickResult = apply(state, { type: CMD_TICK });
+    for (const event of tickResult.events) if (event.kind === "fireStarted") fires += 1;
     // Deputies act between ticks, like players.
     if (tick % 6 === 0) {
       for (const deputy of deputies) deputyTurn(state, deputy);
@@ -108,7 +112,9 @@ export function soakOne({ seed, years = 40, size = 64, seats = 1, doctrine = "ex
     demand: state.demand,
     deputies: deputies.map((d) => ({ built: d.built, zoned: d.zoned, utilities: d.utilities, refusals: d.refusals })),
     supply: state.supply,
+    civic: state.civic,
     net: budgetFor(state, 1).net,
+    fires,
     checkpoints,
     hash: hashState(state),
   };
@@ -136,7 +142,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       `funds ${String(result.treasury).padStart(7)} ` +
       `pow ${result.supply.power.capacity}/${result.supply.power.demand} ` +
       `wat ${result.supply.water.capacity}/${result.supply.water.demand} ` +
-      `util ${result.deputies[0].utilities} net ${String(result.net).padStart(6)} hash ${result.hash}`,
+      `crime ${String(result.civic.crimeAverage).padStart(3)} poll ${String(result.civic.pollutionAverage).padStart(3)} ` +
+      `lv ${String(result.civic.landValueAverage).padStart(3)} fires ${String(result.fires).padStart(3)} ` +
+      `net ${String(result.net).padStart(6)} hash ${result.hash}`,
     );
   }
   console.log(failed === 0 ? `\nsoak ok — ${results.length} cities, ${years} years each` : `\nSOAK FAILED — ${failed} of ${results.length}`);

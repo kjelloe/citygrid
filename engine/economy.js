@@ -167,4 +167,4 @@ export function economyPass(state) {
   return events;
 }
 
-registerMonthly("economy", economyPass);
+registerMonthly("economy", economyPass, 40);

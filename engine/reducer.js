@@ -69,9 +69,28 @@ var FAST_SYSTEMS = [];
 var MONTH_SYSTEMS = [];
 var YEAR_SYSTEMS = [];
 
-export function registerFast(name, fn) { FAST_SYSTEMS.push({ name: name, fn: fn }); }
-export function registerMonthly(name, fn) { MONTH_SYSTEMS.push({ name: name, fn: fn }); }
-export function registerYearly(name, fn) { YEAR_SYSTEMS.push({ name: name, fn: fn }); }
+/** Systems declare an explicit order rather than inheriting import order.
+ * Land value must be current before development scores a lot, and the lot must
+ * exist before the tax on it is collected — an ordering that depended on which
+ * file happened to be imported first would be a desync waiting for someone to
+ * reorder an import. */
+function insertOrdered(list, entry) {
+  list.push(entry);
+  list.sort(function byOrder(a, b) {
+    if (a.order !== b.order) return a.order - b.order;
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+  });
+}
+
+export function registerFast(name, fn, order) {
+  insertOrdered(FAST_SYSTEMS, { name: name, fn: fn, order: order === undefined ? 50 : order });
+}
+export function registerMonthly(name, fn, order) {
+  insertOrdered(MONTH_SYSTEMS, { name: name, fn: fn, order: order === undefined ? 50 : order });
+}
+export function registerYearly(name, fn, order) {
+  insertOrdered(YEAR_SYSTEMS, { name: name, fn: fn, order: order === undefined ? 50 : order });
+}
 
 export function systemNames() {
   var names = [];

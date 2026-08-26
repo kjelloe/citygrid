@@ -14,7 +14,7 @@ import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLA
 import { definition } from "./catalogue.js";
 import { budgetFor } from "./economy.js";
 import { RESULT } from "../shared/protocol.js";
-import { tileAt, xOf, yOf, encodeRuns, inBounds } from "../shared/grid.js";
+import { tileAt, xOf, yOf, encodeRuns, inBounds, DIR4, neighbour } from "../shared/grid.js";
 import { hasNet } from "./network.js";
 import { isBuildable, isWater } from "./terrain.js";
 import { idiv, clamp } from "../shared/idiv.js";
@@ -186,15 +186,26 @@ function keepSupplied(state, deputy) {
 
   // Green doctrine pays more for less: several turbines rather than one
   // chimney. It is the readable difference between the two doctrines.
-  var wantsPower = deputy.doctrine === DOCTRINE_GREEN ? "windTurbine" : "coalPlant";
-  var def = needsPower ? wantsPower : pickPump(state, deputy);
-  if (!def) return false;
+  // Power and water are handled independently in the same turn. Alternating
+  // between them left a city with one power station and four pumps: whichever
+  // was short when the other was fine simply never came up.
+  var acted = false;
+  if (needsPower) {
+    acted = placeUtility(state, deputy, deputy.doctrine === DOCTRINE_GREEN ? "windTurbine" : "coalPlant") || acted;
+  }
+  if (needsWater) {
+    acted = placeUtility(state, deputy, pickPump(state, deputy)) || acted;
+  }
+  return acted;
+}
 
+function placeUtility(state, deputy, def) {
+  if (!def) return false;
   var spot = findSpotFor(state, deputy, def);
   if (spot < 0) return false;
 
   var placed = apply(state, {
-    type: CMD_PLACE_BUILDING, actor: seat, def: def,
+    type: CMD_PLACE_BUILDING, actor: deputy.seat, def: def,
     x: xOf(state.width, spot), y: yOf(state.width, spot),
   });
   if (placed.result !== RESULT.OK) {
@@ -213,8 +224,6 @@ function keepSupplied(state, deputy) {
   // which is where the city is.
   // Wire and pipe both, from the new building back to the grid.
   connectToHub(state, deputy, spot);
-  runCarrier(state, deputy, spot, CMD_PLACE_WIRE, "wire");
-  runCarrier(state, deputy, spot, CMD_PLACE_PIPE, "pipe");
   return true;
 }
 
@@ -278,29 +287,69 @@ function nearWater(state, x, y, def) {
   return false;
 }
 
-/** Joins a point to the deputy's grid hub with an L-shaped run, so every block
- * it builds ends up on one network with the power station. */
-function connectToHub(state, deputy, from) {
-  if (deputy.hubX < 0) return;
-  var x = xOf(state.width, from);
-  var y = yOf(state.width, from);
+/** Joins a point to the nearest tile that already carries the network, by the
+ * shortest clear route.
+ *
+ * Two earlier versions failed here and both failures are worth keeping in
+ * mind. The first walked toward the hub and SKIPPED blocked cells, which left
+ * a hole in the line and split the network. The second refused any route with
+ * a building on it — which, in a city dense enough to matter, is every route:
+ * pumps sat at the river with 1 connected pipe tile out of 1206 while the
+ * whole city went thirsty. A breadth-first search around the obstacles is what
+ * a person does with the tool, and it is what works.
+ */
+function connectToNetwork(state, deputy, from, layer, command) {
+  var total = state.width * state.height;
+  var seen = [];
+  var cameFrom = [];
+  var i;
+  for (i = 0; i < total; i += 1) {
+    seen.push(false);
+    cameFrom.push(-1);
+  }
+
+  var queue = [from];
+  seen[from] = true;
+  var head = 0;
+  var target = -1;
+
+  while (head < queue.length && head < 6000) {
+    var index = queue[head];
+    head += 1;
+    // Already on the grid? Then this is where the new run should meet it.
+    if (index !== from && hasNet(state.tiles[layer][index])) {
+      target = index;
+      break;
+    }
+    var x = xOf(state.width, index);
+    var y = yOf(state.width, index);
+    for (var d = 0; d < DIR4.length; d += 1) {
+      var n = neighbour(state.width, state.height, x, y, DIR4[d]);
+      if (n < 0 || seen[n]) continue;
+      // Buildings and other people's land are walls.
+      if (state.tiles.buildingId[n] !== 0 && !hasNet(state.tiles[layer][n])) continue;
+      var owner = state.tiles.owner[n];
+      if (owner !== OWNER_NATURE && owner !== deputy.seat) continue;
+      seen[n] = true;
+      cameFrom[n] = index;
+      queue.push(n);
+    }
+  }
+  if (target < 0) return;
+
   var cells = [];
-  var guard = 0;
-  while ((x !== deputy.hubX || y !== deputy.hubY) && guard < 200) {
-    if (x !== deputy.hubX) x += deputy.hubX > x ? 1 : -1;
-    else y += deputy.hubY > y ? 1 : -1;
-    guard += 1;
-    if (!inBounds(state.width, state.height, x, y)) break;
-    var index = tileAt(state.width, x, y);
-    // Route around buildings rather than through them.
-    if (state.tiles.buildingId[index] !== 0) continue;
-    var owner = state.tiles.owner[index];
-    if (owner !== OWNER_NATURE && owner !== deputy.seat) continue;
-    cells.push(index);
+  var walk = target;
+  while (walk !== from && walk >= 0) {
+    if (!hasNet(state.tiles[layer][walk])) cells.push(walk);
+    walk = cameFrom[walk];
   }
   if (cells.length === 0) return;
-  apply(state, { type: CMD_PLACE_WIRE, actor: deputy.seat, runs: encodeRuns(cells) });
-  apply(state, { type: CMD_PLACE_PIPE, actor: deputy.seat, runs: encodeRuns(cells) });
+  apply(state, { type: command, actor: deputy.seat, runs: encodeRuns(cells) });
+}
+
+function connectToHub(state, deputy, from) {
+  connectToNetwork(state, deputy, from, "wire", CMD_PLACE_WIRE);
+  connectToNetwork(state, deputy, from, "pipe", CMD_PLACE_PIPE);
 }
 
 /** Runs a carrier line from a building toward the built-up part of the city. */

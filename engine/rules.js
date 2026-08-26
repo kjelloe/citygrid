@@ -60,6 +60,17 @@ var RULES = {
     unsuppliedScore: 500,
     supplyReach: 4,
   },
+  civic: {
+    landValueBase: 90, waterfrontBonus: 9, greeneryBonus: 4, pollutionPenalty: 60,
+    crimePenalty: 40, serviceValueDivisor: 12, crowdingThreshold: 120,
+    industrialPollution: 22, forestCleaning: 6, crimeBase: 110, policeDivisor: 5,
+    healthDivisor: 6, noWaterHealthRisk: 60, fireDivisor: 8, buildingFireRisk: 12,
+    industrialFireRisk: 30, forestFireRisk: 14, highCrime: 100, highPollution: 60,
+  },
+  fire: {
+    attemptsPerMonth: 2, ignitionDivisor: 9000, baseExtinguish: 2, riskReference: 22,
+    damagePerTick: 14, spreadDivisor: 900, buildingFuel: 10, forestFuel: 26,
+  },
   economy: { residentialDivisor: 150, commercialDivisor: 120, industrialDivisor: 140 },
   population: { workingAgePercent: 55, shoppersPerCommercialJob: 12, industryPerWorkerPercent: 45 },
 };
