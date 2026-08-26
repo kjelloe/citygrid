@@ -312,3 +312,61 @@ knows what to look for.
 
 **Next:** 2.4 service coverage, 2.5 pollution and land value, 2.6 fire — then
 the renderer and the style probe, which need the user's eye.
+
+## 2026-08-26 — Wave 2 complete: coverage, pollution, crime, health, land value, fire
+
+Slices 2.4, 2.5 and 2.6. Suite 270 tests, green twice. **Waves 0, 1 and 2 are
+now done except the renderer and the style probe**, which wait for the user.
+
+**Systems now declare an explicit order** rather than inheriting import order:
+civic(10), utilities(20), development(30), ignition(35), economy(40). Before
+this, development ran *before* utilities purely because of which file the soak
+driver imported first — an ordering that would have broken the day someone
+tidied the imports.
+
+The five civic systems are one pass because they feed each other in a fixed
+order. Splitting them would mean deciding, every month, which of them is
+allowed to be a month stale. As it is, only one thing is: crime reads last
+month's land value, because land value is what everything else depends on and
+so it is the one kept current.
+
+**Three bugs, all in the deputy's grid-building, all found by probing the
+supply flags rather than by reading the code.** They are worth recording
+together because they are the same mistake made three ways — assuming a plan
+survives contact with a built city.
+
+1. `connectToHub` **skipped blocked cells and kept walking**, punching a hole
+   through the carrier line. A line with a hole is not a line; it splits the
+   network in two. Power survived by luck because every street carries some;
+   water did not.
+2. Refusing any route with a building on it then failed the opposite way — in a
+   city dense enough to matter, *every* route has one. Pumps sat at the river
+   with **1 connected pipe tile out of 1206** while the whole city went
+   thirsty. It is a breadth-first search around the obstacles now, which is
+   what a person does with the tool.
+3. Alternating between power and water left a city with **one power station and
+   four pumps**: whichever was short while the other was fine simply never came
+   up. They are handled independently in the same turn now.
+
+The diagnostic that found all three was two lines — count carrier tiles, count
+how many of them carry the supplied flag. `wire 757/807 powered, pipe 50/807
+watered` said everything the code review had missed.
+
+**One calibration fault the tests caught:** an uncovered fire had a 26% chance
+to go out against a 12% chance to do damage, so nothing ever burned down and a
+fire station bought nothing measurable. The test asked for the *direction* —
+covered cities suffer fewer ignitions than uncovered ones — which is the kind
+of assertion that survives a balance era.
+
+Measured, 20 seeds not used for tuning, 20 years: pop p25 594, median 944, p75
+2156; **19/20 above 500**; 34 fires across the twenty cities; crime median 17.
+
+**Still deferred to the Wave 3 sweep:** runaway treasuries and runaway
+industrial demand, both from the previous entry, both untouched. Pollution
+averages read 0 on most maps because the average is over the whole region
+rather than the developed part — true to the reference, but it will need a
+developed-land average before it can drive anything.
+
+**Next:** 1.2 and 1.2b, then Wave 3 — events and disasters, traffic, maturity,
+and the first real balance sweep, which is where all of the above gets settled
+with 200+ games instead of 20.
