@@ -5,6 +5,8 @@ node_modules/
 *.csv
 reports/*.csv
 debugging/out/
+# Smoke output is regenerated on every run; the probe images are not.
+reports/smoke-*.png
 
 # Build-step bakes: generated on the dev machine, never committed, guarded by a
 # hash pin so a stale bake degrades gracefully instead of corrupting anything.

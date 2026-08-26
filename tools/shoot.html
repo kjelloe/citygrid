@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>City Grid — headless render</title>
+<script type="importmap">
+{ "imports": { "three": "../vendor/three.module.js" } }
+</script>
+<style>
+  html, body { margin: 0; background: #9fc7de; }
+  #city { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="city"></canvas>
+<script type="module">
+// Builds a real city with the real engine, then renders it with the real
+// renderer. No fixtures and no mock state: a screenshot of something the
+// simulation did not actually produce would be worth nothing.
+import { generateWorld } from "../engine/worldgen.js";
+import { defaultOptions } from "../engine/options.js";
+import { apply } from "../engine/reducer.js";
+import { makeDeputy, deputyTurn } from "../engine/deputy.js";
+import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
+import { TICKS_PER_YEAR } from "../engine/constants.js";
+import "../engine/build-commands.js";
+import "../engine/development.js";
+import "../engine/utilities.js";
+import "../engine/economy.js";
+import "../engine/civic.js";
+import "../engine/fire.js";
+import { createRenderer } from "../client/render/scene.js";
+import { setYawStep, zoomBy } from "../client/render/camera.js";
+
+const params = new URLSearchParams(location.search);
+const seed = Number(params.get("seed") ?? 1003);
+const years = Number(params.get("years") ?? 20);
+const span = Number(params.get("span") ?? 0);
+const yaw = Number(params.get("yaw") ?? 0);
+
+const canvas = document.getElementById("city");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const world = generateWorld(defaultOptions({ seed, width: 64, height: 64, seats: 1, waterStyle: "river" }));
+if (!world.ok) throw new Error("generation failed: " + world.reason);
+const state = world.state;
+
+apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Deputy" });
+const deputy = makeDeputy(1, "expand");
+for (let tick = 1; tick <= years * TICKS_PER_YEAR; tick += 1) {
+  apply(state, { type: CMD_TICK });
+  if (tick % 6 === 0) deputyTurn(state, deputy);
+}
+
+const style = params.get("style") ?? "plain";
+const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style });
+setYawStep(view.view, yaw);
+if (span > 0) {
+  view.view.span = span;
+  zoomBy(view.view, 1);
+}
+const stats = view.draw();
+
+const firstChunk = view.terrain.chunks[0];
+const pos = firstChunk.mesh.geometry.getAttribute("position");
+globalThis.SHOT_REPORT = {
+  style,
+  seed, years,
+  population: state.population,
+  buildings: state.buildings.length,
+  chunksRebuilt: stats.chunksRebuilt,
+  instances: stats.instances,
+  drawCalls: view.renderer.info.render.calls,
+  triangles: view.renderer.info.render.triangles,
+};
+globalThis.SHOT_READY = true;
+</script>
+</body>
+</html>
