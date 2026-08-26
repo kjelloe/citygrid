@@ -1,56 +1,53 @@
-// Instanced meshes for everything repeated: road segments, wires, pipes,
-// buildings and props.
+// Instanced meshes for everything repeated.
 //
-// One InstancedMesh per (shape, material) pair, refilled when the world
-// changes. A city of ten thousand buildings is a few dozen draw calls, which is
-// the only reason a 128×128 region renders on a phone at all.
+// One InstancedMesh per (variant, material) pair. Buildings come in four
+// silhouettes per category, chosen deterministically from the building's id, so
+// a street is a street rather than a row of identical boxes — and it still
+// costs a couple of dozen draw calls, because each variant is one instanced
+// mesh however many of them stand in the city.
 
 import * as THREE from "three";
-import { UI, buildingColour, PLAYER_COLOURS } from "./palette.js";
+import { buildingColour, PLAYER_COLOURS } from "./palette.js";
+import { PALETTES, makeMaterial, slabGeometry } from "./style-assets.js";
+import { buildingVariants, treeVariants, variantFor, VARIANTS, TREE_VARIANTS } from "./building-kit.js";
+import {
+  ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
+  TERRAIN_FOREST, FLAG_RUINED, NET_PRESENT,
+} from "../constants-mirror.js";
 
 const dummy = new THREE.Object3D();
 const tint = new THREE.Color();
 
-/** Placeholder geometry (ruling 013): flat, untextured, obviously unfinished,
- * correct in footprint and height so the simulation and the camera can be
- * judged before any real asset exists. */
-function placeholderBox(w, h, d) {
-  const geometry = new THREE.BoxGeometry(w, h, d);
-  geometry.translate(0, h / 2, 0);
-  return geometry;
-}
-
-export function createInstances(scene) {
+export function createInstances(scene, styleName = "plain") {
+  const palette = PALETTES[styleName] ?? PALETTES.plain;
   const pools = {};
+
   const make = (name, geometry, colour, capacity) => {
-    const material = new THREE.MeshLambertMaterial({ color: colour });
+    const material = makeMaterial(styleName, colour);
     const mesh = new THREE.InstancedMesh(geometry, material, capacity);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
     mesh.count = 0;
     mesh.frustumCulled = false;
     scene.add(mesh);
     pools[name] = mesh;
-    return mesh;
   };
 
-  make("road", placeholderBox(1, 0.06, 1), UI.road, 20000);
-  make("wire", placeholderBox(0.1, 0.45, 0.1), UI.wire, 20000);
-  make("pipe", placeholderBox(0.9, 0.05, 0.9), UI.pipe, 20000);
-  make("ruin", placeholderBox(0.8, 0.18, 0.8), UI.ruin, 4000);
+  make("road", slabGeometry(styleName, 1, 0.05, 1), palette.road, 24000);
+  make("mark", slabGeometry(styleName, 0.06, 0.055, 0.34), palette.roadMark, 24000);
+  make("wire", slabGeometry(styleName, 0.07, 0.5, 0.07), palette.wire, 24000);
+  make("pipe", slabGeometry(styleName, 0.9, 0.05, 0.9), 0x4a86a8, 24000);
+  make("ruin", slabGeometry(styleName, 0.7, 0.14, 0.7), 0x5a5048, 6000);
 
-  // Buildings are one pool per footprint; height comes from the instance
-  // scale, colour from zone and value tier.
-  make("b1", placeholderBox(0.8, 1, 0.8), 0xffffff, 12000);
-  make("b2", placeholderBox(1.8, 1, 0.8), 0xffffff, 4000);
-  make("b3", placeholderBox(0.8, 1, 1.8), 0xffffff, 4000);
-  make("b4", placeholderBox(1.8, 1, 1.8), 0xffffff, 4000);
-  make("civic", placeholderBox(1, 1, 1), 0xffffff, 2000);
-
-  for (const name of ["b1", "b2", "b3", "b4", "civic"]) {
-    pools[name].instanceColor = new THREE.InstancedBufferAttribute(
-      new Float32Array(pools[name].count > 0 ? pools[name].count * 3 : pools[name].instanceMatrix.count * 3), 3,
-    );
+  for (const kind of ["residential", "commercial", "industrial", "civic"]) {
+    const geometries = buildingVariants(kind);
+    for (let v = 0; v < geometries.length; v += 1) {
+      make(`${kind}${v}`, geometries[v], 0xffffff, kind === "civic" ? 1200 : 6000);
+    }
   }
+  const trees = treeVariants();
+  for (let v = 0; v < trees.length; v += 1) make(`tree${v}`, trees[v], 0xffffff, 14000);
+
   return pools;
 }
 
@@ -58,43 +55,89 @@ function reset(pools) {
   for (const mesh of Object.values(pools)) mesh.count = 0;
 }
 
-function push(mesh, x, y, z, sx, sy, sz, colour) {
+function push(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {
   const i = mesh.count;
   if (i >= mesh.instanceMatrix.count) return;
   dummy.position.set(x, y, z);
   dummy.scale.set(sx, sy, sz);
-  dummy.rotation.set(0, 0, 0);
+  dummy.rotation.set(0, rotation, 0);
   dummy.updateMatrix();
   mesh.setMatrixAt(i, dummy.matrix);
-  if (colour !== undefined && mesh.instanceColor) {
-    tint.setHex(colour);
-    mesh.instanceColor.setXYZ(i, tint.r, tint.g, tint.b);
-  }
+  tint.setHex(colour);
+  mesh.instanceColor.setXYZ(i, tint.r, tint.g, tint.b);
   mesh.count = i + 1;
 }
 
 const HEIGHT_SCALE = 0.02;
 
-/** Refills every pool from state. Called when the world changes, not per
- * frame: a static city costs nothing to keep on screen. */
+/** Nudges a colour per building: a little lightness, a little hue. Enough that
+ * neighbours differ, little enough that the zone is still readable at a
+ * glance, which is what the colour is actually for. */
+function varyColour(hex, id) {
+  const shift = (salt) => jitter(id, salt) - 0.5;
+  const light = 1 + shift(23) * 0.26;
+  const r = ((hex >> 16) & 0xff) * light * (1 + shift(29) * 0.12);
+  const g = ((hex >> 8) & 0xff) * light * (1 + shift(31) * 0.10);
+  const b = (hex & 0xff) * light * (1 + shift(37) * 0.14);
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  return (clamp(r) << 16) | (clamp(g) << 8) | clamp(b);
+}
+
+/** A small deterministic hash, for per-tile variation that never touches game
+ * state — the world looks varied without the variation having to be saved,
+ * replayed or agreed between clients. */
+function jitter(index, salt) {
+  let h = (((index + 1) * 2654435761) ^ (salt * 40503)) >>> 0;
+  h ^= h >>> 13;
+  return (h >>> 8) / 0xffffff;
+}
+
 export function updateInstances(state, pools, options = {}) {
   reset(pools);
+  const styleName = options.style ?? "plain";
+  const palette = PALETTES[styleName] ?? PALETTES.plain;
   const ground = (index) => state.tiles.elevation[index] * HEIGHT_SCALE;
   const showOwner = options.territory === true;
   const underground = options.underground === true;
+  const trees = options.trees !== false;
 
   for (let y = 0; y < state.height; y += 1) {
     for (let x = 0; x < state.width; x += 1) {
       const index = y * state.width + x;
       const h = ground(index);
-      if (state.tiles.road[index] & 16) push(pools.road, x + 0.5, h, y + 0.5, 1, 1, 1);
-      if (state.tiles.wire[index] & 16) push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1);
-      // Pipes are underground (gamedesign 7.5). They are drawn only when the
-      // underground view is on, which the pipe tool turns on for you.
-      if (underground && (state.tiles.pipe[index] & 16)) {
-        push(pools.pipe, x + 0.5, h + 0.01, y + 0.5, 1, 1, 1);
+
+      if (state.tiles.road[index] & NET_PRESENT) {
+        push(pools.road, x + 0.5, h, y + 0.5, 1, 1, 1, palette.road);
+        // Centre markings, turned to follow the road's own direction.
+        const mask = state.tiles.road[index] & 15;
+        const horizontal = (mask & 2) !== 0 || (mask & 8) !== 0;
+        push(pools.mark, x + 0.5, h, y + 0.5, 1, 1, 1, palette.roadMark, horizontal ? Math.PI / 2 : 0);
       }
-      if (state.tiles.flags[index] & 8) push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1);
+      // A pole every third tile rather than on every one. A pole per tile is
+      // a picket fence down every street, and it buries the city in clutter.
+      if ((state.tiles.wire[index] & NET_PRESENT) && ((x + y) % 3 === 0)) {
+        push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
+      }
+      if (underground && (state.tiles.pipe[index] & NET_PRESENT)) {
+        push(pools.pipe, x + 0.5, h + 0.01, y + 0.5, 1, 1, 1, 0x4a86a8);
+      }
+      if (state.tiles.flags[index] & FLAG_RUINED) {
+        push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, 0x5a5048);
+      }
+
+      // Forest is drawn as actual trees rather than as a green tile. Species,
+      // size, offset and spin all come from the tile index, so a wood looks
+      // planted rather than tiled — and none of it has to be remembered.
+      const paved = (state.tiles.road[index] & NET_PRESENT) !== 0;
+      if (trees && state.tiles.terrain[index] === TERRAIN_FOREST
+        && state.tiles.buildingId[index] === 0 && !paved) {
+        const v = Math.floor(jitter(index, 3) * TREE_VARIANTS) % TREE_VARIANTS;
+        const scale = 0.72 + jitter(index, 5) * 0.6;
+        push(pools[`tree${v}`],
+          x + 0.2 + jitter(index, 7) * 0.6, h, y + 0.2 + jitter(index, 11) * 0.6,
+          scale, scale, scale, palette.tree ?? palette.terrain[TERRAIN_FOREST],
+          jitter(index, 13) * Math.PI * 2);
+      }
     }
   }
 
@@ -104,32 +147,40 @@ export function updateInstances(state, pools, options = {}) {
     const cx = building.x + building.w / 2;
     const cz = building.y + building.h / 2;
 
-    if (building.zone === 0) {
-      // Civic and utility buildings: footprint from the entity, a squat height
-      // so they read as infrastructure rather than as towers.
-      const colour = showOwner
-        ? PLAYER_COLOURS[building.owner] ?? UI.placeholderTint
-        : UI.placeholderTint;
-      push(pools.civic, cx, h, cz, building.w * 0.9, 0.6 + building.w * 0.2, building.h * 0.9, colour);
-      continue;
-    }
+    const kind = building.zone === ZONE_RESIDENTIAL ? "residential"
+      : building.zone === ZONE_COMMERCIAL ? "commercial"
+        : building.zone === ZONE_INDUSTRIAL ? "industrial"
+          : "civic";
+    const variant = variantFor(building.id, VARIANTS);
+    const pool = pools[`${kind}${variant}`];
+    if (!pool) continue;
 
-    const pool = building.w === 2 && building.h === 2 ? pools.b4
-      : building.w === 2 ? pools.b2
-        : building.h === 2 ? pools.b3
-          : pools.b1;
-    // Height reads development level; colour reads zone and value tier — or
-    // owner, when the territory overlay is on.
-    const height = 0.5 + building.level * 0.55;
-    const colour = showOwner
-      ? PLAYER_COLOURS[building.owner] ?? UI.placeholderTint
-      : buildingColour(building.zone, building.valueTier);
-    push(pool, cx, h, cz, 1, height, 1, colour);
+    // Zone and value tier set the family; a deterministic per-building shift
+    // sets the individual. Four silhouettes and one colour would still be a
+    // row of clones — the reference's charm is that no two neighbours match.
+    const family = showOwner
+      ? PLAYER_COLOURS[building.owner] ?? palette.civic
+      : building.zone === ZONE_NONE
+        ? palette.civic
+        : buildingColour(building.zone, building.valueTier, palette);
+    const colour = showOwner ? family : varyColour(family, building.id);
+
+    // Height reads development level; a little per-building variation stops a
+    // terrace looking extruded from a single profile.
+    const base = building.zone === ZONE_NONE
+      ? 0.55 + building.w * 0.18
+      : 0.45 + building.level * 0.5;
+    const height = base * (0.88 + jitter(building.id, 17) * 0.3);
+    // Quarter turns, so front doors do not all face the same way.
+    const spin = building.w === building.h
+      ? Math.floor(jitter(building.id, 19) * 4) * (Math.PI / 2)
+      : 0;
+    push(pool, cx, h, cz, building.w * 0.98, height, building.h * 0.98, colour, spin);
   }
 
   for (const mesh of Object.values(pools)) {
     mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.instanceColor.needsUpdate = true;
   }
   return Object.values(pools).reduce((sum, mesh) => sum + mesh.count, 0);
 }

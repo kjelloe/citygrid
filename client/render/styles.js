@@ -54,7 +54,9 @@ export const STYLES = {
     post: true,
     resolutionDivisor: 1,
     palette: 0,
-    outline: 0.7,
+    // 0.7 read as dusk rather than as illustration — the outline was doing the
+    // work of a whole lighting change.
+    outline: 0.4,
     dither: 0,
   },
 };

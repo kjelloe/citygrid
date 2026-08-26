@@ -7,6 +7,7 @@
 
 import * as THREE from "three";
 import { TERRAIN_COLOURS } from "./palette.js";
+import { PALETTES, makeMaterial } from "./style-assets.js";
 
 export const CHUNK = 16;
 
@@ -14,7 +15,7 @@ export const CHUNK = 16;
  * makes roads look broken. A gentle lift is enough to show a valley. */
 const HEIGHT_SCALE = 0.02;
 
-export function createTerrain(state) {
+export function createTerrain(state, styleName = "plain") {
   const chunksX = Math.ceil(state.width / CHUNK);
   const chunksY = Math.ceil(state.height / CHUNK);
   const group = new THREE.Group();
@@ -22,16 +23,13 @@ export function createTerrain(state) {
 
   for (let cy = 0; cy < chunksY; cy += 1) {
     for (let cx = 0; cx < chunksX; cx += 1) {
-      const mesh = new THREE.Mesh(
-        new THREE.BufferGeometry(),
-        new THREE.MeshLambertMaterial({ vertexColors: true }),
-      );
+      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), makeMaterial(styleName, 0xffffff));
       mesh.frustumCulled = true;
       group.add(mesh);
       chunks.push({ cx, cy, mesh, dirty: true });
     }
   }
-  return { group, chunks, chunksX, chunksY };
+  return { group, chunks, chunksX, chunksY, styleName };
 }
 
 export function markDirty(terrain, x, y) {
@@ -64,7 +62,7 @@ function cornerHeight(state, x, y) {
 
 /** Rebuilds one chunk: two triangles per tile, flat-shaded, coloured by terrain
  * type. Flat rather than smoothed because a city grid wants to read as tiles. */
-function buildChunk(state, chunk) {
+function buildChunk(state, chunk, styleName) {
   const x0 = chunk.cx * CHUNK;
   const y0 = chunk.cy * CHUNK;
   const x1 = Math.min(x0 + CHUNK, state.width);
@@ -84,7 +82,8 @@ function buildChunk(state, chunk) {
       const h10 = cornerHeight(state, x + 1, y);
       const h01 = cornerHeight(state, x, y + 1);
       const h11 = cornerHeight(state, x + 1, y + 1);
-      colour.setHex(TERRAIN_COLOURS[state.tiles.terrain[index]] ?? 0xff00ff);
+      const table = (PALETTES[styleName] ?? PALETTES.plain).terrain;
+      colour.setHex(table[state.tiles.terrain[index]] ?? TERRAIN_COLOURS[state.tiles.terrain[index]] ?? 0xff00ff);
 
       // Two triangles, corners at integer coordinates so tiles meet exactly.
       //
@@ -122,7 +121,7 @@ export function updateTerrain(state, terrain) {
   let rebuilt = 0;
   for (const chunk of terrain.chunks) {
     if (!chunk.dirty) continue;
-    buildChunk(state, chunk);
+    buildChunk(state, chunk, terrain.styleName);
     rebuilt += 1;
   }
   return rebuilt;

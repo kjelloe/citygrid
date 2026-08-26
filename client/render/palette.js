@@ -48,8 +48,9 @@ export const UI = {
 
 /** Buildings are tinted by zone and lightened by value tier, so a prosperous
  * district reads lighter without needing different geometry. */
-export function buildingColour(zone, valueTier) {
-  const base = ZONE_COLOURS[zone] ?? UI.placeholderTint;
+export function buildingColour(zone, valueTier, palette) {
+  const table = palette?.zone ?? ZONE_COLOURS;
+  const base = table[zone] ?? UI.placeholderTint;
   const lift = valueTier * 0x101010;
   const r = Math.min(255, ((base >> 16) & 0xff) + ((lift >> 16) & 0xff));
   const g = Math.min(255, ((base >> 8) & 0xff) + ((lift >> 8) & 0xff));
