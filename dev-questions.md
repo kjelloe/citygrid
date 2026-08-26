@@ -203,6 +203,33 @@ scripted events, completion tiers, and region progression.
 than a nicety, and `specs/asset-list.md` is the drawing brief — every placeholder names the asset
 it stands in for, so the list is generated from the code that consumes it and cannot drift.
 
+### A19 — Alternate advisor personas (Q14)
+**Answered** P9. A **cosmetic unlock earned by mayor rank**.
+
+**Changed:** ruling 010. Fits the existing constraints without strain: mayor rank already persists
+in the local profile as recognition and never gates a building (ruling from §27.2), and persona is
+already a client display preference that never reaches game state. So the unlock is profile-local
+too — two players in one room can hear different advisors, and one of them has earned theirs.
+
+### A20 — QR generation (Q15)
+**Answered** P9. **Hand-rolled, no dependency.**
+
+**Changed:** ruling 014. Keeps the zero-runtime-dependency rule intact. Lives in `client/`, never in
+`engine/` — a QR code is a way of showing a join code to a phone, not a rule of the game.
+
+### A21 — Norwegian strings (Q16)
+**Answered** P9. I draft, Kjell reviews.
+
+**Changed:** content lane C5. The advisor's voice is the hard part: persona-flavoured lines are
+authored per locale rather than translated (ruling 008), so the draft is a starting point for a
+native speaker rather than a finished text.
+
+### A22 — The fixed income split (Q17)
+**Answered** P9. **Equal shares, N ways for N players.**
+
+**Changed:** confirmed what `engine/economy.js` already implements, now recorded rather than
+assumed. Simplest and most co-operative: nobody has to argue about whose district earned what.
+
 ---
 
 ---
@@ -212,13 +239,12 @@ it stands in for, so the list is generated from the code that consumes it and ca
 *Nothing below is decided. Each item names what it blocks and when an answer is actually needed —
 none of them block the next slice. `plan-v1.md` carries the same numbers.*
 
-*Q2–Q13 were all answered in P8 and have moved to the answered section above. These four are new,
-and arose from those answers. None blocks the current work — each has a stated assumption being
-built against, and each is cheap to change while it stays small.*
+*Q2–Q17 are all answered. These three arose from the P9 answers themselves. None blocks the
+current work — each has a stated assumption being built against, and each is cheap to change while
+it stays small.*
 
 | # | Question | Assumption being built against | Needed by |
 |---|---|---|---|
-| **Q14** | Alternate advisor personas (British sarcastic, German strict) — are they a free settings toggle, a cosmetic unlock earned by mayor rank, or a later content pack? Also: do they change *only* wording, or also which advice is emphasised? | Free toggle in settings, wording only. Dialogue is keyed by persona from day one either way, so this is a data question, not a code one | Wave 4 |
-| **Q15** | QR generation for private room codes — hand-rolled (about 300 lines, keeps the zero-dependency rule) or a dependency? | Hand-rolled, in `client/`, never in `engine/` | Slice 5.2 |
-| **Q16** | Norwegian strings — do you write them, or do I draft them for your review? You are the native speaker and the advisor's voice is the hardest part to get right in translation. | I draft, you review. Key parity is enforced by test regardless | Wave 4, content lane C5 |
-| **Q17** | "Fixed split of income" (Q11) — split how? Equal shares per seat, proportional to population served, or proportional to land owned? Equal is simplest and most co-operative; proportional rewards the player carrying the region | Equal shares per seat, as the option's default, with the rule in `data/modes.json` so it is one line to change | Slice 6.1 |
+| **Q18** | Which mayor ranks unlock which advisor personas? Five ranks, two alternates — so which two, and does the player choose freely once unlocked or is each tied to its rank? | Both alternates unlock together at rank 3 (City Mayor), and the player picks freely from what they have earned | Wave 4, content lane C3 |
+| **Q19** | In a split-income room, does a seat in **regency** still receive its share? Paying an absent player rewards absence; not paying them punishes someone who left properly and told the deputy what to do. | An absent seat still receives its share — the design is built so that leaving is safe, and docking pay for it contradicts that | Slice 6.1 |
+| **Q20** | When a player leaves permanently and their land is released to unclaimed, what happens to their **money**? | It stays with the seat, so a returning player finds their treasury as they left it; if the seat is reused by someone new, the money goes with the land back to nothing | Slice 5.4 |

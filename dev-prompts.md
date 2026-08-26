@@ -154,3 +154,23 @@ is appended here verbatim, with what it produced. Every question put to the user
 
 **Standing authorisation from this prompt:** build as many slices as possible unattended over a
 six-hour window.
+
+---
+
+## P9 — 2026-08-26 — The remaining questionnaire
+
+> Q14: comsetic unlocked by earned mayor rank, Q15: hand rolled, no dep Q16: you draft, I can review
+> Q17: Split N ways for N players
+
+**Answers:**
+
+| Q | Answer |
+|---|---|
+| Q14 | Alternate advisor personas are a **cosmetic unlock earned by mayor rank** |
+| Q15 | QR generation is **hand-rolled, no dependency** |
+| Q16 | I draft the Norwegian, Kjell reviews |
+| Q17 | A fixed split is **equal shares, N ways for N players** |
+
+**Produced:** rulings 010 and 014 updated; `dev-questions.md` A19–A22; the split
+rule confirmed in `data/modes.json`; three new open questions (Q18–Q20) that
+these answers raised.

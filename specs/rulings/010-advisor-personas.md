@@ -36,8 +36,12 @@ re-testing every quest.
   or the state hash, so two players in one room can hear different advisors.
 - Persona × locale is a product, not a sum: personality does not survive literal translation, so
   each pack is authored per locale rather than translated (ruling 008).
-- Q14 is open: whether alternates are a free toggle, a rank unlock or a content pack, and whether
-  they change emphasis as well as wording.
+- **Alternates are a cosmetic unlock earned by mayor rank** (P9). This fits the existing
+  constraints without strain: mayor rank already persists in the local profile as recognition and
+  never gates a building (`gamedesign.md` §27.2), and persona is already a client display
+  preference that never reaches game state. So the unlock is profile-local too — two players in one
+  room can hear different advisors, and one of them has earned theirs.
+- Which rank unlocks which persona is Q18, still open.
 
 ## Enforced by
 

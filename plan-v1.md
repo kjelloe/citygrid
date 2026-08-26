@@ -219,10 +219,9 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q14 | Alternate advisor personas (British sarcastic, German strict) — settings toggle, rank unlock, or later content pack? Wording only, or emphasis too? | C3 |
-| Q15 | QR generation for private room codes — hand-rolled (~300 lines, keeps zero-dependency) or a dependency? | 5.2 |
-| Q16 | Norwegian strings — you write them, or I draft for your review? | C5 |
-| Q17 | "Fixed split of income" — equal shares per seat, by population served, or by land owned? | 6.1 |
+| Q18 | Which mayor ranks unlock which advisor personas, and does the player then pick freely? | C3 |
+| Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
+| Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
 
 ## What would make us stop and re-plan
 
