@@ -160,7 +160,11 @@
     "landValueWeight": 40,
     "crowdingWeight": 25,
     "unsuppliedScore": 500,
-    "supplyReach": 4
+    "supplyReach": 4,
+    "conditionDecay": 25,
+    "conditionRecovery": 20,
+    "conditionAfterDowngrade": 50,
+    "scanSlices": 4
   },
   "population": {
     "workingAgePercent": 55,

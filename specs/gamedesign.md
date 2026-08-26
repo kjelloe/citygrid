@@ -1723,3 +1723,22 @@ Art direction is settled once, before the first model: silhouette first, flat co
 | **Map size on mobile** (§26.2) | The lobby **advises** a smaller region on a phone and warns above it, but never forbids — a phone must be able to join a large region someone else made, degrading rather than breaking (ruling 011). |
 | **Shared City money** (§26.1) | Game option: one shared treasury, **or a fixed split of income** between seats. The split rule lives in `data/modes.json`. |
 | **Art** (§3) | User-selectable style is a goal, so the render-style seam is a v1 requirement. Until the real art exists, every asset is a deliberately unfinished placeholder, and `specs/asset-list.md` is the generated brief for what needs drawing (ruling 013). |
+
+### 34. As built
+
+*Refinements that emerged from implementing the design rather than from designing it. Each is a
+decision the code had to make and the design had not; they are recorded here so the design and the
+game do not quietly diverge. Rulings are cited where one exists.*
+
+| Area | As built |
+|---|---|
+| **Utilities gate development** (§8.2) | Electricity and water are a hard gate in both directions: nothing develops where nothing can be supplied, and a lot that loses its supply decays rather than merely scoring worse. Penalising was tried and absorbed — with demand high enough, an unpowered tower block kept growing (ruling 016). |
+| **Supply reaches, it does not touch** (§7.4, §7.5) | A building connects to a network if a carrier is near it, not under it. Power lines and pipes therefore look like infrastructure running along streets rather than plumbing threaded through every plot. |
+| **Groundwater** (§7.5) | A pump on a shore is cheaper and stronger; a groundwater pump works anywhere and costs more. This is what makes a dry region a different game rather than an impossible one, and it is why per-district surface-water access is a *reported* fairness metric rather than a gate. |
+| **Brown-out, not lottery** (§7.4) | A supply network short of capacity serves nobody in that network, rather than a random subset. "Some of your city, chosen by chance" is unreadable and unfixable from the player's side. |
+| **Buildings have condition** (§8.2) | A lot does not fail on one bad month. Condition falls while conditions are poor and recovers when they improve; only exhausted condition downgrades or abandons. One bad month is weather, four is a decision — and the player gets time to notice. |
+| **The city is assessed in slices** (§18) | A quarter of the map is assessed for growth and decay each month, rotating. Assessing everything every month made the whole city move as one and oscillate: it developed together, crashed together, and was abandoned together. |
+| **Fire takes the whole lot** (§8.7) | A building burns down entirely rather than tile by tile, and leaves ruins that block rebuilding until they are cleared. Half a burnt building is not a state the rest of the simulation can reason about, and clearing ruins makes recovery an act rather than a wait. |
+| **Distribution has no upkeep** (§9.2) | Roads cost upkeep; the wires and pipes that follow them do not. One street, one maintenance bill. Charging each separately put the median city on a permanent deficit. |
+| **Placed buildings are not zoned lots** (§8.2) | Power stations, pumps and civic buildings are placed deliberately and stay until removed deliberately. They are excluded from the growth and decay model entirely — which had to be learned the hard way, after the development pass quietly demolished ten power stations. |
+| **System order is declared** (§18) | The monthly systems run in a fixed, declared order — civic, utilities, development, ignition, economy — rather than in whatever order their files were imported. Land value must be current before a lot is scored against it. |

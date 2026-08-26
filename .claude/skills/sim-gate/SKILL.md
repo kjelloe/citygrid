@@ -12,19 +12,27 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 
 | Instrument | Command | Answers |
 |---|---|---|
-| **Soak** | `node tools/sim_soak.mjs` | Does it survive? Five pinned seeds × 40 city years with per-tick invariants and golden checkpoint hashes |
-| **Event census** | `SEED=… node debugging/dbg_systems.mjs` | Did it actually *fire*? Per-system event counts |
-| **Sweep** | `node tools/sim_sweep.mjs 200` | Is it fair? One CSV row per game, then `python3 tools/analyze_sweep.py` |
+| **Soak** | `node tools/soak.mjs [years] [seeds…]` | Does it survive? Five pinned seeds × N city years with invariants and checkpoint hashes |
+| **Event census** | `node debugging/dbg_systems.mjs [years] [seed]` | Did it actually *fire*? Per-event-kind counts and the year each was first seen |
+| **Chaos** | `node tools/chaos.mjs [commands] [seed]` | Can it be broken? Random legal and illegal commands against two engines |
+| **Map sweep** | `node tools/mapsweep.mjs [count] [size] [seats]` | Is generation fair? Acceptance rate and district spread. `MODE=`, `WATER=`, `STYLE=` |
+| **Balance sweep** | *not built yet — Wave 3* | Is the game fair? One row per game |
 
-Sweep flags: `MODE=`, `SEATS=`, `SIZE=`, `CHURN=` (join/leave rate), `DIFFICULTY=`.
+To measure on seeds the change was **not** tuned against — which is the whole
+point — call `soak({years, seeds})` from a one-liner with a different seed
+block, as the dev-log entries do. Tuning until the five gate seeds pass and
+then reporting that the gate passes is not a measurement.
 
 ## Order of use
 
-1. **Soak first.** If invariants break or a golden hash moves, nothing else matters yet.
+1. **Soak first.** If invariants break or a hash moves, nothing else matters yet.
 2. **Event census second.** A system that never fires passes every soak. This is the step that
    catches a feature which silently does nothing — the most common way a slice looks done and
-   is not.
-3. **Sweep last**, and only for balance questions.
+   is not. It has already earned this position twice: it found that half the event kinds never
+   fired (a probe defect), and then that the city was abandoning almost exactly as many buildings
+   as it developed (a real one).
+3. **Chaos third**, for anything that touches the command surface or permissions.
+4. **Sweep last**, and only for balance questions.
 
 ## Reading the results
 

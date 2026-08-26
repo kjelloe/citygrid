@@ -69,6 +69,7 @@ export function createState(options) {
     requests: [],
     contracts: [],
     nextId: 1,
+    scanCursor: 0,
     treasury: options.startingTreasury,
     tax: 7,
     population: 0,
@@ -111,6 +112,7 @@ export function copyState(state) {
     requests: copyRequests(state.requests),
     contracts: copyContracts(state.contracts),
     nextId: state.nextId,
+    scanCursor: state.scanCursor,
     treasury: state.treasury,
     tax: state.tax,
     population: state.population,
@@ -245,6 +247,7 @@ export function writeState(sink, state) {
   writeI32(sink, state.demand.commercial);
   writeI32(sink, state.demand.industrial);
   writeI32(sink, state.nextId);
+  writeI32(sink, state.scanCursor);
 
   writeI32(sink, state.players.length);
   for (var p = 0; p < state.players.length; p += 1) {

@@ -59,6 +59,10 @@ var RULES = {
     crowdingWeight: 25,
     unsuppliedScore: 500,
     supplyReach: 4,
+    scanSlices: 4,
+    conditionDecay: 25,
+    conditionRecovery: 20,
+    conditionAfterDowngrade: 50,
   },
   civic: {
     landValueBase: 90, waterfrontBonus: 9, greeneryBonus: 4, pollutionPenalty: 60,

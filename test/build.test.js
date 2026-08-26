@@ -14,6 +14,10 @@ import "../engine/build-commands.js";
 import { price, undoLast, resetUndoHistory } from "../engine/build-commands.js";
 import { hasNet, maskOf, NET_PRESENT } from "../engine/network.js";
 import { CMD_JOIN, CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_BULLDOZE } from "../engine/commands.js";
+import { knownCommands } from "../engine/reducer.js";
+import "../engine/development.js";
+import "../engine/utilities.js";
+import "../engine/economy.js";
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import {
@@ -295,6 +299,46 @@ test("permission matrix: every command against every ownership relation", () => 
       assert.equal(result, expected[key], `${key} gave ${result}`);
     }
   }
+});
+
+test("permission matrix: zoning and placement obey the same rules", () => {
+  // Added when zoning and building placement landed. A command that reaches
+  // the reducer without a row here is a command whose permissions nobody has
+  // asserted.
+  const relations = [
+    { name: "own land", owner: 1, expectZone: RESULT.OK, expectPlace: RESULT.OK },
+    { name: "nature", owner: OWNER_NATURE, expectZone: RESULT.OK, expectPlace: RESULT.OK },
+    { name: "commons", owner: OWNER_COMMONS, expectZone: RESULT.OK, expectPlace: RESULT.OK },
+    { name: "another player", owner: 2, expectZone: RESULT.NOT_OWNER, expectPlace: RESULT.NOT_OWNER },
+  ];
+  for (const relation of relations) {
+    const zoneState = world({ openBorders: false });
+    zoneState.tiles.owner[at(7, 3)] = relation.owner;
+    assert.equal(
+      apply(zoneState, { type: "paintZone", actor: 1, runs: encodeRuns([at(7, 3)]), zone: 1 }).result,
+      relation.expectZone, `paintZone on ${relation.name}`);
+
+    const placeState = world({ openBorders: false });
+    placeState.players[0].treasury = 100000;
+    for (let dy = 0; dy < 3; dy += 1) {
+      for (let dx = 0; dx < 3; dx += 1) placeState.tiles.owner[at(5 + dx, 5 + dy)] = relation.owner;
+    }
+    assert.equal(
+      apply(placeState, { type: "placeBuilding", actor: 1, def: "coalPlant", x: 5, y: 5 }).result,
+      relation.expectPlace, `placeBuilding on ${relation.name}`);
+  }
+});
+
+test("permission matrix: every registered command is covered by a row", () => {
+  // The check that keeps the matrix honest as the command set grows.
+  const asserted = new Set([
+    "placeRoad", "placeWire", "placePipe", "bulldoze", "paintZone", "dezone",
+    "placeBuilding", "setTax",
+    // Not tile-scoped, so ownership does not apply; covered elsewhere.
+    "tick", "join", "leave", "setStatus",
+  ]);
+  const uncovered = knownCommands().filter((name) => !asserted.has(name));
+  assert.deepEqual(uncovered, [], `commands with no permission assertion: ${uncovered}`);
 });
 
 test("permission matrix: no command ever mutates a tile the actor does not own", () => {

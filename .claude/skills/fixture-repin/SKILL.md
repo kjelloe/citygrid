@@ -9,7 +9,8 @@ The fixtures pin a command sequence and **every intermediate state hash**:
 
 - `test/fixtures/founding.json` — the singleplayer founding sequence.
 - `test/fixtures/two_player.json` — a join, a cross-border build, a demolition request, its
-  approval.
+  approval. *(Arrives with the multiplayer lane; the ownership half of it is covered meanwhile by
+  the permission matrix in `test/build.test.js`.)*
 
 They are the project's tripwire. Re-pinning is a deliberate, recorded act, never a way to get to
 green.
@@ -39,6 +40,8 @@ Ask in this order.
    ```sh
    node tools/repin.mjs "<why, in one sentence>"
    ```
+   *(The tool lands with the fixture in slice 0.4's follow-up; until then, re-pin by regenerating
+   the fixture and stating the reason in the commit message and the dev-log.)*
    It aborts on event drift. If it aborts, go back to question 2 above — that abort is the tool
    working, not an obstacle.
 4. **Run the full suite twice** and the slice's gate. A re-pin that changes soak outcomes is a

@@ -65,6 +65,7 @@ export function toSave(state) {
       industrial: state.demand.industrial,
     },
     nextId: state.nextId,
+    scanCursor: state.scanCursor,
     players: state.players,
     buildings: state.buildings,
     requests: state.requests,
@@ -129,6 +130,7 @@ export function fromSave(data) {
     industrial: save.demand.industrial,
   };
   state.nextId = save.nextId;
+  state.scanCursor = save.scanCursor === undefined ? 0 : save.scanCursor;
   state.players = save.players;
   state.buildings = save.buildings;
   state.requests = save.requests;

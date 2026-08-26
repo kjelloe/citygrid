@@ -370,3 +370,57 @@ developed-land average before it can drive anything.
 **Next:** 1.2 and 1.2b, then Wave 3 — events and disasters, traffic, maturity,
 and the first real balance sweep, which is where all of the above gets settled
 with 200+ games instead of 20.
+
+## 2026-08-27 — Review round
+
+The periodic docs/specs/skills/memories/tests checkpoint. What had drifted:
+
+**Every tool the skills referenced had a different name from the tool that
+exists.** `sim-gate` pointed at `tools/sim_soak.mjs`, `tools/sim_sweep.mjs` and
+`debugging/dbg_systems.mjs`; the repo has `tools/soak.mjs`,
+`tools/mapsweep.mjs` and `tools/chaos.mjs`, and the census did not exist at
+all. A skill that names a command nobody can run is worse than no skill,
+because it is followed confidently.
+
+**So the event census got written** — and immediately earned its place twice
+over:
+
+1. Its own first reading was wrong. `built`, `zoned` and `placed` showed as
+   never fired in a city visibly full of roads, because the probe watched only
+   the tick and the deputy's commands go through `apply` directly. *Verify the
+   instrument before believing the reading* — the rule was in the skill file
+   already, and I still had to be caught by it. The deputy now takes an
+   optional sink so a probe can see what it actually did.
+2. Once honest, it reported **11,899 developments against 11,810 abandonments**
+   over forty years. The city was building and demolishing the same street
+   forever. No test noticed: the invariants held, the population was fine, and
+   the soak was green throughout.
+
+**The churn, and two wrong turns fixing it.** First attempt was a `condition`
+field — buildings survive several bad months rather than one. It made things
+*worse* (28,604 / 27,852), because per-building inertia does nothing about a
+population-level oscillation: everything developed together, vacancy spiked
+together, demand crashed together, everything died together.
+
+The actual fix is the reference's: **assess a quarter of the map each month,
+rotating**, so the city stops moving as one body. Plus new buildings opening
+half-occupied rather than empty, since a building that was built *because*
+demand existed should not itself crash that demand. Churn fell to 4,261 /
+3,969, and population improved as a side effect — 20 seeds not used for tuning
+went from 19/20 above 500 to **20/20, median 1560**.
+
+The condition field stayed. It is right for a different reason: it gives the
+player time to notice a district failing before it empties.
+
+**The five-places rule caught itself.** `scanCursor` is new hashed state; I
+updated `createState`, `copyState` and `writeState` and forgot `toSave`. The
+save round-trip test failed immediately, which is exactly what it is for.
+
+**Also updated:** rulings 015 (the reducer mutates; snapshots are the caller's
+job) and 016 (nothing develops where nothing can be supplied) — both were
+decisions taken in code with only a comment to show for it.
+`specs/gamedesign.md` gained §34 "As built", ten refinements the implementation
+decided and the design had not, so the two do not quietly diverge.
+`specs/plan.md` §3.8 now carries measured numbers where measurements exist.
+The permission matrix grew rows for zoning and placement, plus a test that
+fails when a registered command has no permission assertion at all.

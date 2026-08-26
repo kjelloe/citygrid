@@ -277,7 +277,11 @@ function addBuilding(state, x, y, shape, zone, owner) {
     owner: owner,
     level: 1,
     valueTier: 0,
-    occupancy: 0,
+    // Half full on opening day. Starting empty meant every new building spiked
+    // the vacancy figure, which crashed the very demand that had just built it.
+    occupancy: zone === ZONE_RESIDENTIAL
+      ? idiv(rules().development.residentsPerLevel[0] * shape.w * shape.h, 2)
+      : 0,
     condition: 100,
     builtTick: state.tick,
     flags: 0,
@@ -337,7 +341,22 @@ export function developmentPass(state) {
   };
 
   // Grow: empty zoned tiles with road access and demand behind them.
-  for (var y = 0; y < state.height; y += 1) {
+  //
+  // Only a slice of the map is assessed each month, rotating. Assessing the
+  // whole map every month made the entire city move as one: everything
+  // developed together, vacancy spiked together, demand crashed together, and
+  // everything was abandoned together. 28,604 developments against 27,852
+  // abandonments in forty years — the same street built and demolished
+  // forever. The reference splits its map scan across cycles for the same
+  // reason.
+  var slices = development.scanSlices;
+  var sliceHeight = idiv(state.height + slices - 1, slices);
+  var fromY = state.scanCursor * sliceHeight;
+  var toY = fromY + sliceHeight;
+  if (toY > state.height) toY = state.height;
+  state.scanCursor = (state.scanCursor + 1) % slices;
+
+  for (var y = fromY; y < toY; y += 1) {
     for (var x = 0; x < state.width; x += 1) {
       var index = tileAt(state.width, x, y);
       var zone = state.tiles.zone[index];
@@ -363,10 +382,11 @@ export function developmentPass(state) {
     }
   }
 
-  // Upgrade and decay existing lots.
+  // Upgrade and decay existing lots — only those in this month's slice.
   var doomed = [];
   for (i = 0; i < state.buildings.length; i += 1) {
     var building = state.buildings[i];
+    if (building.y < fromY || building.y >= toY) continue;
     // Only ZONED lots grow and decay. A power plant, a pump or a fire station
     // is placed deliberately and stays until it is demolished deliberately.
     // Without this guard they scored as abandoned zoned lots — zone NONE means
@@ -388,15 +408,24 @@ export function developmentPass(state) {
     }
     building.valueTier = tierFor(state.tiles.landValue[centre]);
 
-    if (score >= development.growthThreshold && building.level < development.levels) {
-      if (chance(state.rng, development.growthOneIn)) {
+    // Condition is the memory that stops a single bad month from emptying a
+    // street. One month of hardship is weather; four is a decision. Without
+    // it the city churned through 11,810 abandonments in forty years against
+    // 11,899 developments — building and demolishing the same street forever,
+    // and never giving the player time to notice, let alone react.
+    if (score >= development.growthThreshold) {
+      building.condition = clamp(building.condition + development.conditionRecovery, 0, 100);
+      if (building.level < development.levels && chance(state.rng, development.growthOneIn)) {
         building.level += 1;
         events.push({ kind: "upgraded", id: building.id, level: building.level });
       }
     } else if (score <= development.decayThreshold) {
-      if (chance(state.rng, development.decayOneIn)) {
+      building.condition -= development.conditionDecay;
+      if (building.condition <= 0) {
+        building.condition = 0;
         if (building.level > 1) {
           building.level -= 1;
+          building.condition = development.conditionAfterDowngrade;
           events.push({ kind: "downgraded", id: building.id, level: building.level });
         } else {
           doomed.push(building);

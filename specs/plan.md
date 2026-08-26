@@ -323,17 +323,21 @@ Speeds map to sim work, not to pump rate: 1× = 2 fast ticks/s (one sim-month pe
 
 ### 3.8 Budgets (predicted, era 0 — to be replaced by measured numbers)
 
-| Quantity | Target | Instrument |
-|---|---|---|
-| Pump CPU, 128×128 / 16 seats / 8× speed | ≤20 ms | `tools/profile_run.mjs` |
-| Room CPU at 1× speed | ≤5% of a core | same |
-| Per connected player | ≤1 MB RSS, ≈0 CPU | real-server profile with N ws clients |
-| Room state in memory | ≤20 MB | heap profile |
-| Steady-state bandwidth per player | ≤2 KB/s | frame accounting |
-| Join snapshot | ≤70 KB compressed | frame accounting |
-| Tick jitter | p99 <150 ms, late% <2 | `/health` `tickJitter` |
+| Quantity | Target | Instrument | Measured |
+|---|---|---|---|
+| Pump CPU, 128×128 / 16 seats / 8× speed | ≤20 ms | `tools/profile_run.mjs` | not yet |
+| Room CPU at 1× speed | ≤5% of a core | same | not yet |
+| Per connected player | ≤1 MB RSS, ≈0 CPU | real-server profile with N ws clients | not yet |
+| Room state in memory | ≤20 MB | heap profile | not yet |
+| Steady-state bandwidth per player | ≤2 KB/s | frame accounting | not yet |
+| Join snapshot | ≤70 KB compressed | frame accounting | **83 KB raw** at 128×128 (`test/save.test.js`), so comfortably inside once deflated |
+| Tick jitter | p99 <150 ms, late% <2 | `/health` `tickJitter` | not yet |
 
-Every number above is a prediction until the profiler says otherwise; they are labelled era 0 and
+**Measured so far** (2026-08-26, era 0): region generation with the fairness gate is 0.74 ms p50
+at 48×48 and 5.97 ms p50 at 128×128 (`tools/mapsweep.mjs`); a fresh 128×128 save is 83.2 KB of
+JSON before compression, which is what makes yearly checkpoints affordable for a persistent room.
+
+Every other number above is a prediction until the profiler says otherwise; they are labelled era 0 and
 re-pinned per balance era, and a co-hosting budget is written only from measured values — the same
 discipline as `reports/2026-08-06_resource_profile.md`.
 

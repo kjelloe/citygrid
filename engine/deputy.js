@@ -46,6 +46,14 @@ export function makeDeputy(seat, doctrine) {
   };
 }
 
+/** Every command the deputy issues goes through here, so a probe can watch
+ * what it actually did rather than inferring it from the world afterwards. */
+function issue(state, deputy, command) {
+  var outcome = apply(state, command);
+  if (deputy.sink) deputy.sink(outcome);
+  return outcome;
+}
+
 function treasuryOf(state, seat) {
   for (var i = 0; i < state.players.length; i += 1) {
     if (state.players[i].seat === seat) return state.players[i].treasury;
@@ -101,7 +109,7 @@ function buildBlock(state, deputy) {
   }
   if (roadCells.length < 3) return false;
 
-  var placed = apply(state, { type: CMD_PLACE_ROAD, actor: seat, runs: encodeRuns(roadCells) });
+  var placed = issue(state, deputy, { type: CMD_PLACE_ROAD, actor: seat, runs: encodeRuns(roadCells) });
   if (placed.result !== RESULT.OK) {
     deputy.refusals += 1;
     return false;
@@ -112,8 +120,8 @@ function buildBlock(state, deputy) {
   // block without connecting the blocks produced a map full of separate
   // networks, none of which had a power station on it: half the cities never
   // developed a single house.
-  apply(state, { type: CMD_PLACE_WIRE, actor: seat, runs: encodeRuns(roadCells) });
-  apply(state, { type: CMD_PLACE_PIPE, actor: seat, runs: encodeRuns(roadCells) });
+  issue(state, deputy, { type: CMD_PLACE_WIRE, actor: seat, runs: encodeRuns(roadCells) });
+  issue(state, deputy, { type: CMD_PLACE_PIPE, actor: seat, runs: encodeRuns(roadCells) });
   connectToHub(state, deputy, roadCells[0]);
 
   // What to zone: whatever the region is shortest of. The deputy reads the
@@ -139,7 +147,7 @@ function buildBlock(state, deputy) {
     }
   }
   if (zoneCells.length > 0) {
-    var zoned = apply(state, { type: CMD_PAINT_ZONE, actor: seat, runs: encodeRuns(zoneCells), zone: zone });
+    var zoned = issue(state, deputy, { type: CMD_PAINT_ZONE, actor: seat, runs: encodeRuns(zoneCells), zone: zone });
     if (zoned.result === RESULT.OK) deputy.zoned += 1;
     else deputy.refusals += 1;
   }
@@ -204,7 +212,7 @@ function placeUtility(state, deputy, def) {
   var spot = findSpotFor(state, deputy, def);
   if (spot < 0) return false;
 
-  var placed = apply(state, {
+  var placed = issue(state, deputy, {
     type: CMD_PLACE_BUILDING, actor: deputy.seat, def: def,
     x: xOf(state.width, spot), y: yOf(state.width, spot),
   });
@@ -344,7 +352,7 @@ function connectToNetwork(state, deputy, from, layer, command) {
     walk = cameFrom[walk];
   }
   if (cells.length === 0) return;
-  apply(state, { type: command, actor: deputy.seat, runs: encodeRuns(cells) });
+  issue(state, deputy, { type: command, actor: deputy.seat, runs: encodeRuns(cells) });
 }
 
 function connectToHub(state, deputy, from) {
@@ -379,7 +387,8 @@ function runCarrier(state, deputy, from, command, layer) {
 
 /** One turn of the deputy. Called on a cadence by the driver, not by the
  * reducer: a deputy is a player, and players act between ticks. */
-export function deputyTurn(state, deputy) {
+export function deputyTurn(state, deputy, sink) {
+  deputy.sink = sink;
   if (deputy.doctrine === DOCTRINE_HOLD) return false;
 
   var funds = treasuryOf(state, deputy.seat);
