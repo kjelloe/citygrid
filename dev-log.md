@@ -478,3 +478,69 @@ findings for whoever judges them:
 
 The claim from ruling 006 holds: the pixel-art look survives inside the mesh
 pipeline, with four-angle rotation and continuous-ish zoom intact.
+
+## 2026-08-28 — Detail pass: making three styles actually three
+
+Kjell's two corrections, both right, and the second exposed the first.
+
+**"All three samples looked like low poly."** They were: one set of boxes with
+a different screen filter over each. A post-process is a finish, not a style.
+Checking it properly also turned up a real bug — `painted` buildings were
+rendering as **shredded triangles**, because the geometry merge dropped the
+index buffer and `BoxGeometry` is indexed. The same indexing shared corner
+vertices between faces, which blended per-face shading into gradients and
+quietly weakened it everywhere, including in `plain`.
+
+**"Add many vertices, each building needs to be distinct."** With the
+transport-world reference attached, which is a much richer target than what I
+had built.
+
+So a style now owns four things and each of them differs: geometry, shading,
+palette, finish — in that order of importance, with the post-process last.
+
+`building-kit.js` builds real shapes: pitched, L-shaped and hipped roofs,
+parapets, setbacks, sawtooth factory roofs, chimney stacks, porches on posts,
+dormers. `detail-kit.js` covers them: framed window grids with sills, doors
+with steps and lintels, balcony rails, air conditioners, water tanks, roof
+hatches, vent pipes, shop signs, awnings, garden and yard fences. Street level
+gained parked cars in six colours, lamp posts, and grass tufts and flowers on
+open ground.
+
+**Almost all the detail is flat quads held proud of the wall, not boxes.** A
+window box costs twelve triangles and a window quad costs two, and at this
+camera they are indistinguishable. That single decision is what makes a city
+of detailed buildings affordable at all.
+
+Four variants per category, picked from the building's id, plus per-building
+height, colour and quarter-turn rotation. **None of it touches game state** —
+shape, spin, colour jitter, tree species and car colour all derive from ids, so
+two clients agree without any of it being saved, replayed or hashed.
+
+**Corrections made while iterating, each caught by looking at the render:**
+
+- Roofs took the wall colour, so a cream house got a cream roof and the whole
+  building read as one lump. Roofing is dark whatever the walls are.
+- Full-cell windows read as a dark grid — the wall disappeared and the building
+  became a bookcase. Windows sit inside a frame now.
+- A power pole on every tile is a picket fence down every street. Every third
+  tile, thinner and darker.
+- Trees grew on roads.
+- `pixel` roads were near-black: unlit means the colour *is* the colour, and
+  what looks mid-grey under a light renders black without one.
+- **`painted` was an outline post-process, and an outline fights detailed
+  geometry.** With windows, sills and roof clutter, every edge fires the edge
+  test; the image turned to mud and read as dusk rather than as illustration.
+  It is a lighting and palette treatment now — low warm sun, deep cool shadow,
+  no post-process at all — which is what separates an illustration from a
+  photograph anyway.
+
+**The cost, measured rather than assumed.** A 187-building city is now **201k
+triangles in 44 draw calls**; reduced effects brings it to 101k. Draw calls are
+fine — instancing is doing its job — but `plan.md` §6's 80k triangle budget was
+written when a building was a box, and a building is no longer a box.
+
+The budget is not wrong. The answer is LOD: distant buildings do not need
+window sills, and a tile at the far edge of a 128×128 region does not need a
+tree with a trunk. **Level of detail by camera distance moves from "later" to
+required**, and slice 6.3 settles the numbers on real hardware rather than on
+SwiftShader, where frame times mean nothing.
