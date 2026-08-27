@@ -41,7 +41,7 @@ async function serve() {
 
 export async function shoot({
   out = "reports/city.png", seed = 1003, years = 20, width = 1280, height = 720,
-  style = "plain", span = 0, yaw = 0,
+  style = "plain", span = 0, yaw = 0, fx = -1, fy = -1, reduced = false,
 } = {}) {
   const { server, port } = await serve();
   const browser = await chromium.launch({
@@ -59,7 +59,7 @@ export async function shoot({
     });
 
     const url = `http://127.0.0.1:${port}/tools/shoot.html`
-      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}`;
+      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}`;
     await page.goto(url, { waitUntil: "load" });
     await page.waitForFunction(() => globalThis.SHOT_READY === true, undefined, { timeout: 120000 });
 
@@ -84,6 +84,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     style: process.env.STYLE ?? "plain",
     span: Number(process.env.SPAN ?? 0),
     yaw: Number(process.env.YAW ?? 0),
+    fx: Number(process.env.FX ?? -1),
+    fy: Number(process.env.FY ?? -1),
+    reduced: process.env.REDUCED === "1",
   });
   console.log(`wrote ${result.out}`);
   console.log("report:", JSON.stringify(result.report));

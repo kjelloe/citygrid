@@ -21,12 +21,13 @@ export const PALETTES = {
     // Vivid, cheerful, high-contrast — the reference's grass is almost
     // luminous and its water is cyan rather than navy. A cosy toy world does
     // not use realistic colours.
-    terrain: [0x62c144, 0xc0a274, 0x3f9b34, 0x39c5e8, 0x6fdcf2, 0xa8a49e, 0xf0dfae, 0x74a05c],
+    terrain: [0x62c144, 0xc0a274, 0x3f9b34, 0x39c5e8, 0xa8ecfa, 0xa8a49e, 0xf0dfae, 0x74a05c],
     tree: 0x2f8f3a,
     zone: [0x000000, 0xefc9a4, 0x8fd0f0, 0xd9a45c],
     road: 0x6f7278,
     roadMark: 0xf2f2f2,
-    wire: 0xd8c88a,
+    wire: 0x8a8377,
+    lamp: 0xb8bcc0,
     civic: 0xd8d2c6,
     roofFactor: 1.0,
     bandFactor: 1.0,
@@ -35,12 +36,13 @@ export const PALETTES = {
   // palette rather than as a lit 3D scene.
   pixel: {
     sky: 0x58a8d8,
-    terrain: [0x58b038, 0xa8804a, 0x2f8830, 0x2878b8, 0x48a8d8, 0x8f8f98, 0xe8d078, 0x5a8848],
+    terrain: [0x58b038, 0xa8804a, 0x2f8830, 0x2878b8, 0x8fd8f0, 0x8f8f98, 0xe8d078, 0x5a8848],
     tree: 0x1f7a2f,
     zone: [0x000000, 0xe8b888, 0x58a8e8, 0xd89838],
-    road: 0x38383f,
-    roadMark: 0xc8b038,
-    wire: 0xc8a838,
+    road: 0x5f6068,
+    roadMark: 0xe8e4d8,
+    wire: 0x7a7468,
+    lamp: 0xa8acb0,
     civic: 0xa8a098,
     roofFactor: 0.72,
     bandFactor: 0.85,
@@ -48,13 +50,14 @@ export const PALETTES = {
   // Warm and contrasty, with roofs and window bands doing the work that
   // texture would do in a drawn atlas.
   painted: {
-    sky: 0xd0e4ee,
-    terrain: [0x6fbf50, 0xbb9a6c, 0x489b3c, 0x3aa8d0, 0x62c8e4, 0x9f9a94, 0xecd8a4, 0x7f9a62],
+    sky: 0xdcd8c0,
+    terrain: [0x6aba48, 0xc09a60, 0x3f8f34, 0x2f96c8, 0x86d4ec, 0xa09890, 0xf0d69a, 0x789460],
     tree: 0x2a7f38,
     zone: [0x000000, 0xf0c8a0, 0x9fc8e8, 0xd8a860],
-    road: 0x44424a,
+    road: 0x6b6672,
     roadMark: 0xc8b060,
-    wire: 0xb09a58,
+    wire: 0x847d70,
+    lamp: 0xb0b4b8,
     civic: 0xbfb6a6,
     roofFactor: 0.62,
     bandFactor: 0.74,
@@ -131,9 +134,10 @@ export function lightingFor(styleName) {
     return { key: 0, keyColour: 0xffffff, hemiSky: 0xffffff, hemiGround: 0xffffff, hemi: 1.0 };
   }
   if (styleName === "painted") {
-    // Harder key, cooler fill: more contrast between faces, so the extra
-    // geometry actually shows.
-    return { key: 2.4, keyColour: 0xfff0d8, hemiSky: 0x9fc0e8, hemiGround: 0x53603f, hemi: 0.75 };
+    // A low warm sun and a deep cool fill: long shadows, strong face contrast,
+    // and colour that shifts between lit and unlit sides. That temperature
+    // split is what an illustration does and a flat render does not.
+    return { key: 3.1, keyColour: 0xffdca8, hemiSky: 0x86a8d8, hemiGround: 0x3f4a30, hemi: 0.85, sunHeight: 60 };
   }
   return { key: 1.9, keyColour: 0xfff4e0, hemiSky: 0xbcd8ff, hemiGround: 0x6b7a55, hemi: 1.2 };
 }

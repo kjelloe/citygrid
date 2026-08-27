@@ -48,16 +48,15 @@ export const STYLES = {
   },
   painted: {
     name: "painted",
-    label: "Hand-painted atlas",
+    label: "Illustrated — warm light, deep shadow",
     freeRotation: true,
     continuousZoom: true,
-    post: true,
-    resolutionDivisor: 1,
-    palette: 0,
-    // 0.7 read as dusk rather than as illustration — the outline was doing the
-    // work of a whole lighting change.
-    outline: 0.4,
-    dither: 0,
+    // No post-process at all. A screen-space outline fights detailed geometry:
+    // with windows, sills and roof clutter, EVERY edge fires the edge test and
+    // the image turns to mud — it read as dusk rather than as illustration.
+    // This style is a lighting and palette treatment instead, which is what
+    // separates an illustration from a photograph anyway.
+    post: false,
   },
 };
 

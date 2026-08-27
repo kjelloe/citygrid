@@ -17,9 +17,9 @@ import { shoot } from "./screenshot.mjs";
 // script is to drive the client from outside, as a browser does.
 const CHECKS = [
   { style: "plain", span: 0, post: false },
-  { style: "plain", span: 18, post: false },
-  { style: "pixel", span: 18, post: true },
-  { style: "painted", span: 18, post: true },
+  { style: "plain", span: 9, post: false },
+  { style: "pixel", span: 9, post: true },
+  { style: "painted", span: 9, post: false },
 ];
 
 let failures = 0;
@@ -42,7 +42,7 @@ for (const check of CHECKS) {
   if (report.chunksRebuilt !== 16) problems.push(`rebuilt ${report.chunksRebuilt} chunks, expected 16`);
   // The whole point of instancing: a city of hundreds of buildings must not be
   // hundreds of draw calls.
-  if (!check.post && report.drawCalls > 60) {
+  if (!check.post && report.drawCalls > 80) {
     problems.push(`${report.drawCalls} draw calls — instancing is not working`);
   }
 

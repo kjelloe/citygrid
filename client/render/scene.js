@@ -32,7 +32,8 @@ export function createRenderer(canvas, state, options = {}) {
   const lights = lightingFor(styleName);
   if (lights.key > 0) {
     const key = new THREE.DirectionalLight(lights.keyColour, lights.key);
-    key.position.set(state.width * 0.6, 120, state.height * 0.35);
+    const sun = lights.sunHeight ?? 120;
+    key.position.set(state.width * 0.6, sun, state.height * 0.35);
     key.target.position.set(state.width / 2, 0, state.height / 2);
     scene.add(key.target);
 

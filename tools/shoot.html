@@ -30,7 +30,7 @@ import "../engine/economy.js";
 import "../engine/civic.js";
 import "../engine/fire.js";
 import { createRenderer } from "../client/render/scene.js";
-import { setYawStep, zoomBy } from "../client/render/camera.js";
+import { setYawStep, zoomBy, focusOn } from "../client/render/camera.js";
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get("seed") ?? 1003);
@@ -60,7 +60,23 @@ if (span > 0) {
   view.view.span = span;
   zoomBy(view.view, 1);
 }
-const stats = view.draw();
+// Frame where the city actually is, rather than the middle of the map — the
+// deputy often builds off-centre and a screenshot of empty fields proves
+// nothing.
+const focusX = Number(params.get("fx") ?? -1);
+const focusY = Number(params.get("fy") ?? -1);
+if (focusX >= 0 && focusY >= 0) {
+  focusOn(view.view, focusX, focusY);
+} else if (state.buildings.length > 0) {
+  let sx = 0; let sy = 0; let n = 0;
+  for (const b of state.buildings) {
+    if (b.zone === 0) continue;
+    sx += b.x; sy += b.y; n += 1;
+  }
+  if (n > 0) focusOn(view.view, sx / n, sy / n);
+}
+const reduced = params.get("reduced") === "1";
+const stats = view.draw({ props: !reduced, trees: !reduced });
 
 const firstChunk = view.terrain.chunks[0];
 const pos = firstChunk.mesh.geometry.getAttribute("position");
