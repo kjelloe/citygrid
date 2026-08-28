@@ -92,6 +92,26 @@ the pixel texture, not the cutaways.
 
 **Output:** the style is chosen, this document's §3 is written, and the content lane (C1) starts.
 
+### 2.1 What the probe produced
+
+All three candidates are built and rendered from the same city, seed and camera. The comparison
+sheet is `reports/style-sheet.png` (regenerate with `node tools/style-sheet.mjs`); individual
+frames are `reports/probe-close-{plain,pixel,painted}.png`.
+
+Findings that outlived the probe, whichever style is chosen:
+
+- **A style is geometry, shading and palette; the filter is last** (ruling 017). The first attempt
+  differed only in post-process and all three looked identical.
+- **A screen-space outline fights detail.** The more windows and roof clutter a building gains,
+  the more the edge test fires. `painted` is a lighting treatment for this reason.
+- **The pixel style must be unlit.** Lighting gives smooth gradients across a face, which is the
+  one thing pixel art does not have; its shading is baked into vertex colours.
+- **Detail is flat panels, not boxes** — a window quad is two triangles where a box is twelve.
+- **Roofing is dark whatever the walls are.** A cream house with a cream roof reads as one lump.
+- **Windows need a frame.** Full-cell windows turn a wall into a bookcase.
+- **The detail has a measured cost:** 201k triangles for 187 buildings against an 80k mobile
+  budget. LOD by camera distance is required, not optional.
+
 ---
 
 ## 3. The chosen style

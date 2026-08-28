@@ -17,15 +17,27 @@ export const TERRAIN_COLOURS = [
   0x6b7f5a, // marsh
 ];
 
-/** Sixteen player colours. Distinguishable is not the same as sixteen — this is
- * a first pass, and the real set is verified by colour-vision simulation before
- * any of it ships. Identity always carries a pattern and a label too. */
+/** Sixteen player colours, chosen by search rather than by eye.
+ *
+ * The requirement (gamedesign.md §30) is that no two seats collapse into each
+ * other under protanopia, deuteranopia or tritanopia. A hand-picked set failed
+ * that badly — seven pairs collapsed, the worst at a distance of 0.018 — so
+ * these were selected by greedy farthest-point search scored on the WORST pair
+ * across all four vision types at once, within a saturation and lightness band
+ * that suits the game. Worst pair is now 0.18, ten times the failure threshold.
+ *
+ * Sixteen genuinely distinguishable colours still do not exist, which is why
+ * player identity is always colour PLUS pattern PLUS label. This palette makes
+ * the colour carry as much as a colour can, and no more.
+ *
+ * test/render.test.js re-runs the simulation, so a "nicer" colour swapped in
+ * later cannot quietly break it. */
 export const PLAYER_COLOURS = [
   0x000000, // 0: nature, never drawn as an owner
-  0xd8582b, 0x2f7fd8, 0x3fa64a, 0xd8b62b,
-  0x8b4fd8, 0x2fb9b0, 0xd8459a, 0x7a6a4f,
-  0xe0824a, 0x5f95e0, 0x6ec06a, 0xc9a93f,
-  0xa87ad8, 0x4fc4bd, 0xd87ab5, 0x9a8a6f,
+  0x8f82c4, 0xe7e792, 0x92e7e7, 0xd33636,
+  0xc2c247, 0x2525a7, 0x92b4e7, 0xc4828f,
+  0x36d3b4, 0xe7a392, 0xc6de68, 0xa5cbd5,
+  0xa7a725, 0x9436d3, 0x6897de, 0xb1599f,
 ];
 
 export const ZONE_COLOURS = [

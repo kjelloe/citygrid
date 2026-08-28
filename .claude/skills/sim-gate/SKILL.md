@@ -17,6 +17,14 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Chaos** | `node tools/chaos.mjs [commands] [seed]` | Can it be broken? Random legal and illegal commands against two engines |
 | **Map sweep** | `node tools/mapsweep.mjs [count] [size] [seats]` | Is generation fair? Acceptance rate and district spread. `MODE=`, `WATER=`, `STYLE=` |
 | **Balance sweep** | *not built yet — Wave 3* | Is the game fair? One row per game |
+| **Client smoke** | `node tools/client_smoke.mjs` | Does the real client draw a real city? Page errors, draw calls, instancing |
+| **Screenshot** | `STYLE=… SPAN=… node tools/screenshot.mjs out.png [seed] [years]` | What does it actually look like? |
+| **Style sheet** | `node tools/style-sheet.mjs` | All three styles from one city, side by side |
+
+Anything visual ends with a screenshot **that you then look at**. Four rendering
+bugs in slice 1.2 — a backface-culled ground, terrain seams, pipes drawn above
+ground, and a missing colour-space conversion — were all invisible to every
+test and obvious in the picture. The reports were correct in each case.
 
 To measure on seeds the change was **not** tuned against — which is the whole
 point — call `soak({years, seeds})` from a one-liner with a different seed

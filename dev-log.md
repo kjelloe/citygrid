@@ -544,3 +544,45 @@ window sills, and a tile at the far edge of a 128×128 region does not need a
 tree with a trunk. **Level of detail by camera distance moves from "later" to
 required**, and slice 6.3 settles the numbers on real hardware rather than on
 SwiftShader, where frame times mean nothing.
+
+## 2026-08-28 — Review round: the two tests that were documented but missing
+
+Both were referenced in comments and specs as if they existed.
+
+**The constants mirror had no test.** `client/constants-mirror.js` says in its
+own header that "test/render.test.js keeps the two in step", and there was no
+such file. A drifted constant draws the wrong thing and nothing complains.
+Written now, along with a check that the mirror covers what the renderer
+actually reads.
+
+**The colour-vision check had no test either**, despite `gamedesign.md` §30
+promising the palette is "verified against simulated colour-vision deficiency
+in a test rather than by eye". Written, and it **failed immediately: seven
+pairs of player colours collapsed**, the worst at a separation of 0.018 —
+colours that are simply the same colour to a large number of people. Exactly
+what picking by eye cannot catch, because the person picking has the vision
+they have.
+
+Rather than guess again, I searched: candidates across hue, saturation and
+lightness, sixteen selected by greedy farthest-point search scored on the
+**worst** pair across normal, protan, deutan and tritan vision at once. The
+first run maximised separation and produced a garish set; constraining
+saturation and lightness to a band that suits the game gave a worst pair of
+**0.18 — ten times the failure threshold** — while staying cosy. Lightness
+does most of the work, because lightness is the axis every deficiency
+preserves. Ruling 018.
+
+Also: `tools/style-sheet.mjs` renders all three candidates from one city, one
+seed, one camera and stitches them into a labelled sheet with metrics
+(`reports/style-sheet.png`). Three separate files are three separate
+impressions; a decision needs them side by side, which is what a probe is for.
+
+Rulings 017 (a style is geometry, shading and palette — the filter is last) and
+018 written. `gamedesign.md` §34 gained six rendering entries.
+`specs/art-direction.md` §2.1 records what the probe produced, including the
+findings that outlive whichever style is chosen. The `sim-gate` skill gained
+the three render instruments and one sentence that had to be learned: anything
+visual ends with a screenshot **that you then look at** — four rendering bugs
+in slice 1.2 were invisible to every test and obvious in the picture.
+
+Suite 283 tests, green twice.
