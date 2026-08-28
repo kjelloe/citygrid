@@ -216,6 +216,37 @@ probe (6.3).
 
 ---
 
+## The next ten slices
+
+*Written 2026-08-28, after Waves 0–2 and the renderer. Ordered by dependency and
+by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
+**L** more than a day.*
+
+| # | Slice | Size | Why now | Done when |
+|---|---|---|---|---|
+| **N1** | **Level of detail** — swap building and prop geometry by camera distance; drop windows, sills and roof clutter beyond a threshold; drop trees to billboards, then to nothing | M | The detail pass measured 201k triangles against an 80k budget. This is the one blocking number, and it blocks *every* later visual decision including the style choice | The saturated 128×128 fixture is under 80k triangles at default zoom with the detail intact up close; measured, not estimated |
+| **N2** | **1.2b decision and `art-direction.md` §3** | S | The content lane cannot start until the style is picked, and the probe is rendered and waiting. **User decision, not mine** | §3 exists: palette with hex values, silhouette rules, height and material ladders, lighting rig |
+| **N3** | **Input and tools** — pointer and touch, camera pan/pinch/twist, drag-paint with RLE coalescing, ghost preview, cost preview, undo | L | The renderer draws a city nobody can touch. This is the first slice where a person can actually play, and everything after it is judged by hand rather than by soak | A person builds a road, zones beside it, places a plant, and sees the city grow — on a mouse and on a phone |
+| **N4** | **HUD and overlays** (slice 4.1) — top bar, RCI bars, alert area, build toolbar, inspector, the eleven overlays | L | Once N3 exists the simulation is invisible: no money, no demand, no diagnosis. Overlays are also the design's answer to "every action has visible consequences" | UI acceptance passes: every toolbar button does what it claims, hit-tested; every overlay renders in one pass and is readable in a screenshot diff |
+| **N5** | **Save and load in the client** — IndexedDB, autosave, slots, export/import | M | The engine half is done and tested; the client half is what makes a session survive a closed tab. Also the last piece of the singleplayer MVP that is pure plumbing | A city survives close-and-reopen, and the migration corpus still passes |
+| **N6** | **Events and disasters** (slice 3.2) — wildfire, flood, storm, quake, industrial accident, blackout; telegraphing and recovery | L | Wave 3's first half. Fire exists; the rest of `gamedesign.md` §12 does not, and disasters are where the civic systems earn their keep | Each type fires, spreads, is survivable and leaves a city that play can repair; soak shows no unrecoverable cities across 200 games |
+| **N7** | **Traffic** (slice 3.3) — monthly O/D flow assignment over the road graph, congestion effects, sampled vehicles following real flow | L | The largest missing system, and the one the plan flags as the expensive one. Vehicles are currently parked decoration; they should move because people commute | Assignment fits the month-tick budget on a saturated 128×128; congestion correlates with density rather than with seed luck across 200 games |
+| **N8** | **The balance sweep and era 1** (Wave 3 gate) — `tools/sim_sweep.mjs`, the analyser, the first real tuning pass | L | Everything measured so far is era 0 on 20 seeds. Three debts are already logged: runaway treasuries, runaway industrial demand, pollution averaged over the whole region. This is where they get settled | 200+ games per configuration, a report in `reports/`, era 1 pinned, and the three logged debts either fixed or explicitly accepted with numbers |
+| **N9** | **Advisor and quest engine** (slice 4.2) — dialogue panels, the closed condition DSL, quest tracker, choices, milestones and rank | L | With N3 and N4 the game is playable but says nothing. The tutorial chain is what makes it teachable, and the quest engine is data-driven so content can then be written without code | Quests are pure data; a crafted quest completes headlessly; a choice changes simulation variables and later dialogue |
+| **N10** | **Tutorial chain and the MVP acceptance script** (slice 4.3) | M | The thirteen criteria in `gamedesign.md` §24 are the singleplayer MVP definition, and an automated script is the only honest way to claim them | The script passes on desktop and on a real phone; a first-time player reaches their first residents inside two minutes |
+
+**Sequencing note.** N1 and N2 are both small and both unblock everything
+visual, so they come first even though N3 is the more interesting work. N8 sits
+deliberately after N6 and N7: tuning a balance before disasters and traffic exist
+would be tuning the wrong game, and the sweep is expensive enough that it should
+be run once against a complete simulation rather than three times against
+partial ones.
+
+**What is NOT in the next ten.** The whole multiplayer lane (M1–M6) stays behind
+the singleplayer MVP by ruling 003 — the server is expensive and must not be
+built on an unproven loop. Audio, accessibility and PWA (slice 4.5) come after
+N10 for the same reason: they polish a game that has to be worth polishing first.
+
 ## Open questions
 
 **`dev-questions.md` is the live list** — its bottom section holds everything still open, and its
