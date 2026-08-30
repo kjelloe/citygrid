@@ -1,0 +1,67 @@
+{
+ "name": "empty",
+ "why": "Slice 0.4 finally built: the empty-region fixture pinned for the first time.",
+ "generate": false,
+ "options": {
+  "seed": 1,
+  "width": 16,
+  "height": 16,
+  "seats": 1
+ },
+ "systems": [
+  "build",
+  "development",
+  "utilities",
+  "economy",
+  "civic",
+  "fire",
+  "traffic",
+  "history"
+ ],
+ "steps": [
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 1,
+   "result": "ok",
+   "hash": "13ba3e927947cff5",
+   "events": []
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 11,
+   "result": "ok",
+   "hash": "845fca87e6d5a81a",
+   "events": [
+    "budget"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 132,
+   "result": "ok",
+   "hash": "ad59c4e42bece98e",
+   "events": [
+    "budget"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 144,
+   "result": "ok",
+   "hash": "412b979bd9f9f9d9",
+   "events": [
+    "budget"
+   ]
+  }
+ ],
+ "era": 1,
+ "repinnedAt": "2026-08-30"
+}

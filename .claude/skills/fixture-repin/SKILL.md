@@ -5,21 +5,17 @@ description: Re-pin City Grid's founding and two-player fixtures after a deliber
 
 # Re-pinning a fixture
 
-> **The fixtures do not exist yet (audited 2026-08-29).** `test/fixtures/` is an empty directory
-> and `tools/repin.mjs` was never written, despite slice 0.4 being marked done with
-> `test/fixtures/empty.json` as its gate. Hashed fields live in **one** place —
-> `writeState()` in `engine/state.js` — not the two `CLAUDE.md` describes.
->
-> So the ritual below is what to do **once they are built**, and the questions in the next section
-> are worth asking today regardless. Slice N15 added hashed state with no tripwire in place and
-> said so in the dev-log; do the same until this note can be deleted.
-
 The fixtures pin a command sequence and **every intermediate state hash**:
 
-- `test/fixtures/founding.json` — the singleplayer founding sequence.
-- `test/fixtures/two_player.json` — a join, a cross-border build, a demolition request, its
-  approval. *(Arrives with the multiplayer lane; the ownership half of it is covered meanwhile by
-  the permission matrix in `test/build.test.js`.)*
+- `test/fixtures/empty.json` — an empty region, ticked. Slice 0.4's named gate.
+- `test/fixtures/founding.json` — the singleplayer founding sequence, grown to 156 residents.
+- `test/fixtures/two_player.json` — two seats in two districts; each builds on their own land, and
+  the bulldoze of a neighbour's road is pinned as `notOwner`. *(The request lifecycle joins it with
+  slice 5.3; the ownership half is here and in the permission matrix in `test/build.test.js`.)*
+
+Each fixture also carries an `expect` block — the floor below which it is not worth measuring —
+because a fixture that pins the hashes of a city that never grew pins nothing and looks exactly
+like one that works.
 
 They are the project's tripwire. Re-pinning is a deliberate, recorded act, never a way to get to
 green.
@@ -40,19 +36,22 @@ Ask in this order.
 
 ## The ritual
 
-1. **Update both hash functions.** Hashed fields live in `shared/statehash.js` *and* a local copy
-   in the fixture test. The duplication is deliberate: a hash change is always a conscious
-   two-file act. Change them together.
+1. **Update both lists.** Hashed fields live in `writeState()` in `engine/state.js` *and* in
+   `HASHED_FIELDS` in `test/fixture.test.js`. The duplication is deliberate: a hash change is
+   always a conscious two-file act, and "the two lists of hashed fields agree" fails if it is not.
 2. **Check the other four places** any new nested state must reach: `copyState` deep copy, the save
    migration, the snapshot projection, the lobby options record.
 3. **Re-pin with a reason:**
    ```sh
    node tools/repin.mjs "<why, in one sentence>"
+   node tools/repin.mjs --only founding.json "<why>"
    ```
-   *(The tool lands with the fixture in slice 0.4's follow-up; until then, re-pin by regenerating
-   the fixture and stating the reason in the commit message and the dev-log.)*
-   It aborts on event drift. If it aborts, go back to question 2 above — that abort is the tool
-   working, not an obstacle.
+   The reason is **required** and is written into the fixture: a fixture whose `why` says "fix
+   tests" is one nobody will trust in six months. The tool prints every hash it moves, so the diff
+   in the commit says what changed.
+
+   It **aborts on event drift** unless `--events-changed` is passed with the reason. If it aborts,
+   go back to question 2 above — that abort is the tool working, not an obstacle.
 4. **Run the full suite twice** and the slice's gate. A re-pin that changes soak outcomes is a
    behaviour change, and belongs in the dev-log as one.
 5. **Record it** in `dev-log.md`: what changed in hashed state, why, and the reason string used.

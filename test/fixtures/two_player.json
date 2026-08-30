@@ -1,0 +1,181 @@
+{
+ "name": "two_player",
+ "why": "Slice 0.4 finally built: the two-seat ownership fixture pinned for the first time.",
+ "options": {
+  "seed": 4242,
+  "width": 48,
+  "height": 48,
+  "seats": 2,
+  "waterStyle": "lakes",
+  "terrainStyle": "flat",
+  "quests": false
+ },
+ "systems": [
+  "build",
+  "development",
+  "utilities",
+  "economy",
+  "civic",
+  "fire",
+  "traffic",
+  "history"
+ ],
+ "expect": {
+  "players": 2,
+  "history.samples": 10
+ },
+ "steps": [
+  {
+   "command": {
+    "type": "join",
+    "actor": 1,
+    "seat": 1,
+    "name": "Ada"
+   },
+   "result": "ok",
+   "hash": "7459eafbdcafa45d",
+   "events": [
+    "seatJoined"
+   ]
+  },
+  {
+   "command": {
+    "type": "join",
+    "actor": 2,
+    "seat": 2,
+    "name": "Bo"
+   },
+   "result": "ok",
+   "hash": "8f321314782f82ad",
+   "events": [
+    "seatJoined"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeRoad",
+    "actor": 1,
+    "runs": [
+     258,
+     12
+    ]
+   },
+   "result": "ok",
+   "hash": "3da344529f4f1a96",
+   "events": [
+    "built"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeRoad",
+    "actor": 2,
+    "runs": [
+     242,
+     12
+    ]
+   },
+   "result": "ok",
+   "hash": "b518426a865135d9",
+   "events": [
+    "built"
+   ]
+  },
+  {
+   "command": {
+    "type": "paintZone",
+    "actor": 1,
+    "zone": 1,
+    "runs": [
+     306,
+     12
+    ]
+   },
+   "result": "ok",
+   "hash": "3510e0f25fdb0729",
+   "events": [
+    "zoned"
+   ]
+  },
+  {
+   "command": {
+    "type": "paintZone",
+    "actor": 2,
+    "zone": 1,
+    "runs": [
+     290,
+     12
+    ]
+   },
+   "result": "ok",
+   "hash": "5b444b1aa7529bed",
+   "events": [
+    "zoned"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeRoad",
+    "actor": 2,
+    "runs": [
+     210,
+     12
+    ]
+   },
+   "result": "ok",
+   "hash": "0dc92c0c06f2141a",
+   "events": [
+    "built"
+   ]
+  },
+  {
+   "command": {
+    "type": "bulldoze",
+    "actor": 2,
+    "runs": [
+     258,
+     12
+    ]
+   },
+   "result": "notOwner",
+   "hash": "0dc92c0c06f2141a",
+   "events": []
+  },
+  {
+   "command": {
+    "type": "setTax",
+    "actor": 1,
+    "rate": 8
+   },
+   "result": "ok",
+   "hash": "5b2324bc9c66cb1d",
+   "events": [
+    "taxSet"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 12,
+   "result": "ok",
+   "hash": "8dda38892824b46c",
+   "events": [
+    "budget"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 132,
+   "result": "ok",
+   "hash": "ae14d0370cbe012e",
+   "events": [
+    "budget"
+   ]
+  }
+ ],
+ "era": 1,
+ "repinnedAt": "2026-08-30"
+}

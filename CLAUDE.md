@@ -52,12 +52,15 @@ Every change is a slice, named after its entry in `plan-v1.md`:
 
 - `shared/statehash.js` is the contract: save checksum, desync detector, replay verifier and
   multiplayer acceptance gate, all one function.
-- Hashed fields are listed in **two** places — `statehash.js` and the fixture test's local copy —
-  so a hash change is always a deliberate two-file act.
+- Hashed fields are listed in **two** places — `writeState()` in `engine/state.js` and
+  `HASHED_FIELDS` in `test/fixture.test.js` — so a hash change is always a deliberate two-file act.
+  A field in one and not the other is a red suite.
 - **New nested state touches five places**: `copyState` deep copy, both hash functions, the save
   migration, the snapshot projection, and the lobby options record. Every time.
 - Prefer silent state changes for routine ticks. A new event inside a pinned fixture is drift, and
-  means the reducer is wrong, not the fixture. Re-pin only through `/fixture-repin`.
+  means the reducer is wrong, not the fixture. Re-pin only through `/fixture-repin`, which runs
+  `node tools/repin.mjs "<reason>"` — the reason is required and is written into the fixture, and
+  the tool refuses to re-pin over event drift unless told the events were meant to change.
 - Canonical serialization never depends on object key order or sort stability — explicit ordered
   field lists, entities sorted by id.
 

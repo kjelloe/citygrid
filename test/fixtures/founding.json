@@ -1,0 +1,312 @@
+{
+ "name": "founding",
+ "why": "Slice 0.4 finally built: the founding fixture pinned for the first time.",
+ "options": {
+  "seed": 1003,
+  "width": 48,
+  "height": 48,
+  "seats": 1,
+  "waterStyle": "lakes",
+  "terrainStyle": "flat",
+  "quests": false
+ },
+ "systems": [
+  "build",
+  "development",
+  "utilities",
+  "economy",
+  "civic",
+  "fire",
+  "traffic",
+  "history"
+ ],
+ "expect": {
+  "population": 100,
+  "buildings": 10,
+  "history.samples": 40
+ },
+ "steps": [
+  {
+   "command": {
+    "type": "join",
+    "actor": 1,
+    "seat": 1,
+    "name": "Mayor"
+   },
+   "result": "ok",
+   "hash": "f9a8f37e344a5b0a",
+   "events": [
+    "seatJoined"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeRoad",
+    "actor": 1,
+    "runs": [
+     775,
+     24
+    ]
+   },
+   "result": "ok",
+   "hash": "fd5b4ce99b3cebc5",
+   "events": [
+    "built"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeRoad",
+    "actor": 1,
+    "runs": [
+     967,
+     24
+    ]
+   },
+   "result": "ok",
+   "hash": "7dc30ba6efe7d9c0",
+   "events": [
+    "built"
+   ]
+  },
+  {
+   "command": {
+    "type": "paintZone",
+    "actor": 1,
+    "zone": 1,
+    "runs": [
+     823,
+     24,
+     871,
+     24,
+     919,
+     24
+    ]
+   },
+   "result": "ok",
+   "hash": "6ec7b795c05b184f",
+   "events": [
+    "zoned"
+   ]
+  },
+  {
+   "command": {
+    "type": "paintZone",
+    "actor": 1,
+    "zone": 2,
+    "runs": [
+     631,
+     24,
+     679,
+     24,
+     727,
+     24
+    ]
+   },
+   "result": "ok",
+   "hash": "a8c890eb40698e32",
+   "events": [
+    "zoned"
+   ]
+  },
+  {
+   "command": {
+    "type": "paintZone",
+    "actor": 1,
+    "zone": 3,
+    "runs": [
+     1015,
+     24,
+     1063,
+     24
+    ]
+   },
+   "result": "ok",
+   "hash": "ed2d7949f9feb750",
+   "events": [
+    "zoned"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeBuilding",
+    "actor": 1,
+    "def": "coalPlant",
+    "x": 8,
+    "y": 8
+   },
+   "result": "ok",
+   "hash": "83ecce2830e8237e",
+   "events": [
+    "placed"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeBuilding",
+    "actor": 1,
+    "def": "groundwaterPump",
+    "x": 15,
+    "y": 8
+   },
+   "result": "ok",
+   "hash": "31afd027c1806b52",
+   "events": [
+    "placed"
+   ]
+  },
+  {
+   "command": {
+    "type": "placeWire",
+    "actor": 1,
+    "runs": [
+     391,
+     24,
+     439,
+     24,
+     487,
+     24,
+     535,
+     24,
+     583,
+     24,
+     631,
+     24,
+     679,
+     24,
+     727,
+     24,
+     823,
+     24,
+     871,
+     24,
+     919,
+     24,
+     1015,
+     24,
+     1063,
+     24
+    ]
+   },
+   "result": "ok",
+   "hash": "dc6f0e15851d3c78",
+   "events": [
+    "built"
+   ]
+  },
+  {
+   "command": {
+    "type": "placePipe",
+    "actor": 1,
+    "runs": [
+     391,
+     24,
+     439,
+     24,
+     487,
+     24,
+     535,
+     24,
+     583,
+     24,
+     631,
+     24,
+     679,
+     24,
+     727,
+     24,
+     823,
+     24,
+     871,
+     24,
+     919,
+     24,
+     1015,
+     24,
+     1063,
+     24
+    ]
+   },
+   "result": "ok",
+   "hash": "e60d17943087a04b",
+   "events": [
+    "built"
+   ]
+  },
+  {
+   "command": {
+    "type": "setTax",
+    "actor": 1,
+    "rate": 9
+   },
+   "result": "ok",
+   "hash": "42f5715c388a1769",
+   "events": [
+    "taxSet"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 12,
+   "result": "ok",
+   "hash": "ec5cf2a3754cf16a",
+   "events": [
+    "budget",
+    "highCrime",
+    "highPollution"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 132,
+   "result": "ok",
+   "hash": "334a7a9e014e00dd",
+   "events": [
+    "budget",
+    "developed",
+    "highPollution",
+    "noRouteToWork",
+    "upgraded"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 144,
+   "result": "ok",
+   "hash": "a3e5da58bf107d5b",
+   "events": [
+    "abandoned",
+    "budget",
+    "developed",
+    "downgraded",
+    "noRouteToWork",
+    "upgraded",
+    "waterShortfall"
+   ]
+  },
+  {
+   "command": {
+    "type": "tick"
+   },
+   "repeat": 288,
+   "result": "ok",
+   "hash": "b70e01740c86e788",
+   "events": [
+    "abandoned",
+    "budget",
+    "developed",
+    "downgraded",
+    "noRouteToWork",
+    "waterShortfall"
+   ]
+  }
+ ],
+ "era": 1,
+ "repinnedAt": "2026-08-30"
+}

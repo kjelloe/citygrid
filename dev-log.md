@@ -1618,3 +1618,77 @@ the undo check thirty lines further down builds its fixture on row 4 — so undo
 had nothing to remove and reported `30 → 30 tiles`. Moved to the bottom edge.
 A gate that quietly paints over another gate's fixture makes the second one fail
 for a reason that has nothing to do with it.
+
+---
+
+## 2026-08-30 — Slice N17: the tripwire that was never built (P24)
+
+The P22 audit found `test/fixtures/` empty while slice 0.4 was marked done with
+"`test/fixtures/empty.json` passes" as its gate. `CLAUDE.md` described a
+two-file ritual around fixtures that did not exist, and the `/fixture-repin`
+skill documented how to re-pin them. Four slices — N13, N15 and the two before
+them — added hashed state with nothing watching.
+
+### Built
+
+`tools/fixtures.mjs` replays a fixture and checks **every step's** hash, result
+and event kinds — not just the end state. An end hash tells you the run
+diverged; a hash per step tells you where. It stops at the first moved hash,
+because everything after one is noise.
+
+Events are pinned as **sorted unique kinds**, not counts: the kinds are the
+contract ("this command produced a `built` and nothing else"), while the number
+of `budget` events in a tick is an implementation detail that would make the
+fixture brittle without making it stricter.
+
+`tools/repin.mjs` **requires a written reason**, writes it into the fixture, and
+prints every hash it moves so the commit diff says what changed. It **refuses**
+to re-pin over event drift unless told the events were meant to change, because
+drift inside a pinned window means the reducer is wrong, not the fixture.
+
+Three fixtures:
+
+| fixture | what it pins |
+|---|---|
+| `empty.json` | slice 0.4's named gate — an empty 16×16 region, 288 ticks |
+| `founding.json` | a seat, two roads, three zones, a plant, a pump, wire, pipe, a tax rate and four city years — **grown to 156 residents, 22 buildings, 192 tiles powered and watered** |
+| `two_player.json` | two seats in two districts, each building on their own land; bulldozing a neighbour's road pinned as `notOwner` |
+
+Each carries an `expect` block — the floor below which it is not worth
+measuring. That is the "check the fixture before you measure it" rule made
+mechanical, and it earned itself immediately (below).
+
+### The second place
+
+`test/fixture.test.js` holds `HASHED_FIELDS`, and a test compares it against a
+brace-matched scan of `writeState()`. **`CLAUDE.md` has claimed since Wave 0
+that hashed fields live in two places; they lived in one.** They live in two
+now, and adding a field to the hash without adding it to the list is a red
+suite. `CLAUDE.md` corrected to name the two files that actually exist.
+
+### Measured
+
+- **`./test.sh` 484 tests, green twice.** Was 476.
+- **The tripwire was verified by planting a change**, not by assuming. First
+  attempt planted `residentsPerLevel[3]` (60 → 61) and everything still passed —
+  correctly, because the founding city never reaches level 4. Planting
+  `residentsPerLevel[0]` (4 → 5) produced:
+
+  ```
+  founding step 12 (tick ×132): hash faa4e4eb2c37f23b, pinned 334a7a9e014e00dd
+  ```
+
+  Exactly the step where the divergence starts.
+
+### What failed on the way
+
+**The founding fixture's first draft grew nothing.** Hand-computed tile indices
+put the wire eight rows from the zoning: `powered 0, watered 0, population 0`,
+and it pinned forty steps of an empty field perfectly happily. That is the
+failure mode the `expect` block now closes — a fixture that measures nothing
+looks exactly like one that works. Laid out programmatically instead, verified
+to grow, and only then pinned.
+
+**The `expect` check reported twice.** After a hash failed at step 12 the replay
+stops, so the half-built state reported `history.samples is 12` on top of the
+real failure. It is skipped once a hash has already gone.

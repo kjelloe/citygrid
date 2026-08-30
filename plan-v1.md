@@ -96,13 +96,9 @@ the real page by pointer on desktop and a 390×844 phone.
 - **`test/reachability.test.js`'s `NOT_YET` is the live inventory** of strings
   the catalogue promises and no screen keeps — 24 keys, each naming its slice.
   Ruling 027 makes an unlisted one a red suite.
-- **The fixtures do not exist.** `test/fixtures/` is empty: no `founding.json`,
-  no `two_player.json`, no `empty.json`, and no `tools/repin.mjs`. Slice 0.4 is
-  marked done and its gate names `test/fixtures/empty.json`; `CLAUDE.md` says
-  hashed fields live in two places and they live in one (`writeState()` in
-  `engine/state.js`); the `/fixture-repin` skill documents a ritual for
-  artefacts that were never written. **N15 changed hashed state with no
-  tripwire in place.** This is the next thing to build.
+- ~~The fixtures do not exist~~ — **built in N17.** Three fixtures, a runner
+  that checks every step, a repin tool that demands a reason, and the second
+  copy of the hashed-field list in `test/fixture.test.js`.
 - **Tree density** is a worldgen option with no row on the new-game screen —
   one entry in `ROWS` when it is wanted.
 
@@ -127,7 +123,7 @@ No gameplay. This wave exists so that every later slice has a gate to run.
 | ✅ 0.1 | **Repo and harness** — layout per `plan.md` §1, importmap, no-build static serve, `run.sh`, `test.sh`, `node --test` wired, `CLAUDE.md` working rules, `dev-log.md` started | — | `./test.sh` runs green twice in a row on an empty suite; the client serves a blank page with no console errors |
 | ✅ 0.2 | **Deterministic primitives** — `prng.js` (xorshift32, state in game state), `idiv.js`, `grid.js` (index and neighbour helpers), `canonical.js`, `statehash.js` (FNV-1a 64, rejects float/null/NaN), `protocol.js` (version + build hash) | 0.1 | Pinned test vectors for the PRNG sequence and for three known state hashes; the hash function refuses an illegal value in a test |
 | ✅ 0.3 | **State and reducer skeleton** — SoA allocation including `owner` and `district`, `GameOptions` record hashed into initial state, command envelope with `actor`, `TICK`, `copyState` with deep copies, the restricted-subset lint for `engine/` | 0.2 | 1000 empty ticks are hash-stable and allocation-free; the subset lint fails on a planted `class` and a planted `Map` |
-| ✅ 0.4 | **Test drivers** — JSON fixture runner, soak driver skeleton, chaos injector skeleton, event-census probe | 0.3 | `test/fixtures/empty.json` passes; the chaos injector fires 10k random malformed commands without corrupting state or throwing |
+| ✅ 0.4 | **Test drivers** — JSON fixture runner, soak driver skeleton, chaos injector skeleton, event-census probe | 0.3 | `test/fixtures/empty.json` passes; the chaos injector fires 10k random malformed commands without corrupting state or throwing. **The fixture half was not actually built until slice N17** — it was marked done with an empty `test/fixtures/` for the life of the project (P22 audit) |
 
 ---
 
@@ -279,6 +275,8 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 | **N15** | **Statistics and the minimap** (P22) — slice 4.6 in full, and 4.1's last piece | M | 4.1 asked for "minimap integration" and 4.6 for history with plain-language interpretation; neither existed, and the statistics screen is §30's accessibility answer as much as §15.5's usability one | **Done.** `engine/history.js`: one integer sample a month, oldest first, capped at 240, **hashed and saved**, reaching all five places. Ten series, each with a sparkline, a trend that knows up from better, and an explanation sentence that doubles as the chart's text alternative. Minimap painted once into an `ImageData` and blitted, viewport box on top. `test/history.test.js` (16), `test/minimap.test.js` (7); `ui_smoke` 99 checks |
 
 | **N16** | **Finishing N15** (P23) — the minimap's cache invalidation and its ARIA role | S | An audit of N15's own code: the minimap repainted only when the PLAYER built, so growth, fire and disasters never reached it; and it carried `role="img"` while being focusable and handling keys, which is ruling 028's defect in the slice written after the ruling | **Done.** Repaints when `state.tick` moves — proved stale first (346 road tiles added, image byte-identical), then proved fixed. Now a picture and nothing else; the keyboard path is N14's arrow-key panning, which aims. `ui_smoke` 101 checks |
+
+| **N17** | **The tripwire that was never built** (P24) — slice 0.4's fixture half | M | `test/fixtures/` was empty while 0.4 was marked done, `CLAUDE.md`'s "hashed fields live in two places" described one place, and the `/fixture-repin` skill documented a ritual for artefacts nobody had written. Four slices added hashed state with nothing watching | **Done.** `tools/fixtures.mjs` replays a fixture and checks **every step's** hash, result and event kinds; `tools/repin.mjs` requires a written reason and refuses to re-pin over event drift. Three fixtures: `empty`, `founding` (grown to 156 residents), `two_player`. `test/fixture.test.js` holds the second copy of the hashed-field list, so a hash change is finally the two-file act `CLAUDE.md` promised. Verified by planting a balance change and watching it name the step |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits
