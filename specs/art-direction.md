@@ -114,14 +114,148 @@ Findings that outlived the probe, whichever style is chosen:
 
 ---
 
-## 3. The chosen style
+## 3. The chosen style — **plain** (ruling 022)
 
-*Empty until probe 1.2b reports. Nothing in the content lane starts before this section exists.*
+*Settled 2026-08-28 by P13. Soft cool light, a bright cosy palette, shadows.
+The content lane (C1) is unblocked.*
 
-Will specify: palette with hex values and its colour-vision verification, player-colour set with
-patterns, silhouette rules per category, height and material ladders for development level and
-value tier, terrain and water treatment, road and network appearance, vehicle and character scale,
-lighting rig and its day/night behaviour, particle and effect language, and the icon grid.
+Every hex below is the value in `client/render/palettes.js` and
+`client/render/style-light.js`. `test/docs.test.js` compares the two, so this
+section cannot quietly go stale.
+
+### 3.1 Palette
+
+**Ground and sky**
+
+| Role | Hex |
+| --- | --- |
+| Sky | `0xbfe0f0` |
+| Grass | `0x62c144` |
+| Sand | `0xc0a274` |
+| Forest | `0x3f9b34` |
+| Water | `0x39c5e8` |
+| Shallow | `0xa8ecfa` |
+| Rock | `0xa8a49e` |
+| Beach | `0xf0dfae` |
+| Scrub | `0x74a05c` |
+| Garden plot | `0x6fce4c` |
+
+The greens are deliberately more saturated than life and the water is cyan
+rather than navy. A cosy toy world does not use realistic colours — §1.7.
+
+**Buildings**
+
+| Role | Hex |
+| --- | --- |
+| Residential wall | `0xefc9a4` |
+| Commercial wall | `0x8fd0f0` |
+| Industrial wall | `0xd9a45c` |
+| Civic wall | `0xd8d2c6` |
+| House roofs | `0xd4623a` `0xe07a45` `0xb8422c` `0x94302a` `0x5d6d80` `0x404a5c` `0x334152` `0x3b7358` |
+| Flat roofs | `0x4e535b` `0x424750` `0x5c6169` `0x6b6459` |
+
+Roof colour is a **hue, not a shade of the wall** (ruling 021). Houses draw from
+tile and slate; everything else from the flat greys of felt and gravel, and that
+split is most of what tells a terrace from an office block at a zoom where no
+other detail is legible.
+
+Walls vary per building at full scatter; roofs at **half** that, because a roof
+colour is a material and materials vary less than paint does.
+
+**Network and props**
+
+| Role | Hex |
+| --- | --- |
+| Road | `0x6f7278` |
+| Road marking | `0xf2f2f2` |
+| Power pole | `0x8a8377` |
+| Lamp | `0xb8bcc0` |
+| Tree | `0x2f8f3a` |
+
+**Player seats** — sixteen, chosen by search and scored on the worst pair under
+protan, deutan and tritan simulation simultaneously (ruling 018). Index 0 is
+nature and is never drawn.
+
+`0x8f82c4` `0xe7e792` `0x92e7e7` `0xd33636` `0xc2c247` `0x2525a7` `0x92b4e7`
+`0xc4828f` `0x36d3b4` `0xe7a392` `0xc6de68` `0xa5cbd5` `0xa7a725` `0x9436d3`
+`0x6897de` `0xb1599f`
+
+Sixteen genuinely distinguishable colours do not exist. Identity is therefore
+always **colour plus pattern plus label** — §1.6, `gamedesign.md` §30.
+
+### 3.2 Lighting rig
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| Key intensity | 1.15 | Sculpts, does not dominate |
+| Key colour | `0xfffaf0` | Barely warm; the palette carries the warmth |
+| Hemisphere sky | `0xdcecff` | Cool fill from above |
+| Hemisphere ground | `0x93aa78` | Green bounce, so shadow sides stay alive |
+| Hemisphere intensity | 1.25 | **Outweighs the key** — this is what makes it soft |
+| Sun height | 150 | High, so shadows sit under a building |
+| Shadow radius | 5 | Blurred |
+| Shadow intensity | 0.5 | Pale, not black |
+| Face contrast | 0.65 | Baked shading, compressed towards flat |
+
+**Softness is a ratio, not a level** (ruling 020). Dropping the key alone makes
+the picture darker, not softer; the fill has to carry more of the exposure than
+the key does. And the baked face contrast has to come down with it, or the
+vertex shading keeps sculpting whatever the lights say — that was the actual
+reason three candidates once looked alike.
+
+Contrast 0.4 was tried and is wrong: at that setting a roof and the wall beneath
+it land on the same value and the building loses its form. Soft means gentle,
+not absent.
+
+### 3.3 Silhouette rules
+
+Every building is authored at **unit height** with the roof as a proportion of
+it, so the instance matrix sets how tall a thing is and the geometry sets its
+footprint. Four variants per category, picked deterministically from the
+building id, so a terrace is never a row of clones.
+
+| Category | Roof | Signature |
+| --- | --- | --- |
+| Residential | Pitched, **stepped** into bands at full detail | Chimney offset per variant, garden fence, dormers, porch |
+| Commercial | Flat with a raised parapet | Storey bands of windows all round, glazed ground floor, shopfront awning, roof clutter |
+| Industrial | Sawtooth, or flat with a parapet | Blank lower wall with high windows only, stacks, loading canopy, yard fence |
+| Civic | Flat with a deep parapet | Portico on posts, wide doors, tower or cupola |
+
+The stepped roof is not decoration — terracing is the most recognisable single
+trait of the reference, and a smooth prism at this camera angle reads as a
+wedge. It is full-detail only; at SHAPE tier the steps are sub-pixel.
+
+### 3.4 Ladders
+
+**Development level** sets height: `0.45 + level × 0.5` at unit scale, times a
+per-building jitter of 0.88–1.18 so a terrace is not extruded from one profile.
+
+**Value tier** sets wall lightness: four steps, each brighter than the last, off
+the zone's base colour. A higher value tier is never darker — asserted in
+`test/render.test.js`.
+
+**Detail tier** is the LOD ladder, not an art choice: FULL keeps windows, sills,
+doors, roof clutter and fences; SHAPE keeps the silhouette only; BLOCK is a box
+with a roof-coloured cap. Which one is drawn is decided by pixels-per-tile and
+the triangle budget (ruling 019), never by the artist.
+
+### 3.5 Ground, network and props
+
+Roads are flat quads with a centre marking that turns to follow the road's own
+direction; markings vanish below 20 pixels a tile. Houses and civic buildings
+stand on a garden plot, which is what stops a suburb reading as buildings
+dropped onto tarmac. Power poles are drawn every third tile of a wire run.
+
+### 3.6 What plain deliberately does not have
+
+- **No texture atlas.** Every surface is flat colour plus baked face shading.
+  This is the whole reason plain is the cheapest to produce: a new building is a
+  function, not eight drawn sprites across four levels and two value tiers.
+- **No post-process.** `plain.post` is false. An outline pass fights detailed
+  geometry — with windows, sills and roof clutter every edge fires the edge test
+  and the image turns to mud.
+- **No day/night cycle at v1.** The rig is one fixed time of day. Lit windows at
+  dusk are the obvious first extension and are recorded as such, not built.
 
 ---
 

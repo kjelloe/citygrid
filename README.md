@@ -41,7 +41,32 @@ the desync detector, the replay verifier and the multiplayer acceptance gate.
 ./test.sh          # the suite, run twice — a slice is not done until it is green both times
 ```
 
-There is nothing to run yet. `run.sh` arrives with slice 0.1's client half.
+```sh
+node tools/serve.mjs        # then open the printed URL — boots straight into a playable city
+```
+
+Build a road, zone beside it, place a power plant and a pump, and watch it grow.
+One finger paints when a tool is selected and pans when none is; two fingers are
+always the camera. Tap with no tool to inspect a tile.
+
+**Gates** (each drives the real page, not a mock):
+
+```sh
+node tools/client_smoke.mjs    # the renderer, all three styles
+node tools/play_smoke.mjs      # input, on a mouse viewport and a phone one
+node tools/ui_smoke.mjs        # every button hit-tested, every overlay rendered
+node tools/save_smoke.mjs      # a city survives a closed tab, hash for hash
+node tools/mvp_acceptance.mjs  # all thirteen §24 criteria, desktop and phone
+node tools/play_shot.mjs       # screenshots of the real page
+```
+
+**Soaks** (slow, and the only honest way to talk about balance):
+
+```sh
+node tools/disaster_soak.mjs 200 25   # every disaster fires, no unrepairable cities
+node tools/traffic_gate.mjs 200 25    # routing fits the month tick; congestion tracks density
+node tools/sim_sweep.mjs 200 25       # 200 games x 4 configs -> reports/balance-eraN.md
+```
 
 ## Working rules
 

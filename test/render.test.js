@@ -15,7 +15,9 @@ import { repoRoot } from "./helpers/sources.js";
 import * as mirror from "../client/constants-mirror.js";
 import * as engine from "../engine/constants.js";
 import { PLAYER_COLOURS, TERRAIN_COLOURS, ZONE_COLOURS, buildingColour } from "../client/render/palette.js";
-import { pseudo } from "../client/render/detail-kit.js";
+import { PALETTES } from "../client/render/palettes.js";
+import { pseudo, setFaceContrast, shade } from "../client/render/detail-kit.js";
+import { faceContrastFor, lightingFor } from "../client/render/style-light.js";
 import { NET_PRESENT } from "../engine/network.js";
 
 test("the renderer's constants mirror matches the engine exactly", () => {
@@ -163,13 +165,69 @@ test("building colour lifts with value tier and stays in range", () => {
 });
 
 test("the style palettes are complete", () => {
-  // Read as text rather than imported: style-assets.js imports three, which
-  // only the browser's importmap resolves.
-  const source = readFileSync(join(repoRoot, "client", "render", "style-assets.js"), "utf8");
-  for (const style of ["plain", "pixel", "painted"]) {
-    const block = source.slice(source.indexOf(`${style}: {`));
+  for (const [name, palette] of Object.entries(PALETTES)) {
     for (const key of ["sky", "terrain", "tree", "zone", "road", "roadMark", "wire", "lamp", "civic"]) {
-      assert.ok(block.slice(0, 700).includes(`${key}:`), `${style} palette is missing ${key}`);
+      assert.ok(palette[key] !== undefined, `${name} palette is missing ${key}`);
+    }
+    assert.equal(palette.terrain.length, TERRAIN_COLOURS.length, `${name} has the wrong terrain count`);
+    assert.equal(palette.zone.length, 4, `${name} has the wrong zone count`);
+  }
+});
+
+test("every style palette differs from every other", () => {
+  // Three palettes that are the same palette are one style with three names —
+  // which is exactly the mistake the first probe made.
+  const names = Object.keys(PALETTES);
+  for (let i = 0; i < names.length; i += 1) {
+    for (let j = i + 1; j < names.length; j += 1) {
+      const a = PALETTES[names[i]];
+      const b = PALETTES[names[j]];
+      const same = JSON.stringify(a) === JSON.stringify(b);
+      assert.ok(!same, `${names[i]} and ${names[j]} are the same palette`);
     }
   }
+});
+
+// --- style separation -------------------------------------------------------
+
+test("each style bakes a different face contrast", () => {
+  // This is the setting that made the three candidates look alike: the shading
+  // is baked into every vertex at build time, so it dominates the lights. If
+  // two styles bake the same contrast they will read as one style with two
+  // colour schemes, which is exactly the mistake that was called out.
+  const contrasts = ["plain", "pixel", "painted"].map(faceContrastFor);
+  assert.equal(new Set(contrasts).size, 3, `two styles bake the same contrast: ${contrasts}`);
+  // Plain is the soft one and pixel is unlit, so the bake IS its light.
+  assert.ok(faceContrastFor("plain") < faceContrastFor("painted"), "plain should bake softer than painted");
+  assert.ok(faceContrastFor("pixel") > faceContrastFor("painted"), "pixel is unlit and needs the hardest bake");
+});
+
+test("plain is lit softly and painted is not", () => {
+  const plain = lightingFor("plain");
+  const painted = lightingFor("painted");
+  // Softness is a RATIO, not a smaller key: the fill has to carry more of the
+  // exposure than the key does, or the result is merely darker.
+  assert.ok(plain.hemi > plain.key, "plain's fill should outweigh its key");
+  assert.ok(painted.key > painted.hemi, "painted is a key-light style");
+  assert.ok(plain.shadowIntensity < painted.shadowIntensity, "a soft style needs a pale shadow");
+  assert.ok(plain.shadowRadius > painted.shadowRadius, "a soft style needs a blurred shadow");
+  // A high sun drops the shadow under the building instead of stretching it.
+  assert.ok(plain.sunHeight > painted.sunHeight, "plain's sun should stand higher");
+});
+
+test("the pixel style asks for no lighting at all", () => {
+  assert.equal(lightingFor("pixel").key, 0, "pixel is unlit; a key light would gradient its flat faces");
+});
+
+test("face contrast pulls shades towards flat without inverting them", () => {
+  setFaceContrast(1);
+  assert.equal(shade(0.6), 0.6, "contrast 1 is the shades as written");
+  setFaceContrast(0);
+  assert.equal(shade(0.6), 1, "contrast 0 is fully flat");
+  setFaceContrast(0.65);
+  const soft = shade(0.6);
+  assert.ok(soft > 0.6 && soft < 1, "a soft bake lifts a shade towards white");
+  // Order must survive, or a roof stops reading as darker than its wall.
+  assert.ok(shade(0.4) < shade(0.7), "contrast must not reorder shades");
+  setFaceContrast(1);
 });

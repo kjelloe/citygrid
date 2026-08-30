@@ -22,3 +22,8 @@ rooms/
 deploy/secrets/
 
 .DS_Store
+
+# local 
+dev-prompts.md
+dev-questions.md
+

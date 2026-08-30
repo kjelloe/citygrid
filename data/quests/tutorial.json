@@ -1,0 +1,212 @@
+[
+ {
+  "id": "first-road",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-road.title",
+  "textKey": "quest.first-road.text",
+  "available": {
+   "type": "always"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "roadTiles",
+   "atLeast": 8
+  },
+  "reward": {
+   "money": 250
+  }
+ },
+ {
+  "id": "first-zone",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-zone.title",
+  "textKey": "quest.first-zone.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-road"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "residential",
+   "atLeast": 1
+  },
+  "reward": {
+   "money": 250
+  }
+ },
+ {
+  "id": "first-power",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-power.title",
+  "textKey": "quest.first-power.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-zone"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "poweredTiles",
+   "atLeast": 4
+  },
+  "reward": {
+   "money": 400
+  }
+ },
+ {
+  "id": "first-water",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-water.title",
+  "textKey": "quest.first-water.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-power"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "wateredTiles",
+   "atLeast": 4
+  },
+  "reward": {
+   "money": 400
+  }
+ },
+ {
+  "id": "first-residents",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-residents.title",
+  "textKey": "quest.first-residents.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-water"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 40
+  },
+  "reward": {
+   "money": 600,
+   "rank": 1
+  }
+ },
+ {
+  "id": "first-jobs",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-jobs.title",
+  "textKey": "quest.first-jobs.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-residents"
+  },
+  "objective": {
+   "type": "any",
+   "of": [
+    {
+     "type": "measure",
+     "name": "commercial",
+     "atLeast": 2
+    },
+    {
+     "type": "measure",
+     "name": "industrial",
+     "atLeast": 2
+    }
+   ]
+  },
+  "reward": {
+   "money": 800
+  }
+ },
+ {
+  "id": "first-tax",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-tax.title",
+  "textKey": "quest.first-tax.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-residents"
+  },
+  "objective": {
+   "type": "any",
+   "of": [
+    {
+     "type": "measure",
+     "name": "tax",
+     "atMost": 6
+    },
+    {
+     "type": "measure",
+     "name": "tax",
+     "atLeast": 8
+    }
+   ]
+  },
+  "reward": {
+   "money": 300
+  }
+ },
+ {
+  "id": "first-service",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-service.title",
+  "textKey": "quest.first-service.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-residents"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "serviceBuildings",
+   "atLeast": 1
+  },
+  "reward": {
+   "money": 400
+  }
+ },
+ {
+  "id": "first-park",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.first-park.title",
+  "textKey": "quest.first-park.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-service"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "amenities",
+   "atLeast": 2
+  },
+  "reward": {
+   "money": 300
+  }
+ },
+ {
+  "id": "grow-to-two-hundred",
+  "category": "tutorial",
+  "speaker": "sunny",
+  "titleKey": "quest.grow-to-two-hundred.title",
+  "textKey": "quest.grow-to-two-hundred.text",
+  "available": {
+   "type": "questDone",
+   "id": "first-jobs"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 200
+  },
+  "reward": {
+   "money": 800
+  }
+ }
+]

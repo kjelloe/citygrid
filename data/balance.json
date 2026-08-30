@@ -1,6 +1,6 @@
 {
-  "era": 0,
-  "note": "ERA 0, UNTUNED. Starting values derived from specs/referencedata.md 13 (ruling 007). They were tuned for a 120x100 map, a different demand model, a broken traffic router and no multiplayer. Nothing here is a shipped balance until a sweep says so, and every value that survives names the era and commit that measured it. Distribution is built once and maintained as part of the street it follows: one street, one bill. Charging wire and pipe their own per-tile upkeep (invented here, not in the reference) put the median city on a permanent deficit.",
+  "era": 1,
+  "note": "ERA 1. Tuned 2026-08-29 against tools/sim_sweep.mjs over 200 games per configuration; see reports/balance-era1.md. Changed from era 0: civic.pollutionAverage now averages over developed land instead of the whole region, so it reads 9 instead of 0 and can drive something. RE-TESTED AND REJECTED, for the second time: per-tile wire and pipe upkeep. At 1 each it put p25 treasury on 0 and cut p25 population from 647 to 187 \u2014 it bankrupts weak cities without touching the rich ones, which is what the era-0 note already said. ACCEPTED, not fixed: runaway treasuries, median 1.9M and p95 3.8M after 25 years. Numbers from era 0 are void, not roughly comparable.",
   "build": {
     "road": 10,
     "roadOverWater": 50,
@@ -206,5 +206,26 @@
     "spreadDivisor": 900,
     "buildingFuel": 10,
     "forestFuel": 26
+  },
+  "disasters": {
+    "_comment": "era 0, untuned. Frequency is difficulty.disasterOneIn, which already existed; this is only the shape of one.",
+    "minPopulation": 120,
+    "warningMonths": 1,
+    "durationLow": 1,
+    "durationHigh": 3,
+    "radiusLow": 3,
+    "radiusHigh": 7,
+    "reliefFloor": 3000,
+    "reliefCap": 6000
+  },
+  "traffic": {
+    "_comment": "era 0, untuned. roadCapacity is load units per tile before a street reads as full.",
+    "decayPercent": 70,
+    "residentsPerCar": 6,
+    "roadCapacity": 40,
+    "congestedAt": 200,
+    "congestionPollution": 6,
+    "congestionAlertTiles": 60,
+    "maxCommute": 220
   }
 }

@@ -208,6 +208,15 @@ function surfaceWaterNearby(state, x, y, w, h) {
   return false;
 }
 
+/** What a building costs THIS player in THIS game. The build menu quotes it
+ * and the reducer charges it, so a difficulty that makes everything 20% dearer
+ * cannot leave the toolbar advertising the list price. */
+export function buildingCost(state, id) {
+  var def = definition(id);
+  if (!def) return 0;
+  return idiv(def.cost * difficultyOf(state).buildCostPercent, 100);
+}
+
 register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
   var def = definition(command.def);
   if (!def) return fail(RESULT.INVALID);
@@ -235,7 +244,7 @@ register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
   }
 
   var tx = begin(state, command.actor);
-  charge(tx, idiv(def.cost * difficultyOf(state).buildCostPercent, 100));
+  charge(tx, buildingCost(state, command.def));
   for (dy = 0; dy < def.h; dy += 1) {
     for (dx = 0; dx < def.w; dx += 1) {
       var tile = tileAt(state.width, x + dx, y + dy);

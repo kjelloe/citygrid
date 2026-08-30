@@ -1,11 +1,20 @@
 // Boot. Deliberately thin: capability probe, locale, then hand off.
 //
-// The URL is the config surface (?seed, ?size, ?join, ?debug). Params are read
-// at module evaluation, BEFORE the boot canonicalizes the URL — a module that
-// reads them later finds them already stripped.
+// The URL is the config surface (?seed, ?size, ?difficulty, ?terrain, ?water,
+// ?disasters, ?join, ?debug). Params are read at module evaluation, BEFORE the
+// boot canonicalizes the URL — a module that reads them later finds them
+// already stripped.
+//
+// **A URL that names a seed is a request for that exact city**, so it skips the
+// new-game screen and starts. That is what makes a city a shareable link, and
+// it is what every gate in `tools/` sends. With no seed, the player chooses.
 
 import { loadLocale, localise, t } from "./i18n.js";
+import { openSettings, loadSettings, applyDisplaySettings } from "./ui/settings.js";
 import { hasWebGL2, preferredLocale, prefersReducedMotion } from "./capabilities.js";
+import { choicesFromParams, optionsFor, paramsForChoices } from "./lobby/options-model.js";
+import { listSaves, getSave } from "./storage/db.js";
+import { fromSave } from "../engine/save.js";
 
 const params = new URLSearchParams(globalThis.location?.search ?? "");
 export const config = Object.freeze({
@@ -26,30 +35,99 @@ function notice(titleKey, bodyKey) {
   return `<div class="notice"><h1 data-i18n="${titleKey}"></h1><p data-i18n="${bodyKey}"></p></div>`;
 }
 
-async function boot() {
-  await loadLocale(config.locale || preferredLocale());
+/** Puts the chosen city in the address bar without reloading, so the browser's
+ * back button and a copied link both land on the same region. */
+function rememberInUrl(choices) {
+  if (!globalThis.history?.replaceState) return;
+  const query = paramsForChoices(choices);
+  globalThis.history.replaceState({}, "", `${globalThis.location.pathname}?${query}`);
+}
 
-  if (prefersReducedMotion()) document.documentElement.dataset.motion = "reduced";
+async function boot() {
+  // A stored preference beats the browser's guess, and `?lang=` beats both —
+  // a link that names a language is someone showing the game to someone else.
+  const settings = loadSettings(preferredLocale());
+  await loadLocale(config.locale || settings.locale);
+  applyDisplaySettings(settings);
+
+  // Only when the player has not decided for themselves. `applyDisplaySettings`
+  // has already set `data-motion` if they have.
+  if (prefersReducedMotion() && !document.documentElement.dataset.motion) {
+    document.documentElement.dataset.motion = "reduced";
+  }
 
   if (!hasWebGL2()) {
     show(notice("boot.unsupported.title", "boot.unsupported.body"));
     return;
   }
 
-  // Canonicalize the URL now that every module that needed a param has one.
-  if (globalThis.history?.replaceState && params.size > 0 && !config.debug) {
-    globalThis.history.replaceState({}, "", globalThis.location.pathname);
+  const app = document.getElementById("app");
+  const { startGame } = await import("./game.js");
+
+  let session;
+
+  async function showSettings() {
+    await openSettings({
+      onLocaleChange() {
+        // Re-render whatever is on screen. The panel knows the language
+        // changed; it does not know what is behind it.
+        if (session) session.relocalise();
+        else newGame();
+      },
+    });
   }
 
-  show(`<div class="notice">
-    <h1 data-i18n="app.title"></h1>
-    <p data-i18n="app.tagline"></p>
-  </div>`);
-
-  if (config.debug) {
-    const { runDebugChecks } = await import("./debug.js");
-    await runDebugChecks();
+  async function play(given) {
+    app.innerHTML = "";
+    app.classList.add("playing");
+    session = await startGame(app, { ...given, onNewCity: newGame, onSettings: showSettings });
+    if (config.debug) {
+      const { runDebugChecks } = await import("./debug.js");
+      await runDebugChecks();
+    }
+    return session;
   }
+
+  /** Picks up the most recent save. The state comes out of the file whole, so
+   * nothing is generated — the city that opens is the city that was saved,
+   * hash included. */
+  async function resume(slot) {
+    const record = await getSave(slot);
+    const restored = record ? fromSave(record.save) : { ok: false };
+    if (!restored.ok) { await newGame(); return; }
+    await play({ world: { ok: true, state: restored.state } });
+  }
+
+  async function newGame() {
+    session = undefined;
+    app.classList.remove("playing");
+    const { createNewGame } = await import("./lobby/new-game.js");
+    // The lobby has offered a Continue button since it was written and nobody
+    // ever passed it one, so a returning player had to start a new city and
+    // shift-click a slot. Offered only when there is something to continue.
+    const saved = await listSaves();
+    const latest = saved.slice().sort((a, b) => (b.savedAt ?? 0) - (a.savedAt ?? 0))[0];
+    createNewGame(app, {
+      choices: choicesFromParams(params),
+      onSettings: showSettings,
+      onContinue: latest ? () => resume(latest.slot) : undefined,
+      onStart({ world, options, choices }) {
+        rememberInUrl(choices);
+        play({ world, options });
+      },
+    });
+  }
+
+  if (config.seed) {
+    // An exact city was asked for. Canonicalize the URL now that every module
+    // that needed a param has one.
+    const choices = choicesFromParams(params);
+    if (!config.debug) rememberInUrl(choices);
+    await play({ options: optionsFor(choices) });
+    return;
+  }
+
+  await newGame();
 }
 
 boot().catch((error) => {

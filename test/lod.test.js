@@ -1,0 +1,131 @@
+// The level-of-detail budget.
+//
+// The budget is the promise that a phone can draw this city. What is tested
+// here is the policy: that detail nobody can see is dropped whatever the
+// budget allows, that the budget is honoured when it can be, and that the
+// order things are sacrificed in is the one the design chose.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels,
+  visibleBounds, inBounds, setBudget, getBudget, setCosts, getCosts,
+} from "../client/render/lod.js";
+
+/** A city big enough that the budget actually bites. */
+const CITY = { buildings: 900, trees: 1200, props: 4000, roads: 4400, poles: 600, groundChunks: 64 };
+
+function planAt(px, budget = 80000, counts = CITY) {
+  return choosePlan(counts, { span: 1 }, px, { tilePixels: px, budget });
+}
+
+test("the budget is configurable and survives a round trip", () => {
+  const original = getBudget();
+  setBudget(120000);
+  assert.equal(getBudget(), 120000);
+  setBudget(-5);
+  assert.equal(getBudget(), 1000, "a budget below the floor is clamped, not accepted");
+  setBudget(original);
+});
+
+test("tile pixels come from the span, not from distance", () => {
+  // Orthographic: there is no foreshortening, so zoom is the only thing that
+  // decides whether detail is resolvable.
+  assert.equal(tilePixels({ span: 20 }, 720), 36);
+  assert.equal(tilePixels({ span: 40 }, 720), 18);
+  assert.equal(tilePixels({ span: 0 }, 720), 0, "a zero span must not divide by zero");
+});
+
+test("detail nobody can see is dropped whatever the budget allows", () => {
+  // A budget of ten million still must not draw window sills at five pixels a
+  // tile. Resolvability is not a trade-off.
+  const rich = planAt(5, 10_000_000);
+  assert.equal(rich.props, false);
+  assert.equal(rich.markings, false);
+  assert.equal(rich.trees, false);
+  assert.equal(rich.buildings, TIER.BLOCK);
+});
+
+test("a generous budget keeps full detail when it is resolvable", () => {
+  const plan = planAt(60, 10_000_000);
+  assert.equal(plan.buildings, TIER.FULL);
+  assert.equal(plan.props, true);
+  assert.equal(plan.shadows, true);
+});
+
+test("a tight budget is met by stepping down", () => {
+  const plan = planAt(60, 120000);
+  assert.ok(plan.estimate <= 120000, `estimate ${plan.estimate} exceeds the budget`);
+  assert.equal(plan.overBudget, false);
+  assert.ok(plan.props === false || plan.buildings < TIER.FULL, "something should have been given up");
+});
+
+test("props are sacrificed before buildings", () => {
+  // The order is the design's, not an accident: a city of boxes with grass
+  // tufts would be the wrong trade. Sized so the budget lands mid-ladder,
+  // which is the only place the order is observable.
+  const town = { buildings: 200, trees: 300, props: 800, roads: 900, poles: 100, groundChunks: 9 };
+  const plan = planAt(60, 200000, town);
+  assert.equal(plan.props, false, "props go first");
+  assert.equal(plan.buildings, TIER.FULL, "buildings keep their detail while props are being dropped");
+});
+
+test("terrain and roads set a floor the ladder cannot go below", () => {
+  // Worth stating plainly: ground is not optional and has no tiers, so on a
+  // fully built 128x128 region the cheapest possible frame is still ~74k
+  // triangles. That is why the default budget is 80k and not 40k.
+  const floor = planAt(60, 1000);
+  assert.ok(floor.estimate > 60000, `the floor came out at ${floor.estimate}`);
+  assert.equal(floor.overBudget, true);
+});
+
+test("the ladder terminates instead of looping forever", () => {
+  const plan = planAt(60, 1000);
+  let steps = 0;
+  while (stepDown(plan)) {
+    steps += 1;
+    assert.ok(steps <= ladderLength(), "stepDown never returned false");
+  }
+  assert.equal(plan.trees, false);
+  assert.equal(plan.buildings, TIER.BLOCK);
+});
+
+test("an impossible budget is reported, not silently missed", () => {
+  // Terrain and roads are not optional, so below some budget the city cannot
+  // be drawn at all. Saying so is better than pretending.
+  const plan = planAt(60, 1000);
+  assert.equal(plan.overBudget, true, "an unmeetable budget must be flagged");
+});
+
+test("a block tree is not free", () => {
+  // It was priced at zero, and 900 trees at zero each is how a 27,000-triangle
+  // hole opened between the estimate and what was actually drawn.
+  assert.ok(getCosts().tree[TIER.BLOCK] > 0, "a tier-0 tree still has geometry");
+});
+
+test("the estimate charges twice for a shadowed caster", () => {
+  const counts = { buildings: 100, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0 };
+  const base = { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: false, props: false, markings: false, poles: false };
+  const lit = estimate(counts, { ...base, shadows: false });
+  const shadowed = estimate(counts, { ...base, shadows: true });
+  assert.equal(shadowed, lit * 2, "the shadow pass redraws every caster");
+});
+
+test("visible bounds cover the view at every yaw", () => {
+  // The bounds are axis-aligned but the view rotates, so they have to cover the
+  // diagonal or buildings pop in at the corners when the camera turns.
+  const view = { span: 40, targetX: 50, targetZ: 50 };
+  const bounds = visibleBounds(view, 16 / 9);
+  const halfDiagonal = Math.hypot(20 * (16 / 9), 20);
+  assert.ok(bounds.x1 - view.targetX >= halfDiagonal, "the bounds must cover a rotated view");
+  assert.ok(inBounds(bounds, 50, 50));
+  assert.ok(!inBounds(bounds, 500, 500));
+});
+
+test("counting only what is on screen is what makes the budget mean anything", () => {
+  const wide = choosePlan({ ...CITY, groundChunks: 64 }, { span: 1 }, 60, { tilePixels: 60, budget: 80000 });
+  const narrow = choosePlan({ ...CITY, buildings: 20, trees: 10, props: 40, roads: 60, poles: 5, groundChunks: 4 },
+    { span: 1 }, 60, { tilePixels: 60, budget: 80000 });
+  assert.ok(narrow.estimate < wide.estimate);
+  assert.equal(narrow.props, true, "a zoomed-in view has room for the detail it can actually show");
+});

@@ -56,25 +56,59 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 
 ## Progress
 
-Waves 0 and 1 are complete **except 1.2 / 1.2b (renderer and style probe)**, which are deliberately
-deferred: the probe exists to be judged by eye, so it waits for the user rather than blocking the
-engine. Ordering principle 1 (engine before client) makes that the correct order anyway.
+*Updated 2026-08-29 after the P18 audit. Slice numbers below are the N-series in
+"The next ten slices"; the wave tables are what they map onto.*
 
-**Waves 0, 1 and 2 are complete.** Done: 0.1–0.4, 1.1, 1.2, 1.3, 1.4, 1.5,
-2.1–2.6. Suite 272 tests green twice; chaos clean at 30k commands; client smoke
-green on four style/zoom combinations.
+**Waves 0–3 are complete.** 0.1–0.4, 1.1–1.5, 2.1–2.6, 3.1–3.4, plus the
+renderer and the style decision (N1, N2 / ruling 022). Era 1 is pinned
+(`reports/balance-era1.md`, 200 games × 4 configurations).
 
-**1.2b is waiting on the user.** The three candidates are rendered from the same
-city, seed and camera in `reports/probe-close-{plain,pixel,painted}.png`. The
-probe cannot be finished without a decision, and `specs/art-direction.md` §3
-stays empty until it is — which blocks the content lane, by design.
+**Wave 4 is complete except audio and the PWA half of 4.5.** Done: 4.1 (HUD,
+overlays and the minimap), 4.2 (advisor and quest engine), 4.3 (**20 quests**
+and the acceptance script), **4.5's accessibility half** (touch targets, reduced
+motion, high contrast, keyboard operation, 200% text — all gated), and 4.6
+(statistics). Not started: **4.4 audio**, and 4.5's **PWA half** (service
+worker, offline, install).
 
-Next once the style is chosen: Wave 3 — events and disasters, traffic,
-maturity, and the first real balance sweep.
+**The §24 release gate passes 13 of 13** (`tools/mvp_acceptance.mjs`), driving
+the real page by pointer on desktop and a 390×844 phone.
 
-**Open balance debts, for the Wave 3 sweep:** treasuries reach eight figures by
-year 40, and industrial demand runs away on some seeds. Mechanism, not balance,
-is what has been verified so far.
+**What the audit found is missing from a *playable* game**, none of which the
+§24 criteria ask about:
+
+- ~~No new-game screen~~ — **built in N12.** Size, difficulty, terrain, water,
+  disasters and seed are chosen by pointer; a URL naming a seed still opens that
+  exact city.
+- ~~Quest text is not localised~~ — **done in N12.** 310 keys per catalogue.
+  Norwegian is drafted, not reviewed (A21).
+- ~~No settings screen~~ — **built in N13**: language, high contrast, reduced
+  motion. Sound and visual style are deliberately not offered — there is no
+  audio, and ruling 022 settled the style, so both would be controls that change
+  nothing.
+- **No city or mayor name** (§5.1). There is no text entry anywhere in the game,
+  and player-authored text is hashed state that must be capped, sanitised and
+  canonicalised — so it lands with slice 5.3's text rules.
+- **Department funding (§9.4) does not exist** — `CMD_SET_FUNDING` has no
+  handler, there is no `state.funding`, and `fundingMinPercent`/`MaxPercent` are
+  mirrored into `rules.js` and read by nothing.
+- `client/capabilities.js`'s `deviceClass` and `isCoarsePointer` are still
+  unused; `recommendedMapSize` and `sizeAdvice` were revived by N12.
+- **`test/reachability.test.js`'s `NOT_YET` is the live inventory** of strings
+  the catalogue promises and no screen keeps — 24 keys, each naming its slice.
+  Ruling 027 makes an unlisted one a red suite.
+- **The fixtures do not exist.** `test/fixtures/` is empty: no `founding.json`,
+  no `two_player.json`, no `empty.json`, and no `tools/repin.mjs`. Slice 0.4 is
+  marked done and its gate names `test/fixtures/empty.json`; `CLAUDE.md` says
+  hashed fields live in two places and they live in one (`writeState()` in
+  `engine/state.js`); the `/fixture-repin` skill documents a ritual for
+  artefacts that were never written. **N15 changed hashed state with no
+  tripwire in place.** This is the next thing to build.
+- **Tree density** is a worldgen option with no row on the new-game screen —
+  one entry in `ROWS` when it is wanted.
+
+**Settled balance debts:** pollution averaging fixed; industrial demand settled
+by measurement; **runaway treasuries accepted with numbers**, not tuned away
+(median 1.9M by year 25). See the N8 row and `playtest-notes.md`.
 
 ## The slice ritual
 
@@ -224,16 +258,27 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 
 | # | Slice | Size | Why now | Done when |
 |---|---|---|---|---|
-| **N1** | **Level of detail** — swap building and prop geometry by camera distance; drop windows, sills and roof clutter beyond a threshold; drop trees to billboards, then to nothing | M | The detail pass measured 201k triangles against an 80k budget. This is the one blocking number, and it blocks *every* later visual decision including the style choice | The saturated 128×128 fixture is under 80k triangles at default zoom with the detail intact up close; measured, not estimated |
-| **N2** | **1.2b decision and `art-direction.md` §3** | S | The content lane cannot start until the style is picked, and the probe is rendered and waiting. **User decision, not mine** | §3 exists: palette with hex values, silhouette rules, height and material ladders, lighting rig |
-| **N3** | **Input and tools** — pointer and touch, camera pan/pinch/twist, drag-paint with RLE coalescing, ghost preview, cost preview, undo | L | The renderer draws a city nobody can touch. This is the first slice where a person can actually play, and everything after it is judged by hand rather than by soak | A person builds a road, zones beside it, places a plant, and sees the city grow — on a mouse and on a phone |
-| **N4** | **HUD and overlays** (slice 4.1) — top bar, RCI bars, alert area, build toolbar, inspector, the eleven overlays | L | Once N3 exists the simulation is invisible: no money, no demand, no diagnosis. Overlays are also the design's answer to "every action has visible consequences" | UI acceptance passes: every toolbar button does what it claims, hit-tested; every overlay renders in one pass and is readable in a screenshot diff |
-| **N5** | **Save and load in the client** — IndexedDB, autosave, slots, export/import | M | The engine half is done and tested; the client half is what makes a session survive a closed tab. Also the last piece of the singleplayer MVP that is pure plumbing | A city survives close-and-reopen, and the migration corpus still passes |
-| **N6** | **Events and disasters** (slice 3.2) — wildfire, flood, storm, quake, industrial accident, blackout; telegraphing and recovery | L | Wave 3's first half. Fire exists; the rest of `gamedesign.md` §12 does not, and disasters are where the civic systems earn their keep | Each type fires, spreads, is survivable and leaves a city that play can repair; soak shows no unrecoverable cities across 200 games |
-| **N7** | **Traffic** (slice 3.3) — monthly O/D flow assignment over the road graph, congestion effects, sampled vehicles following real flow | L | The largest missing system, and the one the plan flags as the expensive one. Vehicles are currently parked decoration; they should move because people commute | Assignment fits the month-tick budget on a saturated 128×128; congestion correlates with density rather than with seed luck across 200 games |
-| **N8** | **The balance sweep and era 1** (Wave 3 gate) — `tools/sim_sweep.mjs`, the analyser, the first real tuning pass | L | Everything measured so far is era 0 on 20 seeds. Three debts are already logged: runaway treasuries, runaway industrial demand, pollution averaged over the whole region. This is where they get settled | 200+ games per configuration, a report in `reports/`, era 1 pinned, and the three logged debts either fixed or explicitly accepted with numbers |
-| **N9** | **Advisor and quest engine** (slice 4.2) — dialogue panels, the closed condition DSL, quest tracker, choices, milestones and rank | L | With N3 and N4 the game is playable but says nothing. The tutorial chain is what makes it teachable, and the quest engine is data-driven so content can then be written without code | Quests are pure data; a crafted quest completes headlessly; a choice changes simulation variables and later dialogue |
-| **N10** | **Tutorial chain and the MVP acceptance script** (slice 4.3) | M | The thirteen criteria in `gamedesign.md` §24 are the singleplayer MVP definition, and an automated script is the only honest way to claim them | The script passes on desktop and on a real phone; a first-time player reaches their first residents inside two minutes |
+| **N1** | **Level of detail** — configurable triangle budget (`setBudget`, default 80k); resolvability gate drops what cannot be seen, budget gate steps down a fixed ladder | M | The detail pass measured 201k triangles against an 80k budget. This is the one blocking number, and it blocks *every* later visual decision including the style choice | **Done.** Saturated 128×128 sixteen-seat region: 19k–69k triangles across every zoom from span 12 to span 180, against the 80k budget. Enforced against three.js's own counter after an actual render, not against the estimate (ruling 019). `test/lod.test.js`, 13 tests |
+| **N2** | **1.2b decision and `art-direction.md` §3** | S | The content lane cannot start until the style is picked, and the probe is rendered and waiting. **User decision, not mine** | **Done.** P13 chose **plain** — soft cool light, bright cosy palette, shadows (ruling 022). §3 written with real hex values, the lighting rig, silhouette rules and the height/value/detail ladders. `test/docs.test.js` compares the documented palette against `palettes.js` so the two cannot drift. **Lane C1 is unblocked** |
+| **N3** | **Input and tools** — pointer and touch, camera pan/pinch/twist, drag-paint with RLE coalescing, ghost preview, cost preview, undo | L | The renderer draws a city nobody can touch. This is the first slice where a person can actually play, and everything after it is judged by hand rather than by soak | **Done.** `tools/play_smoke.mjs` drives `index.html` with real pointer events on a 1280×720 mouse viewport and a 390×844 touch one: a dragged road appears with no holes, undo removes the whole drag, a dragged rectangle zones, the camera rotates and pans, and a road + zoning + plant + pump grows the city to pop 16 by tick 300. 15 checks, both viewports. `test/input.test.js`, 24 tests |
+| **N4** | **HUD and overlays** (slice 4.1) — top bar, RCI bars, alert area, build toolbar, inspector, the eleven overlays | L | Once N3 exists the simulation is invisible: no money, no demand, no diagnosis. Overlays are also the design's answer to "every action has visible consequences" | **Done.** `tools/ui_smoke.mjs`, 54 checks: every toolbar button hit-tested by coordinate for a 44px target, the tool it selects and the state it reports; undo and speed; all eleven overlays render in ≤4 extra draw calls and produce **eleven distinct images**; the inspector opens on tap; the phone layout does not scroll sideways and leaves 59% of the screen to the city. `test/overlays.test.js` and `test/hud.test.js`, 28 tests |
+| **N5** | **Save and load in the client** — IndexedDB, autosave, slots, export/import | M | The engine half is done and tested; the client half is what makes a session survive a closed tab. Also the last piece of the singleplayer MVP that is pure plumbing | **Done.** `tools/save_smoke.mjs`, 15 checks: builds a city, saves, **closes the page**, opens a fresh one in the same origin, loads, and compares state hashes — `fa545978cf5a3b39` both sides. Export/import round-trips to the same hash; a foreign file is refused; the autosave takes its own slot and does not touch a manual one. `test/storage.test.js`, 10 tests |
+| **N6** | **Events and disasters** (slice 3.2) — wildfire, flood, storm, quake, industrial accident, blackout; telegraphing and recovery | L | Wave 3's first half. Fire exists; the rest of `gamedesign.md` §12 does not, and disasters are where the civic systems earn their keep | **Done.** All seven majors, one at a time, each telegraphed a month ahead. `tools/disaster_soak.mjs` over 200 games × 25 years: 356 strikes, every type fired (44–55 each), no city left unrepairable at the moment of damage. Three cities declined to nothing afterwards — confirmed disaster-caused by a disasters-off control run, reported as an **economy finding for N8** rather than tuned away. `test/disasters.test.js`, 16 tests |
+| **N7** | **Traffic** (slice 3.3) — monthly O/D flow assignment over the road graph, congestion effects, sampled vehicles following real flow | L | The largest missing system, and the one the plan flags as the expensive one. Vehicles are currently parked decoration; they should move because people commute | **Done.** One multi-source BFS distance field from all jobs, then downhill walks per home — O(road tiles + homes × route). `tools/traffic_gate.mjs`: **0.70ms median** on a saturated 128×128 (8,899 road tiles) against an 8ms share of the month tick. Across 200 games congestion correlates with people-per-road **r=0.547** and with the seed **r=-0.075**. `test/traffic.test.js`, 9 tests |
+| **N8** | **The balance sweep and era 1** (Wave 3 gate) | L | Everything measured so far is era 0 on 20 seeds. Three debts are already logged | **Done.** `tools/sim_sweep.mjs`, 200 games × 4 configurations. **Era 1 pinned** (`reports/balance-era1.md`). Pollution average fixed (0 → 8, it divided by the region instead of developed land); industrial demand settled by measurement (p95 294 against a cap of 1500); **runaway treasuries accepted, not fixed** — median 1.9M, p95 3.8M, and the obvious lever re-measured the era-0 failure it already recorded |
+| **N9** | **Advisor and quest engine** (slice 4.2) | L | With N3 and N4 the game is playable but says nothing | **Done.** Quests are pure JSON over a **closed** condition language, validated at load. 13 authored quests across tutorial, growth, service, environmental and character, including a branch whose choice gates later quests. Advisor panel in the HUD. `test/quests.test.js`, 16 tests |
+| **N10** | **Tutorial chain and the MVP acceptance script** (slice 4.3) | M | The thirteen criteria in `gamedesign.md` §24 are the singleplayer MVP definition, and an automated script is the only honest way to claim them | **Done. 13 of 13.** `tools/mvp_acceptance.mjs` drives the real page on desktop and a 390×844 phone viewport, using pointer events at coordinates. Two criteria are honestly partial and say so: whether the loop is *satisfying*, and whether touch is *comfortable* |
+| **N11** | **The interface catches up with the engine** (P16, P17) — build menu, tax and budget panel, i18n for the whole HUD, and an acceptance script that drives the interface instead of reaching past it | M | The audit found the toolbar had no way to place a building, so no plant, so no water, so **no human player could grow a city** — while the acceptance script reported 13 of 13 by calling `apply()` for exactly the two criteria that are about the interface | **Done.** Twelve buildings reachable from a build row that quotes the difficulty-adjusted price; footprint ghosts; a tax slider wired to `CMD_SET_TAX`, which had existed since the economy slice with nothing to send it; 227 i18n keys in both locales with the HUD's own strings scanned by test. `tools/mvp_acceptance.mjs` 13 of 13 with criteria 3, 7 and 9 driven by pointer and slider (ruling 026); `tools/ui_smoke.mjs` 90 checks. `test/hud.test.js` refuses a catalogue building the menu cannot reach |
+
+| **N12** | **A city you chose** (P19) — the new-game screen as `client/lobby/`, and slice 4.3's quest content finished and localised | M | The audit found the game could only ever play one city: seed and size were URL parameters, difficulty was not even that, and three difficulties balanced across 200 games each in era 1 were unreachable | **Done.** Size, difficulty, terrain, water, disasters and seed chosen by pointer, with the region named and previewed — and the previewed region is the object handed to `startGame`, not a second generation of the same seed. A URL naming a seed skips the screen, so a city is a link. Quests 13 → **20** (10 tutorial, 5 milestone, 3 civic, 1 disaster, 1 character), every string in both catalogues. `tools/lobby_smoke.mjs` 26 checks; the region namer fixed against 400 measured regions |
+
+| **N13** | **The game says what it is doing** (P20) — refusal feedback, the settings screen, Continue, and the reachability sweep as a test | S | The audit found that **every refused action in the game's history showed "0 tiles" and no reason**: seven `result.*` strings carried in both catalogues since the first commit, handed to a `setPreview` that ignored them | **Done.** Refusals name their reason, before the click as well as after; a build you cannot afford turns the ghost red. Settings panel (language, high contrast, reduced motion) as a native `<dialog>`; Continue resumes the newest save hash for hash. `test/reachability.test.js` (ruling 027) requires every catalogue key to be reachable or listed with its slice. `tools/lobby_smoke.mjs` 46 checks |
+
+| **N14** | **The keyboard half of 4.5** (P21) — real toolbar navigation, tool shortcuts, keyboard panning, 200% text, and the debug hook that never existed | S | `plan-v1.md` names "keyboard-only and 200%-text passes" as 4.5's gate and neither had been measured. Worse, four rows carried `role="toolbar"`, which **announces** a keyboard pattern — so the game was telling assistive technology to press keys that did nothing | **Done.** `tools/a11y_smoke.mjs`, 21 checks: one tab stop per toolbar, arrows walk and wrap, Home and End jump, eight tool shortcuts, arrows pan from the map and not from a toolbar, an open dialog owns the keyboard, and 200% text clips nothing on either screen at either size. Ruling 028. `?debug=1` no longer replaces the game with an error screen |
+
+| **N15** | **Statistics and the minimap** (P22) — slice 4.6 in full, and 4.1's last piece | M | 4.1 asked for "minimap integration" and 4.6 for history with plain-language interpretation; neither existed, and the statistics screen is §30's accessibility answer as much as §15.5's usability one | **Done.** `engine/history.js`: one integer sample a month, oldest first, capped at 240, **hashed and saved**, reaching all five places. Ten series, each with a sparkline, a trend that knows up from better, and an explanation sentence that doubles as the chart's text alternative. Minimap painted once into an `ImageData` and blitted, viewport box on top. `test/history.test.js` (16), `test/minimap.test.js` (7); `ui_smoke` 99 checks |
+
+| **N16** | **Finishing N15** (P23) — the minimap's cache invalidation and its ARIA role | S | An audit of N15's own code: the minimap repainted only when the PLAYER built, so growth, fire and disasters never reached it; and it carried `role="img"` while being focusable and handling keys, which is ruling 028's defect in the slice written after the ruling | **Done.** Repaints when `state.tick` moves — proved stale first (346 road tiles added, image byte-identical), then proved fixed. Now a picture and nothing else; the keyboard path is N14's arrow-key panning, which aims. `ui_smoke` 101 checks |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits
@@ -259,6 +304,7 @@ by number from the code they create.
 | Q18 | Which mayor ranks unlock which advisor personas, and does the player then pick freely? | C3 |
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
+| Q21 | The HUD panel now takes 51% of a 720px desktop window. Which row goes, or does it collapse? | The playtest |
 
 ## What would make us stop and re-plan
 

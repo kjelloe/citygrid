@@ -5,6 +5,15 @@ description: Re-pin City Grid's founding and two-player fixtures after a deliber
 
 # Re-pinning a fixture
 
+> **The fixtures do not exist yet (audited 2026-08-29).** `test/fixtures/` is an empty directory
+> and `tools/repin.mjs` was never written, despite slice 0.4 being marked done with
+> `test/fixtures/empty.json` as its gate. Hashed fields live in **one** place —
+> `writeState()` in `engine/state.js` — not the two `CLAUDE.md` describes.
+>
+> So the ritual below is what to do **once they are built**, and the questions in the next section
+> are worth asking today regardless. Slice N15 added hashed state with no tripwire in place and
+> said so in the dev-log; do the same until this note can be deleted.
+
 The fixtures pin a command sequence and **every intermediate state hash**:
 
 - `test/fixtures/founding.json` — the singleplayer founding sequence.

@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 0,
+  era: 1,
   build: {
     road: 10, roadOverWater: 50, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -77,6 +77,27 @@ var RULES = {
   },
   economy: { residentialDivisor: 150, commercialDivisor: 120, industrialDivisor: 140 },
   population: { workingAgePercent: 55, shoppersPerCommercialJob: 12, industryPerWorkerPercent: 45 },
+  disasters: {
+    _comment: "era 0, untuned. Frequency is difficulty.disasterOneIn, which already existed; this is only the shape of one.",
+    minPopulation: 120,
+    warningMonths: 1,
+    durationLow: 1,
+    durationHigh: 3,
+    radiusLow: 3,
+    radiusHigh: 7,
+    reliefFloor: 3000,
+    reliefCap: 6000,
+  },
+  traffic: {
+    _comment: "era 0, untuned. roadCapacity is load units per tile before a street reads as full.",
+    decayPercent: 70,
+    residentsPerCar: 6,
+    roadCapacity: 40,
+    congestedAt: 200,
+    congestionPollution: 6,
+    congestionAlertTiles: 60,
+    maxCommute: 220,
+  },
 };
 
 export function setRules(loaded) {

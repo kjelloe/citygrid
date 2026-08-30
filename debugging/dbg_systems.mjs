@@ -19,6 +19,8 @@ import "../engine/utilities.js";
 import "../engine/economy.js";
 import "../engine/civic.js";
 import "../engine/fire.js";
+import "../engine/disasters.js";
+import "../engine/traffic.js";
 
 /** Every event kind the engine can currently emit. Anything here that never
  * fires in a full city's lifetime is either dead code or a feature nobody can

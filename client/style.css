@@ -91,11 +91,575 @@ button, [role="button"] {
   outline-offset: 2px;
 }
 
+/* The OS preference, unless the player has explicitly asked for full motion in
+   settings. Someone may want the system default everywhere else and animation
+   here; `data-motion="full"` is that answer, and it has to win. */
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  :root:not([data-motion="full"]) * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 :root[data-motion="reduced"] * {
   animation-duration: 0.01ms !important;
   transition-duration: 0.01ms !important;
+}
+
+/* The playing surface and the HUD (gamedesign.md §13).
+   Mobile is the same DOM with different rules, not a fork (§13.2). */
+
+#app.playing { position: fixed; inset: 0; margin: 0; padding: 0; max-width: none; }
+
+#city {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* The browser's own gestures would fight ours: a one-finger drag would scroll
+     the page instead of painting a road, and a pinch would zoom the document. */
+  touch-action: none;
+}
+
+#hud { position: absolute; inset: 0; pointer-events: none; font-variant-numeric: tabular-nums; }
+#hud > * { pointer-events: auto; }
+
+/* --- top bar --------------------------------------------------------------- */
+
+.hud-top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  /* Wraps rather than squeezing. At 200% text on a 390px screen the three
+     buttons at the end were compressed until their labels were cut off, which
+     is the one place the layout failed the text-scaling gate (§30). */
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+  padding: 0.5rem 0.8rem;
+  background: color-mix(in srgb, Canvas 85%, transparent);
+  backdrop-filter: blur(6px);
+}
+.hud-top > button { flex: 0 0 auto; white-space: nowrap; }
+
+.hud-money { font-weight: 700; font-size: 1.1rem; }
+.hud-trend.up { color: #2e7d4f; }
+.hud-trend.down { color: #b3402c; }
+.hud-trend.flat { opacity: 0.5; }
+.hud-speed { margin-inline-start: auto; min-height: 40px; padding: 0 0.9rem; }
+.hud-money, .hud-pop, .hud-date { white-space: nowrap; }
+
+/* --- the bottom panel ------------------------------------------------------ */
+
+.hud-panel {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  background: color-mix(in srgb, Canvas 85%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/* --- demand ---------------------------------------------------------------- */
+
+.hud-rci { display: flex; gap: 0.35rem; align-items: flex-end; height: 44px; }
+.rci-bar {
+  position: relative;
+  width: 26px; height: 100%;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border-radius: 5px;
+}
+.rci-bar i { display: block; width: 100%; border-radius: 4px; }
+/* Sign is carried by colour AND by which way the bar grows, so the three bars
+   are still readable in greyscale. */
+.rci-bar[data-sign="positive"] i { background: #4a9e63; }
+.rci-bar[data-sign="negative"] i { background: #b3402c; }
+.rci-bar span { position: absolute; top: 2px; font-size: 0.7rem; opacity: 0.7; }
+
+/* --- alerts ---------------------------------------------------------------- */
+
+.hud-alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.hud-alerts li {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+}
+/* A left bar as well as a colour: the severity survives greyscale and CVD. */
+.hud-alerts li.urgent  { background: #f6dbd5; border-color: #b3402c; border-inline-start-width: 5px; }
+.hud-alerts li.warning { background: #f8eed2; border-color: #b58a1e; border-inline-start-width: 5px; }
+.hud-alerts li.info    { background: #e2eaf2; border-color: #5a7b96; }
+
+/* --- toolbars -------------------------------------------------------------- */
+
+/* One scrolling row each, at every width.
+   These rows wrapped until the build menu arrived and turned the toolbar into
+   twenty buttons: the panel grew to half the viewport and swallowed the middle
+   of the map, so a click meant for the ground landed on the HUD. Bounding the
+   panel matters more as the catalogue grows, and a row that scrolls is what
+   the phone layout already did. */
+.hud-toolbar, .hud-overlays {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding-bottom: 0.15rem;
+}
+.tool-group { display: flex; gap: 0.2rem; flex: 0 0 auto; }
+.hud-toolbar > button, .hud-overlays > button, .hud-saves > * { flex: 0 0 auto; }
+
+.hud-toolbar button, .hud-overlays button {
+  /* Comfortably tappable on a phone without aiming (§13.2). */
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 8px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  cursor: pointer;
+}
+.hud-overlays button { min-height: 36px; font-size: 0.85rem; }
+.hud-toolbar button[aria-pressed="true"], .hud-overlays button[aria-pressed="true"] {
+  background: CanvasText;
+  color: Canvas;
+}
+
+/* --- legend ---------------------------------------------------------------- */
+
+.hud-legend { display: flex; flex-wrap: wrap; gap: 0.6rem; font-size: 0.8rem; }
+.legend { display: inline-flex; align-items: center; gap: 0.3rem; }
+.swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.25); }
+/* Colour plus a mark, matching the marks drawn on the map itself. */
+.mark-good   { background: #53c46a; }
+.mark-fair   { background: #e8c440; background-image: linear-gradient(90deg, transparent 40%, rgba(0,0,0,0.55) 40% 60%, transparent 60%); }
+.mark-severe { background: #db4b3a; background-image: linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.55) 25% 75%, transparent 75%); }
+.mark-none   { background: #8d9096; }
+
+/* The build menu. A building button carries its price, so choosing between a
+   coal plant and a wind turbine is a decision made in the toolbar rather than
+   after the money has gone. */
+.tool-group.build-group { position: relative; padding-inline-start: 0.35rem; }
+.tool-group.build-group::before {
+  content: "";
+  position: absolute;
+  inset-block: 0.15rem;
+  inset-inline-start: 0;
+  border-inline-start: 1px solid currentColor;
+  opacity: 0.2;
+}
+.hud-build { margin-top: -0.1rem; }
+.hud-toolbar button.build {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  line-height: 1.15;
+}
+.hud-toolbar button.build small { font-size: 0.72rem; opacity: 0.65; font-variant-numeric: tabular-nums; }
+
+/* The budget. One row: the rate, what it is, and what the books say. */
+.hud-budget { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.85rem; }
+.hud-budget input[type="range"] { flex: 0 1 9rem; min-width: 6rem; min-height: 24px; }
+.budget-rate { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2.5rem; }
+.budget-books { opacity: 0.85; font-variant-numeric: tabular-nums; }
+.budget-books[data-sign="positive"] { color: #2e7d4f; }
+.budget-books[data-sign="negative"] { color: #b3402c; }
+
+.hud-saves { display: flex; flex-wrap: nowrap; gap: 0.3rem; align-items: center; overflow-x: auto; scrollbar-width: thin; }
+.hud-saves .slot {
+  min-height: 36px;
+  padding: 0 0.7rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 8px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+/* A used slot is marked, not merely coloured. */
+.hud-saves .slot[data-used="true"] { border-color: currentColor; font-weight: 600; }
+.hud-saves .slot[data-used="true"]::before { content: "\2022\00a0"; }
+.hud-saves input[type="file"] { display: none; }
+
+.hud-status { font-size: 0.85rem; min-height: 1.2em; opacity: 0.9; }
+
+.hud-readout { font-size: 0.85rem; opacity: 0.8; min-height: 1.2em; }
+/* A refusal is the most common thing the game has to say. It said "0 tiles"
+   until the reasons were wired up. */
+.hud-readout[data-result] { color: #b3402c; font-weight: 600; opacity: 1; }
+
+/* --- the advisor (gamedesign.md §11.2) ------------------------------------- */
+
+.hud-advisor {
+  position: absolute;
+  top: 3.4rem;
+  inset-inline-start: 0.6rem;
+  width: min(320px, 60vw);
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, Canvas 94%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  border-inline-start: 5px solid #4a9e63;
+}
+.hud-advisor h2 { margin: 0 0 0.25rem; font-size: 0.95rem; }
+.hud-advisor .says { margin: 0; font-size: 0.87rem; line-height: 1.4; }
+.hud-advisor .choices { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.6rem; }
+.hud-advisor .choice {
+  min-height: 40px;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 8px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: start;
+  cursor: pointer;
+}
+.hud-advisor .tracker { margin: 0.5rem 0 0; font-size: 0.75rem; opacity: 0.65; }
+
+@media (max-width: 520px) {
+  .hud-advisor { width: auto; inset-inline: 0.6rem; top: 3.2rem; }
+}
+
+/* --- minimap (§13.3) --------------------------------------------------------
+   Above the panel, opposite the inspector. Optional, so it toggles. */
+
+.hud-minimap {
+  position: absolute;
+  inset-inline-start: 0.6rem;
+  bottom: calc(var(--panel-height, 22rem) + 0.6rem);
+  max-width: calc(100vw - 1.2rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+.minimap-canvas {
+  /* Size set from MINIMAP_SIZE in `minimap.js`, so the constant lives once. */
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  background: Canvas;
+  cursor: crosshair;
+  /* The picture is nearest-neighbour by construction; letting the browser
+     smooth it would blur a map that is deliberately one pixel a tile. */
+  image-rendering: pixelated;
+  touch-action: none;
+}
+.minimap-toggle {
+  min-height: 32px;
+  padding: 0 0.6rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, Canvas 88%, transparent);
+  color: CanvasText;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+/* A phone has no room for both the map and the city. */
+@media (max-width: 520px) {
+  .hud-minimap { display: none; }
+}
+
+/* --- statistics (slice 4.6) -------------------------------------------------
+   Sparklines are inline SVG so they scale with the page at 200% text and can
+   carry a text alternative. §30: a graph is not a statistic until someone who
+   cannot see it gets the same answer. */
+
+.stats::backdrop { background: rgba(0, 0, 0, 0.45); }
+.stats {
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border-radius: 14px;
+  padding: 0;
+  background: Canvas;
+  color: CanvasText;
+  max-width: min(560px, 94vw);
+  max-height: 88vh;
+}
+.stats-body { display: flex; flex-direction: column; gap: 0.9rem; padding: 1.1rem 1.2rem 1.2rem; }
+.stats-body h1:focus-visible { outline: none; }
+.stats-body h1 { margin: 0; font-size: 1.2rem; }
+.stats-empty { margin: 0; opacity: 0.75; font-size: 0.88rem; }
+.stats-list { display: flex; flex-direction: column; gap: 1.1rem; }
+
+.stat { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+.stat-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.stat-head h2 { margin: 0; font-size: 0.92rem; }
+.stat-value { font-weight: 700; font-variant-numeric: tabular-nums; margin-inline-start: auto; }
+.stat-arrow.good { color: #2e7d4f; }
+.stat-arrow.bad { color: #b3402c; }
+.stat-arrow.none { opacity: 0.45; }
+
+.spark { width: 100%; height: 44px; display: block; }
+.spark polyline { stroke: color-mix(in srgb, CanvasText 55%, transparent); }
+.spark.good polyline { stroke: #2e7d4f; }
+.spark.bad polyline { stroke: #b3402c; }
+.spark circle { fill: currentColor; }
+.spark.good circle { fill: #2e7d4f; }
+.spark.bad circle { fill: #b3402c; }
+
+.stat-verdict { margin: 0; font-size: 0.85rem; }
+.stat-about { margin: 0; font-size: 0.8rem; opacity: 0.7; }
+
+.stats-close {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 1.2rem;
+  border: 1px solid CanvasText;
+  border-radius: 9px;
+  background: CanvasText;
+  color: Canvas;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+:root[data-contrast="high"] .stats,
+:root[data-contrast="high"] .hud-minimap .minimap-canvas { border-width: 2px; border-color: CanvasText; }
+:root[data-contrast="high"] .stat-about,
+:root[data-contrast="high"] .stat-arrow.none { opacity: 1; }
+:root[data-contrast="high"] .minimap-toggle { background: Canvas; border-color: CanvasText; border-width: 2px; }
+
+/* --- settings ---------------------------------------------------------------
+   A native <dialog>: focus trapping, focus return and Escape all come free,
+   and all three are slice 4.5 jobs a hand-rolled overlay would do badly. */
+
+.settings::backdrop { background: rgba(0, 0, 0, 0.45); }
+.settings {
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border-radius: 14px;
+  padding: 0;
+  background: Canvas;
+  color: CanvasText;
+  max-width: min(420px, 92vw);
+}
+.settings-body { display: flex; flex-direction: column; gap: 0.9rem; padding: 1.1rem 1.2rem 1.2rem; }
+.settings-body h1 { margin: 0; font-size: 1.2rem; }
+.settings-row h2 { margin: 0 0 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+.settings-choices { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.settings-choice {
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 9px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  cursor: pointer;
+}
+.settings-choice[aria-pressed="true"] { background: CanvasText; color: Canvas; border-color: CanvasText; }
+.settings-close {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 1.2rem;
+  border: 1px solid CanvasText;
+  border-radius: 9px;
+  background: CanvasText;
+  color: Canvas;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lobby-settings { margin-inline-start: auto; }
+.lobby-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+.lobby-head h1 { flex: 0 0 auto; }
+.lobby-head .tagline { flex: 1 1 12rem; }
+.lobby-settings, .hud-settings {
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border-radius: 9px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* --- high contrast (slice 4.5) ----------------------------------------------
+   Transparency and blur are the first things to go: a panel you can see the
+   city through is a panel with no guaranteed contrast ratio at all, because
+   what is behind it changes every frame. */
+:root[data-contrast="high"] {
+  --accent: CanvasText;
+}
+:root[data-contrast="high"] .hud-panel,
+:root[data-contrast="high"] .hud-top,
+:root[data-contrast="high"] .hud-inspector,
+:root[data-contrast="high"] .hud-advisor,
+:root[data-contrast="high"] .lobby-preview {
+  background: Canvas;
+  backdrop-filter: none;
+}
+:root[data-contrast="high"] .hud-toolbar button,
+:root[data-contrast="high"] .hud-overlays button,
+:root[data-contrast="high"] .hud-saves .slot,
+:root[data-contrast="high"] .lobby-choice,
+:root[data-contrast="high"] .settings-choice,
+:root[data-contrast="high"] .hud-advisor .choice {
+  border-color: CanvasText;
+  border-width: 2px;
+}
+:root[data-contrast="high"] .hud-toolbar button small,
+:root[data-contrast="high"] .lobby-choice small,
+:root[data-contrast="high"] .hud-readout,
+:root[data-contrast="high"] .hud-legend,
+:root[data-contrast="high"] .hud-inspector dt,
+:root[data-contrast="high"] .budget-books,
+:root[data-contrast="high"] .lobby-row h2,
+:root[data-contrast="high"] .settings-row h2 { opacity: 1; }
+:root[data-contrast="high"] .hud-alerts li { border-width: 2px; }
+
+/* --- the new-game screen ---------------------------------------------------
+   Ruling 011 in layout form: every size is selectable, and the ones this
+   device will find heavy are MARKED rather than disabled. */
+
+.lobby {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 1.4rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.lobby-head h1 { margin: 0; font-size: 1.6rem; }
+.lobby-head .tagline { margin: 0.2rem 0 0; opacity: 0.7; }
+
+.lobby-options { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+/* A flex child defaults to `min-width: auto`, which refuses to shrink below its
+   content — so the scrolling choice row pushed the whole page sideways on a
+   390px screen instead of scrolling inside itself. */
+.lobby, .lobby-row, .lobby-choices, .lobby-preview, .lobby-actions { min-width: 0; max-width: 100%; }
+.lobby-preview .region-problem, .lobby-head .tagline { overflow-wrap: anywhere; }
+.lobby-row h2 { margin: 0 0 0.35rem; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+.lobby-choices { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.lobby-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-height: 44px;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 9px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  cursor: pointer;
+}
+.lobby-choice small { font-size: 0.72rem; opacity: 0.6; }
+.lobby-choice small.advice { opacity: 0.5; }
+.lobby-choice[data-advice="heavy"] small.advice { color: #b58a1e; opacity: 0.95; }
+.lobby-choice[aria-pressed="true"] {
+  background: CanvasText;
+  color: Canvas;
+  border-color: CanvasText;
+}
+.lobby-choice[aria-pressed="true"] small { opacity: 0.75; }
+
+.lobby-preview {
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, CanvasText 5%, Canvas);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-start;
+}
+.lobby-preview .region-name { margin: 0; font-size: 1.15rem; }
+.lobby-preview .region-facts { margin: 0; opacity: 0.75; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+.lobby-preview .region-problem { margin: 0; color: #b3402c; font-size: 0.86rem; }
+.lobby-another {
+  margin-top: 0.3rem;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border-radius: 9px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lobby-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.lobby-start, .lobby-continue {
+  min-height: 48px;
+  padding: 0 1.4rem;
+  border: 1px solid CanvasText;
+  border-radius: 10px;
+  background: CanvasText;
+  color: Canvas;
+  font: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.lobby-continue { background: Canvas; color: CanvasText; }
+.lobby-start:disabled { opacity: 0.4; cursor: not-allowed; }
+.lobby-seed { flex-basis: 100%; margin: 0.2rem 0 0; opacity: 0.5; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+.hud-newcity { min-height: 40px; padding: 0 0.8rem; }
+
+@media (max-width: 520px) {
+  .lobby { padding: 1rem 0.8rem 2.5rem; gap: 0.9rem; }
+  .lobby-choices { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 0.2rem; }
+  .lobby-choice { flex: 0 0 auto; }
+}
+
+/* --- inspector ------------------------------------------------------------- */
+
+.hud-inspector {
+  position: absolute;
+  top: 3.4rem;
+  inset-inline-end: 0.6rem;
+  width: min(300px, 46vw);
+  max-height: 55vh;
+  overflow: auto;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, Canvas 92%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  font-size: 0.85rem;
+}
+.hud-inspector h2 { margin: 0 0 0.4rem; font-size: 1rem; }
+.hud-inspector dl { display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.6rem; margin: 0; }
+.hud-inspector dt { opacity: 0.65; }
+.hud-inspector dd { margin: 0; }
+.hud-inspector .bands { margin: 0.5rem 0 0; opacity: 0.75; font-size: 0.78rem; }
+
+@media (max-width: 520px) {
+  /* Phone: every button row SCROLLS rather than wrapping. Wrapping is what
+     turned the panel into 453px of an 844px screen once saves were added —
+     more than half the phone given to controls, with the city squeezed above
+     them. §13.2 asks for a bottom scrollable toolbar, and this is why. */
+  .hud-budget { font-size: 0.8rem; gap: 0.35rem; }
+  .hud-budget .budget-books { flex-basis: 100%; }
+  .hud-toolbar, .hud-overlays, .hud-saves {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .hud-toolbar::-webkit-scrollbar,
+  .hud-overlays::-webkit-scrollbar,
+  .hud-saves::-webkit-scrollbar { display: none; }
+  .hud-panel { gap: 0.3rem; padding: 0.4rem 0.6rem; }
+  .hud-rci { height: 36px; }
+  .hud-alerts { flex-wrap: nowrap; overflow-x: auto; }
+  .hud-legend { flex-wrap: nowrap; overflow-x: auto; }
+  .hud-inspector { width: auto; inset-inline: 0.6rem; }
 }

@@ -1,0 +1,193 @@
+[
+ {
+  "id": "town-of-five-hundred",
+  "category": "growth",
+  "speaker": "sunny",
+  "titleKey": "quest.town-of-five-hundred.title",
+  "textKey": "quest.town-of-five-hundred.text",
+  "available": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 120
+  },
+  "objective": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 500
+  },
+  "reward": {
+   "money": 1500,
+   "rank": 2
+  }
+ },
+ {
+  "id": "industry-or-shops",
+  "category": "character",
+  "speaker": "sunny",
+  "titleKey": "quest.industry-or-shops.title",
+  "textKey": "quest.industry-or-shops.text",
+  "available": {
+   "type": "questDone",
+   "id": "town-of-five-hundred"
+  },
+  "objective": {
+   "type": "always"
+  },
+  "choices": [
+   {
+    "textKey": "quest.industry-or-shops.choice.0",
+    "variable": "economyLean",
+    "value": 1,
+    "reward": {
+     "money": 1200
+    }
+   },
+   {
+    "textKey": "quest.industry-or-shops.choice.1",
+    "variable": "economyLean",
+    "value": 2,
+    "reward": {
+     "money": 1200
+    }
+   }
+  ]
+ },
+ {
+  "id": "the-high-street",
+  "category": "growth",
+  "speaker": "sunny",
+  "titleKey": "quest.the-high-street.title",
+  "textKey": "quest.the-high-street.text",
+  "available": {
+   "type": "all",
+   "of": [
+    {
+     "type": "questDone",
+     "id": "industry-or-shops"
+    },
+    {
+     "type": "variable",
+     "name": "economyLean",
+     "equals": 1
+    }
+   ]
+  },
+  "objective": {
+   "type": "measure",
+   "name": "commercial",
+   "atLeast": 12
+  },
+  "reward": {
+   "money": 2000
+  }
+ },
+ {
+  "id": "the-works",
+  "category": "growth",
+  "speaker": "sunny",
+  "titleKey": "quest.the-works.title",
+  "textKey": "quest.the-works.text",
+  "available": {
+   "type": "all",
+   "of": [
+    {
+     "type": "questDone",
+     "id": "industry-or-shops"
+    },
+    {
+     "type": "variable",
+     "name": "economyLean",
+     "equals": 2
+    }
+   ]
+  },
+  "objective": {
+   "type": "measure",
+   "name": "industrial",
+   "atLeast": 12
+  },
+  "reward": {
+   "money": 2000
+  }
+ },
+ {
+  "id": "city-of-two-thousand",
+  "category": "growth",
+  "speaker": "sunny",
+  "titleKey": "quest.city-of-two-thousand.title",
+  "textKey": "quest.city-of-two-thousand.text",
+  "available": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 900
+  },
+  "objective": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 2000
+  },
+  "reward": {
+   "money": 4000,
+   "rank": 3
+  }
+ },
+ {
+  "id": "keep-the-lights-on",
+  "category": "service",
+  "speaker": "sunny",
+  "titleKey": "quest.keep-the-lights-on.title",
+  "textKey": "quest.keep-the-lights-on.text",
+  "available": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 700
+  },
+  "objective": {
+   "type": "measure",
+   "name": "poweredTiles",
+   "atLeast": 120
+  },
+  "reward": {
+   "money": 1500
+  }
+ },
+ {
+  "id": "unclog-the-streets",
+  "category": "environmental",
+  "speaker": "sunny",
+  "titleKey": "quest.unclog-the-streets.title",
+  "textKey": "quest.unclog-the-streets.text",
+  "available": {
+   "type": "measure",
+   "name": "congestedTiles",
+   "atLeast": 40
+  },
+  "objective": {
+   "type": "measure",
+   "name": "congestedTiles",
+   "atMost": 15
+  },
+  "reward": {
+   "money": 1800
+  }
+ },
+ {
+  "id": "city-of-five-thousand",
+  "category": "growth",
+  "speaker": "sunny",
+  "titleKey": "quest.city-of-five-thousand.title",
+  "textKey": "quest.city-of-five-thousand.text",
+  "available": {
+   "type": "questDone",
+   "id": "city-of-two-thousand"
+  },
+  "objective": {
+   "type": "measure",
+   "name": "population",
+   "atLeast": 5000
+  },
+  "reward": {
+   "money": 6000
+  }
+ }
+]

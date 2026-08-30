@@ -72,15 +72,31 @@ export function describeRegion(state) {
   relief = highest - lowest;
 
   var islands = countIslands(state);
+  // How big the SECOND landmass is against the first. A coast with a rock
+  // offshore counts two landmasses and is not "islands"; two halves of a
+  // divided region are. Measured, not guessed — see the dev-log for the run.
+  var secondShare = islands.length >= 2 ? idiv(islands[1] * 100, islands[0]) : 0;
   var waterPercent = idiv(water * 100, total);
   var forestPercent = idiv(forest * 100, total);
   var rockPercent = idiv(rock * 100, total);
 
+  // Water FIRST, landmass count second.
+  //
+  // The old ladder tested the landmass count before it tested whether there was
+  // any water, so a river crossing a plain split the land in two and the region
+  // was named "islands". Measured over 400 regions, 80 per water style: the
+  // river style was named islands 62 times in 80 and archipelago 17 — a valley
+  // never once. The coastal style was named islands more often than coast.
+  //
+  // Nothing had ever rendered the name, so nobody saw it (P18 audit). It went
+  // on screen with the new-game screen, and these are the thresholds that put
+  // river at 74/80 valley and coastal at 54/80 coast.
   var shape = "plain";
-  if (islands.length >= 4) shape = "archipelago";
-  else if (islands.length >= 2) shape = "islands";
-  else if (waterPercent >= 30) shape = "coast";
-  else if (waterPercent >= 8) shape = "valley";
+  if (waterPercent < 6) shape = "plain";
+  else if (waterPercent < 25) shape = "valley";
+  else if (islands.length >= 4 && secondShare >= 15) shape = "archipelago";
+  else if (islands.length >= 2 && secondShare >= 25) shape = "islands";
+  else shape = "coast";
 
   var relief_word = relief > 190 ? "mountainous" : relief > 110 ? "rolling" : "level";
 
@@ -95,6 +111,7 @@ export function describeRegion(state) {
     relief: relief_word,
     feature: feature,
     islands: islands.length,
+    secondShare: secondShare,
     waterPercent: waterPercent,
     forestPercent: forestPercent,
     rockPercent: rockPercent,

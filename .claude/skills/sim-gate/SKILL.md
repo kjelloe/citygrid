@@ -18,8 +18,29 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Map sweep** | `node tools/mapsweep.mjs [count] [size] [seats]` | Is generation fair? Acceptance rate and district spread. `MODE=`, `WATER=`, `STYLE=` |
 | **Balance sweep** | *not built yet — Wave 3* | Is the game fair? One row per game |
 | **Client smoke** | `node tools/client_smoke.mjs` | Does the real client draw a real city? Page errors, draw calls, instancing |
-| **Screenshot** | `STYLE=… SPAN=… node tools/screenshot.mjs out.png [seed] [years]` | What does it actually look like? |
+| **Screenshot** | `STYLE=… SPAN=… node tools/screenshot.mjs out.png [seed] [years]` | What does the renderer look like? |
+| **Play gate** | `node tools/play_smoke.mjs` | Can a person actually build, on a mouse AND on a phone? |
+| **UI gate** | `node tools/ui_smoke.mjs` | Does every button do what it claims, hit-tested? Does every overlay render, and render *differently*? |
+| **Save gate** | `node tools/save_smoke.mjs` | Does a city survive a closed tab, hash for hash? |
+| **MVP acceptance** | `node tools/mvp_acceptance.mjs` | All thirteen §24 criteria, desktop and phone |
+| **Disaster soak** | `node tools/disaster_soak.mjs [games] [years]` | Does every disaster fire, and leave a repairable city? |
+| **Traffic gate** | `node tools/traffic_gate.mjs [games] [years]` | Does routing fit the month tick? Does congestion track the city or the dice? |
+| **Balance sweep** | `node tools/sim_sweep.mjs [games] [years]` | 200 games × 4 configurations; writes reports/balance-eraN.md |
+| **Play shot** | `node tools/play_shot.mjs` | What does the real page look like, both viewports? |
 | **Style sheet** | `node tools/style-sheet.mjs` | All three styles from one city, side by side |
+| **Where is it?** | `ZONE=residential node tools/where.mjs` | The densest window of a zone, the zone mix, the paved fraction |
+
+**A long-run soak measures whoever played it.** If a gate runs the deputy for
+25 years and reports the end state, it is measuring the deputy — an "expand"
+heuristic that will not rebuild a lost power plant. Say whose competence a
+measurement is about, and when a slow decline follows a shock, run the same seed
+with the shock switched OFF before blaming it (ruling 025).
+
+Frame the shot with `tools/where.mjs` first. Four screenshots were once taken at
+spots with no buildings in them, which proves nothing and wastes a round.
+
+**Plain is the shipping style** (ruling 022) — check it first and always; `pixel`
+and `painted` are the seam and only need to still render.
 
 Anything visual ends with a screenshot **that you then look at**. Four rendering
 bugs in slice 1.2 — a backface-culled ground, terrain seams, pipes drawn above

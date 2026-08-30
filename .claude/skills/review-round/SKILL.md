@@ -19,7 +19,7 @@ you changed — or state plainly that nothing needed changing, which is a valid 
 | `dev-prompts.md` | The user's words, verbatim | A prompt carrying a product decision is not appended |
 | `dev-questions.md` | Questions, open ones at the bottom | A question is answered but stays in the open section |
 | `dev-log.md` | What happened, with numbers | An entry says "passed" instead of the measurement |
-| `specs/art-direction.md` | Visual language | The style changes, or §3 is still empty after the probe |
+| `specs/art-direction.md` | Visual language | Any palette, lighting or silhouette change — §3 quotes real hex values and `test/docs.test.js` compares them against `palettes.js` |
 | `CLAUDE.md` | Working rules | A rule is learned the hard way and stays only in someone's head |
 | `.claude/skills/` | Repeatable workflows | A workflow changes and the skill still describes the old one |
 | Memory | Durable facts about the user and the project | A preference is stated and only survives in the transcript |
@@ -27,11 +27,15 @@ you changed — or state plainly that nothing needed changing, which is a valid 
 ## 2. The checks
 
 **Docs**
-- Does `plan-v1.md` reflect which slices are actually done?
+- Does `plan-v1.md` reflect which slices are actually done? **Check the gate, not the tick** — 0.4
+  was marked done for months with `test/fixtures/empty.json` as its gate and an empty
+  `test/fixtures/` directory. A slice's "done when" column is a claim, and claims are checkable.
+- Does a rule in `CLAUDE.md` describe something that is actually true? "Hashed fields are listed in
+  two places" described one place for the life of the project.
 - Did any slice change behaviour that `specs/gamedesign.md` still describes the old way?
 - Are the budgets in `specs/plan.md` §3.8 and §6 still predictions, or have they been measured? A
   measured number replaces a predicted one and names its era and commit.
-- Is `specs/art-direction.md` §3 still empty? Nothing in the content lane may start before it.
+- Did a palette or lighting value change without §3 changing with it? The two are compared by test, but the *prose* around them can still go stale.
 
 **Rulings**
 - Was a decision taken in conversation without a file in `specs/rulings/`? Write it, with its
@@ -50,7 +54,52 @@ you changed — or state plainly that nothing needed changing, which is a valid 
 - Is any gate in `plan-v1.md` not actually runnable yet? A gate that cannot be run is a wish.
 - Does the saturated fixture still represent a realistic mature city, or has development changed
   under it?
+- **Is the CONTENT at the volume the slice asked for?** A shortfall is invisible in a green suite —
+  content that has not been written looks exactly like content whose conditions have not been met.
+  Count it (`test/quests.test.js` counts quests per category against slice 4.3).
+- **Does a data file carry prose where it should carry an i18n key?** `t()` returns its own
+  argument on a miss, so English ships as its own translation and nothing goes red. The check is a
+  test that refuses the raw field, not a test that the key resolves.
 - Do the doc-consistency tests still pass? `test/docs.test.js` is what keeps this checklist honest.
+
+**Reachability** — the sweep that found the N11, N12 and N13 omissions. Two of the four are tests
+now; run all four:
+
+```sh
+# 1. Commands with a constant but no handler, or a handler but no control (ruling 026).
+# 2. i18n keys the catalogue promises and no screen keeps (ruling 027).
+node --test test/omissions.test.js test/reachability.test.js
+
+# 3. Data the engine mirrors and nothing reads.
+grep -o '"[a-zA-Z]*"' data/balance.json | sort -u   # then grep engine/ for each suspicious key
+
+# 4. Exported functions with no importer.
+grep -rn '^export function' client/ engine/
+
+# 5. Dynamic imports of files that do not exist. Static imports fail at load;
+#    a dynamic one fails only on the path that reaches it, which for a debug
+#    flag or an error screen may be never. Covered by test/omissions.test.js.
+grep -rn 'import(' client/
+```
+
+**Audit the slice you just wrote, not only the project around it.** Two of N15's own defects
+survived its gates because the gates checked that the feature existed, not that it kept working:
+the minimap painted the right picture once and never again, and the code written to honour
+ruling 028 broke it. Ask of anything with a cache: **what invalidates this, and is that every
+path that changes the thing?**
+
+**An ARIA role is part of this sweep** (ruling 028). A role that names a keyboard pattern is a
+promise assistive technology repeats to the user, so an unimplemented one is worse than no role:
+`role="toolbar"` on four rows told people to press arrow keys that did nothing for nine slices.
+
+The question behind all four: **what can the engine do that the game cannot?**
+It has never once come back empty. `CMD_SET_TAX` sat unreachable for four slices;
+twelve buildings until N11; three balanced difficulties until N12; every refusal
+in the game's history said "0 tiles" until N13. None of these breaks a test on its
+own, because a feature that is absent throws no error and `t()` returns its own key.
+
+When one of the two tests goes red, the fix is **build the thing or list it with its slice** —
+never widen the allowlist to make the red go away.
 
 **Skills**
 - Did a workflow change? Update the skill in the same breath.

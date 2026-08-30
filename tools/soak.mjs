@@ -23,6 +23,9 @@ import "../engine/utilities.js";
 import "../engine/economy.js";
 import "../engine/civic.js";
 import "../engine/fire.js";
+import "../engine/disasters.js";
+import "../engine/traffic.js";
+import "../engine/history.js";
 
 const DEFAULT_SEEDS = [1001, 1002, 1003, 1004, 1005];
 

@@ -9,6 +9,25 @@
 // and at this camera distance they are indistinguishable. That is what makes a
 // city of detailed buildings affordable.
 
+// How hard the baked face shading bites, set per style before geometry is
+// built. This is the reason the three candidates looked alike: the shading is
+// baked into every vertex, so it dominates whatever the lights afterwards do.
+// A style that wants soft light has to bake soft shading too.
+//
+//   1.0  the shades below, as written    (painted: strong, directional)
+//   1.3  exaggerated                     (pixel: unlit, so the bake IS the light)
+//   0.4  compressed towards flat         (plain: soft, ambient, diorama)
+let contrast = 1;
+
+export function setFaceContrast(value) {
+  contrast = value;
+}
+
+/** Pulls a shade towards white by the style's contrast. */
+export function shade(value) {
+  return 1 - (1 - value) * contrast;
+}
+
 // Face shades, matched to building-kit so detail sits in the same light.
 const TOP = 1.0;
 const SOUTH = 0.88;
@@ -18,7 +37,7 @@ const WEST = 0.62;
 
 const EPS = 0.006;
 
-export function pushTri(parts, a, b, c, shade) {
+export function pushTri(parts, a, b, c, shadeValue) {
   const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
   const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
   let nx = uy * vz - uz * vy;
@@ -28,7 +47,8 @@ export function pushTri(parts, a, b, c, shade) {
   for (const v of [a, b, c]) {
     parts.position.push(v[0], v[1], v[2]);
     parts.normal.push(nx / len, ny / len, nz / len);
-    parts.colour.push(shade, shade, shade);
+    const s = 1 - (1 - shadeValue) * contrast;
+    parts.colour.push(s, s, s);
   }
 }
 

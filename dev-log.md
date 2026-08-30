@@ -586,3 +586,1035 @@ visual ends with a screenshot **that you then look at** — four rendering bugs
 in slice 1.2 were invisible to every test and obvious in the picture.
 
 Suite 283 tests, green twice.
+
+## N1 — level of detail with a configurable triangle budget
+
+`setBudget(triangles)`, default 80,000. The policy that spends it lives in
+`client/render/lod.js`.
+
+Two gates. **Resolvability** drops detail nobody can see whatever the budget
+allows — below 42 pixels a tile there are no props, below 20 no road markings,
+below 13 a building is a box. **Budget** then steps down a fixed ladder until
+the frame fits: props, markings, poles, shadows, building detail, tree detail,
+silhouettes, trees.
+
+The budget is enforced against `renderer.info.render.triangles` after an actual
+render, not against the estimate. See ruling 019 for why — the cost model was
+wrong four separate times, the last by 18,220 triangles because a tier-0 tree
+was priced at zero.
+
+Measured on a saturated 128x128 sixteen-seat region, 25 years, plain:
+
+| span | tile px | triangles | plan |
+| --- | --- | --- | --- |
+| 12 | 60 | 19,442 | props dropped for budget |
+| 25 | 29 | 61,164 | detail not resolvable |
+| 40 | 18 | 54,354 | silhouettes only for budget |
+| 70 | 10 | 68,152 | trees dropped for budget |
+| 100 | 7 | 68,980 | buildings only |
+| 180 | 5 | 68,980 | buildings only |
+
+Every zoom under 80,000, `rebuilds=0` throughout — the estimate is now close
+enough that the correction loop never has to fire. Before the tree-cost fix,
+span 40 drew 103,290 against an estimate of 76,006.
+
+Sweeping the budget at fixed zoom (span 25) shows it is really a control:
+25k gives boxes on ground, 45k drops shadows, 80k keeps shape and shadows.
+
+## Soft lighting for plain
+
+Kjell: *"all three candidates looked very similar"*, with two more Transport
+World references showing house detail.
+
+The lighting was not the whole cause and changing it alone would not have
+worked. Face shading is baked into every vertex at build time, so it dominates
+the lights — three styles sharing one bake are three colour schemes. Contrast
+is now a style property (ruling 020): plain 0.65, painted 1.0, pixel 1.3.
+
+Plain's light was rebuilt as a ratio rather than a level: key 1.9 / fill 1.2
+became key 1.15 / fill 1.25, the sun raised from 120 to 150 so shadows sit
+under buildings, and the shadow blurred (radius 5) and paled (intensity 0.5).
+Painted keeps its hard low sun and now says so explicitly.
+
+A first attempt at contrast 0.4 with fill 2.15 was wrong and is recorded as
+such in the source: it washed the buildings to flat grey and roofs stopped
+reading as separate from walls.
+
+### Still open, found while shooting these
+
+Two things the reference has that we do not, both outside this slice:
+
+- **Roofs share the wall's hue.** `ROOF` is a 0.44 multiplier on the instance
+  colour, so a cream house gets a cream-brown roof. The reference gets much of
+  its charm from roofs in terracotta, red and slate against cream walls. Fixing
+  it properly means splitting a building into two instanced meshes, walls and
+  roof, with separate colours.
+- **The generated city is mostly road.** At several framings on a 96x96 region
+  there were no buildings on screen at all — only asphalt, grass, trees and
+  lamp posts. That is deputy and development balance, not rendering, and no
+  lighting change will make such a frame resemble the reference.
+
+## Walls and roof as separate meshes, and three things found on the way
+
+Buildings are now two instanced meshes sharing one matrix (ruling 021). Roof
+colours are a per-style palette split into house tiles and flat felt greys.
+
+Three separate findings came out of shooting this, in descending order of how
+much they were hurting the picture:
+
+**1. Ground colours were being applied twice.** `make()` set the material colour
+AND `push()` set the instance colour, and three multiplies the two — so every
+road, marking, wire, pipe and ruin drew at the SQUARE of its palette colour. A
+mid-grey road (`0x6f7278`, 0.44) rendered at 0.19. This is why the ground read
+as near-black asphalt in every style and every screenshot so far, and why a city
+that is 54% road looked like a car park. The palette had been right all along.
+
+**2. Roof hue could not be reached by darkening.** See ruling 021.
+
+**3. The reference's roofs are stepped, not smooth.** Its hipped roofs terrace
+into three or four bands. A smooth prism at this camera angle reads as a wedge,
+which is most of why ours looked like massing studies beside it.
+`addSteppedGable` replaces the prism at FULL tier only — at SHAPE the steps are
+smaller than a pixel and `addGable` does the job for a fifth of the cost.
+
+Also added: a garden plot under every house and civic building, which is what
+stops a suburb reading as buildings dropped onto a road surface.
+
+Two colour choices were made and then unmade by looking at the render: tan and
+brown house roofs (too close to the cream walls to be worth splitting for) and
+full-scatter roof colour (terracotta slid into maroon; roofs now scatter at half
+the rate walls do).
+
+### Measured after all of it
+
+| span | tile px | triangles | plan |
+| --- | --- | --- | --- |
+| 9 | 80 | 14,662 | props dropped for budget |
+| 25 | 29 | 61,498 | detail not resolvable |
+| 40 | 18 | 55,302 | silhouettes only for budget |
+| 70 | 10 | 69,538 | trees dropped for budget |
+| 100 | 7 | 70,366 | buildings only |
+| 180 | 5 | 70,366 | buildings only |
+
+Every zoom inside the 80k budget, `rebuilds=0`. Draw calls 27 → 42.
+301 tests pass; `tools/client_smoke.mjs` passes on all three styles.
+
+### New tool
+
+`tools/where.mjs` reports where the city actually is — the densest window of a
+given zone, plus the zone mix and the paved fraction. Written after framing four
+screenshots at spots with no buildings in them. On the standard fixture:
+**923 buildings (629 residential, 104 commercial, 126 industrial) and 54% of all
+tiles paved.**
+
+### Still open
+
+- **54% of the map is road.** That is the largest remaining gap to the
+  reference, and it is deputy and development balance, not rendering.
+- Grass is a single flat green. The reference scatters flowers and two-tone
+  patches through it.
+- Chimneys take the wall colour and read as tan posts. The reference's are
+  brick.
+
+## N2 — the style decision
+
+P13: **plain ships.** *"Soft cool light, bright cosy palette, shadows. The
+cheapest to produce and the most legible."* Ruling 022.
+
+`specs/art-direction.md` §3 is written — no longer intentions but the real
+values: every palette hex, the lighting rig with its nine settings, silhouette
+rules per category, and the height, value and detail ladders. The old docs test
+that blocked the content lane is replaced by one that compares the documented
+palette against `palettes.js`, so the specification and the renderer cannot
+drift apart.
+
+`pixel` and `painted` stay as the RenderStyle seam ruling 005 asked for. They
+receive no art investment.
+
+**Lane C1 is unblocked.** And because plain has no atlas, `asset-list.md` becomes
+a list of parameters and shapes rather than of drawings — which is most of why
+it was chosen.
+
+## N3 — input and tools
+
+The renderer drew a city nobody could touch. Now a person can play it:
+`index.html` boots straight into a session with a toolbar, a cost readout, a
+clock and undo.
+
+**The split is deliberate.** `client/input/gestures.js` and
+`client/input/runs.js` are pure and hold everything that is actually hard;
+`controller.js` is listeners and coordinate conversion. Every input bug worth
+naming is in the pure half and is tested there without a browser:
+
+- a tap read as a drag, so tapping the map pans it a pixel
+- a pinch that also pans, so zooming slides the city away
+- lifting one finger of two, and the map leaping by half the pinch width
+- a twist that rotates every frame instead of once per quarter turn
+- a stroke left open by a pointer the browser took away
+
+One finger paints when a tool is selected and pans when none is; two fingers are
+always the camera. A drag is coalesced into **one** run-length encoded command,
+and sampled pointer events are filled in with Bresenham — without that a fast
+drag leaves a road with holes the player cannot see until traffic will not flow.
+
+Cost preview calls the engine's `price()`, which stages the real command and
+throws the transaction away. A cost computed from a table in the client would be
+a second implementation of the pricing rules, and the two would drift.
+
+### The gate
+
+`tools/play_smoke.mjs` drives `index.html` with real pointer events at real
+coordinates, on a 1280×720 mouse viewport and a 390×844 touch one. It asserts on
+state, not pixels, and deliberately does not call the controller's methods — a
+gate that pokes the API proves the API works, not that a hand on a screen
+reaches it.
+
+All 15 checks pass on both viewports: a dragged road appears (13 tiles) with no
+holes, undo removes the whole drag rather than one tile, a dragged rectangle
+zones 21 tiles, the camera rotates and pans, and road + zoning + plant + pump
+grows the city from 2 buildings to 4 with population 16.
+
+### Three things found by the gate
+
+1. **`stop()` disposed the controller.** The harness paused the clock with
+   `stop()` and every subsequent check failed, because `stop()` also removed
+   every listener. The session now has `pause()`/`resume()` separate from
+   teardown.
+2. **The pan assertion tested the wrong axis.** It checked `targetX` after the
+   camera had been rotated a quarter turn, at which point a horizontal drag
+   moves `targetZ`. The pan had worked all along. It now asserts on distance.
+3. **A city with no fire cover dies.** The growth check first ran 1200 ticks and
+   failed at `1 → 1 buildings`. Traced: growth is fine — the first lot develops
+   at tick 12 and there are five `developed` events — but at tick 502 a fire
+   takes the only power plant, 59 `powerShortfall` events follow, and the last
+   house is abandoned by tick 540. That is a city with no fire station and
+   nobody rebuilding, which is N6 and N8's business, not this slice's. The gate
+   now measures growth over 300 ticks, which is the question it is actually
+   asking. **Logged as a finding**, not papered over.
+
+### Also
+
+`tools/play_shot.mjs` shoots the playable page itself on both viewports —
+`tools/screenshot.mjs` shoots the renderer through a harness, and both are
+wanted. `reports/play-desktop.png` shows pop 16 in year 2 with a house grown
+beside the road it was zoned along.
+
+Suite: 326 tests, green twice.
+
+## N4 — HUD and overlays
+
+The simulation was running where nobody could see it. Now the page shows a top
+bar, demand, alerts, a grouped build toolbar, an inspector and all eleven
+overlays of `gamedesign.md` §16.
+
+**Model/view split**, as `plan.md` §7.1 asks for. `hud-model`, `rci-model`,
+`alerts-model`, `inspector-model` and `overlays` are pure and tested without a
+browser; `hud.js` turns their output into elements and holds no opinion about
+what is allowed — a button that greys itself out on a rule it invented is a rule
+nobody else enforces.
+
+**The alert area** collapses repeats into one line with a count, ranks by
+severity *before* capping at six, and only reports whitelisted event kinds
+(ruling 023). The numbers that forced this are measured: one 1200-tick run of
+the standard fixture produced 59 `powerShortfall` and 100 `budget` events
+against the single `fireStarted` that mattered.
+
+**Overlays** are banded by pure functions over state. Grey means not applicable
+and is never painted, so the sea is not amber for crime. Every band carries a
+colour, a mark drawn on the map, and a word in the legend and the inspector —
+§16 and §30 both say never colour alone, and a legend under the map does not
+help someone comparing two tiles in it. Power reads the powered FLAG rather than
+the wire layer, which is the difference between a diagnostic and a decoration: a
+wire whose plant burnt down is precisely the state the overlay exists to show.
+
+### The gate
+
+`tools/ui_smoke.mjs`, 54 checks. Every toolbar button is clicked **by
+coordinate** — a hit test, not a handler call, because a button under another
+element or too small for a thumb passes an API test and fails a person. Each is
+checked for a 44px target, for selecting the tool it names, and for reporting
+its own pressed state. Undo undoes; speed changes speed. Each of the eleven
+overlays renders in at most four extra draw calls, and the eleven produce
+**eleven distinct images** — an overlay that renders a plausible picture of the
+wrong field is the failure that matters, and identical output is the cheap half
+of catching it. The inspector opens on tap. The phone layout does not scroll
+sideways and leaves 59% of the screen to the city.
+
+### What the gate cost to get green
+
+Three failures, all in the fixture rather than in the UI, and all found because
+the gate insisted the city be worth photographing before it photographed it:
+
+1. **The pipe had no source.** The pump is 1×1 and was placed at x=21 with the
+   pipe spine at x=23 — two tiles short of its own network. The coal plant is
+   3×3 and reached its spine by accident of size, which made the failure look
+   like a power problem when it was a water one.
+2. **`supplyReach` is 4**, and the wire ran at x=10 with the pipe at x=20. No
+   tile is within 4 of both, so no lot could ever develop, whatever else was
+   right.
+3. **Two components per network.** With both spines carrying both networks but
+   not joined to each other, one component held the plant and no water and the
+   other held the pump and no power. `state.supply` said so plainly —
+   `components: 2, served: 1, starved: 1` — which is worth reading before
+   blaming the reach. Joined, the fixture goes to 26 buildings and 504
+   residents.
+
+Also: N4's HUD rewrite moved the toolbar out of `#toolbar`, which broke N3's
+gate. Selectors fixed rather than the gate left stale.
+
+Suite 354 tests green twice; `client_smoke`, `play_smoke` and `ui_smoke` all
+pass. Overlay screenshots in `reports/overlays/`, phone HUD in
+`reports/hud-phone.png`.
+
+## N5–N10 — the rest of the singleplayer MVP
+
+Built unattended on 2026-08-29 (P15). Decisions taken without asking are
+recorded in **`playtest-notes.md`**, each with what it was, why, and the specific
+thing to check when playing that would show I chose wrong.
+
+### N5 — save and load
+
+Three manual slots and a separate autosave, once per game *year* of ticks.
+`tools/save_smoke.mjs` builds a city, saves, **closes the page**, opens a fresh
+one against the same origin, loads, and compares state hashes. Export/import
+round-trips to the same hash; a foreign file is refused.
+
+### N6 — seven disasters
+
+All of §12's majors: wildfire, earthquake, flood, storm, industrial explosion,
+blackout, water contamination. One at a time, each telegraphed a month ahead
+naming its place. Frequency comes from the existing `difficulty.disasterOneIn`
+rather than a new knob. Damage goes through existing systems — a wildfire
+ignites through `fire.js`, an explosion raises pollution, a blackout clears the
+powered flag.
+
+`tools/disaster_soak.mjs`, 200 games × 25 years: 356 strikes, every type fired
+(44–55 each), no city left unrepairable at the moment of damage.
+
+**The judgement in that gate is which moment it measures.** The first version
+measured year 25 and failed three cities. A control run — same seed, same
+deputy, disasters off — confirmed the disaster caused it. But what it caused was
+a slow economic decline that a dumb AI never pulled out of, and the gate's words
+are "leaves a city that **play can** repair". Measuring the deputy's competence
+under the name of disaster recoverability would let a real economy bug hide
+behind a disaster tuning knob. So recoverability is measured the tick after each
+strike, and those three runs are **still reported every run** as an economy
+finding for N8.
+
+### N7 — traffic
+
+The system the plan flagged as expensive. A Dijkstra per origin/destination pair
+is the textbook answer and far too slow, so it is inverted: ONE multi-source BFS
+from every job builds a distance field over the road network, then each home
+walks downhill through it laying load.
+
+**0.70ms median** on a saturated 128×128 with 8,899 road tiles, against an 8ms
+share of the 16ms month tick. Across 200 games congestion correlates with
+people-per-road at **r=0.547** and with the seed at **r=-0.075** — it tracks the
+city, not the dice.
+
+Honest limitation: everyone takes the shortest route even when it is full. There
+is no rerouting around congestion.
+
+Also measured and left alone: **161 of 629 homes** in the saturated fixture have
+no road route to any job. The traffic model correctly reports it
+(`noRouteToWork`); it is the deputy's road-building and development's
+willingness to build unreachable houses. Fixing it inside traffic would hide it.
+
+### N8 — era 1
+
+`tools/sim_sweep.mjs`, 200 games across four configurations. The report is
+`reports/balance-era1.md`.
+
+- **Pollution average — fixed.** It divided by the whole region instead of by
+  developed land, so it read 0 on almost every map. One word; now 8.
+- **Runaway industrial demand — settled.** p95 294 against a cap of 1500.
+- **Runaway treasuries — accepted, not fixed.** Median 1.9M, p95 3.8M from a
+  §20,000 start.
+
+The obvious lever for the treasury debt — per-tile wire and pipe upkeep —
+**re-measured a failure the era-0 note had already recorded**: p25 treasury to 0,
+p25 population 647 → 187. Reverted. `data/balance.json`'s note now records that
+it has been tried and rejected twice, with numbers both times, so a third
+attempt starts from the evidence.
+
+`test/rules.test.js` no longer pins era 0. It now demands that every era above 0
+has a sweep report in `reports/` justifying it and names the sweep in its note —
+an era bumped without evidence is a number somebody liked the look of.
+
+### N9 — advisor and quests
+
+Quests are pure JSON over a **closed** condition language: a fixed vocabulary
+over 16 named measurements, no expressions, no callbacks from data. An open
+language in a data file is a way to run code you did not write. The catalogue is
+validated at load, so a broken quest is a startup error rather than a silent
+no-op at hour three.
+
+13 quests authored across tutorial, growth, service, environmental and character
+categories, including a branch whose choice writes a variable that gates later
+quests — the slice's "a choice changes simulation variables and later dialogue".
+
+### N10 — 13 of 13 MVP criteria
+
+`tools/mvp_acceptance.mjs` checks every one of `gamedesign.md` §24 against the
+real page, on desktop and a 390×844 phone viewport, driving pointer events at
+coordinates rather than calling functions.
+
+**It immediately found a real bug.** Criterion 12 failed: `disaster`, `traffic`
+and `quests` had been added to `createState`, `copyState` and the hash but NOT to
+the save projection — the five-places rule in CLAUDE.md, and I still missed one
+three slices running. The save tests did not catch it because their fixture had
+all three at their defaults, so they round-tripped to defaults and matched. The
+test now sets every nested record to a non-default value first.
+
+Two criteria are honestly partial and the script prints so rather than quietly
+passing: whether the loop is *satisfying*, and whether touch is *comfortable*.
+
+### State of the suite
+
+406 tests, green twice. Five browser gates all pass: `client_smoke`,
+`play_smoke`, `ui_smoke`, `save_smoke`, `mvp_acceptance`. Two soaks:
+`disaster_soak` (200 games), `sim_sweep` (800 games).
+
+
+---
+
+## 2026-08-29 — Slice N11: the game becomes playable (P16, P17)
+
+P16 asked for an omissions audit. It found one blocking omission and a gate that
+had been hiding it.
+
+### What was missing
+
+`client/ui/hud.js` had **no building tool**. The toolbar offered Inspect, three
+zone tools, de-zone, road, wire, pipe and bulldoze — nine controls, none of
+which places a building. `client/input/tools.js` had defined a `building` tool
+since N3 and nothing surfaced it. Development requires both `FLAG_POWERED` and
+`FLAG_WATERED`, and the only sources of either are `coalPlant`/`gasPlant`/… and
+`waterPump`/`groundwaterPump`/… — so **a human player could zone and pave
+forever and nothing would ever develop**. Twelve buildings were in the
+catalogue; zero were reachable.
+
+`tools/mvp_acceptance.mjs` reported **13 of 13** anyway, because criteria 3 and 9
+issued `CMD_PLACE_BUILDING` through `apply()` (lines 87, 88, 216, 220). Both
+criteria are about the interface. The interface was missing. A gate that reaches
+past the interface cannot see an interface that is not there — it reports the
+same green it would report if everything were fine. **Ruling 026.**
+
+Three smaller omissions, found in the same audit: the HUD was hardcoded English
+(0 of 7 `client/ui/*.js` imported `i18n.js`, against answer A4 and ruling 008,
+while `data/i18n/{en,no}.json` held 69 unused keys each); `CMD_SET_TAX` had
+existed since the economy slice with **nothing in the client to send it**, so the
+tax rate was a constant; and `traffic.js`'s `congestion` and `noRouteToWork`
+events were not on the alert whitelist, so the traffic system shipped invisible.
+
+### What was built
+
+**The build menu.** `client/ui/build-model.js` — a pure projection of the
+catalogue into categories (power, water, service, amenity — the order a new
+mayor needs them) with the cheapest first inside each. Rendered as its own
+toolbar row. Every button quotes `buildingCost(state, def)`, the same helper the
+reducer now charges with, so a difficulty that makes everything 20% dearer
+cannot leave the toolbar advertising the list price.
+
+**The footprint ghost.** A building anchors at its top-left tile and grows right
+and down, so a 3×3 plant's ghost now covers nine tiles. A one-tile ghost teaches
+the footprint by refusal.
+
+**The budget row.** `client/ui/budget-model.js` reads `budgetFor()` — the same
+function the monthly pass settles with, so the panel cannot quote a number the
+books disagree with. A tax slider, the rate, and income/upkeep/net.
+
+**i18n.** Every model now hands the view a *key*; `hud.js` is the only place a
+key becomes words. 158 new keys in both catalogues, 227 each. Two tests keep it
+honest: one collects every key the models can emit plus every `t("literal")` in
+`client/` and checks both catalogues; one refuses a string literal assigned to
+`textContent` or `.title` in `hud.js`.
+
+### Measured
+
+- **`./test.sh` 415 tests, green twice.** Was 400.
+- **`tools/mvp_acceptance.mjs` 13 of 13**, with criteria 3 and 9 now driven by
+  `placeByPointer()`: focus the camera, click the toolbar button, click the
+  ground, then verify the building is at the tile that was clicked. Criterion 7
+  pulls the tax slider — **7% → 10%, read back from `state.tax`**.
+- **`tools/ui_smoke.mjs` 90 checks** (was 54). Every one of the twelve building
+  buttons is hit-tested by coordinate and reports its own `data-def`.
+- `tools/save_smoke.mjs` 15 checks, `tools/play_smoke.mjs` 10 checks, both green.
+
+### What failed on the way
+
+**The build menu covered the map.** Twelve buttons appended to the tool row made
+`.hud-panel` **293 px of a 720 px desktop viewport**, and criteria 3 and 9 failed
+with "not placed" — `document.elementFromPoint()` at the projected tile centre
+returned `DIV.hud-rci`. The click was landing on the HUD. The rows had wrapped
+since N4 and nobody had noticed because there had never been twenty buttons.
+Fixed by making every button row scroll horizontally at *every* width instead of
+wrapping, which was already the phone behaviour; the panel is bounded now
+however far the catalogue grows.
+
+**Then the buildings were off the right edge.** With one scrolling row, the
+water pump sat past 1280 px with no affordance — the fix for "no way to build a
+plant" had become "no way to find the plant". The build menu moved to a row of
+its own, carrying the `hud-toolbar` class so existing selectors still cover it.
+
+**`ui_smoke` broke on `data-tool="building"`** — twelve buttons share the tool
+and are told apart by `data-def`. Its hit-test loop now keys on `data-id`.
+
+### Open for the playtest
+
+The panel is **371 px of a 720 px desktop window** (51%) and **343 px of 844 px
+on the phone** (41%, against the gate's 45% line). Both pass; the desktop number
+is worse than the phone one and is a short-window problem. Recorded as **Q21**
+rather than trimmed, because every row on it is something §13.1 asks for and
+which one goes is Kjell's call, not mine.
+
+Two alert kinds were added to the whitelist while it was open — `congestion` and
+`noRouteToWork` — so N7's traffic system is finally visible to the player. Small
+scope addition, noted here rather than smuggled.
+
+---
+
+## 2026-08-29 — The P18 audit: what the §24 gate does not ask about
+
+A second omissions pass, after N11. The finding is not another missing button —
+it is that **the §24 criteria describe playing one city, and the game can only
+ever play one city.**
+
+### Verified, with the command that shows it
+
+- **No new-game screen.** `client/main.js` reads `?seed`, `?size`, `?join`,
+  `?lang`, `?debug` and passes seed and size to `startGame`. Nothing else.
+  Difficulty is never passed, so `defaultOptions` returns `DIFFICULTY_STEADY`
+  every time — **relaxed and demanding are balanced, measured across 200 games
+  each in era 1, and unreachable.** Terrain style, water style and disasters-on
+  are likewise engine options with no way to set them. There is no restart:
+  loading a save is the only way to change city.
+- **No settings screen.** `data/i18n/en.json` carries `settings.sound`,
+  `settings.volume.*`, `settings.language`, `settings.style`,
+  `settings.highContrast`, `settings.reducedEffects` and the five `menu.*` keys.
+  None is rendered anywhere. The locale is `?lang=no` only.
+- **Quest text is not localised.** N11 put 227 keys through `t()` and the HUD
+  chrome is clean, but `hud.js:308–313` renders `definition.title`,
+  `definition.text` and `choice.text` straight from `data/quests/*.json`, where
+  they are English string literals. That is the bulk of the words a player
+  reads. Content lane C5 is unmet, not partially met.
+- **Department funding (§9.4) does not exist.** `CMD_SET_FUNDING` has a constant
+  and no handler; there is no `state.funding`; `coveragePass()` sets a flat
+  `strength = 100`. `balance.json`'s `fundingMinPercent`/`fundingMaxPercent` are
+  mirrored into `rules.js` and read by nothing. **The comment above
+  `coveragePass()` claimed "Coverage falls off with distance and with funding"
+  — it never has.** Comment corrected in this pass.
+- **`client/capabilities.js` is 4/7 dead.** `isCoarsePointer`, `deviceClass`,
+  `recommendedMapSize` and `sizeAdvice` have no callers. All four were written
+  for the new-game screen, and `sizeAdvice` pairs with the unused
+  `lobby.size.recommended` / `lobby.size.heavy` keys.
+- **Empty directories:** `server/`, `worker/`, `client/lobby/`,
+  `client/transport/`. Correct — Waves 5 and 6 have not started — and now
+  asserted, so half-finished work between waves cannot sit unnoticed.
+- **Wave 4 remainder unchanged since N11:** no minimap (4.1 asks for it), no
+  audio (4.4), no PWA or service worker or high-contrast mode (4.5), no
+  statistics (4.6). 13 quests against slice 4.3's 19. Reduced motion **is**
+  handled (`style.css:94`, `:root[data-motion="reduced"]`).
+
+### Written down so it cannot hide again
+
+`test/omissions.test.js`, 5 tests. Every `CMD_*` constant is either registered
+with the reducer or listed in `NOT_BUILT` with the slice that will build it;
+nothing on that list has quietly gained a handler; nothing on it is sent by the
+client; the eleven commands a person needs to play a city start to finish each
+have a handler *and* appear in `client/`; and the four placeholder directories
+are empty.
+
+This is the N11 lesson generalised. `CMD_SET_TAX` hid for four slices because
+nothing watched the gap between "the engine can do this" and "the game can do
+this". Fourteen commands are in that gap today; all fourteen are now named, with
+a reason.
+
+### Measured
+
+- **`./test.sh` 420 tests, green twice.** Was 415.
+- `plan-v1.md`'s Progress section was three waves stale — it still said 1.2b was
+  waiting on the user and Wave 3 was next. Rewritten against the repo.
+
+---
+
+## 2026-08-29 — Slice N12: a city you chose, in words you can read (P19)
+
+Items 1 and 2a of the P18 audit.
+
+### The new-game screen
+
+`client/lobby/options-model.js` (pure: which options exist, which values are
+legal, choices → the record `defaultOptions()` takes) and `new-game.js` (the
+DOM). Size, difficulty, terrain, water, disasters, seed with regenerate.
+
+The preview calls `generateWorld()` and **hands the result on to `startGame()`**,
+so the region shown and the region played are the same object rather than the
+same seed generated twice.
+
+Shaped for slice 5.2, which should add rows rather than replace the screen: the
+rows are a table, and `optionsFor(choices, seats)` already takes a seat count so
+a room's options record and a singleplayer game go through one function.
+
+**A URL naming a seed skips the screen** and starts that city. That is what
+makes a city a shareable link, and it is what keeps all six existing gates
+pointing at `?seed=1003&size=64` working unchanged.
+
+**The default is 64 on steady, not `recommendedMapSize()`.** That function
+answers what hardware can cope with, which is not the same question as what
+makes a good first city; wiring it to the default opened every desktop player on
+a 128×128 region. Capability now feeds `sizeAdvice()` only, which marks the
+heavy sizes — ruling 011, advise never forbid. The advice is rendered **only**
+on the heavy ones: "recommended for this device" on all four sizes says nothing
+four times.
+
+### The region namer was measurably wrong
+
+`regionNameKey()` has produced `region.<shape>.<feature>` since worldgen was
+written and **nothing had ever rendered one**, so the twenty-five keys were
+never translated and the classifier was never looked at. Putting it on screen
+showed a river map named "The Wooded Islands".
+
+Measured over 400 regions, 80 per water style, before touching it:
+
+| style | water p25/50/75 | landmasses | named (before) |
+|---|---|---|---|
+| none | 0/0/0 | 1 | plain 80 |
+| lakes | 3/4/5 | 1 | plain 77, islands 1, valley 2 |
+| river | 7/10/17 | 2 | **islands 62, archipelago 17, plain 1, valley 0** |
+| coastal | 35/41/44 | 2 | **islands 44**, coast 33, valley 3 |
+| archipelago | 49/59/71 | 2 | archipelago 17, islands 46, coast 13 |
+
+The cause: the ladder tested the landmass count *before* it tested whether there
+was any water, so a river crossing a plain split the land in two and the region
+was "islands". Fixed by testing water first, and by requiring the second
+landmass to be a real share of the first — a coast with a rock offshore counts
+two landmasses and is not islands. After: **river 74/80 valley, coastal 54/80
+coast**, lakes 66 plain / 14 valley.
+
+`describeRegion()` gained `secondShare`. It is a derived display value, never
+stored and never hashed, so no fixture moved.
+
+**Left alone and recorded:** the archipelago style has a `secondShare` median of
+10 — one dominant landmass with fragments — so it is named "coast" 43 times in
+80. That is the generator being honest about what it makes, not the namer being
+wrong, and tuning worldgen is not this slice.
+
+### Quest content: 13 → 20, and every word in both locales
+
+Written first, moved second, exactly as A24 chose. Four new tutorial quests (tax
+rate, a first service building, a first park, two hundred residents), a fifth
+milestone, a civic event, and the recoverable disaster scenario slice 4.3 asked
+for. **10 tutorial + 5 milestone + 3 civic + 1 disaster + 1 character = 20.**
+
+Four measures added, each a deliberate act with a test: `tax`,
+`serviceBuildings`, `amenities`, `ruinedTiles`. The last is what makes a
+disaster scenario expressible — available while there is wreckage, complete when
+it is cleared.
+
+Then every title, line and choice became a key. Quest data carries
+`titleKey`/`textKey`; `validateQuests` requires keys rather than prose. The
+engine cannot check a key against the catalogue — it does no I/O — so
+`test/quests.test.js` does, and also refuses a quest carrying a raw `title`.
+That last test is the one that matters: `t()` returns its own argument on a
+miss, so English would have shipped as its own translation with nothing going
+red. **Norwegian drafted, not reviewed (A21).**
+
+Catalogues: 268 → 310 keys each.
+
+### Measured
+
+- **`./test.sh` 432 tests, green twice.** Was 420.
+- **`tools/lobby_smoke.mjs` (new), 26 checks on desktop and phone.** Every
+  difficulty selected by pointer, started, and read back off `state.options`;
+  the region previewed is the region played; the address bar names the city; the
+  link opens that city without the screen; "new city" returns to the screen.
+- `mvp_acceptance` 13/13, `ui_smoke` 90, `save_smoke` 15, `play_smoke` 10 — all
+  green, none edited.
+
+### What failed on the way
+
+**`test/omissions.test.js` went red on its second day, correctly.** It asserts
+`client/lobby/` is empty because Wave 5 has not started; the new-game screen is
+the singleplayer half of slice 5.2, so the directory left the list with the
+reason written next to it. That is the test doing its job, not a false alarm.
+
+**The lobby scrolled sideways on a 390px phone**, caught by the new gate. A flex
+child defaults to `min-width: auto` and refuses to shrink below its content, so
+the horizontally scrolling choice row pushed the whole page instead of scrolling
+inside itself.
+
+---
+
+## 2026-08-29 — Slice N13: the game says what it is doing (P20)
+
+### The finding
+
+**Every refused action in the game's history said "0 tiles".**
+
+`shared/protocol.js` has eight `RESULT` codes. Seven had strings in both
+catalogues from the first commit. `client/game.js:107` even handed the reason to
+the HUD — `hud.setPreview({ tiles: 0, note: result })` — and `setPreview`
+**ignored `note`**, rendering `t("hud.tiles", { count: 0 })`. Reproduced with ten
+in the bank and a coal plant selected:
+
+```
+buildings placed: 0
+what the player is told: {"readout":"0 tiles","status":"","alerts":[]}
+```
+
+Nothing was missing except the last line of wiring, and nothing could tell:
+`t()` returns its own argument on a miss, and a screen that was never built
+throws no error. **Ruling 027.**
+
+Two more from the same sweep: twelve `settings.*` keys with no screen, and a
+`Continue` button in `new-game.js` that nothing ever passed an `onContinue` to —
+so a returning player had to start a new city and shift-click a save slot.
+
+### Built
+
+**Refusals speak.** `setResult(result)` renders `t("result.<code>")` in the
+readout with `data-result` for styling. `result.rateLimited` added — the eighth
+code had never had a string at all.
+
+**And they speak before the click.** The stroke preview already had the
+reducer's own quote for priced tools and threw the reason away; it now shows it.
+Buildings have no staging path to price, so their affordability is compared
+client-side against the seat's treasury — **a hint, not a rule.** The click still
+goes through and the reducer still answers; a UI check that *refused* would be
+inventing a rule nobody enforces. The hover ghost turns red on the same test.
+
+**Settings.** `settings-model.js` (pure) and `settings.js` (a native `<dialog>`
+— focus trapping, focus return and Escape are three slice-4.5 jobs a hand-rolled
+overlay would do badly). Language, high contrast, reduced motion. Preferences go
+to `localStorage`, never to state: hashing them would make two players with
+different contrast settings disagree about the world.
+
+**Only settings that do something are offered.** Sound, volume and visual style
+have keys and no implementation, so rendering them would be a control that
+changes nothing — the exact failure being audited. They stay in `NOT_YET` with
+the slice that will use them.
+
+Language changes take effect on the screen the player is looking at: the panel
+relabels itself, and behind it either the HUD is rebuilt (`session.relocalise()`)
+or the lobby re-renders. Two different code paths, so the gate checks both.
+
+**Continue.** Wired to the most recent save, offered only when there is one. The
+state comes out of the file whole — nothing is generated. `startGame` now skips
+`CMD_JOIN` when the seat is already held, because reclaiming a seat touches
+`lastSeenTick`, which is hashed, and re-joining a restored city would move it
+away from the checksum it was saved with.
+
+**High contrast** drops transparency and blur first: a panel you can see the
+city through has no guaranteed contrast ratio, because what is behind it changes
+every frame. The reduced-motion media query is now guarded with
+`:root:not([data-motion="full"])` so an explicit request for motion beats the OS
+preference.
+
+### Measured
+
+- **`./test.sh` 444 tests, green twice.** Was 432.
+- **`tools/lobby_smoke.mjs` 46 checks** (was 26), desktop and phone: the panel
+  restates itself, the HUD behind it is rebuilt in the new language, high
+  contrast reaches the document, the choice is remembered, a build you cannot
+  afford says **"Ikke nok penger"** rather than "0 tiles", and **Continue
+  resumes hash for hash** (`24a7b26c0c7e6151` both sides).
+- `mvp_acceptance` 13/13, `ui_smoke` 90, `save_smoke` 15, `play_smoke` 10 — all
+  green, none edited.
+
+### The sweep is a test now
+
+`test/reachability.test.js`, 4 tests. It reconstructs every key the interface
+can build — including the runtime ones (`building.${def}`,
+`region.${shape}.${feature}`, `quest.${id}.title`) — and requires each catalogue
+key to be either reachable or in `NOT_YET` with its slice. Both directions, so
+the list cannot rot.
+
+Writing it found two more things immediately: `lobby.size.recommended` went dead
+in N12 when the size advice became heavy-only (**deleted** — a key with no
+future slice is dead weight, not a plan), and the first version of the scanner
+reported a dozen live keys as dead because it only understood `t("literal")` and
+not `labelKey:` fields or `t(x ? "a" : "b")`.
+
+### What failed on the way
+
+**The gate's own settings section was in the wrong place** — it asserted the
+lobby was relocalised at a point where the page was in a game. Fixing the test
+was the right call, and it improved the coverage: both relocalise paths are now
+checked rather than one.
+
+**"nothing to continue before anything is saved" failed**, and the code was
+right. `shouldAutosave(tick, undefined)` returns true, so the first tick of any
+game writes an autosave — deliberate, and documented where it is written. The
+check moved to before any game has run, which is the only moment it is true.
+
+---
+
+## 2026-08-29 — Slice N14: the keyboard half of 4.5 (P21)
+
+### The findings
+
+**`?debug=1` broke the app.** `client/main.js` has dynamically imported
+`./debug.js` since it was written; the file was never created. The import
+failed, the boot's `catch` ran, and the running game was replaced by
+"Something went wrong — Failed to fetch dynamically imported module":
+
+```
+?debug=1 → {"started":true,"notice":"Something went wrong…client/debug.js"}
+```
+
+The game had actually started; the error screen was painted over the top of it.
+A documented URL parameter that breaks the app is worse than one that does
+nothing. **Static imports fail loudly at load; dynamic ones fail only on the
+path that reaches them** — which for a debug flag may be never.
+
+**Four `role="toolbar"` rows had no keyboard pattern.** That role tells
+assistive technology "this is one control, use the arrows". There was one tab
+stop per *button* and the arrows did nothing, so a keyboard user was told to
+press a key that had no effect and had no way to tell whether the game was
+broken or they were. Adding the role in N4 **took working navigation away** by
+describing something the code did not do. The tool row was also the only one of
+the four with no `aria-label` at all. **Ruling 028.**
+
+Neither of the two things `plan-v1.md` 4.5 names as its gate — "keyboard-only
+and 200%-text passes" — had ever been measured.
+
+### Built
+
+`client/ui/roving.js` — the roving-tabindex pattern. `nextIndex()` is pure
+because the wrapping is the part that is always subtly wrong. Applied to all
+four rows; the HUD now returns a `dispose()`, since a language change rebuilds
+it and listeners on detached nodes are a leak that survives the rebuild.
+
+**Shortcuts** (§13.3): `r` road, `w` wire, `p` pipe, `b` bulldoze, `1`/`2`/`3`
+zones, `0` de-zone, Escape clears, Space pauses, `+`/`-` zoom, Q/E rotate. The
+zones are digits because R, C and I are the demand bars in every screenshot in
+the design, and a player pressing R means the road tool. A key carrying Ctrl or
+Cmd is never a shortcut — Ctrl-R is reload and Cmd-P is print.
+
+**Arrows pan the map, but only from the map.** Inside a toolbar they move
+between controls, which is what the role promises; stealing them globally would
+have broken the thing being fixed. The canvas takes `tabindex="0"`,
+`role="application"` and a label naming its keys.
+
+**Keys stop at a modal.** An open `<dialog>` owns the keyboard, so a shortcut
+cannot reach the map through the settings panel.
+
+`client/debug.js` written rather than deleted: it reports the checks that need a
+live session — hash stability, renderer stats, and **which untranslated keys are
+on screen right now**, since `t()` returns its argument on a miss and a missing
+string in play looks like a label somebody wrote in lower case with a dot in it.
+
+### Measured
+
+- **`./test.sh` 453 tests, green twice.** Was 444.
+- **`tools/a11y_smoke.mjs` (new), 21 checks.** One tab stop per toolbar
+  (`Tools: 1 of 10, Build: 1 of 12, Overlays: 1 of 11, Saves: 1 of 5`); the
+  arrows walk and wrap; Home and End jump; the stop is remembered; all eight
+  shortcuts select their tool; the arrows pan from the map
+  (`(32.0, 32.0) → (35.5, 35.5)`) and **do not** pan from a toolbar
+  (`35.50 → 35.50`); Escape closes the dialog and a shortcut cannot reach the
+  map through it.
+- **200% text, both screens, desktop and phone: no sideways scroll, nothing
+  clipped.** Emulated by doubling the root font size, which is what a browser's
+  text setting does to a stylesheet written in `rem`.
+- All six existing gates green, none edited.
+
+### What failed on the way
+
+**200% text on a 390px phone clipped the top bar** — "Play", "New city" and
+"Settings" were squeezed until their labels were cut. `.hud-top` was a
+single non-wrapping row. It wraps now, and the buttons keep their intrinsic
+width. This is the one thing the text-scaling gate found, and it would have
+shipped: nothing else in the project renders at 200%.
+
+### The class of bug, closed
+
+`test/omissions.test.js` gained "every module the client imports actually
+exists", scanning dynamic `import()` calls against the filesystem. Removing
+`client/debug.js` makes it fail with `client/main.js imports ./debug.js`, which
+is the exact bug it was written for.
+
+---
+
+## 2026-08-29 — Slice N15: statistics and the minimap (P22)
+
+### The audit's finding: the tripwire does not exist
+
+`test/fixtures/` is an **empty directory**. There is no `founding.json`, no
+`two_player.json`, no `empty.json`, and no `tools/repin.mjs`. Nothing in
+`test/` or `tools/` reads that path.
+
+That contradicts three documents at once:
+
+- `plan-v1.md` marks slice **0.4 done**, and its gate is
+  "`test/fixtures/empty.json` passes".
+- `CLAUDE.md` says "Hashed fields are listed in **two** places —
+  `statehash.js` and the fixture test's local copy — so a hash change is always
+  a deliberate two-file act." There is **one** place: `writeState()` in
+  `engine/state.js`. `shared/statehash.js` holds the hash primitive, not a field
+  list.
+- The `/fixture-repin` skill documents a ritual for artefacts that do not exist.
+
+**This slice changed hashed state** (a history buffer) and there was nothing to
+re-pin, which is exactly the situation the fixtures exist to prevent. Recorded
+here rather than quietly benefited from. Writing the fixtures is the next thing
+I would do.
+
+### Statistics (slice 4.6)
+
+`engine/history.js` — one integer sample a month, oldest first, capped at 240
+(twenty years). `plan.md` asks for buffers **bounded and hashed**: bounded
+because a 200-year game must not grow without limit, hashed because two clients
+that disagree about the graphs disagree about the city, and because a save that
+restored a city with no history would show empty charts for twenty years of
+play.
+
+A rolling array rather than a ring with a start index. `shift()` is O(n), n is
+240, once a month — and a ring index is the sort of thing that is off by one in
+exactly the case nobody tests.
+
+`HISTORY_CAP` and `HISTORY_FIELDS` live in `engine/constants.js`, not in
+`history.js`: `state.js` needs them for the hash and the deep copy and cannot
+import `history.js`, because history imports the reducer and the reducer imports
+state. Same reason `copyDisaster` is local to `state.js`.
+
+**The five places, all five:** `createState`, `copyState` (with a local
+`copyHistorySamples`), `writeState` (length then fields in `HISTORY_FIELDS`
+order — never `for (var k in sample)`), `toSave`/`fromSave` with a migration
+that gives an older save an empty history, and the lobby options record (not
+one — history is not an option). The snapshot projection does not exist yet.
+
+**The pass is silent.** A sample is the most routine thing that happens, and an
+event a month inside a pinned fixture would be drift.
+
+`client/ui/statistics-model.js` carries `good: "up" | "down" | "flat"` per
+series, which is the whole difference between "crime is up 40%" and "treasury is
+up 40%" being the same arrow and opposite news. Movement under 5% reads as
+"steady" — a city that wobbles 2% is not doing anything, and saying so every
+month trains the player to ignore the screen.
+
+§30 makes the explanation an accessibility feature: every series carries a
+sentence, the sparkline is inline SVG with that sentence as its `aria-label`,
+and the sentence is printed underneath as well. **A graph is not a statistic
+until somebody who cannot see it gets the same answer.**
+
+### The minimap (slice 4.1's last piece)
+
+`client/render/minimap.js` — a 2D canvas, deliberately not three.js: it is a
+picture of the tile arrays, and asking the GPU to draw a second scene to show
+where the first one is would cost more than the map does.
+
+Two layers on two clocks. The **world** (terrain, roads, zoning, buildings) is
+painted once into an offscreen `ImageData` and blitted; the **viewport box**
+is drawn on top every frame. Repainting 25,600 pixels at 60fps for a box that
+moves is the obvious version and the wrong one.
+
+Sampled per minimap *pixel* rather than per tile — a 48-tile region on a
+160-pixel map would otherwise leave two thirds of the pixels untouched.
+
+`minimap-model.js` holds the arithmetic, because a click that lands on the wrong
+tile is invisible in a 160-pixel picture until the camera jumps somewhere else.
+
+### Measured
+
+- **`./test.sh` 476 tests, green twice.** Was 453. `test/history.test.js` (16),
+  `test/minimap.test.js` (7).
+- **`tools/ui_smoke.mjs` 99 checks** (was 90): the minimap paints
+  **25,600 of 25,600 pixels in 46 distinct colours**; clicking three quarters
+  across moves the camera to `(48, 48)` on a 64-region, where 48 is what three
+  quarters means; all ten series have a row, an explanation over 40 characters
+  and a chart label; none shows a raw key; the panel opens at the top.
+- **`tools/a11y_smoke.mjs`** gained four checks: at 200% text the minimap stays
+  on screen (`177..386 of 900`) and the statistics dialog fits, scrolls and
+  clips nothing, on both viewports.
+- All seven gates green.
+
+### What failed on the way
+
+**The statistics panel opened scrolled past every statistic in it.**
+`showModal()` focuses the first focusable element, which was the Done button at
+the bottom of a list taller than the dialog. The heading takes `tabindex="-1"`
+and the focus instead — which opens at the top *and* is what a screen reader
+should announce first.
+
+**A module-level `SAMPLES` smell.** The first version of the sparkline reached
+for the samples through a module-level variable rather than taking them as an
+argument. Replaced before it could become two dialogs sharing one array.
+
+---
+
+## 2026-08-30 — Slice N16: finishing N15's own work (P23)
+
+Statistics and the minimap landed yesterday as N15. This pass audited **that**
+code rather than the project around it, and found two defects in it.
+
+### The minimap showed a world that had stopped happening
+
+It caches its picture into an `ImageData` and blits it, and it was told to
+repaint only by `worldChanged()` — which `client/game.js` calls when the player
+builds through the controller, and on a load. **Nothing called it on a tick.**
+
+So a city that grew, burned down, flooded or was rebuilt by a disaster showed
+the player the old world until they happened to lay a road. The 3D renderer
+never had this problem because `updateInstances` reads state every frame; the
+minimap was the one thing in the client with a cache and no invalidation.
+
+Proved before fixing. 346 road tiles added outside the controller, minimap image
+byte-identical:
+
+```
+road tiles now 346
+minimap image 1673316772 -> 1673316772   UNCHANGED (stale)
+```
+
+**Fixed by repainting when `state.tick` moves.** Anything the simulation does
+happens on a tick, so the tick is the exact signal; at fast speed that is about
+eight repaints a second of 25,600 pixels, which is nothing. `worldChanged()`
+stays for player builds, which happen between ticks and should show at once.
+
+After:
+
+```
+before any tick: unchanged (expected — nothing has ticked)
+after one tick: minimap 1673316772 -> 4133435918   UPDATED
+```
+
+**The first version of the proof was wrong and said so.** It applied a command
+with the clock paused, which no real path does, and would have "proved" the bug
+still existed after the fix. Re-written to model what actually happens: a change
+lands, and a tick follows.
+
+### The minimap lied about what it is
+
+`role="img"` with `tabIndex = 0` and a `keydown` handler. That is **ruling 028's
+own defect**, committed in the slice after the ruling: `role="img"` announces a
+static picture, and a picture that takes focus and keys is not one. The Enter
+key jumped to the middle of the map, which is a weak affordance invented to
+fill a gap that was not there.
+
+Now a picture and nothing else: `role="img"`, no tab stop, no key handling. The
+keyboard path to the same job is the map's own arrow-key panning from N14, which
+aims properly instead of jumping to the centre, so nothing was lost.
+
+### Also
+
+`MINIMAP_SIZE = 160` was duplicated as `width: 160px` in the stylesheet. The
+canvas now sets its own CSS size from the constant.
+
+### Measured
+
+- **`./test.sh` 476 tests, green twice.**
+- **`tools/ui_smoke.mjs` 101 checks** (was 99): the minimap follows changes the
+  player did not make (`813334735 → 114076566`), and describes itself honestly
+  (`{"role":"img","tabIndex":-1,...}`).
+- All seven gates green.
+
+### What failed on the way
+
+**The new gate check broke a later one.** It painted roads across rows 2–7, and
+the undo check thirty lines further down builds its fixture on row 4 — so undo
+had nothing to remove and reported `30 → 30 tiles`. Moved to the bottom edge.
+A gate that quietly paints over another gate's fixture makes the second one fail
+for a reason that has nothing to do with it.

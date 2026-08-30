@@ -10,6 +10,7 @@
 import { SAVE_VERSION } from "../shared/protocol.js";
 import { createState, TILE_LAYERS, hashState } from "./state.js";
 import { copyOptions, defaultOptions, OPTION_FIELDS } from "./options.js";
+import { HISTORY_FIELDS } from "./constants.js";
 
 /** [value, count, value, count, ...] */
 export function encodeLayer(array) {
@@ -66,6 +67,15 @@ export function toSave(state) {
     },
     nextId: state.nextId,
     scanCursor: state.scanCursor,
+    // Every nested record that reaches the hash must reach the save too. Three
+    // of these were added to createState, copyState and the hash and NOT here,
+    // and the result was a save that loaded a subtly different city — caught by
+    // the MVP acceptance script's hash comparison, not by the save tests, whose
+    // fixture had all three at their defaults.
+    disaster: state.disaster,
+    traffic: state.traffic,
+    quests: state.quests,
+    history: state.history,
     players: state.players,
     buildings: state.buildings,
     requests: state.requests,
@@ -131,6 +141,34 @@ export function fromSave(data) {
   };
   state.nextId = save.nextId;
   state.scanCursor = save.scanCursor === undefined ? 0 : save.scanCursor;
+  // `undefined` where a save predates the field: fall back to what createState
+  // already put there rather than writing undefined into hashed state.
+  if (save.disaster) state.disaster = save.disaster;
+  if (save.traffic) state.traffic = save.traffic;
+  if (save.quests) {
+    state.quests = {
+      active: save.quests.active ? save.quests.active : [],
+      completed: save.quests.completed ? save.quests.completed : [],
+      vars: save.quests.vars ? save.quests.vars : [],
+    };
+  }
+  // A save written before slice 4.6 has no history. An empty one is correct —
+  // the city genuinely has no recorded past — and it hashes to a length of
+  // zero, which is what the older save's own checksum was computed against.
+  state.history = { samples: [] };
+  if (save.history && Array.isArray(save.history.samples)) {
+    var hi;
+    var hf;
+    for (hi = 0; hi < save.history.samples.length; hi += 1) {
+      var row = save.history.samples[hi];
+      var sample = {};
+      for (hf = 0; hf < HISTORY_FIELDS.length; hf += 1) {
+        var value = row[HISTORY_FIELDS[hf]];
+        sample[HISTORY_FIELDS[hf]] = typeof value === "number" ? value | 0 : 0;
+      }
+      state.history.samples.push(sample);
+    }
+  }
   state.players = save.players;
   state.buildings = save.buildings;
   state.requests = save.requests;

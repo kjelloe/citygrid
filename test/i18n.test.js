@@ -60,7 +60,11 @@ test("interpolation tokens match across locales", () => {
 });
 
 test("keys are namespaced, so the catalogue stays navigable as it grows", () => {
+  // Hyphens are allowed after the first segment because content ids are
+  // kebab-case — `quest.first-road.title`. Renaming those ids to fit a key
+  // scheme is not an option: `state.quests.completed` holds them and is hashed,
+  // so a rename would move every save's checksum.
   for (const key of Object.keys(locales.en)) {
-    assert.match(key, /^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/, `${key} is not a dotted key`);
+    assert.match(key, /^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9-]+)+$/, `${key} is not a dotted key`);
   }
 });

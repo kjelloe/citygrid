@@ -151,6 +151,13 @@ At the beginning of a normal city:
 
 The tutorial should teach by giving the player small objectives rather than presenting a long manual.
 
+> **As built (slice N12).** Ten tutorial quests cover road, zoning, power,
+> water, first residents, first jobs, the tax rate, a first service building, a
+> first park, and two hundred residents. **Naming the city and the mayor is not
+> built** — there is no text entry anywhere in the game yet, and player-authored
+> text is hashed state that has to be capped, sanitised and canonicalised
+> (`CLAUDE.md`), so it lands with the multiplayer text rules in slice 5.3.
+
 ### 6. World and Tile Model
 
 #### 6.1 Logical Grid
@@ -626,6 +633,13 @@ Taxes affect both immediate revenue and long-term demand. Changes should not pro
 
 Each service can use a funding slider, for example from `50%` to `150%`.
 
+> **As built (audited 2026-08-29): not implemented.** `CMD_SET_FUNDING` is a
+> command constant with no reducer handler, there is no `state.funding`, and
+> `coveragePass()` gives every station a flat strength of 100 before distance
+> falloff. `balance.json`'s `fundingMinPercent` / `fundingMaxPercent` are
+> mirrored into `engine/rules.js` and read by nothing. Tracked by
+> `test/omissions.test.js`.
+
 Lower funding:
 
 - Reduces expenses.
@@ -932,6 +946,27 @@ The always-visible HUD should contain:
 - Bulldoze.
 - Overlays.
 
+**Budget**
+
+- Tax rate.
+- Monthly income, upkeep and net.
+
+> **As built (slice N11).** The toolbar is two scrolling rows: tools on the
+> first, and every building in `data/buildings.json` on the second, grouped
+> power / water / services / amenities and cheapest first, each button quoting
+> its price at the current difficulty. Rows scroll rather than wrap at every
+> width, so the panel stays bounded as the catalogue grows.
+>
+> The budget is an **inline row**, not the full-screen sheet §13.2 suggests: a
+> tax slider and one line of books. Per-service funding is not built — see
+> `playtest-notes.md`.
+
+> **As built (slice N13).** A refused command names its reason in the readout,
+> from `result.*` — before the click for anything the reducer can quote, and
+> after it for anything it cannot. A build the player cannot afford turns the
+> ghost red; that is a hint and not a rule, the command is still issued, and the
+> reducer still answers (ruling 026).
+
 #### 13.2 Mobile Layout
 
 Recommended mobile layout:
@@ -953,6 +988,15 @@ Buttons should be large enough for touch use. Hover-only information must also b
 - Mouse hover for previews and tooltips.
 - Keyboard shortcuts for frequent tools.
 - Optional minimap.
+
+> **As built (slices N15–N16).** Above the panel, opposite the inspector, with a
+> toggle — click or drag to move the camera. It is a picture: `role="img"`, not
+> a tab stop, no key handling (ruling 028). The keyboard path to the same job is
+> the map's own arrow-key panning, which aims rather than jumping to the centre.
+> Hidden on a phone, which has no room for both the map and the city.
+> Terrain, roads, zoning and buildings; a developed lot takes its zone's colour
+> and a plant or station the civic colour, so the thing the player is looking
+> for is findable at one pixel a tile.
 
 #### 13.4 Camera Controls
 
@@ -1594,6 +1638,17 @@ The host creates a room and receives a join code. The lobby offers:
 
 Late joining is open by default. A room that nobody can join is a room that dies.
 
+> **As built (slice N12).** The singleplayer half of this screen exists as
+> `client/lobby/` and offers size, difficulty, terrain, water, disasters, seed
+> with regenerate, and the region's name and composition. Everything else in the
+> list above is multiplayer and waits for slice 5.2, which adds rows to the same
+> table rather than replacing the screen. **Tree density is the one
+> singleplayer option not offered** — it changes the look rather than the game,
+> and the row is one entry in `ROWS` when it is wanted.
+>
+> A URL naming a seed skips the screen and starts that exact city, which is what
+> makes a city a shareable link.
+
 #### 26.4 District generation
 
 In Districts mode the map is divided at generation time, before anyone plays:
@@ -1659,6 +1714,19 @@ Half of "every action has visible consequences" is audible. Sound carries inform
 - A high-contrast interface theme is available.
 - The game is fully operable from the keyboard on desktop, including the build toolbar and the request inbox.
 - Statistics are always accompanied by a plain-language interpretation. This is an accessibility feature as much as a usability one.
+
+> **As built (slice N13), against this list.**
+>
+> | | |
+> |---|---|
+> | Never colour alone | **Done** — every overlay ships a legend with colour, a per-band pattern and the word, and the inspector repeats the bands in words |
+> | Player identity | Not built — one seat, no territory overlay yet (slice 5.3) |
+> | 200% text | **Done and gated (slice N14)** — both screens, desktop and phone: no sideways scroll, no clipped text. Found and fixed one failure, the top bar on a 390px phone |
+> | Touch targets | **Done and gated** — every control ≥ 40 px, checked on a 390×844 viewport by `ui_smoke` and `lobby_smoke` |
+> | Reduced motion | **Done** — a setting with Follow-the-system / On / Off, and an explicit On or Off beats `prefers-reduced-motion` |
+> | High contrast | **Done** — a setting; drops transparency and blur, which is what a panel showing the moving city through it cannot have a contrast ratio against |
+> | Keyboard operation | **Done (slice N14, ruling 028)** — each toolbar is one tab stop with arrow, Home and End navigation; the map is focusable and pans with the arrows; shortcuts for every frequent tool; an open dialog owns the keyboard. Gated by `a11y_smoke` |
+> | Plain-language statistics | **Done (slice N15)** — ten series, each with a sentence saying what the number is and which direction is good; the sparkline is inline SVG carrying that sentence as its label, so a chart and its text alternative cannot drift |
 
 ### 31. Onboarding
 
@@ -1747,3 +1815,15 @@ game do not quietly diverge. Rulings are cited where one exists.*
 | **Detail is flat panels** (§19.2) | Windows, doors, signs and sills are quads held proud of the wall, not boxes. A window box costs twelve triangles and a window quad costs two, and at this camera they are indistinguishable — which is what makes a city of detailed buildings affordable. |
 | **The player palette is searched** (§30) | Sixteen seat colours chosen by farthest-point search scored on the worst pair across three colour-vision deficiencies at once, not by eye. Hand-picking failed its own test with seven collapsing pairs (ruling 018). |
 | **Level of detail is required** (§19.2) | Measured at the reference's detail level, a 187-building city is 201k triangles against a 80k mobile budget written when a building was a box. Distant buildings do not need window sills. LOD by camera distance moves from "later" to required. |
+| Level of detail | A configurable triangle budget (`setBudget`, default 80,000) spent by two gates: what is resolvable at the current zoom, then a fixed ladder of sacrifices. Enforced against the renderer's own triangle counter after an actual render rather than against a cost model, because the model was wrong four times running (ruling 019). Measured 19k–69k across every zoom on a saturated 128×128 sixteen-seat region. Terrain and roads set a floor of about 74k that no amount of stripping goes below, which is why the default is 80k and not 40k |
+| Style separation | Face-shading contrast is a per-style property applied before geometry is built (plain 0.65, painted 1.0, pixel 1.3), because the bake dominates the lights and three styles sharing one bake are three colour schemes (ruling 020). Plain is the soft style: fill outweighs key, the sun stands high so shadows sit under buildings, and the shadow is blurred and pale rather than small |
+| Buildings | Two instanced meshes per variant, walls and roof, sharing one matrix and carrying independent colours (ruling 021). A roof is a hue — house tile and slate, or the flat greys of felt — not a darkened wall, because a multiplier can only darken and a cream house then gets a cream-brown roof. Pitched roofs terrace into stepped bands at full detail, which is the reference's most recognisable trait. Houses and civic buildings stand on a garden plot |
+| Art style | **Plain** ships (ruling 022): soft cool light, a bright cosy palette, shadows. Chosen for being the cheapest to produce — no atlas, every asset is procedural geometry, so a new building is a function rather than eight drawn sprites — and the most legible, because soft light keeps every face bright enough to read its own colour, which the overlays and ownership tints depend on. `pixel` and `painted` remain as the RenderStyle seam and receive no art investment. Specified in full in `specs/art-direction.md` §3 |
+| Input | One code path for mouse, pen and touch via pointer events. The gesture state machine and the run-length coalescing are pure and tested without a browser, because that is where every hard input bug lives — a tap read as a drag, a pinch that also pans, the map leaping when one of two fingers lifts, a twist that rotates every frame. One finger paints when a tool is selected and pans when none is; two fingers are always the camera. A drag becomes ONE run-length encoded command. Sampled pointer events are filled in with Bresenham, or a fast drag leaves a road with holes in it. Cost preview asks the engine to price the stroke rather than reimplementing the rules |
+| HUD | Model/view split as `plan.md` §7.1 asks: `hud-model`, `rci-model`, `alerts-model`, `inspector-model` and `overlays` are pure and tested without a browser; `hud.js` turns them into elements and holds no opinion about what is allowed. The alert area collapses repeats, ranks by severity before capping at six, and only reports whitelisted kinds (ruling 023) — one measured run produced 59 power shortfalls against the single fire that mattered |
+| Overlays | All eleven of §16, banded by pure functions over state. Grey means not applicable and is never painted, so the sea is not amber for crime. Each band carries a colour AND a mark on the map AND a word in the legend and the inspector, because §16 and §30 both say never colour alone. One traversal per frame and at most four extra draw calls whichever overlay is showing. Power reads the powered FLAG rather than the wire layer — a wire whose plant has burnt down is exactly the state the overlay exists to show |
+| Saving | Three manual slots and a separate autosave once per game year of ticks — an autosave that overwrote a deliberate save would take something it cannot give back. IndexedDB, with every call degrading to "saving is unavailable" rather than taking the game down. Export/import round-trips to the same state hash |
+| Disasters | All seven majors of §12, one at a time, each telegraphed a month ahead naming its place. Damage runs through existing systems rather than private mechanics. A strike tops the treasury up to a floor, so a city is always left able to rebuild. Recoverability is measured at the blast, not years later (ruling 025) |
+| Traffic | One multi-source BFS distance field from every job per month; each home walks downhill through it laying load. 0.70ms on a saturated 128×128 against an 8ms budget. Congestion correlates with people-per-road (r=0.55) and not with the seed (r=-0.08). Everyone takes the shortest route even when full — there is no rerouting, and that is the honest limit of a distance field |
+| Quests | Pure JSON over a closed condition language, validated at load (ruling 024). Progress is hashed and kept sorted. A quest with choices waits for one: the player is the objective |
+| Balance | Era 1, pinned against `reports/balance-era1.md` (200 games × 4 configurations). Two logged debts settled; runaway treasuries **accepted with numbers** rather than tuned away, after the obvious lever re-measured a failure the era-0 note had already recorded |

@@ -10,6 +10,8 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { readDoc, docExists, repoRoot } from "./helpers/sources.js";
+import { PALETTES } from "../client/render/palettes.js";
+import { PLAYER_COLOURS } from "../client/render/palette.js";
 
 const REQUIRED_DOCS = [
   "README.md",
@@ -89,11 +91,36 @@ test("dev-prompts.md numbers its prompts without gaps", () => {
   assert.deepEqual(ids, ids.map((_, i) => i + 1), `prompt numbering has a gap: ${ids}`);
 });
 
-test("the art direction still blocks the content lane until the probe reports", () => {
-  // Fails deliberately once §3 is written, as a reminder to unblock lane C1
-  // and to delete this test.
+test("the chosen style is specified, not merely named", () => {
+  // Replaces the gate that used to block the content lane. §3 was empty until
+  // the probe reported; now that it is written, what matters is that it says
+  // enough to build content against.
   const art = readDoc("specs/art-direction.md");
-  if (/^## 3\. The chosen style\n\n\*Empty until/m.test(art)) {
-    assert.match(art, /Status: framework only/, "art-direction must say it is not settled yet");
+  assert.match(art, /^## 3\. The chosen style/m, "art-direction §3 must exist");
+  assert.doesNotMatch(art, /Empty until probe/, "§3 is settled — ruling 022");
+  for (const heading of ["Palette", "Lighting rig", "Silhouette rules", "Ladders"]) {
+    assert.ok(art.includes(heading), `§3 must specify the ${heading.toLowerCase()}`);
   }
+});
+
+test("the documented palette matches the code", () => {
+  // A palette written down in one place and implemented in another is two
+  // palettes. Every hex the art direction quotes has to be a hex the renderer
+  // actually uses, or the content lane builds against a document that lies.
+  const art = readDoc("specs/art-direction.md");
+  const section = art.slice(art.indexOf("### 3.1 Palette"), art.indexOf("### 3.2"));
+  const quoted = new Set([...section.matchAll(/`(0x[0-9a-f]{6})`/g)].map((m) => m[1]));
+  assert.ok(quoted.size > 20, `only ${quoted.size} colours documented — §3.1 looks truncated`);
+
+  const plain = PALETTES.plain;
+  const real = new Set([
+    plain.sky, plain.road, plain.roadMark, plain.wire, plain.lamp, plain.tree,
+    plain.lawn, plain.civic,
+    ...plain.terrain, ...plain.zone.slice(1),
+    ...plain.roof.house, ...plain.roof.flat,
+    ...PLAYER_COLOURS.slice(1),
+  ].map((v) => `0x${v.toString(16).padStart(6, "0")}`));
+
+  const stale = [...quoted].filter((hex) => !real.has(hex));
+  assert.deepEqual(stale, [], `art-direction quotes colours the renderer does not use: ${stale}`);
 });

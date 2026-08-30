@@ -7,12 +7,15 @@
 // mesh however many of them stand in the city.
 
 import * as THREE from "three";
-import { buildingColour, PLAYER_COLOURS } from "./palette.js";
-import { PALETTES, makeMaterial, slabGeometry } from "./style-assets.js";
+import { buildingColour, PLAYER_COLOURS, OVERLAY_COLOURS } from "./palette.js";
+import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
+import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, tuftVariants, lampGeometry,
   variantFor, VARIANTS, TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
+import { setFaceContrast } from "./detail-kit.js";
+import { TIER, setCosts, inBounds } from "./lod.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
   TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, FLAG_RUINED, NET_PRESENT,
@@ -27,6 +30,9 @@ const dummy = new THREE.Object3D();
 const tint = new THREE.Color();
 
 export function createInstances(scene, styleName = "plain") {
+  // Before ANY geometry: the shading is baked in at build time, so this has to
+  // be set first or the style gets the previous style's faces.
+  setFaceContrast(faceContrastFor(styleName));
   const palette = PALETTES[styleName] ?? PALETTES.plain;
   const pools = {};
 
@@ -41,20 +47,66 @@ export function createInstances(scene, styleName = "plain") {
     pools[name] = mesh;
   };
 
-  make("road", slabGeometry(styleName, 1, 0.05, 1), palette.road, 24000);
-  make("mark", slabGeometry(styleName, 0.06, 0.055, 0.34), palette.roadMark, 24000);
-  make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), palette.wire, 24000);
-  make("pipe", slabGeometry(styleName, 0.9, 0.05, 0.9), 0x4a86a8, 24000);
-  make("ruin", slabGeometry(styleName, 0.7, 0.14, 0.7), 0x5a5048, 6000);
+  // WHITE, not the palette colour. three multiplies material colour by instance
+  // colour, and every one of these pools is also given its colour per instance
+  // at push time — so passing it here too drew each of them at the SQUARE of
+  // its colour. A mid-grey road (0x6f7278, 0.44) came out at 0.19, which is why
+  // the ground read as near-black asphalt in every style.
+  make("road", flatGeometry(styleName, 1, 1, 0.05), 0xffffff, 24000);
+  make("mark", flatGeometry(styleName, 0.06, 0.34, 0.056), 0xffffff, 24000);
+  make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), 0xffffff, 24000);
+  make("pipe", flatGeometry(styleName, 0.9, 0.9, 0.05), 0xffffff, 24000);
+  make("ruin", slabGeometry(styleName, 0.7, 0.14, 0.7), 0xffffff, 6000);
+  // A garden plot under every house. In the reference this is doing far more
+  // work than it looks: it is what stops a suburb reading as buildings dropped
+  // onto a road surface, and it is why the green there is foreground rather
+  // than leftover background.
+  make("lawn", flatGeometry(styleName, 1, 1, 0.055), 0xffffff, 12000);
 
-  for (const kind of ["residential", "commercial", "industrial", "civic"]) {
-    const geometries = buildingVariants(kind);
-    for (let v = 0; v < geometries.length; v += 1) {
-      make(`${kind}${v}`, geometries[v], 0xffffff, kind === "civic" ? 1200 : 6000);
+  // The overlay pass. One tint quad per tile, plus a per-band MARK — a dot, a
+  // bar, a cross — because §16 and §30 both say never colour alone, and a
+  // legend under the map does not help someone comparing two tiles in it.
+  //
+  // Four pools, whichever overlay is showing, so the cost of an overlay does
+  // not depend on which one it is.
+  make("ovl", flatGeometry(styleName, 0.98, 0.98, 0.075), 0xffffff, 24000);
+  make("ovlGood", flatGeometry(styleName, 0.2, 0.2, 0.08), 0xffffff, 24000);
+  make("ovlFair", flatGeometry(styleName, 0.5, 0.14, 0.08), 0xffffff, 24000);
+  make("ovlSevere", flatGeometry(styleName, 0.62, 0.14, 0.08), 0xffffff, 24000);
+
+  // One pool per (category, variant, detail tier). Only one tier is populated
+  // at a time — an orthographic camera puts every building at the same zoom —
+  // so the extra pools cost memory, not draw calls.
+  const measured = { building: {}, tree: {} };
+  for (const tier of [TIER.FULL, TIER.SHAPE, TIER.BLOCK]) {
+    let sample = 0;
+    for (const kind of ["residential", "commercial", "industrial", "civic"]) {
+      const geometries = buildingVariants(kind, tier);
+      const capacity = kind === "civic" ? 1200 : 6000;
+      for (let v = 0; v < geometries.length; v += 1) {
+        const { walls, roof } = geometries[v];
+        make(`${kind}${v}_${tier}`, walls, 0xffffff, capacity);
+        sample += triangleCount(walls);
+        // The roof is a second mesh sharing the walls' matrix, so it can take
+        // its own colour. It costs one draw call per variant, not per building.
+        if (roof) {
+          make(`${kind}${v}_${tier}_roof`, roof, 0xffffff, capacity);
+          sample += triangleCount(roof);
+        }
+      }
     }
+    measured.building[tier] = Math.round(sample / 16);
+
+    const trees = treeVariants(tier);
+    let treeSample = 0;
+    for (let v = 0; v < trees.length; v += 1) {
+      make(`tree${v}_${tier}`, trees[v], 0xffffff, 14000);
+      treeSample += triangleCount(trees[v]);
+    }
+    measured.tree[tier] = Math.round(treeSample / trees.length);
   }
-  const trees = treeVariants();
-  for (let v = 0; v < trees.length; v += 1) make(`tree${v}`, trees[v], 0xffffff, 14000);
+  // The budget is spent against MEASURED costs, not remembered ones.
+  setCosts(measured);
   const cars = carVariants();
   for (let v = 0; v < cars.length; v += 1) make(`car${v}`, cars[v], 0xffffff, 6000);
   const tufts = tuftVariants();
@@ -83,11 +135,20 @@ function push(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {
 
 const HEIGHT_SCALE = 0.02;
 
+/** Triangles in a geometry. An INDEXED geometry has fewer vertices than
+ * triangle corners — a PlaneGeometry has four vertices and two triangles — so
+ * dividing the vertex count by three undercounts it, and a cost model built on
+ * that is wrong in exactly the places that matter most. */
+export function triangleCount(geometry) {
+  if (geometry.index) return geometry.index.count / 3;
+  return geometry.getAttribute("position").count / 3;
+}
+
 /** Nudges a colour per building: a little lightness, a little hue. Enough that
  * neighbours differ, little enough that the zone is still readable at a
  * glance, which is what the colour is actually for. */
-function varyColour(hex, id) {
-  const shift = (salt) => jitter(id, salt) - 0.5;
+function varyColour(hex, id, amount = 1) {
+  const shift = (salt) => (jitter(id, salt) - 0.5) * amount;
   const light = 1 + shift(23) * 0.34;
   const r = ((hex >> 16) & 0xff) * light * (1 + shift(29) * 0.2);
   const g = ((hex >> 8) & 0xff) * light * (1 + shift(31) * 0.16);
@@ -96,9 +157,32 @@ function varyColour(hex, id) {
   return (clamp(r) << 16) | (clamp(g) << 8) | clamp(b);
 }
 
+/** Which roof a building gets. Deterministic from its id, like its variant, so
+ * a house keeps its roof for its whole life without the colour ever entering
+ * game state.
+ *
+ * Houses draw from tile and slate; everything else from flat felt greys. That
+ * split is doing real work — it is most of what tells a terrace from an office
+ * block in the reference, at a zoom where no other detail is legible. */
+function roofColour(building, kind, palette) {
+  const set = kind === "residential" ? palette.roof.house : palette.roof.flat;
+  const pick = set[Math.floor(jitter(building.id, 53) * set.length) % set.length];
+  // Half the usual scatter. A roof colour is a material — tile, slate, felt —
+  // and materials vary less than paint does; at full scatter the terracottas
+  // slid into maroon and the palette stopped reading as tile at all.
+  return varyColour(pick, building.id * 3 + 11, 0.5);
+}
+
 /** A small deterministic hash, for per-tile variation that never touches game
  * state — the world looks varied without the variation having to be saved,
  * replayed or agreed between clients. */
+function darken(hex, factor) {
+  const r = Math.round(((hex >> 16) & 0xff) * factor);
+  const g = Math.round(((hex >> 8) & 0xff) * factor);
+  const b = Math.round((hex & 0xff) * factor);
+  return (r << 16) | (g << 8) | b;
+}
+
 function jitter(index, salt) {
   let h = (((index + 1) * 2654435761) ^ (salt * 40503)) >>> 0;
   h ^= h >>> 13;
@@ -112,24 +196,43 @@ export function updateInstances(state, pools, options = {}) {
   const ground = (index) => state.tiles.elevation[index] * HEIGHT_SCALE;
   const showOwner = options.territory === true;
   const underground = options.underground === true;
-  const trees = options.trees !== false;
-  const props = options.props !== false;
+  // The LOD plan decides what exists this frame. Callers may still force
+  // things off (reduced-effects mode), but never on.
+  const plan = options.plan ?? { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: true, props: true };
+  const buildingTier = plan.buildings;
+  const treeTier = plan.treeDetail;
+  const trees = plan.trees && options.trees !== false;
+  const props = plan.props && options.props !== false;
+  const bounds = options.bounds;
+  const markings = plan.markings !== false;
+  const poles = plan.poles !== false;
 
-  for (let y = 0; y < state.height; y += 1) {
-    for (let x = 0; x < state.width; x += 1) {
+  // Only what the camera can see. Everything below is per-tile work, and on a
+  // 128x128 region at street zoom that is 16k tiles of which perhaps 300 are
+  // visible.
+  const x0 = bounds ? Math.max(0, Math.floor(bounds.x0)) : 0;
+  const x1 = bounds ? Math.min(state.width - 1, Math.ceil(bounds.x1)) : state.width - 1;
+  const y0 = bounds ? Math.max(0, Math.floor(bounds.y0)) : 0;
+  const y1 = bounds ? Math.min(state.height - 1, Math.ceil(bounds.y1)) : state.height - 1;
+
+  for (let y = y0; y <= y1; y += 1) {
+    for (let x = x0; x <= x1; x += 1) {
       const index = y * state.width + x;
       const h = ground(index);
 
       if (state.tiles.road[index] & NET_PRESENT) {
         push(pools.road, x + 0.5, h, y + 0.5, 1, 1, 1, palette.road);
-        // Centre markings, turned to follow the road's own direction.
-        const mask = state.tiles.road[index] & 15;
-        const horizontal = (mask & 2) !== 0 || (mask & 8) !== 0;
-        push(pools.mark, x + 0.5, h, y + 0.5, 1, 1, 1, palette.roadMark, horizontal ? Math.PI / 2 : 0);
+        // Centre markings, turned to follow the road's own direction. Below a
+        // few pixels a tile they are invisible and there are thousands of them.
+        if (markings) {
+          const mask = state.tiles.road[index] & 15;
+          const horizontal = (mask & 2) !== 0 || (mask & 8) !== 0;
+          push(pools.mark, x + 0.5, h, y + 0.5, 1, 1, 1, palette.roadMark, horizontal ? Math.PI / 2 : 0);
+        }
       }
       // A pole every third tile rather than on every one. A pole per tile is
       // a picket fence down every street, and it buries the city in clutter.
-      if ((state.tiles.wire[index] & NET_PRESENT) && ((x + y) % 3 === 0)) {
+      if (poles && (state.tiles.wire[index] & NET_PRESENT) && ((x + y) % 3 === 0)) {
         push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
       }
       if (underground && (state.tiles.pipe[index] & NET_PRESENT)) {
@@ -186,7 +289,7 @@ export function updateInstances(state, pools, options = {}) {
         && state.tiles.buildingId[index] === 0 && !paved) {
         const v = Math.floor(jitter(index, 3) * TREE_VARIANTS) % TREE_VARIANTS;
         const scale = 0.72 + jitter(index, 5) * 0.6;
-        push(pools[`tree${v}`],
+        push(pools[`tree${v}_${treeTier}`],
           x + 0.2 + jitter(index, 7) * 0.6, h, y + 0.2 + jitter(index, 11) * 0.6,
           scale, scale, scale, palette.tree ?? palette.terrain[TERRAIN_FOREST],
           jitter(index, 13) * Math.PI * 2);
@@ -195,6 +298,7 @@ export function updateInstances(state, pools, options = {}) {
   }
 
   for (const building of state.buildings) {
+    if (!inBounds(bounds, building.x, building.y)) continue;
     const index = building.y * state.width + building.x;
     const h = ground(index);
     const cx = building.x + building.w / 2;
@@ -205,8 +309,16 @@ export function updateInstances(state, pools, options = {}) {
         : building.zone === ZONE_INDUSTRIAL ? "industrial"
           : "civic";
     const variant = variantFor(building.id, VARIANTS);
-    const pool = pools[`${kind}${variant}`];
+    // Houses stand on a garden, not on tarmac. Civic buildings get one too —
+    // a school or a clinic in the reference has grounds.
+    if (kind === "residential" || kind === "civic") {
+      push(pools.lawn, cx, h, cz, building.w, building.h, 1,
+        varyColour(palette.lawn, building.id * 5 + 3, 0.6));
+    }
+
+    const pool = pools[`${kind}${variant}_${buildingTier}`];
     if (!pool) continue;
+    const roofPool = pools[`${kind}${variant}_${buildingTier}_roof`];
 
     // Zone and value tier set the family; a deterministic per-building shift
     // sets the individual. Four silhouettes and one colour would still be a
@@ -229,11 +341,45 @@ export function updateInstances(state, pools, options = {}) {
       ? Math.floor(jitter(building.id, 19) * 4) * (Math.PI / 2)
       : 0;
     push(pool, cx, h, cz, building.w * 0.98, height, building.h * 0.98, colour, spin);
+    if (roofPool) {
+      // Same matrix, different colour. In the territory overlay the roof takes
+      // a darkened owner colour instead, so ownership still reads at a glance
+      // rather than being hidden under a terracotta hat.
+      const roof = showOwner ? darken(family, 0.62) : roofColour(building, kind, palette);
+      push(roofPool, cx, h, cz, building.w * 0.98, height, building.h * 0.98, roof, spin);
+    }
   }
 
+  // --- the overlay pass -----------------------------------------------------
+  //
+  // One traversal of the visible tiles, whichever overlay is showing. The band
+  // functions are pure and tested (client/ui/overlays.js); this only turns a
+  // band into a tint and a mark.
+  if (options.overlay) {
+    const MARKS = [pools.ovlGood, pools.ovlFair, pools.ovlSevere];
+    for (let index = 0; index < state.tiles.terrain.length; index += 1) {
+      const x = index % state.width;
+      const y = (index - x) / state.width;
+      if (!inBounds(bounds, x, y)) continue;
+      const band = bandAt(state, options.overlay, index);
+      // Grey is not drawn. A tile with nothing to say is more useful showing
+      // the city than showing a wash of grey over it.
+      if (band === BAND.NONE) continue;
+      const h = ground(index);
+      push(pools.ovl, x + 0.5, h, y + 0.5, 1, 1, 1, OVERLAY_COLOURS[band]);
+      const mark = MARKS[band];
+      if (mark) push(mark, x + 0.5, h, y + 0.5, 1, 1, 1, 0x1b1d21);
+    }
+  }
+
+  let triangles = 0;
   for (const mesh of Object.values(pools)) {
+    // An empty pool is hidden rather than drawn with zero instances, so unused
+    // tiers cost nothing at all.
+    mesh.visible = mesh.count > 0;
     mesh.instanceMatrix.needsUpdate = true;
     mesh.instanceColor.needsUpdate = true;
+    if (mesh.visible) triangles += mesh.count * triangleCount(mesh.geometry);
   }
-  return Object.values(pools).reduce((sum, mesh) => sum + mesh.count, 0);
+  return { instances: Object.values(pools).reduce((sum, mesh) => sum + mesh.count, 0), triangles };
 }

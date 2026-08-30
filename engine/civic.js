@@ -112,10 +112,16 @@ export function pollutionPass(state) {
 
 // --- service coverage ------------------------------------------------------
 
-/** Coverage falls off with distance and with funding. Returns per-service
- * fields, not stored in tile layers: only fire coverage has a tile layer of
- * its own (fireRisk), and the rest are read here and folded into land value,
- * crime and health. */
+/** Coverage falls off with distance, and is halved for each utility a station
+ * is missing. Returns per-service fields, not stored in tile layers: only fire
+ * coverage has a tile layer of its own (fireRisk), and the rest are read here
+ * and folded into land value, crime and health.
+ *
+ * **Department funding (gamedesign.md §9.4) is NOT implemented.** `strength`
+ * starts at a flat 100 for every station. `CMD_SET_FUNDING` is a constant with
+ * no reducer handler, there is no `state.funding`, and `rules().economy`'s
+ * `fundingMinPercent`/`fundingMaxPercent` are mirrored from `balance.json` and
+ * read by nothing. This comment used to claim funding worked; it never has. */
 export function coveragePass(state) {
   var total = state.width * state.height;
   var fields = { fire: [], police: [], health: [] };
@@ -330,7 +336,12 @@ function summarise(state, coverage) {
   var divisor = developed === 0 ? 1 : developed;
   return {
     crimeAverage: idiv(crime, divisor),
-    pollutionAverage: idiv(pollution, total),
+    // Over DEVELOPED land, like every other average here. Dividing by `total`
+    // spread a real number across thousands of empty tiles and reported 0 on
+    // almost every map — logged as a debt in dev-log.md and confirmed by the
+    // era-0 sweep, which measured 1 over developed land against 0 over the
+    // region. An indicator that always reads zero cannot drive anything.
+    pollutionAverage: idiv(pollution, divisor),
     landValueAverage: idiv(value, divisor),
     healthRiskAverage: idiv(health, divisor),
     firePercent: idiv(fireCovered * 100, divisor),

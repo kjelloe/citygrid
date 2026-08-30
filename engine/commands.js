@@ -27,6 +27,7 @@ export var CMD_MUTUAL_AID = "mutualAid";
 export var CMD_OFFER_CONTRACT = "offerContract";
 export var CMD_RESOLVE_CONTRACT = "resolveContract";
 export var CMD_PING = "ping";
+export var CMD_QUEST_CHOICE = "questChoice";
 
 /** Commands that paint over a set of tiles. These carry `runs` — a run-length
  * encoded cell list — never one command per tile crossed. That single rule is

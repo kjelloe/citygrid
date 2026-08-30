@@ -70,3 +70,17 @@ export var PLAYER_ACTIVE = 0;
 export var PLAYER_AFK = 1;
 export var PLAYER_REGENT = 2;
 export var PLAYER_GONE = 3;
+
+// --- history (slice 4.6) ----------------------------------------------------
+
+/** Twenty years of monthly samples. Bounded, because a 200-year game must not
+ * grow without limit; hashed, because two clients that disagree about the
+ * graphs disagree about the city. */
+export var HISTORY_CAP = 240;
+
+/** The order history fields are written in, for the hash and the save.
+ * Explicit and ordered — canonical serialisation may not depend on key order. */
+export var HISTORY_FIELDS = [
+  "tick", "population", "jobs", "treasury", "landValue", "pollution",
+  "crime", "congested", "demandR", "demandC", "demandI",
+];

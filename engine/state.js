@@ -11,7 +11,7 @@ import {
   makeSink, writeU8, writeI32, writeI64, writeString, writeBool, finish,
 } from "../shared/canonical.js";
 import { OPTION_FIELDS, copyOptions } from "./options.js";
-import { TERRAIN_GRASS, OWNER_NATURE } from "./constants.js";
+import { TERRAIN_GRASS, OWNER_NATURE, HISTORY_FIELDS } from "./constants.js";
 
 /** Per-tile arrays, in hash order. Appending is safe; reordering is not. */
 export var TILE_LAYERS = [
@@ -43,6 +43,34 @@ function copyLayer(kind, source) {
   if (kind === "u16") return copyU16(source);
   if (kind === "i32") return copyI32(source);
   return copyU8(source);
+}
+
+/** The disaster record. Defined here rather than imported from disasters.js:
+ * state.js is the bottom of the import graph and must stay there, and this is a
+ * plain record of integers like `supply` beside it. `disasters.js` gives the
+ * fields meaning; state.js only has to allocate, copy and hash them. */
+function copyQuestEntries(list) {
+  var out = [];
+  var i;
+  for (i = 0; i < list.length; i += 1) {
+    out.push({ id: list[i].id, startedTick: list[i].startedTick, choice: list[i].choice });
+  }
+  return out;
+}
+
+function copyQuestVars(list) {
+  var out = [];
+  var i;
+  for (i = 0; i < list.length; i += 1) out.push({ name: list[i].name, value: list[i].value });
+  return out;
+}
+
+function makeDisaster() {
+  return { kind: 0, phase: 0, ticks: 0, x: 0, y: 0, radius: 0, damage: 0 };
+}
+
+function copyDisaster(d) {
+  return { kind: d.kind, phase: d.phase, ticks: d.ticks, x: d.x, y: d.y, radius: d.radius, damage: d.damage };
 }
 
 export function createState(options) {
@@ -77,6 +105,22 @@ export function createState(options) {
     // Regional demand pool (ruling 001). Residents and firms belong to the
     // region, not to a player; allocation between seats happens at the lot.
     demand: { residential: 0, commercial: 0, industrial: 0 },
+    // At most one disaster at a time (gamedesign.md §12). Integers only, like
+    // everything else in state, and hashed — a client that disagreed about
+    // whether a flood was coming would disagree about everything after it.
+    disaster: makeDisaster(),
+    // Derived from the road graph every month, and hashed: it feeds pollution,
+    // which feeds land value, which feeds what gets built.
+    traffic: { commuters: 0, congested: 0, stranded: 0, averageCommute: 0 },
+    // Quest progress is hashed: two clients that disagree about which quests
+    // are running will disagree about the rewards those quests paid out.
+    // Everything in here is kept SORTED, so canonical serialisation never
+    // depends on the order things happened to be added.
+    quests: { active: [], completed: [], vars: [] },
+    // One integer sample a month, oldest first, capped at HISTORY_CAP. Hashed
+    // and saved: a loaded city with empty graphs is a city that has forgotten
+    // twenty years the player remembers.
+    history: { samples: [] },
     // Derived every month from hashed inputs, so it is deliberately NOT
     // hashed: it cannot diverge unless its inputs already have, and hashing
     // it would only add a second place to forget when it changes shape.
@@ -125,6 +169,19 @@ export function copyState(state) {
     supply: {
       power: copySupply(state.supply.power),
       water: copySupply(state.supply.water),
+    },
+    disaster: copyDisaster(state.disaster),
+    quests: {
+      active: copyQuestEntries(state.quests.active),
+      completed: state.quests.completed.slice(),
+      vars: copyQuestVars(state.quests.vars),
+    },
+    history: { samples: copyHistorySamples(state.history.samples) },
+    traffic: {
+      commuters: state.traffic.commuters,
+      congested: state.traffic.congested,
+      stranded: state.traffic.stranded,
+      averageCommute: state.traffic.averageCommute,
     },
     civic: {
       crimeAverage: state.civic.crimeAverage,
@@ -183,6 +240,23 @@ export function copyBuildings(buildings) {
       builtTick: b.builtTick,
       flags: b.flags,
     });
+  }
+  return out;
+}
+
+/** Local, like `copyDisaster` and `copyQuestEntries` above: `engine/history.js`
+ * imports the reducer, and the reducer imports this file. */
+function copyHistorySamples(samples) {
+  var out = [];
+  var i;
+  var f;
+  for (i = 0; i < samples.length; i += 1) {
+    var sample = samples[i];
+    var copy = {};
+    for (f = 0; f < HISTORY_FIELDS.length; f += 1) {
+      copy[HISTORY_FIELDS[f]] = sample[HISTORY_FIELDS[f]];
+    }
+    out.push(copy);
   }
   return out;
 }
@@ -248,6 +322,44 @@ export function writeState(sink, state) {
   writeI32(sink, state.demand.industrial);
   writeI32(sink, state.nextId);
   writeI32(sink, state.scanCursor);
+  writeU8(sink, state.disaster.kind);
+  writeU8(sink, state.disaster.phase);
+  writeI32(sink, state.disaster.ticks);
+  writeI32(sink, state.disaster.x);
+  writeI32(sink, state.disaster.y);
+  writeI32(sink, state.disaster.radius);
+  writeI32(sink, state.disaster.damage);
+  writeI32(sink, state.traffic.commuters);
+  writeI32(sink, state.traffic.congested);
+  writeI32(sink, state.traffic.stranded);
+  writeI32(sink, state.traffic.averageCommute);
+
+  writeI32(sink, state.quests.active.length);
+  for (var q = 0; q < state.quests.active.length; q += 1) {
+    writeString(sink, state.quests.active[q].id);
+    writeI64(sink, state.quests.active[q].startedTick);
+    writeI32(sink, state.quests.active[q].choice);
+  }
+  writeI32(sink, state.quests.completed.length);
+  for (var qc = 0; qc < state.quests.completed.length; qc += 1) {
+    writeString(sink, state.quests.completed[qc]);
+  }
+  writeI32(sink, state.quests.vars.length);
+  for (var qv = 0; qv < state.quests.vars.length; qv += 1) {
+    writeString(sink, state.quests.vars[qv].name);
+    writeI32(sink, state.quests.vars[qv].value);
+  }
+
+  // The history. Length first, then each sample's fields in HISTORY_FIELDS
+  // order — never `for (var k in sample)`, because canonical serialisation may
+  // not depend on key order.
+  writeI32(sink, state.history.samples.length);
+  for (var hs = 0; hs < state.history.samples.length; hs += 1) {
+    var row = state.history.samples[hs];
+    for (var hf = 0; hf < HISTORY_FIELDS.length; hf += 1) {
+      writeI32(sink, row[HISTORY_FIELDS[hf]]);
+    }
+  }
 
   writeI32(sink, state.players.length);
   for (var p = 0; p < state.players.length; p += 1) {

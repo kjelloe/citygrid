@@ -29,6 +29,9 @@ import "../engine/utilities.js";
 import "../engine/economy.js";
 import "../engine/civic.js";
 import "../engine/fire.js";
+import "../engine/disasters.js";
+import "../engine/traffic.js";
+import "../engine/history.js";
 import { createRenderer } from "../client/render/scene.js";
 import { setYawStep, zoomBy, focusOn } from "../client/render/camera.js";
 
@@ -42,15 +45,20 @@ const canvas = document.getElementById("city");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-const world = generateWorld(defaultOptions({ seed, width: 64, height: 64, seats: 1, waterStyle: "river" }));
+const size = Number(params.get("size") ?? 64);
+const seats = Number(params.get("seats") ?? 1);
+const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats, waterStyle: "river" }));
 if (!world.ok) throw new Error("generation failed: " + world.reason);
 const state = world.state;
 
-apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Deputy" });
-const deputy = makeDeputy(1, "expand");
+const deputies = [];
+for (let s2 = 1; s2 <= seats; s2 += 1) {
+  apply(state, { type: CMD_JOIN, actor: s2, seat: s2, name: `Deputy ${s2}` });
+  deputies.push(makeDeputy(s2, "expand"));
+}
 for (let tick = 1; tick <= years * TICKS_PER_YEAR; tick += 1) {
   apply(state, { type: CMD_TICK });
-  if (tick % 6 === 0) deputyTurn(state, deputy);
+  if (tick % 6 === 0) for (const d of deputies) deputyTurn(state, d);
 }
 
 const style = params.get("style") ?? "plain";
@@ -76,7 +84,11 @@ if (focusX >= 0 && focusY >= 0) {
   if (n > 0) focusOn(view.view, sx / n, sy / n);
 }
 const reduced = params.get("reduced") === "1";
-const stats = view.draw({ props: !reduced, trees: !reduced });
+const budgetParam = Number(params.get("budget") ?? 0);
+const stats = view.draw({
+  props: !reduced, trees: !reduced,
+  budget: budgetParam > 0 ? budgetParam : undefined,
+});
 
 const firstChunk = view.terrain.chunks[0];
 const pos = firstChunk.mesh.geometry.getAttribute("position");
@@ -89,6 +101,17 @@ globalThis.SHOT_REPORT = {
   instances: stats.instances,
   drawCalls: view.renderer.info.render.calls,
   triangles: view.renderer.info.render.triangles,
+  lod: stats.lod,
+  tilePixels: stats.tilePixels,
+  budget: stats.budget,
+  estimate: stats.estimate,
+  counted: stats.counted,
+  shadows: stats.shadows,
+  rebuilds: stats.rebuilds,
+  overBudget: stats.overBudget,
+  pools: Object.entries(view.pools).filter(([, m]) => m.count > 0)
+    .map(([n, m]) => `${n}:${m.count}x${m.geometry.getAttribute("position").count / 3}`)
+    .join(" "),
 };
 globalThis.SHOT_READY = true;
 </script>

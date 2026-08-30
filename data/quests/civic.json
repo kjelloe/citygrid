@@ -1,0 +1,42 @@
+[
+ {
+  "id": "the-crime-wave",
+  "category": "civic",
+  "speaker": "sunny",
+  "titleKey": "quest.the-crime-wave.title",
+  "textKey": "quest.the-crime-wave.text",
+  "available": {
+   "type": "measure",
+   "name": "crime",
+   "atLeast": 70
+  },
+  "objective": {
+   "type": "measure",
+   "name": "crime",
+   "atMost": 45
+  },
+  "reward": {
+   "money": 1500
+  }
+ },
+ {
+  "id": "after-the-wreckage",
+  "category": "disaster",
+  "speaker": "sunny",
+  "titleKey": "quest.after-the-wreckage.title",
+  "textKey": "quest.after-the-wreckage.text",
+  "available": {
+   "type": "measure",
+   "name": "ruinedTiles",
+   "atLeast": 4
+  },
+  "objective": {
+   "type": "measure",
+   "name": "ruinedTiles",
+   "atMost": 0
+  },
+  "reward": {
+   "money": 2500
+  }
+ }
+]

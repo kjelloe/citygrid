@@ -20,6 +20,13 @@ export function isBurning(state, index) {
   return (state.tiles.flags[index] & FLAG_BURNING) !== 0;
 }
 
+/** The one way a tile catches fire. Exported so disasters ignite through the
+ * fire system rather than inventing a second kind of burning that fire cover
+ * cannot fight. */
+export function igniteAt(state, index) {
+  return ignite(state, index);
+}
+
 function ignite(state, index) {
   if (isWater(state.tiles.terrain[index])) return false;
   if (isBurning(state, index)) return false;

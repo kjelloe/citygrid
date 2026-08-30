@@ -58,6 +58,12 @@ export const UI = {
   placeholderTint: 0xb0a99a,
 };
 
+/** Overlay band colours, fixed by gamedesign.md §16: green good, yellow
+ * strained, red failing, grey not applicable. Grey is never drawn — a tile with
+ * nothing to say is left showing the city, which is more informative than a
+ * wash of grey over the sea. */
+export const OVERLAY_COLOURS = [0x53c46a, 0xe8c440, 0xdb4b3a, 0x8d9096];
+
 /** Buildings are tinted by zone and lightened by value tier, so a prosperous
  * district reads lighter without needing different geometry. */
 export function buildingColour(zone, valueTier, palette) {

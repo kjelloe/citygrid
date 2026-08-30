@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot } from "./helpers/sources.js";
+import { repoRoot, docExists } from "./helpers/sources.js";
 import { rules, buildCost, difficultyOf } from "../engine/rules.js";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
@@ -20,11 +20,22 @@ test("the engine's mirror matches data/balance.json exactly", () => {
   }
 });
 
-test("balance is labelled era 0 until a sweep says otherwise", () => {
-  // Ruling 007: inherited constants are a starting point for measurement,
-  // never a shipped balance.
-  assert.equal(balance.era, 0);
-  assert.match(balance.note, /ERA 0, UNTUNED/);
+test("every balance era has a sweep report that justifies it", () => {
+  // Ruling 007: inherited constants are a starting point for measurement, never
+  // a shipped balance. Era 0 meant "untuned"; anything above it is a claim that
+  // somebody measured, and this is what makes that claim checkable.
+  //
+  // The report is the evidence. An era bumped without one is a number somebody
+  // liked the look of.
+  assert.ok(Number.isInteger(balance.era) && balance.era >= 0, `era is ${balance.era}`);
+  assert.match(balance.note, new RegExp(`ERA ${balance.era}`, "i"),
+    "the note must say which era these numbers belong to");
+  if (balance.era > 0) {
+    assert.ok(docExists(join("reports", `balance-era${balance.era}.md`)),
+      `era ${balance.era} has no reports/balance-era${balance.era}.md to justify it`);
+    assert.match(balance.note, /sim_sweep/,
+      "the note must name the sweep that produced the era");
+  }
 });
 
 test("every balance number is an integer", () => {

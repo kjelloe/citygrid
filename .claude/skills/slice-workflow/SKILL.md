@@ -36,6 +36,25 @@ Write the failing tests before the implementation. Pick the layers the slice act
 | UI acceptance | Any new control — buttons must *do* things |
 | Perf | Anything touching the renderer or the pump; measured on the **saturated** fixture |
 
+**Check the fixture before you measure it.** A gate that photographs an empty
+city, or sweeps overlays over bare grass, proves nothing and looks like a pass.
+Assert the fixture is worth measuring — buildings placed, population above zero,
+the layers the test reads actually non-zero — as the FIRST check, so a broken
+fixture fails as a broken fixture instead of as a broken feature. Three
+separate N4 failures were fixture bugs wearing a feature's clothes.
+
+**Read `state.supply` before blaming reach or wiring.** It reports `components`,
+`served` and `starved` per network. `components: 2` means two disconnected
+networks, and a producer in one of them supplies nothing to the other.
+
+**Ask what the gate would still report if the feature were deleted from the
+client** (ruling 026). A gate that reaches past the interface into `apply()`
+cannot see an interface that is not there — it reports the same green it would
+report if everything were fine. `tools/mvp_acceptance.mjs` said *13 of 13* while
+the toolbar had no way to place a building, so no human player could power or
+water a city. Where a criterion is about a person doing something, the script
+clicks the control and then the map.
+
 ## 3. Implement
 
 Obey the non-negotiables in `CLAUDE.md`. The ones most often forgotten:
@@ -43,6 +62,14 @@ Obey the non-negotiables in `CLAUDE.md`. The ones most often forgotten:
 - Purity in `engine/` and `shared/`: no `Math.random`, no clocks, no I/O, no floats, no `null`.
 - The restricted subset in `engine/` (ruling 004).
 - Permission checks in the reducer, never only in the UI.
+- **A command with no control that sends it is not in the game.** `CMD_SET_TAX`
+  sat in the reducer for four slices with nothing in the client to issue it, so
+  the tax rate was a constant the design document described and the player could
+  not touch. Same for a building in `data/buildings.json` with no toolbar button.
+- **Every string the player reads goes through `t()`** (ruling 008). Models hand
+  the view i18n KEYS; `hud.js` is the only place a key becomes words. Add the key
+  to `en.json` and `no.json` in the same commit — `t()` returns the key when it
+  misses, so an untranslated string ships as a literal `alert.congestion`.
 - **New nested state touches five places**: `copyState` deep copy, both hash functions, the save
   migration, the snapshot projection, the lobby options record.
 - Numbers go in `data/*.json`, never in engine code.
