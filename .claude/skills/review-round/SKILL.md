@@ -84,6 +84,12 @@ grep -rn '^export function' client/ engine/
 grep -rn 'import(' client/
 ```
 
+**At least one gate must use the real server.** Every gate stood up its own static server inside
+its own file, so all eight passed while `./run.sh` served a Content-Security-Policy that blocked
+the importmap and the game would not boot at all. `tools/serve_smoke.mjs` spawns `tools/serve.mjs`
+and loads the bare origin. **Listen for console errors, not only `pageerror`** — a CSP violation is
+reported to the console, which is why this was invisible.
+
 **A feature is not built until it is driven on the real page.** N21's city name passed every unit
 test and reached the URL and nowhere else, because the lobby generates its region *before* the name
 is typed and hands that world on. Only `lobby_smoke` saw it. Unit tests check the parts; the gate

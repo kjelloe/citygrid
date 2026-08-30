@@ -1991,3 +1991,84 @@ Rotation is four snapped angles on Q and E, and a free-rotate drag would fight
 ruling 006. **Long press is not built** — a plain tap already inspects with no
 tool held, and the contextual actions a long press would open do not exist yet.
 Both are now "as built" notes in §13.4 rather than silent divergences.
+
+---
+
+## 2026-08-30 — Slice N22: `./run.sh` was broken, and eight gates did not notice
+
+Kjell opened `http://localhost:8123` and got:
+
+```
+Something went wrong
+Failed to resolve module specifier "three". Relative references must start
+with either "/", "./", or "../".
+```
+
+### The cause
+
+`tools/serve.mjs` sends `Content-Security-Policy: default-src 'self'; img-src
+'self' data:; style-src 'self' 'unsafe-inline'`. There is **no `script-src`**,
+so scripts fall back to `default-src 'self'`, which blocks inline scripts —
+including `<script type="importmap">`. Without the importmap, `import * as THREE
+from "three"` cannot resolve and the boot dies.
+
+The browser said exactly what it wanted, in a **console** message rather than a
+page error:
+
+```
+Executing inline script violates the following Content Security Policy
+directive 'default-src 'self''. … a hash ('sha256-nrwuPWg9wi1daziyhZ…')
+```
+
+### Why no gate caught it
+
+**Every one of the eight gates stands up its own throwaway static server inside
+its own file.** None of them used `tools/serve.mjs` — the server `run.sh`
+starts and the only one a player ever touches. So the entire suite and every
+gate passed while the game did not start.
+
+That is a worse version of ruling 026's failure: not a gate reaching past the
+interface, but a gate reaching past the *deployment*. And the symptom was
+invisible for a second reason — a CSP violation is a console error, and most of
+the gates only listen for `pageerror`.
+
+### Fixed
+
+`tools/serve.mjs` now computes a **sha256 hash of every inline script in
+`index.html` at startup** and puts those hashes in `script-src`. Hashes rather
+than `'unsafe-inline'`: the policy exists to catch an accidental CDN import in
+development, and `'unsafe-inline'` would let an injected script run too.
+Computed from the file that is actually served, so the policy cannot drift from
+the page — a hash pasted into a header is wrong the first time the importmap
+changes.
+
+The emitted header now carries exactly the hash the browser asked for:
+`'sha256-nrwuPWg9wi1daziyhZHvNKQ9FJDKuEpGeyoPVzWEBoM='`.
+
+### The gate that was missing
+
+`tools/serve_smoke.mjs`, 11 checks. It **spawns `tools/serve.mjs` as a child
+process**, exactly as `run.sh` does, and loads `http://localhost:8199` — the
+bare origin a person types, not `/index.html`. It listens for **console** errors
+as well as page errors, starts a city so module resolution is covered all the
+way down to three.js, and checks the content type of every kind of file the page
+needs, including the manifest and the service worker.
+
+It also asserts the policy still refuses everything from elsewhere: hashes, not
+`'unsafe-inline'`.
+
+### Also
+
+`dev-prompts.md` and `dev-questions.md` had **vanished from disk**. Untracking
+them in P24 used `git rm --cached`, which keeps the files — but the same commit
+ran `git add -u` afterwards, which staged the deletion of the now-untracked
+paths and took them with it. Restored from `600fc3a`, and P24–P27 recorded,
+which had been referenced from `dev-log.md` and `plan-v1.md` for two days
+without existing. The gap was invisible because `test/docs.test.js` **skips**
+the numbering check when the files are absent — correct for a fresh clone, and
+exactly wrong here.
+
+### Measured
+
+- **`./test.sh` 521 tests, green twice.**
+- **Nine gates green**, including the new one.

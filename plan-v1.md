@@ -287,6 +287,8 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 
 | **N21** | **Ready to playtest** (P25) — naming, the controls card, double-click focus | S | Two things a playtest hits in its first minute and neither existed: §5.1's step one is "the player names the city and mayor", and a player who forgot a shortcut had nowhere to look — the only place any key was written down was the map canvas's `aria-label` | **Done.** City and mayor names as the game's only typed fields; the city name is a hashed lobby option, sanitised through the engine's own `sanitiseText` so box, link and checksum agree. An unnamed city takes its region's name. A controls card on `?` whose tool half is **derived from `TOOLS`**, so it cannot advertise a key that does not exist. Double-click focuses (§13.4) |
 
+| **N22** | **`./run.sh` was broken** (P27) — the CSP blocked the importmap | S | Kjell opened localhost and got "Failed to resolve module specifier three". `tools/serve.mjs` sends `default-src 'self'` with no `script-src`, which blocks the inline importmap — and **all eight gates stand up their own server**, so none of them ever ran the one `run.sh` starts | **Done.** The server hashes every inline script in `index.html` at startup and puts those hashes in `script-src` — hashes, not `'unsafe-inline'`, and computed from the file served so the policy cannot drift. `tools/serve_smoke.mjs` spawns the real server, loads the bare origin, listens for **console** errors as well as page errors, and starts a city |
+
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits
 deliberately after N6 and N7: tuning a balance before disasters and traffic exist
