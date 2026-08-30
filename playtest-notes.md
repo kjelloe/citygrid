@@ -209,4 +209,71 @@ introduced in the same slice that first made the rate reachable.
 **What to check when you play.** Whether you ever want to underfund the police
 to survive a bad year. If you do, the funding sheet is the next budget slice.
 
+### N18 — the game is synthesised, not sampled
+
+**What I chose.** Every sound is made by oscillators and a noise buffer at
+runtime. There are no audio files.
+
+**Why.** Zero runtime dependencies and no build step mean an audio bank is a
+vendoring and licensing decision, not a slice. Seven short gestures — a rising
+pair for something built, a falling one for a refusal, a low thud for a
+collapse — cost nothing to download and cannot go stale against a bake.
+
+**What to check when you play.** Whether it sounds cheap. Synthesised audio has
+a ceiling, and if the answer is "this needs real sound" then C4 becomes a
+sourcing decision and I should stop here rather than polishing oscillators.
+Also whether the ambience layer is pleasant over an hour — it is the one sound
+that never stops.
+
+### N18 — three voices a tick, and refusals are audible
+
+**What I chose.** A month that produces fifty-nine power shortfalls produces one
+`warn`. Notifications are ranked, so a disaster is never crowded out by a quest
+chime. Refused commands make a sound.
+
+**Why.** The alert area learned the collapsing lesson in N4. Refusals are
+audible because they are the thing a player most needs to notice and the text
+naming them is at the bottom of the screen.
+
+**What to check when you play.** Whether the refusal sound becomes annoying —
+it fires on every mis-click, and mis-clicks are common while learning the
+footprints. If it grates, the fix is to play it only when the reason is
+`noFunds` rather than on every refusal.
+
+### N19 — icons are SVG, so installability is not guaranteed everywhere
+
+**What I found, not chose.** The manifest ships two SVG icons. Chromium installs
+from them; some launchers want PNG.
+
+**Why I left it.** Generating PNGs needs an image pipeline the project does not
+have, and committing binaries for something drawable in forty lines is worse
+than the limitation.
+
+**What to check when you play.** Try installing it on your phone. If it refuses,
+that is the one thing to fix, and it is half an hour with a screenshot tool.
+
+### N20 — funding is three steps, not a slider
+
+**What I chose.** Lean 50%, Normal 100%, Generous 150%, per department, as a
+dropdown in the budget row.
+
+**Why.** A range input is a poor keyboard target, and the decision is "can I
+afford this department" rather than the difference between 96% and 104%. Coverage
+and upkeep both scale, so it is a real trade.
+
+**What to check when you play.** Whether you ever set anything to Lean. If
+Generous is always correct, funding is a tax on attention rather than a
+decision, and the numbers need widening — or the feature is not worth its row.
+
+### N17 — the fixtures pin a city that grows
+
+**What I found, not chose.** The founding fixture's first draft pinned forty
+steps of an **empty field**: the wire was eight rows from the zoning, so nothing
+was ever powered, and every hash was perfectly stable.
+
+**Why it matters to you.** It is the reason each fixture now carries an `expect`
+floor. If you change balance enough that the founding city stops reaching 100
+residents, the fixture will fail with *"only worth measuring at 100 or more"*
+rather than silently becoming a test of an empty map.
+
 *(filled in at the end — what is missing and what it would take)*
