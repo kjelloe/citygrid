@@ -17,14 +17,20 @@ const REQUIRED_DOCS = [
   "README.md",
   "CLAUDE.md",
   "dev-log.md",
-  "dev-prompts.md",
-  "dev-questions.md",
   "plan-v1.md",
   "specs/gamedesign.md",
   "specs/plan.md",
   "specs/referencedata.md",
   "specs/art-direction.md",
 ];
+
+/** `dev-prompts.md` and `dev-questions.md` are LOCAL, by Kjell's decision
+ * (P24): they are in `.gitignore` and untracked, so a fresh clone does not have
+ * them. The checks below are still the ones that keep the decision record
+ * honest, so they run wherever the files are — and skip, loudly, where they are
+ * not, rather than turning a clean clone's suite red. */
+const LOCAL_DOCS = ["dev-prompts.md", "dev-questions.md"];
+const haveLocalDocs = LOCAL_DOCS.every((doc) => docExists(doc));
 
 test("every required document exists", () => {
   const missing = REQUIRED_DOCS.filter((doc) => !docExists(doc));
@@ -38,7 +44,7 @@ function questionIds(markdown) {
   return ids;
 }
 
-test("open questions agree between plan-v1.md and dev-questions.md", () => {
+test("open questions agree between plan-v1.md and dev-questions.md", { skip: haveLocalDocs ? false : "dev-questions.md is local and not in this checkout" }, () => {
   const planQuestions = questionIds(readDoc("plan-v1.md").split("## Open questions")[1] ?? "");
   const openSection = readDoc("dev-questions.md").split("# OPEN QUESTIONS")[1];
   assert.ok(openSection, "dev-questions.md must have an OPEN QUESTIONS section at the bottom");
@@ -52,7 +58,7 @@ test("open questions agree between plan-v1.md and dev-questions.md", () => {
   assert.ok(openQuestions.size > 0, "the open list should not be silently empty");
 });
 
-test("answered questions have left the open section", () => {
+test("answered questions have left the open section", { skip: haveLocalDocs ? false : "dev-questions.md is local and not in this checkout" }, () => {
   const doc = readDoc("dev-questions.md");
   const [answered, open] = doc.split("# OPEN QUESTIONS");
   assert.ok(/^### A\d+/m.test(answered), "answered rulings live above the open section");
@@ -85,7 +91,7 @@ test("ruling filenames and headings agree on the number", () => {
   }
 });
 
-test("dev-prompts.md numbers its prompts without gaps", () => {
+test("dev-prompts.md numbers its prompts without gaps", { skip: haveLocalDocs ? false : "dev-prompts.md is local and not in this checkout" }, () => {
   const ids = [...readDoc("dev-prompts.md").matchAll(/^## P(\d+) —/gm)].map((m) => Number(m[1]));
   assert.ok(ids.length > 0, "there should be at least one recorded prompt");
   assert.deepEqual(ids, ids.map((_, i) => i + 1), `prompt numbering has a gap: ${ids}`);
