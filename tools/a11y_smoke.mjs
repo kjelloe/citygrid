@@ -168,6 +168,38 @@ try {
     toolAfterKey === "road", `${built} roads before, tool is ${toolAfterKey}`);
   await page.keyboard.press("Escape");
 
+  // --- audio (slice 4.4) ----------------------------------------------------
+  //
+  // A browser leaves an AudioContext suspended until a real gesture, so the
+  // check is "does it run AFTER one", not "does it exist".
+  //
+  // On its OWN page: by this point in the run the main one has been clicked
+  // and typed at dozens of times, so "has not been interacted with" is not
+  // true of it and the check would pass or fail for the wrong reason.
+  const fresh = await context.newPage();
+  fresh.on("pageerror", (e) => pageErrors.push(`audio: ${e.message}`));
+  await fresh.goto(game);
+  await started(fresh);
+  const beforeGesture = await fresh.evaluate(() => globalThis.CITY.audio.running);
+  await fresh.mouse.click(640, 300);
+  const audio = await fresh.evaluate(() => ({
+    running: globalThis.CITY.audio.running,
+    voices: globalThis.CITY.audio.voices,
+  }));
+  check("the mixer stays silent until the player has interacted",
+    beforeGesture === false, `running before a gesture: ${beforeGesture}`);
+  check("the mixer runs after a gesture", audio.running === true, JSON.stringify(audio));
+  await fresh.close();
+
+  const muted = await page.evaluate(async () => {
+    const { cuesFor } = await import("/client/audio/audio-model.js");
+    globalThis.CITY.setAudioSettings({ sound: false, volumeMaster: 100, volumeEffects: 100, volumeAmbience: 100 });
+    const played = globalThis.CITY.audio.play(cuesFor([{ kind: "fireStarted" }])[0]);
+    globalThis.CITY.setAudioSettings({ sound: true, volumeMaster: 100, volumeEffects: 70, volumeAmbience: 35 });
+    return played;
+  });
+  check("muting reaches the mixer", muted === false, `play() returned ${muted}`);
+
   // --- the settings dialog is a real modal ----------------------------------
   await page.click("#settings");
   await page.waitForSelector("dialog.settings[open]");

@@ -1692,3 +1692,85 @@ to grow, and only then pinned.
 **The `expect` check reported twice.** After a hash failed at step 12 the replay
 stops, so the half-built state reported `history.samples is 12` on top of the
 real failure. It is skipped once a hash has already gone.
+
+---
+
+## 2026-08-30 — Slice N18: audio (slice 4.4)
+
+`plan-v1.md`'s gate: "Audio is derived from state only: a muted client and a
+loud one stay hash-identical, asserted in test."
+
+### Synthesised, not sampled
+
+Web Audio oscillators and a shaped noise buffer. **No sound files** — the
+project ships zero runtime dependencies and has no build step, so an audio bank
+would be a vendoring and licensing decision rather than a slice. Seven voices:
+`place`, `refuse`, `chime`, `warn`, `alarm`, `collapse`, `boom`. They cost
+nothing to download and cannot go out of sync with a bake that does not exist.
+
+`Math.random` appears in the noise buffer. That is allowed and worth naming: it
+is a speaker, three directories from an engine where it is forbidden, and it
+feeds no decision the simulation can see.
+
+### The layers
+
+- **feedback** — the player did something. `place` on success, `refuse` on
+  anything else. Refusals are audible because they are the thing the player most
+  needs to notice and the readout naming them is at the bottom of the screen
+  (slice N13).
+- **notification** — collapsed by voice, ranked by priority, **capped at three
+  a tick**. Fifty-nine `powerShortfall` events make one `warn`; the alert area
+  learned this in N4 and the speaker learns it here.
+- **ambience** — a continuous level from population and congestion, both hashed
+  state, so two clients hear the same city. One oscillator pair started once and
+  left running, its gain ramped: starting and stopping per tick would click.
+- **music** — not built, and `settings.volume.music` stays out of the panel. A
+  volume slider for silence is a control that changes nothing, which is the
+  failure the P18 audit was about.
+
+### Browser realities, handled
+
+**First-gesture unlock** — an AudioContext starts suspended, so it is built
+lazily on the first real interaction and nothing is allocated for a player who
+never enables sound. **Voice pooling** — twelve concurrent voices, each tearing
+down its own nodes on `ended`, because a long session otherwise accumulates
+thousands of dead ones. **Ramps, never steps** — a gain set directly clicks.
+
+Volumes are squared before they reach a gain, because a linear fader spends
+most of its travel in the top of the range.
+
+### Settings became real
+
+`settings.sound`, `settings.sound.on/off`, `settings.volume.effects` and
+`settings.volume.ambience` have been in both catalogues since the first commit
+with nothing to show them. They are rows now, and left
+`test/reachability.test.js`'s `NOT_YET` list. `settings.volume.master` stayed,
+with a reason: the mixer runs master at full and the two bus levels are the
+controls.
+
+Four steps rather than a slider — a range input is a poor keyboard target and
+nobody hears the difference between 62 and 68.
+
+### Measured
+
+- **`./test.sh` 497 tests, green twice.** Was 484. `test/audio.test.js`, 9.
+- **The gate, as a test:** two identical cities ticked 120 times, one with every
+  event fed to the audio model and its ambience read — `hashState` equal. If
+  audio ever cached a level or a "last played" tick in state, that is where it
+  would show.
+- `tools/a11y_smoke.mjs` gained three: silent before a gesture, running after
+  one, and muting reaching the mixer.
+- All seven gates green.
+
+### What failed on the way
+
+**The settings panel showed no button as pressed** for the new rows. `mark()`
+compared `button.dataset.value` — always a string — against `settings[field]`,
+which is now a boolean for sound and a number for the volumes. The lobby had got
+this right with `String(...)`; the settings panel had not, and it did not matter
+until a row was something other than a string.
+
+**The "silent until interacted" check passed for the wrong reason.** It ran late
+in the accessibility gate, by which point the page had been clicked and typed at
+dozens of times, so the context was long since unlocked. Moved to a page of its
+own.

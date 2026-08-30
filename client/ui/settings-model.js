@@ -4,13 +4,12 @@
 // because it is the same kind of thing: rows of choices, a sanitiser, and no
 // DOM. `test/settings.test.js` walks it.
 //
-// **Only settings that do something are here.** The catalogue has carried
-// `settings.sound`, `settings.volume.*` and `settings.style` since the first
-// commit; there is no audio (slice 4.4) and the visual style was settled by
-// ruling 022, so offering either would be a control that changes nothing —
-// which is the exact failure the P18 audit was about. They stay in the
-// catalogue, listed in `test/reachability.test.js` with the slice that will
-// use them, and out of this file until then.
+// **Only settings that do something are here.** Sound and its two volumes
+// arrived with slice 4.4 and are now real. `settings.style` is not offered
+// (ruling 022 settled the style, so the picker would have one entry) and
+// neither is `settings.volume.music` — there is no composed music, and a
+// volume slider for silence is a control that changes nothing, which is the
+// exact failure the P18 audit was about.
 
 export const LANGUAGES = [
   // Named in their own language. A language picker that translates its own
@@ -34,7 +33,24 @@ export const MOTION = [
   { value: "full", labelKey: "settings.off" },
 ];
 
+export const SOUND = [
+  { value: true, labelKey: "settings.sound.on" },
+  { value: false, labelKey: "settings.sound.off" },
+];
+
+/** Four steps rather than a slider: a range input is a poor keyboard target
+ * and the difference between 62 and 68 is not a difference anyone hears. */
+export const LEVELS = [
+  { value: 0, labelKey: "settings.level.off" },
+  { value: 35, labelKey: "settings.level.quiet" },
+  { value: 70, labelKey: "settings.level.normal" },
+  { value: 100, labelKey: "settings.level.loud" },
+];
+
 export const SETTING_ROWS = [
+  { field: "sound", labelKey: "settings.sound", choices: SOUND },
+  { field: "volumeEffects", labelKey: "settings.volume.effects", choices: LEVELS },
+  { field: "volumeAmbience", labelKey: "settings.volume.ambience", choices: LEVELS },
   { field: "locale", labelKey: "settings.language", choices: LANGUAGES },
   { field: "contrast", labelKey: "settings.highContrast", choices: CONTRAST },
   { field: "motion", labelKey: "settings.reducedMotion", choices: MOTION },
@@ -45,6 +61,12 @@ export function defaultSettings(locale = "en") {
     locale: LANGUAGES.some((l) => l.value === locale) ? locale : "en",
     contrast: "normal",
     motion: "auto",
+    // Sound ON by default, at a level that does not startle. A browser will not
+    // let it make a noise until the player interacts anyway, so defaulting it
+    // off would mean two decisions before the game says anything.
+    sound: true,
+    volumeEffects: 70,
+    volumeAmbience: 35,
   };
 }
 
@@ -61,6 +83,21 @@ export function sanitiseSettings(given = {}, locale = "en") {
     locale: pick(LANGUAGES, given.locale, base.locale),
     contrast: pick(CONTRAST, given.contrast, base.contrast),
     motion: pick(MOTION, given.motion, base.motion),
+    sound: pick(SOUND, given.sound, base.sound),
+    volumeEffects: pick(LEVELS, given.volumeEffects, base.volumeEffects),
+    volumeAmbience: pick(LEVELS, given.volumeAmbience, base.volumeAmbience),
+  };
+}
+
+/** What the mixer needs, and nothing else. The mixer is handed values; it never
+ * sees the settings object, and it never sees state at all. */
+export function mixerSettings(settings) {
+  const s = sanitiseSettings(settings);
+  return {
+    sound: s.sound,
+    volumeMaster: 100,
+    volumeEffects: s.volumeEffects,
+    volumeAmbience: s.volumeAmbience,
   };
 }
 

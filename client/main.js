@@ -11,6 +11,7 @@
 
 import { loadLocale, localise, t } from "./i18n.js";
 import { openSettings, loadSettings, applyDisplaySettings } from "./ui/settings.js";
+import { mixerSettings } from "./ui/settings-model.js";
 import { hasWebGL2, preferredLocale, prefersReducedMotion } from "./capabilities.js";
 import { choicesFromParams, optionsFor, paramsForChoices } from "./lobby/options-model.js";
 import { listSaves, getSave } from "./storage/db.js";
@@ -68,6 +69,10 @@ async function boot() {
 
   async function showSettings() {
     await openSettings({
+      onChange(next) {
+        // Volume moves while the panel is open, so it is heard as it is set.
+        session?.setAudioSettings(mixerSettings(next));
+      },
       onLocaleChange() {
         // Re-render whatever is on screen. The panel knows the language
         // changed; it does not know what is behind it.
@@ -80,7 +85,12 @@ async function boot() {
   async function play(given) {
     app.innerHTML = "";
     app.classList.add("playing");
-    session = await startGame(app, { ...given, onNewCity: newGame, onSettings: showSettings });
+    session = await startGame(app, {
+      ...given,
+      onNewCity: newGame,
+      onSettings: showSettings,
+      audioSettings: mixerSettings(loadSettings()),
+    });
     if (config.debug) {
       const { runDebugChecks } = await import("./debug.js");
       await runDebugChecks();

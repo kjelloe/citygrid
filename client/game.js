@@ -32,6 +32,8 @@ import { createController } from "./input/controller.js";
 import { createHud } from "./ui/hud.js";
 import { createMinimap } from "./render/minimap.js";
 import { openStatistics } from "./ui/statistics.js";
+import { createMixer } from "./audio/mixer.js";
+import { cuesFor, cueForResult, ambienceFor } from "./audio/audio-model.js";
 import { loadQuests } from "./content.js";
 import { questCatalogue, activeQuests } from "../engine/quests.js";
 import { CMD_QUEST_CHOICE, CMD_SET_TAX } from "../engine/commands.js";
@@ -115,11 +117,22 @@ export async function startGame(root, given = {}) {
   // is being played.
   const current = { state };
 
+  // Audio is a PROJECTION of state, like the renderer: it is handed events and
+  // numbers, it never writes, and a muted client and a loud one produce the
+  // same hashes (slice 4.4's gate). The mixer is created here and unlocked on
+  // the first real gesture, because a browser leaves an AudioContext suspended
+  // until then.
+  const audio = createMixer(given.audioSettings ?? {});
+  const unlockAudio = () => audio.unlock();
+  canvas.addEventListener("pointerdown", unlockAudio);
+  hudRoot.addEventListener("pointerdown", unlockAudio);
+  globalThis.addEventListener?.("keydown", unlockAudio);
+
   const controller = createController(canvas, state, renderer, {
     actor: SEAT,
     onChange: () => { hud.refresh(); minimap?.worldChanged(); },
     onPreview: (preview) => hud.setPreview(preview),
-    onResult: (result) => hud.setResult(result),
+    onResult: (result) => { hud.setResult(result); audio.play(cueForResult(result)); },
     // With no build tool selected, a tap inspects. That is the design's
     // "Inspect" tool without a mode of its own to get stuck in.
     onTap: (tile) => hud.showInspection(tile),
@@ -179,6 +192,8 @@ export async function startGame(root, given = {}) {
       clock = setInterval(() => {
         const outcome = apply(state, { type: CMD_TICK });
         hud.tick(outcome.events);
+        for (const cue of cuesFor(outcome.events)) audio.play(cue);
+        audio.setAmbience(ambienceFor(state));
         if (shouldAutosave(state.tick, lastAutosaveTick)) {
           lastAutosaveTick = state.tick;
           save(SLOTS.auto);
@@ -268,6 +283,9 @@ export async function startGame(root, given = {}) {
     },
     save, load, exportSave, importSave,
     get overlay() { return overlay; },
+    audio,
+    /** Settings changed: the mixer takes the new levels without a rebuild. */
+    setAudioSettings(next) { audio.update(next); },
     pause: () => setSpeed(0),
     resume: () => setSpeed(1),
     stop() {
@@ -276,6 +294,10 @@ export async function startGame(root, given = {}) {
       cancelAnimationFrame(frame);
       globalThis.removeEventListener("resize", onResize);
       controller.dispose();
+      canvas.removeEventListener("pointerdown", unlockAudio);
+      hudRoot.removeEventListener("pointerdown", unlockAudio);
+      globalThis.removeEventListener?.("keydown", unlockAudio);
+      audio.dispose();
       minimap?.dispose();
       hud.dispose?.();
       renderer.dispose();

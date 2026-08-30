@@ -54,7 +54,7 @@ export function applyDisplaySettings(settings, root = document.documentElement) 
  * @param onLocaleChange called after the new catalogue is loaded. The caller
  *   re-renders whatever is on screen; nothing here knows what that is.
  */
-export async function openSettings({ onLocaleChange } = {}) {
+export async function openSettings({ onLocaleChange, onChange } = {}) {
   let settings = loadSettings();
   const previousLocale = settings.locale;
 
@@ -83,6 +83,7 @@ export async function openSettings({ onLocaleChange } = {}) {
         settings = sanitiseSettings({ ...settings, [row.field]: choice.value });
         saveSettings(settings);
         applyDisplaySettings(settings);
+        onChange?.(settings);
         if (row.field === "locale") {
           await loadLocale(settings.locale);
           relabel();
@@ -108,7 +109,10 @@ export async function openSettings({ onLocaleChange } = {}) {
   function mark() {
     for (const [field, buttons] of buttonsByRow) {
       for (const button of buttons) {
-        button.setAttribute("aria-pressed", String(button.dataset.value === settings[field]));
+        // `dataset` is always a string; `sound` is a boolean and the volumes
+        // are numbers, so comparing them raw meant no button in those rows ever
+        // showed as pressed.
+        button.setAttribute("aria-pressed", String(button.dataset.value === String(settings[field])));
       }
     }
   }

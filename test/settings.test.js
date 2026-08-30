@@ -8,8 +8,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION,
-  defaultSettings, sanitiseSettings, documentAttributes,
+  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS,
+  defaultSettings, sanitiseSettings, documentAttributes, mixerSettings,
 } from "../client/ui/settings-model.js";
 import { LOCALES } from "../client/i18n.js";
 import { OPTION_FIELDS } from "../engine/options.js";
@@ -74,5 +74,41 @@ test("every row has at least two choices and a label", () => {
       assert.ok(choice.label ?? choice.labelKey, `a ${row.field} choice has no label`);
     }
   }
-  assert.deepEqual(SETTING_ROWS.map((r) => r.choices), [LANGUAGES, CONTRAST, MOTION]);
+  assert.deepEqual(SETTING_ROWS.map((r) => r.choices), [SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
+});
+
+// --- audio (slice 4.4) ------------------------------------------------------
+
+test("the mixer is handed values, never the settings object or state", () => {
+  // `plan-v1.md`'s gate: audio is derived from state only, and a muted client
+  // and a loud one stay hash-identical. The narrow form of that here is that
+  // what crosses into the mixer is four numbers and a boolean.
+  const settings = { ...defaultSettings(), sound: false, volumeEffects: 100 };
+  const forMixer = mixerSettings(settings);
+  assert.deepEqual(Object.keys(forMixer).sort(),
+    ["sound", "volumeAmbience", "volumeEffects", "volumeMaster"]);
+  for (const [key, value] of Object.entries(forMixer)) {
+    assert.ok(typeof value === "number" || typeof value === "boolean", `${key} is ${typeof value}`);
+  }
+  assert.equal(forMixer.sound, false);
+});
+
+test("sound is on by default, at a level that does not startle", () => {
+  const base = defaultSettings();
+  assert.equal(base.sound, true, "a browser blocks sound until a gesture anyway");
+  assert.ok(base.volumeEffects > 0 && base.volumeEffects < 100);
+  assert.ok(base.volumeAmbience < base.volumeEffects, "ambience sits under the feedback layer");
+});
+
+test("a corrupt volume falls back rather than deafening anyone", () => {
+  assert.equal(sanitiseSettings({ volumeEffects: 9999 }).volumeEffects, defaultSettings().volumeEffects);
+  assert.equal(sanitiseSettings({ sound: "yes" }).sound, true);
+  assert.equal(sanitiseSettings({ volumeAmbience: -5 }).volumeAmbience, defaultSettings().volumeAmbience);
+});
+
+test("every volume step is a level the mixer can use", () => {
+  for (const level of LEVELS) {
+    assert.ok(Number.isInteger(level.value) && level.value >= 0 && level.value <= 100, String(level.value));
+  }
+  assert.equal(LEVELS[0].value, 0, "there must be a way to silence one bus without silencing all sound");
 });
