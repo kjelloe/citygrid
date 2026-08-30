@@ -1,279 +1,364 @@
-# Playtest notes — decisions taken 2026-08-29 while Kjell was away
+# Playtest notes
 
-Kjell (P15): *"build all the remaining parts from N5 and onwards… Please record
-decisions when I am away so we can re-assess after when I playtest."*
+**Read this before playing. It is a list of questions, not a changelog** —
+`dev-log.md` is the changelog.
 
-This file is **for re-assessment, not a changelog** — `dev-log.md` is the
-changelog. Every entry is a decision I had to take without asking, in the form:
+Everything below is a decision I took without being able to ask. Each one names
+**what I chose**, **why**, and **the specific thing that would tell you I chose
+wrong**. Part 1 is ranked: the top five change what I build next. Part 2 is a
+play session that walks through every one of them in order. Part 3 is the full
+record, including the calls that need no answer unless something looks off.
 
-- **What I chose**
-- **Why** (and what the alternative was)
-- **What to check when you play** — the specific thing that would tell you I
-  chose wrong
-
-Rulings that came out of these are in `specs/rulings/`. Anything I could not
-finish is listed at the bottom, honestly, with what is missing.
-
----
-
-## Status of N5–N10
-
-| Slice | State |
-| --- | --- |
-| N5 Save and load | **done** — `tools/save_smoke.mjs`, 15 checks |
-| N6 Events and disasters | **done** — `tools/disaster_soak.mjs`, 200 games |
-| N7 Traffic | **done** — `tools/traffic_gate.mjs`, 0.70ms, r=0.55 vs density |
-| N8 Balance sweep and era 1 | **done** — era 1 pinned, `reports/balance-era1.md` |
-| N9 Advisor and quest engine | **done** — 13 quests, `test/quests.test.js` |
-| N10 Tutorial and MVP acceptance | **done** — **13 of 13 criteria** |
+Waves 0–4 are complete. Wave 5 (multiplayer) has **not** been started, because
+ruling 003 holds it behind the singleplayer MVP being *accepted* — and
+acceptance is this playtest, not a green suite.
 
 ---
 
-## Decisions
+# Part 1 — What I most need from you
 
-### N5 — three manual slots plus a separate autosave
+## 1. Is the loop satisfying?
 
-**What I chose.** Three manual slots (`slot1..3`) and one `autosave` slot that
-never touches them. Autosave fires once per game *year* of ticks, not on a wall
-clock.
+**The one thing no gate can answer.** `gamedesign.md` §24 closes on "a satisfying
+and understandable feedback loop", and `tools/mvp_acceptance.mjs` says so out
+loud rather than pretending to measure it. Thirteen of thirteen criteria pass;
+none of them is this.
 
-**Why.** A game that overwrites the city you saved deliberately with the one you
-were idly playing has taken something it cannot give back. Ticks rather than
-milliseconds so a paused game never autosaves and fast-forward does not autosave
-four times as often for the same amount of play. The alternative — a single
-rolling save — is simpler and I rejected it for the same reason.
+**What I need:** play for forty minutes and tell me whether you wanted to keep
+going. If the answer is no, the next slice is not multiplayer — it is whatever
+you were bored by.
 
-**What to check when you play.** Whether one year between autosaves is too long
-after a disaster. If a fire wipes out your centre and the autosave is eleven
-months old, that is a bad feeling and the interval should drop.
+## 2. The interface takes over half the screen
 
-### N5 — load swaps the city in place rather than reloading the page
+**Measured today**, on a fresh city:
 
-**What I chose.** Loading copies the restored state field-by-field into the
-existing state object instead of replacing the reference or reloading.
+| Viewport | Top bar | Bottom panel | Chrome |
+|---|---|---|---|
+| 1280×720 desktop | 56 px | 348 px | **56%** |
+| 1920×1080 desktop | 56 px | 348 px | 37% |
+| 390×844 phone | **138 px** | 322 px | **55%** |
 
-**Why.** The renderer, HUD and controller all hold a reference to that object;
-replacing it would leave all three drawing a city that no longer exists. Doing
-it in place also keeps the camera where you left it, which a page reload cannot.
+**What I chose.** Every control §13.1 asks for is on screen at once: demand,
+alerts, tools, buildings, overlays, budget, saves — plus five things in the top
+bar (city name, speed, Help, Statistics, New city, Settings).
 
-**What to check when you play.** Load a save while zoomed into a corner. The
-camera should stay put and the city under it should change. If anything still
-shows the old city, this is where it went wrong — the gate checks the renderer
-redraws, but not every panel.
+**Why it happened.** Each slice added one row or one button and each one passed
+the gate. **The gate has a blind spot**: `ui_smoke` asserts the *panel* is under
+45% of the phone screen and never looks at the top bar, which is how the top bar
+reached 138 px without anything going red. That is my mistake, and it is the same
+class of thing as everything `test/reachability.test.js` exists to catch — a
+check that measures the part instead of the whole.
 
-### N5 — a save button saves, shift-click loads
+**What to check:** whether the map feels cramped, especially on the phone and on
+a laptop at 720p. Then tell me **which controls should collapse**. My guess is
+the overlay row (eleven buttons, most consulted rarely) behind one button, and
+Help / Statistics / New city / Settings behind a single menu. That is an hour's
+work and I did not want to guess at it. This is **Q21** in `dev-questions.md`.
 
-**What I chose.** Each slot is one button: click saves, shift-click loads. The
-autosave slot loads on plain click since you never write to it by hand.
+## 3. Money stops mattering around year 20
 
-**Why.** A save/load dialog is a screen to learn, and N5's job is that a session
-survives a closed tab. This is the smallest thing that does that.
+**What I found, and accepted rather than fixed.** Era 1, 200 games, steady,
+64×64, 25 years:
 
-**What to check when you play.** Whether this is too easy to get wrong — one
-mis-click overwrites a slot with no confirmation. If it bites you once, it needs
-a confirm on overwriting a used slot.
+| | p25 | median | p75 |
+|---|---|---|---|
+| Treasury at year 25 | 975 k | **1.95 M** | 2.95 M |
 
-### N6 — seven disasters, one at a time, always telegraphed
+Peak treasury p95 is **3.77 M**. Past roughly year 20 there is nothing you cannot
+afford.
 
-**What I chose.** All seven majors from §12 (wildfire, earthquake, flood, storm,
-industrial explosion, blackout, water contamination). Exactly one runs at a
-time, and every one spends a month as a **warning** naming the place before it
-strikes. Frequency comes from the existing `difficulty.disasterOneIn` rather
-than a new knob. Disasters are **on** in the playable game, off by default in
-the engine (free-build is a mode).
+**Why I did not tune it.** The obvious lever — per-tile upkeep on wire and pipe —
+was measured **twice** and rejected twice: it does not slow the rich city, it
+kills the poor one (p25 treasury 0, p25 population 647 → 187). The likely real
+cause is that there is nothing expensive to want. That is **content**, not a
+constant, and guessing at a constant would have hidden it.
 
-**Why.** Two at once is not more dramatic, it is unreadable — you cannot tell
-which thing broke your city. The warning is what makes it an event rather than a
-punishment, which is §12's own language.
+**What to check:** the year at which you stop reading the money. If it is year
+12, this is the most urgent balance problem in the game. If you never stop
+reading it because you keep overspending, I have this wrong and should leave it
+alone.
 
-**What to check when you play.** Whether one month of warning is enough to
-actually *do* anything. If a flood warning arrives and there is no useful action
-available in that month, the telegraph is decorative and either the lead time or
-the available responses need work.
+## 4. Does the audio sound cheap?
 
-### N6 — a strike tops the treasury up to a floor
+**What I chose.** Every sound is synthesised at runtime from oscillators and a
+noise buffer. There are no audio files.
 
-**What I chose.** When a disaster strikes, any player below §3000 is topped up to
-it (capped at §6000 granted). A solvent city gets nothing.
+**Why.** Zero runtime dependencies and no build step make an audio bank a
+vendoring and licensing decision rather than a slice.
 
-**Why.** The 200-game soak found cities where an explosion took the industry,
-jobs went, residents left, tax revenue fell below upkeep, and the treasury bled
-to zero with nothing left to rebuild from. §12 asks disasters to be recoverable
-and to be "a source of meaningful choices"; a city that cannot rebuild has been
-handed no choice.
+**What to check:** play with sound on for twenty minutes. Synthesised audio has a
+ceiling. If your answer is "this needs real sound", then content lane **C4
+becomes a sourcing decision** — and I should stop polishing oscillators
+immediately rather than spending another slice on them. Listen especially to the
+ambience layer, which is the one sound that never stops.
 
-**What to check when you play.** Whether this feels like a safety net or like
-being bailed out. If a disaster never hurts because money always appears, the
-floor is too high or should be a loan rather than a grant.
+## 5. Is one month of disaster warning enough?
 
-### N6 — the gate measures recoverability at the blast, not at year 25
+**What I chose.** Every disaster is telegraphed exactly one game month ahead —
+`warningMonths: 1` in `data/balance.json`.
 
-**What I chose.** "No unrecoverable cities" is measured the tick after each
-strike: is buildable ground intact, is the terrain unchanged, can the player
-still afford to rebuild. **Not** the state of the city 25 years later.
+**Why.** Long enough to be a warning, short enough to be frightening. But I
+picked it, and I never watched a person try to act on it.
 
-**Why, and this is the one I most want you to check.** The first version
-measured year 25 and failed three cities. A control run — same seed, same
-deputy, disasters off — confirmed the disaster caused it, so it was not a false
-alarm. But what it caused was a slow economic decline that a *dumb AI* never
-pulled out of. The gate's own words are "leaves a city that **play can** repair",
-and the deputy is not play. I judged that measuring the deputy's competence
-under the name of disaster recoverability would let a real economy bug hide
-behind a disaster tuning knob.
+**What to check:** when the warning fires, can you actually *do* anything? If you
+find yourself watching helplessly, the number is too small. If you can fully
+prepare every time, it is too large and disasters are a tax rather than an event.
 
-**Those three runs are still reported** by the soak, every time, as an economy
-finding for N8 — seeds 90135, 90141, 90162.
+---
 
-**What to check when you play.** Take a real hit to your industry and see
-whether *you* can climb out of it. If you cannot, then the decline is the game
-and not the AI, and I called this wrong.
+# Part 2 — A play session that covers everything
 
-### N7 — one distance field, not a Dijkstra per commuter
+Roughly 45–60 minutes. Each step names what it is testing: **(Q*n*)** against
+Part 1, **(D*n*)** against the decision record in Part 3.
 
-**What I chose.** ONE breadth-first sweep outward from every job tile builds a
-distance field over the road network each month; every home then walks downhill
-through it, laying load on each tile it crosses.
+Start it with `./run.sh` and open `http://localhost:8123`.
 
-**Why.** `plan.md` asks for capacity-aware routing on sampled origin/destination
-pairs and flags traffic as the expensive system. A search per pair is the
-textbook answer and is far too slow. Inverting it makes the cost
-O(road tiles + homes × route length): **0.70ms median** on a saturated 128×128
-with 8,899 road tiles, against an 8ms share of the 16ms month tick.
+## A. Starting a city — 5 minutes
 
-**The honest limitation:** everyone takes the shortest route even when it is
-full. There is no rerouting around congestion. So congestion here reads as "this
-road is over capacity", not "traffic found another way".
+1. **Open the game with no URL parameters.** You should get the new-game screen,
+   not a city.
+2. **Type a city name and your own name.** Both are optional.
+   → *(D1)* Does an optional name field at the top of the screen feel like a form
+   in your way, or like the start of something? §5.1 asks for it; I built it as
+   two boxes you can ignore.
+3. **Look at the region line** — "The Dust Valley", "80% buildable · 19% water ·
+   27% forest".
+   → *(D2)* Does the name match what you then see on the map? The classifier was
+   measurably wrong until two days ago and is now measured, but it is still a
+   heuristic.
+4. **Press "Another region" four or five times.**
+   → *(D2)* Do the name and the three numbers give you enough to choose between
+   regions without a picture of each?
+5. **Switch the difficulty to Relaxed, then Demanding, then back to Steady.**
+   → *(D3)* Three difficulties are balanced across 200 games each, and until
+   three days ago none of them was selectable. Do the hint lines mean anything?
+6. **Start on Steady, 64×64, disasters on** — the defaults.
 
-**What to check when you play.** Build a bottleneck — one bridge, two districts —
-and see whether the jam looks right. If you expect cars to divert and they
-never do, that limitation is the thing to fix, and it means a real per-origin
-search on a much smaller sample.
+## B. The first ten minutes — the part that decides everything
 
-### N7 — 26% of homes in the standard fixture cannot reach work
+7. **Do exactly what the advisor tells you and nothing else.** Sunny asks for a
+   road first.
+   → **(Q1)** This is the ten-quest tutorial chain. Does it teach, or does it nag?
+8. **Try to place something you cannot afford.** Pick the coal plant early, while
+   you are poor.
+   → *(D4)* The ghost turns red and the readout says "Not enough money". Until
+   three days ago every refusal in the game's history said "0 tiles". **Is the
+   message where you are looking?** It is at the bottom of the panel.
+9. **Find the water pump without being told where it is.**
+   → *(D5)* The build menu is one flat scrolling row, grouped power / water /
+   services / amenities, cheapest first, with power and water at the left. If
+   choosing between four power sources feels like reading a spreadsheet, a
+   palette is the right answer after all.
+10. **Lay wire and pipe out to your zoning, then watch.** A lot develops when it
+    has road, power and water.
+    → **(Q1)** Time yourself from first road to first resident. §24 wants a
+    first-time player under two minutes.
+11. **Listen while you build.**
+    → **(Q4)** A rising pair when something is placed, a falling one when it is
+    refused, a chime for a completed quest.
+    → *(D6)* **The refusal sound fires on every mis-click**, and mis-clicks are
+    common while you are still learning footprints. If it grates, the fix is to
+    play it only for "not enough money".
 
-**What I found, not chose.** On the saturated 128×128 fixture: 1,263 commuters,
-364 congested tiles, and **161 stranded homes out of 629** — a quarter of houses
-with no road route to any job.
+## C. Growing — 15 minutes
 
-**Why I left it.** It is a finding about the deputy's road-building and about
-development allowing houses with no route, not about the traffic model, which
-correctly reports it (`noRouteToWork`). Fixing it inside traffic would be hiding
-it.
+12. **Zone commercial and industrial. Run at Fast.**
+13. **Cycle the overlays** — Zoning, Electricity, Land value, Pollution.
+    → **(Q2)** Eleven buttons. How many do you actually use? This is the row I
+    would collapse first.
+14. **Open Statistics** (top bar). Ten graphs, each with a sentence under it.
+    → *(D7)* The sentence is there because §30 makes a plain-language reading an
+    accessibility feature. **Do you read the sentence or the line?** If the line
+    is enough the sentences are clutter; if the sentence is enough the graphs are.
+15. **Use the minimap** — click it, and drag on it.
+    → *(D8)* Is one pixel per tile enough to make anything out at 64×64? Try a
+    128×128 region later and see whether it is still legible.
+16. **Watch the money as you grow.** → **(Q3)** Note the year you stop caring.
 
-**What to check when you play.** Whether YOUR houses connect. If you build a
-sensible grid and still see stranded homes, the reporting is wrong. If the
-deputy's cities are the only ones with the problem, it is an AI problem and can
-wait.
+## D. Services and the budget — 10 minutes
 
-### N11 — the build menu is a flat row, not a palette
+17. **Build a fire station, a police station and a hospital.**
+18. **Set each department to Lean, then Generous** — the three dropdowns in the
+    budget row — and watch the upkeep figure beside them.
+    → *(D9)* **Do you ever choose Lean?** If Generous is always correct, funding
+    is a tax on attention rather than a decision, and either the numbers need
+    widening or the feature does not deserve its row.
+19. **Move the tax slider and watch income, upkeep and net.**
+    → *(D10)* One slider and one line of books is the whole budget; §13.1
+    describes a fuller sheet. Do you want more, or is this the right amount of
+    economy for this game?
+20. **Try to bankrupt yourself.** Tax to 0, everything funded Generous.
+    → *(D11)* You should be warned before bankruptcy, never fail silently.
 
-**What I chose.** Every building in the catalogue gets a button on one scrolling
-row, grouped by category, cheapest first, each showing its price at the current
-difficulty. No panel, no categories to open, no unlocks.
+## E. A disaster — 5 minutes
 
-**Why.** The alternative — a palette with categories you open — is a screen to
-learn before you can build, and the thing being fixed was that a plant could not
-be built at all. Twelve buildings fit on a row. It also means a building added
-to `data/buildings.json` appears in the game with no UI work, which is the
-property I want while the catalogue is still growing.
+21. **Keep playing until one arrives.** On Steady it is roughly one in 239 months;
+    if you are impatient, start a second city on **Demanding**, where it is one in
+    59.
+22. **When the warning fires, try to act on it.** → **(Q5)**
+23. **After it strikes:** you get an emergency grant topping your treasury to a
+    floor, and a quest asking you to clear the wreckage.
+    → *(D12)* The grant exists so that "can still afford to rebuild" is true by
+    construction rather than by luck. **Does being handed money after a disaster
+    feel like a rescue, or like the game apologising?**
 
-**What to check when you play.** Whether you can *find* the water pump. Power
-and water sit at the left where they are visible without scrolling; services and
-parks scroll off on a phone. If choosing between four power sources feels like
-reading a spreadsheet, the palette is the answer after all.
+## F. Traffic — 5 minutes
 
-### N11 — the HUD panel takes half a short desktop window
+24. **Build a bottleneck deliberately** — one road connecting two halves of your
+    city — and let it fill up.
+25. **Open the Traffic overlay.**
+    → *(D13)* **Everyone takes the shortest route even when it is full.** There is
+    no rerouting around congestion; that is the honest limit of a distance field.
+    If you expect cars to divert and they never do, that is the thing to fix, and
+    it means a real per-origin search on a smaller sample.
+26. **Look for homes that never fill.**
+    → *(D14)* On the saturated test fixture, **161 of 629 homes have no road route
+    to any job**. I believe that is the deputy AI's road-building rather than the
+    traffic model, which correctly reports it. **Do *your* houses connect?** If a
+    sensible grid still strands homes, my diagnosis is wrong.
 
-**What I found, not chose.** With the build row and the budget row the panel is
-**371 px of a 720 px window** (51%) and **343 px of 844 px on a phone** (41%).
-Both pass their gates; the desktop ratio is the worse one, which is backwards.
+## G. Keeping it — 5 minutes
 
-**Why I left it.** Every row on the panel is something §13.1 asks for — demand,
-alerts, tools, buildings, overlays, budget, saves. Deciding which one collapses
-is a design call about what a player looks at most, and I would be guessing.
-Recorded as **Q21**.
+27. **Save to Slot 1, then shift-click it to load.**
+    → *(D15)* Click saves, shift-click loads, no dialog. Discoverable, or did you
+    have to be told?
+28. **Press `?`.** The controls card.
+    → *(D16)* Built two days ago because there was nowhere to look up a key. **Did
+    you want it earlier than this step?**
+29. **Close the tab and reopen it.** The screen should offer **Continue**.
+30. **Turn your network off and reload.** It should still play — it is an
+    installable app with everything cached.
+    → *(D17)* Then try installing it on your phone. The icons are **SVG**; some
+    launchers insist on PNG, and if yours refuses that is half an hour to fix.
 
-**What to check when you play.** Whether the map feels cramped on your screen.
-The obvious candidates to collapse are the overlay row (eleven buttons, most of
-them consulted rarely) and the save row (four slots plus export and import).
+## H. Settings and the phone — 5 minutes
 
-### N11 — the tax slider is the whole budget
+31. **Open Settings and switch to Norsk while the panel is open.** The panel and
+    the game behind it both re-render.
+    → *(D18)* The Norwegian is **my draft, not reviewed** — A21 says you review
+    it. The quest text especially: all twenty, translated by me.
+32. **Switch on high contrast.** Does it help, or just look flatter?
+33. **Open the game on your phone and play for five minutes.**
+    → **(Q2)** This is where the chrome question is sharpest: 55% of a 390×844
+    screen is interface.
 
-**What I chose.** One slider for the rate, and a line reading income, upkeep and
-net. Not the per-service funding sheet §13.1 describes.
+---
 
-**Why.** The rate is the lever that changes what happens; per-service funding is
-a second system with its own balance consequences, and it should not be
-introduced in the same slice that first made the rate reachable.
+# Part 3 — The full decision record
 
-**What to check when you play.** Whether you ever want to underfund the police
-to survive a bad year. If you do, the funding sheet is the next budget slice.
+Numbered to match Part 2. Nothing here needs an answer unless the scenario made
+you notice it.
 
-### N18 — the game is synthesised, not sampled
+**D1 — naming is two optional boxes.** §5.1's first line is "the player names the
+city and mayor". An unnamed city takes its region's name, because a placeholder
+the player leaves alone is a city called by a placeholder.
 
-**What I chose.** Every sound is made by oscillators and a noise buffer at
-runtime. There are no audio files.
+**D2 — the region names itself from what generation actually produced.** The
+classifier tested landmass count before water, so a river splitting a plain in
+two produced "islands" — 62 times in 80 river maps, and never once "valley".
+Fixed against 400 measured regions: river is now 74/80 valley, coastal 54/80
+coast. **Left alone:** the archipelago style mostly produces one big landmass
+with fragments, so it is named "coast" 43 times in 80. That is the generator
+being honest, not the namer being wrong.
 
-**Why.** Zero runtime dependencies and no build step mean an audio bank is a
-vendoring and licensing decision, not a slice. Seven short gestures — a rising
-pair for something built, a falling one for a refusal, a low thud for a
-collapse — cost nothing to download and cannot go stale against a bake.
+**D3 — the default is 64×64 on Steady, not what your hardware can handle.**
+`recommendedMapSize()` answers "what can this device cope with", which is a
+different question from "what makes a good first city". Wiring it to the default
+opened every desktop player on a 128×128 region.
 
-**What to check when you play.** Whether it sounds cheap. Synthesised audio has
-a ceiling, and if the answer is "this needs real sound" then C4 becomes a
-sourcing decision and I should stop here rather than polishing oscillators.
-Also whether the ambience layer is pleasant over an hour — it is the one sound
-that never stops.
+**D4 — a refusal names its reason, before the click as well as after.** The seven
+`result.*` strings were in both catalogues from the first commit and nothing ever
+rendered one. Affordability for buildings is checked client-side as a **hint**,
+never a rule: the click still goes through and the reducer still answers.
 
-### N18 — three voices a tick, and refusals are audible
+**D5 — the build menu is a flat row, not a palette.** A palette with categories
+you open is a screen to learn before you can build, and the thing being fixed was
+that a power plant could not be built at all. A building added to
+`data/buildings.json` now appears in the game with no UI work.
 
-**What I chose.** A month that produces fifty-nine power shortfalls produces one
-`warn`. Notifications are ranked, so a disaster is never crowded out by a quest
-chime. Refused commands make a sound.
+**D6 — three sounds a tick, ranked, and refusals are audible.** Fifty-nine power
+shortfalls in one month make one warning tone. A disaster is never crowded out by
+a quest chime.
 
-**Why.** The alert area learned the collapsing lesson in N4. Refusals are
-audible because they are the thing a player most needs to notice and the text
-naming them is at the bottom of the screen.
+**D7 — every statistic carries a sentence, and the sentence is the chart's text
+alternative.** §30: a graph is not a statistic until somebody who cannot see it
+gets the same answer. Movement under 5% reads as "steady", because a city that
+wobbles 2% is not doing anything.
 
-**What to check when you play.** Whether the refusal sound becomes annoying —
-it fires on every mis-click, and mis-clicks are common while learning the
-footprints. If it grates, the fix is to play it only when the reason is
-`noFunds` rather than on every refusal.
+**D8 — the minimap is a picture.** `role="img"`, not focusable, no key handling.
+It briefly took focus with Enter jumping to the middle of the map, which is
+ruling 028's own defect — a role that announces a static image, on something that
+takes keys. Keyboard users pan with the arrows, which aims.
 
-### N19 — icons are SVG, so installability is not guaranteed everywhere
+**D9 — funding is three steps, not a slider.** Lean 50%, Normal 100%, Generous
+150%, per department. Coverage *and* upkeep both scale, so it is a real trade. A
+range input is a poor keyboard target and nobody hears the difference between 96%
+and 104%.
 
-**What I found, not chose.** The manifest ships two SVG icons. Chromium installs
-from them; some launchers want PNG.
+**D10 — the tax slider is the whole budget.** The rate is the lever that changes
+what happens; per-service funding (D9) is the other half and arrived separately.
+The full sheet §13.1 describes is not built.
 
-**Why I left it.** Generating PNGs needs an image pipeline the project does not
-have, and committing binaries for something drawable in forty lines is worse
+**D11 — an unpayable month floors the treasury at zero and reports a shortfall**
+rather than running up unbounded debt. Twenty years of silent debt reaching
+−130,000 is a missing rule, not a balance question.
+
+**D12 — a disaster tops the treasury up to a floor, and recoverability is measured
+at the blast, not at year 25** (ruling 025). A 25-year soak measures the deputy
+AI's competence, not whether a person could repair the city — and the fix that
+invites is making disasters weaker, which hides a real economy bug behind a
+disaster knob forever. Three cities in 200 still decline to nothing afterwards;
+confirmed disaster-caused against a disasters-off control run, and reported as an
+**economy finding**, separately.
+
+**D13 — one distance field, not a search per commuter.** One breadth-first sweep
+outward from every job builds a field; every home walks downhill through it.
+**0.70 ms** on a saturated 128×128 with 8,899 road tiles, against an 8 ms budget.
+The honest limitation is no rerouting under congestion.
+
+**D14 — 26% of homes on the saturated fixture cannot reach work.** A finding, not
+a choice. Fixing it inside traffic would be hiding it.
+
+**D15 — three manual slots and an autosave; click saves, shift-click loads.** A
+save dialog is a screen the player has to learn, and the slice's job was that a
+session survives a closed tab. The autosave takes its own slot and never
+overwrites a manual one.
+
+**D16 — the controls card derives its tool half from `TOOLS`.** A card that
+advertises a key the game does not have is worse than no card.
+
+**D17 — icons are SVG.** Generating PNGs needs an image pipeline the project does
+not have, and committing binaries for something drawable in forty lines is worse
 than the limitation.
 
-**What to check when you play.** Try installing it on your phone. If it refuses,
-that is the one thing to fix, and it is half an hour with a screenshot tool.
+**D18 — the Norwegian is drafted, not reviewed.** A21 says you review it. 379 keys
+per catalogue, including all twenty quests.
 
-### N20 — funding is three steps, not a slider
+---
 
-**What I chose.** Lean 50%, Normal 100%, Generous 150%, per department, as a
-dropdown in the budget row.
+# What is not built, and is not an oversight
 
-**Why.** A range input is a poor keyboard target, and the decision is "can I
-afford this department" rather than the difference between 96% and 104%. Coverage
-and upkeep both scale, so it is a real trade.
+| | Why |
+|---|---|
+| **Wave 5 — all multiplayer** | Ruling 003: held behind this playtest |
+| Advisor personas | **Q18** is open — which ranks unlock which |
+| Long press on mobile | A plain tap already inspects; the contextual actions a long press would open are slice 5.3 |
+| Right-drag rotating | It pans. Rotation is four snapped angles on Q and E; a free-rotate drag would fight ruling 006 |
+| An About screen | `menu.about` is a string with nowhere to go |
+| Music | There is none, so there is no volume slider for it |
+| A full budget sheet | See D10 |
 
-**What to check when you play.** Whether you ever set anything to Lean. If
-Generous is always correct, funding is a tax on attention rather than a
-decision, and the numbers need widening — or the feature is not worth its row.
+`test/reachability.test.js`'s `NOT_YET` list is the live inventory of every string
+the catalogue promises and no screen keeps, each naming the slice that will use
+it. `test/omissions.test.js` does the same for the commands with no handler.
 
-### N17 — the fixtures pin a city that grows
+---
 
-**What I found, not chose.** The founding fixture's first draft pinned forty
-steps of an **empty field**: the wire was eight rows from the zoning, so nothing
-was ever powered, and every hash was perfectly stable.
+# The one thing I would fix before you play, if you tell me to
 
-**Why it matters to you.** It is the reason each fixture now carries an `expect`
-floor. If you change balance enough that the founding city stops reaching 100
-residents, the fixture will fail with *"only worth measuring at 100 or more"*
-rather than silently becoming a test of an empty map.
+**Part 1, question 2.** Collapse the overlay row behind a single button, and
+Help / Statistics / New city / Settings behind one menu. About an hour. It needs
+your call on which controls are second-class, and it would take the phone from
+55% chrome to somewhere near 35%.
 
-*(filled in at the end — what is missing and what it would take)*
+Everything else in this file can wait for your answers.
