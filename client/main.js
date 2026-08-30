@@ -140,7 +140,18 @@ async function boot() {
   await newGame();
 }
 
-boot().catch((error) => {
+/** Registers the service worker, after the game is up.
+ *
+ * After boot, never before: installing precaches ninety-odd files, and a
+ * player waiting for a city should not be waiting for that. A failure here is
+ * a game that works and does not work offline, which is not worth a message. */
+function registerWorker() {
+  if (!navigator.serviceWorker) return;
+  if (globalThis.location.protocol === "file:") return;
+  navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
+}
+
+boot().then(registerWorker).catch((error) => {
   show(`<div class="notice"><h1>${t("boot.error.title")}</h1><p></p></div>`);
   document.querySelector(".notice p").textContent = String(error?.message ?? error);
 });

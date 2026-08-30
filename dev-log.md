@@ -1774,3 +1774,75 @@ until a row was something other than a string.
 in the accessibility gate, by which point the page had been clicked and typed at
 dozens of times, so the context was long since unlocked. Moved to a page of its
 own.
+
+---
+
+## 2026-08-30 — Slice N19: the PWA half of 4.5
+
+`plan-v1.md`'s gate: "the app installs and plays with the network disabled".
+
+### The precache list is a checked-in file, and a test keeps it honest
+
+There is no build step, so no bundler can produce the list of files that make up
+the app. `tools/make_precache.mjs` walks `client/`, `engine/`, `shared/`,
+`data/` and `vendor/` and writes `client/precache.json`; `test/pwa.test.js`
+regenerates it and fails when it differs.
+
+That matters more than it sounds: a module added to `client/` and not to the
+list is a game that **works online and breaks offline**, which is the worst kind
+of bug to hear about second-hand. The test caught its own case within a minute
+of being written — I had edited `main.js` and `index.html` after generating.
+
+**The version is a hash of the cached files' bytes**, which is the version
+handshake without a build step to stamp one. `sw.js` names its cache after it
+and deletes every other cache on activate, so a returning player is entirely the
+old version or entirely the new one — never half, which is the property that
+matters when the cached thing is a deterministic reducer. `shared/protocol.js`
+makes the same argument for the wire.
+
+### The worker does the least it can
+
+A service worker is the one part of a web app that can brick it for a returning
+player. So: cache-first for the app (a fixed set of files whose identity *is*
+the version, so revalidating each one on every load is traffic that cannot
+change the answer), network-first for `precache.json` alone (or a new deploy
+could never be noticed), and a navigation that misses falls back to the shell so
+a deep link opened offline is the game rather than the browser's error page.
+
+Files are cached **individually, not with `addAll`** — `addAll` rejects the
+whole install if a single file 404s, which turns one missing file into no
+offline app at all. Asserted by a test.
+
+Registration happens **after boot**, not before: installing precaches
+ninety-four files and a player waiting for a city should not be waiting for
+that.
+
+### Icons are SVG
+
+No PNGs, because generating them needs an image pipeline the project does not
+have and committing binaries for something drawable in forty lines is worse. Two
+SVGs, `any` and `maskable`. **Recorded limitation:** some launchers prefer PNG,
+and a browser that will not install from SVG will not install this. Nothing else
+degrades — the game runs and caches identically.
+
+### Measured
+
+- **`./test.sh` 505 tests, green twice.** Was 497. `test/pwa.test.js`, 8.
+- **`tools/offline_smoke.mjs` (new), 9 checks.** Installs and activates; **94
+  entries under one versioned cache**; the network goes off; the **new-game
+  screen opens with its strings** (`The Dust Valley`, five rows, "Start this
+  city"); a city starts; **a road is built by pointer, 7 tiles**; the clock runs
+  to tick 41; a save round-trips hash-for-hash. All with the network disabled.
+- All eight gates green.
+
+### What failed on the way
+
+**"The network really is off" failed, and the code was right.** The probe
+fetched `./index.html`, which the worker answered from cache — the worker doing
+exactly its job. A probe of a precached file cannot detect an offline network.
+Changed to a path nothing has cached, so the worker falls through to a real
+fetch and that fetch fails.
+
+**`precache.json` could not hash itself.** Writing the version into the file
+changes its bytes, which changes the version. It is excluded from the hash and
+still precached — an offline start has to be able to read which version it is.
