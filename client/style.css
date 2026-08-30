@@ -246,6 +246,12 @@ button, [role="button"] {
   z-index: 3;
   pointer-events: none;
 }
+/* `#hud > *` sets `pointer-events: auto` and out-specifies a class selector
+   (one id beats one class), so `.hud-side { pointer-events: none }` never
+   applied — the whole strip, most of the left edge down to the bottom bar,
+   was swallowing clicks meant for the map. Same for `.hud-aside` on the right.
+   Matched on the id so the intended rule actually wins. */
+#hud > .hud-side, #hud > .hud-aside { pointer-events: none; }
 .hud-side > * { pointer-events: auto; }
 
 .hud-rail {

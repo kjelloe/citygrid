@@ -71,6 +71,8 @@ now; run all four:
 # 1. Commands with a constant but no handler, or a handler but no control (ruling 026).
 # 2. i18n keys the catalogue promises and no screen keeps (ruling 027).
 node --test test/omissions.test.js test/reachability.test.js
+#    ...and that every control is clickable, and nothing invisible eats the map (ruling 029).
+node tools/reach_smoke.mjs
 
 # 3. Data the engine mirrors and nothing reads.
 grep -o '"[a-zA-Z]*"' data/balance.json | sort -u   # then grep engine/ for each suspicious key
@@ -89,6 +91,12 @@ its own file, so all eight passed while `./run.sh` served a Content-Security-Pol
 the importmap and the game would not boot at all. `tools/serve_smoke.mjs` spawns `tools/serve.mjs`
 and loads the bare origin. **Listen for console errors, not only `pageerror`** — a CSP violation is
 reported to the console, which is why this was invisible.
+
+**Reachability runs in two directions.** `test/reachability.test.js` asks whether every function
+has a control; `tools/reach_smoke.mjs` asks whether every control can actually be clicked, and
+whether anything invisible is eating clicks meant for the map. The second one found two containers
+swallowing a quarter of the map (ruling 029) — every control still worked, every screenshot still
+looked right, and nine gates saw nothing.
 
 **A setting is not built until a pixel changes.** High contrast set an attribute for two slices
 while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate checked only that the

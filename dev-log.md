@@ -2145,3 +2145,68 @@ menu is open.
 **On a 390px phone the left rail is a third of the screen.** `play_smoke`'s
 road drag started on a rail button. "Left edge first" was a brief for a desktop;
 below 620px the rail is a strip above the bottom bar instead.
+
+---
+
+## 2026-08-31 — Slice N26: can every function be reached? (P31)
+
+Slice N24 put **40 of the interface's 60 controls** behind a rail, three drawers
+and a popover. That is the right trade for a map you can see, and it is also
+exactly how a control goes missing: nothing errors, nothing goes red, the button
+is simply somewhere nobody finds.
+
+### The gate
+
+`tools/reach_smoke.mjs` walks the HUD as a **discovery** rather than against an
+inventory — a hard-coded list would pass forever after someone deleted a button.
+For each control it works out what it is behind from the DOM, opens that by
+clicking what a player clicks, scrolls it into view, and asserts a click at its
+centre lands on it. Then it closes it again, so the next control is judged with
+only its own container open.
+
+**All 55 are reachable.** Every panel opens and closes from its own button;
+`#help`, `#statistics` and `#settings` each open a dialog that Escape closes;
+the minimap toggle hides the minimap; the speed button changes speed; no visible
+control is out of the keyboard's reach.
+
+### And the reverse, which was broken
+
+The other half of "nothing is hidden" is whether anything is hiding the **map**.
+
+`#hud > * { pointer-events: auto; }` has one id and beats any class selector, so
+`.hud-side { pointer-events: none }` — written deliberately, and read as correct
+three times — **never applied**. The rail strip on the left and the advisor
+column on the right both span from under the top bar to the bottom bar, and
+both are invisible when their contents are empty.
+
+```
+grid points over the map: 403
+  with the bug:  278 reachable   (hud-aside×91, hud-side×10)
+  fixed:         371 reachable
+```
+
+**101 of 403 sampled points on the map were dead** — a quarter of it, including
+the entire right-hand third where nothing is drawn at all. A player clicking
+there would have found the game did not respond, with nothing on screen to
+explain why.
+
+Nine browser gates saw nothing, because every control still worked and every
+screenshot still looked right. **Ruling 029.**
+
+### Measured
+
+- `./test.sh` 537 tests, green twice.
+- **Ten gates green**, `reach_smoke` new.
+- Map clickability: **278 → 371 of 403** sampled points.
+
+### What failed on the way
+
+**Three of the first four failures were the gate's own.** Its openers toggle, so
+clicking once per control shut the panel again for every second one and reported
+alternating controls as unreachable. Leaving panels open made a later drawer
+cover an earlier one and reported a collision no player would meet. And the
+toggle test started from whatever state the walk had left, measuring the
+opposite of what it claimed. A gate that walks a stateful interface has to
+return it to a known state after every step.
+
+The fourth was real, and it was the one worth having.

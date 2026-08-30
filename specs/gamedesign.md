@@ -969,6 +969,11 @@ The always-visible HUD should contain:
 > not the full-screen sheet §13.2 suggests.
 >
 > **Chrome is 32% of a 1280×720 window and 41% of a 390×844 phone.**
+>
+> Every control is reachable: `tools/reach_smoke.mjs` walks the HUD, opens
+> whatever hides each one, and asserts a click at its centre lands on it — and
+> that nothing without pixels is intercepting clicks meant for the map
+> (ruling 029).
 
 > **As built (slice N13).** A refused command names its reason in the readout,
 > from `result.*` — before the click for anything the reducer can quote, and
