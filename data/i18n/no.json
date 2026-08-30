@@ -229,6 +229,15 @@
   "inspect.traffic": "Trafikk",
 
   "hud.map": "Bykart — piltaster panorerer, Q og E roterer, pluss og minus zoomer",
+  "overlay.auto": "Auto",
+  "overlay.auto.idle": "følger verktøyet",
+  "hud.rail": "Paneler",
+  "hud.close": "Lukk",
+  "settings.skin": "Grensesnittstil",
+  "skin.clean": "Moderne rent",
+  "skin.retro": "Retro",
+  "skin.dark": "Mørkt",
+
   "hud.demand": "Etterspørsel",
   "hud.alerts": "Varsler",
   "hud.tools": "Verktøy",

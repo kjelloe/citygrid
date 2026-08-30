@@ -8,11 +8,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS,
+  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS,
   defaultSettings, sanitiseSettings, documentAttributes, mixerSettings,
 } from "../client/ui/settings-model.js";
 import { LOCALES } from "../client/i18n.js";
 import { OPTION_FIELDS } from "../engine/options.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 
 test("every language offered is a language that exists", () => {
   for (const language of LANGUAGES) {
@@ -74,7 +77,7 @@ test("every row has at least two choices and a label", () => {
       assert.ok(choice.label ?? choice.labelKey, `a ${row.field} choice has no label`);
     }
   }
-  assert.deepEqual(SETTING_ROWS.map((r) => r.choices), [SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
+  assert.deepEqual(SETTING_ROWS.map((r) => r.choices), [SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
 });
 
 // --- audio (slice 4.4) ------------------------------------------------------
@@ -111,4 +114,23 @@ test("every volume step is a level the mixer can use", () => {
     assert.ok(Number.isInteger(level.value) && level.value >= 0 && level.value <= 100, String(level.value));
   }
   assert.equal(LEVELS[0].value, 0, "there must be a way to silence one bus without silencing all sound");
+});
+
+test("a skin is chrome only, and clean is the bare stylesheet", () => {
+  // Kjell's call (P29): ruling 022 settled the WORLD style; a skin never
+  // touches it. `clean` maps to no attribute so the default is the bare
+  // `:root` rules rather than a second copy of them.
+  assert.equal(documentAttributes({ ...defaultSettings(), skin: "clean" }).skin, "");
+  assert.equal(documentAttributes({ ...defaultSettings(), skin: "dark" }).skin, "dark");
+  assert.equal(documentAttributes({ ...defaultSettings(), skin: "nonesuch" }).skin, "");
+  assert.equal(defaultSettings().skin, "clean");
+});
+
+test("every skin the panel offers has rules in the stylesheet", () => {
+  // A skin in the menu with no CSS is a control that changes nothing.
+  const css = readFileSync(join(repoRoot, "client", "style.css"), "utf8");
+  for (const skin of SKINS) {
+    if (skin.value === "clean") continue;   // the bare :root
+    assert.match(css, new RegExp(`\\[data-skin="${skin.value}"\\]`), `no rules for the ${skin.value} skin`);
+  }
 });

@@ -11,6 +11,10 @@
 // volume slider for silence is a control that changes nothing, which is the
 // exact failure the P18 audit was about.
 
+import { SKINS, DEFAULT_SKIN, isSkin, skinAttribute } from "./skins.js";
+
+export { SKINS };
+
 export const LANGUAGES = [
   // Named in their own language. A language picker that translates its own
   // options is unusable to the person who needs it: someone stranded in a
@@ -48,6 +52,7 @@ export const LEVELS = [
 ];
 
 export const SETTING_ROWS = [
+  { field: "skin", labelKey: "settings.skin", choices: SKINS },
   { field: "sound", labelKey: "settings.sound", choices: SOUND },
   { field: "volumeEffects", labelKey: "settings.volume.effects", choices: LEVELS },
   { field: "volumeAmbience", labelKey: "settings.volume.ambience", choices: LEVELS },
@@ -67,6 +72,7 @@ export function defaultSettings(locale = "en") {
     sound: true,
     volumeEffects: 70,
     volumeAmbience: 35,
+    skin: DEFAULT_SKIN,
   };
 }
 
@@ -86,6 +92,7 @@ export function sanitiseSettings(given = {}, locale = "en") {
     sound: pick(SOUND, given.sound, base.sound),
     volumeEffects: pick(LEVELS, given.volumeEffects, base.volumeEffects),
     volumeAmbience: pick(LEVELS, given.volumeAmbience, base.volumeAmbience),
+    skin: isSkin(given.skin) ? given.skin : base.skin,
   };
 }
 
@@ -111,5 +118,6 @@ export function documentAttributes(settings) {
   return {
     contrast: s.contrast === "high" ? "high" : "",
     motion: s.motion === "auto" ? "" : s.motion,
+    skin: skinAttribute(s.skin),
   };
 }

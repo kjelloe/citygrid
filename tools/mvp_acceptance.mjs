@@ -211,6 +211,9 @@ try {
       const { focusOn } = await import("/client/render/camera.js");
       focusOn(globalThis.CITY.renderer.view, x, y);
     }, [tx + 1, ty + 1]);
+    // The buildings live in a popover now (P29), so it has to be opened first —
+    // which is what a player does too.
+    if (await target.locator("#build-menu").isHidden()) await target.click("#build");
     const button = `.hud-toolbar button[data-def="${def}"]`;
     if (await target.locator(button).count() === 0) return { def, result: "no such button" };
     await target.click(button);
@@ -244,6 +247,8 @@ try {
     `${city.population} residents, ${city.jobs} jobs`);
   // The rate is a lever only if the player can pull it. `CMD_SET_TAX` existed
   // from the economy slice with nothing in the interface to send it.
+  // The tax control moved into the budget drawer on the left rail (P29).
+  await page.click("#rail-budget");
   const taxed = await page.evaluate(() => {
     const slider = document.getElementById("tax");
     if (!slider) return { reason: "no tax control" };
@@ -258,6 +263,8 @@ try {
     + (taxed.reason ?? `tax ${taxed.before}% → ${taxed.after}% from the slider`));
 
   // §24.8 — diagnose through overlays
+  // Overlays moved into a drawer on the left rail (P29).
+  await page.click("#rail-overlays");
   const overlayCheck = await page.evaluate(async () => {
     const out = {};
     for (const name of ["power", "water", "pollution", "traffic"]) {
@@ -365,14 +372,21 @@ try {
     const { state } = globalThis.CITY;
     let roads = 0;
     for (let i = 0; i < state.tiles.road.length; i += 1) if (state.tiles.road[i] & 16) roads += 1;
-    const buttons = [...document.querySelectorAll(".hud-toolbar button, .hud-overlays button")];
+    // Only what is ON SCREEN. Since P29 the building menu and the overlay list
+    // live in a popover and a drawer that are closed by default, and a hidden
+    // control measures 0px — which is not "too small to tap", it is "not
+    // there". A control the player cannot see is not a touch target.
+    const buttons = [...document.querySelectorAll(
+      ".hud-toolbar button, .hud-overlays button, .rail-button, .hud-top button")]
+      .filter((b) => b.getClientRects().length > 0);
     const small = buttons.filter((b) => b.getBoundingClientRect().height < 36).length;
     return {
       roads,
       buttons: buttons.length,
       small,
       sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-      panel: document.querySelector(".hud-panel").getBoundingClientRect().height,
+      panel: document.querySelector(".hud-bottom").getBoundingClientRect().height
+        + document.querySelector(".hud-top").getBoundingClientRect().height,
     };
   });
   criterion(13, "Play comfortably using either mouse or touch controls",

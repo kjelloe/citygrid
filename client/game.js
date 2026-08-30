@@ -267,7 +267,9 @@ export async function startGame(root, given = {}) {
 
   let frame;
   const loop = () => {
-    renderer.draw({ overlay });
+    // Read from the HUD rather than a local: with "Auto" the overlay follows
+    // the tool in hand, and no event fires when a shortcut changes the tool.
+    renderer.draw({ overlay: hud.overlay });
     if (minimap && hud.minimapVisible) minimap.draw(canvas.clientWidth / canvas.clientHeight);
     frame = requestAnimationFrame(loop);
   };
@@ -293,7 +295,10 @@ export async function startGame(root, given = {}) {
       listSaves().then((rows) => hud.setSlots(rows.map((r) => r.summary)));
     },
     save, load, exportSave, importSave,
-    get overlay() { return overlay; },
+    // What is actually DRAWN. `overlay` here is only the last callback value;
+    // under "Auto" the HUD resolves it against the tool in hand and no callback
+    // fires when a keyboard shortcut changes the tool.
+    get overlay() { return hud.overlay; },
     audio,
     /** Settings changed: the mixer takes the new levels without a rebuild. */
     setAudioSettings(next) { audio.update(next); },

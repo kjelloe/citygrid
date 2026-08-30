@@ -26,6 +26,7 @@ import { TOOLS } from "../input/tools.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { t } from "../i18n.js";
 import { makeRoving } from "./roving.js";
+import { AUTO, resolveOverlay, autoTarget } from "./auto-overlay.js";
 import { RESULT } from "../../shared/protocol.js";
 
 const BAND_CLASS = ["good", "fair", "severe", "none"];
@@ -65,7 +66,11 @@ export function createHud(root, {
   root.innerHTML = "";
   const alerts = createAlerts();
   let previous = {};
-  let overlay;
+  /** What the player picked from the overlay menu — a name, `AUTO`, or nothing.
+   * What is DRAWN is `activeOverlay()`, which is the same thing unless Auto is
+   * chosen, in which case it follows the tool. */
+  let chosen = AUTO;
+  const activeOverlay = () => resolveOverlay(chosen, controller.tool);
 
   // --- top bar --------------------------------------------------------------
   const top = el("div", "hud-top");
@@ -138,7 +143,8 @@ export function createHud(root, {
   alertList.setAttribute("aria-label", t("hud.alerts"));
 
   // --- toolbar --------------------------------------------------------------
-  const toolbar = el("div", "hud-toolbar");
+  const toolbar = el("div", "hud-toolbar hud-tools");
+  toolbar.id = "tools";
   toolbar.setAttribute("role", "toolbar");
   toolbar.setAttribute("aria-label", t("hud.tools"));
   const buttons = [];
@@ -160,6 +166,9 @@ export function createHud(root, {
       // like a toggle and clear the toolbar instead.
       const same = controller.tool === tool && (def === undefined || controller.def === def);
       controller.setTool(same ? undefined : tool, def);
+      // Picking a building closes the menu; it has done its job and it is
+      // covering the map.
+      if (def !== undefined) setBuildMenu(false);
       refresh();
     });
     buttons.push(button);
@@ -176,25 +185,31 @@ export function createHud(root, {
     toolbar.append(wrap);
   }
 
+  const buildToggle = el("button", "tool tool-build", t("group.build"));
+  buildToggle.type = "button";
+  buildToggle.id = "build";
+  buildToggle.setAttribute("aria-expanded", "false");
+  buildToggle.setAttribute("aria-controls", "build-menu");
+  buildToggle.addEventListener("click", () => setBuildMenu(buildBar.hidden));
+  toolbar.append(buildToggle);
+
   const undoButton = el("button", "tool", t("hud.undo"));
   undoButton.type = "button";
   undoButton.id = "undo";
   undoButton.addEventListener("click", () => { onUndo?.(); refresh(); });
   toolbar.append(undoButton);
 
-  // The buildings, on a row of their own.
-  //
-  // Without these the toolbar could zone and pave and nothing else, and since
-  // development needs power AND water a city could never grow through the
-  // interface — the failure this row exists to end. It is a SEPARATE row
-  // because appending twelve buttons to the tool row pushed them off the right
-  // edge of a 1280px screen, which is its own way of not being in the game.
+  // The buildings live in a popover above the bar, opened by one button (P29).
+  // They were a permanent second row of twelve, which is most of why the panel
+  // had grown to half the screen.
   //
   // It carries the `hud-toolbar` class too, so a selector written against the
   // toolbar covers the buildings as well.
   const buildBar = el("div", "hud-toolbar hud-build");
   buildBar.setAttribute("role", "toolbar");
   buildBar.setAttribute("aria-label", t("group.build"));
+  buildBar.id = "build-menu";
+  buildBar.hidden = true;
   for (const group of buildMenu()) {
     const wrap = el("div", "tool-group build-group");
     wrap.setAttribute("aria-label", t(group.labelKey));
@@ -218,13 +233,18 @@ export function createHud(root, {
   overlayBar.setAttribute("role", "toolbar");
   overlayBar.setAttribute("aria-label", t("hud.overlays"));
   const overlayButtons = [];
-  for (const name of OVERLAY_NAMES) {
-    const button = el("button", "overlay", t(OVERLAYS[name].labelKey));
+  // Auto first, and it is the default: a player who has just picked the wire
+  // tool wants to see what is supplied, and should not have to ask.
+  const overlayChoices = [AUTO, ...OVERLAY_NAMES];
+  for (const name of overlayChoices) {
+    const button = el("button", "overlay",
+      name === AUTO ? t("overlay.auto") : t(OVERLAYS[name].labelKey));
     button.type = "button";
     button.dataset.overlay = name;
+    if (name === AUTO) button.append(el("small", "overlay-auto-target", ""));
     button.addEventListener("click", () => {
-      overlay = overlay === name ? undefined : name;
-      onOverlay?.(overlay);
+      chosen = chosen === name ? undefined : name;
+      onOverlay?.(activeOverlay());
       refresh();
     });
     overlayButtons.push(button);
@@ -380,9 +400,82 @@ export function createHud(root, {
     minimapBox.append(minimapCanvas, toggle);
   }
 
-  const panel = el("div", "hud-panel");
-  panel.append(rci, alertList, toolbar, buildBar, overlayBar, budgetBar, saveBar, legend, readout, status);
-  root.append(top, inspector, advisor, minimapBox, panel);
+  // --- the left rail and its drawers ---------------------------------------
+  //
+  // Overlays, the budget and saving were three permanent rows in the bottom
+  // panel; the panel had grown to 55% of a phone screen (P29, and Q21 in
+  // dev-questions.md). Each is now a button on a rail with a drawer behind it:
+  // one is open at a time, and none is open by default.
+  const rail = el("div", "hud-rail");
+  rail.setAttribute("role", "toolbar");
+  rail.setAttribute("aria-label", t("hud.rail"));
+  const drawer = el("div", "hud-drawer");
+  drawer.hidden = true;
+  const drawerTitle = el("h2", "drawer-title");
+  const drawerBody = el("div", "drawer-body");
+  const drawerClose = el("button", "drawer-close", t("hud.close"));
+  drawerClose.type = "button";
+  drawerClose.id = "drawer-close";
+  drawerClose.addEventListener("click", () => openDrawer(undefined));
+  drawer.append(drawerTitle, drawerBody, drawerClose);
+
+  const DRAWERS = [
+    { key: "overlays", labelKey: "hud.overlays", body: overlayBar },
+    { key: "budget", labelKey: "budget.tax", body: budgetBar },
+    { key: "saves", labelKey: "hud.saves", body: saveBar },
+  ];
+  let openKey;
+  const railButtons = [];
+  for (const entry of DRAWERS) {
+    const button = el("button", "rail-button", t(entry.labelKey));
+    button.type = "button";
+    button.dataset.drawer = entry.key;
+    button.id = `rail-${entry.key}`;
+    button.setAttribute("aria-expanded", "false");
+    button.addEventListener("click", () => openDrawer(openKey === entry.key ? undefined : entry.key));
+    railButtons.push(button);
+    rail.append(button);
+  }
+
+  // Every body is mounted once and hidden, never detached. Emptying the drawer
+  // removed `#tax` and the save slots from the document, so `refresh()` and
+  // anything else holding a reference was writing to orphans.
+  for (const entry of DRAWERS) {
+    entry.body.hidden = true;
+    drawerBody.append(entry.body);
+  }
+
+  function openDrawer(key) {
+    openKey = key;
+    const entry = DRAWERS.find((d) => d.key === key);
+    drawer.hidden = entry === undefined;
+    for (const other of DRAWERS) other.body.hidden = other !== entry;
+    if (entry) drawerTitle.textContent = t(entry.labelKey);
+    for (const button of railButtons) {
+      button.setAttribute("aria-expanded", String(button.dataset.drawer === key));
+    }
+    refresh();
+  }
+
+  function setBuildMenu(open) {
+    buildBar.hidden = !open;
+    buildToggle.setAttribute("aria-expanded", String(open));
+    // The rail lives in the same band above the bar, and on a phone in exactly
+    // the same band. Both are transient chrome and only one is wanted at a
+    // time, so the rail steps aside — otherwise it sits over the first few
+    // buildings and they cannot be clicked at all.
+    side.hidden = open;
+    if (open) openDrawer(undefined);
+  }
+
+  const bottom = el("div", "hud-bottom");
+  bottom.append(rci, alertList, readout, toolbar, buildBar, legend, status);
+  // Rail and drawer side by side in one strip: the drawer used to be laid over
+  // the same left edge, so opening one covered the buttons that open them.
+  const side = el("div", "hud-side");
+  side.append(rail, drawer);
+  root.append(top, side, inspector, advisor, minimapBox, bottom);
+  const panel = bottom;
 
   function renderAdvisor() {
     if (!quests) { advisor.hidden = true; return; }
@@ -416,8 +509,11 @@ export function createHud(root, {
 
   function renderLegend() {
     legend.innerHTML = "";
-    if (!overlay) return;
-    for (const entry of legendFor(overlay)) {
+    // The legend belongs to whatever is DRAWN, which under Auto is the tool's
+    // layer rather than the menu selection.
+    const showing = activeOverlay();
+    if (!showing) return;
+    for (const entry of legendFor(showing)) {
       const item = el("span", `legend ${BAND_CLASS[entry.band]}`);
       // Colour AND a mark AND the word. Any one of the three is enough to read
       // the map, which is the point of all three being here.
@@ -477,8 +573,13 @@ export function createHud(root, {
       const held = sameTool && (button.dataset.def === undefined || button.dataset.def === controller.def);
       button.setAttribute("aria-pressed", String(held));
     }
+    const target = autoTarget(controller.tool);
+    const autoNote = overlayBar.querySelector(".overlay-auto-target");
+    if (autoNote) {
+      autoNote.textContent = target ? t(OVERLAYS[target].labelKey) : t("overlay.auto.idle");
+    }
     for (const button of overlayButtons) {
-      button.setAttribute("aria-pressed", String(button.dataset.overlay === overlay));
+      button.setAttribute("aria-pressed", String(button.dataset.overlay === chosen));
     }
     renderAlerts();
     renderLegend();
@@ -572,7 +673,7 @@ export function createHud(root, {
 
   // `role="toolbar"` promises one tab stop and arrow-key navigation. It has
   // been on these rows since slice N4 and neither was true.
-  const roving = [toolbar, buildBar, overlayBar, saveBar].map(makeRoving);
+  const roving = [toolbar, buildBar, overlayBar, saveBar, rail].map(makeRoving);
 
   // The minimap sits above the panel, and the panel's height changes with its
   // contents and with the language. Published as a custom property rather than
@@ -581,8 +682,13 @@ export function createHud(root, {
   if (globalThis.ResizeObserver) {
     panelWatch = new globalThis.ResizeObserver(() => {
       root.style.setProperty("--panel-height", `${panel.getBoundingClientRect().height}px`);
+      // The top bar wraps — to three lines at 200% text on a phone — and the
+      // rail hangs below it. A fixed offset put the rail inside the top bar and
+      // over its buttons.
+      root.style.setProperty("--top-height", `${top.getBoundingClientRect().height}px`);
     });
     panelWatch.observe(panel);
+    panelWatch.observe(top);
   }
 
   refresh();
@@ -595,6 +701,9 @@ export function createHud(root, {
      * renderer's, and neither owns the other. */
     get minimapVisible() { return Boolean(minimapCanvas) && !minimapCanvas.hidden; },
     setSpeedLabel(key) { speedButton.textContent = t(key); },
-    get overlay() { return overlay; },
+    /** What is actually drawn — Auto resolved against the tool in hand. */
+    get overlay() { return activeOverlay(); },
+    /** What the player picked from the menu. */
+    get chosenOverlay() { return chosen; },
   };
 }

@@ -48,6 +48,14 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute is a UA rule of `display: none`, and ANY class rule
+   that sets `display` beats it on specificity. `.hud-drawer` is `display: flex`,
+   so `drawer.hidden = true` left it on screen covering the rail; the build
+   menu (`.hud-toolbar` is flex) and the minimap's own hide toggle
+   (`.minimap-canvas` is block) had the same bug and nothing had noticed.
+   One rule, so `el.hidden = true` means hidden everywhere. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -141,7 +149,7 @@ button, [role="button"] {
   gap: 0.5rem 0.9rem;
   align-items: center;
   padding: 0.5rem 0.8rem;
-  background: color-mix(in srgb, Canvas 85%, transparent);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(6px);
 }
 .hud-top > button { flex: 0 0 auto; white-space: nowrap; }
@@ -151,21 +159,227 @@ button, [role="button"] {
 .hud-trend.up { color: #2e7d4f; }
 .hud-trend.down { color: #b3402c; }
 .hud-trend.flat { opacity: 0.5; }
-.hud-speed { margin-inline-start: auto; min-height: 40px; padding: 0 0.9rem; }
+.hud-speed { margin-inline-start: auto; }
 .hud-money, .hud-pop, .hud-date { white-space: nowrap; }
 
 /* --- the bottom panel ------------------------------------------------------ */
 
-.hud-panel {
+/* `.hud-panel` was the bottom panel; the bottom bar replaced it in P29 and
+   carries its own rules above. Nothing renders with this class any more. */
+
+/* --- interface skins (P29) --------------------------------------------------
+   **Chrome only.** Kjell's call: the world keeps `plain` and ruling 022 stands,
+   so a skin is a set of custom properties and nothing else. `clean` is the bare
+   :root above — a skin that restated the defaults would be a second place to
+   change them. */
+
+:root[data-skin="retro"] {
+  --bg: #b8bcc4;
+  --fg: #16181d;
+  --muted: #4a4f58;
+  --accent: #1d4f8c;
+  --panel: #d2d6dc;
+  --line: #6f7681;
+  --radius: 2px;
+}
+/* SimCity 1 had no rounded corners and no soft shadows; it had bevels. */
+:root[data-skin="retro"] .rail-button,
+:root[data-skin="retro"] .hud-drawer,
+:root[data-skin="retro"] .hud-build,
+:root[data-skin="retro"] .hud-toolbar button,
+:root[data-skin="retro"] .hud-overlays button,
+:root[data-skin="retro"] .hud-saves .slot,
+:root[data-skin="retro"] .hud-top button,
+:root[data-skin="retro"] .rail-button {
+  border-radius: 2px;
+  border-width: 2px;
+  border-style: outset;
+  border-color: var(--panel);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+:root[data-skin="retro"] .hud-toolbar button[aria-pressed="true"],
+:root[data-skin="retro"] .hud-overlays button[aria-pressed="true"],
+:root[data-skin="retro"] .rail-button[aria-expanded="true"] { border-style: inset; }
+:root[data-skin="retro"] .hud-bottom,
+:root[data-skin="retro"] .hud-top { backdrop-filter: none; background: var(--panel); }
+
+:root[data-skin="dark"] {
+  --bg: #0e1116;
+  --fg: #d8e2ec;
+  --muted: #7d8b9a;
+  --accent: #35d6c4;
+  --warn: #f0a94a;
+  --bad: #ff5f6d;
+  --panel: #161b23;
+  --line: #2a323d;
+}
+/* A little cyberpunk: the accent glows, and the chrome is cooler than the map. */
+:root[data-skin="dark"] .rail-button[aria-expanded="true"],
+:root[data-skin="dark"] .hud-toolbar button[aria-pressed="true"],
+:root[data-skin="dark"] .hud-overlays button[aria-pressed="true"] {
+  background: var(--accent);
+  color: #06131a;
+  border-color: var(--accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+:root[data-skin="dark"] .lobby-start,
+:root[data-skin="dark"] .hud-money { color: var(--accent); }
+:root[data-skin="dark"] .lobby-start { background: var(--accent); color: #06131a; border-color: var(--accent); }
+
+/* --- the left rail and its drawers (P29) ------------------------------------
+   Overlays, the budget and saving were three permanent rows in the bottom
+   panel, which had grown to 55% of a phone screen. Each is a rail button with
+   a drawer behind it now; one opens at a time and none opens by default. */
+
+/* One strip down the left edge: the rail, and the drawer beside it. Laying the
+   drawer over the same edge covered the buttons that open it. Under the top
+   bar, whatever height it wrapped to — a fixed offset put the strip inside the
+   top bar at 200% text on a phone. */
+.hud-side {
   position: absolute;
-  inset: auto 0 0 0;
+  inset-inline-start: 0.6rem;
+  top: calc(var(--top-height, 3.6rem) + 0.6rem);
+  bottom: calc(var(--panel-height, 9rem) + 0.6rem);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  z-index: 3;
+  pointer-events: none;
+}
+.hud-side > * { pointer-events: auto; }
+
+.hud-rail {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.5rem 0.8rem;
-  background: color-mix(in srgb, Canvas 85%, transparent);
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+.rail-button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.83rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+  text-align: start;
+}
+.rail-button[aria-expanded="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+.hud-drawer {
+  width: min(320px, calc(100vw - 9rem));
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.drawer-title {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  opacity: 0.6;
+}
+.drawer-body { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.drawer-close {
+  align-self: flex-start;
+  margin-top: auto;
+  min-height: 40px;
+  padding: 0 1rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 28%, transparent);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* In the drawer the overlay list is a column, not a scrolling strip of eleven. */
+.hud-drawer .hud-overlays {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  overflow: visible;
+  gap: 0.25rem;
+}
+.hud-drawer .hud-overlays button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: start;
+  min-height: 40px;
+}
+.overlay-auto-target { display: block; font-size: 0.72rem; opacity: 0.6; }
+.hud-overlays button[aria-pressed="true"] .overlay-auto-target { opacity: 0.8; }
+
+/* The budget and the saves stack in the drawer rather than running sideways. */
+.hud-drawer .hud-budget { flex-wrap: wrap; overflow: visible; gap: 0.5rem 0.7rem; }
+.hud-drawer .hud-budget input[type="range"] { flex: 1 1 100%; }
+.hud-drawer .budget-books { flex-basis: 100%; }
+.hud-drawer .budget-funding { flex: 1 1 100%; justify-content: space-between; }
+.hud-drawer .hud-saves { flex-wrap: wrap; overflow: visible; }
+
+/* On a phone the left edge is a third of the screen. The rail becomes a strip
+   just above the bottom bar there, so the map stays clear — "left edge first"
+   was the brief for a desktop, and a 120px rail on a 390px screen is not that.
+   A drag that started at tile 20 landed on a rail button. */
+@media (max-width: 620px) {
+  .hud-side {
+    inset-inline: 0.6rem;
+    top: auto;
+    bottom: calc(var(--panel-height, 9rem) + 0.5rem);
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+  .hud-rail { flex-direction: row; flex-wrap: wrap; }
+  .rail-button { flex: 1 1 auto; text-align: center; }
+  .hud-drawer { width: 100%; max-height: 46vh; }
+}
+
+/* --- the bottom bar --------------------------------------------------------- */
+
+.hud-bottom {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem 0.6rem;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(6px);
 }
+
+/* The building menu, above the bar it belongs to. Absolutely positioned so
+   opening it does not move the tools under the player's pointer. */
+.hud-build {
+  position: absolute;
+  inset-inline: 0.8rem;
+  bottom: 100%;
+  margin-bottom: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--panel) 95%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.tool-build[aria-expanded="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
 /* --- demand ---------------------------------------------------------------- */
 
@@ -174,7 +388,7 @@ button, [role="button"] {
   position: relative;
   width: 26px; height: 100%;
   display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
   border-radius: 5px;
 }
 .rci-bar i { display: block; width: 100%; border-radius: 4px; }
@@ -222,17 +436,17 @@ button, [role="button"] {
   /* Comfortably tappable on a phone without aiming (§13.2). */
   min-height: 44px;
   padding: 0 0.7rem;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: 8px;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   font: inherit;
   cursor: pointer;
 }
 .hud-overlays button { min-height: 36px; font-size: 0.85rem; }
 .hud-toolbar button[aria-pressed="true"], .hud-overlays button[aria-pressed="true"] {
-  background: CanvasText;
-  color: Canvas;
+  background: var(--fg);
+  color: var(--bg);
 }
 
 /* --- legend ---------------------------------------------------------------- */
@@ -292,10 +506,10 @@ button, [role="button"] {
 .budget-funding select {
   min-height: 32px;
   padding: 0 0.3rem;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: 7px;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   font: inherit;
   font-size: 0.8rem;
 }
@@ -306,10 +520,10 @@ button, [role="button"] {
 .hud-saves .slot {
   min-height: 36px;
   padding: 0 0.7rem;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: 8px;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -337,7 +551,7 @@ button, [role="button"] {
   width: min(320px, 60vw);
   padding: 0.7rem 0.9rem;
   border-radius: 12px;
-  background: color-mix(in srgb, Canvas 94%, transparent);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
   backdrop-filter: blur(6px);
   box-shadow: 0 2px 12px rgba(0,0,0,0.18);
   border-inline-start: 5px solid #4a9e63;
@@ -348,10 +562,10 @@ button, [role="button"] {
 .hud-advisor .choice {
   min-height: 40px;
   padding: 0.3rem 0.6rem;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: 8px;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   font: inherit;
   font-size: 0.85rem;
   text-align: start;
@@ -379,9 +593,9 @@ button, [role="button"] {
 .minimap-canvas {
   /* Size set from MINIMAP_SIZE in `minimap.js`, so the constant lives once. */
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
   box-shadow: 0 2px 12px rgba(0,0,0,0.18);
-  background: Canvas;
+  background: var(--panel);
   cursor: crosshair;
   /* The picture is nearest-neighbour by construction; letting the browser
      smooth it would blur a map that is deliberately one pixel a tile. */
@@ -391,10 +605,10 @@ button, [role="button"] {
 .minimap-toggle {
   min-height: 32px;
   padding: 0 0.6rem;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: 8px;
-  background: color-mix(in srgb, Canvas 88%, transparent);
-  color: CanvasText;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  color: var(--fg);
   font: inherit;
   font-size: 0.78rem;
   cursor: pointer;
@@ -412,11 +626,11 @@ button, [role="button"] {
 
 .stats::backdrop { background: rgba(0, 0, 0, 0.45); }
 .stats {
-  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
   border-radius: 14px;
   padding: 0;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   max-width: min(560px, 94vw);
   max-height: 88vh;
 }
@@ -435,7 +649,7 @@ button, [role="button"] {
 .stat-arrow.none { opacity: 0.45; }
 
 .spark { width: 100%; height: 44px; display: block; }
-.spark polyline { stroke: color-mix(in srgb, CanvasText 55%, transparent); }
+.spark polyline { stroke: color-mix(in srgb, var(--fg) 55%, transparent); }
 .spark.good polyline { stroke: #2e7d4f; }
 .spark.bad polyline { stroke: #b3402c; }
 .spark circle { fill: currentColor; }
@@ -449,20 +663,20 @@ button, [role="button"] {
   align-self: flex-start;
   min-height: 44px;
   padding: 0 1.2rem;
-  border: 1px solid CanvasText;
+  border: 1px solid var(--fg);
   border-radius: 9px;
-  background: CanvasText;
-  color: Canvas;
+  background: var(--fg);
+  color: var(--bg);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 :root[data-contrast="high"] .stats,
-:root[data-contrast="high"] .hud-minimap .minimap-canvas { border-width: 2px; border-color: CanvasText; }
+:root[data-contrast="high"] .hud-minimap .minimap-canvas { border-width: 2px; border-color: var(--fg); }
 :root[data-contrast="high"] .stat-about,
 :root[data-contrast="high"] .stat-arrow.none { opacity: 1; }
-:root[data-contrast="high"] .minimap-toggle { background: Canvas; border-color: CanvasText; border-width: 2px; }
+:root[data-contrast="high"] .minimap-toggle { background: var(--panel); border-color: var(--fg); border-width: 2px; }
 
 /* --- settings ---------------------------------------------------------------
    A native <dialog>: focus trapping, focus return and Escape all come free,
@@ -470,11 +684,11 @@ button, [role="button"] {
 
 .settings::backdrop { background: rgba(0, 0, 0, 0.45); }
 .settings {
-  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
   border-radius: 14px;
   padding: 0;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   max-width: min(420px, 92vw);
 }
 .settings-body { display: flex; flex-direction: column; gap: 0.9rem; padding: 1.1rem 1.2rem 1.2rem; }
@@ -484,22 +698,22 @@ button, [role="button"] {
 .settings-choice {
   min-height: 44px;
   padding: 0 0.85rem;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: 9px;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   font: inherit;
   cursor: pointer;
 }
-.settings-choice[aria-pressed="true"] { background: CanvasText; color: Canvas; border-color: CanvasText; }
+.settings-choice[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .settings-close {
   align-self: flex-start;
   min-height: 44px;
   padding: 0 1.2rem;
-  border: 1px solid CanvasText;
+  border: 1px solid var(--fg);
   border-radius: 9px;
-  background: CanvasText;
-  color: Canvas;
+  background: var(--fg);
+  color: var(--bg);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -511,11 +725,11 @@ button, [role="button"] {
 .lobby-head .tagline { flex: 1 1 12rem; }
 .help::backdrop { background: rgba(0,0,0,0.45); }
 .help {
-  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
   border-radius: 14px;
   padding: 0;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   max-width: min(520px, 94vw);
   max-height: 88vh;
 }
@@ -529,10 +743,10 @@ button, [role="button"] {
   display: inline-block;
   min-width: 1.6em;
   padding: 0.1rem 0.35rem;
-  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
   border-bottom-width: 2px;
   border-radius: 5px;
-  background: color-mix(in srgb, CanvasText 5%, Canvas);
+  background: color-mix(in srgb, var(--fg) 5%, var(--panel));
   font: inherit;
   font-size: 0.8rem;
   text-align: center;
@@ -542,24 +756,27 @@ button, [role="button"] {
   align-self: flex-start;
   min-height: 44px;
   padding: 0 1.2rem;
-  border: 1px solid CanvasText;
+  border: 1px solid var(--fg);
   border-radius: 9px;
-  background: CanvasText;
-  color: Canvas;
+  background: var(--fg);
+  color: var(--bg);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
-:root[data-contrast="high"] .help { border-width: 2px; border-color: CanvasText; }
+:root[data-contrast="high"] .help { border-width: 2px; border-color: var(--fg); }
 :root[data-contrast="high"] .help-section h2, :root[data-contrast="high"] .help-gesture { opacity: 1; }
 
-.lobby-settings, .hud-settings, .hud-help, .hud-stats {
+/* Every button in the top bar, so a skin reaches all of them. `.hud-speed`
+   and `.hud-newcity` had no rule at all and fell back to the browser's own
+   button, which stayed light grey under the dark skin. */
+.lobby-settings, .hud-settings, .hud-help, .hud-stats, .hud-speed, .hud-newcity {
   min-height: 40px;
   padding: 0 0.85rem;
-  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
   border-radius: 9px;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--panel);
+  color: var(--fg);
   font: inherit;
   cursor: pointer;
 }
@@ -569,14 +786,14 @@ button, [role="button"] {
    city through is a panel with no guaranteed contrast ratio at all, because
    what is behind it changes every frame. */
 :root[data-contrast="high"] {
-  --accent: CanvasText;
+  --accent: var(--fg);
 }
 :root[data-contrast="high"] .hud-panel,
 :root[data-contrast="high"] .hud-top,
 :root[data-contrast="high"] .hud-inspector,
 :root[data-contrast="high"] .hud-advisor,
 :root[data-contrast="high"] .lobby-preview {
-  background: Canvas;
+  background: var(--panel);
   backdrop-filter: none;
 }
 :root[data-contrast="high"] .hud-toolbar button,
@@ -585,7 +802,7 @@ button, [role="button"] {
 :root[data-contrast="high"] .lobby-choice,
 :root[data-contrast="high"] .settings-choice,
 :root[data-contrast="high"] .hud-advisor .choice {
-  border-color: CanvasText;
+  border-color: var(--fg);
   border-width: 2px;
 }
 :root[data-contrast="high"] .hud-toolbar button small,
@@ -866,7 +1083,7 @@ button, [role="button"] {
   overflow: auto;
   padding: 0.6rem 0.8rem;
   border-radius: 10px;
-  background: color-mix(in srgb, Canvas 92%, transparent);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(6px);
   box-shadow: 0 2px 12px rgba(0,0,0,0.18);
   font-size: 0.85rem;

@@ -74,7 +74,7 @@ try {
     tabStops.map((b) => `${b.label}: ${b.stops} of ${b.buttons}`).join(", "));
 
   // --- the arrows move within it -------------------------------------------
-  await page.focus('.hud-toolbar button[data-id="road"]');
+  await page.focus('#tools button[data-id="road"]');
   const walk = [];
   for (const key of ["ArrowRight", "ArrowRight", "ArrowLeft", "End", "Home"]) {
     await page.keyboard.press(key);
@@ -84,20 +84,20 @@ try {
     new Set(walk).size > 1 && walk[0] !== walk[1] && walk[4] !== walk[3], walk.join(" → "));
 
   const wrapped = await page.evaluate(() => {
-    const bar = document.querySelector(".hud-toolbar");
+    const bar = document.querySelector("#tools");
     const buttons = [...bar.querySelectorAll("button")];
     buttons[buttons.length - 1].focus();
     return buttons.length;
   });
   await page.keyboard.press("ArrowRight");
   const afterWrap = await page.evaluate(() => document.activeElement?.dataset.id);
-  const first = await page.evaluate(() => document.querySelector(".hud-toolbar button")?.dataset.id);
+  const first = await page.evaluate(() => document.querySelector("#tools button")?.dataset.id);
   check("the arrows wrap rather than dead-ending", afterWrap === first,
     `${wrapped} buttons, last → ${afterWrap}, first is ${first}`);
 
   // --- the tab stop follows you --------------------------------------------
   const remembered = await page.evaluate(() => {
-    const bar = document.querySelector(".hud-toolbar");
+    const bar = document.querySelector("#tools");
     return [...bar.querySelectorAll("button")].filter((b) => b.tabIndex === 0)[0]?.dataset.id;
   });
   check("the toolbar remembers where you were", remembered === first, String(remembered));
@@ -131,6 +131,8 @@ try {
     moved.x !== panned.x || moved.y !== panned.y,
     `(${panned.x.toFixed(1)}, ${panned.y.toFixed(1)}) → (${moved.x.toFixed(1)}, ${moved.y.toFixed(1)})`);
 
+  // The overlay list is in a drawer now; open it before focusing inside it.
+  await page.click("#rail-overlays");
   await page.focus('.hud-overlays button[data-overlay="power"]');
   const beforeToolbarArrow = await page.evaluate(() => globalThis.CITY.renderer.view.targetX);
   await page.keyboard.press("ArrowRight");

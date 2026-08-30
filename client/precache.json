@@ -1,5 +1,5 @@
 {
- "version": "9efb3f5153fa",
+ "version": "9168a46a5fc7",
  "generated": "2026-08-30",
  "files": [
   "./client/audio/audio-model.js",
@@ -40,6 +40,7 @@
   "./client/storage/saves.js",
   "./client/style.css",
   "./client/ui/alerts-model.js",
+  "./client/ui/auto-overlay.js",
   "./client/ui/budget-model.js",
   "./client/ui/build-model.js",
   "./client/ui/help-model.js",
@@ -52,6 +53,7 @@
   "./client/ui/roving.js",
   "./client/ui/settings-model.js",
   "./client/ui/settings.js",
+  "./client/ui/skins.js",
   "./client/ui/statistics-model.js",
   "./client/ui/statistics.js",
   "./data/balance.json",

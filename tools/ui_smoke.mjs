@@ -285,10 +285,23 @@ try {
   // Keyed on `data-id`, which is unique: every building shares the `building`
   // tool and is told apart by its `data-def`, so `data-tool` alone matches
   // twelve buttons.
-  const tools = await page.$$eval(".hud-toolbar button[data-tool]", (nodes) =>
+  await page.evaluate(() => {
+    const b = document.getElementById("build");
+    if (b.getAttribute("aria-expanded") !== "true") b.click();
+  });
+  // Both rows: the tool row and the building popover, which is open by now.
+  const tools = await page.$$eval("#tools button[data-tool], #build-menu button[data-tool]", (nodes) =>
     nodes.filter((n) => n.dataset.tool).map((n) => ({ id: n.dataset.id, tool: n.dataset.tool, def: n.dataset.def })));
   for (const { id, tool, def } of tools) {
-    const button = page.locator(`.hud-toolbar button[data-id="${id}"]`);
+    // Buildings are behind the Build button now (P29): open the popover before
+    // reaching for one, exactly as a player does.
+    if (def) {
+      await page.evaluate(() => {
+        const b = document.getElementById("build");
+        if (b.getAttribute("aria-expanded") !== "true") b.click();
+      });
+    }
+    const button = page.locator(`#tools button[data-id="${id}"], #build-menu button[data-id="${id}"]`);
     const box = await button.boundingBox();
     check(`the ${id} button is big enough to hit on a phone`,
       box && box.height >= 44, box ? `${Math.round(box.width)}×${Math.round(box.height)}` : "no box");
@@ -299,11 +312,15 @@ try {
       held[0] === tool && (def === undefined || held[1] === def), `selected ${held.join("/")}`);
     const pressed = await button.getAttribute("aria-pressed");
     check(`the ${id} button reports its own state`, pressed === "true", `aria-pressed=${pressed}`);
-    await button.click();  // toggle back off
+    // Picking a building CLOSES the popover, so the button that would toggle it
+    // off is no longer on screen. Escape puts the tool down instead, which is
+    // the binding the controls card advertises anyway.
+    if (def) await page.keyboard.press("Escape");
+    else await button.click();
   }
 
   // Undo and speed are buttons that do something other than pick a tool.
-  await page.click('.hud-toolbar button[data-tool="road"]');
+  await page.click('#tools button[data-tool="road"]');
   await page.evaluate(async () => {
     const { state } = globalThis.CITY;
     const { apply } = await import("/engine/reducer.js");
@@ -333,8 +350,18 @@ try {
 
   // --- 2 and 3. every overlay renders, and renders differently --------------
   await page.evaluate(() => globalThis.CITY.pause());
-  const overlayNames = await page.$$eval(".hud-overlays button", (nodes) => nodes.map((n) => n.dataset.overlay));
+  await page.click("#rail-overlays");
+  const overlayNames = await page.$$eval(".hud-overlays button", (nodes) =>
+    nodes.map((n) => n.dataset.overlay).filter((n) => n !== "auto"));
   check("all eleven overlays have a button", overlayNames.length === 11, `${overlayNames.length} buttons`);
+
+  // "Auto" is selected by default (P29), so the baseline has to switch it off —
+  // otherwise the no-overlay frame is not a no-overlay frame.
+  await page.evaluate(() => {
+    const auto = document.querySelector('.hud-overlays button[data-overlay="auto"]');
+    if (auto?.getAttribute("aria-pressed") === "true") auto.click();
+  });
+  await page.waitForTimeout(140);
 
   const shots = new Map();
   let baselineCalls = 0;
@@ -399,7 +426,10 @@ try {
   const fits = await phonePage.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,
-    panel: document.querySelector(".hud-panel").getBoundingClientRect().height,
+    // Top bar AND bottom bar: the old check measured only the panel, which is
+    // how the top bar reached 138px without anything going red (P29).
+    panel: document.querySelector(".hud-bottom").getBoundingClientRect().height
+      + document.querySelector(".hud-top").getBoundingClientRect().height,
     viewport: window.innerHeight,
   }));
   check("the phone layout does not scroll sideways",

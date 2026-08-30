@@ -74,7 +74,7 @@ async function run(page, label, { touch }) {
   // --- a road, dragged ------------------------------------------------------
   const from = await tilePixel(page, 20, 20);
   const to = await tilePixel(page, 32, 20);
-  await page.click('.hud-toolbar button[data-tool="road"]');
+  await page.click('#tools button[data-tool="road"]');
 
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
@@ -138,8 +138,8 @@ async function run(page, label, { touch }) {
   const rotated = await page.evaluate(() => globalThis.CITY.renderer.view.yawStep);
   check(`${label}: the camera rotates`, rotated !== before.yawStep, `yaw stayed at ${rotated}`);
 
-  await page.click('.hud-toolbar button[data-tool="road"]');
-  await page.click('.hud-toolbar button[data-tool="road"]');  // toggle off — no tool
+  await page.click('#tools button[data-tool="road"]');
+  await page.click('#tools button[data-tool="road"]');  // toggle off — no tool
   const panFrom = await tilePixel(page, 30, 30);
   await page.mouse.move(panFrom.x, panFrom.y);
   await page.mouse.down();

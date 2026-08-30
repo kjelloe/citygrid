@@ -2072,3 +2072,76 @@ exactly wrong here.
 
 - **`./test.sh` 521 tests, green twice.**
 - **Nine gates green**, including the new one.
+
+---
+
+## 2026-08-30 — Slice N24: the interface the playtest asked for (P29)
+
+Kjell's brief, all four parts, plus the two things measuring for it turned up.
+
+### The bottom bar, the rail, and Auto
+
+The bottom panel was **seven stacked rows** and had reached 55% of a phone
+screen. Now:
+
+- **one bottom bar** — demand, alerts, readout, the tools, and a **Build**
+  button opening a popover above it. The twelve building buttons were a
+  permanent second row; they are behind one button.
+- **a left rail** with Overlays, Tax and Saves, each opening a **drawer beside
+  it**. Eleven overlay buttons, the budget row and the save row were all
+  permanent.
+- **Auto**, the default overlay: zone tools show zoning, wire shows power, pipe
+  shows water, road shows traffic, and putting the tool down clears the map. A
+  manually chosen overlay **wins** — a player who asked for pollution wants
+  pollution whatever is in their hand.
+
+**Chrome: 55% → 28%** of a 1280×800 window. Q21 in `dev-questions.md` is
+answered by construction.
+
+### Skins
+
+Three, as CSS custom properties: **modern clean**, **retro** (bevels, square
+corners, no blur) and **dark** (cool chrome, a cyan accent that glows on the
+pressed state). Kjell's call: **chrome only** — the world keeps `plain` and
+ruling 022 stands.
+
+### Two bugs found by building it
+
+**`[hidden]` did not hide anything.** The attribute is a UA rule of
+`display: none`, and *any* class rule that sets `display` beats it. `.hud-drawer`
+is `display: flex`, so `drawer.hidden = true` left it on screen covering the
+rail. The build popover (`.hud-toolbar` is flex) and **the minimap's own Hide
+button** (`.minimap-canvas` is block) had the same bug and nobody had noticed —
+the minimap toggle has never worked. One `[hidden] { display: none !important }`
+fixes all three and every future case.
+
+**Skins only half-applied, and so did high contrast.** 61 places used the system
+colours `Canvas`/`CanvasText`, which `--bg`/`--fg` cannot touch — so
+`:root[data-contrast="high"]`, which sets those variables, had been changing
+almost nothing since slice N13. `a11y_smoke` only checked that `data-contrast`
+reached the document, not that it changed a colour: measuring the part, not the
+whole, again. All 61 now use the tokens. `.hud-speed` and `.hud-newcity` had no
+rule at all and were falling back to the browser's own button.
+
+### Measured
+
+- **`./test.sh` 530 tests, green twice.**
+- **All nine gates green**, five of them edited: the tool row is `#tools` (two
+  elements carry `.hud-toolbar` now), buildings need the popover opened,
+  overlays need the drawer opened, and `mvp_acceptance`'s touch-target check
+  now measures only controls that are **on screen** — a closed popover measures
+  0px, which is not "too small to tap", it is "not there".
+
+### What failed on the way
+
+**Four collisions, each found by a gate rather than by looking.** The rail sat
+on the minimap; the drawer covered the rail that opens it; the build popover's
+left edge sat under the rail, so the first three buildings could not be clicked;
+and at 200% text on a phone the top bar wraps to 257px and a fixed `4.2rem`
+offset put the rail *inside* it. The rail and drawer are one flex strip now,
+offset by a published `--top-height`, and the rail steps aside while the build
+menu is open.
+
+**On a 390px phone the left rail is a third of the screen.** `play_smoke`'s
+road drag started on a rail button. "Left edge first" was a brief for a desktop;
+below 620px the rail is a strip above the bottom bar instead.

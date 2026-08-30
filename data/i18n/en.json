@@ -229,6 +229,15 @@
   "inspect.traffic": "Traffic",
 
   "hud.map": "City map — arrow keys pan, Q and E rotate, plus and minus zoom",
+  "overlay.auto": "Auto",
+  "overlay.auto.idle": "follows your tool",
+  "hud.rail": "Panels",
+  "hud.close": "Close",
+  "settings.skin": "Interface style",
+  "skin.clean": "Modern clean",
+  "skin.retro": "Retro",
+  "skin.dark": "Dark",
+
   "hud.demand": "Demand",
   "hud.alerts": "Alerts",
   "hud.tools": "Tools",
