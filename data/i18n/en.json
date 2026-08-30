@@ -232,6 +232,7 @@
   "overlay.auto": "Auto",
   "overlay.auto.idle": "follows your tool",
   "hud.rail": "Panels",
+  "hud.dismiss": "Dismiss",
   "hud.close": "Close",
   "settings.skin": "Interface style",
   "skin.clean": "Modern clean",

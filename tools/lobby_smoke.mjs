@@ -324,8 +324,12 @@ try {
     const savedHash = await page.evaluate(async () => {
       const { hashState } = await import("/engine/state.js");
       globalThis.CITY.pause();
+      // Hash BEFORE the await. `save` yields, and a tick already on its way
+      // lands in that gap — the city then hashes one month ahead of the bytes
+      // on disk and the check fails in a quarter of runs for no reason.
+      const hash = hashState(globalThis.CITY.state);
       await globalThis.CITY.save("slot1");
-      return hashState(globalThis.CITY.state);
+      return hash;
     });
     await page.goto(base);
     await page.waitForSelector(".lobby");

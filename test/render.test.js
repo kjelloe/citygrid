@@ -262,9 +262,11 @@ test("a power line is drawn on every tile it covers, not every third", () => {
   // Poles were the whole of it, on `(x + y) % 3`, and the LOD plan drops poles
   // below 14 pixels a tile — so a line the player had just drawn vanished as
   // soon as they zoomed out.
-  assert.match(instances, /make\("wireLine"/, "there is no continuous wire run");
-  assert.match(instances, /pools\.wireLine/);
-  const runs = instances.slice(instances.indexOf("pools.wireLine") - 300, instances.indexOf("pools.wireLine"));
+  // Drawn as a hub plus arms since P32, so the run joins across tile
+  // boundaries rather than dotting each one.
+  assert.match(instances, /make\("wireArm"/, "there is no continuous wire run");
+  assert.match(instances, /connect\(pools\.wireHub, pools\.wireArm/);
+  const runs = instances.slice(instances.indexOf("connect(pools.wireHub") - 320, instances.indexOf("connect(pools.wireHub"));
   assert.equal(/% 3/.test(runs), false, "the continuous run is gated on the pole modulo");
 });
 
@@ -284,4 +286,37 @@ test("the zone tint keeps enough of its own colour to tell R from C from I", () 
   const lift = instances.match(/v \* (0\.\d+) \+ 255 \* (0\.\d+)/);
   assert.ok(lift, "the zone tint no longer lightens by a stated amount");
   assert.ok(Number(lift[1]) >= 0.7, `only ${lift[1]} of the zone colour survives`);
+});
+
+// --- networks read as networks (P32) ----------------------------------------
+
+test("wire and pipe are drawn joined, like roads", () => {
+  // The playtest: "power lines and water pipes do not look like they are
+  // connected, just a dot on each tile". A square centred on each tile leaves a
+  // gap at every boundary; roads avoid it by filling the tile. These draw a hub
+  // plus an arm towards each neighbour the connection mask says they join.
+  assert.match(instances, /function connect\(/, "there is no join helper");
+  for (const pool of ["wireHub", "wireArm", "pipeHub", "pipeArm"]) {
+    assert.match(instances, new RegExp(`make\\("${pool}"`), `no ${pool} pool`);
+  }
+  assert.match(instances, /connect\(pools\.wireHub, pools\.wireArm/);
+  assert.match(instances, /connect\(pools\.pipeHub, pools\.pipeArm/);
+});
+
+test("an arm reaches exactly half a tile, so two neighbours meet", () => {
+  // Half from each side. Shorter leaves the gap the playtest saw; longer
+  // overlaps and doubles the colour where two runs meet.
+  const helper = instances.slice(instances.indexOf("function connect("), instances.indexOf("export function updateInstances"));
+  assert.match(helper, /0\.25/, "the arm is not offset a quarter tile from the centre");
+  assert.match(helper, /mask & \(1 << d\)/, "the arm is not driven by the connection mask");
+  assert.match(helper, /Math\.PI \/ 2/, "an east-west arm is not turned");
+});
+
+test("an isolated network tile still draws its hub", () => {
+  // A single pole with nothing attached is something the player placed and
+  // must be able to see — the hub is pushed before the mask is consulted.
+  const helper = instances.slice(instances.indexOf("function connect("), instances.indexOf("export function updateInstances"));
+  const hubAt = helper.indexOf("push(hubPool");
+  const maskAt = helper.indexOf("const mask");
+  assert.ok(hubAt >= 0 && hubAt < maskAt, "the hub is drawn conditionally on the mask");
 });

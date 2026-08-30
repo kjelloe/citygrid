@@ -29,6 +29,40 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Play shot** | `node tools/play_shot.mjs` | What does the real page look like, both viewports? |
 | **Style sheet** | `node tools/style-sheet.mjs` | All three styles from one city, side by side |
 | **Where is it?** | `ZONE=residential node tools/where.mjs` | The densest window of a zone, the zone mix, the paved fraction |
+| **Server gate** | `node tools/serve_smoke.mjs` | Does the game work on the server `run.sh` starts, at the bare origin? |
+| **Reach gate** | `node tools/reach_smoke.mjs` | Can every control be brought on screen and clicked — and does the map still take a click? |
+| **Access gate** | `node tools/a11y_smoke.mjs` | Keyboard only, 200% text, high contrast and each skin repainting real colours |
+| **Lobby gate** | `node tools/lobby_smoke.mjs` | New game, settings, Continue — hash for hash |
+| **Offline gate** | `node tools/offline_smoke.mjs` | Network off: does it open, start, build and save? |
+
+**Ten browser gates, and they are cheap to run all of them.** Do:
+
+```
+for g in serve_smoke reach_smoke ui_smoke a11y_smoke lobby_smoke \
+         mvp_acceptance save_smoke play_smoke offline_smoke; do
+  printf "%-16s " "$g"; node tools/$g.mjs 2>&1 | tail -1
+done
+```
+
+### A browser gate is a program that can be wrong about the game
+
+More than half of the failures these gates have reported were **the gate's own**,
+and each one looked exactly like a real defect until it was chased. The four
+that have actually happened, as rules:
+
+- **Re-resolve, never hold a handle.** A panel that rebuilds its innerHTML — the
+  advisor does, on every refresh — throws away any marker attached to its
+  children. A walk that tagged once reported a working button as missing.
+- **Put the state back after every step.** A gate that opens a panel and leaves
+  it open reports collisions no player meets; one that injects a card to test a
+  rule then measures that card as furniture.
+- **Hash before the await.** `pause()` does not stop a tick already on its way;
+  it lands during the next `await`, and the city hashes one month ahead of the
+  bytes it just saved. One run in four, and it looks like a save bug.
+- **Start from a known state, not from wherever the last step left things.** A
+  toggle test that begins open measures the opposite of what it claims.
+
+Before believing a gate's red, ask what the gate did to the game.
 
 **A long-run soak measures whoever played it.** If a gate runs the deputy for
 25 years and reports the end state, it is measuring the deputy — an "expand"

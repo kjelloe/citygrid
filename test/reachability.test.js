@@ -163,3 +163,30 @@ test("every reason the reducer can give has words in both locales", () => {
     }
   }
 });
+
+// --- a dismissable panel must not dismiss a decision (P32, ruling 027) -------
+
+test("the advisor's × is withheld while a card is asking a question", () => {
+  const source = readFileSync(join(repoRoot, "client", "ui", "hud.js"), "utf8");
+  const advisor = source.slice(source.indexOf("function renderAdvisor"), source.indexOf("function showInspection"));
+  assert.match(advisor, /const decision = Boolean\(definition\.choices\) && entry\.choice < 0;/);
+  assert.match(advisor, /if \(!decision\) \{\s*\n\s*advisor\.append\(closeButton/,
+    "the close button is added whether or not the card is a decision");
+});
+
+test("dismissing is per quest, so the next one is news again", () => {
+  const source = readFileSync(join(repoRoot, "client", "ui", "hud.js"), "utf8");
+  assert.match(source, /dismissed\.add\(definition\.id\)/, "dismissal is not keyed by quest");
+  assert.match(source, /active\.filter\(\(q\) => !dismissed\.has\(q\.id\)\)/,
+    "the advisor does not consult what was dismissed");
+});
+
+test("every panel with a close button has a label for it", () => {
+  // A bare × is a control with no name in a screen reader (ruling 028).
+  const source = readFileSync(join(repoRoot, "client", "ui", "hud.js"), "utf8");
+  assert.match(source, /setAttribute\("aria-label", t\(labelKey\)\)/);
+  for (const key of ["hud.dismiss", "hud.close"]) {
+    assert.ok(catalogues.en[key], `${key} is not in the catalogue`);
+    assert.ok(catalogues.no[key], `${key} is not translated`);
+  }
+});

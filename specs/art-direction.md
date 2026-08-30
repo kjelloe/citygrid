@@ -246,6 +246,17 @@ direction; markings vanish below 20 pixels a tile. Houses and civic buildings
 stand on a garden plot, which is what stops a suburb reading as buildings
 dropped onto tarmac. Power poles are drawn every third tile of a wire run.
 
+**Networks are drawn as runs, not as tiles (slice N27).** A wire or a pipe tile
+draws a small hub at its centre plus an arm towards each neighbour the tile's
+own connection mask names, each arm reaching exactly half a tile so two
+neighbours meet in the middle with no seam. Anything less leaves a gap at every
+tile boundary, which is what made a run of ten poles read as ten unconnected
+dots at the N27 playtest. Each network keeps its own silhouette rather than
+borrowing the road's: **wire** is a pale grey line thinner than a road marking,
+riding above the ground; **water** is a wider flat blue main below it. The rule
+generalises — any future network (rail, transit) draws a hub and arms from its
+mask, and never a tile-shaped patch.
+
 ### 3.6 What plain deliberately does not have
 
 - **No texture atlas.** Every surface is flat colour plus baked face shading.

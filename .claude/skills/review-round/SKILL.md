@@ -98,6 +98,12 @@ whether anything invisible is eating clicks meant for the map. The second one fo
 swallowing a quarter of the map (ruling 029) — every control still worked, every screenshot still
 looked right, and nine gates saw nothing.
 
+**A green suite says nothing about what the game LOOKS like.** Wire and pipe drew a square per tile
+with a gap at every boundary for four slices: the pool counts were right, the overlay was right,
+the simulation was right, and a run of ten poles read as ten dots (ruling 030). No test can see
+this and no gate has ever caught one. The only instrument is a person, or a screenshot somebody
+actually looks at — so when a slice changes what is drawn, **look at it** before reporting it done.
+
 **A setting is not built until a pixel changes.** High contrast set an attribute for two slices
 while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate checked only that the
 attribute landed. For anything that themes the interface, assert a **computed colour** before and

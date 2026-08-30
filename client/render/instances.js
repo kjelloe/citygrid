@@ -15,6 +15,7 @@ import {
   variantFor, VARIANTS, TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
 import { setFaceContrast } from "./detail-kit.js";
+import { DIR4 } from "../../shared/grid.js";
 import { TIER, setCosts, inBounds } from "./lod.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
@@ -55,8 +56,15 @@ export function createInstances(scene, styleName = "plain") {
   make("road", flatGeometry(styleName, 1, 1, 0.05), 0xffffff, 24000);
   make("mark", flatGeometry(styleName, 0.06, 0.34, 0.056), 0xffffff, 24000);
   make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), 0xffffff, 24000);
-  make("wireLine", flatGeometry(styleName, 0.5, 0.5, 0.02), 0xffffff, 40000);
-  make("pipe", flatGeometry(styleName, 0.42, 0.42, 0.05), 0xffffff, 24000);
+  // A hub and four possible arms per tile, so a run READS as a run. A square
+  // per tile left a dotted line with a gap at every boundary — the playtest
+  // called it "just a dot on each tile" (P32).
+  make("wireHub", flatGeometry(styleName, 0.20, 0.20, 0.02), 0xffffff, 40000);
+  make("wireArm", flatGeometry(styleName, 0.14, 0.56, 0.02), 0xffffff, 80000);
+  // Wider and softer than the wire, and lower: a main under the street rather
+  // than a cable over it.
+  make("pipeHub", flatGeometry(styleName, 0.30, 0.30, 0.014), 0xffffff, 40000);
+  make("pipeArm", flatGeometry(styleName, 0.22, 0.56, 0.014), 0xffffff, 80000);
   // Zoned but not yet built. Without this a painted zone is INVISIBLE until
   // something develops on it — the player draws a district and the map shows
   // nothing back (found in playtest, P29). A flat tint just above the ground,
@@ -211,6 +219,32 @@ function zoneTint(zone, palette) {
   return (lift(r) << 16) | (lift(g) << 8) | lift(b);
 }
 
+/** Draws one tile of a network as a hub plus an arm towards every neighbour it
+ * is joined to.
+ *
+ * The low four bits of a network tile are its connection mask, in `DIR4`
+ * order — the same mask the road renderer turns into centre markings. An arm
+ * reaches from the centre to the tile edge, so two neighbouring tiles each draw
+ * half and the join is seamless.
+ *
+ * An isolated tile still gets its hub: a single pole with nothing attached is
+ * something the player placed and must be able to see.
+ */
+function connect(hubPool, armPool, tile, x, y, height, colour) {
+  const cx = x + 0.5;
+  const cy = y + 0.5;
+  push(hubPool, cx, height, cy, 1, 1, 1, colour);
+  const mask = tile & 15;
+  for (let d = 0; d < 4; d += 1) {
+    if ((mask & (1 << d)) === 0) continue;
+    const dir = DIR4[d];
+    // Half a tile long, so it stops exactly on the boundary the neighbour's
+    // own arm starts from. Rotated a quarter turn when it runs east-west.
+    push(armPool, cx + dir.dx * 0.25, height, cy + dir.dy * 0.25,
+      1, 1, 1, colour, dir.dx === 0 ? 0 : Math.PI / 2);
+  }
+}
+
 export function updateInstances(state, pools, options = {}) {
   reset(pools);
   const styleName = options.style ?? "plain";
@@ -259,23 +293,20 @@ export function updateInstances(state, pools, options = {}) {
         push(pools.zone, x + 0.5, h + 0.012, y + 0.5, 1, 1, 1, zoneTint(zone, palette));
       }
 
-      // A CONTINUOUS run on every wired tile, with poles standing on every
-      // third. Poles alone were the whole of it, and LOD drops them below 14
-      // pixels a tile — so a power line the player had just drawn disappeared
-      // the moment they zoomed out (P29).
+      // Wire and pipe are drawn like roads are: joined. The connection mask is
+      // the low four bits the network pass already maintains, so an arm is
+      // drawn towards each neighbour that is actually part of the same run and
+      // the line closes across the tile boundary.
       if (state.tiles.wire[index] & NET_PRESENT) {
-        push(pools.wireLine, x + 0.5, h + 0.016, y + 0.5, 1, 1, 1, palette.wire);
+        connect(pools.wireHub, pools.wireArm, state.tiles.wire[index], x, y, h + 0.016, palette.wire);
         // A pole per tile is a picket fence down every street, and it buries
-        // the city in clutter.
+        // the city in clutter — every third, and only where one is resolvable.
         if (poles && ((x + y) % 3 === 0)) {
           push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
         }
       }
-      // Pipes are underground, so what is drawn is the trace of one: a narrow
-      // marking in the surface. `underground` gated this on an option nothing
-      // ever passed, so water mains have never been drawn at all (P29).
       if (state.tiles.pipe[index] & NET_PRESENT) {
-        push(pools.pipe, x + 0.5, h + 0.014, y + 0.5, 1, 1, 1, PIPE_COLOUR);
+        connect(pools.pipeHub, pools.pipeArm, state.tiles.pipe[index], x, y, h + 0.014, PIPE_COLOUR);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
         push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, 0x5a5048);

@@ -2210,3 +2210,69 @@ opposite of what it claimed. A gate that walks a stateful interface has to
 return it to a known state after every step.
 
 The fourth was real, and it was the one worth having.
+
+## N27 — Three things the playtest asked for (P32)
+
+Three items, one from each layer of the game: a panel, the renderer, and input.
+
+### 1. The cards can be closed
+
+The advisor and the inspector take a `.panel-close` × in their upper-right
+corner, labelled for a screen reader rather than left as a bare glyph
+(ruling 028). Dismissal is remembered **beside the advice, keyed by quest id** —
+the advisor rebuilds its innerHTML on every refresh, so a dismissal that lived
+in the DOM would come back within the month. The next quest is news again.
+
+One thing the implementation refused: **a card waiting for a decision gets no
+×.** Its two choice buttons are the only place that decision can be made, and a
+card you can close is a decision you can lose (ruling 027).
+
+### 2. Wire and pipe are runs, not dots
+
+Each network tile drew one square centred on it, which leaves a gap at every
+tile boundary — a run of ten poles read as ten dots. They now draw a **hub plus
+an arm towards each neighbour the connection mask names**, the arm reaching
+exactly half a tile so two neighbours meet in the middle. The mask was already
+there: the low four bits of a network tile, in `DIR4` order, maintained by the
+reducer since the utilities slice. Nothing in the engine changed.
+
+They keep their own styles rather than borrowing the road's: thin pale-grey
+poles and thinner lines above the ground, wider flat blue mains below it.
+
+### 3. The right mouse button
+
+`onPointerDown` opened with `if (event.button === 1 || event.button === 2)
+return;` under a comment saying those buttons panned the camera. They had never
+done anything. Right-drag now accumulates and fires a quarter turn every 140
+pixels — the four snapped angles of ruling 006, the same gesture as the
+two-finger twist — and middle-drag pans. Neither requires putting the tool down.
+
+**The camera pitch stays fixed** at ~35.26°, which is the ruling and not an
+oversight: an axonometric view whose pitch moves stops being readable at the
+angles that make it interesting.
+
+### Measured
+
+- `./test.sh` **546 tests, green twice**, then green twice again after the docs.
+- **Ten gates green.**
+- Pool counts on the real page: `wireHub 16, wireArm 30, pipeHub 15, pipeArm 28`
+  against `road 20` — arms outnumber hubs, which is what a connected run looks
+  like.
+- Camera: `yaw 0 → 2` on a 300px right-drag; target `24,24 → 29.9,27.7` on a
+  middle-drag; tool still `road` after both.
+
+### What failed on the way
+
+**Two of the three failures were the gates', again.**
+
+`reach_smoke` reported the advisor's × unreachable. It was on screen and it
+worked: the walk tags each control with a `data-reach-id` once, and the advisor
+**replaces its own innerHTML** on any refresh, taking the marker with it. A
+discovery walk over a live interface has to re-resolve before every look, never
+hold a handle. The same check then failed on map clickability because the gate
+had injected a decision card to test the no-× rule and left it on screen.
+
+`lobby_smoke` failed one run in four with a hash mismatch that looked like a
+save bug. It was the gate: it hashed the city **after** `await save(...)`, and a
+tick already on its way lands in that gap, so the city hashed one month ahead of
+the bytes on disk. Hash before the await.

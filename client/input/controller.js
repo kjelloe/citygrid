@@ -184,19 +184,61 @@ export function createController(canvas, state, renderer, options = {}) {
 
   const point = (event) => ({ id: event.pointerId, x: event.offsetX, y: event.offsetY });
 
+  /** Right and middle drag, which returned early and therefore did NOTHING —
+   * the comment said they panned and the code dropped them (P32).
+   *
+   * §13.4: right or middle drag rotates. Middle also pans, because a wheel
+   * button that only turns the camera is a wheel button most people never
+   * press twice. Both work with a tool in hand, which is the whole point:
+   * they are the desktop equivalent of the second finger.
+   *
+   * Rotation ACCUMULATES and fires in whole quarter turns, like the two-finger
+   * twist — the camera has four snapped angles (ruling 006), so a drag has to
+   * cross a threshold rather than spin the world continuously. */
+  const drag = { button: -1, x: 0, y: 0, turned: 0 };
+  const PIXELS_PER_TURN = 140;
+
   const onPointerDown = (event) => {
     canvas.setPointerCapture?.(event.pointerId);
-    // Middle and right button pan even with a tool selected — the desktop
-    // equivalent of the second finger.
-    if (event.button === 1 || event.button === 2) return;
+    if (event.button === 1 || event.button === 2) {
+      drag.button = event.button;
+      drag.x = event.offsetX;
+      drag.y = event.offsetY;
+      drag.turned = 0;
+      return;
+    }
     handle(down(gestures, point(event)));
   };
-  const onPointerMove = (event) => handle(move(gestures, point(event)));
+  const onPointerMove = (event) => {
+    if (drag.button >= 0) {
+      const dx = event.offsetX - drag.x;
+      const dy = event.offsetY - drag.y;
+      drag.x = event.offsetX;
+      drag.y = event.offsetY;
+      if (drag.button === 1) {
+        panBy(renderer.view,
+          -pixelsToTiles(renderer.view, canvas.clientHeight, dx),
+          -pixelsToTiles(renderer.view, canvas.clientHeight, dy));
+        clampToMap(renderer.view, state.width, state.height);
+      } else {
+        drag.turned += dx;
+        while (Math.abs(drag.turned) >= PIXELS_PER_TURN) {
+          const direction = drag.turned > 0 ? 1 : -1;
+          rotate(renderer.view, direction);
+          drag.turned -= direction * PIXELS_PER_TURN;
+        }
+      }
+      onChange();
+      return;
+    }
+    handle(move(gestures, point(event)));
+  };
   const onPointerUp = (event) => {
     canvas.releasePointerCapture?.(event.pointerId);
+    if (drag.button >= 0) { drag.button = -1; return; }
     handle(up(gestures, point(event)));
   };
-  const onPointerCancel = () => handle(cancel(gestures));
+  const onPointerCancel = () => { drag.button = -1; handle(cancel(gestures)); };
   const onWheel = (event) => {
     event.preventDefault();
     zoomBy(renderer.view, event.deltaY > 0 ? 1.12 : 1 / 1.12);

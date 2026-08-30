@@ -1011,6 +1011,12 @@ Buttons should be large enough for touch use. Hover-only information must also b
 > Terrain, roads, zoning and buildings; a developed lot takes its zone's colour
 > and a plant or station the civic colour, so the thing the player is looking
 > for is findable at one pixel a tile.
+>
+> **The right-hand column closes (slice N27).** The advisor and the inspector
+> each take a labelled × in their upper-right corner. The advisor remembers what
+> was dismissed **per quest**, so the next one still speaks up, and a card
+> waiting for a decision keeps no × — its choice buttons are the only place that
+> decision can be made (ruling 027).
 
 #### 13.4 Camera Controls
 
@@ -1032,11 +1038,20 @@ Mobile:
 
 The camera should snap to comfortable angles and avoid disorienting free rotation.
 
-> **As built (slice N21).** Double-click focuses the tile under the pointer —
-> there is no selection model, so the tile *is* the object. **Right and middle
-> drag PAN rather than rotate**, which diverges from the list above: rotation is
-> four snapped angles on Q and E, and a free-rotate drag would fight ruling 006.
-> Recorded rather than changed before a playtest. **Long press is not built**;
+> **As built (slices N21, N27).** Double-click focuses the tile under the pointer
+> — there is no selection model, so the tile *is* the object. **Right drag
+> rotates and middle drag pans** (N27). The rotation is not free: a drag
+> accumulates and fires a quarter turn every 140 pixels, so it steps the same
+> four snapped angles Q and E do and cannot fight ruling 006. Both work with a
+> tool in hand, which is the point — they are the desktop equivalent of the
+> second finger. N21 had recorded these as panning; in fact `onPointerDown`
+> returned early on both buttons and they did nothing at all until N27.
+>
+> **The pitch is fixed** at ~35.26°, the angle that puts one tile's diagonal on
+> the screen's horizontal. Asked about at the N27 playtest and kept: a moving
+> pitch would reopen ruling 006 and the readability it protects.
+>
+> **Long press is not built**;
 > with no tool held, a plain tap already inspects, and the contextual actions a
 > long press would open do not exist yet (slice 5.3).
 >

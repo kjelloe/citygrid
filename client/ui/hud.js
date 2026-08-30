@@ -353,6 +353,10 @@ export function createHud(root, {
   // can build again.
   const advisor = el("div", "hud-advisor");
   advisor.hidden = true;
+  // Quests the player has waved away. Kept here rather than in state: which
+  // cards you have read is about you, not about the city, and hashing it would
+  // make two players disagree about the world (P32).
+  const dismissed = new Set();
 
   const status = el("div", "hud-status");
   status.setAttribute("aria-live", "polite");
@@ -364,6 +368,16 @@ export function createHud(root, {
   // --- inspector ------------------------------------------------------------
   const inspector = el("div", "hud-inspector");
   inspector.hidden = true;
+
+  /** The X. Every panel that appears on its own has to be dismissable by the
+   * player who did not ask for it (P32). */
+  function closeButton(labelKey, onClose) {
+    const button = el("button", "panel-close", "×");
+    button.type = "button";
+    button.setAttribute("aria-label", t(labelKey));
+    button.addEventListener("click", onClose);
+    return button;
+  }
 
   // The minimap (§13.3, "optional minimap" — so it toggles, and remembers).
   const minimapBox = el("div", "hud-minimap");
@@ -493,11 +507,21 @@ export function createHud(root, {
     if (active.length === 0) { advisor.hidden = true; return; }
     // The oldest active quest is the one being spoken about. A panel that
     // switched every time a background quest appeared would be unreadable.
-    const entry = active.reduce((a, b) => (a.startedTick <= b.startedTick ? a : b));
+    const waiting = active.filter((q) => !dismissed.has(q.id));
+    if (waiting.length === 0) { advisor.hidden = true; return; }
+    const entry = waiting.reduce((a, b) => (a.startedTick <= b.startedTick ? a : b));
     const definition = catalogue.find((q) => q.id === entry.id);
     if (!definition) { advisor.hidden = true; return; }
     advisor.hidden = false;
     advisor.innerHTML = "";
+    // Dismissing hides THIS quest's card, not the advisor for ever: the next
+    // quest is news again. A card the player must ANSWER has no ×, because the
+    // choice buttons are the only place that decision can be made and a card
+    // you can close is a decision you can lose (ruling 027).
+    const decision = Boolean(definition.choices) && entry.choice < 0;
+    if (!decision) {
+      advisor.append(closeButton("hud.dismiss", () => { dismissed.add(definition.id); renderAdvisor(); }));
+    }
     advisor.append(el("h2", undefined, t(definition.titleKey)));
     advisor.append(el("p", "says", t(definition.textKey)));
     if (definition.choices && entry.choice < 0) {
@@ -511,8 +535,8 @@ export function createHud(root, {
       });
       advisor.append(options);
     }
-    if (active.length > 1) {
-      advisor.append(el("p", "tracker", t("advisor.more", { count: active.length - 1 })));
+    if (waiting.length > 1) {
+      advisor.append(el("p", "tracker", t("advisor.more", { count: waiting.length - 1 })));
     }
   }
 
@@ -602,6 +626,7 @@ export function createHud(root, {
     if (!report) { inspector.hidden = true; return; }
     inspector.hidden = false;
     inspector.innerHTML = "";
+    inspector.append(closeButton("hud.close", () => { inspector.hidden = true; }));
     const title = report.building
       ? t(`building.${report.building.def}`)
       : t(report.zoneKey ?? report.terrainKey);

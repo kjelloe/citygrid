@@ -62,13 +62,26 @@ try {
   await page.waitForTimeout(300);
 
   // --- 1. what exists, and what it is behind --------------------------------
+  //
+  // Tagging is a function the walk calls again before every look, not something
+  // done once. Panels rebuild: the advisor replaces its own innerHTML on any
+  // refresh, which throws its children away and takes the marker with them. A
+  // walk holding a stale handle reports a control that is on screen, clickable
+  // and working as missing — so it re-resolves, every time.
+  await page.evaluate(() => {
+    globalThis.__reachTag = () => {
+      // A file input is deliberately `display: none` behind a visible <label>:
+      // that is the standard way to style one, and the LABEL is the control.
+      const controls = [...document.querySelectorAll("#hud button, #hud input, #hud select, #hud label.slot")]
+        .filter((el) => !(el.tagName === "INPUT" && el.type === "file"));
+      controls.forEach((el, index) => { el.dataset.reachId = String(index); });
+      return controls;
+    };
+  });
+  const retag = () => page.evaluate(() => globalThis.__reachTag().length);
+
   const inventory = await page.evaluate(() => {
-    // A file input is deliberately `display: none` behind a visible <label>:
-    // that is the standard way to style one, and the LABEL is the control.
-    const controls = [...document.querySelectorAll("#hud button, #hud input, #hud select, #hud label.slot")]
-      .filter((el) => !(el.tagName === "INPUT" && el.type === "file"));
-    return controls.map((el, index) => {
-      el.dataset.reachId = String(index);
+    return globalThis.__reachTag().map((el, index) => {
       // The nearest hidden ancestor is what has to be opened.
       let hidden = null;
       for (let n = el; n && n !== document.body; n = n.parentElement) {
@@ -103,6 +116,7 @@ try {
   const unreachable = [];
   const covered = [];
   for (const control of inventory) {
+    await retag();
     if (control.hidden) {
       const opener = OPENERS[control.hidden];
       if (!opener) { unreachable.push(`${control.name} (no opener)`); continue; }
@@ -119,6 +133,8 @@ try {
     // A control you have to scroll to is still reachable — the toolbars and the
     // popover scroll on purpose. Bring it into view the way a player does
     // before asking whether anything is on top of it.
+    const stable = await retag();
+    if (stable !== inventory.length) problems.push(`the control set changed mid-walk (${stable} vs ${inventory.length})`);
     await page.locator(`[data-reach-id="${control.index}"]`).scrollIntoViewIfNeeded().catch(() => {});
     const verdict = await page.evaluate((index) => {
       const el = document.querySelector(`[data-reach-id="${index}"]`);
@@ -184,6 +200,43 @@ try {
   });
   check("the minimap toggle actually hides the minimap",
     minimap.before && !minimap.after && minimap.restored, JSON.stringify(minimap));
+
+  // A card the player closed stays closed (P32). The advisor rebuilds on every
+  // refresh, so a dismissal that lives only in the DOM comes back within the
+  // month — it has to be remembered beside the advice, not in the markup.
+  const dismiss = await page.evaluate(() => {
+    const card = document.querySelector(".hud-advisor");
+    const before = { shown: !card.hidden, title: card.querySelector("h2")?.textContent };
+    card.querySelector(".panel-close").click();
+    const closed = !card.hidden;
+    globalThis.CITY.hud.refresh();
+    return { before, closed, afterRefresh: !card.hidden, title: card.querySelector("h2")?.textContent };
+  });
+  check("an advisor card can be dismissed, and stays dismissed",
+    dismiss.before.shown && !dismiss.closed && !dismiss.afterRefresh, JSON.stringify(dismiss));
+
+  // ...but a card asking a QUESTION has no × at all. Closing it would take the
+  // only two buttons that answer it off the screen for good (ruling 027).
+  const decision = await page.evaluate(async () => {
+    const card = document.querySelector(".hud-advisor");
+    const { questCatalogue } = await import("/engine/quests.js");
+    const quest = questCatalogue().find((q) => q.choices);
+    if (!quest) return { skipped: true };
+    // Put it in front of the player rather than waiting for the city to earn
+    // it: a gate that only checks the case it happens to meet checks nothing.
+    const was = globalThis.CITY.state.quests.active;
+    globalThis.CITY.state.quests.active = [{ id: quest.id, startedTick: 0, choice: -1 }];
+    globalThis.CITY.hud.refresh();
+    const asking = card.querySelector(".choices") !== null;
+    const out = { asking, closable: card.querySelector(".panel-close") !== null, shown: !card.hidden };
+    // Put the city back. A card this gate invented is a card the later map
+    // sampling would measure as furniture the player never asked for.
+    globalThis.CITY.state.quests.active = was;
+    globalThis.CITY.hud.refresh();
+    return out;
+  });
+  check("a card waiting for a decision cannot be dismissed",
+    decision.skipped || !decision.asking || !decision.closable, JSON.stringify(decision));
 
   const speed = await page.evaluate(() => {
     const b = document.getElementById("speed");
