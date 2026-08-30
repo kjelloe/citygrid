@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "Slice 0.4 finally built: the founding fixture pinned for the first time.",
+ "why": "Department funding (gamedesign.md 9.4): state.funding is hashed, and it changes both service coverage and what a department costs to run.",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Mayor"
    },
    "result": "ok",
-   "hash": "f9a8f37e344a5b0a",
+   "hash": "1cf8fe51270ecc5e",
    "events": [
     "seatJoined"
    ]
@@ -49,7 +49,7 @@
     ]
    },
    "result": "ok",
-   "hash": "fd5b4ce99b3cebc5",
+   "hash": "c6b3f3b19b32ced1",
    "events": [
     "built"
    ]
@@ -64,7 +64,7 @@
     ]
    },
    "result": "ok",
-   "hash": "7dc30ba6efe7d9c0",
+   "hash": "aad6f7af76193d04",
    "events": [
     "built"
    ]
@@ -84,7 +84,7 @@
     ]
    },
    "result": "ok",
-   "hash": "6ec7b795c05b184f",
+   "hash": "e993b4faa953445b",
    "events": [
     "zoned"
    ]
@@ -104,7 +104,7 @@
     ]
    },
    "result": "ok",
-   "hash": "a8c890eb40698e32",
+   "hash": "26b87c6622411296",
    "events": [
     "zoned"
    ]
@@ -122,7 +122,7 @@
     ]
    },
    "result": "ok",
-   "hash": "ed2d7949f9feb750",
+   "hash": "d0abcf1173dd9b44",
    "events": [
     "zoned"
    ]
@@ -136,7 +136,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "83ecce2830e8237e",
+   "hash": "b8cbd618fcda7cba",
    "events": [
     "placed"
    ]
@@ -150,7 +150,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "31afd027c1806b52",
+   "hash": "83435591b2cfabf6",
    "events": [
     "placed"
    ]
@@ -189,7 +189,7 @@
     ]
    },
    "result": "ok",
-   "hash": "dc6f0e15851d3c78",
+   "hash": "aadefa8aceb839ac",
    "events": [
     "built"
    ]
@@ -228,7 +228,7 @@
     ]
    },
    "result": "ok",
-   "hash": "e60d17943087a04b",
+   "hash": "bcb37a90b011ae3f",
    "events": [
     "built"
    ]
@@ -240,7 +240,7 @@
     "rate": 9
    },
    "result": "ok",
-   "hash": "42f5715c388a1769",
+   "hash": "31b7aef0506bc025",
    "events": [
     "taxSet"
    ]
@@ -251,7 +251,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "ec5cf2a3754cf16a",
+   "hash": "c672e21981e03746",
    "events": [
     "budget",
     "highCrime",
@@ -264,7 +264,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "334a7a9e014e00dd",
+   "hash": "3d68c59860fe5a81",
    "events": [
     "budget",
     "developed",
@@ -279,7 +279,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "a3e5da58bf107d5b",
+   "hash": "1efc82caaa7d5cbf",
    "events": [
     "abandoned",
     "budget",
@@ -296,7 +296,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "b70e01740c86e788",
+   "hash": "b4e0e6465329af5c",
    "events": [
     "abandoned",
     "budget",

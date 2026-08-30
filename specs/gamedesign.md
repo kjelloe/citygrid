@@ -633,12 +633,12 @@ Taxes affect both immediate revenue and long-term demand. Changes should not pro
 
 Each service can use a funding slider, for example from `50%` to `150%`.
 
-> **As built (audited 2026-08-29): not implemented.** `CMD_SET_FUNDING` is a
-> command constant with no reducer handler, there is no `state.funding`, and
-> `coveragePass()` gives every station a flat strength of 100 before distance
-> falloff. `balance.json`'s `fundingMinPercent` / `fundingMaxPercent` are
-> mirrored into `engine/rules.js` and read by nothing. Tracked by
-> `test/omissions.test.js`.
+> **As built (slice N20).** `state.funding` carries a percentage per service,
+> hashed. Coverage is scaled by it before distance falloff, and a department's
+> upkeep is scaled by it too — that is the trade. Three steps in the budget row
+> (Lean 50%, Normal 100%, Generous 150%) rather than a slider: a range input is
+> a poor keyboard target and the decision is not the difference between 96% and
+> 104%. A rate outside the range is **refused, not clamped**.
 
 Lower funding:
 
@@ -1744,6 +1744,7 @@ A player may also spectate before taking a seat, which is the gentlest tutorial 
 ### 32. Content inventory
 
 | Asset class | First release target |
+> | Installable / offline | **Done (slice N19)** — one versioned cache, a manifest, and `tools/offline_smoke.mjs` which turns the network off and then plays. Icons are SVG; a launcher that insists on PNG will not install it |
 |---|---|
 | Building models | About sixty — three zone categories across four development levels and two value tiers, plus civic and utility buildings |
 | Terrain and props | About twenty-five — trees, rocks, shoreline, rubble, fountains, poles, pipes |

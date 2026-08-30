@@ -250,6 +250,13 @@
   "speed.play": "Spill",
   "speed.fast": "Rask",
 
+  "funding.fire": "Brann",
+  "funding.police": "Politi",
+  "funding.health": "Helse",
+  "funding.lean": "Lav ({percent} %)",
+  "funding.normal": "Normal ({percent} %)",
+  "funding.generous": "Raus ({percent} %)",
+
   "budget.tax": "Skatt",
   "budget.rate": "{rate} %",
   "budget.books": "Inntekt {income} · Utgift {expenses} · Netto {net}",

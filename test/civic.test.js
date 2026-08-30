@@ -32,6 +32,10 @@ import {
   ZONE_INDUSTRIAL, ZONE_RESIDENTIAL, ZONE_NONE, TERRAIN_FOREST, TERRAIN_WATER,
   FLAG_BURNING, FLAG_RUINED, FLAG_WATERED, FLAG_POWERED,
 } from "../engine/constants.js";
+import { rules } from "../engine/rules.js";
+import { budgetFor } from "../engine/economy.js";
+import { catalogue } from "../engine/catalogue.js";
+import { FUNDING_SERVICES } from "../engine/constants.js";
 
 const W = 24;
 const at = (x, y) => tileAt(W, x, y);
@@ -301,3 +305,80 @@ test("the civic pass is deterministic", () => {
   }
   assert.equal(hashState(a), hashState(b));
 });
+
+// --- department funding (gamedesign.md §9.4) --------------------------------
+
+test("funding scales what a station covers", () => {
+  // The comment above `coveragePass` claimed for the life of the project that
+  // coverage fell off "with distance and with funding". It never did: strength
+  // was a flat 100. This is the assertion that makes the sentence true.
+  const build = (percent) => {
+    const state = fundedCity();
+    state.funding.police = percent;
+    const fields = coveragePass(state);
+    return fields.police.reduce((sum, v) => sum + v, 0);
+  };
+  const lean = build(50);
+  const normal = build(100);
+  const generous = build(150);
+  assert.ok(lean < normal, `50% covered ${lean}, 100% covered ${normal}`);
+  assert.ok(generous > normal, `150% covered ${generous}, 100% covered ${normal}`);
+});
+
+test("funding scales what a department costs", () => {
+  const lean = fundedCity();
+  lean.funding.fire = 50;
+  const generous = fundedCity();
+  generous.funding.fire = 150;
+  const cheap = budgetFor(lean, 1).expenses;
+  const dear = budgetFor(generous, 1).expenses;
+  assert.ok(dear > cheap, `150% cost ${dear}, 50% cost ${cheap}`);
+});
+
+test("a funding rate outside the range is refused, not clamped", () => {
+  // A clamp turns a bug in a caller into a silent surprise, and the reducer is
+  // the one place that must not be forgiving.
+  const state = fundedCity();
+  const service = rules().service;
+  assert.equal(apply(state, { type: "setFunding", actor: 1, service: "police", percent: 500 }).result, RESULT.INVALID);
+  assert.equal(apply(state, { type: "setFunding", actor: 1, service: "police", percent: 0 }).result, RESULT.INVALID);
+  assert.equal(apply(state, { type: "setFunding", actor: 1, service: "sanitation", percent: 100 }).result, RESULT.INVALID);
+  assert.equal(state.funding.police, 100, "a refused command must change nothing");
+  assert.equal(apply(state, { type: "setFunding", actor: 1, service: "police", percent: service.fundingMaxPercent }).result, RESULT.OK);
+  assert.equal(state.funding.police, service.fundingMaxPercent);
+});
+
+test("every service a building offers has a funding level", () => {
+  // A station type added to data/buildings.json with a new service name would
+  // otherwise read `undefined` as its strength and cover nothing.
+  const services = new Set();
+  for (const def of Object.values(catalogue())) if (def?.service) services.add(def.service);
+  for (const service of services) {
+    assert.ok(FUNDING_SERVICES.includes(service),
+      `'${service}' is offered by a building and has no funding level`);
+  }
+});
+
+/** A small city with one station of each kind, powered and watered, for the
+ * funding assertions above. */
+function fundedCity() {
+  const state = createState(defaultOptions({ seed: 21, width: 24, height: 24, seats: 1 }));
+  state.players.push({ seat: 1, name: "Mayor", treasury: 50000, status: 0 });
+  let id = 1;
+  for (const [def, x] of [["policeStation", 6], ["fireStation", 12], ["hospital", 17]]) {
+    const spec = catalogue()[def];
+    state.buildings.push({
+      id: id, def, zone: 0, x, y: 10, w: spec.w, h: spec.h, owner: 1,
+      level: 1, valueTier: 0, occupancy: 0, condition: 100, builtTick: 0, flags: 0,
+    });
+    for (let dy = 0; dy < spec.h; dy += 1) {
+      for (let dx = 0; dx < spec.w; dx += 1) {
+        const i = (10 + dy) * state.width + x + dx;
+        state.tiles.buildingId[i] = id;
+        state.tiles.flags[i] |= 1 | 2;
+      }
+    }
+    id += 1;
+  }
+  return state;
+}

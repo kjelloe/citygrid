@@ -10,7 +10,7 @@
 import { SAVE_VERSION } from "../shared/protocol.js";
 import { createState, TILE_LAYERS, hashState } from "./state.js";
 import { copyOptions, defaultOptions, OPTION_FIELDS } from "./options.js";
-import { HISTORY_FIELDS } from "./constants.js";
+import { HISTORY_FIELDS, FUNDING_SERVICES } from "./constants.js";
 
 /** [value, count, value, count, ...] */
 export function encodeLayer(array) {
@@ -76,6 +76,7 @@ export function toSave(state) {
     traffic: state.traffic,
     quests: state.quests,
     history: state.history,
+    funding: state.funding,
     players: state.players,
     buildings: state.buildings,
     requests: state.requests,
@@ -152,6 +153,14 @@ export function fromSave(data) {
       vars: save.quests.vars ? save.quests.vars : [],
     };
   }
+  // A save written before §9.4 has no funding. Every service defaults to 100,
+  // which is what the older save's behaviour was.
+  state.funding = {};
+  for (var fi = 0; fi < FUNDING_SERVICES.length; fi += 1) {
+    var got = save.funding ? save.funding[FUNDING_SERVICES[fi]] : undefined;
+    state.funding[FUNDING_SERVICES[fi]] = typeof got === "number" ? got | 0 : 100;
+  }
+
   // A save written before slice 4.6 has no history. An empty one is correct —
   // the city genuinely has no recorded past — and it hashes to a length of
   // zero, which is what the older save's own checksum was computed against.

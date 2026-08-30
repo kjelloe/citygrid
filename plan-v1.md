@@ -63,12 +63,18 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 renderer and the style decision (N1, N2 / ruling 022). Era 1 is pinned
 (`reports/balance-era1.md`, 200 games × 4 configurations).
 
-**Wave 4 is complete except audio and the PWA half of 4.5.** Done: 4.1 (HUD,
-overlays and the minimap), 4.2 (advisor and quest engine), 4.3 (**20 quests**
-and the acceptance script), **4.5's accessibility half** (touch targets, reduced
-motion, high contrast, keyboard operation, 200% text — all gated), and 4.6
-(statistics). Not started: **4.4 audio**, and 4.5's **PWA half** (service
-worker, offline, install).
+**Wave 4 is complete.** 4.1 (HUD, overlays, minimap), 4.2 (advisor and quest
+engine), 4.3 (**20 quests** and the acceptance script), 4.4 (audio), 4.5
+(accessibility **and** the PWA half), 4.6 (statistics). **Wave 0 is finally
+complete too** — 0.4's fixture half was built in N17, having been marked done
+with an empty `test/fixtures/` for the life of the project.
+
+**The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as
+an automated script on desktop and on a 390×844 phone.
+
+**Wave 5 has NOT been started, deliberately.** Ruling 003 holds it behind the
+singleplayer MVP being *accepted*, and acceptance is Kjell's playtest, not a
+green suite. `playtest-notes.md` is the file to open first.
 
 **The §24 release gate passes 13 of 13** (`tools/mvp_acceptance.mjs`), driving
 the real page by pointer on desktop and a 390×844 phone.
@@ -88,9 +94,7 @@ the real page by pointer on desktop and a 390×844 phone.
 - **No city or mayor name** (§5.1). There is no text entry anywhere in the game,
   and player-authored text is hashed state that must be capped, sanitised and
   canonicalised — so it lands with slice 5.3's text rules.
-- **Department funding (§9.4) does not exist** — `CMD_SET_FUNDING` has no
-  handler, there is no `state.funding`, and `fundingMinPercent`/`MaxPercent` are
-  mirrored into `rules.js` and read by nothing.
+- ~~Department funding (§9.4) does not exist~~ — **built in N20.**
 - `client/capabilities.js`'s `deviceClass` and `isCoarsePointer` are still
   unused; `recommendedMapSize` and `sizeAdvice` were revived by N12.
 - **`test/reachability.test.js`'s `NOT_YET` is the live inventory** of strings
@@ -277,6 +281,11 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 | **N16** | **Finishing N15** (P23) — the minimap's cache invalidation and its ARIA role | S | An audit of N15's own code: the minimap repainted only when the PLAYER built, so growth, fire and disasters never reached it; and it carried `role="img"` while being focusable and handling keys, which is ruling 028's defect in the slice written after the ruling | **Done.** Repaints when `state.tick` moves — proved stale first (346 road tiles added, image byte-identical), then proved fixed. Now a picture and nothing else; the keyboard path is N14's arrow-key panning, which aims. `ui_smoke` 101 checks |
 
 | **N17** | **The tripwire that was never built** (P24) — slice 0.4's fixture half | M | `test/fixtures/` was empty while 0.4 was marked done, `CLAUDE.md`'s "hashed fields live in two places" described one place, and the `/fixture-repin` skill documented a ritual for artefacts nobody had written. Four slices added hashed state with nothing watching | **Done.** `tools/fixtures.mjs` replays a fixture and checks **every step's** hash, result and event kinds; `tools/repin.mjs` requires a written reason and refuses to re-pin over event drift. Three fixtures: `empty`, `founding` (grown to 156 residents), `two_player`. `test/fixture.test.js` holds the second copy of the hashed-field list, so a hash change is finally the two-file act `CLAUDE.md` promised. Verified by planting a balance change and watching it name the step |
+
+| **N18** | **Audio** (slice 4.4) | M | The last silent thing in the game, and the slice with the sharpest gate: audio must be derived from state only | **Done.** Web Audio oscillators and a noise buffer — no sound files, because zero dependencies and no build step make an audio bank a vendoring decision rather than a slice. Feedback, notification (collapsed, ranked, capped at three a tick) and ambience. The gate as a test: two identical cities ticked 120 times, one with every event fed to the audio model, `hashState` equal. `settings.sound` and the two volume rows became real |
+| **N19** | **The PWA half of 4.5** | M | "The app installs and plays with the network disabled" had never been measured, and there is no build step to produce a precache list | **Done.** `manifest.webmanifest`, two SVG icons, and a service worker keeping one versioned cache whose version is a hash of the cached bytes — the handshake without a build step. `test/pwa.test.js` regenerates the precache list and fails when it is stale. `tools/offline_smoke.mjs` turns the network off and then plays: the screen opens with its strings, a city starts, a road is built by pointer, the clock runs, a save round-trips hash for hash |
+
+| **N20** | **Department funding** (gamedesign.md §9.4) | S | The last named gap in the singleplayer design, and the one whose absence a code comment actively denied — `coveragePass` claimed coverage fell off "with distance and with funding" while `strength` was a flat 100 | **Done.** `state.funding` per service, hashed; coverage and upkeep both scale with it; a rate outside 50–150 is refused rather than clamped. Three steps in the budget row. **The first real use of the N17 tripwire**: all three fixtures moved and were re-pinned with a written reason |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits

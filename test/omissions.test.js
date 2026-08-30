@@ -34,7 +34,6 @@ import "../engine/quests.js";
  * Wave 4 does not need — none of them is an oversight, which is the claim this
  * list exists to keep honest. */
 const NOT_BUILT = {
-  setFunding: "gamedesign.md §9.4 — department funding, no state.funding yet",
   takeLoan: "gamedesign.md §10 — borrowing",
   transferFunds: "slice 6.1 — multiplayer treasuries",
   requestDemolition: "slice 5.3",
@@ -98,7 +97,7 @@ test("every command the singleplayer game needs has a way to reach it", () => {
   // each must have a handler AND appear in the client.
   const PLAYER_COMMANDS = [
     "tick", "join", "paintZone", "dezone", "placeRoad", "placeWire", "placePipe",
-    "placeBuilding", "bulldoze", "setTax", "questChoice",
+    "placeBuilding", "bulldoze", "setTax", "setFunding", "questChoice",
   ];
   const client = [];
   const walk = (dir) => {

@@ -265,10 +265,36 @@ button, [role="button"] {
 .hud-toolbar button.build small { font-size: 0.72rem; opacity: 0.65; font-variant-numeric: tabular-nums; }
 
 /* The budget. One row: the rate, what it is, and what the books say. */
-.hud-budget { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.85rem; }
+/* One scrolling row, like the toolbars. It wrapped until the three funding
+   selects arrived and pushed the panel to 418px of an 844px phone — the same
+   failure the build menu caused in N11, and the same fix. */
+.hud-budget {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+.hud-budget > * { flex: 0 0 auto; }
+.hud-budget .budget-books { white-space: nowrap; }
 .hud-budget input[type="range"] { flex: 0 1 9rem; min-width: 6rem; min-height: 24px; }
 .budget-rate { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2.5rem; }
 .budget-books { opacity: 0.85; font-variant-numeric: tabular-nums; }
+.budget-funding { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; }
+.budget-funding select {
+  min-height: 32px;
+  padding: 0 0.3rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 7px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  font-size: 0.8rem;
+}
 .budget-books[data-sign="positive"] { color: #2e7d4f; }
 .budget-books[data-sign="negative"] { color: #b3402c; }
 
@@ -648,7 +674,6 @@ button, [role="button"] {
      more than half the phone given to controls, with the city squeezed above
      them. §13.2 asks for a bottom scrollable toolbar, and this is why. */
   .hud-budget { font-size: 0.8rem; gap: 0.35rem; }
-  .hud-budget .budget-books { flex-basis: 100%; }
   .hud-toolbar, .hud-overlays, .hud-saves {
     flex-wrap: nowrap;
     overflow-x: auto;

@@ -250,6 +250,13 @@
   "speed.play": "Play",
   "speed.fast": "Fast",
 
+  "funding.fire": "Fire",
+  "funding.police": "Police",
+  "funding.health": "Health",
+  "funding.lean": "Lean ({percent}%)",
+  "funding.normal": "Normal ({percent}%)",
+  "funding.generous": "Generous ({percent}%)",
+
   "budget.tax": "Tax",
   "budget.rate": "{rate}%",
   "budget.books": "Income {income} · Upkeep {expenses} · Net {net}",

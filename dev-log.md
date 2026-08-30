@@ -1846,3 +1846,68 @@ fetch and that fetch fails.
 **`precache.json` could not hash itself.** Writing the version into the file
 changes its bytes, which changes the version. It is excluded from the hash and
 still precached — an offline start has to be able to read which version it is.
+
+---
+
+## 2026-08-30 — Slice N20: department funding (§9.4)
+
+The last named gap in the singleplayer design, and the one whose absence a
+comment actively denied: `coveragePass()` said coverage fell off "with distance
+and with funding" while `strength` was a flat 100. `CMD_SET_FUNDING` was a
+constant with no handler, and `fundingMinPercent`/`fundingMaxPercent` were
+mirrored into `rules.js` and read by nothing.
+
+### Built
+
+`state.funding` — a percentage per service, hashed, defaulting to 100. Coverage
+is scaled by it before distance falloff, and **a department's upkeep is scaled
+by it too**. That is the whole trade §9.4 exists for: better cover, or a smaller
+bill.
+
+Three steps in the budget row — Lean 50%, Normal 100%, Generous 150% — as a
+native `<select>` per department. A `<select>` rather than nine buttons: it is
+compact, it is a keyboard control without any work, and it scales at 200% text
+without the budget row becoming a second toolbar.
+
+**A rate outside the range is refused, not clamped.** A clamp turns a bug in a
+caller into a silent surprise, and the reducer is the one place that must not be
+forgiving.
+
+### The tripwire earned itself, on its first real use
+
+The suite went red in exactly the three places it should have:
+
+```
+✖ fixture empty.json / founding.json / two_player.json
+✖ nothing on the not-built list has quietly been built     (setFunding gained a handler)
+✖ permission matrix: every registered command is covered by a row
+```
+
+Then `HASHED_FIELDS` in `test/fixture.test.js` had to gain `funding` — the
+two-file act `CLAUDE.md` has described since Wave 0 and which was not possible
+until N17 — and the fixtures were re-pinned with a written reason. Every hash in
+all three moved, which is correct: funding is read every month by the civic pass.
+
+### Measured
+
+- **`./test.sh` 509 tests, green twice.** Was 505. Four new civic tests,
+  including the one that makes the old comment true: 50% covers less than 100%,
+  150% covers more.
+- All eight gates green.
+
+### What failed on the way
+
+**`tools/repin.mjs` refused its own reason.** With no `--only`, `argv.indexOf`
+returns -1 and `onlyAt + 1` is 0 — so the filter that skips `--only`'s value
+skipped argument zero, which is always the reason. It failed loudly rather than
+re-pinning with an empty one, which is the right way for that bug to behave.
+
+**The constants were in the wrong block.** `fundingMinPercent` lives under
+`rules().service`, not `rules().economy`. The handler read `undefined` bounds
+and refused every rate, including 150 — caught by the range test, not by
+inspection.
+
+**The budget row pushed the phone panel to 418px of 844px**, over the gate's 45%
+line, and took `a11y_smoke` and `lobby_smoke` down with it. Exactly the failure
+the build menu caused in N11, and the same fix: the row scrolls instead of
+wrapping. Back to 322px.

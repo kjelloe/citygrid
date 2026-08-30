@@ -7,7 +7,7 @@
 
 import { registerMonthly, register, ok, fail } from "./reducer.js";
 import { RESULT } from "../shared/protocol.js";
-import { CMD_SET_TAX } from "./commands.js";
+import { CMD_SET_TAX, CMD_SET_FUNDING } from "./commands.js";
 import { rules, difficultyOf } from "./rules.js";
 import { definition } from "./catalogue.js";
 import { idiv, clamp } from "../shared/idiv.js";
@@ -16,7 +16,7 @@ import { hasNet } from "./network.js";
 import { isIntInRange } from "./validate.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
-  TREASURY_SHARED, TREASURY_SPLIT,
+  TREASURY_SHARED, TREASURY_SPLIT, FUNDING_SERVICES,
 } from "./constants.js";
 
 register(CMD_SET_TAX, function setTax(state, command) {
@@ -24,6 +24,21 @@ register(CMD_SET_TAX, function setTax(state, command) {
   if (!isIntInRange(command.rate, tax.min, tax.max)) return fail(RESULT.INVALID);
   state.tax = command.rate;
   return ok([{ kind: "taxSet", rate: command.rate, actor: command.actor }]);
+});
+
+/** §9.4: each service can be funded from 50% to 150%.
+ *
+ * A rate outside the range is refused rather than clamped: a clamp turns a bug
+ * in a caller into a silent surprise, and the reducer is the one place that
+ * must not be forgiving. */
+register(CMD_SET_FUNDING, function setFunding(state, command) {
+  if (FUNDING_SERVICES.indexOf(command.service) < 0) return fail(RESULT.INVALID);
+  var service = rules().service;
+  if (!isIntInRange(command.percent, service.fundingMinPercent, service.fundingMaxPercent)) {
+    return fail(RESULT.INVALID);
+  }
+  state.funding[command.service] = command.percent;
+  return ok([{ kind: "fundingSet", service: command.service, percent: command.percent, actor: command.actor }]);
 });
 
 /** What one lot yields a month. Land value matters as much as headcount — a
@@ -86,7 +101,11 @@ export function budgetFor(state, seat) {
       continue;
     }
     var def = definition(building.def);
-    if (def) expenses += def.upkeep;
+    if (!def) continue;
+    // A department funded at 150% costs 150% to run. That is the trade §9.4
+    // exists for: better cover, or a smaller bill.
+    if (def.service) expenses += idiv(def.upkeep * state.funding[def.service], 100);
+    else expenses += def.upkeep;
   }
 
   var networks = networkUpkeep(state);

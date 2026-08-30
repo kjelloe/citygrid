@@ -143,7 +143,9 @@ export function coveragePass(state) {
     // An unpowered or unwatered station is a building with the lights off.
     var centre = tileAt(state.width, building.x, building.y);
     var flags = state.tiles.flags[centre];
-    var strength = 100;
+    // §9.4, and the reason this pass exists at all: funding is what the player
+    // trades against the bill. 50% is half the reach, 150% is half again.
+    var strength = state.funding[def.service];
     if ((flags & FLAG_POWERED) === 0) strength = idiv(strength, 2);
     if ((flags & FLAG_WATERED) === 0) strength = idiv(strength, 2);
 

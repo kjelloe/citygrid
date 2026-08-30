@@ -25,6 +25,7 @@ import { readQuests } from "./helpers/content.js";
 import { catalogue } from "../engine/catalogue.js";
 import { DISASTER_NAMES } from "../engine/disasters.js";
 import { RESULT } from "../shared/protocol.js";
+import { FUNDING_SERVICES } from "../engine/constants.js";
 import { OVERLAYS, OVERLAY_NAMES } from "../client/ui/overlays.js";
 import { alertKeys } from "../client/ui/alerts-model.js";
 import { inspectorKeys } from "../client/ui/inspector-model.js";
@@ -112,6 +113,9 @@ function reachable() {
     }
   }
   for (const code of Object.values(RESULT)) keys.add(`result.${code}`);      // hud.js setResult
+  // hud.js's budget row builds `funding.<service>` and the three step labels.
+  for (const service of FUNDING_SERVICES) keys.add(`funding.${service}`);
+  for (const step of ["lean", "normal", "generous"]) keys.add(`funding.${step}`);
   for (const quest of readQuests().all) {                                    // hud.js renderAdvisor
     keys.add(quest.titleKey);
     keys.add(quest.textKey);

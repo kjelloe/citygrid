@@ -21,7 +21,7 @@ import { createAlerts, pushAlerts, expireAlerts, visibleAlerts, SEVERITY } from 
 import { inspect } from "./inspector-model.js";
 import { OVERLAY_NAMES, OVERLAYS, legendFor, BAND } from "./overlays.js";
 import { buildMenu } from "./build-model.js";
-import { budgetPanel } from "./budget-model.js";
+import { budgetPanel, fundingRows, fundingSteps } from "./budget-model.js";
 import { TOOLS } from "../input/tools.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { t } from "../i18n.js";
@@ -60,7 +60,7 @@ function el(tag, className, text) {
 export function createHud(root, {
   state, seat, controller, onOverlay, onSpeed, onUndo,
   onSave, onLoad, onExport, onImport, slots,
-  onQuestChoice, quests, onTax, onNewCity, onSettings, onStatistics, minimap,
+  onQuestChoice, quests, onTax, onFunding, onNewCity, onSettings, onStatistics, minimap,
 }) {
   root.innerHTML = "";
   const alerts = createAlerts();
@@ -249,6 +249,34 @@ export function createHud(root, {
   });
   budgetBar.append(taxLabel, taxInput, taxValue, books);
 
+  // §9.4. A `<select>` per department rather than nine buttons: it is compact,
+  // it is a native keyboard control, and it scales at 200% text without the
+  // budget row becoming a second toolbar.
+  const fundingSelects = new Map();
+  if (onFunding) {
+    for (const row of fundingRows(state)) {
+      const wrap = el("label", "budget-funding");
+      wrap.append(el("span", undefined, t(row.labelKey)));
+      const select = document.createElement("select");
+      select.dataset.service = row.service;
+      select.id = `funding-${row.service}`;
+      for (const step of fundingSteps()) {
+        const option = document.createElement("option");
+        option.value = String(step.value);
+        option.textContent = t(step.labelKey, { percent: step.value });
+        select.append(option);
+      }
+      select.value = String(row.percent);
+      select.addEventListener("change", () => {
+        onFunding(row.service, Number(select.value));
+        refresh();
+      });
+      fundingSelects.set(row.service, select);
+      wrap.append(select);
+      budgetBar.append(wrap);
+    }
+  }
+
   // --- saving ---------------------------------------------------------------
   //
   // Three manual slots and the autosave, each a button that saves on click and
@@ -411,6 +439,12 @@ export function createHud(root, {
       net: formatMoney(budget.net),
     });
     books.dataset.sign = budget.net > 0 ? "positive" : budget.net < 0 ? "negative" : "flat";
+    // Read back from state, like the tax rate: if the reducer refused, the
+    // control must not keep showing a level the city is not funding.
+    for (const row of fundingRows(state)) {
+      const select = fundingSelects.get(row.service);
+      if (select) select.value = String(row.percent);
+    }
   }
 
   function refresh() {

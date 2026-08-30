@@ -36,8 +36,8 @@ import { createMixer } from "./audio/mixer.js";
 import { cuesFor, cueForResult, ambienceFor } from "./audio/audio-model.js";
 import { loadQuests } from "./content.js";
 import { questCatalogue, activeQuests } from "../engine/quests.js";
-import { CMD_QUEST_CHOICE, CMD_SET_TAX } from "../engine/commands.js";
-import { clampRate } from "./ui/budget-model.js";
+import { CMD_QUEST_CHOICE, CMD_SET_TAX, CMD_SET_FUNDING } from "../engine/commands.js";
+import { clampRate, clampFunding } from "./ui/budget-model.js";
 import { toSave, fromSave } from "../engine/save.js";
 import { shouldAutosave, slotSummary, packExport, unpackImport, SLOTS } from "./storage/saves.js";
 import { putSave, getSave, listSaves, available } from "./storage/db.js";
@@ -158,6 +158,9 @@ export async function startGame(root, given = {}) {
     quests: { catalogue: questCatalogue, active: () => activeQuests(state) },
     onTax(rate) {
       apply(state, { type: CMD_SET_TAX, actor: SEAT, rate: clampRate(rate) });
+    },
+    onFunding(service, percent) {
+      apply(state, { type: CMD_SET_FUNDING, actor: SEAT, service, percent: clampFunding(percent) });
     },
     onSave: save,
     onLoad: load,

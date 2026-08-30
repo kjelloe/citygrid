@@ -11,6 +11,7 @@
 
 import { budgetFor } from "../../engine/economy.js";
 import { rules } from "../../engine/rules.js";
+import { FUNDING_SERVICES } from "../../engine/constants.js";
 
 export function taxRange() {
   const tax = rules().tax;
@@ -39,4 +40,34 @@ export function clampRate(rate) {
   const range = taxRange();
   if (!Number.isInteger(rate)) return range.fallback;
   return Math.max(range.min, Math.min(range.max, rate));
+}
+
+/** §9.4: the three departments and what each is funded at.
+ *
+ * Three steps rather than a slider, for the reason the volume rows give: a
+ * range input is a poor keyboard target, and "half, normal, generous" is the
+ * decision — not the difference between 96% and 104%. */
+export function fundingSteps() {
+  const service = rules().service;
+  return [
+    { value: service.fundingMinPercent, labelKey: "funding.lean" },
+    { value: 100, labelKey: "funding.normal" },
+    { value: service.fundingMaxPercent, labelKey: "funding.generous" },
+  ];
+}
+
+export function fundingRows(state) {
+  return FUNDING_SERVICES.map((service) => ({
+    service,
+    labelKey: `funding.${service}`,
+    percent: state.funding[service],
+  }));
+}
+
+/** Clamped into the range the reducer accepts — the reducer still refuses, but
+ * there is no reason for the UI to aim outside the target. */
+export function clampFunding(percent) {
+  const service = rules().service;
+  if (!Number.isInteger(percent)) return 100;
+  return Math.max(service.fundingMinPercent, Math.min(service.fundingMaxPercent, percent));
 }

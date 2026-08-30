@@ -1,6 +1,6 @@
 {
  "name": "empty",
- "why": "Slice 0.4 finally built: the empty-region fixture pinned for the first time.",
+ "why": "Department funding (gamedesign.md 9.4): state.funding is hashed, and it changes both service coverage and what a department costs to run.",
  "generate": false,
  "options": {
   "seed": 1,
@@ -25,7 +25,7 @@
    },
    "repeat": 1,
    "result": "ok",
-   "hash": "13ba3e927947cff5",
+   "hash": "bd0ba68f99d67681",
    "events": []
   },
   {
@@ -34,7 +34,7 @@
    },
    "repeat": 11,
    "result": "ok",
-   "hash": "845fca87e6d5a81a",
+   "hash": "011c9a836115efde",
    "events": [
     "budget"
    ]
@@ -45,7 +45,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "ad59c4e42bece98e",
+   "hash": "938815977667238a",
    "events": [
     "budget"
    ]
@@ -56,7 +56,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "412b979bd9f9f9d9",
+   "hash": "1a045a891f74edb5",
    "events": [
     "budget"
    ]

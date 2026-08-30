@@ -81,6 +81,7 @@ const HASHED_FIELDS = [
   "contracts",
   "demand",
   "disaster",
+  "funding",
   "height",
   "history",
   "jobs",

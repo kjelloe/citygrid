@@ -11,7 +11,7 @@ import {
   makeSink, writeU8, writeI32, writeI64, writeString, writeBool, finish,
 } from "../shared/canonical.js";
 import { OPTION_FIELDS, copyOptions } from "./options.js";
-import { TERRAIN_GRASS, OWNER_NATURE, HISTORY_FIELDS } from "./constants.js";
+import { TERRAIN_GRASS, OWNER_NATURE, HISTORY_FIELDS, FUNDING_SERVICES } from "./constants.js";
 
 /** Per-tile arrays, in hash order. Appending is safe; reordering is not. */
 export var TILE_LAYERS = [
@@ -121,6 +121,10 @@ export function createState(options) {
     // and saved: a loaded city with empty graphs is a city that has forgotten
     // twenty years the player remembers.
     history: { samples: [] },
+    // Department funding (§9.4), as a percentage per service. Hashed: it
+    // changes what the police actually cover and what the city pays for them,
+    // so two clients that disagreed about it would disagree about crime.
+    funding: makeFunding(),
     // Derived every month from hashed inputs, so it is deliberately NOT
     // hashed: it cannot diverge unless its inputs already have, and hashing
     // it would only add a second place to forget when it changes shape.
@@ -177,6 +181,7 @@ export function copyState(state) {
       vars: copyQuestVars(state.quests.vars),
     },
     history: { samples: copyHistorySamples(state.history.samples) },
+    funding: copyFunding(state.funding),
     traffic: {
       commuters: state.traffic.commuters,
       congested: state.traffic.congested,
@@ -240,6 +245,25 @@ export function copyBuildings(buildings) {
       builtTick: b.builtTick,
       flags: b.flags,
     });
+  }
+  return out;
+}
+
+/** Local for the same reason as the copiers below. Written through
+ * `FUNDING_SERVICES` rather than as a literal so the record and the hash cannot
+ * name different services. */
+function makeFunding() {
+  var out = {};
+  var i;
+  for (i = 0; i < FUNDING_SERVICES.length; i += 1) out[FUNDING_SERVICES[i]] = 100;
+  return out;
+}
+
+function copyFunding(funding) {
+  var out = {};
+  var i;
+  for (i = 0; i < FUNDING_SERVICES.length; i += 1) {
+    out[FUNDING_SERVICES[i]] = funding[FUNDING_SERVICES[i]];
   }
   return out;
 }
@@ -348,6 +372,11 @@ export function writeState(sink, state) {
   for (var qv = 0; qv < state.quests.vars.length; qv += 1) {
     writeString(sink, state.quests.vars[qv].name);
     writeI32(sink, state.quests.vars[qv].value);
+  }
+
+  // Funding, in FUNDING_SERVICES order — never key order.
+  for (var fs = 0; fs < FUNDING_SERVICES.length; fs += 1) {
+    writeI32(sink, state.funding[FUNDING_SERVICES[fs]]);
   }
 
   // The history. Length first, then each sample's fields in HISTORY_FIELDS

@@ -335,7 +335,9 @@ test("permission matrix: every registered command is covered by a row", () => {
     "placeRoad", "placeWire", "placePipe", "bulldoze", "paintZone", "dezone",
     "placeBuilding", "setTax",
     // Not tile-scoped, so ownership does not apply; covered elsewhere.
-    "tick", "join", "leave", "setStatus",
+    // `setFunding` and `setTax` are city-wide policy: see the funding tests in
+    // test/civic.test.js, which assert the range and the refusal.
+    "tick", "join", "leave", "setStatus", "setFunding",
   ]);
   const uncovered = knownCommands().filter((name) => !asserted.has(name));
   assert.deepEqual(uncovered, [], `commands with no permission assertion: ${uncovered}`);

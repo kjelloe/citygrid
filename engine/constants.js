@@ -84,3 +84,10 @@ export var HISTORY_FIELDS = [
   "tick", "population", "jobs", "treasury", "landValue", "pollution",
   "crime", "congested", "demandR", "demandC", "demandI",
 ];
+
+// --- department funding (gamedesign.md §9.4) --------------------------------
+
+/** The services that carry a funding level. These are the `service` values in
+ * `data/buildings.json`; a station type added there with a new service name
+ * must be added here too, and `test/civic.test.js` says so. */
+export var FUNDING_SERVICES = ["fire", "police", "health"];

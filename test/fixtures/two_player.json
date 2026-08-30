@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "Slice 0.4 finally built: the two-seat ownership fixture pinned for the first time.",
+ "why": "Department funding (gamedesign.md 9.4): state.funding is hashed, and it changes both service coverage and what a department costs to run.",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -33,7 +33,7 @@
     "name": "Ada"
    },
    "result": "ok",
-   "hash": "7459eafbdcafa45d",
+   "hash": "e6a84192bd54d139",
    "events": [
     "seatJoined"
    ]
@@ -46,7 +46,7 @@
     "name": "Bo"
    },
    "result": "ok",
-   "hash": "8f321314782f82ad",
+   "hash": "bd7feadc01c54f69",
    "events": [
     "seatJoined"
    ]
@@ -61,7 +61,7 @@
     ]
    },
    "result": "ok",
-   "hash": "3da344529f4f1a96",
+   "hash": "9d60c6fdba3ee82a",
    "events": [
     "built"
    ]
@@ -76,7 +76,7 @@
     ]
    },
    "result": "ok",
-   "hash": "b518426a865135d9",
+   "hash": "d653db36478181c5",
    "events": [
     "built"
    ]
@@ -92,7 +92,7 @@
     ]
    },
    "result": "ok",
-   "hash": "3510e0f25fdb0729",
+   "hash": "2fed7275fd47b7c5",
    "events": [
     "zoned"
    ]
@@ -108,7 +108,7 @@
     ]
    },
    "result": "ok",
-   "hash": "5b444b1aa7529bed",
+   "hash": "4b5a587494382629",
    "events": [
     "zoned"
    ]
@@ -123,7 +123,7 @@
     ]
    },
    "result": "ok",
-   "hash": "0dc92c0c06f2141a",
+   "hash": "e0c14aa0fabd785e",
    "events": [
     "built"
    ]
@@ -138,7 +138,7 @@
     ]
    },
    "result": "notOwner",
-   "hash": "0dc92c0c06f2141a",
+   "hash": "e0c14aa0fabd785e",
    "events": []
   },
   {
@@ -148,7 +148,7 @@
     "rate": 8
    },
    "result": "ok",
-   "hash": "5b2324bc9c66cb1d",
+   "hash": "3256facd4829f759",
    "events": [
     "taxSet"
    ]
@@ -159,7 +159,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "8dda38892824b46c",
+   "hash": "8ee28cb4f2a42320",
    "events": [
     "budget"
    ]
@@ -170,7 +170,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "ae14d0370cbe012e",
+   "hash": "d19b50e0d4065e62",
    "events": [
     "budget"
    ]

@@ -23,6 +23,8 @@ you changed — or state plainly that nothing needed changing, which is a valid 
 | `CLAUDE.md` | Working rules | A rule is learned the hard way and stays only in someone's head |
 | `.claude/skills/` | Repeatable workflows | A workflow changes and the skill still describes the old one |
 | Memory | Durable facts about the user and the project | A preference is stated and only survives in the transcript |
+| `client/precache.json` | Which files the offline app is made of | Any file is added to or removed from `client/`, `engine/`, `shared/`, `data/` or `vendor/` — regenerate with `node tools/make_precache.mjs`, or the game works online and breaks offline |
+| `test/fixtures/` | The determinism tripwire | Hashed state changes — re-pin through `/fixture-repin`, never by regenerating to get to green |
 
 ## 2. The checks
 

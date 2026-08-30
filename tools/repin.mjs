@@ -22,7 +22,11 @@ const argv = process.argv.slice(2);
 const eventsChanged = argv.includes("--events-changed");
 const onlyAt = argv.indexOf("--only");
 const only = onlyAt >= 0 ? argv[onlyAt + 1] : undefined;
-const why = argv.filter((a, i) => !a.startsWith("--") && i !== onlyAt + 1).join(" ").trim();
+// `onlyAt + 1` is the value of `--only`. With no `--only`, `onlyAt` is -1 and
+// that expression is 0 — which silently ate the reason when it was the first
+// argument, which it always is.
+const skip = onlyAt >= 0 ? onlyAt + 1 : -1;
+const why = argv.filter((a, i) => !a.startsWith("--") && i !== skip).join(" ").trim();
 
 if (!why) {
   console.error("A reason is required:  node tools/repin.mjs \"why, in one sentence\"");
