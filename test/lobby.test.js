@@ -9,7 +9,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SIZES, DIFFICULTIES, TERRAINS, WATERS, DISASTERS, ROWS,
+  SIZES, DIFFICULTIES, TERRAINS, WATERS, DISASTERS, ROWS, GROUPS, rowsIn,
   defaultChoices, sanitiseChoices, optionsFor, choicesFromParams, paramsForChoices, NAME_MAX,
 } from "../client/lobby/options-model.js";
 import { defaultOptions, OPTION_FIELDS } from "../engine/options.js";
@@ -139,4 +139,19 @@ test("the name travels with the shareable link", () => {
   assert.equal(choicesFromParams(params).cityName, "Ny Bergen");
   // An unnamed city adds nothing to the link.
   assert.equal(new URLSearchParams(paramsForChoices(defaultChoices())).has("city"), false);
+});
+
+test("every row belongs to a group, and every group has rows", () => {
+  // The screen renders two decisions — where you build and how hard it is —
+  // rather than five dropdowns in a column. A row with no group would vanish.
+  const keys = GROUPS.map((g) => g.key);
+  for (const row of ROWS) {
+    assert.ok(keys.includes(row.group), `${row.field} is in group '${row.group}', which does not exist`);
+  }
+  for (const group of GROUPS) {
+    assert.ok(rowsIn(group.key).length > 0, `group '${group.key}' has no rows`);
+    assert.ok(group.labelKey, `group '${group.key}' has no label`);
+  }
+  assert.equal(ROWS.length, GROUPS.reduce((n, g) => n + rowsIn(g.key).length, 0),
+    "a row is in two groups, or none");
 });

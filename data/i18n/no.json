@@ -292,6 +292,10 @@
   "menu.newCity": "Ny by",
   "menu.newCity.confirm": "Forlate denne byen og starte en ny? Alt siden forrige lagring går tapt.",
 
+  "lobby.group.place": "Hvor du bygger",
+  "lobby.group.play": "Hvor vanskelig det er",
+  "lobby.begin": "Byen din",
+  "lobby.regionIs": "Regionen",
   "lobby.cityName": "Bynavn",
   "lobby.cityName.hint": "Valgfritt",
   "lobby.mayorName": "Ditt navn",

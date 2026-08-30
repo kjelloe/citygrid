@@ -58,15 +58,27 @@ export const DISASTERS = [
   { value: false, labelKey: "lobby.disasters.off" },
 ];
 
-/** The rows the screen renders, in order. A row is a name, a field and the
- * choices for it — so adding `seats` in 5.2 is a row, not a rewrite. */
-export const ROWS = [
-  { field: "size", labelKey: "lobby.size", choices: SIZES },
-  { field: "difficulty", labelKey: "lobby.difficulty", choices: DIFFICULTIES },
-  { field: "terrainStyle", labelKey: "lobby.terrain", choices: TERRAINS },
-  { field: "waterStyle", labelKey: "lobby.water", choices: WATERS },
-  { field: "disasters", labelKey: "lobby.disasters", choices: DISASTERS },
+/** The two things a player is choosing between: **where** they will build, and
+ * **how hard** it will be. Rows are grouped so the screen reads as two
+ * decisions rather than five dropdowns in a column. */
+export const GROUPS = [
+  { key: "place", labelKey: "lobby.group.place" },
+  { key: "play", labelKey: "lobby.group.play" },
 ];
+
+/** The rows the screen renders, in order. A row is a name, a field, a group and
+ * the choices for it — so adding `seats` in 5.2 is a row, not a rewrite. */
+export const ROWS = [
+  { field: "size", group: "place", labelKey: "lobby.size", choices: SIZES },
+  { field: "terrainStyle", group: "place", labelKey: "lobby.terrain", choices: TERRAINS },
+  { field: "waterStyle", group: "place", labelKey: "lobby.water", choices: WATERS },
+  { field: "difficulty", group: "play", labelKey: "lobby.difficulty", choices: DIFFICULTIES },
+  { field: "disasters", group: "play", labelKey: "lobby.disasters", choices: DISASTERS },
+];
+
+export function rowsIn(group) {
+  return ROWS.filter((row) => row.group === group);
+}
 
 export const SEED_MAX = 0xffffffff;
 

@@ -231,3 +231,57 @@ test("face contrast pulls shades towards flat without inverting them", () => {
   assert.ok(shade(0.4) < shade(0.7), "contrast must not reorder shades");
   setFaceContrast(1);
 });
+
+// --- the map must show what the player built (P29) ---------------------------
+//
+// A playtest found three things the renderer silently did not draw. Each is a
+// source assertion rather than a browser render, because what went wrong was
+// structural: a pool that did not exist, a gate nothing satisfied, and a
+// modulo. `tools/ui_smoke.mjs` counts the instances for real.
+
+const instances = readFileSync(join(repoRoot, "client", "render", "instances.js"), "utf8");
+
+test("an empty zoned lot is drawn", () => {
+  // It was invisible until something developed on it: the player painted a
+  // district and the map showed nothing back, so zoning appeared not to work.
+  assert.match(instances, /make\("zone"/, "there is no pool for zoned ground");
+  assert.match(instances, /pools\.zone/, "the zone pool is created and never filled");
+  assert.match(instances, /state\.tiles\.zone\[index\]/,
+    "nothing reads the zone layer while walking tiles");
+});
+
+test("a zoned lot stops being tinted once it is built on", () => {
+  // Kjell's call (P29): subtle, and gone once the lot is built — a built lot
+  // says what it is with a building.
+  const block = instances.slice(instances.indexOf("pools.zone") - 400, instances.indexOf("pools.zone"));
+  assert.match(block, /buildingId\[index\] === 0/,
+    "the tint is drawn regardless of whether the lot is built on");
+});
+
+test("a power line is drawn on every tile it covers, not every third", () => {
+  // Poles were the whole of it, on `(x + y) % 3`, and the LOD plan drops poles
+  // below 14 pixels a tile — so a line the player had just drawn vanished as
+  // soon as they zoomed out.
+  assert.match(instances, /make\("wireLine"/, "there is no continuous wire run");
+  assert.match(instances, /pools\.wireLine/);
+  const runs = instances.slice(instances.indexOf("pools.wireLine") - 300, instances.indexOf("pools.wireLine"));
+  assert.equal(/% 3/.test(runs), false, "the continuous run is gated on the pole modulo");
+});
+
+test("water pipes are drawn at all", () => {
+  // They were gated on `options.underground === true`, which nothing anywhere
+  // passed, so water mains had never been rendered.
+  assert.match(instances, /pools\.pipe/);
+  // The gate, not the word: the comment above the draw explains what the flag
+  // used to do, and matching that would fail for describing the fix.
+  assert.equal(/options\.underground|underground\s*&&/.test(instances), false,
+    "the pipe draw is still behind a flag nothing sets");
+});
+
+test("the zone tint keeps enough of its own colour to tell R from C from I", () => {
+  // The first attempt lightened 45% towards white and the three zones came out
+  // as one pastel wash.
+  const lift = instances.match(/v \* (0\.\d+) \+ 255 \* (0\.\d+)/);
+  assert.ok(lift, "the zone tint no longer lightens by a stated amount");
+  assert.ok(Number(lift[1]) >= 0.7, `only ${lift[1]} of the zone colour survives`);
+});

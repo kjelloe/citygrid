@@ -292,6 +292,10 @@
   "menu.newCity": "New city",
   "menu.newCity.confirm": "Leave this city and start a new one? Anything since your last save is lost.",
 
+  "lobby.group.place": "Where you build",
+  "lobby.group.play": "How hard it is",
+  "lobby.begin": "Your city",
+  "lobby.regionIs": "The region",
   "lobby.cityName": "City name",
   "lobby.cityName.hint": "Optional",
   "lobby.mayorName": "Your name",

@@ -1,5 +1,5 @@
 {
- "version": "382d45a4f43a",
+ "version": "9efb3f5153fa",
  "generated": "2026-08-30",
  "files": [
   "./client/audio/audio-model.js",
@@ -16,6 +16,7 @@
   "./client/input/gestures.js",
   "./client/input/runs.js",
   "./client/input/tools.js",
+  "./client/lobby/diorama.js",
   "./client/lobby/new-game.js",
   "./client/lobby/options-model.js",
   "./client/main.js",

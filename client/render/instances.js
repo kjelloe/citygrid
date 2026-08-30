@@ -55,7 +55,13 @@ export function createInstances(scene, styleName = "plain") {
   make("road", flatGeometry(styleName, 1, 1, 0.05), 0xffffff, 24000);
   make("mark", flatGeometry(styleName, 0.06, 0.34, 0.056), 0xffffff, 24000);
   make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), 0xffffff, 24000);
-  make("pipe", flatGeometry(styleName, 0.9, 0.9, 0.05), 0xffffff, 24000);
+  make("wireLine", flatGeometry(styleName, 0.5, 0.5, 0.02), 0xffffff, 40000);
+  make("pipe", flatGeometry(styleName, 0.42, 0.42, 0.05), 0xffffff, 24000);
+  // Zoned but not yet built. Without this a painted zone is INVISIBLE until
+  // something develops on it — the player draws a district and the map shows
+  // nothing back (found in playtest, P29). A flat tint just above the ground,
+  // not a block: it is a plan for the land, not a thing standing on it.
+  make("zone", flatGeometry(styleName, 0.92, 0.92, 0.02), 0xffffff, 40000);
   make("ruin", slabGeometry(styleName, 0.7, 0.14, 0.7), 0xffffff, 6000);
   // A garden plot under every house. In the reference this is doing far more
   // work than it looks: it is what stops a suburb reading as buildings dropped
@@ -189,13 +195,28 @@ function jitter(index, salt) {
   return (h >>> 8) / 0xffffff;
 }
 
+/** Water mains, as a trace in the surface. Not from the palette: it is the same
+ * blue in every style because it stands for water, like the pipe overlay. */
+const PIPE_COLOUR = 0x4a86a8;
+
+/** The tint for an empty zoned lot: the zone's own colour, lightened towards
+ * the ground so it reads as a marking on the land rather than a painted
+ * surface. Kjell's call (P29): subtle, and gone once the lot is built. */
+function zoneTint(zone, palette) {
+  const base = palette.zone[zone] ?? 0x888888;
+  const r = (base >> 16) & 0xff;
+  const g = (base >> 8) & 0xff;
+  const b = base & 0xff;
+  const lift = (v) => Math.min(255, Math.round(v * 0.82 + 255 * 0.18));
+  return (lift(r) << 16) | (lift(g) << 8) | lift(b);
+}
+
 export function updateInstances(state, pools, options = {}) {
   reset(pools);
   const styleName = options.style ?? "plain";
   const palette = PALETTES[styleName] ?? PALETTES.plain;
   const ground = (index) => state.tiles.elevation[index] * HEIGHT_SCALE;
   const showOwner = options.territory === true;
-  const underground = options.underground === true;
   // The LOD plan decides what exists this frame. Callers may still force
   // things off (reduced-effects mode), but never on.
   const plan = options.plan ?? { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: true, props: true };
@@ -230,13 +251,31 @@ export function updateInstances(state, pools, options = {}) {
           push(pools.mark, x + 0.5, h, y + 0.5, 1, 1, 1, palette.roadMark, horizontal ? Math.PI / 2 : 0);
         }
       }
-      // A pole every third tile rather than on every one. A pole per tile is
-      // a picket fence down every street, and it buries the city in clutter.
-      if (poles && (state.tiles.wire[index] & NET_PRESENT) && ((x + y) % 3 === 0)) {
-        push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
+      // Zoned ground, drawn under everything else. It fades out as the lot
+      // develops: an empty plot needs to say "this is zoned", a built one is
+      // already saying it with a building.
+      const zone = state.tiles.zone[index];
+      if (zone !== 0 && state.tiles.buildingId[index] === 0) {
+        push(pools.zone, x + 0.5, h + 0.012, y + 0.5, 1, 1, 1, zoneTint(zone, palette));
       }
-      if (underground && (state.tiles.pipe[index] & NET_PRESENT)) {
-        push(pools.pipe, x + 0.5, h + 0.01, y + 0.5, 1, 1, 1, 0x4a86a8);
+
+      // A CONTINUOUS run on every wired tile, with poles standing on every
+      // third. Poles alone were the whole of it, and LOD drops them below 14
+      // pixels a tile — so a power line the player had just drawn disappeared
+      // the moment they zoomed out (P29).
+      if (state.tiles.wire[index] & NET_PRESENT) {
+        push(pools.wireLine, x + 0.5, h + 0.016, y + 0.5, 1, 1, 1, palette.wire);
+        // A pole per tile is a picket fence down every street, and it buries
+        // the city in clutter.
+        if (poles && ((x + y) % 3 === 0)) {
+          push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
+        }
+      }
+      // Pipes are underground, so what is drawn is the trace of one: a narrow
+      // marking in the surface. `underground` gated this on an option nothing
+      // ever passed, so water mains have never been drawn at all (P29).
+      if (state.tiles.pipe[index] & NET_PRESENT) {
+        push(pools.pipe, x + 0.5, h + 0.014, y + 0.5, 1, 1, 1, PIPE_COLOUR);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
         push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, 0x5a5048);

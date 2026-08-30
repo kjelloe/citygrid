@@ -16,7 +16,9 @@ import { generateWorld } from "../../engine/worldgen.js";
 import { defaultOptions } from "../../engine/options.js";
 import { sizeAdvice } from "../capabilities.js";
 import { t } from "../i18n.js";
-import { ROWS, optionsFor, sanitiseChoices, paramsForChoices, SEED_MAX, NAME_MAX } from "./options-model.js";
+import { GROUPS, rowsIn, optionsFor, sanitiseChoices, paramsForChoices, SEED_MAX, NAME_MAX } from "./options-model.js";
+import { createDiorama } from "./diorama.js";
+import { prefersReducedMotion } from "../capabilities.js";
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -46,6 +48,16 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
   root.innerHTML = "";
   const screen = el("div", "lobby");
 
+  // The region, turning slowly behind everything. `aria-hidden`, because every
+  // fact it shows is also in the text beside it and a screen reader announcing
+  // a rotating picture of a field would be noise.
+  const stage = el("div", "lobby-stage");
+  const stageCanvas = el("canvas", "lobby-diorama");
+  stageCanvas.setAttribute("aria-hidden", "true");
+  stage.append(stageCanvas, el("div", "lobby-scrim"));
+  screen.append(stage);
+
+  const sheet = el("div", "lobby-sheet");
   const header = el("header", "lobby-head");
   header.append(el("h1", undefined, t("app.title")), el("p", "tagline", t("app.tagline")));
   if (onSettings) {
@@ -55,13 +67,15 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     settings.addEventListener("click", () => onSettings());
     header.append(settings);
   }
-  screen.append(header);
+  sheet.append(header);
 
   // --- names (§5.1, step one) -----------------------------------------------
   //
   // The only typed fields in the game. Optional: a player who wants to build
   // should not be stopped by a form, and an unnamed city falls back to the
   // region's own name, which the generator already produced.
+  const begin = el("section", "lobby-block");
+  begin.append(el("h2", undefined, t("lobby.begin")));
   const names = el("div", "lobby-names");
   const nameFields = {};
   for (const [field, labelKey, placeholderKey] of [
@@ -86,12 +100,21 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     wrap.append(input);
     names.append(wrap);
   }
-  screen.append(names);
+  begin.append(names);
+  sheet.append(begin);
 
   // --- option rows ----------------------------------------------------------
   const form = el("div", "lobby-options");
   const buttonsByRow = new Map();
-  for (const row of ROWS) {
+  const groupBoxes = new Map();
+  for (const group of GROUPS) {
+    const box = el("section", "lobby-block");
+    box.dataset.group = group.key;
+    box.append(el("h2", undefined, t(group.labelKey)));
+    groupBoxes.set(group.key, box);
+    form.append(box);
+  }
+  for (const row of GROUPS.flatMap((g) => rowsIn(g.key))) {
     const group = el("div", "lobby-row");
     group.setAttribute("role", "group");
     group.setAttribute("aria-label", t(row.labelKey));
@@ -126,13 +149,14 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     }
     buttonsByRow.set(row.field, buttons);
     group.append(options);
-    form.append(group);
+    groupBoxes.get(row.group).append(group);
   }
-  screen.append(form);
+  sheet.append(form);
 
   // --- the region -----------------------------------------------------------
-  const preview = el("div", "lobby-preview");
-  const regionName = el("h2", "region-name");
+  const preview = el("section", "lobby-preview");
+  preview.append(el("h2", "preview-title", t("lobby.regionIs")));
+  const regionName = el("p", "region-name");
   const regionFacts = el("p", "region-facts");
   const regionProblem = el("p", "region-problem");
   regionProblem.hidden = true;
@@ -144,7 +168,7 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     regenerate();
   });
   preview.append(regionName, regionFacts, regionProblem, another);
-  screen.append(preview);
+  sheet.append(preview);
 
   // --- start ----------------------------------------------------------------
   const actions = el("div", "lobby-actions");
@@ -161,6 +185,10 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     // the place, and a city with no name at all leaves the top bar empty.
     const named = defaultOptions(optionsFor(choices)).cityName || t(world.nameKey);
     world.state.options.cityName = named;
+    // The diorama shares this world's tile arrays. Let go before the game takes
+    // them, or two renderers hold the same region.
+    diorama?.dispose();
+    diorama = undefined;
     onStart?.({ world, options: optionsFor(choices), choices, cityName: named, mayorName: choices.mayorName });
   });
   actions.append(start);
@@ -173,11 +201,34 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
   }
   const seedLine = el("p", "lobby-seed");
   actions.append(seedLine);
-  screen.append(actions);
+  sheet.append(actions);
+  screen.append(sheet);
   root.append(screen);
+
+  // ONE state object for the life of the screen. Each new region is copied into
+  // it field by field rather than replacing it, so the diorama's renderer keeps
+  // its pools and only rebuilds what changed — the same trick `game.js` uses to
+  // load a save without reloading the page.
+  let previewState;
+  let diorama;
 
   function regenerate() {
     world = generateWorld(defaultOptions(optionsFor(choices)));
+    if (world.ok) {
+      if (!previewState) {
+        previewState = world.state;
+        diorama = createDiorama(stageCanvas, previewState, {
+          // An explicit choice beats the OS preference; `data-motion` carries
+          // whichever won (slice N13).
+          motion: document.documentElement.dataset.motion !== "reduced"
+            && !(prefersReducedMotion() && !document.documentElement.dataset.motion),
+        });
+      } else {
+        for (const key of Object.keys(previewState)) delete previewState[key];
+        Object.assign(previewState, world.state);
+        diorama?.regionChanged();
+      }
+    }
     render();
   }
 
@@ -220,6 +271,6 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     get world() { return world; },
     /** The link that reproduces this city, for the address bar. */
     link: () => paramsForChoices(choices),
-    dispose() { root.innerHTML = ""; },
+    dispose() { diorama?.dispose(); diorama = undefined; root.innerHTML = ""; },
   };
 }

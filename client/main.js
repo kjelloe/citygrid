@@ -84,6 +84,7 @@ async function boot() {
 
   async function play(given) {
     app.innerHTML = "";
+    app.classList.remove("choosing");
     app.classList.add("playing");
     session = await startGame(app, {
       ...given,
@@ -111,6 +112,7 @@ async function boot() {
   async function newGame() {
     session = undefined;
     app.classList.remove("playing");
+    app.classList.add("choosing");
     const { createNewGame } = await import("./lobby/new-game.js");
     // The lobby has offered a Continue button since it was written and nobody
     // ever passed it one, so a returning player had to start a new city and
