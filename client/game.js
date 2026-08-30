@@ -32,6 +32,7 @@ import { createController } from "./input/controller.js";
 import { createHud } from "./ui/hud.js";
 import { createMinimap } from "./render/minimap.js";
 import { openStatistics } from "./ui/statistics.js";
+import { openHelp } from "./ui/help.js";
 import { createMixer } from "./audio/mixer.js";
 import { cuesFor, cueForResult, ambienceFor } from "./audio/audio-model.js";
 import { loadQuests } from "./content.js";
@@ -84,7 +85,11 @@ export async function startGame(root, given = {}) {
   // touches `lastSeenTick` — which is hashed, so re-joining a loaded save would
   // move it away from the checksum it was saved with.
   if (!state.players.some((p) => p.seat === SEAT)) {
-    apply(state, { type: CMD_JOIN, actor: SEAT, seat: SEAT, name: t("player.you") });
+    apply(state, {
+      type: CMD_JOIN, actor: SEAT, seat: SEAT,
+      // The reducer caps and sanitises it; this only carries what was typed.
+      name: given.mayorName || t("player.you"),
+    });
   }
 
   root.innerHTML = `<canvas id="city"></canvas><div id="hud"></div>`;
@@ -137,6 +142,8 @@ export async function startGame(root, given = {}) {
     // "Inspect" tool without a mode of its own to get stuck in.
     onTap: (tile) => hud.showInspection(tile),
     onSpeedToggle: () => setSpeed((speed + 1) % SPEEDS.length),
+    onHelp: () => openHelp(),
+    onFocusTile: (tile) => { focusOn(renderer.view, tile.x, tile.y); },
   });
 
   // Rebuildable, because a language change has to take effect on the screen the
@@ -169,6 +176,7 @@ export async function startGame(root, given = {}) {
     slots: SLOTS,
     onSettings: given.onSettings,
     onStatistics: () => openStatistics(state),
+    onHelp: () => openHelp(),
     minimap: true,
   };
   let hud = createHud(hudRoot, hudOptions);

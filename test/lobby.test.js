@@ -10,7 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   SIZES, DIFFICULTIES, TERRAINS, WATERS, DISASTERS, ROWS,
-  defaultChoices, sanitiseChoices, optionsFor, choicesFromParams, paramsForChoices,
+  defaultChoices, sanitiseChoices, optionsFor, choicesFromParams, paramsForChoices, NAME_MAX,
 } from "../client/lobby/options-model.js";
 import { defaultOptions, OPTION_FIELDS } from "../engine/options.js";
 import { rules } from "../engine/rules.js";
@@ -80,6 +80,7 @@ test("choices survive a round trip through the URL", () => {
   const chosen = {
     seed: 424242, size: 128, difficulty: "demanding",
     terrainStyle: "hilly", waterStyle: "archipelago", disasters: false,
+    cityName: "Ny Bergen", mayorName: "",
   };
   const params = new URLSearchParams(paramsForChoices(chosen));
   assert.deepEqual(choicesFromParams(params), chosen);
@@ -106,4 +107,36 @@ test("the default city is a standard region on steady, with disasters on", () =>
 test("singleplayer asks for one seat, and the seat count is the only thing 5.2 changes", () => {
   assert.equal(optionsFor(defaultChoices()).seats, 1);
   assert.equal(optionsFor(defaultChoices(), 8).seats, 8);
+});
+
+// --- names (§5.1) -----------------------------------------------------------
+
+test("a city and a mayor can be named, and the name is capped", () => {
+  // §5.1's first step, and the only typed field in the game. The reducer caps
+  // and sanitises it again — this only stops the field accepting two hundred
+  // characters it would silently lose.
+  const long = sanitiseChoices({ cityName: "x".repeat(200), mayorName: "y".repeat(200) });
+  assert.equal(long.cityName.length, NAME_MAX);
+  assert.equal(long.mayorName.length, NAME_MAX);
+  assert.equal(sanitiseChoices({ cityName: 42 }).cityName, "", "a non-string is no name");
+});
+
+test("an unnamed city is empty, not a placeholder", () => {
+  // A placeholder the player leaves alone is a city called by a placeholder,
+  // and §5.1 asks them to name it. The screen falls back to the REGION's name,
+  // which the generator already produced, rather than to "My City".
+  assert.equal(defaultChoices().cityName, "");
+  assert.equal(defaultChoices().mayorName, "");
+});
+
+test("the city name reaches the options record, where it is hashed", () => {
+  assert.equal(optionsFor({ ...defaultChoices(), cityName: "Ny Bergen" }).cityName, "Ny Bergen");
+});
+
+test("the name travels with the shareable link", () => {
+  const params = new URLSearchParams(paramsForChoices({ ...defaultChoices(), cityName: "Ny Bergen" }));
+  assert.equal(params.get("city"), "Ny Bergen");
+  assert.equal(choicesFromParams(params).cityName, "Ny Bergen");
+  // An unnamed city adds nothing to the link.
+  assert.equal(new URLSearchParams(paramsForChoices(defaultChoices())).has("city"), false);
 });

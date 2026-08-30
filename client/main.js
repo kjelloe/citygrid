@@ -121,9 +121,9 @@ async function boot() {
       choices: choicesFromParams(params),
       onSettings: showSettings,
       onContinue: latest ? () => resume(latest.slot) : undefined,
-      onStart({ world, options, choices }) {
+      onStart({ world, options, choices, mayorName }) {
         rememberInUrl(choices);
-        play({ world, options });
+        play({ world, options, mayorName });
       },
     });
   }

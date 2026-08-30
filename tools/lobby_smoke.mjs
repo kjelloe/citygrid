@@ -161,6 +161,71 @@ try {
       `seed ${sameCity.seed} vs ${wanted}, ${sameCity.width}×`);
     await link.close();
 
+    // --- naming (gamedesign.md §5.1, step one) --------------------------------
+    //
+    // The only typed fields in the game, and the first thing the design's
+    // onboarding asks for. The name is hashed state, so what matters is that
+    // what was typed reaches `state.options` — not that the box accepted it.
+    await page.goto(base);
+    await page.waitForSelector(".lobby");
+    await page.fill("#cityName", "  Ny   Bergen  ");
+    await page.fill("#mayorName", "Ada Lovelace who builds cities");
+    await page.click("#start");
+    await started(page);
+    const named = await page.evaluate(() => ({
+      city: globalThis.CITY.state.options.cityName,
+      mayor: globalThis.CITY.state.players[0].name,
+      shown: document.querySelector(".hud-city")?.textContent ?? "",
+      url: new URL(location.href).searchParams.get("city"),
+    }));
+    check(`${label}: the city takes the name that was typed, collapsed and capped`,
+      named.city === "Ny Bergen" && named.shown === "Ny Bergen", JSON.stringify(named));
+    check(`${label}: the mayor's name is capped by the reducer, not by the box`,
+      named.mayor.length > 0 && named.mayor.length <= 24, `"${named.mayor}" (${named.mayor.length})`);
+    check(`${label}: the name travels with the link`, named.url === "Ny Bergen", String(named.url));
+
+    // An unnamed city falls back to the region's own name rather than nothing.
+    await page.goto(base);
+    await page.waitForSelector(".lobby");
+    const regionName = await page.textContent(".region-name");
+    await page.click("#start");
+    await started(page);
+    const unnamed = await page.evaluate(() => globalThis.CITY.state.options.cityName);
+    check(`${label}: an unnamed city is called after its region`,
+      unnamed === regionName, `"${unnamed}" vs "${regionName}"`);
+
+    // --- the controls card ----------------------------------------------------
+    //
+    // A playtester who forgets a key had nowhere to look: the shortcuts existed
+    // and the only place any was written down was the canvas's aria-label.
+    await page.click("#help");
+    await page.waitForSelector("dialog.help[open]", { timeout: 10000 });
+    const card = await page.evaluate(() => {
+      const body = document.querySelector(".help-body");
+      return {
+        sections: document.querySelectorAll(".help-section").length,
+        rows: document.querySelectorAll(".help-section dd").length,
+        keys: [...document.querySelectorAll(".help kbd")].map((k) => k.textContent),
+        rawKeys: /\b(help|menu|tool|zone)\.[a-z]/i.test(body.textContent ?? ""),
+        atTop: body.scrollTop,
+      };
+    });
+    check(`${label}: the controls card lists every section`, card.sections === 4, `${card.sections} sections`);
+    check(`${label}: it names the tool shortcuts`,
+      ["R", "W", "P", "B", "1", "2", "3", "0"].every((k) => card.keys.includes(k)),
+      card.keys.join(" "));
+    check(`${label}: no raw key is showing on the card`, card.rawKeys === false);
+    check(`${label}: the card opens at the top`, card.atTop === 0);
+    await page.keyboard.press("Escape");
+
+    // And "?" opens it, which is the binding the card itself advertises.
+    await page.evaluate(() => document.getElementById("city").focus());
+    await page.keyboard.press("?");
+    await page.waitForTimeout(150);
+    const byKey = await page.evaluate(() => document.querySelector("dialog.help[open]") !== null);
+    check(`${label}: "?" opens the card it advertises`, byKey);
+    await page.keyboard.press("Escape");
+
     // --- settings -----------------------------------------------------------
     //
     // Twelve `settings.*` strings sat in both catalogues with no screen to show
@@ -193,12 +258,31 @@ try {
     // and nothing rendered one: a build you could not afford showed "0 tiles".
     const at = await page.evaluate(async () => {
       const { renderer, state, controller } = globalThis.CITY;
+      // Three tiles clear in each direction, for a 3x3 plant.
+      const ok = (s, x, y) => {
+        for (let dy = 0; dy < 3; dy += 1) {
+          for (let dx = 0; dx < 3; dx += 1) {
+            const t = s.tiles.terrain[(y + dy) * s.width + x + dx];
+            if (t === 3 || t === 4 || s.tiles.buildingId[(y + dy) * s.width + x + dx] !== 0) return false;
+          }
+        }
+        return true;
+      };
       globalThis.CITY.pause();
       state.players[0].treasury = 10;
       const THREE = await import("/vendor/three.module.js");
       controller.setTool("building", "coalPlant");
       const canvas = document.getElementById("city");
-      const v = new THREE.Vector3(state.width / 2 + 0.5, 0, state.height / 2 + 0.5);
+      // A buildable tile, not the middle of the map — the middle is water on
+      // plenty of regions, and then the refusal is `invalid` for a reason that
+      // has nothing to do with money.
+      let tx = Math.floor(state.width / 2);
+      let ty = Math.floor(state.height / 2);
+      for (let r = 0; r < 20 && !ok(state, tx, ty); r += 1) {
+        tx = Math.floor(state.width / 2) + r;
+        ty = Math.floor(state.height / 2) + r;
+      }
+      const v = new THREE.Vector3(tx + 0.5, 0, ty + 0.5);
       v.project(renderer.view.camera);
       return { x: ((v.x + 1) / 2) * canvas.clientWidth, y: ((1 - v.y) / 2) * canvas.clientHeight };
     });

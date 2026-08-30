@@ -1,6 +1,6 @@
 {
  "name": "empty",
- "why": "Department funding (gamedesign.md 9.4): state.funding is hashed, and it changes both service coverage and what a department costs to run.",
+ "why": "The city name is a lobby option (gamedesign.md 5.1), so it is part of the hashed options record.",
  "generate": false,
  "options": {
   "seed": 1,
@@ -25,7 +25,7 @@
    },
    "repeat": 1,
    "result": "ok",
-   "hash": "bd0ba68f99d67681",
+   "hash": "21c53b4f28c5c871",
    "events": []
   },
   {
@@ -34,7 +34,7 @@
    },
    "repeat": 11,
    "result": "ok",
-   "hash": "011c9a836115efde",
+   "hash": "6443a1ae3ff6960e",
    "events": [
     "budget"
    ]
@@ -45,7 +45,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "938815977667238a",
+   "hash": "245c502a2475eada",
    "events": [
     "budget"
    ]
@@ -56,7 +56,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "1a045a891f74edb5",
+   "hash": "0c1132f75aef8245",
    "events": [
     "budget"
    ]

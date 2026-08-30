@@ -60,7 +60,7 @@ function el(tag, className, text) {
 export function createHud(root, {
   state, seat, controller, onOverlay, onSpeed, onUndo,
   onSave, onLoad, onExport, onImport, slots,
-  onQuestChoice, quests, onTax, onFunding, onNewCity, onSettings, onStatistics, minimap,
+  onQuestChoice, quests, onTax, onFunding, onNewCity, onSettings, onStatistics, onHelp, minimap,
 }) {
   root.innerHTML = "";
   const alerts = createAlerts();
@@ -69,6 +69,9 @@ export function createHud(root, {
 
   // --- top bar --------------------------------------------------------------
   const top = el("div", "hud-top");
+  // §5.1: the player names their city, so the city says its name back.
+  const cityName = el("strong", "hud-city", state.options.cityName);
+  cityName.hidden = state.options.cityName.length === 0;
   const money = el("span", "hud-money");
   const trend = el("span", "hud-trend");
   const pop = el("span", "hud-pop");
@@ -77,7 +80,7 @@ export function createHud(root, {
   speedButton.type = "button";
   speedButton.id = "speed";
   speedButton.addEventListener("click", () => onSpeed?.());
-  top.append(money, trend, pop, date, speedButton);
+  top.append(cityName, money, trend, pop, date, speedButton);
   // Leaving a city is how you start another one. Without it the only way to
   // play a second region was to edit the address bar (P18 audit).
   if (onNewCity) {
@@ -91,6 +94,13 @@ export function createHud(root, {
       onNewCity();
     });
     top.append(newCity);
+  }
+  if (onHelp) {
+    const help = el("button", "hud-help", t("menu.help"));
+    help.type = "button";
+    help.id = "help";
+    help.addEventListener("click", () => onHelp());
+    top.append(help);
   }
   if (onStatistics) {
     const stats = el("button", "hud-stats", t("menu.statistics"));

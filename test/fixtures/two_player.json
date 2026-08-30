@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "Department funding (gamedesign.md 9.4): state.funding is hashed, and it changes both service coverage and what a department costs to run.",
+ "why": "The city name is a lobby option (gamedesign.md 5.1), so it is part of the hashed options record.",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -33,7 +33,7 @@
     "name": "Ada"
    },
    "result": "ok",
-   "hash": "e6a84192bd54d139",
+   "hash": "e8f798d2b0394029",
    "events": [
     "seatJoined"
    ]
@@ -46,7 +46,7 @@
     "name": "Bo"
    },
    "result": "ok",
-   "hash": "bd7feadc01c54f69",
+   "hash": "c05309ecef555499",
    "events": [
     "seatJoined"
    ]
@@ -61,7 +61,7 @@
     ]
    },
    "result": "ok",
-   "hash": "9d60c6fdba3ee82a",
+   "hash": "9b706abef11b72da",
    "events": [
     "built"
    ]
@@ -76,7 +76,7 @@
     ]
    },
    "result": "ok",
-   "hash": "d653db36478181c5",
+   "hash": "180458c4fde76b55",
    "events": [
     "built"
    ]
@@ -92,7 +92,7 @@
     ]
    },
    "result": "ok",
-   "hash": "2fed7275fd47b7c5",
+   "hash": "383ce5865ba6b4d5",
    "events": [
     "zoned"
    ]
@@ -108,7 +108,7 @@
     ]
    },
    "result": "ok",
-   "hash": "4b5a587494382629",
+   "hash": "225ffabb4f340b39",
    "events": [
     "zoned"
    ]
@@ -123,7 +123,7 @@
     ]
    },
    "result": "ok",
-   "hash": "e0c14aa0fabd785e",
+   "hash": "026c827f2ade7a0e",
    "events": [
     "built"
    ]
@@ -138,7 +138,7 @@
     ]
    },
    "result": "notOwner",
-   "hash": "e0c14aa0fabd785e",
+   "hash": "026c827f2ade7a0e",
    "events": []
   },
   {
@@ -148,7 +148,7 @@
     "rate": 8
    },
    "result": "ok",
-   "hash": "3256facd4829f759",
+   "hash": "e11d100f0dadad49",
    "events": [
     "taxSet"
    ]
@@ -159,7 +159,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "8ee28cb4f2a42320",
+   "hash": "294fdc8fb31de190",
    "events": [
     "budget"
    ]
@@ -170,7 +170,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "d19b50e0d4065e62",
+   "hash": "c5c669b78fc19672",
    "events": [
     "budget"
    ]

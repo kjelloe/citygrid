@@ -151,12 +151,15 @@ At the beginning of a normal city:
 
 The tutorial should teach by giving the player small objectives rather than presenting a long manual.
 
-> **As built (slice N12).** Ten tutorial quests cover road, zoning, power,
-> water, first residents, first jobs, the tax rate, a first service building, a
-> first park, and two hundred residents. **Naming the city and the mayor is not
-> built** — there is no text entry anywhere in the game yet, and player-authored
-> text is hashed state that has to be capped, sanitised and canonicalised
-> (`CLAUDE.md`), so it lands with the multiplayer text rules in slice 5.3.
+> **As built (slices N12, N21).** Step 1 is the two text fields on the new-game
+> screen — the only typed input in the game. Both are optional; an unnamed city
+> is called after its region, which the generator already named. The city's name
+> is a hashed lobby option, capped and sanitised through the engine's own
+> `sanitiseText` so the box, the link and the checksum agree on one string.
+>
+> Ten tutorial quests cover road, zoning, power, water, first residents, first
+> jobs, the tax rate, a first service building, a first park, and two hundred
+> residents.
 
 ### 6. World and Tile Model
 
@@ -1017,6 +1020,17 @@ Mobile:
 - Long press: inspect or open contextual actions.
 
 The camera should snap to comfortable angles and avoid disorienting free rotation.
+
+> **As built (slice N21).** Double-click focuses the tile under the pointer —
+> there is no selection model, so the tile *is* the object. **Right and middle
+> drag PAN rather than rotate**, which diverges from the list above: rotation is
+> four snapped angles on Q and E, and a free-rotate drag would fight ruling 006.
+> Recorded rather than changed before a playtest. **Long press is not built**;
+> with no tool held, a plain tap already inspects, and the contextual actions a
+> long press would open do not exist yet (slice 5.3).
+>
+> Every binding is listed in the game on the controls card (`?`), which derives
+> its tool half from `TOOLS` so it cannot advertise a key the game lacks.
 
 ### 14. Tool Interaction Design
 

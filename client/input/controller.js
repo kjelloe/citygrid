@@ -203,6 +203,15 @@ export function createController(canvas, state, renderer, options = {}) {
   };
   const onContextMenu = (event) => event.preventDefault();
 
+  // gamedesign.md §13.4: "Double-click: focus selected object." The tile under
+  // the pointer is the object; there is no selection model to consult.
+  const onDoubleClick = (event) => {
+    const tile = tileAtPixel(event.offsetX, event.offsetY);
+    if (!tile) return;
+    options.onFocusTile?.(tile);
+    onChange();
+  };
+
   /** How far one arrow press moves the camera, in tiles. A fraction of what is
    * on screen rather than a fixed number, so a press does the same thing to the
    * view at every zoom. */
@@ -243,6 +252,12 @@ export function createController(canvas, state, renderer, options = {}) {
       return;
     }
 
+    if (!modified && event.key === "?") {
+      event.preventDefault();
+      options.onHelp?.();
+      return;
+    }
+
     if (!modified && (event.key === "q" || event.key === "Q")) rotate(renderer.view, -1);
     else if (!modified && (event.key === "e" || event.key === "E")) rotate(renderer.view, 1);
     else if (event.key === "Escape") { setTool(undefined); handle(cancel(gestures)); }
@@ -268,6 +283,7 @@ export function createController(canvas, state, renderer, options = {}) {
   canvas.addEventListener("pointercancel", onPointerCancel);
   canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("contextmenu", onContextMenu);
+  canvas.addEventListener("dblclick", onDoubleClick);
   globalThis.addEventListener?.("keydown", onKey);
 
   function setTool(name, def) {
@@ -303,6 +319,7 @@ export function createController(canvas, state, renderer, options = {}) {
       canvas.removeEventListener("pointercancel", onPointerCancel);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContextMenu);
+      canvas.removeEventListener("dblclick", onDoubleClick);
       globalThis.removeEventListener?.("keydown", onKey);
     },
   };

@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { createState, copyState, hashState, TILE_LAYERS } from "../engine/state.js";
 import { defaultOptions, seatsForSize, copyOptions, OPTION_FIELDS } from "../engine/options.js";
 import { assertHashable } from "../shared/canonical.js";
+import { LIMITS } from "../shared/protocol.js";
 import { TERRAIN_GRASS, OWNER_NATURE } from "../engine/constants.js";
 
 const opts = (over) => defaultOptions({ width: 16, height: 16, seed: 7, ...over });
@@ -50,7 +51,7 @@ test("every option is hashed — options are part of the replay contract", () =>
     treasury: "split", splitRule: "population", mutualAid: false, disasterAid: true,
     openBorders: false, derelictYears: 9, absenceYears: 9, abandonYears: 9,
     requestExpiryMonths: 3, freeTextReasons: false, chatEnabled: true, privacy: "public",
-    lateJoin: false, seasonYears: 50, keepForDays: 90,
+    lateJoin: false, seasonYears: 50, keepForDays: 90, cityName: "Ny Bergen",
   };
   for (const [field, value] of Object.entries(variants)) {
     const changed = hashState(createState(opts({ [field]: value })));
@@ -61,6 +62,30 @@ test("every option is hashed — options are part of the replay contract", () =>
   const covered = new Set([...Object.keys(variants), "seed", "width", "height"]);
   const missed = OPTION_FIELDS.filter((f) => !covered.has(f));
   assert.deepEqual(missed, [], `these options are never varied by this test: ${missed}`);
+});
+
+test("the city's name is capped and sanitised before it reaches the hash", () => {
+  // Player-authored text is untrusted input and hashed state at once
+  // (CLAUDE.md): cap it, sanitise it, canonicalise its bytes. A control
+  // character in a name would otherwise cross the wire and into a checksum.
+  const control = createState(opts({ cityName: "Ny\u0000Berg\u2028en" }));
+  assert.equal(control.options.cityName.includes("\u0000"), false);
+  assert.equal(control.options.cityName.includes("\u2028"), false);
+
+  const long = createState(opts({ cityName: "x".repeat(200) }));
+  assert.ok(long.options.cityName.length <= LIMITS.NAME_BYTES,
+    `${long.options.cityName.length} characters survived a ${LIMITS.NAME_BYTES}-byte cap`);
+
+  // Whitespace is collapsed, so two names that look identical hash identically.
+  assert.equal(createState(opts({ cityName: "  Ny   Bergen " })).options.cityName, "Ny Bergen");
+  assert.equal(
+    hashState(createState(opts({ cityName: "Ny Bergen" }))),
+    hashState(createState(opts({ cityName: "  Ny   Bergen  " }))),
+    "two spellings of the same name must not be two different cities");
+
+  // An unnamed city is the empty string, never undefined or null: no nulls in
+  // state, and `undefined` would not survive canonical serialisation.
+  assert.equal(createState(opts()).options.cityName, "");
 });
 
 test("mutating a copy never touches the original", () => {

@@ -21,6 +21,8 @@ import {
   WATER_NONE, WATER_LAKES, WATER_RIVER, WATER_COASTAL, WATER_ARCHIPELAGO,
   DIFFICULTY_RELAXED, DIFFICULTY_STEADY, DIFFICULTY_DEMANDING,
 } from "../../engine/constants.js";
+import { sanitiseText } from "../../engine/validate.js";
+import { LIMITS } from "../../shared/protocol.js";
 
 /** Sizes, in the order they are offered. The seat caps in `engine/options.js`
  * hang off the same numbers, which is why 5.2 does not need a second table. */
@@ -68,9 +70,18 @@ export const ROWS = [
 
 export const SEED_MAX = 0xffffffff;
 
+/** §5.1's first step, and the one thing on the screen that is typed rather than
+ * chosen. Capped here as well as in the reducer — the reducer owns the rule,
+ * this stops the field accepting two hundred characters it will silently lose. */
+export const NAME_MAX = 24;
+
 export function defaultChoices() {
   return {
     seed: 1003,
+    // Empty, not "My City". A placeholder the player leaves alone is a city
+    // called by a placeholder, and §5.1 asks them to name it.
+    cityName: "",
+    mayorName: "",
     // Standard, always — NOT `recommendedMapSize()`. That answers "what can
     // this device handle", which is a different question from "what is a good
     // first city", and conflating them opened every desktop player on a
@@ -99,8 +110,14 @@ export function sanitiseChoices(given = {}) {
   const seed = Number.isInteger(given.seed) && given.seed >= 0 && given.seed <= SEED_MAX
     ? given.seed
     : base.seed;
+  // Through the ENGINE's sanitiser, so the name in the link, the name in the
+  // box and the name in hashed state are the same string. Slicing alone left
+  // the link carrying "  Ny   Bergen  " for a city called "Ny Bergen".
+  const text = (value) => sanitiseText(value, LIMITS.NAME_BYTES);
   return {
     seed,
+    cityName: text(given.cityName),
+    mayorName: text(given.mayorName),
     size: pick(SIZES, given.size, base.size),
     difficulty: pick(DIFFICULTIES, given.difficulty, base.difficulty),
     terrainStyle: pick(TERRAINS, given.terrainStyle, base.terrainStyle),
@@ -116,6 +133,9 @@ export function optionsFor(choices, seats = 1) {
   const c = sanitiseChoices(choices);
   return {
     seed: c.seed,
+    // The reducer sanitises it again on the way into state; this only carries
+    // what was typed.
+    cityName: c.cityName,
     width: c.size,
     height: c.size,
     seats,
@@ -151,6 +171,7 @@ export function choicesFromParams(params) {
     terrainStyle: params.get("terrain") ?? undefined,
     waterStyle: params.get("water") ?? undefined,
     disasters: flag("disasters"),
+    cityName: params.get("city") ?? undefined,
   });
 }
 
@@ -161,6 +182,8 @@ export function paramsForChoices(choices) {
   const base = defaultChoices();
   const params = new URLSearchParams();
   params.set("seed", String(c.seed));
+  // The name travels with the link: a city someone shares is that city, named.
+  if (c.cityName) params.set("city", c.cityName);
   if (c.size !== base.size) params.set("size", String(c.size));
   if (c.difficulty !== base.difficulty) params.set("difficulty", c.difficulty);
   if (c.terrainStyle !== base.terrainStyle) params.set("terrain", c.terrainStyle);

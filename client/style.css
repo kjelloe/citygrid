@@ -143,6 +143,7 @@ button, [role="button"] {
 }
 .hud-top > button { flex: 0 0 auto; white-space: nowrap; }
 
+.hud-city { font-size: 1.05rem; letter-spacing: -0.01em; }
 .hud-money { font-weight: 700; font-size: 1.1rem; }
 .hud-trend.up { color: #2e7d4f; }
 .hud-trend.down { color: #b3402c; }
@@ -505,7 +506,51 @@ button, [role="button"] {
 .lobby-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
 .lobby-head h1 { flex: 0 0 auto; }
 .lobby-head .tagline { flex: 1 1 12rem; }
-.lobby-settings, .hud-settings {
+.help::backdrop { background: rgba(0,0,0,0.45); }
+.help {
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border-radius: 14px;
+  padding: 0;
+  background: Canvas;
+  color: CanvasText;
+  max-width: min(520px, 94vw);
+  max-height: 88vh;
+}
+.help-body { display: flex; flex-direction: column; gap: 1rem; padding: 1.1rem 1.2rem 1.2rem; }
+.help-body h1 { margin: 0; font-size: 1.2rem; }
+.help-section h2 { margin: 0 0 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+.help-section dl { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.8rem; margin: 0; align-items: baseline; }
+.help-section dt { display: flex; gap: 0.2rem; }
+.help-section dd { margin: 0; font-size: 0.87rem; }
+.help kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: color-mix(in srgb, CanvasText 5%, Canvas);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: center;
+}
+.help-gesture { opacity: 0.4; }
+.help-close {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 1.2rem;
+  border: 1px solid CanvasText;
+  border-radius: 9px;
+  background: CanvasText;
+  color: Canvas;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+:root[data-contrast="high"] .help { border-width: 2px; border-color: CanvasText; }
+:root[data-contrast="high"] .help-section h2, :root[data-contrast="high"] .help-gesture { opacity: 1; }
+
+.lobby-settings, .hud-settings, .hud-help, .hud-stats {
   min-height: 40px;
   padding: 0 0.85rem;
   border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
@@ -565,6 +610,19 @@ button, [role="button"] {
 .lobby-head h1 { margin: 0; font-size: 1.6rem; }
 .lobby-head .tagline { margin: 0.2rem 0 0; opacity: 0.7; }
 
+.lobby-names { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+.lobby-name { display: flex; flex-direction: column; gap: 0.2rem; flex: 1 1 12rem; min-width: 0; }
+.lobby-name span { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+.lobby-name input {
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 9px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  min-width: 0;
+}
 .lobby-options { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
 /* A flex child defaults to `min-width: auto`, which refuses to shrink below its
    content — so the scrolling choice row pushed the whole page sideways on a

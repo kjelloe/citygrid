@@ -91,9 +91,7 @@ the real page by pointer on desktop and a 390×844 phone.
   motion. Sound and visual style are deliberately not offered — there is no
   audio, and ruling 022 settled the style, so both would be controls that change
   nothing.
-- **No city or mayor name** (§5.1). There is no text entry anywhere in the game,
-  and player-authored text is hashed state that must be capped, sanitised and
-  canonicalised — so it lands with slice 5.3's text rules.
+- ~~No city or mayor name~~ — **built in N21.**
 - ~~Department funding (§9.4) does not exist~~ — **built in N20.**
 - `client/capabilities.js`'s `deviceClass` and `isCoarsePointer` are still
   unused; `recommendedMapSize` and `sizeAdvice` were revived by N12.
@@ -286,6 +284,8 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 | **N19** | **The PWA half of 4.5** | M | "The app installs and plays with the network disabled" had never been measured, and there is no build step to produce a precache list | **Done.** `manifest.webmanifest`, two SVG icons, and a service worker keeping one versioned cache whose version is a hash of the cached bytes — the handshake without a build step. `test/pwa.test.js` regenerates the precache list and fails when it is stale. `tools/offline_smoke.mjs` turns the network off and then plays: the screen opens with its strings, a city starts, a road is built by pointer, the clock runs, a save round-trips hash for hash |
 
 | **N20** | **Department funding** (gamedesign.md §9.4) | S | The last named gap in the singleplayer design, and the one whose absence a code comment actively denied — `coveragePass` claimed coverage fell off "with distance and with funding" while `strength` was a flat 100 | **Done.** `state.funding` per service, hashed; coverage and upkeep both scale with it; a rate outside 50–150 is refused rather than clamped. Three steps in the budget row. **The first real use of the N17 tripwire**: all three fixtures moved and were re-pinned with a written reason |
+
+| **N21** | **Ready to playtest** (P25) — naming, the controls card, double-click focus | S | Two things a playtest hits in its first minute and neither existed: §5.1's step one is "the player names the city and mayor", and a player who forgot a shortcut had nowhere to look — the only place any key was written down was the map canvas's `aria-label` | **Done.** City and mayor names as the game's only typed fields; the city name is a hashed lobby option, sanitised through the engine's own `sanitiseText` so box, link and checksum agree. An unnamed city takes its region's name. A controls card on `?` whose tool half is **derived from `TOOLS`**, so it cannot advertise a key that does not exist. Double-click focuses (§13.4) |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits

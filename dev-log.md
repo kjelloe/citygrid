@@ -1911,3 +1911,83 @@ inspection.
 line, and took `a11y_smoke` and `lobby_smoke` down with it. Exactly the failure
 the build menu caused in N11, and the same fix: the row scrolls instead of
 wrapping. Back to 322px.
+
+---
+
+## 2026-08-30 — Slice N21: ready to playtest (P25)
+
+Two things a playtest hits in its first minute, neither of which existed.
+
+### Naming (§5.1, step one)
+
+"The player names the city and mayor" is the **first line** of the design's
+onboarding, and there was no text input anywhere in the game.
+
+The city's name is a hashed lobby option — appended to `OPTION_FIELDS`, never
+reordered, because that list *is* the hash order. Player-authored text is
+untrusted input and hashed state at once (CLAUDE.md), so it goes through the
+engine's own `sanitiseText` at `LIMITS.NAME_BYTES`: control characters and line
+separators stripped, whitespace collapsed, capped. `"  Ny   Bergen  "` and
+`"Ny Bergen"` are the same city and hash identically, which is asserted.
+
+The mayor's name needed nothing new — `CMD_JOIN` has sanitised a name since Wave
+0 and the client was passing it `t("player.you")`.
+
+Both are optional. **An unnamed city is called after its region**, which the
+generator already named: a placeholder the player leaves alone is a city called
+by a placeholder.
+
+### The controls card
+
+A playtester who forgot a key had nowhere to look. The shortcuts existed since
+N14 and the only place any of them was written down was the map canvas's
+`aria-label`, which is for screen readers.
+
+`?` opens a card with four sections. **The tool half is derived from `TOOLS`**,
+never listed by hand — a card that advertises a key the game does not have is
+worse than no card, which is ruling 027's argument for strings and 028's for
+roles. `test/help.test.js` checks the fixed bindings against the controller's
+own source, and that no key is claimed twice.
+
+Double-click focuses the tile under the pointer (§13.4). There is no selection
+model, so the tile *is* the object.
+
+### Measured
+
+- **`./test.sh` 521 tests, green twice.** Was 509. `test/help.test.js` (7), plus
+  naming tests in `state`, `lobby` and the gate.
+- **`tools/lobby_smoke.mjs` gained nine checks**: the typed name reaches
+  `state.options` collapsed and capped, the mayor's name is capped **by the
+  reducer** (23 characters survived a 24-byte cap), the name travels with the
+  link, an unnamed city takes its region's name, the card lists every section
+  and every tool key (`R W P 1 2 3 0 B ↑ ↓ ← → Q E + − Space Esc Ctrl Z ?`),
+  and `?` opens the card the card advertises.
+- All eight gates green.
+
+### What failed on the way
+
+**The name never reached state.** The lobby generates its region when an option
+changes — deliberately *not* on a keystroke, since the name does not affect
+terrain — and then hands that already-generated world to `startGame`, which
+ignores `options`. So the typed name went into the URL and nowhere else. Caught
+by driving the real page, not by a unit test: `{"cityName":"","mayor":"Ada"}`.
+The name is now written onto the generated world at Start, through
+`defaultOptions` so it takes the same sanitising path.
+
+**The link carried the raw string.** `sanitiseChoices` sliced to 24 characters
+without collapsing whitespace, so a city called "Ny Bergen" produced
+`?city=++Ny+++Bergen++`. It runs through the engine's sanitiser now, so the box,
+the link and the checksum agree on one string.
+
+**A gate check broke for an unrelated reason.** The "cannot afford" check placed
+a 3×3 plant at the centre of the map and asserted `noFunds`; the new naming
+steps changed which city was loaded by then, the centre was water, and it got
+`invalid`. It now searches for buildable ground first.
+
+### Recorded, not changed, before the playtest
+
+**Right and middle drag pan rather than rotate**, which diverges from §13.4.
+Rotation is four snapped angles on Q and E, and a free-rotate drag would fight
+ruling 006. **Long press is not built** — a plain tap already inspects with no
+tool held, and the contextual actions a long press would open do not exist yet.
+Both are now "as built" notes in §13.4 rather than silent divergences.

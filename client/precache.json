@@ -1,5 +1,5 @@
 {
- "version": "b81e06b8d1d3",
+ "version": "382d45a4f43a",
  "generated": "2026-08-30",
  "files": [
   "./client/audio/audio-model.js",
@@ -41,6 +41,8 @@
   "./client/ui/alerts-model.js",
   "./client/ui/budget-model.js",
   "./client/ui/build-model.js",
+  "./client/ui/help-model.js",
+  "./client/ui/help.js",
   "./client/ui/hud-model.js",
   "./client/ui/hud.js",
   "./client/ui/inspector-model.js",

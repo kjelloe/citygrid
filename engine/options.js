@@ -4,6 +4,8 @@
 // Every field is an integer, a string or a boolean. The field ORDER below is
 // the hash order; append new fields at the end and never reorder.
 
+import { sanitiseText } from "./validate.js";
+import { LIMITS } from "../shared/protocol.js";
 import {
   MODE_SHARED_CITY, TREASURY_SHARED, TERRAIN_STYLE_ROLLING, WATER_RIVER,
   DIFFICULTY_STEADY, SEAT_MAX,
@@ -37,6 +39,10 @@ export var OPTION_FIELDS = [
   "lateJoin",
   "seasonYears",
   "keepForDays",
+  // Appended, never reordered - this list IS the hash order. The city name is
+  // the lobby's decision like every other field here, and it is player-authored
+  // text in hashed state, so it is capped and sanitised on the way in.
+  "cityName",
 ];
 
 /** Sizes and their seat caps. A phone is advised toward the smaller ones
@@ -91,6 +97,7 @@ export function defaultOptions(overrides) {
     lateJoin: given.lateJoin === undefined ? true : given.lateJoin === true,
     seasonYears: given.seasonYears === undefined ? 25 : given.seasonYears,
     keepForDays: given.keepForDays === undefined ? 30 : given.keepForDays,
+    cityName: sanitiseText(given.cityName, LIMITS.NAME_BYTES),
   };
   if (options.seats > SEAT_MAX) options.seats = SEAT_MAX;
   return options;

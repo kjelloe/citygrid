@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "Department funding (gamedesign.md 9.4): state.funding is hashed, and it changes both service coverage and what a department costs to run.",
+ "why": "The city name is a lobby option (gamedesign.md 5.1), so it is part of the hashed options record.",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Mayor"
    },
    "result": "ok",
-   "hash": "1cf8fe51270ecc5e",
+   "hash": "e486f36fdbcdfe9e",
    "events": [
     "seatJoined"
    ]
@@ -49,7 +49,7 @@
     ]
    },
    "result": "ok",
-   "hash": "c6b3f3b19b32ced1",
+   "hash": "62440eb06996d911",
    "events": [
     "built"
    ]
@@ -64,7 +64,7 @@
     ]
    },
    "result": "ok",
-   "hash": "aad6f7af76193d04",
+   "hash": "aa4ce6de16b21dc4",
    "events": [
     "built"
    ]
@@ -84,7 +84,7 @@
     ]
    },
    "result": "ok",
-   "hash": "e993b4faa953445b",
+   "hash": "91f9c28b2d5d1e1b",
    "events": [
     "zoned"
    ]
@@ -104,7 +104,7 @@
     ]
    },
    "result": "ok",
-   "hash": "26b87c6622411296",
+   "hash": "2ada9b640aefdad6",
    "events": [
     "zoned"
    ]
@@ -122,7 +122,7 @@
     ]
    },
    "result": "ok",
-   "hash": "d0abcf1173dd9b44",
+   "hash": "3396af49f5405f04",
    "events": [
     "zoned"
    ]
@@ -136,7 +136,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "b8cbd618fcda7cba",
+   "hash": "974e826b069117fa",
    "events": [
     "placed"
    ]
@@ -150,7 +150,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "83435591b2cfabf6",
+   "hash": "e2a0f35866146636",
    "events": [
     "placed"
    ]
@@ -189,7 +189,7 @@
     ]
    },
    "result": "ok",
-   "hash": "aadefa8aceb839ac",
+   "hash": "4926a3895a4c9eec",
    "events": [
     "built"
    ]
@@ -228,7 +228,7 @@
     ]
    },
    "result": "ok",
-   "hash": "bcb37a90b011ae3f",
+   "hash": "19f1f57aedb1f07f",
    "events": [
     "built"
    ]
@@ -240,7 +240,7 @@
     "rate": 9
    },
    "result": "ok",
-   "hash": "31b7aef0506bc025",
+   "hash": "a17d8cbc6ab04865",
    "events": [
     "taxSet"
    ]
@@ -251,7 +251,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "c672e21981e03746",
+   "hash": "1f5e8bff7f126506",
    "events": [
     "budget",
     "highCrime",
@@ -264,7 +264,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "3d68c59860fe5a81",
+   "hash": "0734761de4391a41",
    "events": [
     "budget",
     "developed",
@@ -279,7 +279,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "1efc82caaa7d5cbf",
+   "hash": "40a5825d6c66a37f",
    "events": [
     "abandoned",
     "budget",
@@ -296,7 +296,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "b4e0e6465329af5c",
+   "hash": "61d228034c88081c",
    "events": [
     "abandoned",
     "budget",

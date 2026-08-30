@@ -16,7 +16,7 @@ import { generateWorld } from "../../engine/worldgen.js";
 import { defaultOptions } from "../../engine/options.js";
 import { sizeAdvice } from "../capabilities.js";
 import { t } from "../i18n.js";
-import { ROWS, optionsFor, sanitiseChoices, paramsForChoices, SEED_MAX } from "./options-model.js";
+import { ROWS, optionsFor, sanitiseChoices, paramsForChoices, SEED_MAX, NAME_MAX } from "./options-model.js";
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -56,6 +56,37 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     header.append(settings);
   }
   screen.append(header);
+
+  // --- names (§5.1, step one) -----------------------------------------------
+  //
+  // The only typed fields in the game. Optional: a player who wants to build
+  // should not be stopped by a form, and an unnamed city falls back to the
+  // region's own name, which the generator already produced.
+  const names = el("div", "lobby-names");
+  const nameFields = {};
+  for (const [field, labelKey, placeholderKey] of [
+    ["cityName", "lobby.cityName", "lobby.cityName.hint"],
+    ["mayorName", "lobby.mayorName", "lobby.mayorName.hint"],
+  ]) {
+    const wrap = el("label", "lobby-name");
+    wrap.append(el("span", undefined, t(labelKey)));
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = field;
+    input.maxLength = NAME_MAX;
+    input.autocomplete = "off";
+    input.placeholder = t(placeholderKey);
+    input.value = choices[field];
+    input.addEventListener("input", () => {
+      // No regenerate: the name does not change the region, and re-running
+      // worldgen on every keystroke would be absurd.
+      choices = sanitiseChoices({ ...choices, [field]: input.value });
+    });
+    nameFields[field] = input;
+    wrap.append(input);
+    names.append(wrap);
+  }
+  screen.append(names);
 
   // --- option rows ----------------------------------------------------------
   const form = el("div", "lobby-options");
@@ -122,7 +153,15 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
   start.id = "start";
   start.addEventListener("click", () => {
     if (!world?.ok) return;
-    onStart?.({ world, options: optionsFor(choices), choices });
+    // The region does not depend on the name, so the name is applied to the
+    // already-generated world rather than re-running worldgen on every
+    // keystroke. Through `defaultOptions` so it is capped and sanitised by the
+    // same path the engine would use — this record is hashed.
+    // An unnamed city is called after its region — the generator already named
+    // the place, and a city with no name at all leaves the top bar empty.
+    const named = defaultOptions(optionsFor(choices)).cityName || t(world.nameKey);
+    world.state.options.cityName = named;
+    onStart?.({ world, options: optionsFor(choices), choices, cityName: named, mayorName: choices.mayorName });
   });
   actions.append(start);
   if (onContinue) {
