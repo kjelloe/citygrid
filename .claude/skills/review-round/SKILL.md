@@ -84,6 +84,11 @@ grep -rn '^export function' client/ engine/
 grep -rn 'import(' client/
 ```
 
+**A feature is not built until it is driven on the real page.** N21's city name passed every unit
+test and reached the URL and nowhere else, because the lobby generates its region *before* the name
+is typed and hands that world on. Only `lobby_smoke` saw it. Unit tests check the parts; the gate
+checks that they are connected.
+
 **Audit the slice you just wrote, not only the project around it.** Two of N15's own defects
 survived its gates because the gates checked that the feature existed, not that it kept working:
 the minimap painted the right picture once and never again, and the code written to honour
