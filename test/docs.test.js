@@ -7,7 +7,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { readDoc, docExists, repoRoot } from "./helpers/sources.js";
 import { PALETTES } from "../client/render/palettes.js";
@@ -31,6 +32,29 @@ const REQUIRED_DOCS = [
  * not, rather than turning a clean clone's suite red. */
 const LOCAL_DOCS = ["dev-prompts.md", "dev-questions.md"];
 const haveLocalDocs = LOCAL_DOCS.every((doc) => docExists(doc));
+
+test("the local documents stay out of git", () => {
+  // Kjell's call (P24, reaffirmed P28): these are working notes and the repo is
+  // public. `.gitignore` lists them, but gitignore does not untrack — they were
+  // committed for the life of the project before anyone noticed, and a
+  // `git add -f`, a new clone with a stale ignore file, or a rename would put
+  // them back just as quietly.
+  //
+  // A rule nobody enforces is a suggestion, so this enforces it.
+  if (!existsSync(join(repoRoot, ".git"))) return;   // a tarball, not a checkout
+  const tracked = execFileSync("git", ["ls-files", "--", ...LOCAL_DOCS], {
+    cwd: repoRoot, encoding: "utf8",
+  }).split("\n").filter(Boolean);
+  assert.deepEqual(tracked, [],
+    `these are tracked and must not be: ${tracked.join(", ")}. `
+    + "Untrack with: git rm --cached <file>  (the file stays on disk)");
+
+  const ignored = readFileSync(join(repoRoot, ".gitignore"), "utf8");
+  for (const doc of LOCAL_DOCS) {
+    assert.ok(ignored.split("\n").some((line) => line.trim() === doc),
+      `${doc} is not in .gitignore, so the next 'git add -A' takes it`);
+  }
+});
 
 test("every required document exists", () => {
   const missing = REQUIRED_DOCS.filter((doc) => !docExists(doc));
