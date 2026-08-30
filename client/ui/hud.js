@@ -100,27 +100,14 @@ export function createHud(root, {
     });
     top.append(newCity);
   }
-  if (onHelp) {
-    const help = el("button", "hud-help", t("menu.help"));
-    help.type = "button";
-    help.id = "help";
-    help.addEventListener("click", () => onHelp());
-    top.append(help);
-  }
-  if (onStatistics) {
-    const stats = el("button", "hud-stats", t("menu.statistics"));
-    stats.type = "button";
-    stats.id = "statistics";
-    stats.addEventListener("click", () => onStatistics());
-    top.append(stats);
-  }
-  if (onSettings) {
-    const settings = el("button", "hud-settings", t("menu.settings"));
-    settings.type = "button";
-    settings.id = "settings";
-    settings.addEventListener("click", () => onSettings());
-    top.append(settings);
-  }
+  // Help, Statistics and Settings all open a panel, which is exactly what the
+  // rail is for — and on a 390px phone the top bar wrapped to 138px carrying
+  // them. They are built here and appended to the rail below.
+  const railExtras = [
+    { id: "help", labelKey: "menu.help", run: onHelp },
+    { id: "statistics", labelKey: "menu.statistics", run: onStatistics },
+    { id: "settings", labelKey: "menu.settings", run: onSettings },
+  ].filter((entry) => entry.run);
 
   // --- demand ---------------------------------------------------------------
   const rci = el("div", "hud-rci");
@@ -445,6 +432,20 @@ export function createHud(root, {
     drawerBody.append(entry.body);
   }
 
+  // The dialogs, after a rule. They open a modal rather than a drawer, so they
+  // are marked as a separate group rather than pretending to be drawers.
+  if (railExtras.length > 0) {
+    const extras = el("div", "rail-extras");
+    for (const entry of railExtras) {
+      const button = el("button", "rail-button", t(entry.labelKey));
+      button.type = "button";
+      button.id = entry.id;
+      button.addEventListener("click", () => entry.run());
+      extras.append(button);
+    }
+    rail.append(extras);
+  }
+
   function openDrawer(key) {
     openKey = key;
     const entry = DRAWERS.find((d) => d.key === key);
@@ -460,11 +461,12 @@ export function createHud(root, {
   function setBuildMenu(open) {
     buildBar.hidden = !open;
     buildToggle.setAttribute("aria-expanded", String(open));
-    // The rail lives in the same band above the bar, and on a phone in exactly
-    // the same band. Both are transient chrome and only one is wanted at a
-    // time, so the rail steps aside — otherwise it sits over the first few
-    // buildings and they cannot be clicked at all.
+    // The rail and the advisor column both reach down into the band the popover
+    // opens into — the rail over its first buildings, the advisor over its
+    // last. Both are transient chrome and only one is wanted at a time, so both
+    // step aside; otherwise those buildings cannot be clicked at all.
     side.hidden = open;
+    aside.hidden = open;
     if (open) openDrawer(undefined);
   }
 
@@ -474,7 +476,14 @@ export function createHud(root, {
   // the same left edge, so opening one covered the buttons that open them.
   const side = el("div", "hud-side");
   side.append(rail, drawer);
-  root.append(top, side, inspector, advisor, minimapBox, bottom);
+
+  // The advisor and the inspector share the right-hand column, stacked. The
+  // advisor was at the top of the LEFT edge, which is exactly where the rail
+  // went — so the tutorial guide, the first thing a new player reads, ended up
+  // underneath the overlay buttons.
+  const aside = el("div", "hud-aside");
+  aside.append(advisor, inspector);
+  root.append(top, side, aside, minimapBox, bottom);
   const panel = bottom;
 
   function renderAdvisor() {
@@ -686,9 +695,13 @@ export function createHud(root, {
       // rail hangs below it. A fixed offset put the rail inside the top bar and
       // over its buttons.
       root.style.setProperty("--top-height", `${top.getBoundingClientRect().height}px`);
+      // On a phone the rail is a horizontal strip above the bottom bar, and the
+      // advisor column has to stop above it.
+      root.style.setProperty("--side-height", `${side.getBoundingClientRect().height}px`);
     });
     panelWatch.observe(panel);
     panelWatch.observe(top);
+    panelWatch.observe(side);
   }
 
   refresh();

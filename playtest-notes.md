@@ -28,32 +28,28 @@ none of them is this.
 going. If the answer is no, the next slice is not multiplayer — it is whatever
 you were bored by.
 
-## 2. The interface takes over half the screen
+## 2. Is the interface out of the way now?
 
-**Measured today**, on a fresh city:
+**It was 55–56% of the screen; that is fixed.** Measured today:
 
-| Viewport | Top bar | Bottom panel | Chrome |
-|---|---|---|---|
-| 1280×720 desktop | 56 px | 348 px | **56%** |
-| 1920×1080 desktop | 56 px | 348 px | 37% |
-| 390×844 phone | **138 px** | 322 px | **55%** |
+| Viewport | Top bar | Bottom bar | Rail | Chrome |
+|---|---|---|---|---|
+| 1280×720 desktop | 56 px | 172 px | — | **32%** (was 56%) |
+| 1920×1080 desktop | 56 px | 172 px | — | **21%** (was 37%) |
+| 390×844 phone | 90 px | 164 px | 94 px | **41%** (was 55%) |
 
-**What I chose.** Every control §13.1 asks for is on screen at once: demand,
-alerts, tools, buildings, overlays, budget, saves — plus five things in the top
-bar (city name, speed, Help, Statistics, New city, Settings).
+The bottom panel was seven stacked rows. It is one bar now, with the twelve
+building buttons behind a **Build** button and the overlays, tax and saves
+behind a **left rail** with drawers.
 
-**Why it happened.** Each slice added one row or one button and each one passed
-the gate. **The gate has a blind spot**: `ui_smoke` asserts the *panel* is under
-45% of the phone screen and never looks at the top bar, which is how the top bar
-reached 138 px without anything going red. That is my mistake, and it is the same
-class of thing as everything `test/reachability.test.js` exists to catch — a
-check that measures the part instead of the whole.
+**What to check:** whether it is now *too* hidden. Three things that used to be
+permanently on screen are one click away, and the trade may have gone too far —
+particularly the demand bars and the money, which you glance at constantly.
 
-**What to check:** whether the map feels cramped, especially on the phone and on
-a laptop at 720p. Then tell me **which controls should collapse**. My guess is
-the overlay row (eleven buttons, most consulted rarely) behind one button, and
-Help / Statistics / New city / Settings behind a single menu. That is an hour's
-work and I did not want to guess at it. This is **Q21** in `dev-questions.md`.
+**Still open, and I did not want to invent it:** the phone is 41% and the
+remaining reduction needs the rail to be **icons rather than words**. Six
+buttons labelled "Overlays / Tax / Saves / Controls / Statistics / Settings"
+wrap to two rows at 390px. An icon set is an art decision, not a layout one.
 
 ## 3. Money stops mattering around year 20
 
@@ -144,11 +140,10 @@ Start it with `./run.sh` and open `http://localhost:8123`.
    → *(D4)* The ghost turns red and the readout says "Not enough money". Until
    three days ago every refusal in the game's history said "0 tiles". **Is the
    message where you are looking?** It is at the bottom of the panel.
-9. **Find the water pump without being told where it is.**
-   → *(D5)* The build menu is one flat scrolling row, grouped power / water /
-   services / amenities, cheapest first, with power and water at the left. If
-   choosing between four power sources feels like reading a spreadsheet, a
-   palette is the right answer after all.
+9. **Press Build and find the water pump.**
+   → *(D5)* The buildings are behind one button now, in a popover above the bar,
+   grouped power / water / services / amenities, cheapest first. Picking one
+   closes it. **Is one click too many, or exactly right?**
 10. **Lay wire and pipe out to your zoning, then watch.** A lot develops when it
     has road, power and water.
     → **(Q1)** Time yourself from first road to first resident. §24 wants a
@@ -163,9 +158,12 @@ Start it with `./run.sh` and open `http://localhost:8123`.
 ## C. Growing — 15 minutes
 
 12. **Zone commercial and industrial. Run at Fast.**
-13. **Cycle the overlays** — Zoning, Electricity, Land value, Pollution.
-    → **(Q2)** Eleven buttons. How many do you actually use? This is the row I
-    would collapse first.
+13. **Leave the overlay on "Auto"** while you lay wire and pipe, then open the
+    **Overlays** drawer on the left rail and pick one by hand.
+    → *(D19)* Auto follows the tool: zone tools show zoning, wire shows power,
+    pipe shows water, and putting the tool down clears the map. A hand-picked
+    overlay **wins** until you choose Auto again. Is that the right precedence,
+    and does Auto ever show you something you did not want?
 14. **Open Statistics** (top bar). Ten graphs, each with a sentence under it.
     → *(D7)* The sentence is there because §30 makes a plain-language reading an
     accessibility feature. **Do you read the sentence or the line?** If the line
@@ -330,6 +328,18 @@ advertises a key the game does not have is worse than no card.
 **D17 — icons are SVG.** Generating PNGs needs an image pipeline the project does
 not have, and committing binaries for something drawable in forty lines is worse
 than the limitation.
+
+**D19 — Auto is the default overlay, and a hand-picked one beats it.** It shows
+nothing when no tool is held, so putting the tool down clears the map.
+
+**D20 — skins are chrome only.** Your call (P29): ruling 022 settled the world
+style, so a skin is a set of CSS custom properties. `clean` is the bare
+stylesheet rather than a third copy of the defaults.
+
+**D21 — the map now draws what you build.** Empty zoned lots take a subtle tint
+that fades once built on; power lines draw on every tile they cover, not every
+third; water mains are drawn at all, which they never were. This is the bug your
+first playtest found.
 
 **D18 — the Norwegian is drafted, not reviewed.** A21 says you review it. 379 keys
 per catalogue, including all twenty quests.

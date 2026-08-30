@@ -90,6 +90,16 @@ the importmap and the game would not boot at all. `tools/serve_smoke.mjs` spawns
 and loads the bare origin. **Listen for console errors, not only `pageerror`** — a CSP violation is
 reported to the console, which is why this was invisible.
 
+**A setting is not built until a pixel changes.** High contrast set an attribute for two slices
+while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate checked only that the
+attribute landed. For anything that themes the interface, assert a **computed colour** before and
+after — the same "measure the whole, not the part" as everywhere else in this file.
+
+**When several things move at once, check what they now sit on top of.** N24 moved four panels and
+left the advisor under the rail, the drawer over the rail, and the build popover under both. Each
+was found by a gate rather than by looking, which is the system working — but a five-minute pass
+over the new positions would have found them first.
+
 **A feature is not built until it is driven on the real page.** N21's city name passed every unit
 test and reached the URL and nowhere else, because the lobby generates its region *before* the name
 is typed and hands that world on. Only `lobby_smoke` saw it. Unit tests check the parts; the gate

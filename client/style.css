@@ -164,8 +164,7 @@ button, [role="button"] {
 
 /* --- the bottom panel ------------------------------------------------------ */
 
-/* `.hud-panel` was the bottom panel; the bottom bar replaced it in P29 and
-   carries its own rules above. Nothing renders with this class any more. */
+
 
 /* --- interface skins (P29) --------------------------------------------------
    **Chrome only.** Kjell's call: the world keeps `plain` and ruling 022 stands,
@@ -254,6 +253,15 @@ button, [role="button"] {
   flex-direction: column;
   gap: 0.35rem;
   flex: 0 0 auto;
+}
+/* The dialog openers, under a rule: they open a modal rather than a drawer. */
+.rail-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
 }
 .rail-button {
   min-height: 44px;
@@ -346,9 +354,45 @@ button, [role="button"] {
     align-items: stretch;
     gap: 0.4rem;
   }
-  .hud-rail { flex-direction: row; flex-wrap: wrap; }
+  .hud-rail { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
+  .rail-extras { flex-direction: row; margin: 0; padding: 0 0 0 0.45rem; border-top: none;
+    border-inline-start: 1px solid color-mix(in srgb, var(--fg) 20%, transparent); }
   .rail-button { flex: 1 1 auto; text-align: center; }
   .hud-drawer { width: 100%; max-height: 46vh; }
+}
+
+/* The right-hand column: the advisor above, the inspector below. Mirrors
+   `.hud-side` on the left, and stacking them is what stops the tutorial guide
+   and a tile inspection landing on top of each other. */
+.hud-aside {
+  position: absolute;
+  inset-inline-end: 0.6rem;
+  top: calc(var(--top-height, 3.6rem) + 0.6rem);
+  bottom: calc(var(--panel-height, 9rem) + 0.6rem);
+  width: min(320px, 40vw);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  z-index: 3;
+  pointer-events: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.hud-aside > * { pointer-events: auto; flex: 0 0 auto; }
+
+@media (max-width: 620px) {
+  /* No room for a column beside the map; the two panels sit over it, and the
+     inspector is the one you opened deliberately, so it comes first. */
+  /* A card under the top bar, not a full-height column: at 390px a column
+     spanning the screen covers the middle of the map, and a drag meant for the
+     ground lands on the advisor. */
+  .hud-aside {
+    inset-inline: 0.6rem;
+    width: auto;
+    bottom: auto;
+    max-height: 38vh;
+  }
 }
 
 /* --- the bottom bar --------------------------------------------------------- */
@@ -545,10 +589,7 @@ button, [role="button"] {
 /* --- the advisor (gamedesign.md §11.2) ------------------------------------- */
 
 .hud-advisor {
-  position: absolute;
-  top: 3.4rem;
-  inset-inline-start: 0.6rem;
-  width: min(320px, 60vw);
+  width: 100%;
   padding: 0.7rem 0.9rem;
   border-radius: 12px;
   background: color-mix(in srgb, var(--bg) 94%, transparent);
@@ -770,7 +811,7 @@ button, [role="button"] {
 /* Every button in the top bar, so a skin reaches all of them. `.hud-speed`
    and `.hud-newcity` had no rule at all and fell back to the browser's own
    button, which stayed light grey under the dark skin. */
-.lobby-settings, .hud-settings, .hud-help, .hud-stats, .hud-speed, .hud-newcity {
+.lobby-settings, .hud-speed, .hud-newcity {
   min-height: 40px;
   padding: 0 0.85rem;
   border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
@@ -788,7 +829,6 @@ button, [role="button"] {
 :root[data-contrast="high"] {
   --accent: var(--fg);
 }
-:root[data-contrast="high"] .hud-panel,
 :root[data-contrast="high"] .hud-top,
 :root[data-contrast="high"] .hud-inspector,
 :root[data-contrast="high"] .hud-advisor,
@@ -1075,10 +1115,7 @@ button, [role="button"] {
 /* --- inspector ------------------------------------------------------------- */
 
 .hud-inspector {
-  position: absolute;
-  top: 3.4rem;
-  inset-inline-end: 0.6rem;
-  width: min(300px, 46vw);
+  width: 100%;
   max-height: 55vh;
   overflow: auto;
   padding: 0.6rem 0.8rem;
@@ -1108,7 +1145,6 @@ button, [role="button"] {
   .hud-toolbar::-webkit-scrollbar,
   .hud-overlays::-webkit-scrollbar,
   .hud-saves::-webkit-scrollbar { display: none; }
-  .hud-panel { gap: 0.3rem; padding: 0.4rem 0.6rem; }
   .hud-rci { height: 36px; }
   .hud-alerts { flex-wrap: nowrap; overflow-x: auto; }
   .hud-legend { flex-wrap: nowrap; overflow-x: auto; }

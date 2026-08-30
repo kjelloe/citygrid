@@ -954,15 +954,21 @@ The always-visible HUD should contain:
 - Tax rate.
 - Monthly income, upkeep and net.
 
-> **As built (slice N11).** The toolbar is two scrolling rows: tools on the
-> first, and every building in `data/buildings.json` on the second, grouped
-> power / water / services / amenities and cheapest first, each button quoting
-> its price at the current difficulty. Rows scroll rather than wrap at every
-> width, so the panel stays bounded as the catalogue grows.
+> **As built (slices N11, N24).** One **bottom bar**: demand, alerts, the
+> readout, the tools, and a **Build** button opening a popover above it with
+> every building in `data/buildings.json`, grouped power / water / services /
+> amenities and cheapest first, each quoting its price at the current
+> difficulty. Picking one closes the popover.
 >
-> The budget is an **inline row**, not the full-screen sheet §13.2 suggests: a
-> tax slider and one line of books. Per-service funding is not built — see
-> `playtest-notes.md`.
+> Overlays, the budget and saving are behind a **left rail**, one drawer open at
+> a time — they were three permanent rows and the panel had reached 55% of a
+> phone screen. Help, Statistics and Settings sit on the same rail, under a
+> rule, because they open a panel too.
+>
+> The budget is a tax slider, one line of books and three funding steps (§9.4),
+> not the full-screen sheet §13.2 suggests.
+>
+> **Chrome is 32% of a 1280×720 window and 41% of a 390×844 phone.**
 
 > **As built (slice N13).** A refused command names its reason in the readout,
 > from `result.*` — before the click for anything the reducer can quote, and
@@ -1738,7 +1744,7 @@ Half of "every action has visible consequences" is audible. Sound carries inform
 > | 200% text | **Done and gated (slice N14)** — both screens, desktop and phone: no sideways scroll, no clipped text. Found and fixed one failure, the top bar on a 390px phone |
 > | Touch targets | **Done and gated** — every control ≥ 40 px, checked on a 390×844 viewport by `ui_smoke` and `lobby_smoke` |
 > | Reduced motion | **Done** — a setting with Follow-the-system / On / Off, and an explicit On or Off beats `prefers-reduced-motion` |
-> | High contrast | **Done** — a setting; drops transparency and blur, which is what a panel showing the moving city through it cannot have a contrast ratio against |
+> | High contrast | **Done, and now actually measured** — it had been setting `--bg`/`--fg` while 61 rules used the system colours `Canvas`/`CanvasText`, which those variables cannot touch, so for two slices it repainted almost nothing. `a11y_smoke` asserts computed colours change, not that the attribute landed |
 > | Keyboard operation | **Done (slice N14, ruling 028)** — each toolbar is one tab stop with arrow, Home and End navigation; the map is focusable and pans with the arrows; shortcuts for every frequent tool; an open dialog owns the keyboard. Gated by `a11y_smoke` |
 > | Plain-language statistics | **Done (slice N15)** — ten series, each with a sentence saying what the number is and which direction is good; the sparkline is inline SVG carrying that sentence as its label, so a chart and its text alternative cannot drift |
 

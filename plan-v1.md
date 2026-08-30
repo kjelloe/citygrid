@@ -289,6 +289,10 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 
 | **N22** | **`./run.sh` was broken** (P27) — the CSP blocked the importmap | S | Kjell opened localhost and got "Failed to resolve module specifier three". `tools/serve.mjs` sends `default-src 'self'` with no `script-src`, which blocks the inline importmap — and **all eight gates stand up their own server**, so none of them ever ran the one `run.sh` starts | **Done.** The server hashes every inline script in `index.html` at startup and puts those hashes in `script-src` — hashes, not `'unsafe-inline'`, and computed from the file served so the policy cannot drift. `tools/serve_smoke.mjs` spawns the real server, loads the bare origin, listens for **console** errors as well as page errors, and starts a city |
 
+| **N23** | **The map was lying** (P29) — zoning, power lines and water mains were not drawn | S | A playtest: "trying to zone an area, but nothing keeps… only roads work". Three real rendering gaps, not a UI preference | **Done.** Empty zoned lots take a tint that fades once built on; power lines draw on every tile they cover rather than every third (LOD dropped poles below 14px/tile); water mains were behind `options.underground === true`, which **nothing anywhere passed** — they had never been rendered. Verified by pool counts on the real page. The start screen also got §26.3's diorama |
+| **N24** | **The interface the playtest asked for** (P29) | M | The bottom panel was seven stacked rows at 55% of a phone screen | **Done.** One bottom bar with a **Build** popover; a **left rail** with drawers for overlays, tax and saves; **Auto** as the default overlay, following the tool; three UI skins as custom properties. Chrome **56% → 32%** on a 1280×720 window. Found on the way: `[hidden]` hid nothing (any class rule setting `display` beats it — the minimap's own toggle had never worked) and 61 rules used system colours `--bg`/`--fg` could not reach, so high contrast had done almost nothing since N13 |
+| **N25** | **Docs, and the collisions the restructure left** (P30) | S | Moving four things at once left the advisor under the rail, and two gates checked that an attribute landed rather than that it changed a pixel | **Done.** The advisor and inspector became a right-hand column (the advisor had been at the top of the LEFT edge, exactly where the rail went — the tutorial guide, under the overlay buttons). `a11y_smoke` now asserts high contrast and each skin **repaint** real computed colours. `test/overlay-auto.test.js`. Q21 answered as **A25** |
+
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits
 deliberately after N6 and N7: tuning a balance before disasters and traffic exist
@@ -313,7 +317,6 @@ by number from the code they create.
 | Q18 | Which mayor ranks unlock which advisor personas, and does the player then pick freely? | C3 |
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
-| Q21 | The HUD panel now takes 51% of a 720px desktop window. Which row goes, or does it collapse? | The playtest |
 
 ## What would make us stop and re-plan
 

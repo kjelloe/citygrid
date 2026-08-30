@@ -202,6 +202,39 @@ try {
   });
   check("muting reaches the mixer", muted === false, `play() returned ${muted}`);
 
+  // --- high contrast and skins must CHANGE something -------------------------
+  //
+  // `lobby_smoke` checks that `data-contrast` reaches the document. That was
+  // the whole check for two slices, while 61 rules used the system colours
+  // `Canvas`/`CanvasText`, which `--bg`/`--fg` cannot touch — so high contrast
+  // set an attribute and repainted almost nothing (P30). Measuring the part
+  // instead of the whole, again.
+  const repaint = await page.evaluate(() => {
+    const root = document.documentElement;
+    const sample = () => {
+      const bar = getComputedStyle(document.querySelector(".hud-bottom"));
+      const button = getComputedStyle(document.querySelector("#tools button"));
+      return [bar.backgroundColor, button.backgroundColor, button.color, button.borderTopColor].join("|");
+    };
+    root.removeAttribute("data-contrast");
+    root.removeAttribute("data-skin");
+    const plain = sample();
+    root.dataset.contrast = "high";
+    const high = sample();
+    root.removeAttribute("data-contrast");
+    root.dataset.skin = "dark";
+    const dark = sample();
+    root.dataset.skin = "retro";
+    const retro = sample();
+    root.removeAttribute("data-skin");
+    return { plain, high, dark, retro };
+  });
+  check("high contrast actually changes the interface's colours",
+    repaint.plain !== repaint.high, `${repaint.plain} -> ${repaint.high}`);
+  check("each skin actually repaints the interface",
+    new Set([repaint.plain, repaint.dark, repaint.retro]).size === 3,
+    JSON.stringify({ clean: repaint.plain, dark: repaint.dark, retro: repaint.retro }));
+
   // --- the settings dialog is a real modal ----------------------------------
   await page.click("#settings");
   await page.waitForSelector("dialog.settings[open]");
