@@ -203,6 +203,11 @@ scripted events, completion tiers, and region progression.
 than a nicety, and `specs/asset-list.md` is the drawing brief — every placeholder names the asset
 it stands in for, so the list is generated from the code that consumes it and cannot drift.
 
+**Settled further** P13: the probe reported and **plain ships** (ruling 022). The seam stays and
+`pixel` and `painted` stay selectable in it, but only plain receives art investment — and because
+plain has no atlas at all, `asset-list.md` becomes a list of parameters and shapes rather than of
+drawings. That is most of why it was chosen.
+
 ### A19 — Alternate advisor personas (Q14)
 **Answered** P9. A **cosmetic unlock earned by mayor rank**.
 
@@ -232,6 +237,34 @@ assumed. Simplest and most co-operative: nobody has to argue about whose distric
 
 ---
 
+### A23 — The new-game screen (Q22)
+**Answered** P19. **Build the singleplayer one now, as `client/lobby/`, shaped so slice 5.2 adds
+seats to it rather than replacing it.**
+
+**Changed:** `client/lobby/options-model.js` and `new-game.js`. The option rows are a table, not a
+fixed form, so 5.2 appends `seats` and `privacy` rows; `optionsFor(choices, seats)` already takes a
+seat count, so the room's options record and a singleplayer game are built by one code path.
+
+The alternative — one screen, built once, at 5.2 — left the game unable to start a second city
+until Wave 5, and left three balanced, measured difficulties unreachable in the meantime.
+
+---
+
+### A24 — Localising the quest text (Q23)
+**Answered** P19. **Write the missing content FIRST, then move all of it into the catalogues in
+one pass.** Both halves done: 13 quests became 20, and every title, line and choice is now a key.
+
+**Changed:** quest data carries `titleKey`/`textKey`; `validateQuests` requires keys rather than
+prose; `test/quests.test.js` checks every key against both catalogues and refuses a quest that
+carries a raw string. The assumption written against this question was to leave the text until the
+content was final — the ordering it recommended was right, the waiting was not, because `t()`
+returns its own argument on a miss and English would have shipped as its own translation without
+anything going red.
+
+**Norwegian is drafted, not reviewed** — A21 stands: Kjell reviews it.
+
+---
+
 ---
 
 # OPEN QUESTIONS
@@ -239,12 +272,13 @@ assumed. Simplest and most co-operative: nobody has to argue about whose distric
 *Nothing below is decided. Each item names what it blocks and when an answer is actually needed —
 none of them block the next slice. `plan-v1.md` carries the same numbers.*
 
-*Q2–Q17 are all answered. These three arose from the P9 answers themselves. None blocks the
-current work — each has a stated assumption being built against, and each is cheap to change while
-it stays small.*
+*Q2–Q17 are all answered, as are Q22–Q23 (P19). Q18–Q20 arose from the P9 answers themselves;
+Q21 arose from slice N11. None blocks the current work — each has a stated assumption being built against, and each is
+cheap to change while it stays small.*
 
 | # | Question | Assumption being built against | Needed by |
 |---|---|---|---|
 | **Q18** | Which mayor ranks unlock which advisor personas? Five ranks, two alternates — so which two, and does the player choose freely once unlocked or is each tied to its rank? | Both alternates unlock together at rank 3 (City Mayor), and the player picks freely from what they have earned | Wave 4, content lane C3 |
 | **Q19** | In a split-income room, does a seat in **regency** still receive its share? Paying an absent player rewards absence; not paying them punishes someone who left properly and told the deputy what to do. | An absent seat still receives its share — the design is built so that leaving is safe, and docking pay for it contradicts that | Slice 6.1 |
 | **Q20** | When a player leaves permanently and their land is released to unclaimed, what happens to their **money**? | It stays with the seat, so a returning player finds their treasury as they left it; if the seat is reused by someone new, the money goes with the land back to nothing | Slice 5.4 |
+| **Q21** | The HUD panel is **371 px of a 720 px desktop window** and 343 px of 844 px on a phone, now that it carries a build row and a budget row. Every row on it is something §13.1 asks for. Which one goes — or does it collapse? | Nothing goes yet: both viewports pass their gates, and the desktop number is a short-window problem rather than a phone one | The playtest |

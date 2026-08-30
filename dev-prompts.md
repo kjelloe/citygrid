@@ -174,3 +174,110 @@ six-hour window.
 **Produced:** rulings 010 and 014 updated; `dev-questions.md` A19–A22; the split
 rule confirmed in `data/modes.json`; three new open questions (Q18–Q20) that
 these answers raised.
+
+## P10 — Art-direction page, then N1 with a configurable budget
+
+> Please make an art-direction.html file and then go ahead with N1, but do make the budget configurable for the LOD system i.e start at 80k
+
+## P11 — More house references; remake plain with soft lighting
+
+> For art direction, please review the additional screenshots from Transport-World in @debugging/transport-world-2.png  and @debugging/transport-world-3.png  to see level of detail on houses. The remake plain 1 soft lighting, because all three candidates looked very similar
+
+## P12 — Split walls and roof; what else gets us closer to the reference
+
+> Yes please split Fixing it properly    means splitting a building into two instanced meshes (walls, roof) with independent colours . Anything else we can do to get closer to Transport World refernce pictures 2 and 3?
+
+## P13 — Plain ships; update everything, then continue
+
+> Ok, go for plain    Soft cool light, bright cosy palette, shadows. The cheapest to produce and the most legible. Then update docs, specs, md, skills, memories and  tests, and then go ahead with next slices please
+
+## P14 — Sync everything, then the next slice
+
+> Please update docs, specs, MD,  memories, skills and tests. Go ahead with next slice
+
+## P15 — Build N5 onwards unattended, and record the decisions
+
+> 1update docs, specs, MD, memories,     skills and tests. then  build all the remaining  parts from N5 and onwards , as I have to step away for 7 hours and would like to see a complete game when I get back. Please record decisions when I am away so we can re-assess after when I playtest
+
+
+## P16 — Review the omissions, then how to get to a working version
+
+> Please review omissions, things we have missed. And then sum up what we need to do to get to a working version. And then suggestions options on how to solve each
+
+**Produced:** the audit that found the blocking omission — no building-placement
+tool in the UI, so no plant, so no growth — and that `tools/mvp_acceptance.mjs`
+had validated criteria 3 and 9 through `apply()` rather than through the
+interface. Ranked list of the remaining gaps with options for each.
+
+## P17 — Build the first four
+
+> Go ahead with 1,2,3,4 please
+
+Items 1–4 of the audit's ranked list: the building-placement UI, an acceptance
+script that drives the interface for criteria 3 and 9, a tax and budget panel,
+and i18n for the whole HUD.
+
+**Produced:** slice N11. Ruling 026.
+
+## P18 — Review the omissions again, sync everything, and how to get to a working version
+
+> Please review omissions, things we have missed. Then update docs, specs, MD, skills memories and tests. And then sum up what we need to do to get to a working version. And then suggestions options on how to solve each
+
+**Produced:** the audit that found the game could only ever play one city — no
+new-game screen, so seed and size were URL parameters and three balanced,
+measured difficulties were unreachable. Also: quest text unlocalised, department
+funding absent with a comment claiming otherwise, four dead exports in
+`capabilities.js`. `test/omissions.test.js`, ruling 026's list of what is
+deliberately not built, and a three-wave-stale Progress section rewritten.
+
+## P19 — Build the new-game screen, then the quest content
+
+> go ahead with (1) then (2a)
+
+Items 1 and 2a of the audit's ranked list: the new-game screen as
+`client/lobby/`, shaped so slice 5.2 adds seats; then the six missing quests
+written first and all of them moved into the i18n catalogues in one pass.
+
+**Produced:** slice N12. Answers A23 (Q22) and A24 (Q23).
+
+## P20 — Audit again, sync everything, and keep building
+
+> Please review omissions, things we have missed. Then update docs, specs, MD, skills memories and tests. Then go ahead with next parts to build
+
+**Produced:** slice N13. The audit found that **every refused action in the
+game's history had been silent** — seven `result.*` strings carried in both
+catalogues since the first commit, and `game.js` passing the reason to a
+`setPreview` that ignored it. Also: no settings screen, and a Continue button in
+the lobby that nothing ever passed. Ruling 027 and `test/reachability.test.js`.
+
+## P21 — Audit again, sync, and build what was suggested
+
+> Please review omissions, things we have missed. Then update docs, specs, MD, skills memories and tests. Then go ahead with next parts as suggested
+
+**Produced:** slice N14 — slice 4.5's accessibility half. The audit found
+`?debug=1` replacing the game with an error screen (`client/debug.js` was
+imported from the first commit and never written), and four `role="toolbar"`
+rows promising a keyboard pattern that did not exist. Ruling 028.
+
+## P22 — Audit, then statistics and the minimap
+
+> Please review omissions, then go ahead with statistics and minimap
+
+**Produced:** slice N15 — slice 4.6 (history buffers, graphs, plain-language
+interpretation) and 4.1's last piece, the minimap. The audit's finding was that
+**`test/fixtures/` is empty**: the founding and two-player fixtures, the fixture
+runner and `tools/repin.mjs` were never written, so the project's headline
+tripwire does not exist and `CLAUDE.md`'s "hashed fields live in two places" is
+one place.
+
+## P23 — Sync, audit, and statistics and the minimap
+
+> Please update docs, specs, MS, skills. memories and tests, then review omissions and things forgotten, then go ahead with statistics and minimap
+
+Statistics and the minimap had landed the previous turn as slice N15, so this
+was read as "finish them": the audit was pointed at the new code itself.
+
+**Produced:** slice N16 — two defects in N15's own work. The minimap only
+repainted when the player built, so growth, fire and disasters never reached it;
+and it carried `role="img"` while being focusable and handling keys, which is
+ruling 028's defect in the code written to honour ruling 028.
