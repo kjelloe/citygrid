@@ -97,3 +97,32 @@ test("the service worker keeps exactly one cache", () => {
   // with no offline app rather than one missing file.
   assert.equal(/cache\.addAll\(/.test(sw), false, "addAll makes one 404 a total install failure");
 });
+
+// --- the update that never arrived (P33) -------------------------------------
+
+test("a new build reaches a player who already has the app", () => {
+  // The version handshake in sw.js was never triggered. A browser re-installs
+  // a service worker when the WORKER'S OWN BYTES change, and sw.js is static —
+  // the version lives in the manifest it fetches. So `install` never ran
+  // again, `activate` never deleted the old cache, and a returning player was
+  // served the same build for ever. Reproduced: a changed file plus a changed
+  // manifest version, two reloads, still the old bytes.
+  //
+  // The registered URL carries the version, so a new build is a new script.
+  const main = readFileSync(join(repoRoot, "client", "main.js"), "utf8");
+  assert.match(main, /precache\.json/, "main.js never reads the version it should register with");
+  assert.match(main, /register\(`\.\/sw\.js\?v=\$\{[^}]+\}`/,
+    "the worker is registered at a URL that cannot change between builds");
+});
+
+test("a worker that takes over reloads the page exactly once", () => {
+  // The page is already running the old modules when the new worker claims it;
+  // without a reload the player has the new cache and the old game until they
+  // happen to reload. Guarded on there having BEEN a controller, or the first
+  // ever visit reloads itself for nothing.
+  const main = readFileSync(join(repoRoot, "client", "main.js"), "utf8");
+  assert.match(main, /controllerchange/);
+  assert.match(main, /navigator\.serviceWorker\.controller/,
+    "the reload is not guarded on a worker having been in charge already");
+  assert.match(main, /location\.reload\(\)/);
+});

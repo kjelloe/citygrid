@@ -1023,7 +1023,7 @@ Buttons should be large enough for touch use. Hover-only information must also b
 Desktop:
 
 - Left drag: pan or select, depending on mode.
-- Right drag or middle drag: rotate.
+- Right drag: pan. Middle drag: rotate.
 - Mouse wheel: zoom.
 - Keyboard: pan and rotate shortcuts.
 - Double-click: focus selected object.
@@ -1038,14 +1038,22 @@ Mobile:
 
 The camera should snap to comfortable angles and avoid disorienting free rotation.
 
-> **As built (slices N21, N27).** Double-click focuses the tile under the pointer
-> — there is no selection model, so the tile *is* the object. **Right drag
-> rotates and middle drag pans** (N27). The rotation is not free: a drag
-> accumulates and fires a quarter turn every 140 pixels, so it steps the same
-> four snapped angles Q and E do and cannot fight ruling 006. Both work with a
-> tool in hand, which is the point — they are the desktop equivalent of the
-> second finger. N21 had recorded these as panning; in fact `onPointerDown`
-> returned early on both buttons and they did nothing at all until N27.
+> **As built (slices N21, N27, N28).** Double-click focuses the tile under the
+> pointer — there is no selection model, so the tile *is* the object. **Right
+> drag pans; middle drag rotates** (N28). Both work with a tool in hand, which
+> is the point — they are the desktop equivalent of the second finger.
+>
+> The rotation is not free: a drag accumulates and fires a quarter turn every
+> 140 pixels, so it steps the same four snapped angles Q and E do and cannot
+> fight ruling 006.
+>
+> Two slices got this wrong in different ways. N21 recorded both buttons as
+> panning while `onPointerDown` returned early on them and they did nothing at
+> all. N27 woke them up and put **rotation** on the right button, which is not
+> what P32 asked for and is the wrong feel besides: a snapped quarter turn every
+> 140 pixels reads from the hand as nothing happening, then the world flipping —
+> the N28 playtest reported the button as dead. Pan is one-for-one with the
+> pointer, so it is alive from the first pixel.
 >
 > **The pitch is fixed** at ~35.26°, the angle that puts one tile's diagonal on
 > the screen's horizontal. Asked about at the N27 playtest and kept: a moving
@@ -1784,7 +1792,7 @@ A player may also spectate before taking a seat, which is the gentlest tutorial 
 ### 32. Content inventory
 
 | Asset class | First release target |
-> | Installable / offline | **Done (slice N19)** — one versioned cache, a manifest, and `tools/offline_smoke.mjs` which turns the network off and then plays. Icons are SVG; a launcher that insists on PNG will not install it |
+> | Installable / offline | **Done (slices N19, N28)** — one versioned cache, a manifest, and `tools/offline_smoke.mjs` which turns the network off and then plays. Icons are SVG; a launcher that insists on PNG will not install it. N28 made the cache replaceable: the worker is registered at `./sw.js?v=<version>`, because a browser re-installs one only when its own bytes change, and `tools/update_smoke.mjs` deploys twice to prove a new build arrives (ruling 031) |
 |---|---|
 | Building models | About sixty — three zone categories across four development levels and two value tiers, plus civic and utility buildings |
 | Terrain and props | About twenty-five — trees, rocks, shoreline, rubble, fountains, poles, pipes |

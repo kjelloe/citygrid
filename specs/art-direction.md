@@ -241,8 +241,9 @@ the triangle budget (ruling 019), never by the artist.
 
 ### 3.5 Ground, network and props
 
-Roads are flat quads with a centre marking that turns to follow the road's own
-direction; markings vanish below 20 pixels a tile. Houses and civic buildings
+Roads are **skirted quads** — a flat top face with sides hanging below it — with
+a centre marking that turns to follow the road's own direction; markings vanish
+below 20 pixels a tile. Houses and civic buildings
 stand on a garden plot, which is what stops a suburb reading as buildings
 dropped onto tarmac. Power poles are drawn every third tile of a wire run.
 
@@ -252,10 +253,25 @@ own connection mask names, each arm reaching exactly half a tile so two
 neighbours meet in the middle with no seam. Anything less leaves a gap at every
 tile boundary, which is what made a run of ten poles read as ten unconnected
 dots at the N27 playtest. Each network keeps its own silhouette rather than
-borrowing the road's: **wire** is a pale grey line thinner than a road marking,
-riding above the ground; **water** is a wider flat blue main below it. The rule
-generalises — any future network (rail, transit) draws a hub and arms from its
-mask, and never a tile-shaped patch.
+borrowing the road's: **wire** is a pale grey line thinner than a road marking;
+**water** is a wider blue main. The rule generalises — any future network (rail,
+transit) draws a hub and arms from its mask, and never a tile-shaped patch.
+
+**Three rules the N28 playtest added, because the runs still read as dots
+(ruling 030's amendment):**
+
+- **One width from end to end.** N27's hub was wider than its arms, and at city
+  zoom the arm falls under a pixel while the hub does not: a bead on a string.
+  Hub and arm share a width; the networks differ from each other by width and
+  colour.
+- **Every ground layer that must read as continuous has a skirt.** The terrain
+  is one surface whose corners are the average of the four tiles meeting there,
+  so a flat layer drawn at its own tile's height leaves a vertical step wherever
+  two neighbours differ — and at 35° the camera looks straight through it into
+  the grass. Roads showed it as a green seam across every slope.
+- **A network crosses a road, it does not dive under it.** Both were drawn below
+  the road surface, so a run crossing a street broke in two. The water main is
+  underground in the fiction and above the tarmac in the picture.
 
 ### 3.6 What plain deliberately does not have
 

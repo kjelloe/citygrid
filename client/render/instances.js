@@ -8,7 +8,7 @@
 
 import * as THREE from "three";
 import { buildingColour, PLAYER_COLOURS, OVERLAY_COLOURS } from "./palette.js";
-import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
+import { PALETTES, makeMaterial, slabGeometry, flatGeometry, paveGeometry, faceContrastFor } from "./style-assets.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, tuftVariants, lampGeometry,
@@ -53,18 +53,27 @@ export function createInstances(scene, styleName = "plain") {
   // at push time — so passing it here too drew each of them at the SQUARE of
   // its colour. A mid-grey road (0x6f7278, 0.44) came out at 0.19, which is why
   // the ground read as near-black asphalt in every style.
-  make("road", flatGeometry(styleName, 1, 1, 0.05), 0xffffff, 24000);
+  // SKIRTED, not flat. A flat quad sits at its own tile's height while the
+  // terrain under it is continuous, so two road tiles a couple of elevation
+  // levels apart leave a step the camera looks straight through — the green
+  // seam across every slope the playtest saw (P33).
+  make("road", paveGeometry(styleName, 1, 1, 0.05, 0.4), 0xffffff, 24000);
   make("mark", flatGeometry(styleName, 0.06, 0.34, 0.056), 0xffffff, 24000);
   make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), 0xffffff, 24000);
   // A hub and four possible arms per tile, so a run READS as a run. A square
   // per tile left a dotted line with a gap at every boundary — the playtest
   // called it "just a dot on each tile" (P32).
-  make("wireHub", flatGeometry(styleName, 0.20, 0.20, 0.02), 0xffffff, 40000);
-  make("wireArm", flatGeometry(styleName, 0.14, 0.56, 0.02), 0xffffff, 80000);
-  // Wider and softer than the wire, and lower: a main under the street rather
-  // than a cable over it.
-  make("pipeHub", flatGeometry(styleName, 0.30, 0.30, 0.014), 0xffffff, 40000);
-  make("pipeArm", flatGeometry(styleName, 0.22, 0.56, 0.014), 0xffffff, 80000);
+  //
+  // ONE WIDTH from end to end. N27 gave the hub 0.20 and the arm 0.14, and at
+  // city zoom the arm falls under a pixel while the hub survives: a bead on a
+  // string, which is the same complaint again (P33). The skirt is what carries
+  // the run over a slope.
+  make("wireHub", paveGeometry(styleName, 0.16, 0.16, 0, 0.3), 0xffffff, 40000);
+  make("wireArm", paveGeometry(styleName, 0.16, 0.56, 0, 0.3), 0xffffff, 80000);
+  // Wider and softer than the wire: a main under the street rather than a
+  // cable over it. Its own silhouette, so the two never need a legend.
+  make("pipeHub", paveGeometry(styleName, 0.28, 0.28, 0, 0.3), 0xffffff, 40000);
+  make("pipeArm", paveGeometry(styleName, 0.28, 0.56, 0, 0.3), 0xffffff, 80000);
   // Zoned but not yet built. Without this a painted zone is INVISIBLE until
   // something develops on it — the player draws a district and the map shows
   // nothing back (found in playtest, P29). A flat tint just above the ground,
@@ -298,7 +307,10 @@ export function updateInstances(state, pools, options = {}) {
       // drawn towards each neighbour that is actually part of the same run and
       // the line closes across the tile boundary.
       if (state.tiles.wire[index] & NET_PRESENT) {
-        connect(pools.wireHub, pools.wireArm, state.tiles.wire[index], x, y, h + 0.016, palette.wire);
+        // ABOVE the road surface (0.05), not under it. Both networks were drawn
+        // below it, so a run crossing a street broke in two — the boundary gap
+        // again, one tile wide (P33).
+        connect(pools.wireHub, pools.wireArm, state.tiles.wire[index], x, y, h + 0.07, palette.wire);
         // A pole per tile is a picket fence down every street, and it buries
         // the city in clutter — every third, and only where one is resolvable.
         if (poles && ((x + y) % 3 === 0)) {
@@ -306,7 +318,7 @@ export function updateInstances(state, pools, options = {}) {
         }
       }
       if (state.tiles.pipe[index] & NET_PRESENT) {
-        connect(pools.pipeHub, pools.pipeArm, state.tiles.pipe[index], x, y, h + 0.014, PIPE_COLOUR);
+        connect(pools.pipeHub, pools.pipeArm, state.tiles.pipe[index], x, y, h + 0.064, PIPE_COLOUR);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
         push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, 0x5a5048);

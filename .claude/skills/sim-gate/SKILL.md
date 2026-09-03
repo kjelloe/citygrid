@@ -34,15 +34,32 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Access gate** | `node tools/a11y_smoke.mjs` | Keyboard only, 200% text, high contrast and each skin repainting real colours |
 | **Lobby gate** | `node tools/lobby_smoke.mjs` | New game, settings, Continue — hash for hash |
 | **Offline gate** | `node tools/offline_smoke.mjs` | Network off: does it open, start, build and save? |
+| **Update gate** | `node tools/update_smoke.mjs` | Does a NEW build ever reach a player who already has the app? |
 
-**Ten browser gates, and they are cheap to run all of them.** Do:
+**Eleven browser gates, and they are cheap to run all of them.** Do:
 
 ```
 for g in serve_smoke reach_smoke ui_smoke a11y_smoke lobby_smoke \
-         mvp_acceptance save_smoke play_smoke offline_smoke; do
+         mvp_acceptance save_smoke play_smoke offline_smoke update_smoke; do
   printf "%-16s " "$g"; node tools/$g.mjs 2>&1 | tail -1
 done
 ```
+
+### Green gates say nothing if the player is running a different build
+
+Two of the three items in the P33 playtest were reports about code that had
+shipped three days earlier, been gated ten ways, and **never reached a
+browser**: the service worker served cache-first and only ever installed once,
+because a browser re-installs a worker when the WORKER'S OWN bytes change and
+sw.js is static (ruling 031). Every gate was green the whole time, because every
+gate opens a clean profile.
+
+So: **when a playtest reports behaviour that the code says is impossible, check
+delivery before you check the code.** Correct code plus a user who disagrees is
+the shape of a delivery problem. `update_smoke` is the standing answer — it is
+the only gate that opens the app twice with a deploy in between — and any
+capability that is only ever exercised on a clean profile is untested by
+definition.
 
 ### A browser gate is a program that can be wrong about the game
 
@@ -61,6 +78,12 @@ that have actually happened, as rules:
   bytes it just saved. One run in four, and it looks like a save bug.
 - **Start from a known state, not from wherever the last step left things.** A
   toggle test that begins open measures the opposite of what it claims.
+- **Measure a delta, not an absolute.** "Right drag does not build" failed at 13
+  paved tiles that four checks earlier had deliberately laid down. Ask what
+  changed across the step, not what the world contains.
+- **Retry through a navigation the gate itself provoked.** `update_smoke` asked
+  the page a question while the page was reloading — which is the behaviour it
+  exists to prove — and got `Execution context was destroyed`.
 
 Before believing a gate's red, ask what the gate did to the game.
 

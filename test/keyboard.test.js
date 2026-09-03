@@ -90,19 +90,32 @@ test("the zone shortcuts are digits, not R, C and I", () => {
 
 test("right and middle drag are handled, not dropped", () => {
   // They returned early: the comment said they panned and the code did nothing
-  // at all, so right-drag had never worked. §13.4 asks for rotate on right or
-  // middle drag; middle also pans, because a wheel button that only turns the
-  // camera is one most people never press twice.
+  // at all, so right-drag had never worked (P32).
   assert.match(controller, /event\.button === 1 \|\| event\.button === 2/);
   assert.equal(/event\.button === 1 \|\| event\.button === 2\) return;/.test(controller), false,
     "right and middle button events are still dropped");
   assert.match(controller, /drag\.button/, "there is no drag state for the extra buttons");
 });
 
-test("dragging with a button turns the camera in whole quarters", () => {
+test("right drag PANS, which is what was asked for", () => {
+  // P32 asked for "right mouse button - hold down - to pan the map view" and
+  // N27 shipped rotation on it instead: a snapped quarter turn every 140px,
+  // which from the hand feels like nothing happening and then the world
+  // flipping. The map moves with the pointer, one for one (P33).
+  const move = controller.slice(controller.indexOf("const onPointerMove"), controller.indexOf("const onPointerUp"));
+  const right = move.slice(move.indexOf("if (drag.button === 2)"));
+  assert.ok(move.includes("if (drag.button === 2)"), "the right button has no branch of its own");
+  assert.match(right.slice(0, right.indexOf("} else")), /panBy\(renderer\.view/,
+    "right drag does not pan");
+  assert.match(right.slice(0, right.indexOf("} else")), /clampToMap/,
+    "a right-drag pan can leave the map behind");
+});
+
+test("middle drag turns the camera in whole quarters", () => {
   // Ruling 006: four snapped angles. A drag accumulates and fires in steps,
   // exactly as the two-finger twist does — a continuous spin would be the
-  // disorienting free rotation the ruling exists to avoid.
+  // disorienting free rotation the ruling exists to avoid. The wheel button
+  // keeps it now that the right button pans.
   assert.match(controller, /PIXELS_PER_TURN/);
   assert.match(controller, /while \(Math\.abs\(drag\.turned\) >= PIXELS_PER_TURN\)/);
   assert.match(controller, /rotate\(renderer\.view, direction\)/);

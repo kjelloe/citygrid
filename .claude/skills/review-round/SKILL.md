@@ -103,6 +103,15 @@ with a gap at every boundary for four slices: the pool counts were right, the ov
 the simulation was right, and a run of ten poles read as ten dots (ruling 030). No test can see
 this and no gate has ever caught one. The only instrument is a person, or a screenshot somebody
 actually looks at — so when a slice changes what is drawn, **look at it** before reporting it done.
+It took two playtests: N27 joined the runs and N28 found them still reading as dots, because the hub
+was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
+player uses**, not only at the zoom that proves the change.
+
+**A green suite says nothing about which build the player is running.** The service worker served
+cache-first and re-installed only when its own bytes changed, which they never did — so two P33
+playtest items were reports about code that had shipped three days earlier and could not arrive
+(ruling 031). Every gate opens a clean profile and every gate was green. When a report contradicts
+what the code plainly does, check delivery before you check the code.
 
 **A setting is not built until a pixel changes.** High contrast set an attribute for two slices
 while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate checked only that the

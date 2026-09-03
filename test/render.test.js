@@ -320,3 +320,52 @@ test("an isolated network tile still draws its hub", () => {
   const maskAt = helper.indexOf("const mask");
   assert.ok(hubAt >= 0 && hubAt < maskAt, "the hub is drawn conditionally on the mask");
 });
+
+// --- the ground closes up (P33) ----------------------------------------------
+
+test("a road tile has a skirt, so an elevation step is not a green seam", () => {
+  // The road quad is FLAT and sits at its own tile's height; the terrain under
+  // it is a continuous surface with corner-averaged heights. Two neighbouring
+  // road tiles two elevation levels apart therefore leave a vertical step with
+  // nothing in it, and the camera looks straight into the grass through it —
+  // the "small green grass space between them" the playtest saw. A skirt
+  // hanging below the surface fills the step.
+  assert.match(instances, /make\("road", paveGeometry\(/, "the road is still a bare plane");
+  const assets = readFileSync(join(repoRoot, "client", "render", "style-assets.js"), "utf8");
+  assert.match(assets, /export function paveGeometry\(/, "there is no skirted ground geometry");
+  // The top face has to land exactly where the flat quad did, or every ground
+  // layer above it (markings, zones, overlays) starts z-fighting.
+  assert.match(assets, /translate\(0, top - skirt \/ 2, 0\)/, "the skirt is not hung below its top face");
+});
+
+test("a network ribbon is one width from end to end", () => {
+  // A hub wider than its arms reads as a bead on a string, which is exactly
+  // what "just a dot on each tile" describes — at city zoom the arm falls
+  // under a pixel and only the bead survives. Same width, and the run reads as
+  // a run at every zoom.
+  const width = (pool) => {
+    const match = new RegExp(`make\\("${pool}", paveGeometry\\(styleName, ([0-9.]+), ([0-9.]+)`).exec(instances);
+    assert.ok(match, `${pool} is not a skirted ribbon`);
+    return { w: Number(match[1]), d: Number(match[2]) };
+  };
+  assert.equal(width("wireHub").w, width("wireArm").w, "the wire hub and arm are different widths");
+  assert.equal(width("pipeHub").w, width("pipeArm").w, "the pipe hub and arm are different widths");
+  // And each network keeps its own silhouette (ruling 030): a pipe main is
+  // wider than a power line, or the overlay is the only way to tell them apart.
+  assert.ok(width("pipeHub").w > width("wireHub").w, "wire and pipe are the same width");
+});
+
+test("wire and pipe cross a road instead of vanishing under it", () => {
+  // Both were drawn below the road surface, so a run crossing a street broke
+  // in two — the same complaint as the boundary gap, one tile wide.
+  const road = /make\("road", paveGeometry\(styleName, 1, 1, ([0-9.]+)/.exec(instances);
+  assert.ok(road, "the road's surface height is not readable");
+  const surface = Number(road[1]);
+  for (const [pool, name] of [["wire", "power line"], ["pipe", "water pipe"]]) {
+    const height = /h \+ ([0-9.]+), (?:palette\.wire|PIPE_COLOUR)/.exec(
+      instances.slice(instances.indexOf(`connect(pools.${pool}Hub`)),
+    );
+    assert.ok(height, `the ${name}'s height is not readable`);
+    assert.ok(Number(height[1]) > surface, `the ${name} is drawn under the road surface`);
+  }
+});

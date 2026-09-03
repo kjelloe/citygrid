@@ -37,6 +37,26 @@ written by someone who has the same typed array and the same instinct.
 Each network keeps its own silhouette. Borrowing the road's quad would make a
 power line read as a road, which is a worse lie than a dotted one.
 
+## Amendment, 2026-09-04 (P33) — one width, and a skirt
+
+The playtest reported the dots again on the build that shipped this ruling.
+Three reasons, all of them still this ruling's business:
+
+**One width from end to end.** The hub was drawn wider than its arms (0.20
+against 0.14). At city zoom the arm falls under a pixel and the hub does not, so
+the run reads as a bead on a string — the same complaint, from a picture that
+technically joins up. A ribbon is one width or it is dots.
+
+**A skirt, not a flat quad.** The ground is a continuous surface whose corners
+are the average of the four tiles meeting there; a flat layer drawn at its own
+tile's height leaves a vertical step wherever two neighbours differ, and a
+camera at 35° looks straight through it. Every ground layer that must read as
+continuous — road, wire, pipe — hangs a skirt below its top face.
+
+**Above the road, not under it.** Both networks were drawn below the road
+surface, so a run crossing a street broke in two. Realism says a water main goes
+under the tarmac; the picture has to say the run continues.
+
 ## Consequences
 
 - Any future positional network — rail, transit, a second water tier — draws
@@ -45,8 +65,13 @@ power line read as a road, which is a worse lie than a dotted one.
   picture silently, so `test/utilities.test.js`'s mask assertions are load-bearing
   for the renderer as well as for the simulation.
 - Arms are their own instance pool, sized for four per tile.
+- Hub and arm share a width; the two networks differ from each other by width
+  and colour, never by the hub being fatter than its own run.
 
 ## Enforced by
 
 - `test/render.test.js` — "wire and pipe are drawn joined, like roads", "an arm
-  reaches exactly half a tile", "an isolated network tile still draws its hub"
+  reaches exactly half a tile", "an isolated network tile still draws its hub",
+  "a network ribbon is one width from end to end", "wire and pipe cross a road
+  instead of vanishing under it", "a road tile has a skirt, so an elevation step
+  is not a green seam"

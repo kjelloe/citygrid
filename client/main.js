@@ -146,11 +146,33 @@ async function boot() {
  *
  * After boot, never before: installing precaches ninety-odd files, and a
  * player waiting for a city should not be waiting for that. A failure here is
- * a game that works and does not work offline, which is not worth a message. */
-function registerWorker() {
+ * a game that works and does not work offline, which is not worth a message.
+ *
+ * **The version is in the URL, and it has to be.** A browser re-installs a
+ * worker when the WORKER'S OWN BYTES change. sw.js is static — the version it
+ * keys its cache on lives in the manifest it fetches — so registering it at a
+ * fixed URL meant `install` ran once, in the player's first session, and never
+ * again. The cache-first fetch handler then served that build for ever: two
+ * playtest reports (P33) were written against a build three slices old. A
+ * changed version is a changed script URL, which is a new worker (P33). */
+async function registerWorker() {
   if (!navigator.serviceWorker) return;
   if (globalThis.location.protocol === "file:") return;
-  navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
+  // A worker was already in charge when this page loaded, so a worker taking
+  // over now is a NEW build — and this page is running the old modules out of
+  // memory. Reload once, guarded, or the first ever visit reloads itself for
+  // nothing and a claim during boot could loop.
+  const had = navigator.serviceWorker.controller !== null;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!had || reloading) return;
+    reloading = true;
+    globalThis.location.reload();
+  });
+  try {
+    const manifest = await (await fetch("./client/precache.json", { cache: "no-store" })).json();
+    await navigator.serviceWorker.register(`./sw.js?v=${manifest.version}`, { scope: "./" });
+  } catch { /* the game works; it just will not work offline */ }
 }
 
 boot().then(registerWorker).catch((error) => {

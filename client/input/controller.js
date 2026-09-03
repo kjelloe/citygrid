@@ -187,10 +187,12 @@ export function createController(canvas, state, renderer, options = {}) {
   /** Right and middle drag, which returned early and therefore did NOTHING —
    * the comment said they panned and the code dropped them (P32).
    *
-   * §13.4: right or middle drag rotates. Middle also pans, because a wheel
-   * button that only turns the camera is a wheel button most people never
-   * press twice. Both work with a tool in hand, which is the whole point:
-   * they are the desktop equivalent of the second finger.
+   * §13.4: **right drag pans**, one for one with the pointer, which is what was
+   * asked for. N27 put rotation there instead and the playtest reported the
+   * button as dead: a snapped quarter turn every 140 pixels feels like nothing
+   * happening, then the world flipping (P33). Rotation keeps the wheel button.
+   * Both work with a tool in hand, which is the whole point: they are the
+   * desktop equivalent of the second finger.
    *
    * Rotation ACCUMULATES and fires in whole quarter turns, like the two-finger
    * twist — the camera has four snapped angles (ruling 006), so a drag has to
@@ -215,7 +217,7 @@ export function createController(canvas, state, renderer, options = {}) {
       const dy = event.offsetY - drag.y;
       drag.x = event.offsetX;
       drag.y = event.offsetY;
-      if (drag.button === 1) {
+      if (drag.button === 2) {
         panBy(renderer.view,
           -pixelsToTiles(renderer.view, canvas.clientHeight, dx),
           -pixelsToTiles(renderer.view, canvas.clientHeight, dy));

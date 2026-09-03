@@ -156,6 +156,50 @@ async function run(page, label, { touch }) {
   check(`${label}: dragging with no tool pans the camera`, distance > 1,
     `moved ${distance.toFixed(2)} tiles from (${before.targetX}, ${before.targetZ})`);
 
+  // --- the other two buttons (P33) -------------------------------------------
+  //
+  // N27 shipped these untested by anything that presses a button, and shipped
+  // the wrong gesture on the wrong button: the playtest reported the right
+  // button as doing nothing. A source test cannot catch that — this presses it.
+  if (!touch) {
+    await page.click('#tools button[data-tool="road"]');  // a tool IS in hand
+    const from = await tilePixel(page, 30, 30);
+    const start = await page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      return {
+        x: v.targetX, z: v.targetZ, yawStep: v.yawStep,
+        paved: globalThis.CITY.state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0),
+      };
+    });
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down({ button: "right" });
+    await page.mouse.move(from.x + 150, from.y + 40, { steps: 6 });
+    await page.mouse.up({ button: "right" });
+    const dragged = await page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      return {
+        x: v.targetX, z: v.targetZ, yawStep: v.yawStep,
+        paved: globalThis.CITY.state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0),
+      };
+    });
+    const moved = Math.hypot(dragged.x - start.x, dragged.z - start.z);
+    check(`${label}: right drag pans the map, with a tool in hand`, moved > 1,
+      `moved ${moved.toFixed(2)} tiles`);
+    check(`${label}: right drag does not build`, dragged.paved === start.paved,
+      `${start.paved} tiles paved before the drag, ${dragged.paved} after`);
+    check(`${label}: right drag does not turn the camera`, dragged.yawStep === start.yawStep,
+      `yaw ${start.yawStep} -> ${dragged.yawStep}`);
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down({ button: "middle" });
+    await page.mouse.move(from.x + 300, from.y, { steps: 8 });
+    await page.mouse.up({ button: "middle" });
+    const turned = await page.evaluate(() => globalThis.CITY.renderer.view.yawStep);
+    check(`${label}: middle drag turns the camera`, turned !== dragged.yawStep,
+      `yaw stayed at ${turned}`);
+    await page.click('#tools button[data-tool="road"]');  // put it down again
+  }
+
   return { type };
 }
 

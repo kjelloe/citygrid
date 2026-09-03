@@ -2276,3 +2276,111 @@ had injected a decision card to test the no-× rule and left it on screen.
 save bug. It was the gate: it hashed the city **after** `await save(...)`, and a
 tick already on its way lands in that gap, so the city hashed one month ahead of
 the bytes on disk. Hash before the await.
+
+---
+
+## N28 — The build the playtest never received
+
+**P33.** Three items. Two of them were about code that had already shipped.
+
+### 1. The client could not replace itself
+
+"Right mousebutton did nothing." "Waterlines and pipelines still do not
+connect." Both had been built in N27, tested, gated and pushed three days
+earlier. Neither had ever reached a browser.
+
+`sw.js` serves cache-first and names its cache after a version in
+`client/precache.json` — a hash of every cached file's bytes. Its header comment
+describes the handshake carefully: a changed byte anywhere is a new cache, and
+`activate` deletes every cache that is not the current one. Every word true;
+none of it ever ran. **A browser re-installs a service worker when the worker's
+own bytes change**, and sw.js is deliberately static. So `install` ran once, in
+the player's first session, and the fetch handler served that build for ever.
+
+Reproduced before touching anything: load the page, let the worker take over,
+change a file, bump the manifest version, reload twice. Old bytes, and
+`citygrid-63a2cbd73e1d` still the only cache.
+
+The fix is one line of registration: `./sw.js?v=<version>`, read from the
+manifest at boot. A new build is a new script URL, which is a new worker. The
+page reloads itself once on `controllerchange`, guarded on there having been a
+controller already — a first visit claims too, and an unguarded reload there is
+a loop. Ruling 031.
+
+`tools/update_smoke.mjs` is the gate that was missing. `offline_smoke` proved
+the worker installs and serves with the network off, which is exactly the half
+of the contract that hides the other half: a worker that can never update passes
+it perfectly. The new gate deploys **twice** — first load, then a changed file
+and a changed version, then a reload — and asks whether the player is running
+the second build.
+
+### 2. Right drag pans
+
+N27 read P32's "right mouse button — hold down — to pan the map view" and
+shipped snapped rotation on that button. Even on the build that never arrived it
+was the wrong answer twice over: not what was asked, and a quarter turn every
+140 pixels reads from the hand as nothing happening and then the world flipping.
+Right drag pans, one for one with the pointer. Rotation keeps the wheel button.
+
+`play_smoke` now presses both buttons on the real page with a tool in hand. N27
+had no browser check for either, which is why the wrong gesture was invisible.
+
+### 3. The ground closes up
+
+Three defects, one shape: **a flat layer drawn at its own tile's height, over
+terrain that is a continuous surface.** The terrain's corners are the average of
+the four tiles meeting there, so any elevation step leaves a vertical gap, and a
+camera at 35° looks straight into the grass through it. That is the "small green
+grass space between them" — visible on every slope, and the reason a road with a
+hill in it reads as broken.
+
+- Roads, wire and pipe are drawn with `paveGeometry`: a flat top face with a
+  skirt hanging below it. Ten triangles instead of two, for the tiles on screen.
+- The networks are **one width from end to end**. N27's hub was 0.20 and its arm
+  0.14, and at city zoom the arm falls under a pixel while the hub does not — a
+  bead on a string, which is the dotted line again from a picture that
+  technically joins up.
+- Wire and pipe now sit **above** the road surface rather than under it. Both
+  were below it, so a run crossing a street broke in two.
+
+Ruling 030 amended rather than replaced: it already said a network is drawn from
+its mask, and all three of these are what that costs in practice.
+
+### Measured
+
+- `./test.sh` **552 tests, green twice.**
+- **Eleven gates green**, including the new `update_smoke`.
+- The reproduction, before and after: manifest `deadbeefcafe` served, cache
+  still `citygrid-63a2cbd73e1d`, `hud.js` still the old bytes after two reloads
+  → after the fix, one reload, cache `citygrid-0000deployed`, new bytes, and the
+  clock still runs on the build it updated to.
+- `play_smoke`, tool in hand: right drag moved the camera 6.04 tiles and paved
+  0 tiles and left `yawStep` at 1; middle drag moved `yawStep` 1 → 3.
+- Screenshots at span 7 and span 40 on a road column with elevations
+  `71,71,73,74,75,76,76,76,75,73,71,69,68` — the five green seams across the
+  road at span 7 are gone, and wire and pipe read as unbroken lines that cross
+  the road at both zooms.
+
+### What failed on the way
+
+**The suite and ten gates were green through all of it.** They were green while
+the player was running a build from three slices back, and they had been green
+for the four slices before that. Nothing in the project asked whether the thing
+under test was the thing being served.
+
+The first hour went on the wrong theory. The three complaints were treated as
+three bugs, and the first probe — masks, pool counts, a right-drag with real
+pointer events — came back saying the code was correct: `wireArm 20, pipeArm
+24`, `yaw 0 → π` on a 300-pixel right drag. Correct code and a playtest that
+disagrees is the shape of a delivery problem, not a rendering one, and that is
+the reading that took too long.
+
+`update_smoke` then failed on its own second check — the old cache "kept beside
+the new one" — with `page.evaluate: Execution context was destroyed`. The gate
+was asking the page a question while the page was reloading itself, which is the
+behaviour the gate exists to confirm. It retries through the navigation now.
+
+One more gate lie, resolved rather than filed: `play_smoke`'s new "right drag
+does not build" check failed at 13 paved tiles. The tiles were the road the run
+lays back down after testing undo, four checks earlier. The check compares
+before and after now, not against zero.
