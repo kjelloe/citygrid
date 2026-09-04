@@ -331,6 +331,25 @@ try {
       await globalThis.CITY.save("slot1");
       return hash;
     });
+    // Pause the resumed city ON PUBLICATION, before the clock can tick.
+    //
+    // Pausing from the next `evaluate` is a race the gate loses every so often:
+    // the game clock is a `setInterval`, and between the session appearing and
+    // the pause landing it can fire once — the city then hashes one month past
+    // the bytes it was restored from, which looks exactly like `startGame`
+    // mutating a restored city. The N28 fix closed the same race on the SAVE
+    // side and left this one. A setter runs synchronously inside the assignment,
+    // where no interval callback can interleave, and then gets out of the way.
+    await page.addInitScript(() => {
+      Object.defineProperty(globalThis, "CITY", {
+        configurable: true,
+        get() { return undefined; },
+        set(value) {
+          Object.defineProperty(globalThis, "CITY", { value, writable: true, configurable: true });
+          value?.pause?.();
+        },
+      });
+    });
     await page.goto(base);
     await page.waitForSelector(".lobby");
     const offered = await page.locator("#continue").count();
@@ -340,6 +359,9 @@ try {
       await started(page);
       const resumed = await page.evaluate(async () => {
         const { hashState } = await import("/engine/state.js");
+        // Already paused, on publication. Pause again in case the init script
+        // ever stops applying — a second pause costs nothing and a missing one
+        // costs a flake.
         globalThis.CITY.pause();
         return hashState(globalThis.CITY.state);
       });

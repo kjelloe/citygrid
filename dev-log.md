@@ -2469,3 +2469,109 @@ frustum lands on the ground stretched by 1/sin(pitch), nearly three times as far
 at 20°. Without that the first low-angle screenshot would have ended at a
 straight line across the middle of the screen. Caught by writing the bounds test
 before the camera change, not after.
+
+---
+
+## N30 — The budget was counting a fiction
+
+**P35**, a review round: update the docs, then look for what has been missed.
+The docs needed six edits. The sweep found something worse.
+
+### What nothing was checking
+
+Ruling 019 says the triangle budget is *measured*: `choosePlan` estimates,
+`draw()` renders, reads `renderer.info.render.triangles`, and steps down the
+sacrifice ladder if it is over. It also says, in its own consequences, that any
+new cost "must be priced in `DEFAULT_COSTS` **and** measured, or it will be
+spent without being counted".
+
+That rule was written and then not applied to the ground. Buildings and trees
+have been measured by `createInstances` since N1. Roads, markings, poles and
+props were remembered constants — and wire and pipe had no price at all. So when
+N28 turned a road from a two-triangle quad into a twelve-triangle skirted box,
+the table still read `road: 2, // one upward quad`.
+
+Measured on a saturated 96×96 at span 28:
+
+| | triangles |
+| --- | --- |
+| what the planner believed | 79,068 |
+| what three actually drew | **97,500** |
+| budget | 80,000 |
+| ladder | `trees dropped for budget` — the last rung |
+
+A saturated city was rendering with no props, no markings, no poles, no shadows,
+box buildings **and no trees**, and was still 22% over budget. The suite was
+green. Eleven browser gates were green. Every screenshot looked plausible,
+because a city with no trees looks like a city with no trees.
+
+The breakdown named the culprits exactly: `road 2489×12 = 29,868`,
+`wireArm 1350×12 = 16,200`, `pipeArm 1350×12 = 16,200`, `wireHub` and `pipeHub`
+8,100 each. Roughly 78k of a 97.5k frame was ground geometry that had cost 8k
+two slices earlier.
+
+### Three corrections, each measured
+
+**A road is a colour of the ground.** The terrain mesh already emits two
+triangles per tile with corner-averaged heights; colouring a road tile with the
+road colour is seamless *by construction*, follows the ground exactly, and costs
+nothing. That is a better answer than N28's skirt to the same question, and it
+deletes 29,868 triangles and `paveGeometry` with it. Ruling 030's skirt
+amendment is marked superseded rather than removed — the diagnosis was right.
+
+**The ribbons are quads again.** Wire and pipe are drawn well clear of the
+ground, and that offset already carries a run over any step it crosses. −48,600.
+
+**Casters count once.** The estimate doubled every caster for the shadow pass,
+which was correct when it was written and measured: ruling 019's own table
+records "actual was 2× the estimate". It is not correct now. On the real page,
+toggling `shadowMap.enabled` moves `renderer.info.render.triangles` by **exactly
+zero** — three resets the counter after the shadow pass — and that counter is
+what ruling 019 *defines* the budget to be. Charging twice against a measurement
+that only counts once put the estimate 92% over at close zoom.
+
+Plus the ground costs are measured now, props are counted at the rate the
+renderer actually places them (0.56 a paved tile, 1.45 a field, from its own
+rules) rather than one per tile, and markings are counted per junction.
+
+### Measured
+
+- `./test.sh` **568 tests, green twice.**
+- **Twelve gates green**, including the new one.
+- Estimate against actual on a saturated 96×96, before and after:
+
+  | span | before | after |
+  | --- | --- | --- |
+  | 10 | 24,338 est / 17,652 actual — 38% out, props dropped | 39,641 / 38,999 — **2%**, full detail |
+  | 20 | 65,222 / 43,654 — 49% out | 41,393 / 43,654 — **5%** |
+  | 40 | 73,992 / 74,616 — 1% out | 77,196 / 77,808 — **1%** |
+  | 80 | 73,992 / 74,616 — 1% out | 73,992 / 74,616 — **1%** |
+
+- The frame that was 97,500 over an 80,000 budget is **55,852** at the same
+  zoom, with trees back.
+- `tools/budget_gate.mjs` holds both numbers: inside budget at four zooms, and
+  the estimate within 25% of what three drew.
+
+### What failed on the way
+
+**`lobby_smoke` went red again on the check N28 "fixed".** N28 closed the race
+on the save side — hash before the `await`, because a queued tick lands in the
+gap. The resume side had the same race and was left open: the restored city
+publishes its session and the clock is a `setInterval` that can fire once before
+the next `evaluate` pauses it, so the city hashes one month past the bytes it
+was restored from. It looks exactly like `startGame` mutating a restored city.
+Closed properly this time, by pausing *on publication* — an init script defines
+a setter for `globalThis.CITY` that pauses inside the assignment, where no
+interval callback can interleave. Six consecutive clean runs.
+
+**Two of the new lod tests were wrong because a fixture was incomplete**, not
+because the code was. Adding five terms to `countScene` made every hand-written
+`counts` literal in the tests produce `NaN` through `estimate`. The temptation
+was to make `estimate` tolerate missing terms; the whole finding above is what
+happens when a budget quietly accepts a number it should have refused, so the
+fixtures were fixed instead.
+
+**The first measurement was wrong by 90ms.** The initial timing put a terrain
+rebuild at 103ms per build action, which would have been alarming. It was
+SwiftShader's frame time: the same loop without the rebuild cost 93.5ms. The
+rebuild is ~12ms. Measure the difference, not the total.

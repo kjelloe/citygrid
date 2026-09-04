@@ -77,8 +77,14 @@ node tools/reach_smoke.mjs
 # 3. Data the engine mirrors and nothing reads.
 grep -o '"[a-zA-Z]*"' data/balance.json | sort -u   # then grep engine/ for each suspicious key
 
-# 4. Exported functions with no importer.
-grep -rn '^export function' client/ engine/
+# 4. Exported functions with no importer. Note that a same-file use is fine and
+#    common — the question is which of these is a CAPABILITY WITH NO CONTROL.
+for f in $(grep -rhn '^export function' client/ engine/ shared/ \
+             | sed 's/.*export function \([a-zA-Z0-9_]*\).*/\1/' | sort -u); do
+  def=$(grep -rl "export function $f\b" client/ engine/ shared/ | head -1)
+  n=$(grep -rn "\b$f\b" client/ engine/ shared/ test/ tools/ | grep -v "^$def:" | wc -l)
+  [ "$n" -eq 0 ] && echo "no importer: $f  ($def)"
+done
 
 # 5. Dynamic imports of files that do not exist. Static imports fail at load;
 #    a dynamic one fails only on the path that reaches it, which for a debug
@@ -106,6 +112,14 @@ actually looks at — so when a slice changes what is drawn, **look at it** befo
 It took two playtests: N27 joined the runs and N28 found them still reading as dots, because the hub
 was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
 player uses**, not only at the zoom that proves the change.
+
+**A model of the code is not the code, and nothing tells you when it drifts.**
+The LOD cost table priced a road at "one upward quad" for two slices after a
+road became a twelve-triangle box, so the triangle budget was 23% wrong and a
+saturated city rendered with no trees (ruling 019, amended). Ask of any table of
+constants that describes code elsewhere: **what re-derives this, and would
+anything go red if the thing it describes changed?** If the answer is nothing,
+either measure it at runtime or write the gate that compares the two.
 
 **A green suite says nothing about which build the player is running.** The service worker served
 cache-first and re-installed only when its own bytes changed, which they never did — so two P33

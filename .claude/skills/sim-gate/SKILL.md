@@ -35,15 +35,37 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Lobby gate** | `node tools/lobby_smoke.mjs` | New game, settings, Continue — hash for hash |
 | **Offline gate** | `node tools/offline_smoke.mjs` | Network off: does it open, start, build and save? |
 | **Update gate** | `node tools/update_smoke.mjs` | Does a NEW build ever reach a player who already has the app? |
+| **Budget gate** | `node tools/budget_gate.mjs` | Is the frame inside its triangle budget on a SATURATED city — and does the planner's estimate still match what three drew? |
 
-**Eleven browser gates, and they are cheap to run all of them.** Do:
+**Twelve browser gates, and they are cheap to run all of them.** Do:
 
 ```
 for g in serve_smoke reach_smoke ui_smoke a11y_smoke lobby_smoke \
-         mvp_acceptance save_smoke play_smoke offline_smoke update_smoke; do
+         mvp_acceptance save_smoke play_smoke offline_smoke update_smoke \
+         budget_gate; do
   printf "%-16s " "$g"; node tools/$g.mjs 2>&1 | tail -1
 done
 ```
+
+### A cost model is a memory, and memories go stale
+
+The triangle budget is enforced by measurement (ruling 019) — and for four
+slices nothing compared the planner's *estimate* with what three actually drew.
+N28 turned a road into a twelve-triangle skirted box while the cost table still
+said "one upward quad": the planner believed 79,068 triangles, the renderer drew
+97,500, and a saturated city rendered with no trees and no markings and was over
+budget anyway. Twelve gates, a green suite, and plausible screenshots throughout.
+
+Two rules fall out of it:
+
+- **Price a new cost AND measure it.** `createInstances` measures every pool's
+  real geometry and passes it to `setCosts`. A constant in a table is a claim
+  about code somewhere else.
+- **An over-charging model is as damaging as an under-charging one.** The
+  correction loop only steps DOWN, so an estimate that is too high silently
+  sacrifices detail the frame had room for and nothing gives it back. The shadow
+  pass doubling cost the props at close zoom for exactly this reason — and the
+  doubling was measured and true when it was written.
 
 ### Green gates say nothing if the player is running a different build
 

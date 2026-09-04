@@ -323,19 +323,20 @@ test("an isolated network tile still draws its hub", () => {
 
 // --- the ground closes up (P33) ----------------------------------------------
 
-test("a road tile has a skirt, so an elevation step is not a green seam", () => {
-  // The road quad is FLAT and sits at its own tile's height; the terrain under
-  // it is a continuous surface with corner-averaged heights. Two neighbouring
-  // road tiles two elevation levels apart therefore leave a vertical step with
-  // nothing in it, and the camera looks straight into the grass through it —
-  // the "small green grass space between them" the playtest saw. A skirt
-  // hanging below the surface fills the step.
-  assert.match(instances, /make\("road", paveGeometry\(/, "the road is still a bare plane");
-  const assets = readFileSync(join(repoRoot, "client", "render", "style-assets.js"), "utf8");
-  assert.match(assets, /export function paveGeometry\(/, "there is no skirted ground geometry");
-  // The top face has to land exactly where the flat quad did, or every ground
-  // layer above it (markings, zones, overlays) starts z-fighting.
-  assert.match(assets, /translate\(0, top - skirt \/ 2, 0\)/, "the skirt is not hung below its top face");
+test("the road follows the ground, so an elevation step is not a green seam", () => {
+  // A road quad is FLAT and sits at its own tile's height; the terrain under it
+  // is a continuous surface with corner-averaged heights. Two neighbouring road
+  // tiles two elevation levels apart therefore left a vertical step with
+  // nothing in it, and the camera looked straight into the grass through it —
+  // the "small green grass space between them" the playtest saw (P33).
+  //
+  // N28 filled the step with a skirt, which worked and cost six times the
+  // triangles. N30 removes the question instead: the road is a colour of the
+  // ground, so it shares the ground's corners and there is no step to fill.
+  const terrain = readFileSync(join(repoRoot, "client", "render", "terrain.js"), "utf8");
+  const chunk = terrain.slice(terrain.indexOf("function buildChunk("));
+  assert.match(chunk, /tiles\.road\[index\]/, "the terrain does not read the road layer");
+  assert.match(chunk, /cornerHeight/, "the ground no longer shares corners with its neighbours");
 });
 
 test("a network ribbon is one width from end to end", () => {
@@ -344,8 +345,8 @@ test("a network ribbon is one width from end to end", () => {
   // under a pixel and only the bead survives. Same width, and the run reads as
   // a run at every zoom.
   const width = (pool) => {
-    const match = new RegExp(`make\\("${pool}", paveGeometry\\(styleName, ([0-9.]+), ([0-9.]+)`).exec(instances);
-    assert.ok(match, `${pool} is not a skirted ribbon`);
+    const match = new RegExp(`make\\("${pool}", flatGeometry\\(styleName, ([0-9.]+), ([0-9.]+)`).exec(instances);
+    assert.ok(match, `${pool} is not a ribbon quad`);
     return { w: Number(match[1]), d: Number(match[2]) };
   };
   assert.equal(width("wireHub").w, width("wireArm").w, "the wire hub and arm are different widths");
@@ -357,10 +358,10 @@ test("a network ribbon is one width from end to end", () => {
 
 test("wire and pipe cross a road instead of vanishing under it", () => {
   // Both were drawn below the road surface, so a run crossing a street broke
-  // in two — the same complaint as the boundary gap, one tile wide.
-  const road = /make\("road", paveGeometry\(styleName, 1, 1, ([0-9.]+)/.exec(instances);
-  assert.ok(road, "the road's surface height is not readable");
-  const surface = Number(road[1]);
+  // in two — the same complaint as the boundary gap, one tile wide. The road
+  // surface IS the ground now (N30), so anything above the ground clears it —
+  // but only just, and the margin is what this holds on to.
+  const surface = 0.02;
   for (const [pool, name] of [["wire", "power line"], ["pipe", "water pipe"]]) {
     const height = /h \+ ([0-9.]+), (?:palette\.wire|PIPE_COLOUR)/.exec(
       instances.slice(instances.indexOf(`connect(pools.${pool}Hub`)),
@@ -403,4 +404,41 @@ test("the marking pools survive four arms a tile", () => {
   const mark = /make\("mark", [^;]+?, 0xffffff, (\d+)\)/.exec(instances);
   assert.ok(mark, "the mark pool is not readable");
   assert.ok(Number(mark[1]) >= 40000, `the mark pool is ${mark[1]}, too small for four arms a tile`);
+});
+
+// --- the budget was counting a fiction (P35) ---------------------------------
+
+test("the road is painted into the ground, not stacked on top of it", () => {
+  // N28 gave the road a skirt to close the green seam an elevation step showed
+  // through. It worked and it cost 12 triangles a tile instead of 2 — 29,868
+  // for the roads alone on a saturated 96x96, measured. The ground is already a
+  // continuous surface with corner-averaged heights: colouring its tiles is
+  // seamless BY CONSTRUCTION, costs nothing, and follows the terrain exactly.
+  const terrain = readFileSync(join(repoRoot, "client", "render", "terrain.js"), "utf8");
+  assert.match(terrain, /NET_PRESENT|& 16/, "the terrain does not know a road when it sees one");
+  assert.match(terrain, /palette\.road|\.road\b/, "the terrain never paints a road");
+  assert.equal(/make\("road", /.test(instances), false,
+    "there is still a road instance pool stacked over the ground");
+});
+
+test("a network ribbon is a quad again, not a box", () => {
+  // The same skirt, for the same reason, at 48,600 triangles for wire and pipe
+  // together. They do not need it: a ribbon is drawn well above the road
+  // surface, and that offset already clears any step a run crosses.
+  for (const pool of ["wireHub", "wireArm", "pipeHub", "pipeArm"]) {
+    assert.match(instances, new RegExp(`make\\("${pool}", flatGeometry\\(`),
+      `${pool} is still a skirted box`);
+  }
+});
+
+test("the triangle budget is spent against MEASURED ground costs", () => {
+  // The cost table said `road: 2, // one upward quad` while the road was a
+  // twelve-triangle box, and nothing charged for wire or pipe at all. The
+  // planner believed 79,068 while the renderer drew 97,500 — over an 80,000
+  // budget with the whole sacrifice ladder already spent, so a saturated city
+  // rendered with no trees and no markings and was STILL over. Buildings and
+  // trees have been measured since N1; the ground was remembered.
+  assert.match(instances, /setCosts\(\{[\s\S]*?marking:/, "markings are not measured");
+  assert.match(instances, /wireHub:/, "the wire ribbon is not measured");
+  assert.match(instances, /pipeHub:/, "the pipe ribbon is not measured");
 });

@@ -8,6 +8,7 @@
 import * as THREE from "three";
 import { TERRAIN_COLOURS } from "./palette.js";
 import { PALETTES, makeMaterial } from "./style-assets.js";
+import { NET_PRESENT } from "../constants-mirror.js";
 
 export const CHUNK = 16;
 
@@ -82,8 +83,21 @@ function buildChunk(state, chunk, styleName) {
       const h10 = cornerHeight(state, x + 1, y);
       const h01 = cornerHeight(state, x, y + 1);
       const h11 = cornerHeight(state, x + 1, y + 1);
-      const table = (PALETTES[styleName] ?? PALETTES.plain).terrain;
-      colour.setHex(table[state.tiles.terrain[index]] ?? TERRAIN_COLOURS[state.tiles.terrain[index]] ?? 0xff00ff);
+      const palette = PALETTES[styleName] ?? PALETTES.plain;
+      const table = palette.terrain;
+      // A road is a COLOUR OF THE GROUND, not a quad stacked on it (slice N30).
+      //
+      // It was a quad, and a quad sits flat at its own tile's height while this
+      // surface shares corners with its neighbours — so every elevation step
+      // showed a green seam between two road tiles, which is what the P33
+      // playtest saw. N28 closed it with a skirt: twelve triangles a tile
+      // instead of two, 29,868 of them on a saturated 96x96, and a budget that
+      // could no longer be met with the whole sacrifice ladder spent (P35).
+      // Painted into the mesh, a road is seamless by construction, follows the
+      // terrain exactly, and costs nothing at all.
+      colour.setHex((state.tiles.road[index] & NET_PRESENT) !== 0
+        ? palette.road
+        : table[state.tiles.terrain[index]] ?? TERRAIN_COLOURS[state.tiles.terrain[index]] ?? 0xff00ff);
 
       // Two triangles, corners at integer coordinates so tiles meet exactly.
       //

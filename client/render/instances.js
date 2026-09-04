@@ -8,7 +8,7 @@
 
 import * as THREE from "three";
 import { buildingColour, PLAYER_COLOURS, OVERLAY_COLOURS } from "./palette.js";
-import { PALETTES, makeMaterial, slabGeometry, flatGeometry, paveGeometry, faceContrastFor } from "./style-assets.js";
+import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, tuftVariants, lampGeometry,
@@ -53,11 +53,8 @@ export function createInstances(scene, styleName = "plain") {
   // at push time — so passing it here too drew each of them at the SQUARE of
   // its colour. A mid-grey road (0x6f7278, 0.44) came out at 0.19, which is why
   // the ground read as near-black asphalt in every style.
-  // SKIRTED, not flat. A flat quad sits at its own tile's height while the
-  // terrain under it is continuous, so two road tiles a couple of elevation
-  // levels apart leave a step the camera looks straight through — the green
-  // seam across every slope the playtest saw (P33).
-  make("road", paveGeometry(styleName, 1, 1, 0.05, 0.4), 0xffffff, 24000);
+  // No road pool. A road is painted into the terrain mesh (`terrain.js`), where
+  // it is seamless by construction and costs nothing — see the note there.
   // A unit-length stripe, scaled per instance: one centred dash on a straight
   // run, an arm per direction at a corner or a junction. Four a tile at an X,
   // where there used to be one.
@@ -69,14 +66,16 @@ export function createInstances(scene, styleName = "plain") {
   //
   // ONE WIDTH from end to end. N27 gave the hub 0.20 and the arm 0.14, and at
   // city zoom the arm falls under a pixel while the hub survives: a bead on a
-  // string, which is the same complaint again (P33). The skirt is what carries
-  // the run over a slope.
-  make("wireHub", paveGeometry(styleName, 0.16, 0.16, 0, 0.3), 0xffffff, 40000);
-  make("wireArm", paveGeometry(styleName, 0.16, 0.56, 0, 0.3), 0xffffff, 80000);
+  // string, which is the same complaint again (P33). Quads, not boxes: N28
+  // skirted these too and it cost 48,600 triangles for wire and pipe together
+  // (P35). They are drawn well clear of the ground, and that offset already
+  // carries a run over any step it crosses.
+  make("wireHub", flatGeometry(styleName, 0.16, 0.16, 0), 0xffffff, 40000);
+  make("wireArm", flatGeometry(styleName, 0.16, 0.56, 0), 0xffffff, 80000);
   // Wider and softer than the wire: a main under the street rather than a
   // cable over it. Its own silhouette, so the two never need a legend.
-  make("pipeHub", paveGeometry(styleName, 0.28, 0.28, 0, 0.3), 0xffffff, 40000);
-  make("pipeArm", paveGeometry(styleName, 0.28, 0.56, 0, 0.3), 0xffffff, 80000);
+  make("pipeHub", flatGeometry(styleName, 0.28, 0.28, 0), 0xffffff, 40000);
+  make("pipeArm", flatGeometry(styleName, 0.28, 0.56, 0), 0xffffff, 80000);
   // Zoned but not yet built. Without this a painted zone is INVISIBLE until
   // something develops on it — the player draws a district and the map shows
   // nothing back (found in playtest, P29). A flat tint just above the ground,
@@ -131,13 +130,34 @@ export function createInstances(scene, styleName = "plain") {
     }
     measured.tree[tier] = Math.round(treeSample / trees.length);
   }
-  // The budget is spent against MEASURED costs, not remembered ones.
-  setCosts(measured);
   const cars = carVariants();
   for (let v = 0; v < cars.length; v += 1) make(`car${v}`, cars[v], 0xffffff, 6000);
   const tufts = tuftVariants();
   for (let v = 0; v < tufts.length; v += 1) make(`tuft${v}`, tufts[v], 0xffffff, 30000);
   make("lamp", lampGeometry(), 0xffffff, 8000);
+
+  // The budget is spent against MEASURED costs, not remembered ones — and the
+  // GROUND and the PROPS are measured too now. They were remembered, and the
+  // memory went stale the moment a road became a skirted box: the table still
+  // said "one upward quad" while three drew twelve, and a prop was priced at 90
+  // whatever it was (P35). Last thing in this function, because it can only
+  // measure pools that exist.
+  const propSample = [
+    triangleCount(pools.lamp.geometry),
+    ...cars.map(triangleCount),
+    ...tufts.map(triangleCount),
+  ];
+  setCosts({
+    ...measured,
+    prop: { 2: Math.round(propSample.reduce((a, b) => a + b, 0) / propSample.length), 1: 0, 0: 0 },
+    road: 0,  // painted into the terrain mesh
+    marking: triangleCount(pools.mark.geometry),
+    pole: triangleCount(pools.wire.geometry),
+    wireHub: triangleCount(pools.wireHub.geometry),
+    wireArm: triangleCount(pools.wireArm.geometry),
+    pipeHub: triangleCount(pools.pipeHub.geometry),
+    pipeArm: triangleCount(pools.pipeArm.geometry),
+  });
 
   return pools;
 }
@@ -332,9 +352,9 @@ export function updateInstances(state, pools, options = {}) {
       const h = ground(index);
 
       if (state.tiles.road[index] & NET_PRESENT) {
-        push(pools.road, x + 0.5, h, y + 0.5, 1, 1, 1, palette.road);
-        // Below a few pixels a tile the markings are invisible and there are
-        // thousands of them.
+        // The road surface itself is the terrain mesh's colour; only the
+        // markings are instanced. Below a few pixels a tile they are invisible
+        // and there are thousands of them.
         if (markings) {
           roadMarkings(pools.mark, state.tiles.road[index] & 15, x, y, h, palette.roadMark);
         }

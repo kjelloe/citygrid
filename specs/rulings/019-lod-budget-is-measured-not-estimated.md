@@ -69,6 +69,54 @@ and nothing at all on a frame that would not.
   measured, or it will be spent without being counted — which is exactly how the
   tier-0 tree hid 18,220 triangles.
 
+## Amendment, 2026-09-05 (P35) — the ground is measured too, and shadows are not counted at all
+
+The rule above ("priced *and* measured") was written and then not applied to the
+ground. Buildings and trees have been measured by `createInstances` since N1;
+roads, markings, poles and props were remembered constants, and wire and pipe
+had no price at all. N28 turned a road from a two-triangle quad into a
+twelve-triangle skirted box, and the table still read `road: 2, // one upward
+quad`.
+
+Measured on a saturated 96×96: the planner believed **79,068** triangles while
+three drew **97,500**, over an 80,000 budget with the entire sacrifice ladder
+already spent. A saturated city therefore rendered with no trees and no markings
+and was over budget anyway. Eleven browser gates were green.
+
+Three corrections, each measured rather than argued:
+
+1. **The ground is measured.** `createInstances` now passes the real triangle
+   count of every ground pool — markings, poles, both network ribbons, and the
+   average prop — into `setCosts`, alongside buildings and trees.
+2. **A road costs nothing**, because it is painted into the terrain mesh
+   (slice N30). The floor below is 29,868 triangles lighter on that map.
+3. **Casters count once, not twice.** The doubling for the shadow pass was
+   correct when it was written; it is not now. Toggling `shadowMap.enabled` on
+   the real page moves `renderer.info.render.triangles` by **exactly zero** —
+   three resets the counter after the shadow pass — and that counter is what
+   this ruling defines the budget to be. Charging twice against a measurement
+   that only counts once put the estimate 92% over the truth at close zoom, and
+   the ladder dropped the props the player had zoomed in to look at.
+
+After all three, the estimate tracks the truth within **1–5%** across four zooms
+on a saturated city, against 38–92% before.
+
+**The correction loop only steps DOWN**, and that is why an over-charging model
+is as damaging as an under-charging one: the frame silently loses detail it had
+room for and nothing ever gives it back. Neither direction was visible to any
+test, because nothing compared the two numbers. `tools/budget_gate.mjs` does,
+and it is the gate this ruling was missing.
+
+## Also enforced by
+
+- `tools/budget_gate.mjs` — a saturated city at four zooms: the frame is inside
+  its budget, and the estimate is within 25% of what three actually drew
+- `test/lod.test.js` — "the estimate charges for every network the renderer
+  draws", "a junction's markings are counted, not assumed to be one", "the
+  estimate does NOT charge twice for a shadowed caster"
+- `test/render.test.js` — "the triangle budget is spent against MEASURED ground
+  costs"
+
 ## Enforced by
 
 - `client/render/lod.js` — `setBudget`, `estimate`, `stepDown`, the ladder

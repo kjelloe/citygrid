@@ -32,9 +32,19 @@ const DEFAULT_COSTS = {
   // hid 18,000 triangles from a budget that was supposed to be counting them.
   tree: { 2: 150, 1: 44, 0: 20 },
   prop: { 2: 90, 1: 0, 0: 0 },
-  road: 2,      // one upward quad
-  marking: 2,   // one upward quad
+  // The ground costs are MEASURED and passed in by `createInstances`, like
+  // buildings and trees. They were remembered instead until P35, and the
+  // memory went stale the moment N28 turned a road into a skirted box: the
+  // table still said `road: 2, // one upward quad` while the renderer drew
+  // twelve. The planner believed 79,068 triangles against an 80,000 budget
+  // while three drew 97,500 — with the whole sacrifice ladder already spent.
+  road: 0,      // painted into the terrain mesh since N30; free
+  marking: 2,
   pole: 12,     // a box; vertical, so it cannot be flattened
+  wireHub: 2,
+  wireArm: 2,
+  pipeHub: 2,
+  pipeArm: 2,
 };
 
 /** One terrain chunk is 16x16 tiles at two triangles each. Terrain is not
@@ -83,13 +93,30 @@ export function estimate(counts, plan) {
 
   const casters = counts.buildings * b + counts.trees * t + counts.props * p;
   const flat = counts.roads * costs.road
-    + (plan.markings ? counts.roads * costs.marking : 0)
+    + (plan.markings ? counts.markArms * costs.marking : 0)
+    // Every network the renderer draws has a term here. Wire and pipe had
+    // none, and `counts.poles` was computed and then never read — a term
+    // missing from the estimate is a term the budget cannot trade away (P35).
+    + counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm
+    + counts.pipeTiles * costs.pipeHub + counts.pipeArms * costs.pipeArm
+    + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole : 0)
     + counts.groundChunks * CHUNK_TRIANGLES;
 
-  // A shadow pass redraws every caster. Ignoring it made the estimate exactly
-  // half the truth, and an estimate that is half the truth is not a budget.
-  // Ground and roads receive shadows but do not cast them, so they count once.
-  return casters * (plan.shadows ? 2 : 1) + flat;
+  // Casters count ONCE, and this used to be twice.
+  //
+  // A shadow pass does redraw every caster, and when that was found the actual
+  // was 2× the estimate (ruling 019). It is not any more: measured on the real
+  // page, toggling `shadowMap.enabled` moves `info.render.triangles` by exactly
+  // zero — three resets the counter after the shadow pass, so the number this
+  // budget is DEFINED by never sees it. Charging twice against a measurement
+  // that only ever counts once put the estimate 92% over the truth at close
+  // zoom, and the ladder dropped the props you zoomed in to look at (P35).
+  //
+  // The shadow pass still costs the GPU real work; that is a frame-time
+  // question, and the ladder still sacrifices shadows before building detail.
+  // It is not a triangle-budget question, because the triangle budget cannot
+  // see it.
+  return casters + flat;
 }
 
 /** The order in which detail is sacrificed. Deliberate: small props first,
@@ -206,15 +233,43 @@ export function inBounds(bounds, x, y) {
   return !bounds || (x >= bounds.x0 && x <= bounds.x1 && y >= bounds.y0 && y <= bounds.y1);
 }
 
+/** How many prop instances a tile draws on average, from the renderer's own
+ * rules in `instances.js`: a paved tile gets a lamp above a hash of 0.72 and a
+ * parked car above 0.44, and an open field gets two tufts above 0.55 and one
+ * below. Averages rather than a per-tile hash, because the planner is deciding
+ * what to draw and cannot afford to draw it first. */
+const PROPS_PER_PAVED = 0.56;
+const PROPS_PER_FIELD = 1.45;
+
+/** How many marking instances one road tile draws, from its connection mask.
+ *
+ * The renderer's own rule (`roadMarkings` in `instances.js`), kept here so the
+ * planner charges for what is actually drawn: nothing on a stub, one dash on a
+ * straight run, and one arm per approach at a corner or a junction. Charging
+ * one a tile understates a downtown grid by most of its markings.
+ */
+export function markingInstances(mask) {
+  let bits = 0;
+  for (let d = 0; d < 4; d += 1) if (mask & (1 << d)) bits += 1;
+  if (bits < 2) return 0;
+  return (mask === 5 || mask === 10) ? 1 : bits;
+}
+
 /** Counts the renderer needs before it can plan. Cheap: no geometry touched. */
 export function countScene(state, bounds) {
   let trees = 0;
   let props = 0;
   let roads = 0;
   let poles = 0;
+  let markArms = 0;
+  let wireTiles = 0;
+  let wireArms = 0;
+  let pipeTiles = 0;
+  let pipeArms = 0;
   const NET = 16;
   const FOREST = 2;
   const GRASS = 0;
+  const MARSH = 7;
   const width = state.width;
   for (let i = 0; i < state.tiles.terrain.length; i += 1) {
     if (bounds) {
@@ -223,14 +278,31 @@ export function countScene(state, bounds) {
       if (!inBounds(bounds, x, y)) continue;
     }
     const paved = (state.tiles.road[i] & NET) !== 0;
-    if (paved) roads += 1;
-    if ((state.tiles.wire[i] & NET) !== 0) poles += 1;
+    if (paved) {
+      roads += 1;
+      markArms += markingInstances(state.tiles.road[i] & 15);
+    }
+    if ((state.tiles.wire[i] & NET) !== 0) {
+      poles += 1;
+      wireTiles += 1;
+      for (let d = 0; d < 4; d += 1) if (state.tiles.wire[i] & (1 << d)) wireArms += 1;
+    }
+    if ((state.tiles.pipe[i] & NET) !== 0) {
+      pipeTiles += 1;
+      for (let d = 0; d < 4; d += 1) if (state.tiles.pipe[i] & (1 << d)) pipeArms += 1;
+    }
     if (state.tiles.terrain[i] === FOREST && state.tiles.buildingId[i] === 0 && !paved) trees += 1;
-    // Props: roughly half of paved tiles carry a lamp or a car, and open grass
-    // carries a tuft or two. Close enough to plan with, and it costs one pass.
-    if (paved) props += 1;
-    else if (state.tiles.terrain[i] === GRASS && state.tiles.buildingId[i] === 0) props += 1;
+    // Props, at the rate the renderer actually places them rather than one a
+    // tile. Charging every paved tile and every field for a full prop put the
+    // estimate over the budget at close zoom on a frame using a fifth of it,
+    // and the ladder dropped props — the detail you zoomed in to see (P35).
+    if (paved) props += PROPS_PER_PAVED;
+    else if (state.tiles.buildingId[i] === 0
+      && (state.tiles.terrain[i] === GRASS || state.tiles.terrain[i] === MARSH)) {
+      props += PROPS_PER_FIELD;
+    }
   }
+  props = Math.round(props);
   let buildings = 0;
   for (const b of state.buildings) {
     if (inBounds(bounds, b.x, b.y)) buildings += 1;
@@ -249,5 +321,8 @@ export function countScene(state, bounds) {
     const cy1 = Math.min(chunksY - 1, Math.floor(bounds.y1 / 16));
     groundChunks = Math.max(0, (cx1 - cx0 + 1)) * Math.max(0, (cy1 - cy0 + 1));
   }
-  return { buildings, trees, props, roads, poles, groundChunks };
+  return {
+    buildings, trees, props, roads, poles, groundChunks,
+    markArms, wireTiles, wireArms, pipeTiles, pipeArms,
+  };
 }

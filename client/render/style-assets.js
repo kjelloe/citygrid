@@ -73,27 +73,6 @@ export function flatGeometry(styleName, w, d, y = 0) {
   return geometry;
 }
 
-/** A ground layer with a skirt: a flat top face at `top`, and sides hanging
- * `skirt` below it.
- *
- * Roads, wires and pipes are drawn flat at their own tile's height, while the
- * terrain under them is one continuous surface whose corners are the AVERAGE
- * of the four tiles meeting there. Two neighbouring road tiles two elevation
- * levels apart therefore leave a vertical step with nothing in it, and a
- * camera at 35° looks straight through it into the grass — "the small green
- * grass space between them" (P33). The skirt fills the step, and being hidden
- * under the neighbour it costs nothing to look at.
- *
- * Ten triangles instead of two, but only for the tiles actually on screen. */
-export function paveGeometry(styleName, w, d, top, skirt) {
-  const box = new THREE.BoxGeometry(w, skirt, d);
-  box.translate(0, top - skirt / 2, 0);
-  const c = faceContrastFor(styleName);
-  // The sides are darker than the top and almost always buried; what matters
-  // is that they are not BRIGHTER, or a step would read as a kerb of light.
-  return tintFaces(box, { top: 1.0, north: 1 - 0.22 * c, east: 1 - 0.3 * c });
-}
-
 /** Flat geometry for roads and other ground-level pieces. */
 export function slabGeometry(styleName, w, h, d) {
   const palette = PALETTES[styleName] ?? PALETTES.plain;

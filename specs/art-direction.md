@@ -241,9 +241,11 @@ the triangle budget (ruling 019), never by the artist.
 
 ### 3.5 Ground, network and props
 
-Roads are **skirted quads** — a flat top face with sides hanging below it — with
-centre markings drawn from the road's own connection mask (slice N29); markings
-vanish below 20 pixels a tile. Three cases, and they have to be three:
+Roads are **painted into the terrain mesh** (slice N30) — a road is a colour of
+the ground, not a layer over it, so it shares the ground's corner heights and
+meets its neighbours seamlessly on any slope at no cost in triangles. Centre
+markings are instanced above it, drawn from the road's own connection mask
+(slice N29); markings vanish below 20 pixels a tile. Three cases, and they have to be three:
 
 - a **straight** run keeps one centred dash, the lane divider;
 - a **corner** draws two arms that meet *at* the centre, so the elbow has no
@@ -274,11 +276,13 @@ transit) draws a hub and arms from its mask, and never a tile-shaped patch.
   zoom the arm falls under a pixel while the hub does not: a bead on a string.
   Hub and arm share a width; the networks differ from each other by width and
   colour.
-- **Every ground layer that must read as continuous has a skirt.** The terrain
-  is one surface whose corners are the average of the four tiles meeting there,
-  so a flat layer drawn at its own tile's height leaves a vertical step wherever
-  two neighbours differ — and at 35° the camera looks straight through it into
-  the grass. Roads showed it as a green seam across every slope.
+- **A flat layer at its own tile's height does not meet its neighbour.** The
+  terrain is one surface whose corners are the average of the four tiles meeting
+  there, so a layer drawn flat leaves a vertical step wherever two neighbours
+  differ — and at 35° the camera looks straight through it into the grass.
+  Roads showed it as a green seam across every slope. N28 filled the step with a
+  skirt; N30 removed the question by making the road part of the ground. A thin
+  ribbon drawn well clear of the surface — wire, pipe — needs neither.
 - **A network crosses a road, it does not dive under it.** Both were drawn below
   the road surface, so a run crossing a street broke in two. The water main is
   underground in the fiction and above the tarmac in the picture.

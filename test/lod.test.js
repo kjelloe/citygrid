@@ -7,13 +7,36 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 import {
   TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels,
   visibleBounds, inBounds, setBudget, getBudget, setCosts, getCosts,
+  countScene, markingInstances,
 } from "../client/render/lod.js";
 
+/** A tiny hand-built state, enough for countScene to walk. */
+const SAMPLE = {
+  width: 4,
+  height: 4,
+  buildings: [],
+  tiles: {
+    terrain: new Uint8Array(16),
+    road: new Uint8Array(16),
+    wire: new Uint8Array(16),
+    pipe: new Uint8Array(16),
+    buildingId: new Uint16Array(16),
+    elevation: new Uint8Array(16),
+  },
+};
+
 /** A city big enough that the budget actually bites. */
-const CITY = { buildings: 900, trees: 1200, props: 4000, roads: 4400, poles: 600, groundChunks: 64 };
+const CITY = {
+  buildings: 900, trees: 1200, props: 4000, roads: 4400, poles: 600, groundChunks: 64,
+  // A downtown grid: most road tiles are straight, a few hundred are junctions.
+  markArms: 5200, wireTiles: 600, wireArms: 1100, pipeTiles: 600, pipeArms: 1100,
+};
 
 function planAt(px, budget = 80000, counts = CITY) {
   return choosePlan(counts, { span: 1 }, px, { tilePixels: px, budget });
@@ -64,18 +87,25 @@ test("props are sacrificed before buildings", () => {
   // The order is the design's, not an accident: a city of boxes with grass
   // tufts would be the wrong trade. Sized so the budget lands mid-ladder,
   // which is the only place the order is observable.
-  const town = { buildings: 200, trees: 300, props: 800, roads: 900, poles: 100, groundChunks: 9 };
+  const town = {
+    buildings: 200, trees: 300, props: 800, roads: 900, poles: 100, groundChunks: 9,
+    markArms: 1000, wireTiles: 100, wireArms: 180, pipeTiles: 100, pipeArms: 180,
+  };
   const plan = planAt(60, 200000, town);
   assert.equal(plan.props, false, "props go first");
   assert.equal(plan.buildings, TIER.FULL, "buildings keep their detail while props are being dropped");
 });
 
-test("terrain and roads set a floor the ladder cannot go below", () => {
+test("terrain sets a floor the ladder cannot go below", () => {
   // Worth stating plainly: ground is not optional and has no tiers, so on a
-  // fully built 128x128 region the cheapest possible frame is still ~74k
-  // triangles. That is why the default budget is 80k and not 40k.
+  // fully built 128x128 region the cheapest possible frame is still tens of
+  // thousands of triangles. That is why the default budget is 80k, not 40k.
+  //
+  // ROADS are no longer part of that floor. They were, at 12 triangles a tile,
+  // because N28 gave them a skirt; N30 paints them into the terrain mesh,
+  // where they are seamless and free (P35).
   const floor = planAt(60, 1000);
-  assert.ok(floor.estimate > 60000, `the floor came out at ${floor.estimate}`);
+  assert.ok(floor.estimate > 25000, `the floor came out at ${floor.estimate}`);
   assert.equal(floor.overBudget, true);
 });
 
@@ -103,12 +133,22 @@ test("a block tree is not free", () => {
   assert.ok(getCosts().tree[TIER.BLOCK] > 0, "a tier-0 tree still has geometry");
 });
 
-test("the estimate charges twice for a shadowed caster", () => {
-  const counts = { buildings: 100, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0 };
+test("the estimate does NOT charge twice for a shadowed caster (P35)", () => {
+  // It did, and that was right when it was written: a shadow pass redraws every
+  // caster and the actual came out at 2× the estimate (ruling 019). It is not
+  // right now. Measured on the real page, toggling `shadowMap.enabled` moves
+  // `renderer.info.render.triangles` by exactly zero — three resets the counter
+  // after the shadow pass — and that counter is what the budget IS. Charging
+  // twice against a number that only counts once put the estimate 92% over the
+  // truth at close zoom, and the ladder dropped the props you zoomed in to see.
+  const counts = {
+    buildings: 100, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
+    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0,
+  };
   const base = { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: false, props: false, markings: false, poles: false };
   const lit = estimate(counts, { ...base, shadows: false });
   const shadowed = estimate(counts, { ...base, shadows: true });
-  assert.equal(shadowed, lit * 2, "the shadow pass redraws every caster");
+  assert.equal(shadowed, lit, "the estimate still doubles for a pass the counter cannot see");
 });
 
 test("visible bounds cover the view at every yaw", () => {
@@ -143,4 +183,33 @@ test("a low camera sees further, and the bounds have to know it (P34)", () => {
     `a 20° camera reaches ${reach(low).toFixed(1)} against ${reach(overhead).toFixed(1)} overhead`);
   // A view with no pitch at all still gets the old answer rather than NaN.
   assert.ok(Number.isFinite(reach({ span: 40, targetX: 0, targetZ: 0 })));
+});
+
+test("the estimate charges for every network the renderer draws (P35)", () => {
+  // `counts.poles` was computed and never used, and wire, pipe and their arms
+  // were not counted at all. A term that is missing from the estimate is a
+  // term the budget cannot trade away.
+  const source = readFileSync(join(repoRoot, "client", "render", "lod.js"), "utf8");
+  const body = source.slice(source.indexOf("export function estimate("), source.indexOf("export function stepDown") >= 0
+    ? source.indexOf("export function stepDown") : source.length);
+  for (const term of ["wireTiles", "wireArms", "pipeTiles", "pipeArms", "markArms"]) {
+    assert.ok(body.includes(term), `the estimate ignores ${term}`);
+  }
+  const counted = countScene(SAMPLE, undefined);
+  for (const key of ["wireTiles", "wireArms", "pipeTiles", "pipeArms", "markArms"]) {
+    assert.ok(Number.isFinite(counted[key]), `countScene does not report ${key}`);
+  }
+});
+
+test("a junction's markings are counted, not assumed to be one", () => {
+  // One centred dash on a straight run, two arms at a corner, three or four at
+  // a junction (slice N29). Charging one a tile understates a downtown grid by
+  // most of its markings.
+  assert.equal(markingInstances(0), 0, "a lone road tile draws a marking");
+  assert.equal(markingInstances(1), 0, "a dead end draws a marking");
+  assert.equal(markingInstances(5), 1, "a straight run is not one dash");
+  assert.equal(markingInstances(10), 1, "a straight run is not one dash");
+  assert.equal(markingInstances(3), 2, "a corner is not two arms");
+  assert.equal(markingInstances(7), 3, "a T junction is not three arms");
+  assert.equal(markingInstances(15), 4, "an X junction is not four arms");
 });

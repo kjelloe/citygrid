@@ -53,6 +53,17 @@ tile's height leaves a vertical step wherever two neighbours differ, and a
 camera at 35° looks straight through it. Every ground layer that must read as
 continuous — road, wire, pipe — hangs a skirt below its top face.
 
+> **Superseded, 2026-09-05 (P35).** The skirt was right about the cause and
+> expensive about the cure: twelve triangles a tile instead of two, 29,868 for
+> the roads and 48,600 for the two ribbons on a saturated 96×96, which took the
+> frame over its budget with the whole sacrifice ladder spent (ruling 019,
+> amended). A **road is now a colour of the terrain mesh**, where it shares the
+> ground's own corners and is seamless by construction at no cost at all. The
+> **ribbons are quads again**: they are drawn well clear of the ground and that
+> offset already carries a run across any step it crosses. The rule that
+> survives is the diagnosis — a flat layer at its own tile's height does not
+> meet its neighbour — and the cheapest cure is to stop being a separate layer.
+
 **Above the road, not under it.** Both networks were drawn below the road
 surface, so a run crossing a street broke in two. Realism says a water main goes
 under the tarmac; the picture has to say the run continues.
