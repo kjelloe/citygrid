@@ -58,7 +58,10 @@ export function createInstances(scene, styleName = "plain") {
   // levels apart leave a step the camera looks straight through — the green
   // seam across every slope the playtest saw (P33).
   make("road", paveGeometry(styleName, 1, 1, 0.05, 0.4), 0xffffff, 24000);
-  make("mark", flatGeometry(styleName, 0.06, 0.34, 0.056), 0xffffff, 24000);
+  // A unit-length stripe, scaled per instance: one centred dash on a straight
+  // run, an arm per direction at a corner or a junction. Four a tile at an X,
+  // where there used to be one.
+  make("mark", flatGeometry(styleName, 0.06, 1, 0.056), 0xffffff, 60000);
   make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), 0xffffff, 24000);
   // A hub and four possible arms per tile, so a run READS as a run. A square
   // per tile left a dotted line with a gap at every boundary — the playtest
@@ -254,6 +257,50 @@ function connect(hubPool, armPool, tile, x, y, height, colour) {
   }
 }
 
+/** How far a junction's markings stop short of the tile centre.
+ *
+ * A road does not paint its centre line through a crossroads — the lines stop
+ * at the junction and the box is left clear. Without this a T reads as a
+ * three-armed star and an X as a plus sign, neither of which is a road. */
+const JUNCTION_GAP = 0.22;
+
+/** The centre markings for one road tile, drawn from its connection mask.
+ *
+ * The mask is the same low four bits the network ribbons read (ruling 030), and
+ * the three cases are what a person recognises as a road:
+ *
+ *   straight — one dash across the tile centre, the lane divider
+ *   corner   — two arms meeting AT the centre, so the elbow has no hole in it
+ *   T or X   — an arm per approach, stopping short of the middle
+ *
+ * A stub with one connection or none gets nothing: there is no lane to divide,
+ * and a lone dash on the end of a road reads as a mistake.
+ */
+function roadMarkings(pool, mask, x, y, height, colour) {
+  const cx = x + 0.5;
+  const cy = y + 0.5;
+  let bits = 0;
+  for (let d = 0; d < 4; d += 1) if (mask & (1 << d)) bits += 1;
+  if (bits < 2) return;
+
+  // North and south, or east and west: a road running through.
+  const straight = mask === 5 || mask === 10;
+  if (straight) {
+    push(pool, cx, height, cy, 1, 1, 0.34, colour, (mask & 10) !== 0 ? Math.PI / 2 : 0);
+    return;
+  }
+
+  const inner = bits >= 3 ? JUNCTION_GAP : 0;
+  const length = 0.5 - inner;
+  for (let d = 0; d < 4; d += 1) {
+    if ((mask & (1 << d)) === 0) continue;
+    const dir = DIR4[d];
+    const centre = inner + length / 2;
+    push(pool, cx + dir.dx * centre, height, cy + dir.dy * centre,
+      1, 1, length, colour, dir.dx === 0 ? 0 : Math.PI / 2);
+  }
+}
+
 export function updateInstances(state, pools, options = {}) {
   reset(pools);
   const styleName = options.style ?? "plain";
@@ -286,12 +333,10 @@ export function updateInstances(state, pools, options = {}) {
 
       if (state.tiles.road[index] & NET_PRESENT) {
         push(pools.road, x + 0.5, h, y + 0.5, 1, 1, 1, palette.road);
-        // Centre markings, turned to follow the road's own direction. Below a
-        // few pixels a tile they are invisible and there are thousands of them.
+        // Below a few pixels a tile the markings are invisible and there are
+        // thousands of them.
         if (markings) {
-          const mask = state.tiles.road[index] & 15;
-          const horizontal = (mask & 2) !== 0 || (mask & 8) !== 0;
-          push(pools.mark, x + 0.5, h, y + 0.5, 1, 1, 1, palette.roadMark, horizontal ? Math.PI / 2 : 0);
+          roadMarkings(pools.mark, state.tiles.road[index] & 15, x, y, h, palette.roadMark);
         }
       }
       // Zoned ground, drawn under everything else. It fades out as the lot

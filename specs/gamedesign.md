@@ -1023,7 +1023,7 @@ Buttons should be large enough for touch use. Hover-only information must also b
 Desktop:
 
 - Left drag: pan or select, depending on mode.
-- Right drag: pan. Middle drag: rotate.
+- Right drag: orbit — sideways turns, up and down tilts. Middle drag: pan.
 - Mouse wheel: zoom.
 - Keyboard: pan and rotate shortcuts.
 - Double-click: focus selected object.
@@ -1038,26 +1038,35 @@ Mobile:
 
 The camera should snap to comfortable angles and avoid disorienting free rotation.
 
-> **As built (slices N21, N27, N28).** Double-click focuses the tile under the
-> pointer — there is no selection model, so the tile *is* the object. **Right
-> drag pans; middle drag rotates** (N28). Both work with a tool in hand, which
-> is the point — they are the desktop equivalent of the second finger.
+> **As built (slices N21, N27, N28, N29).** Double-click focuses the tile under
+> the pointer — there is no selection model, so the tile *is* the object. The
+> three buttons are **left: the tool, or a pan with no tool held; middle: pan;
+> right: orbit** — sideways turns the camera, up and down tilts it between 12°
+> and 82°. All of it works with a tool in hand, which is the point: they are the
+> desktop equivalent of the second finger.
 >
-> The rotation is not free: a drag accumulates and fires a quarter turn every
-> 140 pixels, so it steps the same four snapped angles Q and E do and cannot
-> fight ruling 006.
+> The right button took four slices to settle, and the record is worth keeping.
+> N21 documented right and middle as panning while `onPointerDown` returned
+> early on both and they did nothing at all. N27 woke them and put **snapped
+> rotation** on the right button, which is not what P32 asked for and reads from
+> the hand as nothing happening and then the world flipping. N28 made it **pan**,
+> which P34 reported as indistinguishable from the left button. It is an orbit.
 >
-> Two slices got this wrong in different ways. N21 recorded both buttons as
-> panning while `onPointerDown` returned early on them and they did nothing at
-> all. N27 woke them up and put **rotation** on the right button, which is not
-> what P32 asked for and is the wrong feel besides: a snapped quarter turn every
-> 140 pixels reads from the hand as nothing happening, then the world flipping —
-> the N28 playtest reported the button as dead. Pan is one-for-one with the
-> pointer, so it is alive from the first pixel.
+> Rotation is free on the mouse and snapped on the keys: Q and E step the four
+> comfortable angles of ruling 006 and land back on them from wherever a drag
+> left the camera.
 >
-> **The pitch is fixed** at ~35.26°, the angle that puts one tile's diagonal on
-> the screen's horizontal. Asked about at the N27 playtest and kept: a moving
-> pitch would reopen ruling 006 and the readability it protects.
+> **The pitch starts** at ~35.26°, the angle that puts one tile's diagonal on
+> the screen's horizontal, and **moves** between 12° and 82° (N29). It was kept
+> fixed at the N27 playtest and asked for again at the next one, which settled
+> it: ruling 006 protects the four *yaw* angles and the ability to look behind a
+> building, and a tilt gives more of both. 82° rather than 90° because a camera
+> looking straight down is parallel to its own up vector and `lookAt` has no
+> answer; 12° because below that the front row of buildings hides the city.
+>
+> Anything that reasons about what the camera can see has to read the pitch:
+> `visibleBounds` stretches by 1/sin(pitch), or a low camera's distance is culled
+> away and the city ends at a line across the screen.
 >
 > **Long press is not built**;
 > with no tool held, a plain tap already inspects, and the contextual actions a
@@ -1818,7 +1827,7 @@ Art direction is settled once, before the first model: silhouette first, flat co
 | §11.7 Mayor rank | Rank no longer unlocks buildings in a shared region; unlocks belong to the room (§27.2). Rank remains personal recognition. |
 | §12 Events and disasters | Disasters spread across borders and carry liability and optional regional aid. |
 | §13 User interface | The HUD adds a player roster, a request inbox, a territory overlay toggle, a speed-vote indicator, an activity feed and a minimap. |
-| §13.4 Camera | Four-angle snapped rotation is a **hard requirement**, not an optional affordance. It is the constraint that decides the art pipeline. |
+| §13.4 Camera | Four-angle snapped rotation is a **hard requirement**, not an optional affordance. It is the constraint that decides the art pipeline. **Amended at P34:** the four angles are what the keys and the two-finger twist give; the right mouse button orbits freely and tilts the pitch between 12° and 82°. The ruling protects looking behind a building, and an orbit gives more of that, not less (ruling 006, amended). |
 | §14 Tool interaction | The request flow is a first-class tool interaction: select foreign property, describe, optionally offer compensation, send. |
 | §16 Overlays | Adds **territory** and **contracts** overlays. |
 | §17 Notifications | Adds request, ping, contract and player-presence notifications, all mutable. |

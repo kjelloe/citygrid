@@ -295,7 +295,7 @@
   "help.help": "Åpne dette kortet",
   "help.drag": "Dra med et verktøy for å bygge en linje eller et felt; dra uten for å flytte utsnittet.",
   "help.wheel": "Musehjulet zoomer; knip gjør det samme på berøringsskjerm.",
-  "help.rightDrag": "Dra med høyre eller midtre knapp flytter utsnittet selv med et verktøy i hånden.",
+  "help.rightDrag": "Dra med høyre knapp vrir og vipper utsnittet; midtre knapp flytter det. Begge virker med et verktøy i hånden.",
   "help.tapInspect": "Uten verktøy valgt: klikk eller trykk på hva som helst for å se hvorfor det er som det er.",
   "help.minimapClick": "Klikk eller dra på det lille kartet for å flytte utsnittet dit.",
 

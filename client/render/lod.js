@@ -188,7 +188,14 @@ export function visibleBounds(view, aspect, margin = 3) {
   const halfX = halfY * Math.max(1, aspect);
   // A rotated orthographic view sweeps a larger axis-aligned box than its own
   // rectangle; the diagonal covers every yaw without a per-angle special case.
-  const reach = Math.hypot(halfX, halfY) + margin;
+  //
+  // And a TILTED one sweeps further still. The screen's vertical half-extent
+  // lands on the ground stretched by 1/sin(pitch) — at 20° that is nearly three
+  // times as far — so a camera dropped towards the horizon (P34) sees a long
+  // way up the map. Bounds that ignore it cull the distance away and the city
+  // ends at a straight line across the screen.
+  const pitch = view.pitch ?? Math.atan(1 / Math.SQRT2);
+  const reach = Math.hypot(halfX, halfY / Math.max(Math.sin(pitch), 0.15)) + margin;
   return {
     x0: view.targetX - reach, x1: view.targetX + reach,
     y0: view.targetZ - reach, y1: view.targetZ + reach,

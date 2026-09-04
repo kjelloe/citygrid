@@ -11,6 +11,9 @@ import { tileIndex, lineTiles, rectTiles, toRuns, runsLength } from "../client/i
 import { createGestures, down, move, up, cancel } from "../client/input/gestures.js";
 import { TOOLS, toolCommand, isAreaTool } from "../client/input/tools.js";
 import { AREA_COMMANDS, isAreaCommand } from "../engine/commands.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 
 // --- tile trails ------------------------------------------------------------
 
@@ -218,4 +221,54 @@ test("cancel ends a stroke so a lost pointer cannot leave one open", () => {
 test("a stroke that never started does not end", () => {
   const g = createGestures({ building: () => false });
   assert.deepEqual(types(up(g, P(9, 5, 5))), [], "an unknown pointer is ignored");
+});
+
+// --- the camera is an orbit now (P34) ----------------------------------------
+//
+// `camera.js` imports three, which node cannot resolve — the vendored copy is
+// reached through the page's importmap. So these read the source, and
+// `tools/play_smoke.mjs` drags the real mouse across the real canvas.
+
+const camera = readFileSync(join(repoRoot, "client", "render", "camera.js"), "utf8");
+
+test("the pitch belongs to the view, not to the module", () => {
+  // Ruling 006 fixed the pitch at ~35.26°. The playtest asked to be able to
+  // drop the camera towards the ground, which is a deliberate amendment: the
+  // pitch moves, and the four snapped YAW angles stay on Q and E.
+  assert.match(camera, /pitch: PITCH/, "a new view does not start at the isometric angle");
+  const pose = camera.slice(camera.indexOf("export function applyPose("));
+  const body = pose.slice(0, pose.indexOf("\n}"));
+  assert.match(body, /view\.pitch/, "applyPose does not read the view's own pitch");
+  assert.equal(/Math\.(sin|cos)\(PITCH\)/.test(body), false,
+    "applyPose still poses the camera from the module constant");
+});
+
+test("the pitch is clamped at both ends", () => {
+  // Straight down is a degenerate lookAt — the up vector and the view direction
+  // are parallel — and flat on the ground is a city seen edge-on.
+  assert.match(camera, /export function pitchBy\(/);
+  assert.match(camera, /MIN_PITCH/);
+  assert.match(camera, /MAX_PITCH/);
+  const min = /const MIN_PITCH = ([^;]+);/.exec(camera);
+  const max = /const MAX_PITCH = ([^;]+);/.exec(camera);
+  assert.ok(min && max, "the limits are not readable");
+  const value = (expression) => Number(new Function(`return ${expression}`)());
+  assert.ok(value(min[1]) > 0, "the camera can reach the horizon");
+  assert.ok(value(max[1]) < Math.PI / 2, "the camera can look straight down, which has no up vector");
+});
+
+test("the mouse turns the camera freely, the keys still snap", () => {
+  // Both, deliberately. Free rotation is what the playtest asked the right
+  // button for; the four comfortable angles of ruling 006 are what Q and E are
+  // for, and pressing one from any free angle lands back on the grid.
+  assert.match(camera, /export function yawBy\(/, "there is no free rotation");
+  const rotate = camera.slice(camera.indexOf("export function rotate("));
+  assert.match(rotate.slice(0, rotate.indexOf("\n}")), /Math\.round\(/,
+    "a key press from a free angle does not land back on the four snapped ones");
+});
+
+test("turning past a full circle keeps the yaw finite", () => {
+  const yawBy = camera.slice(camera.indexOf("export function yawBy("));
+  assert.match(yawBy.slice(0, yawBy.indexOf("\n}")), /Math\.PI \* 2/,
+    "the yaw is never wrapped, so it grows without bound");
 });

@@ -17,7 +17,7 @@ import { buildingCost } from "../../engine/utilities.js";
 import { footprintAt } from "../ui/build-model.js";
 import { RESULT } from "../../shared/protocol.js";
 import { pickTile } from "../render/picking.js";
-import { panBy, zoomBy, rotate, clampToMap } from "../render/camera.js";
+import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap } from "../render/camera.js";
 import { createGestures, down, move, up, cancel } from "./gestures.js";
 import { lineTiles, rectTiles, toRuns, tileIndex, runsLength } from "./runs.js";
 import { TOOLS, DRAG, buildCommand, toolForKey } from "./tools.js";
@@ -184,21 +184,33 @@ export function createController(canvas, state, renderer, options = {}) {
 
   const point = (event) => ({ id: event.pointerId, x: event.offsetX, y: event.offsetY });
 
-  /** Right and middle drag, which returned early and therefore did NOTHING —
-   * the comment said they panned and the code dropped them (P32).
+  /** The three buttons, settled at the second playtest (P34):
    *
-   * §13.4: **right drag pans**, one for one with the pointer, which is what was
-   * asked for. N27 put rotation there instead and the playtest reported the
-   * button as dead: a snapped quarter turn every 140 pixels feels like nothing
-   * happening, then the world flipping (P33). Rotation keeps the wheel button.
-   * Both work with a tool in hand, which is the whole point: they are the
-   * desktop equivalent of the second finger.
+   *   left    — the tool, or a pan when no tool is held
+   *   middle  — pan
+   *   right   — ORBIT: sideways turns the camera, up and down tilts it
    *
-   * Rotation ACCUMULATES and fires in whole quarter turns, like the two-finger
-   * twist — the camera has four snapped angles (ruling 006), so a drag has to
-   * cross a threshold rather than spin the world continuously. */
-  const drag = { button: -1, x: 0, y: 0, turned: 0 };
-  const PIXELS_PER_TURN = 140;
+   * Three slices to get here. N21 recorded right and middle as panning while
+   * `onPointerDown` returned early on both and they did nothing at all; N27
+   * woke them up and put snapped rotation on the right button, which is not
+   * what was asked for and reads from the hand as nothing happening and then
+   * the world flipping; N28 made it pan, which the playtest then reported as
+   * indistinguishable from the left button. It is an orbit.
+   *
+   * Free, not snapped, and this is the amendment to ruling 006: the four
+   * comfortable angles are what Q and E give — and pressing one from anywhere
+   * lands back on them — while the mouse may sit between them. The pitch moves
+   * too, between the horizon and almost straight down, because "can we only
+   * view the city from above" was asked twice.
+   *
+   * All of it works with a tool in hand, which is the whole point: these are
+   * the desktop equivalent of the second finger. */
+  const drag = { button: -1, x: 0, y: 0 };
+  /** Radians per pixel dragged. A quarter turn across ~315px sideways, and the
+   * whole tilt range across ~470px, which is most of a canvas either way: the
+   * camera has to be steerable without the pointer leaving the window. */
+  const YAW_PER_PIXEL = 0.005;
+  const PITCH_PER_PIXEL = 0.0026;
 
   const onPointerDown = (event) => {
     canvas.setPointerCapture?.(event.pointerId);
@@ -206,7 +218,6 @@ export function createController(canvas, state, renderer, options = {}) {
       drag.button = event.button;
       drag.x = event.offsetX;
       drag.y = event.offsetY;
-      drag.turned = 0;
       return;
     }
     handle(down(gestures, point(event)));
@@ -218,17 +229,19 @@ export function createController(canvas, state, renderer, options = {}) {
       drag.x = event.offsetX;
       drag.y = event.offsetY;
       if (drag.button === 2) {
+        // Dragging right turns the city to the right, which means turning the
+        // camera the other way — the same inversion the pan needs, and for the
+        // same reason: the hand is on the world, not on the tripod.
+        yawBy(renderer.view, -dx * YAW_PER_PIXEL);
+        // Dragging DOWN lowers the camera towards the ground. Pulling the far
+        // edge of the map towards you is what tipping a model on a table feels
+        // like; the other way round reads as a stuck control.
+        pitchBy(renderer.view, -dy * PITCH_PER_PIXEL);
+      } else {
         panBy(renderer.view,
           -pixelsToTiles(renderer.view, canvas.clientHeight, dx),
           -pixelsToTiles(renderer.view, canvas.clientHeight, dy));
         clampToMap(renderer.view, state.width, state.height);
-      } else {
-        drag.turned += dx;
-        while (Math.abs(drag.turned) >= PIXELS_PER_TURN) {
-          const direction = drag.turned > 0 ? 1 : -1;
-          rotate(renderer.view, direction);
-          drag.turned -= direction * PIXELS_PER_TURN;
-        }
       }
       onChange();
       return;

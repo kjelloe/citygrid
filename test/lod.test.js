@@ -129,3 +129,18 @@ test("counting only what is on screen is what makes the budget mean anything", (
   assert.ok(narrow.estimate < wide.estimate);
   assert.equal(narrow.props, true, "a zoomed-in view has room for the detail it can actually show");
 });
+
+test("a low camera sees further, and the bounds have to know it (P34)", () => {
+  // The pitch used to be a constant. Now that the right mouse button can drop
+  // the camera towards the ground (ruling 006, amended), the ground footprint
+  // of an orthographic frustum stretches by 1/sin(pitch) along the view — at
+  // 20° that is nearly three times as far. Bounds that ignore it cull the
+  // distance away and the city ends at a straight line across the screen.
+  const overhead = { span: 40, targetX: 50, targetZ: 50, pitch: Math.PI / 2 };
+  const low = { span: 40, targetX: 50, targetZ: 50, pitch: 20 * (Math.PI / 180) };
+  const reach = (view) => visibleBounds(view, 16 / 9).x1 - view.targetX;
+  assert.ok(reach(low) > reach(overhead) * 1.5,
+    `a 20° camera reaches ${reach(low).toFixed(1)} against ${reach(overhead).toFixed(1)} overhead`);
+  // A view with no pitch at all still gets the old answer rather than NaN.
+  assert.ok(Number.isFinite(reach({ span: 40, targetX: 0, targetZ: 0 })));
+});

@@ -9,6 +9,20 @@ import * as THREE from "three";
 export const YAW_STEPS = 4;
 const PITCH = Math.atan(1 / Math.SQRT2); // classic isometric-ish, ~35.26°
 
+/** How far the camera may be tilted, in radians from the ground plane.
+ *
+ * Ruling 006 fixed the pitch at PITCH and the second playtest asked to be able
+ * to drop it "closer to the ground", which is a deliberate amendment rather
+ * than a slip: the four snapped YAW angles the ruling is really about are
+ * untouched and still what Q and E give.
+ *
+ * Neither end is arbitrary. Below about 12° a city is seen edge-on and the
+ * front row hides everything behind it; at exactly 90° the view direction is
+ * parallel to the up vector and `lookAt` has no answer, so the top end stops
+ * short of straight down. */
+const MIN_PITCH = 12 * (Math.PI / 180);
+const MAX_PITCH = 82 * (Math.PI / 180);
+
 export function createCamera(aspect) {
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 4000);
   const view = {
@@ -19,6 +33,7 @@ export function createCamera(aspect) {
     span: 40,
     yawStep: 0,
     yaw: 0,
+    pitch: PITCH,
     aspect,
   };
   applyZoom(view, aspect);
@@ -43,9 +58,10 @@ export function applyZoom(view, aspect) {
  * and far planes at every zoom. */
 export function applyPose(view) {
   const distance = 1200;
-  const x = view.targetX + Math.sin(view.yaw) * Math.cos(PITCH) * distance;
-  const y = Math.sin(PITCH) * distance;
-  const z = view.targetZ + Math.cos(view.yaw) * Math.cos(PITCH) * distance;
+  const pitch = view.pitch ?? PITCH;
+  const x = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
+  const y = Math.sin(pitch) * distance;
+  const z = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
   view.camera.position.set(x, y, z);
   view.camera.up.set(0, 1, 0);
   view.camera.lookAt(view.targetX, 0, view.targetZ);
@@ -58,8 +74,27 @@ export function setYawStep(view, step) {
   applyPose(view);
 }
 
+/** A key press, which SNAPS. From a free angle the mouse left behind, the step
+ * is measured from where the camera actually is — so Q and E are also the way
+ * back onto the four comfortable angles, not a jump to a remembered one. */
 export function rotate(view, direction) {
-  setYawStep(view, view.yawStep + (direction > 0 ? 1 : -1));
+  const here = Math.round(view.yaw / (Math.PI / 2));
+  setYawStep(view, here + (direction > 0 ? 1 : -1));
+}
+
+/** A drag, which does not snap. Wrapped, or a player who spins the camera for
+ * a minute accumulates a yaw large enough to lose precision in. */
+export function yawBy(view, radians) {
+  const full = Math.PI * 2;
+  view.yaw = ((view.yaw + radians) % full + full) % full;
+  view.yawStep = Math.round(view.yaw / (Math.PI / 2)) % YAW_STEPS;
+  applyPose(view);
+}
+
+/** Tilt, between the horizon and almost straight down. */
+export function pitchBy(view, radians) {
+  view.pitch = Math.max(MIN_PITCH, Math.min(MAX_PITCH, (view.pitch ?? PITCH) + radians));
+  applyPose(view);
 }
 
 export function focusOn(view, x, z) {

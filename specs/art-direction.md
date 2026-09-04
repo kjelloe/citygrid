@@ -242,8 +242,18 @@ the triangle budget (ruling 019), never by the artist.
 ### 3.5 Ground, network and props
 
 Roads are **skirted quads** — a flat top face with sides hanging below it — with
-a centre marking that turns to follow the road's own direction; markings vanish
-below 20 pixels a tile. Houses and civic buildings
+centre markings drawn from the road's own connection mask (slice N29); markings
+vanish below 20 pixels a tile. Three cases, and they have to be three:
+
+- a **straight** run keeps one centred dash, the lane divider;
+- a **corner** draws two arms that meet *at* the centre, so the elbow has no
+  hole in it;
+- a **T or an X** draws an arm per approach that stops short of the middle,
+  because a road does not paint its centre line through a junction — and an
+  unbroken cross reads as a plus sign rather than a crossroads.
+
+A stub with one connection or none gets no marking at all: there is no lane to
+divide, and a lone dash on the end of a road reads as a mistake. Houses and civic buildings
 stand on a garden plot, which is what stops a suburb reading as buildings
 dropped onto tarmac. Power poles are drawn every third tile of a wire run.
 

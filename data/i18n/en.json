@@ -295,7 +295,7 @@
   "help.help": "Open this card",
   "help.drag": "Drag with a tool to build a line or a block; drag with none to move the view.",
   "help.wheel": "The mouse wheel zooms; pinch does the same on a touchscreen.",
-  "help.rightDrag": "Right or middle drag moves the view even while a tool is held.",
+  "help.rightDrag": "Right drag turns and tilts the view; middle drag moves it. Both work with a tool in hand.",
   "help.tapInspect": "With no tool selected, click or tap anything to see why it is the way it is.",
   "help.minimapClick": "Click or drag the small map to move the view there.",
 

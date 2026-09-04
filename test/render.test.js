@@ -369,3 +369,38 @@ test("wire and pipe cross a road instead of vanishing under it", () => {
     assert.ok(Number(height[1]) > surface, `the ${name} is drawn under the road surface`);
   }
 });
+
+// --- a road junction looks like a junction (P34) ------------------------------
+
+test("road markings are drawn from the road's own connection mask", () => {
+  // One centred dash per tile, turned to the road's axis, was the whole
+  // marking: a crossroads got a single stripe pointing one way and a corner got
+  // a stripe pointing across the turn. The mask already says which neighbours
+  // a tile joins — the same four bits the network ribbons read (ruling 030).
+  assert.match(instances, /function roadMarkings\(/, "there is no marking helper");
+  const helper = instances.slice(instances.indexOf("function roadMarkings("),
+    instances.indexOf("export function updateInstances"));
+  assert.match(helper, /mask & \(1 << d\)/, "the marking is not driven by the connection mask");
+  assert.match(helper, /bits/, "the marking does not count its connections");
+});
+
+test("a corner joins, a junction opens, a straight road keeps its dash", () => {
+  const helper = instances.slice(instances.indexOf("function roadMarkings("),
+    instances.indexOf("export function updateInstances"));
+  // Three cases, and they have to be three: a corner's two arms MEET at the
+  // centre or the elbow has a hole in it; a T or an X leaves the middle clear,
+  // because painting a cross through a junction is not what a road does; a
+  // straight run keeps the single centred dash that reads as a lane divider.
+  assert.match(helper, /straight/, "a straight run is not distinguished");
+  assert.match(helper, /bits >= 3/, "T and X junctions are not distinguished");
+  assert.match(helper, /JUNCTION_GAP/, "a junction does not clear its middle");
+});
+
+test("the marking pools survive four arms a tile", () => {
+  // Four per tile at an X, against one before. A pool that overflows drops
+  // instances silently and the junctions nearest the edge of the screen lose
+  // their markings.
+  const mark = /make\("mark", [^;]+?, 0xffffff, (\d+)\)/.exec(instances);
+  assert.ok(mark, "the mark pool is not readable");
+  assert.ok(Number(mark[1]) >= 40000, `the mark pool is ${mark[1]}, too small for four arms a tile`);
+});

@@ -156,47 +156,70 @@ async function run(page, label, { touch }) {
   check(`${label}: dragging with no tool pans the camera`, distance > 1,
     `moved ${distance.toFixed(2)} tiles from (${before.targetX}, ${before.targetZ})`);
 
-  // --- the other two buttons (P33) -------------------------------------------
+  // --- the other two buttons (P33, P34) --------------------------------------
   //
   // N27 shipped these untested by anything that presses a button, and shipped
-  // the wrong gesture on the wrong button: the playtest reported the right
-  // button as doing nothing. A source test cannot catch that — this presses it.
+  // the wrong gesture on the wrong button twice running. A source test cannot
+  // catch that — this presses them.
   if (!touch) {
     await page.click('#tools button[data-tool="road"]');  // a tool IS in hand
     const from = await tilePixel(page, 30, 30);
     const start = await page.evaluate(() => {
       const v = globalThis.CITY.renderer.view;
       return {
-        x: v.targetX, z: v.targetZ, yawStep: v.yawStep,
+        x: v.targetX, z: v.targetZ, yaw: v.yaw, pitch: v.pitch,
         paved: globalThis.CITY.state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0),
       };
     });
     await page.mouse.move(from.x, from.y);
     await page.mouse.down({ button: "right" });
-    await page.mouse.move(from.x + 150, from.y + 40, { steps: 6 });
+    for (let i = 1; i <= 8; i += 1) await page.mouse.move(from.x + i * 14, from.y - i * 9);
     await page.mouse.up({ button: "right" });
-    const dragged = await page.evaluate(() => {
+    const orbited = await page.evaluate(() => {
       const v = globalThis.CITY.renderer.view;
       return {
-        x: v.targetX, z: v.targetZ, yawStep: v.yawStep,
+        x: v.targetX, z: v.targetZ, yaw: v.yaw, pitch: v.pitch,
         paved: globalThis.CITY.state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0),
       };
     });
-    const moved = Math.hypot(dragged.x - start.x, dragged.z - start.z);
-    check(`${label}: right drag pans the map, with a tool in hand`, moved > 1,
-      `moved ${moved.toFixed(2)} tiles`);
-    check(`${label}: right drag does not build`, dragged.paved === start.paved,
-      `${start.paved} tiles paved before the drag, ${dragged.paved} after`);
-    check(`${label}: right drag does not turn the camera`, dragged.yawStep === start.yawStep,
-      `yaw ${start.yawStep} -> ${dragged.yawStep}`);
+    check(`${label}: right drag turns the camera, with a tool in hand`,
+      Math.abs(orbited.yaw - start.yaw) > 0.05, `yaw ${start.yaw} -> ${orbited.yaw}`);
+    check(`${label}: right drag tilts the camera`,
+      Math.abs(orbited.pitch - start.pitch) > 0.05,
+      `pitch ${start.pitch} -> ${orbited.pitch}`);
+    // It turns FREELY: the four snapped angles belong to Q and E (ruling 006,
+    // amended at P34). A drag that landed exactly on a quarter turn would mean
+    // the snap is still in the way.
+    const quarters = orbited.yaw / (Math.PI / 2);
+    check(`${label}: the mouse is not snapped to the four angles`,
+      Math.abs(quarters - Math.round(quarters)) > 1e-6, `yaw is exactly ${quarters} quarter turns`);
+    check(`${label}: right drag does not build`, orbited.paved === start.paved,
+      `${start.paved} tiles paved before the drag, ${orbited.paved} after`);
+    check(`${label}: right drag does not pan`,
+      Math.hypot(orbited.x - start.x, orbited.z - start.z) < 0.001,
+      `the camera target moved as well as turning`);
 
+    // And Q still lands back on a snapped angle from wherever the mouse left it.
+    await page.evaluate(() => document.getElementById("city").focus());
+    await page.keyboard.press("q");
+    const snapped = await page.evaluate(() => globalThis.CITY.renderer.view.yaw / (Math.PI / 2));
+    check(`${label}: a key press snaps back onto the four angles`,
+      Math.abs(snapped - Math.round(snapped)) < 1e-9, `yaw is ${snapped} quarter turns`);
+
+    const beforePan = await page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      return { x: v.targetX, z: v.targetZ };
+    });
     await page.mouse.move(from.x, from.y);
     await page.mouse.down({ button: "middle" });
-    await page.mouse.move(from.x + 300, from.y, { steps: 8 });
+    await page.mouse.move(from.x + 160, from.y + 40, { steps: 6 });
     await page.mouse.up({ button: "middle" });
-    const turned = await page.evaluate(() => globalThis.CITY.renderer.view.yawStep);
-    check(`${label}: middle drag turns the camera`, turned !== dragged.yawStep,
-      `yaw stayed at ${turned}`);
+    const panned2 = await page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      return { x: v.targetX, z: v.targetZ };
+    });
+    const moved = Math.hypot(panned2.x - beforePan.x, panned2.z - beforePan.z);
+    check(`${label}: middle drag pans`, moved > 1, `moved ${moved.toFixed(2)} tiles`);
     await page.click('#tools button[data-tool="road"]');  // put it down again
   }
 

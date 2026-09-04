@@ -2384,3 +2384,88 @@ One more gate lie, resolved rather than filed: `play_smoke`'s new "right drag
 does not build" check failed at 13 paved tiles. The tiles were the road the run
 lays back down after testing undo, four checks earlier. The check compares
 before and after now, not against zero.
+
+---
+
+## N29 — The camera is an orbit, and a junction looks like a junction
+
+**P34**, the second playtest. Two items and a question.
+
+### 1. The right button, fourth time lucky
+
+The record is worth keeping, because it is four slices of getting the same
+control wrong in four different ways:
+
+- **N21** documented right and middle drag as panning. `onPointerDown` opened
+  with `if (event.button === 1 || event.button === 2) return;` — they did
+  nothing at all, and the comment above the `return` said they panned.
+- **N27** woke them and put **snapped rotation** on the right button: a quarter
+  turn every 140 pixels. Not what P32 asked for, and from the hand it reads as
+  nothing happening and then the world flipping.
+- **N28** made it **pan**, which is what P32's words actually asked for. P34:
+  "right mouse button only pans view like left mouse button."
+- **N29** makes it an **orbit**. Sideways turns the camera; up and down tilts
+  it. Middle drag pans. Three buttons, three things.
+
+The lesson, and it is not about mice: P32 asked for panning **because panning
+was the only camera verb it knew the game had**. The right answer was the one
+behind the request — give the second button the job the first one cannot do.
+
+**Ruling 006 is amended, not broken.** The four snapped yaw angles are what Q, E
+and the two-finger twist give, and `rotate` now snaps from wherever a free drag
+left the camera — so a key press is also the way back onto the grid. What the
+ruling protects is being able to look behind a tall building; an orbit gives
+more of that, not less. The four sprite sets it was really guarding against are
+not owed, because ruling 022 chose meshes.
+
+The pitch was a module constant, `atan(1/√2)`, and is now a field on the view,
+clamped to 12°–82°. 82° rather than straight down because a camera parallel to
+its own up vector has no `lookAt`; 12° because below that the front row hides
+the city.
+
+### 2. Road markings from the mask
+
+The marking was one centred dash per tile, turned to the tile's axis by
+`(mask & 2) || (mask & 8)`. A crossroads got a single stripe pointing one way; a
+corner got a stripe pointing across the turn. `roadMarkings` reads the same four
+bits the network ribbons do (ruling 030) and draws three cases: a dash on a
+straight run, two arms **meeting at** the centre at a corner so the elbow has no
+hole in it, and an arm per approach **stopping short** of the middle at a T or an
+X — because a road does not paint its centre line through a junction, and an
+unbroken cross reads as a plus sign. One or no connections gets nothing.
+
+The dash is one unit-length stripe scaled per instance, so the three cases cost
+one pool rather than three; the pool went from 24 000 to 60 000, because an X
+draws four where there used to be one.
+
+### Measured
+
+- `./test.sh` **560 tests, green twice.**
+- **Eleven gates green.**
+- `play_smoke`, tool in hand: right drag `yaw 1.571 → 1.011`, `pitch 0.615 →
+  0.803`, camera target unmoved, 0 tiles built, and the resulting yaw is
+  **0.643 quarter turns** — off the snapped grid, which is the point. Q then
+  landed it back on exactly 0.
+- A real right-drag on the page: `35.3° → 50.2°`, then a long downward drag
+  clamped at exactly `12.0°`.
+- Screenshots of a grid with two X junctions, four Ts and four corners at span
+  16, at 35°, at 50° off-axis, and at 12°.
+
+### What failed on the way
+
+**Two of the new tests were wrong, and both were wrong in the same direction —
+asserting the shape of the implementation rather than the property.** One
+demanded that `const PITCH` disappear from `camera.js`, when the right thing is
+for it to survive as the default a new view starts at; the assertion should be,
+and now is, that `applyPose` poses from `view.pitch` and not from the constant.
+The other claimed a 20° camera must reach more than twice as far as an overhead
+one, which is false for a 16:9 view where the horizontal half-extent dominates
+the diagonal: 1.68×, not 2×.
+
+**The pitch reached further than the culling did.** `visibleBounds` had a
+comment explaining that a *rotated* view sweeps a larger axis-aligned box and
+covering it with the diagonal — correct, and yaw-only. A tilted orthographic
+frustum lands on the ground stretched by 1/sin(pitch), nearly three times as far
+at 20°. Without that the first low-angle screenshot would have ended at a
+straight line across the middle of the screen. Caught by writing the bounds test
+before the camera change, not after.

@@ -97,28 +97,35 @@ test("right and middle drag are handled, not dropped", () => {
   assert.match(controller, /drag\.button/, "there is no drag state for the extra buttons");
 });
 
-test("right drag PANS, which is what was asked for", () => {
-  // P32 asked for "right mouse button - hold down - to pan the map view" and
-  // N27 shipped rotation on it instead: a snapped quarter turn every 140px,
-  // which from the hand feels like nothing happening and then the world
-  // flipping. The map moves with the pointer, one for one (P33).
+test("right drag ORBITS: sideways turns, up and down tilts", () => {
+  // P32 asked for pan and got snapped rotation (N27); P33 reported the button
+  // dead and got pan (N28); P34 reported it as doing what the left button
+  // already did and asked for rotation AND a changeable view angle. The right
+  // button is the orbit, and it is the only control that can tilt the camera.
   const move = controller.slice(controller.indexOf("const onPointerMove"), controller.indexOf("const onPointerUp"));
-  const right = move.slice(move.indexOf("if (drag.button === 2)"));
+  const right = move.slice(move.indexOf("if (drag.button === 2)"), move.indexOf("} else"));
   assert.ok(move.includes("if (drag.button === 2)"), "the right button has no branch of its own");
-  assert.match(right.slice(0, right.indexOf("} else")), /panBy\(renderer\.view/,
-    "right drag does not pan");
-  assert.match(right.slice(0, right.indexOf("} else")), /clampToMap/,
-    "a right-drag pan can leave the map behind");
+  assert.match(right, /yawBy\(renderer\.view, -dx/, "sideways does not turn the camera");
+  assert.match(right, /pitchBy\(renderer\.view, -dy/, "up and down does not tilt the camera");
+  assert.equal(/panBy/.test(right), false, "the right button still pans, which is the left button's job");
 });
 
-test("middle drag turns the camera in whole quarters", () => {
-  // Ruling 006: four snapped angles. A drag accumulates and fires in steps,
-  // exactly as the two-finger twist does — a continuous spin would be the
-  // disorienting free rotation the ruling exists to avoid. The wheel button
-  // keeps it now that the right button pans.
-  assert.match(controller, /PIXELS_PER_TURN/);
-  assert.match(controller, /while \(Math\.abs\(drag\.turned\) >= PIXELS_PER_TURN\)/);
-  assert.match(controller, /rotate\(renderer\.view, direction\)/);
+test("middle drag pans", () => {
+  // The wheel button is the pan now that the right button orbits. Left, middle
+  // and right therefore do three different things, which is the complaint P34
+  // actually made.
+  const move = controller.slice(controller.indexOf("const onPointerMove"), controller.indexOf("const onPointerUp"));
+  const middle = move.slice(move.indexOf("} else {"));
+  assert.match(middle, /panBy\(renderer\.view/, "middle drag does not pan");
+  assert.match(middle, /clampToMap/, "a middle-drag pan can leave the map behind");
+});
+
+test("the keys still snap to the four comfortable angles", () => {
+  // Ruling 006 as amended: free rotation on the mouse, the four angles on Q and
+  // E. The controller does not do the snapping — `rotate` does — so what is
+  // checked here is that the keys go through it and not through `yawBy`.
+  assert.match(controller, /event\.key === "q".*rotate\(renderer\.view, -1\)/s);
+  assert.match(controller, /event\.key === "e".*rotate\(renderer\.view, 1\)/s);
 });
 
 test("a button drag works with a tool in hand", () => {

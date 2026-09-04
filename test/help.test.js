@@ -92,3 +92,18 @@ test("the card names no key twice", () => {
     .filter((k) => !["↑", "↓", "←", "→", "ctrl"].includes(k));
   assert.equal(new Set(all).size, all.length, `a key is claimed twice: ${all.join(" ")}`);
 });
+
+test("the card describes the mouse buttons the controller actually binds (P34)", () => {
+  // The card said "right or middle drag moves the view" for three slices while
+  // the right button did nothing, then rotated, then panned. A control the
+  // player is told about has to be the control they get (ruling 027).
+  const en = JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "en.json"), "utf8"));
+  const text = en["help.rightDrag"].toLowerCase();
+  assert.match(text, /right drag/, "the card does not name the right button");
+  assert.match(text, /turn|rotate/, "the card does not say the right button turns the view");
+  assert.match(text, /tilt|angle/, "the card does not say the right button tilts the view");
+  assert.match(text, /middle drag/, "the card does not name the middle button");
+  // And the controller has to agree.
+  assert.match(controller, /yawBy\(renderer\.view/);
+  assert.match(controller, /pitchBy\(renderer\.view/);
+});
