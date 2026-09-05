@@ -310,6 +310,43 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 | **N29** | **The camera is an orbit, and a junction looks like a junction** (P34) | S | The right button had been changed twice and still did what the left one did; and the road markings were one centred dash per tile turned to the tile's axis, so a crossroads got a single stripe pointing one way | **Done.** Right drag orbits — sideways turns freely, up and down tilts between 12° and 82° — and middle drag pans, so the three buttons finally do three things. Ruling 006 amended: the four snapped angles are what Q, E and the two-finger twist give, and `rotate` now snaps from wherever a drag left the camera. `visibleBounds` reads the pitch (1/sin), or a low camera's distance is culled away. Road markings are drawn from the connection mask: a dash on a straight run, two arms meeting at a corner, an arm per approach stopping short of the middle at a T or an X |
 | **N30** | **The budget was counting a fiction** (P35, review round) | S | Nothing compared the LOD planner's estimate with what three actually drew, so N28's skirts went unpriced: the planner believed 79,068 triangles while the renderer drew 97,500, over an 80,000 budget with the whole sacrifice ladder already spent | **Done.** A road is painted into the terrain mesh — seamless by construction, and 29,868 triangles lighter; the network ribbons are quads again (−48,600). Ground and prop costs are **measured** like buildings and trees, markings are counted per junction, wire and pipe are in the estimate at all, and casters count once because the shadow pass moves three's counter by exactly zero. Estimate against actual: **1–5%** across four zooms, from 38–92%. `tools/budget_gate.mjs` is the gate that was missing; `lobby_smoke`'s resume-side tick race is closed |
 
+## Proposed lane — The city you can zoom into (P36)
+
+*Written 2026-09-05 from two reference shots the user supplied
+(`debugging/transport-world-example.png`, `transport-world-2.png`). **Nothing
+here is scheduled.** V3 and V4 reopen decisions that are the user's — Q24, Q25 —
+and the whole lane is cosmetic: it makes the city better to look at and changes
+no rule, no number and no hash.*
+
+**What the reference has that we do not**, in the order it hits the eye:
+
+1. **Individual moving vehicles**, queueing bumper-to-bumper where a road is
+   full. We draw parked cars on 28% of road tiles and nothing that moves.
+2. **Ground that does not read as a checkerboard.** Our terrain is one flat
+   colour per tile, deliberately ("a city grid wants to read as tiles"); at the
+   zoom the reference uses, the patchwork is the first thing you see.
+3. **Real relief.** `HEIGHT_SCALE` is 0.02 and elevations span ~8 levels, so a
+   whole map has about a sixth of a tile of height in it. The reference has
+   hills a city block tall.
+4. **Perspective.** The reference converges; we are orthographic by
+   construction (ruling 006), which at a low pitch reads as a diagram rather
+   than a place.
+5. **Richer lots** — front gardens, fences, more silhouettes and colours.
+
+| # | Slice | Size | Why | Done when |
+|---|---|---|---|---|
+| **V1** | **Traffic you can see** — moving cars driven by `state.tiles.traffic` and the road connection mask | M | The engine has computed a per-tile commuter load since N7, it is hashed state, and the only thing that reads it is an overlay tint and one inspector row. The single largest gap to the reference, and the one that needs no new rules | Cars stream along a road at a speed that falls with load and bunch up where it is over capacity; the whole thing is **renderer-side** — position is `time × speed + a per-tile hash`, so no float and no entity enters state and no hash moves. Cars have their own rung on the LOD ladder and a per-tier cap |
+| **V2** | **The quality setting** — Low / Medium / High, defaulted from `deviceClass()` | S | `createScene` already takes `pixelRatio`, `antialias`, `shadowMap`, `triangleBudget`, `trees`, `props` and `shadows`, and **nothing sets any of them**; `deviceClass()` has been written and unused since N12; `settings.reducedEffects` is a catalogue string with no screen. The tier is mostly wiring that exists | A settings row with three choices, defaulted from the device and remembered; `budget_gate` runs at all three; and a **frame-time governor**, because a phone is fill-rate bound and a triangle budget is the wrong instrument for it |
+| **V3** | **Ground that is not a checkerboard** | S | See 2 above | Natural terrain blends across tile corners; **built and zoned land keeps its flat tiles**, because that is what makes a grid legible. One knob, checked by screenshot at three zooms |
+| **V4** | **Real relief** (Q24) | M | See 3 above. Reopens a deliberate decision: elevation is flattened because "full relief at city scale reads as noise and makes roads look broken" | Hills read as hills; roads follow them (they are terrain colour since N30, so this is free); **picking iterates** instead of intersecting the y=0 plane; buildings sit on the ground rather than floating; every remaining flat layer — markings, zone tint, lawn, overlays, ghost — is re-checked for the seam class of bug |
+| **V5** | **Perspective camera** (Q25) | M | See 4 above | An option, not a replacement: the orthographic view stays and is still what the four snapped angles are for. Picking is already a ray and needs nothing; `pixelsToTiles` and the LOD's `tilePixels` both assume a constant scale across the screen and stop being true |
+| **V6** | **Lots with something on them** | L | See 5 above | Front gardens, fences and hedges, more silhouettes per category, wider roof and wall colour range. Pure content against the existing kit |
+
+**Sequencing.** V1 and V2 stand alone and are worth doing whatever is decided
+about the rest — V1 is the feature that was asked for and V2 is the setting.
+V3 is cheap and independent. V4 and V5 are a pair: relief without perspective
+looks odd at a low pitch, and both need answers first.
+
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits
 deliberately after N6 and N7: tuning a balance before disasters and traffic exist
@@ -334,6 +371,9 @@ by number from the code they create.
 | Q18 | Which mayor ranks unlock which advisor personas, and does the player then pick freely? | C3 |
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
+| Q24 | How much relief should the terrain have? Flattened by decision; the reference has real hills. | V4 |
+| Q25 | Orthographic or perspective? The reference converges; ruling 006 assumes we do not. | V5 |
+| Q26 | What is the quality tier allowed to change — rendering only, or the simulation too? | V2 |
 
 ## What would make us stop and re-plan
 
