@@ -530,6 +530,10 @@ multiplayer it is one room-wide setting; per-player handicaps are explicitly out
 
 ## 6. Rendering (three.js)
 
+*Superseded 2026-09-05 by `specs/engine/` (cityviewer, rulings 032–040): perspective play
+camera, a derived city model, four fidelity levels, the painted style. The bullets below
+describe the renderer as built through N30 and stay as its record.*
+
 - **Camera**: orthographic, low-isometric, 4 snapped yaw angles with eased rotation, clamped
   pitch, zoom-to-cursor. `focusOn(x, y)` with interpolation — notifications, incidents and
   request inbox entries drive it.

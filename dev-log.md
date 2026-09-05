@@ -2575,3 +2575,37 @@ fixtures were fixed instead.
 rebuild at 103ms per build action, which would have been alarming. It was
 SwiftShader's frame time: the same loop without the rebuild cost 93.5ms. The
 rebuild is ~12ms. Measure the difference, not the total.
+
+## 2026-09-05 — Planning: cityviewer (P37)
+
+Read both fable51 worlds end to end — Union Square (`src/world`, `facade/`, `life/`,
+`player/`, `systems/`, the bpy and QA tools) and Higashiyama (`docs/KIT.md`, `core/`,
+`world/terrain.js`, `plots.js`, `streets.js`, the baker, the post pipeline, the tools) — against
+`client/render/` as of N30 and the P36 lane.
+
+**What they have that we do not is one layer**: a world model between the data and the
+meshes. Union Square's is `StreetSpec` + footprints + a facade grammar; Higashiyama's is one
+height function with corridors, plots on a frontage, and a baker. Everything else — cars,
+kerbs, signage, a walker — is built on it. We read raw tile arrays in eleven places of
+`instances.js` instead.
+
+Wrote `specs/engine/` (thirteen documents) as the specification of a renderer rebuilt in place
+behind the `createRenderer` interface, then put the choices to Kjell. Chosen: the painted
+look, perspective as the play camera, 20 m a tile, no binary assets; recommendations accepted
+on traffic (local car-following), relief (0.5 m a step) and addons (hand-rolled). Named
+cityviewer.
+
+**Produced:** rulings 032–040, an amendment to 006, A26–A28 (closing Q24–Q26), the E- and
+P-series lane in `plan-v1.md`, and pointers in `README.md`, `CLAUDE.md` and `specs/plan.md` §6.
+
+**Not built:** anything. The first slice is E0, and its gate is that the picture does not
+change.
+
+**Two facts worth keeping from the read:**
+
+- Ruling 017 rejected outlines because a luminance Sobel fires on detail. Higashiyama's ink is
+  a second difference of *depth*, flat on any plane at any angle — a different instrument, and
+  the reason 033 can make `painted` real without re-fighting 017.
+- Both worlds seat a building on the *lowest* corner of its footprint and let a plinth take the
+  slope. Seating on the mean floats one corner, and it looks fine in every screenshot that does
+  not happen to look at that corner.

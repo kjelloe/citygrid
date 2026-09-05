@@ -72,3 +72,10 @@ distance and the city ends at a straight line across the screen.
 - `specs/plan.md` §6 style seam
 - `specs/art-direction.md` §1.1
 - `plan-v1.md` ruling 8, slice 1.2b
+
+## Amendment, 2026-09-05 (P37) — perspective is the play camera
+
+Ruling 034 makes the perspective orbit the camera the game is played from, and keeps the
+orthographic camera as a mode: the default on a coarse pointer, an option everywhere else. The
+four snapped yaws survive in every mode, which is what this ruling protects; the projection
+was never the point.

@@ -313,10 +313,12 @@ by what unblocks a decision. Sizes are rough: **S** a sitting, **M** a day,
 ## Proposed lane — The city you can zoom into (P36)
 
 *Written 2026-09-05 from two reference shots the user supplied
-(`debugging/transport-world-example.png`, `transport-world-2.png`). **Nothing
-here is scheduled.** V3 and V4 reopen decisions that are the user's — Q24, Q25 —
-and the whole lane is cosmetic: it makes the city better to look at and changes
-no rule, no number and no hash.*
+(`debugging/transport-world-example.png`, `transport-world-2.png`). **Superseded
+the same day by P37**: the lane is now the first third of **cityviewer**, the
+renderer rebuilt to match `../fable51-worlds/` — see `specs/engine/` and rulings
+032–040. Q24 and Q25 are answered (A26, A27); V4 and V5 below are amended
+accordingly. The whole lane is still cosmetic: it changes no rule, no number and
+no hash.*
 
 **What the reference has that we do not**, in the order it hits the eye:
 
@@ -338,14 +340,31 @@ no rule, no number and no hash.*
 | **V1** | **Traffic you can see** — moving cars driven by `state.tiles.traffic` and the road connection mask | M | The engine has computed a per-tile commuter load since N7, it is hashed state, and the only thing that reads it is an overlay tint and one inspector row. The single largest gap to the reference, and the one that needs no new rules | Cars stream along a road at a speed that falls with load and bunch up where it is over capacity; the whole thing is **renderer-side** — position is `time × speed + a per-tile hash`, so no float and no entity enters state and no hash moves. Cars have their own rung on the LOD ladder and a per-tier cap |
 | **V2** | **The quality setting** — Low / Medium / High, defaulted from `deviceClass()` | S | `createScene` already takes `pixelRatio`, `antialias`, `shadowMap`, `triangleBudget`, `trees`, `props` and `shadows`, and **nothing sets any of them**; `deviceClass()` has been written and unused since N12; `settings.reducedEffects` is a catalogue string with no screen. The tier is mostly wiring that exists | A settings row with three choices, defaulted from the device and remembered; `budget_gate` runs at all three; and a **frame-time governor**, because a phone is fill-rate bound and a triangle budget is the wrong instrument for it |
 | **V3** | **Ground that is not a checkerboard** | S | See 2 above | Natural terrain blends across tile corners; **built and zoned land keeps its flat tiles**, because that is what makes a grid legible. One knob, checked by screenshot at three zooms |
-| **V4** | **Real relief** (Q24) | M | See 3 above. Reopens a deliberate decision: elevation is flattened because "full relief at city scale reads as noise and makes roads look broken" | Hills read as hills; roads follow them (they are terrain colour since N30, so this is free); **picking iterates** instead of intersecting the y=0 plane; buildings sit on the ground rather than floating; every remaining flat layer — markings, zone tint, lawn, overlays, ghost — is re-checked for the seam class of bug |
-| **V5** | **Perspective camera** (Q25) | M | See 4 above | An option, not a replacement: the orthographic view stays and is still what the four snapped angles are for. Picking is already a ray and needs nothing; `pixelsToTiles` and the LOD's `tilePixels` both assume a constant scale across the screen and stop being true |
+| **V4** | **Real relief** (ruling 038) | M | See 3 above. `RELIEF_M = 0.5`; a road is a corridor that owns the ground inside its half-width, so it climbs without breaking | `heightAt` in `client/world/` is the one ground; buildings seat on the lowest lot corner; picking marches the height field; every remaining flat layer — markings, zone tint, lawn, overlays, ghost — is re-checked for the seam class of bug at full relief |
+| **V5** | **Perspective play camera** (ruling 034) | M | See 4 above | Perspective is the camera the game is played from; orthographic stays as a mode and the phone default; the four snapped yaws snap in every mode. `pixelsToTiles`, the LOD's `tilePixels` and `visibleBounds` become per-chunk. Ahead of the street lane |
 | **V6** | **Lots with something on them** | L | See 5 above | Front gardens, fences and hedges, more silhouettes per category, wider roof and wall colour range. Pure content against the existing kit |
 
-**Sequencing.** V1 and V2 stand alone and are worth doing whatever is decided
-about the rest — V1 is the feature that was asked for and V2 is the setting.
-V3 is cheap and independent. V4 and V5 are a pair: relief without perspective
-looks odd at a low pitch, and both need answers first.
+**Sequencing.** Set by `specs/engine/11-roadmap.md`: E0 → V2 → E1 → V1 → V3 →
+V4 → V5 → P1 → E2 → E3 → E4 → E5 → E6 → P2, with V6 and E7 when wanted.
+
+## Proposed lane — cityviewer (P37, rulings 032–040)
+
+*The renderer rebuilt to match fable51-worlds, in place, behind the interface
+`game.js` already calls. Specification: `specs/engine/`. Sizes and definitions
+of done are in `specs/engine/11-roadmap.md`; this table is the index.*
+
+| # | Slice | Size | Depends on |
+|---|---|---|---|
+| **E0** | **The city model** — `client/world/`: `TILE_M`, `heightAt`, corridors from masks, lots and frontages, the building parameter function; node-tested; gate is a pixel-identical picture | M | 035 |
+| **E1** | **Lane graph** in the model | S | E0 |
+| **E2** | **The baker and the chunk cache** — vertex-colour merge per 16×16 chunk, keyed by content hash, one build a frame | M | E0, 039 |
+| **E3** | **Ribbons** — carriageway, kerbs, sidewalks, junction boxes, a marking canvas per chunk | M | E2, V4 |
+| **E4** | **Street camera and collision** — walk controls, walls from lots, patches from sidewalks, enter and exit; `walkthrough` and `passability` gates | M | E3, V5 |
+| **E5** | **Street-level facades** — the generated spec, four category grammars, roofs with eaves, openings built outward, signage canvases, emissive buckets | L | E2, P1, 036 |
+| **E6** | **Time of day** — presets per rig, clock-driven with an off switch, lit windows, lamp pools, a following snapped shadow frustum | M | E5 |
+| **E7** | **Pedestrians** — nav graph, commuters and shoppers, signal waiting, a simplified rig | M | E4, E6 |
+| **P1** | **Toon shading and the anime rig** — `shading: 'toon'`, ramps, the shadow-tint patch, a painted palette | M | V2, 033 |
+| **P2** | **Ink and grade** — depth-texture target, second-difference ink, split-tone grade, FXAA; desktop tier, governor-gated | M | P1, V2 |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits
@@ -371,9 +390,6 @@ by number from the code they create.
 | Q18 | Which mayor ranks unlock which advisor personas, and does the player then pick freely? | C3 |
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
-| Q24 | How much relief should the terrain have? Flattened by decision; the reference has real hills. | V4 |
-| Q25 | Orthographic or perspective? The reference converges; ruling 006 assumes we do not. | V5 |
-| Q26 | What is the quality tier allowed to change — rendering only, or the simulation too? | V2 |
 
 ## What would make us stop and re-plan
 
