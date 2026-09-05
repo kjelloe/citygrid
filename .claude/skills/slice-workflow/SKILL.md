@@ -13,6 +13,8 @@ the gate, or split the work until one exists.
 
 - Read the slice's row in `plan-v1.md`: contents, **depends on**, and **done when**.
 - Read the design it implements in `specs/gamedesign.md`, and the architecture in `specs/plan.md`.
+  A renderer slice (E-, V- or P-series) is specified in `specs/engine/`; read the document the
+  roadmap row names, and `12-decisions.md` for what is already settled.
 - Check `specs/rulings/` for anything that constrains it. Rulings are cited in code as
   `// ruling 004`.
 - Check the bottom section of `dev-questions.md`. **If the slice depends on an open question, stop
@@ -107,6 +109,7 @@ If the slice changed any of these, update them in the same slice, not later:
 
 - `specs/gamedesign.md` — if behaviour the design describes changed.
 - `specs/plan.md` — if architecture or a budget changed.
+- `specs/engine/` — if a cityviewer slice changed what its document specifies, or measured a number it predicted.
 - `plan-v1.md` — tick the slice, adjust dependents.
 - `specs/rulings/` — if a new decision was taken.
 - `dev-questions.md` — if a question was answered or a new one appeared.

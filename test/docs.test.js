@@ -23,7 +23,12 @@ const REQUIRED_DOCS = [
   "specs/plan.md",
   "specs/referencedata.md",
   "specs/art-direction.md",
+  "specs/engine/README.md",
 ];
+
+/** cityviewer's specification (ruling 032). The README is its index and every
+ * file has to be listed there, or a document exists that nothing points at. */
+const ENGINE_DIR = "specs/engine";
 
 /** `dev-prompts.md` and `dev-questions.md` are LOCAL, by Kjell's decision
  * (P24): they are in `.gitignore` and untracked, so a fresh clone does not have
@@ -153,4 +158,61 @@ test("the documented palette matches the code", () => {
 
   const stale = [...quoted].filter((hex) => !real.has(hex));
   assert.deepEqual(stale, [], `art-direction quotes colours the renderer does not use: ${stale}`);
+});
+
+// --- cityviewer ---------------------------------------------------------------
+
+function engineDocs() {
+  return readdirSync(join(repoRoot, ENGINE_DIR)).filter((n) => n.endsWith(".md") && n !== "README.md");
+}
+
+test("every cityviewer document is indexed by the engine README", () => {
+  const index = readDoc(join(ENGINE_DIR, "README.md"));
+  const unlisted = engineDocs().filter((name) => !index.includes("`" + name + "`"));
+  assert.deepEqual(unlisted, [], `specs/engine documents missing from the README index: ${unlisted}`);
+  assert.ok(engineDocs().length >= 12, "the specification is twelve documents plus the index");
+});
+
+test("every decision cityviewer settled names a ruling that exists", () => {
+  // 12-decisions.md carries a table of choice → ruling number. A number in
+  // that table with no file behind it is a decision taken and not written down
+  // — the drift rulings exist to prevent.
+  const decisions = readDoc(join(ENGINE_DIR, "12-decisions.md"));
+  const table = decisions.slice(decisions.indexOf("| Decision |"), decisions.indexOf("The sections below"));
+  const cited = new Set([...table.matchAll(/\| (\d{3})(?: \(amends \d{3}\))? \|$/gm)].map((m) => m[1]));
+  assert.ok(cited.size >= 9, `only ${cited.size} rulings cited — the settled table looks truncated`);
+  const files = readdirSync(join(repoRoot, "specs", "rulings"));
+  const missing = [...cited].filter((n) => !files.some((f) => f.startsWith(n + "-")));
+  assert.deepEqual(missing, [], `rulings cited by 12-decisions.md with no file: ${missing}`);
+});
+
+test("cityviewer's rulings point back at the specification", () => {
+  // 032 onward were written from specs/engine; a later edit that drops the
+  // pointer leaves a ruling nobody can trace to its design.
+  const files = readdirSync(join(repoRoot, "specs", "rulings")).filter((f) => Number(f.slice(0, 3)) >= 32);
+  assert.ok(files.length >= 9, "rulings 032-040 should exist");
+  for (const name of files) {
+    assert.ok(readDoc(join("specs", "rulings", name)).includes("specs/engine/"), `${name} does not cite specs/engine/`);
+  }
+});
+
+test("plan-v1 carries the cityviewer lane the roadmap describes", () => {
+  const plan = readDoc("plan-v1.md");
+  const roadmap = readDoc(join(ENGINE_DIR, "11-roadmap.md"));
+  const slices = new Set([...roadmap.matchAll(/^\| \*\*([EPV]\d)\*\* \|/gm)].map((m) => m[1]));
+  assert.ok(slices.size >= 14, `roadmap lists ${slices.size} slices — expected the E, V and P series`);
+  const missing = [...slices].filter((id) => !new RegExp("^\\| \\*\\*" + id + "\\*\\* \\|", "m").test(plan));
+  assert.deepEqual(missing, [], `slices in the roadmap with no row in plan-v1.md: ${missing}`);
+});
+
+test("cityviewer's settled constants agree across the specification", () => {
+  // The frame (04), the decisions table (12) and ruling 035 all state the tile
+  // size; the relief step is in 12 and ruling 038. One number, three places.
+  const model = readDoc(join(ENGINE_DIR, "04-city-model.md"));
+  const decisions = readDoc(join(ENGINE_DIR, "12-decisions.md"));
+  assert.match(model, /20 m is settled/, "04-city-model must record the settled tile size");
+  assert.match(decisions, /\| D2 tile \| 20 m \|/, "12-decisions must settle D2 at 20 m");
+  assert.match(readDoc("specs/rulings/035-a-tile-is-twenty-metres.md"), /TILE_M = 20/);
+  assert.match(decisions, /\| D7 relief \| 0\.5 m per elevation step/);
+  assert.match(readDoc("specs/rulings/038-relief-is-half-a-metre-a-step.md"), /RELIEF_M = 0\.5/);
 });

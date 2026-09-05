@@ -19,6 +19,7 @@ you changed — or state plainly that nothing needed changing, which is a valid 
 | `dev-prompts.md` | The user's words, verbatim | A prompt carrying a product decision is not appended |
 | `dev-questions.md` | Questions, open ones at the bottom | A question is answered but stays in the open section |
 | `dev-log.md` | What happened, with numbers | An entry says "passed" instead of the measurement |
+| `specs/engine/` | cityviewer — the renderer's specification (ruling 032); `12-decisions.md` is the settled table, `11-roadmap.md` the E/V/P slices | A renderer slice lands and the document that specified it still describes the plan; a decision in `12-decisions.md` has no ruling; a slice in `11-roadmap.md` has no row in `plan-v1.md` — `test/docs.test.js` checks the last two |
 | `specs/art-direction.md` | Visual language | Any palette, lighting or silhouette change — §3 quotes real hex values and `test/docs.test.js` compares them against `palettes.js` |
 | `CLAUDE.md` | Working rules | A rule is learned the hard way and stays only in someone's head |
 | `.claude/skills/` | Repeatable workflows | A workflow changes and the skill still describes the old one |
