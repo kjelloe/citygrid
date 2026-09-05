@@ -109,7 +109,7 @@ export async function startGame(root, given = {}) {
   canvas.setAttribute("role", "application");
   canvas.setAttribute("aria-label", t("hud.map"));
 
-  const renderer = createRenderer(canvas, state, { style });
+  const renderer = createRenderer(canvas, state, { style, tier: options.tier });
   focusOn(renderer.view, state.width / 2, state.height / 2);
   renderer.view.span = 28;
 
@@ -266,10 +266,17 @@ export async function startGame(root, given = {}) {
   }
 
   let frame;
+  let lastFrameAt = 0;
   const loop = () => {
+    // The frame delta, for the governor (ruling 040). It is measured here
+    // rather than inside `draw` because `draw` is also called by gates and by
+    // the screenshot harness, where wall-clock time means nothing.
+    const now = performance.now();
+    const frameMs = lastFrameAt > 0 ? now - lastFrameAt : 0;
+    lastFrameAt = now;
     // Read from the HUD rather than a local: with "Auto" the overlay follows
     // the tool in hand, and no event fires when a shortcut changes the tool.
-    renderer.draw({ overlay: hud.overlay });
+    renderer.draw({ overlay: hud.overlay, frameMs });
     if (minimap && hud.minimapVisible) minimap.draw(canvas.clientWidth / canvas.clientHeight);
     frame = requestAnimationFrame(loop);
   };
@@ -302,6 +309,10 @@ export async function startGame(root, given = {}) {
     audio,
     /** Settings changed: the mixer takes the new levels without a rebuild. */
     setAudioSettings(next) { audio.update(next); },
+    /** The quality tier (ruling 040). Rendering only — it never reaches a
+     * command. Returns whether a renderer rebuild would be needed to honour it
+     * fully; antialias is a constructor argument of the WebGL context. */
+    setQuality(name) { return renderer.setTier(name); },
     pause: () => setSpeed(0),
     resume: () => setSpeed(1),
     stop() {

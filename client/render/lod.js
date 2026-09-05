@@ -97,8 +97,10 @@ export function estimate(counts, plan) {
     // Every network the renderer draws has a term here. Wire and pipe had
     // none, and `counts.poles` was computed and then never read — a term
     // missing from the estimate is a term the budget cannot trade away (P35).
-    + counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm
-    + counts.pipeTiles * costs.pipeHub + counts.pipeArms * costs.pipeArm
+    + (plan.networks !== false
+      ? counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm
+        + counts.pipeTiles * costs.pipeHub + counts.pipeArms * costs.pipeArm
+      : 0)
     + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole : 0)
     + counts.groundChunks * CHUNK_TRIANGLES;
 
@@ -130,6 +132,7 @@ const LADDER = [
   (p) => (p.props ? ((p.props = false), "props dropped") : ""),
   (p) => (p.markings ? ((p.markings = false), "markings dropped") : ""),
   (p) => (p.poles ? ((p.poles = false), "poles dropped") : ""),
+  (p) => (p.networks ? ((p.networks = false), "networks dropped") : ""),
   (p) => (p.shadows ? ((p.shadows = false), "shadows dropped") : ""),
   (p) => (p.buildings > TIER.SHAPE ? ((p.buildings = TIER.SHAPE), (p.treeDetail = TIER.SHAPE), "detail dropped") : ""),
   (p) => (p.treeDetail > TIER.BLOCK ? ((p.treeDetail = TIER.BLOCK), "trees simplified") : ""),
@@ -182,6 +185,7 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
     props: true,
     markings: true,
     poles: true,
+    networks: true,
     shadows: true,
     reason: "full",
     tilePixels: Math.round(px),
@@ -190,6 +194,12 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
   if (px < 42) { plan.props = false; plan.reason = "props not resolvable"; }
   if (px < 20) { plan.markings = false; plan.reason = "markings not resolvable"; }
   if (px < 14) { plan.poles = false; plan.reason = "poles not resolvable"; }
+  // A wire ribbon is 0.16 of a tile wide and a pipe main 0.28, so below about
+  // twelve pixels a tile they are drawing a line thinner than a pixel — and on
+  // a wired city they are the single largest thing on screen: 13,476 instances
+  // and 43% of the frame at the default span on a 64x64 (slice V2). The power
+  // and water overlays still say where the network reaches.
+  if (px < 12) { plan.networks = false; plan.reason = "networks not resolvable"; }
   if (px < 30) { plan.buildings = TIER.SHAPE; plan.treeDetail = TIER.SHAPE; plan.reason = "detail not resolvable"; }
   if (px < 16) { plan.shadows = false; plan.reason = "shadows not resolvable"; }
   if (px < 13) { plan.buildings = TIER.BLOCK; plan.reason = "silhouette only"; }

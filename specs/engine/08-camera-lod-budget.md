@@ -39,6 +39,13 @@ the feature that was asked for, so they go late) and **L3 chunks** (the first th
 when a street view is over budget: drop the farthest L3 chunk back to L2). Costs for both are
 measured by `createInstances` and the baker, never remembered (ruling 019).
 
+It grew a third in V2: **networks**, after poles and before shadows, with a resolvability gate
+at 12 px a tile. A wire ribbon is 0.16 of a tile wide, so below that it draws a line thinner
+than a pixel — and on a wired city the two ribbons are the largest single thing on screen
+(13,476 instances, 43% of the frame at the default span on a 64x64). Without it the Low tier
+did not fit its own budget with the whole ladder spent. The power and water overlays still say
+where the network reaches.
+
 ## 8.3 The budget and what it cannot see
 
 The render-measure-step-down loop in `scene.js` stays the promise. Three costs sit outside it:

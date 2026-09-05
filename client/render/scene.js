@@ -13,20 +13,53 @@ import { STYLES, createPost } from "./styles.js";
 import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown } from "./lod.js";
 import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
+import { tierConfig } from "../world/config.js";
+import { createGovernor } from "./governor.js";
+
+/** What the device would give us, capped by the tier (ruling 040). A cap, not a
+ * replacement: a tier must never make a 1× screen render at 2×. */
+function ratioFor(tier, options) {
+  if (options.pixelRatio !== undefined) return options.pixelRatio;
+  const device = globalThis.devicePixelRatio ?? 1;
+  return Math.max(1, Math.min(device, tier.pixelRatio));
+}
 
 export function createRenderer(canvas, state, options = {}) {
+  // The tier is a rendering preference and nothing else (ruling 040). Explicit
+  // options still win, because the gates and the screenshot harness set them
+  // one at a time and must not have to know which tier holds which value.
+  let tierName = options.tier ?? "high";
+  let tier = tierConfig(tierName);
+  const governor = createGovernor({ targetMs: tier.frameMs });
+
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: options.antialias !== false,
+    antialias: options.antialias ?? tier.antialias,
     preserveDrawingBuffer: options.preserveDrawingBuffer === true,
   });
-  renderer.setPixelRatio(options.pixelRatio ?? 1);
+  renderer.setPixelRatio(ratioFor(tier, options));
   renderer.setSize(canvas.width, canvas.height, false);
   const styleName = options.style && STYLES[options.style] ? options.style : "plain";
   const palette = PALETTES[styleName] ?? PALETTES.plain;
   renderer.setClearColor(palette.sky);
 
   const scene = new THREE.Scene();
+  const antialiasAtBuild = options.antialias ?? tier.antialias;
+
+  /** Shadow map size and whether the pass runs at all. Re-applied when the
+   * tier changes; the per-frame `castShadow` is decided in `draw`. */
+  function applyShadowMap() {
+    const on = (options.shadows ?? tier.shadows) !== false;
+    renderer.shadowMap.enabled = on;
+    if (!on || !shadowLight) return;
+    const map = options.shadowMap ?? tier.shadowMap ?? 2048;
+    if (shadowLight.shadow.mapSize.x === map) return;
+    shadowLight.shadow.mapSize.set(map, map);
+    // A resized map needs its old texture thrown away or three keeps drawing
+    // into the first one.
+    shadowLight.shadow.map?.dispose();
+    shadowLight.shadow.map = null;
+  }
 
   // Lighting is part of the style, not a constant. The pixel style asks for
   // none at all — its faces are shaded in the vertices, because a lit gradient
@@ -40,24 +73,25 @@ export function createRenderer(canvas, state, options = {}) {
     key.target.position.set(state.width / 2, 0, state.height / 2);
     scene.add(key.target);
 
-    // Soft shadows, off in reduced-effects mode. They are what makes a
-    // building sit on the ground rather than hover above it, and the reference
-    // leans on them heavily.
+    // Soft shadows. They are what makes a building sit on the ground rather
+    // than hover above it, and the reference leans on them heavily.
+    //
+    // The camera is ALWAYS configured; whether it renders is decided per frame
+    // by the tier, the ladder and the governor. Configuring it only when
+    // shadows happened to be on at boot meant a player switching Low → High
+    // got a light that had been told to cast into a shadow map nobody had
+    // sized (ruling 040 — a tier changes at runtime).
     shadowLight = key;
-    if (options.shadows !== false) {
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      key.castShadow = true;
-      const reach = Math.max(state.width, state.height) * 0.75;
-      key.shadow.camera.left = -reach;
-      key.shadow.camera.right = reach;
-      key.shadow.camera.top = reach;
-      key.shadow.camera.bottom = -reach;
-      key.shadow.camera.near = 1;
-      key.shadow.camera.far = 400;
-      key.shadow.mapSize.set(options.shadowMap ?? 2048, options.shadowMap ?? 2048);
-      key.shadow.bias = -0.0012;
-    }
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const reach = Math.max(state.width, state.height) * 0.75;
+    key.shadow.camera.left = -reach;
+    key.shadow.camera.right = reach;
+    key.shadow.camera.top = reach;
+    key.shadow.camera.bottom = -reach;
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 400;
+    key.shadow.bias = -0.0012;
+    applyShadowMap();
     scene.add(key);
   }
   scene.add(new THREE.HemisphereLight(lights.hemiSky, lights.hemiGround, lights.hemi));
@@ -111,8 +145,20 @@ export function createRenderer(canvas, state, options = {}) {
   scene.add(ghostArea);
 
   const style = STYLES[styleName];
-  let post = createPost(renderer, style, canvas.width, canvas.height);
-  if (options.triangleBudget) setBudget(options.triangleBudget);
+
+  /** May this style's post pass run? Two gates, both from ruling 040: the tier
+   * lists the passes it allows at all, and the governor can take one away when
+   * the frame time says so. Neither is visible to the triangle budget — a pass
+   * is fill rate, and `renderer.info.render.triangles` cannot see fill. */
+  function postAllowed() {
+    const pass = style.postPass;
+    if (!style.post) return false;
+    if (pass === undefined) return true;
+    if (options.post === false) return false;
+    return tier.post.includes(pass) && governor.allows(pass);
+  }
+  let post = postAllowed() ? createPost(renderer, style, canvas.width, canvas.height) : undefined;
+  setBudget(options.triangleBudget ?? tier.budget);
   let counts = countScene(state);
   const stats = {
     chunksRebuilt: 0, instances: 0, triangles: 0, frames: 0,
@@ -166,6 +212,14 @@ export function createRenderer(canvas, state, options = {}) {
   const ghostMarker = new THREE.Object3D();
 
   function draw(drawOptions = {}) {
+    // The frame time the caller measured. The budget cannot see fill rate, so
+    // this is the second instrument (ruling 040): a rolling p95 that gives up a
+    // post pass, then shadows, then the supersample.
+    if (drawOptions.frameMs > 0) {
+      const before = governor.disabled().length;
+      governor.sample(drawOptions.frameMs);
+      if (governor.disabled().length !== before) applyGovernor();
+    }
     stats.chunksRebuilt = updateTerrain(state, terrain);
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
@@ -188,7 +242,11 @@ export function createRenderer(canvas, state, options = {}) {
     stats.rebuilds = 0;
     for (;;) {
       result = updateInstances(state, pools, { ...drawOptions, style: styleName, plan, bounds });
-      if (shadowLight) shadowLight.castShadow = plan.shadows && options.shadows !== false;
+      if (shadowLight) {
+        shadowLight.castShadow = plan.shadows
+          && (options.shadows ?? tier.shadows) !== false
+          && governor.allows("shadows");
+      }
       if (post) post.render(scene, view.camera);
       else renderer.render(scene, view.camera);
       plan.actual = renderer.info.render.triangles;
@@ -208,6 +266,9 @@ export function createRenderer(canvas, state, options = {}) {
     stats.triangles = plan.actual;
     stats.corridors = model.stats.corridors;
     stats.lots = model.stats.lots;
+    stats.tier = tierName;
+    stats.frameP95 = governor.p95();
+    stats.given = governor.disabled();
     stats.frames += 1;
     return stats;
   }
@@ -217,5 +278,35 @@ export function createRenderer(canvas, state, options = {}) {
     renderer.dispose();
   }
 
-  return { renderer, scene, view, terrain, pools, style, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+  /** What the governor's decision changes, applied without a rebuild. Shadows
+   * and the budget are read every frame; the post pass is an object that has to
+   * be created or thrown away. */
+  function applyGovernor() {
+    const wanted = postAllowed();
+    if (wanted && !post) post = createPost(renderer, style, canvas.width, canvas.height);
+    else if (!wanted && post) { post.dispose(); post = undefined; }
+  }
+
+  /** A tier change at runtime. Budget, shadows, caps and the post list re-apply
+   * immediately; pixel ratio and antialias are constructor arguments of the
+   * WebGL context, so the caller is told what it would take to honour them. */
+  function setTier(name) {
+    tierName = name;
+    tier = tierConfig(name);
+    governor.reset();
+    setBudget(tier.budget);
+    applyGovernor();
+    applyShadowMap();
+    const ratio = ratioFor(tier, options);
+    if (renderer.getPixelRatio() !== ratio) {
+      renderer.setPixelRatio(ratio);
+      renderer.setSize(canvas.width, canvas.height, false);
+      if (post) post.resize(canvas.width, canvas.height);
+    }
+    // Antialias is a constructor argument of the WebGL context and cannot be
+    // changed on a live one, so the caller is told rather than lied to.
+    return { rebuild: (options.antialias ?? tier.antialias) !== antialiasAtBuild };
+  }
+
+  return { renderer, scene, view, terrain, pools, style, setTier, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

@@ -23,7 +23,11 @@
 // correction loop only ever steps DOWN, so an estimate that over-charges
 // permanently sacrifices detail the frame had room for.
 //
-//   node tools/budget_gate.mjs
+// V2 added the tiers (ruling 040): the gate runs at Low, Medium and High,
+// because a budget that is only ever checked at one number is a budget for one
+// machine.
+//
+//   node tools/budget_gate.mjs [--tier=low|medium|high]      (default: all three)
 
 import { chromium } from "playwright";
 import { createServer } from "node:http";
@@ -44,6 +48,9 @@ const TYPES = {
  * is deliberately looser than that: the job of the number is to catch a term
  * that has gone MISSING or doubled, not to police the last few per cent. */
 const TOLERANCE = 0.25;
+
+const asked = process.argv.find((a) => a.startsWith("--tier="))?.split("=")[1];
+const TIERS = asked ? [asked] : ["low", "medium", "high"];
 
 const server = createServer(async (req, res) => {
   try {
@@ -111,6 +118,12 @@ try {
   });
 
   const rows = [];
+  for (const tier of TIERS) {
+  const applied = await page.evaluate((name) => {
+    globalThis.CITY.setQuality(name);
+    return { tier: globalThis.CITY.renderer.tier, budget: globalThis.CITY.renderer.stats.budget };
+  }, tier);
+  check(`${tier}: the tier is applied`, applied.tier === tier, JSON.stringify(applied));
   for (const span of [10, 20, 40, 80]) {
     const row = await page.evaluate(async (target) => {
       const { renderer } = globalThis.CITY;
@@ -130,13 +143,14 @@ try {
         rebuilds: s.rebuilds,
       };
     }, span);
-    rows.push(row);
-    console.log(`      span ${String(row.span).padStart(3)}  estimate ${String(row.estimate).padStart(7)}`
-      + `  actual ${String(row.actual).padStart(7)}  budget ${row.budget}  ${row.lod || "full detail"}`);
+    rows.push({ ...row, tier });
+    console.log(`      ${tier.padEnd(6)} span ${String(row.span).padStart(3)}  estimate ${String(row.estimate).padStart(7)}`
+      + `  actual ${String(row.actual).padStart(7)}  budget ${String(row.budget).padStart(6)}  ${row.lod || "full detail"}`);
+  }
   }
 
   for (const row of rows) {
-    check(`span ${row.span}: the frame is inside its budget`, row.actual <= row.budget,
+    check(`${row.tier} span ${row.span}: the frame is inside its budget`, row.actual <= row.budget,
       `${row.actual} of ${row.budget}, ladder at "${row.lod || "full detail"}"`);
   }
 
@@ -145,8 +159,30 @@ try {
   // an under-charging model by stepping down until the truth fits.
   for (const row of rows) {
     const drift = Math.abs(row.estimate - row.actual) / Math.max(row.actual, 1);
-    check(`span ${row.span}: the estimate is worth planning with`, drift <= TOLERANCE,
+    check(`${row.tier} span ${row.span}: the estimate is worth planning with`, drift <= TOLERANCE,
       `estimate ${row.estimate} against ${row.actual} actual — ${Math.round(drift * 100)}% out`);
+  }
+
+  // The DEFAULT span on a smaller, fully wired city — the case that found the
+  // Low tier 42,202 triangles over a 40,000 budget with the ladder spent
+  // (slice V2). Four spans on one 96×96 is not a survey; the view a player
+  // actually opens on is a different frame from any of them.
+  for (const tier of TIERS) {
+    const row = await page.evaluate(async (name) => {
+      const { renderer, state } = globalThis.CITY;
+      const { focusOn, zoomBy } = await import("/client/render/camera.js");
+      globalThis.CITY.setQuality(name);
+      focusOn(renderer.view, state.width / 2, state.height / 2);
+      zoomBy(renderer.view, (Math.max(state.width, state.height) * 0.7) / renderer.view.span);
+      const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await frame();
+      await new Promise((r) => setTimeout(r, 200));
+      await frame();
+      const s = renderer.stats;
+      return { span: Math.round(renderer.view.span), budget: s.budget, actual: s.triangles, lod: s.lod };
+    }, tier);
+    check(`${tier} at the opening span: inside its budget`, row.actual <= row.budget,
+      `${row.actual} of ${row.budget} at span ${row.span}, ladder at "${row.lod}"`);
   }
 
   check("no page errors", errors.length === 0, errors.join(" | "));

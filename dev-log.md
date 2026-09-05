@@ -2661,3 +2661,93 @@ chunked rebuilds of the model wait for the first consumer that pays per chunk
 
 **Next:** V2 (the quality tier) or E1 (the lane graph); `workitems-cityviewer.md`
 carries the rest for whoever picks it up.
+
+---
+
+## V2 — The quality tier
+
+**P38**, first item of the cityviewer hand-off. Low / Medium / High, defaulted
+from the device, remembered, rendering only (ruling 040).
+
+### What was already there
+
+Almost all of it. `createRenderer` has taken `pixelRatio`, `antialias`,
+`shadowMap`, `triangleBudget` and `shadows` since N1 and **nothing had ever set
+one of them** — `pixelRatio` defaulted to 1 on every machine, so an RTX card
+rendered at CSS pixels. `deviceClass()` has been written and unused since N12.
+The slice is mostly wiring, which is what the plan said.
+
+Three things were new: the tier table in `data/cityviewer.json` (mirrored in
+`config.js`, `test/world.test.js` deep-equals the whole file so it cannot
+drift), a settings row, and the governor.
+
+### The governor
+
+`client/render/governor.js`, pure — no `performance.now`, no globals; time
+enters only as the frame deltas the caller feeds it, which is what lets a test
+compress a minute into a loop. A rolling p95 over 60 frames; a second over
+target and the next optional pass goes, in the order **ink → shadows →
+supersample**.
+
+Two decisions inside it are worth the words:
+
+- **p95, not the mean.** A mean is dominated by the frames that were fine, and
+  the complaint about a phone is the one frame in twenty that hitches.
+- **A sacrifice is never handed back.** The frames came good *because* of it, so
+  a governor that gave it back would oscillate once a second for the session.
+  Only `reset()` clears it, and only a tier change calls `reset()`.
+
+`draw()` takes `frameMs`. It is measured in `game.js`'s rAF loop, not inside
+`draw`, because `draw` is also called by the gates and the screenshot harness
+where wall-clock time means nothing.
+
+### What failed on the way
+
+**The Low tier did not fit its own budget.** The gate was green at three tiers
+and the picture was not: shooting the default view of a 64×64 wired city at Low
+came out at **42,202 triangles against 40,000, with the whole ladder already
+spent** — the N30 failure again, one slice after the gate for it was written.
+
+The gate had four spans on one 96×96 saturated city, and the view a player
+actually opens on is none of them.
+
+The cause, once measured per pool: on a wired city the utility ribbons are the
+largest single thing on screen — `wireArm 5020`, `pipeArm 5020`, `wireHub 1718`,
+`pipeHub 1718`, **13,476 instances and 43% of the frame**. A wire ribbon is 0.16
+of a tile wide, so below about twelve pixels a tile it is drawing a line thinner
+than a pixel. So: a resolvability gate at `px < 12` *and* a ladder rung after
+poles and before shadows, and the power and water overlays still say where the
+network reaches. Low came back at 34,608 of 40,000; Medium and High are
+unchanged, because the rung only fires under budget pressure.
+
+`budget_gate` now also runs each tier at the opening span, which is the case
+that found it.
+
+### Measured
+
+- `./test.sh` **588 tests, green twice.**
+- **Twelve gates green**; `ui_smoke` 101 → **108 checks** (it never looked
+  inside the settings panel before).
+- The three tiers on a 64×64 at the default span, from `screenshot.mjs`:
+
+  | tier | triangles | budget | draws | ladder |
+  | --- | --- | --- | --- | --- |
+  | low | 34,608 | 40,000 | 54 | networks dropped for budget |
+  | medium | 68,484 | 80,000 | 59 | detail not resolvable |
+  | high | 68,484 | 200,000 | 59 | detail not resolvable |
+
+- The governor on the saturated 96×96, **under SwiftShader** — software
+  rendering, so these say what the governor does, not what the game runs at:
+
+  | tier | p95 before it acted | gave up | p95 after |
+  | --- | --- | --- | --- |
+  | low (target 33 ms) | over | ink, shadows, supersample | **19.3 ms** |
+  | medium (33 ms) | 271 ms | ink, shadows | still over — mid-descent |
+  | high (16 ms) | 216 ms | ink, shadows | still over — mid-descent |
+
+  Low is the interesting row: it is the tier that has somewhere to go, and it
+  got there.
+
+- `settings.reducedEffects` deleted from both catalogues and from the `NOT_YET`
+  inventory — it had promised a screen since slice 4.5 and this is the screen
+  (ruling 027).

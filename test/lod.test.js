@@ -213,3 +213,33 @@ test("a junction's markings are counted, not assumed to be one", () => {
   assert.equal(markingInstances(7), 3, "a T junction is not three arms");
   assert.equal(markingInstances(15), 4, "an X junction is not four arms");
 });
+
+test("the utility ribbons are a rung and a resolvability gate (V2)", () => {
+  // On a wired city they are the largest single thing on screen — 13,476
+  // instances and 43% of the frame at the default span on a 64×64 — and below
+  // about twelve pixels a tile a 0.16-tile ribbon is thinner than a pixel.
+  // Without this rung the Low tier was 42,202 triangles against 40,000 with
+  // the whole ladder already spent.
+  // A budget big enough that only the resolvability gate is speaking.
+  const ROOMY = 5000000;
+  assert.equal(planAt(60, ROOMY).networks, true, "a close, rich view gives up the networks");
+  assert.equal(planAt(10, ROOMY).networks, false, "a sub-pixel ribbon is still drawn");
+
+  // And it is reclaimable by budget, in order: after poles, before shadows.
+  const plan = { ...planAt(60, ROOMY), step: 0 };
+  const order = [];
+  while (stepDown(plan)) order.push(plan.reason);
+  const rungs = order.map((r) => r.replace(" dropped", "").replace(" for budget", ""));
+  assert.ok(rungs.indexOf("networks") > rungs.indexOf("poles"), rungs.join(" → "));
+  assert.ok(rungs.indexOf("networks") < rungs.indexOf("shadows"), rungs.join(" → "));
+});
+
+test("dropping the networks removes them from the estimate", () => {
+  // A rung that does not change the estimate is a rung the ladder walks past
+  // for nothing — which is how the whole class of P35 bug starts.
+  const base = { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: false, props: false,
+    markings: false, poles: false, shadows: false };
+  const withNetworks = estimate(CITY, { ...base, networks: true });
+  const without = estimate(CITY, { ...base, networks: false });
+  assert.ok(without < withNetworks, `${without} is not less than ${withNetworks}`);
+});

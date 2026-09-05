@@ -414,6 +414,32 @@ try {
   });
   check("tapping with no tool opens the inspector", !inspectorShown.hidden, inspectorShown.text);
 
+  // --- the quality tier (slice V2, ruling 040) ------------------------------
+  //
+  // Hit-tested, not asserted on the DOM: the row is only real if clicking it
+  // moves the renderer. A settings row that stores a preference nothing reads
+  // is the exact failure ruling 026 exists for, and the reducedEffects string
+  // it replaces sat in the catalogue for four slices doing precisely that.
+  await page.click("#settings");
+  await page.waitForSelector("dialog.settings[open]");
+  const qualityRow = await page.locator('.settings-choice[data-field="quality"]').count();
+  check("the settings panel offers a quality tier", qualityRow === 3, `${qualityRow} choices`);
+  for (const [tier, budget] of [["low", 40000], ["high", 200000], ["medium", 80000]]) {
+    await page.click(`.settings-choice[data-field="quality"][data-value="${tier}"]`);
+    const applied = await page.evaluate(async () => {
+      globalThis.CITY.renderer.draw({});
+      return {
+        tier: globalThis.CITY.renderer.tier,
+        budget: globalThis.CITY.renderer.stats.budget,
+        stored: JSON.parse(globalThis.localStorage.getItem("citygrid.settings") ?? "{}").quality,
+      };
+    });
+    check(`choosing ${tier} reaches the renderer`, applied.tier === tier && applied.budget === budget,
+      JSON.stringify(applied));
+    check(`choosing ${tier} is remembered`, applied.stored === tier, String(applied.stored));
+  }
+  await page.keyboard.press("Escape");
+
   // --- the phone layout -----------------------------------------------------
   await context.close();
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });

@@ -282,6 +282,10 @@ export function updateInstances(state, pools, options = {}) {
   const bounds = options.bounds;
   const markings = plan.markings !== false;
   const poles = plan.poles !== false;
+  // The utility ribbons. Sub-pixel below about twelve pixels a tile, and the
+  // largest single thing on screen on a wired city, so they are both a
+  // resolvability gate and a ladder rung (slice V2).
+  const networks = plan.networks !== false;
 
   // Only what the camera can see. Everything below is per-tile work, and on a
   // 128x128 region at street zoom that is 16k tiles of which perhaps 300 are
@@ -316,7 +320,7 @@ export function updateInstances(state, pools, options = {}) {
       // the low four bits the network pass already maintains, so an arm is
       // drawn towards each neighbour that is actually part of the same run and
       // the line closes across the tile boundary.
-      if (state.tiles.wire[index] & NET_PRESENT) {
+      if (networks && (state.tiles.wire[index] & NET_PRESENT)) {
         // ABOVE the road surface (0.05), not under it. Both networks were drawn
         // below it, so a run crossing a street broke in two — the boundary gap
         // again, one tile wide (P33).
@@ -327,7 +331,7 @@ export function updateInstances(state, pools, options = {}) {
           push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
         }
       }
-      if (state.tiles.pipe[index] & NET_PRESENT) {
+      if (networks && (state.tiles.pipe[index] & NET_PRESENT)) {
         connect(pools.pipeHub, pools.pipeArm, state.tiles.pipe[index], x, y, h + 0.064, PIPE_COLOUR);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {

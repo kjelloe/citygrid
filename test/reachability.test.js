@@ -46,7 +46,6 @@ const NOT_YET = {
   "settings.volume.music": "there is no composed music, so a slider for it would control silence",
   "settings.style": "ruling 022 settled the style; a picker would offer one choice",
   "settings.advisor": "slice 4.2 personas, Q18",
-  "settings.reducedEffects": "slice 4.5 — nothing reads it yet",
   "ping.help": "slice 5.3",
   "ping.building": "slice 5.3",
   "ping.remove": "slice 5.3",

@@ -62,7 +62,11 @@ for (let tick = 1; tick <= years * TICKS_PER_YEAR; tick += 1) {
 }
 
 const style = params.get("style") ?? "plain";
-const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style });
+// `tier` so the harness can shoot what each quality setting actually draws
+// (slice V2). `pixelRatio` stays pinned at 1 whatever the tier says, or two
+// shots of the same city would differ in size rather than in detail.
+const tier = params.get("tier") ?? "high";
+const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier });
 setYawStep(view.view, yaw);
 if (span > 0) {
   view.view.span = span;

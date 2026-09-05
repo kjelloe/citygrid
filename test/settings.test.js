@@ -8,11 +8,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS,
+  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS,
   defaultSettings, sanitiseSettings, documentAttributes, mixerSettings,
 } from "../client/ui/settings-model.js";
 import { LOCALES } from "../client/i18n.js";
 import { OPTION_FIELDS } from "../engine/options.js";
+import { getConfig } from "../client/world/config.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
@@ -77,7 +78,8 @@ test("every row has at least two choices and a label", () => {
       assert.ok(choice.label ?? choice.labelKey, `a ${row.field} choice has no label`);
     }
   }
-  assert.deepEqual(SETTING_ROWS.map((r) => r.choices), [SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
+  assert.deepEqual(SETTING_ROWS.map((r) => r.choices),
+    [QUALITY, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
 });
 
 // --- audio (slice 4.4) ------------------------------------------------------
@@ -132,5 +134,65 @@ test("every skin the panel offers has rules in the stylesheet", () => {
   for (const skin of SKINS) {
     if (skin.value === "clean") continue;   // the bare :root
     assert.match(css, new RegExp(`\\[data-skin="${skin.value}"\\]`), `no rules for the ${skin.value} skin`);
+  }
+});
+
+// --- the quality tier (slice V2, ruling 040) --------------------------------
+
+test("the tier is offered, and it is three choices", () => {
+  const row = SETTING_ROWS.find((r) => r.field === "quality");
+  assert.ok(row, "there is no quality row");
+  assert.deepEqual(row.choices.map((c) => c.value), TIERS);
+  assert.deepEqual(TIERS, ["low", "medium", "high"]);
+});
+
+test("the tier defaults from the device, and a phone does not get High", () => {
+  // `deviceClass()` has existed and been unused since N12. The mapping is pure
+  // and lives in config.js so this module never touches `navigator`.
+  assert.equal(defaultSettings("en", "phone-weak").quality, "low");
+  assert.equal(defaultSettings("en", "phone").quality, "medium");
+  assert.equal(defaultSettings("en", "desktop-weak").quality, "medium");
+  assert.equal(defaultSettings("en", "desktop").quality, "high");
+  assert.equal(defaultSettings("en", "who-knows").quality, "medium",
+    "an unknown device must not be given the most expensive tier");
+});
+
+test("a stored tier survives a round trip, and a bad one does not stop the game", () => {
+  assert.equal(sanitiseSettings({ quality: "low" }, "en", "desktop").quality, "low");
+  assert.equal(sanitiseSettings({ quality: "ultra" }, "en", "phone").quality, "medium",
+    "an unknown tier fell through to something other than the device default");
+  assert.equal(sanitiseSettings({}, "en", "phone-weak").quality, "low");
+});
+
+test("the tier is a preference, never a game option", () => {
+  // Ruling 040: rendering only. A tier in the options record would be hashed,
+  // and two players on different tiers would desync on the first month tick.
+  assert.equal(OPTION_FIELDS.includes("quality"), false);
+});
+
+test("every tier names every knob, and they are ordered", () => {
+  const { tiers } = getConfig();
+  const knobs = ["budget", "pixelRatio", "antialias", "shadowMap", "shadows",
+    "streetChunks", "carCap", "pedCap", "post", "frameMs"];
+  for (const name of TIERS) {
+    for (const knob of knobs) {
+      assert.ok(Object.hasOwn(tiers[name], knob), `tier ${name} has no ${knob}`);
+    }
+  }
+  assert.ok(tiers.low.budget < tiers.medium.budget && tiers.medium.budget < tiers.high.budget);
+  assert.ok(tiers.low.streetChunks < tiers.medium.streetChunks);
+  assert.equal(tiers.low.shadows, false, "the cheapest tier still pays for shadows");
+  assert.equal(tiers.high.carCap, 0, "0 means uncapped (ruling 040)");
+  assert.ok(tiers.high.frameMs < tiers.low.frameMs, "the high tier aims at a slower frame");
+});
+
+test("no tier knob is a simulation knob", () => {
+  // The whole of ruling 040. Map size advice stays with deviceClass (011).
+  const { tiers } = getConfig();
+  for (const name of TIERS) {
+    for (const knob of Object.keys(tiers[name])) {
+      assert.equal(/size|seed|difficulty|sample|tick|traffic(?!Cap)/i.test(knob), false,
+        `tier knob ${knob} sounds like the simulation`);
+    }
   }
 });

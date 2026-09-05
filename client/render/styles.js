@@ -24,6 +24,10 @@ export const STYLES = {
     freeRotation: true,
     continuousZoom: false, // integer zoom steps keep the pixel grid stable
     post: true,
+    // The name the quality tier and the frame-time governor know it by
+    // (ruling 040): a pass is fill rate, and fill rate is what a phone runs
+    // out of first.
+    postPass: "pixel",
     // Divisor 4 put whole buildings inside one pixel, so the edge test fired
     // on nearly every pixel and darkened the entire image. Divisor 2 keeps the
     // pixel texture while leaving features big enough to have edges.
@@ -41,6 +45,7 @@ export const STYLES = {
     freeRotation: true,
     continuousZoom: true,
     post: true,
+    postPass: "pixel",
     resolutionDivisor: 1,
     palette: 0,
     outline: 0,

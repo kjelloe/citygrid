@@ -31,7 +31,10 @@
   "settings.style": "Visuell stil",
   "settings.advisor": "Rådgiver",
   "settings.reducedMotion": "Mindre bevegelse",
-  "settings.reducedEffects": "Enklere grafikk",
+  "settings.quality": "Grafikkvalitet",
+  "settings.quality.low": "Lav — mobil",
+  "settings.quality.medium": "Middels — bærbar",
+  "settings.quality.high": "Høy — skjermkort",
   "settings.highContrast": "Høy kontrast",
 
   "lobby.size": "Størrelse på området",

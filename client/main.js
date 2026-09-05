@@ -72,6 +72,11 @@ async function boot() {
       onChange(next) {
         // Volume moves while the panel is open, so it is heard as it is set.
         session?.setAudioSettings(mixerSettings(next));
+        // So does the quality tier (ruling 040) — everything but antialias,
+        // which is a constructor argument of the WebGL context. A tier that
+        // only took effect on the next city would be a control that appears to
+        // do nothing, which is the failure ruling 026 is about.
+        session?.setQuality(next.quality);
       },
       onLocaleChange() {
         // Re-render whatever is on screen. The panel knows the language
@@ -86,11 +91,13 @@ async function boot() {
     app.innerHTML = "";
     app.classList.remove("choosing");
     app.classList.add("playing");
+    const preferences = loadSettings();
     session = await startGame(app, {
       ...given,
       onNewCity: newGame,
       onSettings: showSettings,
-      audioSettings: mixerSettings(loadSettings()),
+      audioSettings: mixerSettings(preferences),
+      tier: preferences.quality,
     });
     if (config.debug) {
       const { runDebugChecks } = await import("./debug.js");

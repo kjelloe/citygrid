@@ -1,12 +1,79 @@
 {
-  "note": "cityviewer's frame and street dimensions, in metres (rulings 035, 038). Mirrored in client/world/config.js; test/world.test.js refuses drift. A tile is TILE_M metres; the engine never sees this number.",
+  "note": "cityviewer's frame and street dimensions, in metres (rulings 035, 038), and the quality tiers (ruling 040). Mirrored in client/world/config.js; test/world.test.js refuses drift. A tile is TILE_M metres; the engine never sees any of this. carCap 0 means uncapped.",
   "tileM": 20,
   "reliefM": 0.5,
-  "road": { "width": 8, "sidewalk": 2.5, "blend": 4 },
+  "road": {
+    "width": 8,
+    "sidewalk": 2.5,
+    "blend": 4
+  },
   "lot": {
-    "setback": { "none": 2, "residential": 3, "commercial": 0, "industrial": 2 },
-    "bayW": { "none": 6, "residential": 6, "commercial": 5, "industrial": 8 },
-    "floorH": { "none": 4, "residential": 3, "commercial": 3.6, "industrial": 5 },
-    "groundH": { "none": 4.5, "residential": 3, "commercial": 4.5, "industrial": 6 }
+    "setback": {
+      "none": 2,
+      "residential": 3,
+      "commercial": 0,
+      "industrial": 2
+    },
+    "bayW": {
+      "none": 6,
+      "residential": 6,
+      "commercial": 5,
+      "industrial": 8
+    },
+    "floorH": {
+      "none": 4,
+      "residential": 3,
+      "commercial": 3.6,
+      "industrial": 5
+    },
+    "groundH": {
+      "none": 4.5,
+      "residential": 3,
+      "commercial": 4.5,
+      "industrial": 6
+    }
+  },
+  "tiers": {
+    "low": {
+      "budget": 40000,
+      "pixelRatio": 1,
+      "antialias": false,
+      "shadowMap": 0,
+      "shadows": false,
+      "streetChunks": 0,
+      "carCap": 60,
+      "pedCap": 0,
+      "post": [],
+      "frameMs": 33
+    },
+    "medium": {
+      "budget": 80000,
+      "pixelRatio": 1.5,
+      "antialias": true,
+      "shadowMap": 2048,
+      "shadows": true,
+      "streetChunks": 4,
+      "carCap": 200,
+      "pedCap": 40,
+      "post": [
+        "pixel"
+      ],
+      "frameMs": 33
+    },
+    "high": {
+      "budget": 200000,
+      "pixelRatio": 2,
+      "antialias": true,
+      "shadowMap": 4096,
+      "shadows": true,
+      "streetChunks": 9,
+      "carCap": 0,
+      "pedCap": 120,
+      "post": [
+        "pixel",
+        "ink"
+      ],
+      "frameMs": 16
+    }
   }
 }

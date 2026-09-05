@@ -1,5 +1,5 @@
 {
- "version": "93d0f699c87c",
+ "version": "f44599b7f244",
  "generated": "2026-09-05",
  "files": [
   "./client/audio/audio-model.js",
@@ -24,6 +24,7 @@
   "./client/render/building-kit.js",
   "./client/render/camera.js",
   "./client/render/detail-kit.js",
+  "./client/render/governor.js",
   "./client/render/instances.js",
   "./client/render/lod.js",
   "./client/render/minimap-model.js",

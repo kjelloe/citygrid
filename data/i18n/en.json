@@ -31,7 +31,10 @@
   "settings.style": "Visual style",
   "settings.advisor": "Advisor",
   "settings.reducedMotion": "Reduced motion",
-  "settings.reducedEffects": "Simpler graphics",
+  "settings.quality": "Graphics quality",
+  "settings.quality.low": "Low — phone",
+  "settings.quality.medium": "Medium — laptop",
+  "settings.quality.high": "High — desktop card",
   "settings.highContrast": "High contrast",
 
   "lobby.size": "Region size",
