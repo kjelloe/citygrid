@@ -13,6 +13,7 @@ import { NET_PRESENT } from "../constants-mirror.js";
 import { getConfig } from "./config.js";
 
 const OPPOSITE = [2, 3, 0, 1];
+const EMPTY = [];
 const STRAIGHT = [5, 10];
 
 function degree(mask) {
@@ -192,13 +193,55 @@ export function deriveCorridors(state, kindOfTile = "road") {
     c.box = { x0: x0 - pad, x1: x1 + pad, z0: z0 - pad, z1: z1 + pad };
   }
 
+  // A uniform grid over the corridor boxes, one cell per tile.
+  //
+  // `heightAt` and `nearest` both used to walk every corridor and box-test it.
+  // That is nothing for an occasional query and quadratic for the lane graph,
+  // which asks forty thousand times: 97 ms of a 123 ms model rebuild on a
+  // saturated 96×96, on every build action (slice E1). The walkthrough gate
+  // (E4) will ask far more often than that.
+  const CELL = tileM;
+  const index = new Map();
+  const key = (cx, cz) => cx * 100003 + cz;
+  for (const c of corridors) {
+    const b = c.box;
+    for (let cz = Math.floor(b.z0 / CELL); cz <= Math.floor(b.z1 / CELL); cz += 1) {
+      for (let cx = Math.floor(b.x0 / CELL); cx <= Math.floor(b.x1 / CELL); cx += 1) {
+        const k = key(cx, cz);
+        const bucket = index.get(k);
+        if (bucket) bucket.push(c);
+        else index.set(k, [c]);
+      }
+    }
+  }
+
+  /** The corridors whose padded box could reach `(x, z)`, widened by `slack`.
+   * A superset, cheap to compute; callers still test the box and the distance. */
+  function near(x, z, slack = 0) {
+    if (!Number.isFinite(slack)) return corridors;
+    const x0 = Math.floor((x - slack) / CELL);
+    const x1 = Math.floor((x + slack) / CELL);
+    const z0 = Math.floor((z - slack) / CELL);
+    const z1 = Math.floor((z + slack) / CELL);
+    if (x0 === x1 && z0 === z1) return index.get(key(x0, z0)) ?? EMPTY;
+    const out = [];
+    for (let cz = z0; cz <= z1; cz += 1) {
+      for (let cx = x0; cx <= x1; cx += 1) {
+        const bucket = index.get(key(cx, cz));
+        if (!bucket) continue;
+        for (const c of bucket) if (!out.includes(c)) out.push(c);
+      }
+    }
+    return out;
+  }
+
   /** Nearest corridor or node to a point: `{ corridor, node, dist, s, x, z }`
    * or undefined when nothing is within `max` metres. */
   function nearest(x, z, max = frontage + cfg.road.blend) {
     let best;
     // The box is padded by the default reach; a wider search widens the test.
     const slack = Number.isFinite(max) ? Math.max(0, max - (frontage + cfg.road.blend)) : Infinity;
-    for (const c of corridors) {
+    for (const c of near(x, z, slack)) {
       const b = c.box;
       if (x < b.x0 - slack || x > b.x1 + slack || z < b.z0 - slack || z > b.z1 + slack) continue;
       const hit = closestOnPolyline(c.points, x, z);
@@ -212,5 +255,5 @@ export function deriveCorridors(state, kindOfTile = "road") {
     return best;
   }
 
-  return { corridors, nodes, connectors, nearest, half, frontage };
+  return { corridors, nodes, connectors, nearest, near, half, frontage };
 }

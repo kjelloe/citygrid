@@ -8,7 +8,13 @@
 export const DEFAULTS = Object.freeze({
   tileM: 20,
   reliefM: 0.5,
-  road: { width: 8, sidewalk: 2.5, blend: 4 },
+  // `lanes` is per direction, `stopLine` how far short of a junction a lane
+  // stops, both read by the lane graph (E1). `speed` (m/s) and `maxDensity`
+  // (cars per 100 m at full load) are read by the traffic simulation (V1).
+  road: {
+    width: 8, sidewalk: 2.5, blend: 4,
+    lanes: 1, stopLine: 2, speed: 11, maxDensity: 40,
+  },
   lot: {
     setback: { none: 2, residential: 3, commercial: 0, industrial: 2 },
     bayW: { none: 6, residential: 6, commercial: 5, industrial: 8 },

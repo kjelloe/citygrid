@@ -9,6 +9,7 @@
 import { deriveCorridors } from "./corridors.js";
 import { createGround } from "./ground.js";
 import { deriveLots } from "./lots.js";
+import { deriveLanes } from "./lanes.js";
 import { getConfig } from "./config.js";
 import { TERRAIN_WATER, TERRAIN_SHALLOW } from "../constants-mirror.js";
 
@@ -17,6 +18,9 @@ export function createModel(state) {
   const network = deriveCorridors(state, "road");
   const ground = createGround(state, network);
   const lots = deriveLots(state, network, ground);
+  // The board traffic is played on (E1, ruling 037). Derived like everything
+  // else here — a discarded lane graph and a rebuilt one are the same graph.
+  const lanes = deriveLanes(state, network, ground.heightAt);
 
   /** What is underfoot: `{ kind, corridor?, node?, lot?, dist }`. */
   function surfaceAt(x, z) {
@@ -47,7 +51,12 @@ export function createModel(state) {
     lots: lots.lots,
     lotOf: (id) => lots.byId.get(id),
     lotAt: lots.lotAt,
+    lanes,
     surfaceAt,
-    stats: { corridors: network.corridors.length, nodes: network.nodes.length, connectors: network.connectors.length, lots: lots.lots.length },
+    stats: {
+      corridors: network.corridors.length, nodes: network.nodes.length,
+      connectors: network.connectors.length, lots: lots.lots.length,
+      links: lanes.stats.links, turns: lanes.stats.turns, signals: lanes.stats.signals,
+    },
   };
 }

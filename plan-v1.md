@@ -356,7 +356,7 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | # | Slice | Size | Depends on |
 |---|---|---|---|
 | **E0** | **The city model** — `client/world/`: `TILE_M`, `heightAt`, corridors from masks, lots and frontages, the building parameter function; node-tested; gate is a pixel-identical picture. **Done 2026-09-05**: 21 model tests, `instances.js` reads every building through `buildingParams`, both screenshots byte-identical before and after, `client_smoke` green | M | 035 |
-| **E1** | **Lane graph** in the model | S | E0 |
+| **E1** | **Lane graph** in the model. **Done 2026-09-06**: a link each way per corridor trimmed to the junction box, every non-U-turn connector as a link of the same shape, a signal on every junction offset by a hash of its tile. 5,810 links and 372 signals on a saturated 96×96, shortest link 8.32 m against a 4.5 m car (`tools/lanes_dump.mjs`). The model rebuild went **123 ms → 35.7 ms** on the way: `heightAt` had been walking every corridor per call | S | E0 |
 | **E2** | **The baker and the chunk cache** — vertex-colour merge per 16×16 chunk, keyed by content hash, one build a frame | M | E0, 039 |
 | **E3** | **Ribbons** — carriageway, kerbs, sidewalks, junction boxes, a marking canvas per chunk | M | E2, V4 |
 | **E4** | **Street camera and collision** — walk controls, walls from lots, patches from sidewalks, enter and exit; `walkthrough` and `passability` gates | M | E3, V5 |

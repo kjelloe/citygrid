@@ -75,7 +75,10 @@ export function createGround(state, network) {
     let wsum = 0;
     let hsum = 0;
     if (network) {
-      for (const c of network.corridors) {
+      // Only the corridors whose box could reach here (`corridors.js` indexes
+      // them by tile). Walking all of them made this O(corridors) per call, and
+      // the lane graph asks seven thousand times on a saturated 96x96.
+      for (const c of network.near ? network.near(x, z) : network.corridors) {
         const b = c.box;
         if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1) continue;
         const hit = closestOnPolyline(c.points, x, z);

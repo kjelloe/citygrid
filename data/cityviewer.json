@@ -5,7 +5,11 @@
   "road": {
     "width": 8,
     "sidewalk": 2.5,
-    "blend": 4
+    "blend": 4,
+    "lanes": 1,
+    "stopLine": 2,
+    "speed": 11,
+    "maxDensity": 40
   },
   "lot": {
     "setback": {

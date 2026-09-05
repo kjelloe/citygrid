@@ -2751,3 +2751,81 @@ that found it.
 - `settings.reducedEffects` deleted from both catalogues and from the `NOT_YET`
   inventory — it had promised a screen since slice 4.5 and this is the screen
   (ruling 027).
+
+---
+
+## E1 — The lane graph
+
+A corridor is where the road is; a lane is where a car is. The difference is a
+direction, an offset to the right of the centreline, a stop line short of the
+junction, and a curve through it — `client/world/lanes.js`, pure, derived like
+the rest of the model (rulings 032, 037).
+
+Connectors are links too, flagged `kind: "turn"`, rather than a separate kind of
+thing. A car then only ever follows `next` from link to link and everything it
+touches has the same `pts` / `cum` / `len` / `sample` shape. V1 gets a graph
+walk instead of a special case at every junction.
+
+### What the tests caught
+
+**Right turns came out zero metres long.** With a 4 m lane offset and a 2 m stop
+line, a northbound lane's end and the eastbound lane's start are the *same
+point* — so the connector between them had no length and a car would have
+teleported round every corner. The symptom was not "a zero-length link": it was
+**a T junction reporting two connectors instead of six**, because the zero-length
+ones were being silently dropped by a guard. The fix is what the hand-off
+actually said and I had read past: trim to the junction **box**, not to the node
+centre. An `end` node has no box, so a straight road keeps `5 × tileM − 2 ×
+stopLine` and the item's own arithmetic still holds.
+
+**Two of the fixtures were lying.** `pave(row); pave(column)` recomputes the
+masks of the second group only, so the tile the two runs share keeps its
+straight-through mask: no junction at all, and a corridor walk that wandered
+1,402 m looking for an end. The reducer never leaves a mask inconsistent and the
+helper now paves everything before recomputing anything.
+
+### The model got faster, not slower
+
+The lane graph asks for the ground height once per lane point, and `heightAt`
+walked **every corridor** in the map per call. On a saturated 96×96 that was
+37,332 queries against 773 corridors: **97 ms of a 123 ms model rebuild**, on
+every build action.
+
+Two measured fixes, and one measured non-fix worth recording:
+
+1. **A uniform grid over corridor boxes**, one cell per tile, in
+   `deriveCorridors`. 123 → 75 ms.
+2. **A segment-level index instead** — tried, because a corridor box is a poor
+   filter for a long road. It measured *worse* (75 → 77 ms): the closest-point
+   scan was never the cost. Reverted rather than kept.
+3. **Connectors take their end heights from the links they join.** Their two
+   ends *are* those links' ends, whose heights are already computed, and the
+   ground inside a junction box is flattened by the corridor blend anyway. That
+   is 30,000 of the 37,332 queries gone. 75 → **35.7 ms**.
+
+So E0's model alone was 26 ms before and 17 ms now; the whole thing including
+the lane graph is 35.7 ms. E1 costs about 10 ms net and the index paid for the
+rest of it.
+
+### Measured
+
+- `./test.sh` **607 tests, green twice**; 19 new in `test/lanes.test.js`.
+- **Twelve gates green.** No hash moved.
+- `node tools/lanes_dump.mjs` on a saturated 96×96, seed 1003, 400 ticks:
+
+  ```
+  model built in  35.7 ms  (lane graph 19.0 ms of it)
+  corridors       773
+  nodes           460  (bend 5, junction 372, end 83)
+  lanes           1546
+  links           5810  (1546 block, 4264 turn)
+  turns           left 1423, right 1423, straight 1418
+  signals         372
+  entries/exits   83 / 83
+  block length    median 68.0 m, p05 52.0 m, p95 68.0 m
+  shortest link   8.32 m (turn right)
+  ```
+
+  Left and right turns balanced to within six of each other is the check that
+  the handedness is not systematically wrong; 8.32 m against a 4.5 m car is the
+  one the geometry bug above would have failed.
