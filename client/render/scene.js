@@ -12,6 +12,7 @@ import { UI } from "./palette.js";
 import { STYLES, createPost } from "./styles.js";
 import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown } from "./lod.js";
 import { PALETTES, lightingFor } from "./style-assets.js";
+import { createModel } from "../world/model.js";
 
 export function createRenderer(canvas, state, options = {}) {
   const renderer = new THREE.WebGLRenderer({
@@ -68,6 +69,11 @@ export function createRenderer(canvas, state, options = {}) {
   applyZoom(view, canvas.width / canvas.height);
   applyPose(view);
 
+  // The derived city model (ruling 032): corridors, lots, the height function.
+  // Rebuilt whole with the terrain when the world changes; the renderer reads
+  // it and never writes it.
+  let model = createModel(state);
+
   const terrain = createTerrain(state, styleName);
   for (const chunk of terrain.chunks) chunk.mesh.receiveShadow = true;
   scene.add(terrain.group);
@@ -120,6 +126,7 @@ export function createRenderer(canvas, state, options = {}) {
   }
 
   function worldChanged() {
+    model = createModel(state);
     markAllDirty(terrain);
   }
 
@@ -199,6 +206,8 @@ export function createRenderer(canvas, state, options = {}) {
     stats.budget = plan.budget;
     stats.estimate = plan.estimate;
     stats.triangles = plan.actual;
+    stats.corridors = model.stats.corridors;
+    stats.lots = model.stats.lots;
     stats.frames += 1;
     return stats;
   }
@@ -208,5 +217,5 @@ export function createRenderer(canvas, state, options = {}) {
     renderer.dispose();
   }
 
-  return { renderer, scene, view, terrain, pools, style, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+  return { renderer, scene, view, terrain, pools, style, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

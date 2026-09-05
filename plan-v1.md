@@ -355,7 +355,7 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 
 | # | Slice | Size | Depends on |
 |---|---|---|---|
-| **E0** | **The city model** — `client/world/`: `TILE_M`, `heightAt`, corridors from masks, lots and frontages, the building parameter function; node-tested; gate is a pixel-identical picture | M | 035 |
+| **E0** | **The city model** — `client/world/`: `TILE_M`, `heightAt`, corridors from masks, lots and frontages, the building parameter function; node-tested; gate is a pixel-identical picture. **Done 2026-09-05**: 21 model tests, `instances.js` reads every building through `buildingParams`, both screenshots byte-identical before and after, `client_smoke` green | M | 035 |
 | **E1** | **Lane graph** in the model | S | E0 |
 | **E2** | **The baker and the chunk cache** — vertex-colour merge per 16×16 chunk, keyed by content hash, one build a frame | M | E0, 039 |
 | **E3** | **Ribbons** — carriageway, kerbs, sidewalks, junction boxes, a marking canvas per chunk | M | E2, V4 |

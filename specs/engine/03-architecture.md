@@ -45,10 +45,10 @@ model is where the bugs that "look fine in a screenshot" live (a frontage facing
 way, a corridor a tile short, a lane graph with a dead end), and each of those is a one-line
 assertion against a fixture city.
 
-The model is **chunked** the same 16×16 way the terrain is, and each chunk carries a small
-content hash of the tiles and buildings it was derived from. `worldChanged()` today marks
-every terrain chunk dirty; the model does the same and rebuilds only chunks whose content hash
-moved. A road painted across a chunk boundary dirties both.
+The model is rebuilt whole in `worldChanged()` for now (E0 measured a full derivation of a
+64×64 city in under a millisecond of node time per call). Chunking it 16×16 with a content
+hash per chunk arrives with the baker (E2), which is the first consumer that pays per chunk.
+A road painted across a chunk boundary will dirty both.
 
 ## Fidelity is a property of the view, not of the world
 

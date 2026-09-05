@@ -16,8 +16,9 @@
 import * as THREE from "three";
 import {
   pushTri, pushQuad, addBox, addPanel, addWindowGrid, addDoor, addBalcony,
-  addRoofClutter, addShopfront, addFence, addDormers, pseudo,
+  addRoofClutter, addShopfront, addFence, addDormers,
 } from "./detail-kit.js";
+import { variantFor } from "../world/params.js";
 
 const TOP = 1.0;
 const SOUTH = 0.88;
@@ -468,9 +469,4 @@ export function lampGeometry() {
   return lamp();
 }
 
-/** Which variant a building gets. Deterministic from its id, so a building
- * keeps its shape for its whole life and two clients agree on what it looks
- * like without the shape ever entering game state. */
-export function variantFor(id, count) {
-  return Math.floor(pseudo(id * 7 + 3) * count) % count;
-}
+export { variantFor };

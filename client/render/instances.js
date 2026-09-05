@@ -12,8 +12,10 @@ import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } f
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, tuftVariants, lampGeometry,
-  variantFor, VARIANTS, TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
+  TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
+import { buildingParams, zoneTint } from "../world/params.js";
+import { jitter } from "../world/hash.js";
 import { setFaceContrast } from "./detail-kit.js";
 import { DIR4 } from "../../shared/grid.js";
 import { TIER, setCosts, inBounds } from "./lod.js";
@@ -190,66 +192,9 @@ export function triangleCount(geometry) {
   return geometry.getAttribute("position").count / 3;
 }
 
-/** Nudges a colour per building: a little lightness, a little hue. Enough that
- * neighbours differ, little enough that the zone is still readable at a
- * glance, which is what the colour is actually for. */
-function varyColour(hex, id, amount = 1) {
-  const shift = (salt) => (jitter(id, salt) - 0.5) * amount;
-  const light = 1 + shift(23) * 0.34;
-  const r = ((hex >> 16) & 0xff) * light * (1 + shift(29) * 0.2);
-  const g = ((hex >> 8) & 0xff) * light * (1 + shift(31) * 0.16);
-  const b = (hex & 0xff) * light * (1 + shift(37) * 0.22);
-  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
-  return (clamp(r) << 16) | (clamp(g) << 8) | clamp(b);
-}
-
-/** Which roof a building gets. Deterministic from its id, like its variant, so
- * a house keeps its roof for its whole life without the colour ever entering
- * game state.
- *
- * Houses draw from tile and slate; everything else from flat felt greys. That
- * split is doing real work — it is most of what tells a terrace from an office
- * block in the reference, at a zoom where no other detail is legible. */
-function roofColour(building, kind, palette) {
-  const set = kind === "residential" ? palette.roof.house : palette.roof.flat;
-  const pick = set[Math.floor(jitter(building.id, 53) * set.length) % set.length];
-  // Half the usual scatter. A roof colour is a material — tile, slate, felt —
-  // and materials vary less than paint does; at full scatter the terracottas
-  // slid into maroon and the palette stopped reading as tile at all.
-  return varyColour(pick, building.id * 3 + 11, 0.5);
-}
-
-/** A small deterministic hash, for per-tile variation that never touches game
- * state — the world looks varied without the variation having to be saved,
- * replayed or agreed between clients. */
-function darken(hex, factor) {
-  const r = Math.round(((hex >> 16) & 0xff) * factor);
-  const g = Math.round(((hex >> 8) & 0xff) * factor);
-  const b = Math.round((hex & 0xff) * factor);
-  return (r << 16) | (g << 8) | b;
-}
-
-function jitter(index, salt) {
-  let h = (((index + 1) * 2654435761) ^ (salt * 40503)) >>> 0;
-  h ^= h >>> 13;
-  return (h >>> 8) / 0xffffff;
-}
-
 /** Water mains, as a trace in the surface. Not from the palette: it is the same
  * blue in every style because it stands for water, like the pipe overlay. */
 const PIPE_COLOUR = 0x4a86a8;
-
-/** The tint for an empty zoned lot: the zone's own colour, lightened towards
- * the ground so it reads as a marking on the land rather than a painted
- * surface. Kjell's call (P29): subtle, and gone once the lot is built. */
-function zoneTint(zone, palette) {
-  const base = palette.zone[zone] ?? 0x888888;
-  const r = (base >> 16) & 0xff;
-  const g = (base >> 8) & 0xff;
-  const b = base & 0xff;
-  const lift = (v) => Math.min(255, Math.round(v * 0.82 + 255 * 0.18));
-  return (lift(r) << 16) | (lift(g) << 8) | lift(b);
-}
 
 /** Draws one tile of a network as a hub plus an arm towards every neighbour it
  * is joined to.
@@ -451,50 +396,23 @@ export function updateInstances(state, pools, options = {}) {
     const cx = building.x + building.w / 2;
     const cz = building.y + building.h / 2;
 
-    const kind = building.zone === ZONE_RESIDENTIAL ? "residential"
-      : building.zone === ZONE_COMMERCIAL ? "commercial"
-        : building.zone === ZONE_INDUSTRIAL ? "industrial"
-          : "civic";
-    const variant = variantFor(building.id, VARIANTS);
-    // Houses stand on a garden, not on tarmac. Civic buildings get one too —
-    // a school or a clinic in the reference has grounds.
-    if (kind === "residential" || kind === "civic") {
-      push(pools.lawn, cx, h, cz, building.w, building.h, 1,
-        varyColour(palette.lawn, building.id * 5 + 3, 0.6));
-    }
-
-    const pool = pools[`${kind}${variant}_${buildingTier}`];
-    if (!pool) continue;
-    const roofPool = pools[`${kind}${variant}_${buildingTier}_roof`];
-
-    // Zone and value tier set the family; a deterministic per-building shift
-    // sets the individual. Four silhouettes and one colour would still be a
-    // row of clones — the reference's charm is that no two neighbours match.
+    // Zone and value tier set the family; the model sets the individual —
+    // variant, colour, roof, height, spin — from the building's id, so the
+    // box drawn here and the facade drawn at street level are the same house
+    // (ruling 032).
     const family = showOwner
       ? PLAYER_COLOURS[building.owner] ?? palette.civic
       : building.zone === ZONE_NONE
         ? palette.civic
         : buildingColour(building.zone, building.valueTier, palette);
-    const colour = showOwner ? family : varyColour(family, building.id);
+    const p = buildingParams(building, palette, family, showOwner);
+    if (p.lawn) push(pools.lawn, cx, h, cz, building.w, building.h, 1, p.lawn);
 
-    // Height reads development level; a little per-building variation stops a
-    // terrace looking extruded from a single profile.
-    const base = building.zone === ZONE_NONE
-      ? 0.55 + building.w * 0.18
-      : 0.45 + building.level * 0.5;
-    const height = base * (0.88 + jitter(building.id, 17) * 0.3);
-    // Quarter turns, so front doors do not all face the same way.
-    const spin = building.w === building.h
-      ? Math.floor(jitter(building.id, 19) * 4) * (Math.PI / 2)
-      : 0;
-    push(pool, cx, h, cz, building.w * 0.98, height, building.h * 0.98, colour, spin);
-    if (roofPool) {
-      // Same matrix, different colour. In the territory overlay the roof takes
-      // a darkened owner colour instead, so ownership still reads at a glance
-      // rather than being hidden under a terracotta hat.
-      const roof = showOwner ? darken(family, 0.62) : roofColour(building, kind, palette);
-      push(roofPool, cx, h, cz, building.w * 0.98, height, building.h * 0.98, roof, spin);
-    }
+    const pool = pools[`${p.kind}${p.variant}_${buildingTier}`];
+    if (!pool) continue;
+    const roofPool = pools[`${p.kind}${p.variant}_${buildingTier}_roof`];
+    push(pool, cx, h, cz, building.w * 0.98, p.height, building.h * 0.98, p.colour, p.spin);
+    if (roofPool) push(roofPool, cx, h, cz, building.w * 0.98, p.height, building.h * 0.98, p.roof, p.spin);
   }
 
   // --- the overlay pass -----------------------------------------------------

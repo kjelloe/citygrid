@@ -2609,3 +2609,55 @@ change.
 - Both worlds seat a building on the *lowest* corner of its footprint and let a plinth take the
   slope. Seating on the mean floats one corner, and it looks fine in every screenshot that does
   not happen to look at that corner.
+
+## E0 — The city model
+
+*The first cityviewer slice (ruling 032). Pure, node-tested, and the gate is
+that the picture does not change.*
+
+**Built:** `client/world/` — `config.js` (a mirror of `data/cityviewer.json`,
+the `rules.js` pattern), `hash.js` (`pseudo`, `jitter`), `params.js` (one
+function for everything a building looks like), `corridors.js` (road runs
+between nodes, bend connectors, nearest-corridor search), `ground.js` (the
+height function: bilinear land over averaged corners × `RELIEF_M`, corridor
+flattening with a smooth hand-off, water clamp), `lots.js` (rect in metres,
+setback by zone, frontage by road count with hash tie-break, seat on the lowest
+corner, bays), `model.js` (`createModel(state)` and `surfaceAt`). `scene.js`
+owns the model and rebuilds it in `worldChanged()`; `instances.js` reads every
+building through `buildingParams`; `detail-kit.js` and `building-kit.js` take
+`pseudo` and `variantFor` from the model instead of defining them.
+
+**Measured:**
+
+- `tools/screenshot.mjs`, seed 1003, 20 years, 64×64, plain, at the default
+  span and at span 12: **both PNGs byte-identical** before and after
+  (`7d0c3a2c…`, `ea174655…`). 187 buildings, 59 and 53 draw calls, 68,484 and
+  60,078 triangles, unchanged.
+- `test/world.test.js`: 21 tests. A straight road of six tiles is one corridor
+  of 100 m; a T is one junction and three corridors; a bend is two and a
+  sampled curve; a north–south road across an east-rising slope is level to
+  0.02 m across its 8 m width and monotone through the 4 m blend; a 2×2 house
+  on the slope seats on its lowest corner.
+- Suite: 588 pass, twice.
+- `client_smoke`: plain 56 and 53 draws, pixel, painted — all four checks ok, 236 buildings on its fixture.
+
+**What failed on the way:**
+
+- A lot with no road beside it faced north instead of the road to its east.
+  `nearest()` rejected the corridor on its padded bounding box before the
+  distance was ever measured, so a search with `max = Infinity` searched
+  nothing. The box is now widened by the slack between the default reach and
+  the requested one. The test that caught it is the one written for exactly
+  that case.
+- `test/render.test.js` asserted the zone tint by regex over `instances.js`
+  source, and the tint had moved to the model. Rewritten as a behavioural test
+  against `zoneTint()` — which is the point of a pure module: the old test
+  could only check that a number was typed, the new one checks what it does.
+
+**Not done, deliberately:** the renderer consumes nothing but `buildingParams`
+yet. `heightAt` (V4), corridors (E3) and lots (E5) have their own slices, and
+chunked rebuilds of the model wait for the first consumer that pays per chunk
+(E2).
+
+**Next:** V2 (the quality tier) or E1 (the lane graph); `workitems-cityviewer.md`
+carries the rest for whoever picks it up.

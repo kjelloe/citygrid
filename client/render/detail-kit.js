@@ -17,6 +17,8 @@
 //   1.0  the shades below, as written    (painted: strong, directional)
 //   1.3  exaggerated                     (pixel: unlit, so the bake IS the light)
 //   0.4  compressed towards flat         (plain: soft, ambient, diorama)
+import { pseudo } from "../world/hash.js";
+
 let contrast = 1;
 
 export function setFaceContrast(value) {
@@ -202,10 +204,4 @@ export function addDormers(parts, extent, eave, ridge, count, seed) {
 }
 
 /** Deterministic 0..1 from an integer, so every detail placement is stable. */
-export function pseudo(n) {
-  let h = ((n + 1) * 2654435761) >>> 0;
-  h ^= h >>> 15;
-  h = (h * 2246822519) >>> 0;
-  h ^= h >>> 13;
-  return (h >>> 8) / 0xffffff;
-}
+export { pseudo };

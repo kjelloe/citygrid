@@ -4,7 +4,8 @@
 
 ## 4.1 Frame
 
-One constant, `TILE_M`, metres per tile. Everything City Grid draws today is in tile units
+One constant, `TILE_M`, metres per tile, in `data/cityviewer.json` and mirrored in
+`client/world/config.js` (the `engine/rules.js` pattern; `test/world.test.js` refuses drift). Everything City Grid draws today is in tile units
 (`x + 0.5` is a tile centre, a house is 0.9 wide); the engine multiplies by `TILE_M` once at the
 model boundary and never again. The camera's `span` stays in tiles so the LOD's pixels-per-tile
 does not change meaning.
@@ -115,3 +116,13 @@ Both derived from corridors and lots, both in `client/world/`, both plain data:
 `state.tiles.traffic` is a hashed u8 commuter load per tile that only an overlay tint reads
 today. Per link it becomes a target density (vehicles per 100 m) and a speed factor; that is
 the whole coupling between the simulation and the cars, and it runs one way.
+
+## 4.8 As built (E0, 2026-09-05)
+
+`client/world/` holds `config.js`, `hash.js`, `params.js`, `corridors.js`, `ground.js`,
+`lots.js` and `model.js`; `createModel(state)` returns corridors, nodes, connectors,
+`heightAt`, `landAt`, `normalAt`, lots, `lotOf`, `lotAt`, `surfaceAt` and counts.
+`scene.js` owns one and rebuilds it whole in `worldChanged()`; chunked rebuilds keyed by
+content hash wait for E2. `instances.js` reads every building through `buildingParams`;
+`detail-kit.js` and `building-kit.js` take `pseudo` and `variantFor` from the model. The
+renderer does not yet consume `heightAt`, corridors or lots — V3, V4 and E3 do.

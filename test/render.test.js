@@ -18,6 +18,7 @@ import { PLAYER_COLOURS, TERRAIN_COLOURS, ZONE_COLOURS, buildingColour } from ".
 import { PALETTES } from "../client/render/palettes.js";
 import { pseudo, setFaceContrast, shade } from "../client/render/detail-kit.js";
 import { faceContrastFor, lightingFor } from "../client/render/style-light.js";
+import { zoneTint } from "../client/world/params.js";
 import { NET_PRESENT } from "../engine/network.js";
 
 test("the renderer's constants mirror matches the engine exactly", () => {
@@ -282,10 +283,22 @@ test("water pipes are drawn at all", () => {
 
 test("the zone tint keeps enough of its own colour to tell R from C from I", () => {
   // The first attempt lightened 45% towards white and the three zones came out
-  // as one pastel wash.
-  const lift = instances.match(/v \* (0\.\d+) \+ 255 \* (0\.\d+)/);
-  assert.ok(lift, "the zone tint no longer lightens by a stated amount");
-  assert.ok(Number(lift[1]) >= 0.7, `only ${lift[1]} of the zone colour survives`);
+  // as one pastel wash. The tint lives in the model now (client/world/params.js)
+  // and is testable as a function rather than as a regex over the renderer.
+  const palette = PALETTES.plain;
+  const tints = [1, 2, 3].map((zone) => zoneTint(zone, palette));
+  const channels = (hex) => [(hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff];
+  for (const zone of [1, 2, 3]) {
+    const base = channels(palette.zone[zone]);
+    const tint = channels(tints[zone - 1]);
+    for (let c = 0; c < 3; c += 1) {
+      assert.ok(tint[c] >= base[c], "the tint lightens, never darkens");
+      assert.ok(tint[c] <= Math.round(base[c] * 0.7 + 255 * 0.3) + 1, `zone ${zone} lost too much of its own colour`);
+    }
+  }
+  const distance = (a, b) => Math.hypot(...channels(a).map((v, i) => v - channels(b)[i]));
+  assert.ok(distance(tints[0], tints[1]) > 40 && distance(tints[1], tints[2]) > 40 && distance(tints[0], tints[2]) > 40,
+    "the three zone tints are a pastel wash");
 });
 
 // --- networks read as networks (P32) ----------------------------------------
