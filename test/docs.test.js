@@ -24,6 +24,7 @@ const REQUIRED_DOCS = [
   "specs/referencedata.md",
   "specs/art-direction.md",
   "specs/engine/README.md",
+  "workitems-cityviewer.md",
 ];
 
 /** cityviewer's specification (ruling 032). The README is its index and every
@@ -215,4 +216,14 @@ test("cityviewer's settled constants agree across the specification", () => {
   assert.match(readDoc("specs/rulings/035-a-tile-is-twenty-metres.md"), /TILE_M = 20/);
   assert.match(decisions, /\| D7 relief \| 0\.5 m per elevation step/);
   assert.match(readDoc("specs/rulings/038-relief-is-half-a-metre-a-step.md"), /RELIEF_M = 0\.5/);
+});
+
+test("every cityviewer work item is a slice in plan-v1", () => {
+  // The hand-off names slices by id; an id with no row in the plan is work
+  // nobody scheduled and nobody will tick.
+  const items = [...readDoc("workitems-cityviewer.md").matchAll(/^### ([EPV]\d) —/gm)].map((m) => m[1]);
+  assert.ok(items.length >= 12, `only ${items.length} work items`);
+  const plan = readDoc("plan-v1.md");
+  const missing = items.filter((id) => !new RegExp("^\\| \\*\\*" + id + "\\*\\* \\|", "m").test(plan));
+  assert.deepEqual(missing, [], `work items with no plan-v1 row: ${missing}`);
 });

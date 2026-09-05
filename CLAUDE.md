@@ -8,7 +8,7 @@ sibling project already paid for them — `../Fireline/techstack-and-development
 
 - **What the game is** → `specs/gamedesign.md`
 - **How it is built** → `specs/plan.md`; the renderer, `specs/engine/` (cityviewer)
-- **What to do next** → `plan-v1.md`
+- **What to do next** → `plan-v1.md`; renderer work items → `workitems-cityviewer.md`
 - **Why a decision was made** → `specs/rulings/`
 - **The user's words, verbatim** → `dev-prompts.md`
 - **What is still open** → `dev-questions.md`, bottom section
