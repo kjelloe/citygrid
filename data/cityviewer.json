@@ -9,7 +9,7 @@
     "lanes": 1,
     "stopLine": 2,
     "speed": 11,
-    "maxDensity": 40
+    "maxDensity": 12
   },
   "lot": {
     "setback": {

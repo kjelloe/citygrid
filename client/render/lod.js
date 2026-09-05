@@ -39,6 +39,7 @@ const DEFAULT_COSTS = {
   // twelve. The planner believed 79,068 triangles against an 80,000 budget
   // while three drew 97,500 — with the whole sacrifice ladder already spent.
   road: 0,      // painted into the terrain mesh since N30; free
+  car: 76,      // measured from the car pool by `createInstances`
   marking: 2,
   pole: 12,     // a box; vertical, so it cannot be flattened
   wireHub: 2,
@@ -93,6 +94,7 @@ export function estimate(counts, plan) {
 
   const casters = counts.buildings * b + counts.trees * t + counts.props * p;
   const flat = counts.roads * costs.road
+    + (plan.cars !== false ? counts.cars * costs.car : 0)
     + (plan.markings ? counts.markArms * costs.marking : 0)
     // Every network the renderer draws has a term here. Wire and pipe had
     // none, and `counts.poles` was computed and then never read — a term
@@ -130,6 +132,9 @@ export function estimate(counts, plan) {
  * it. */
 const LADDER = [
   (p) => (p.props ? ((p.props = false), "props dropped") : ""),
+  // Cars go late, between props and markings: they are the thing that was
+  // asked for, and a city with no traffic reads as a model rather than a place.
+  (p) => (p.cars ? ((p.cars = false), "cars dropped") : ""),
   (p) => (p.markings ? ((p.markings = false), "markings dropped") : ""),
   (p) => (p.poles ? ((p.poles = false), "poles dropped") : ""),
   (p) => (p.networks ? ((p.networks = false), "networks dropped") : ""),
@@ -186,12 +191,17 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
     markings: true,
     poles: true,
     networks: true,
+    cars: true,
     shadows: true,
     reason: "full",
     tilePixels: Math.round(px),
     step: 0,
   };
   if (px < 42) { plan.props = false; plan.reason = "props not resolvable"; }
+  // A car is 0.22 of a tile long. Below about eighteen pixels a tile it is
+  // four pixels of a colour that is already on the road, and there may be
+  // hundreds of them (slice V1).
+  if (px < 18) { plan.cars = false; plan.reason = "cars not resolvable"; }
   if (px < 20) { plan.markings = false; plan.reason = "markings not resolvable"; }
   if (px < 14) { plan.poles = false; plan.reason = "poles not resolvable"; }
   // A wire ribbon is 0.16 of a tile wide and a pipe main 0.28, so below about
@@ -334,5 +344,9 @@ export function countScene(state, bounds) {
   return {
     buildings, trees, props, roads, poles, groundChunks,
     markArms, wireTiles, wireArms, pipeTiles, pipeArms,
+    // Filled in by the caller from the traffic system's live count: the number
+    // of cars is not a function of the tiles, it is a function of how long the
+    // road has been busy.
+    cars: 0,
   };
 }

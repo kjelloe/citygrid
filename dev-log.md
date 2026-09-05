@@ -2829,3 +2829,81 @@ rest of it.
   Left and right turns balanced to within six of each other is the check that
   the handedness is not systematically wrong; 8.32 m against a 4.5 m car is the
   one the geometry bug above would have failed.
+
+---
+
+## V1 — Traffic you can see
+
+The thing that was asked for, four items ago. `client/life/traffic.js`: cars on
+E1's lane graph, density and speed from `state.tiles.traffic` — the per-tile
+commuter load the engine has computed since N7 and which, until now, only an
+overlay tint and one inspector row ever read.
+
+**Nothing here is state** (ruling 037). No vehicle, no position, no float
+reaches the reducer; every choice a car makes is a hash of an integer that is
+already in state, so two clients showing the same city show the same traffic
+without agreeing on anything. The engine decides how busy a road is; this
+decides what busy looks like.
+
+### The measurement that changed the design
+
+The first version spawned cars at the speed limit and let a density target fill
+the road. It gave the same picture at every load: 36 cars at 8.6 m/s whether the
+engine said 40 or 255.
+
+Three measurements found why, and each one moved the design:
+
+1. **The density target was never the binding constraint.** At a 1.2 s headway
+   and an 11 m/s limit, free flow is 5.7 cars per 100 m. `maxDensity` was 40 —
+   a car every 2.5 m, shorter than a car. Changing it between 6, 8 and 12 gave
+   36 cars every time.
+2. **The entry was a plug.** Admitting a car 6.4 m behind another at speed made
+   it brake hard, and the slow car it became throttled everything behind it. The
+   tail ran at 3.8 m/s while the head ran at 9.1. A car now arrives at the speed
+   of the traffic, one full headway behind it, or it does not arrive.
+3. **A busy road is not a fast road with more cars on it — it is a slower
+   road.** `LOAD_SLOWS`: at a full byte the desired speed is 35% of the limit.
+   The density then follows from the speed rather than being imposed on it.
+
+After all three, measured on a 20-tile street:
+
+| engine load | cars per 100 m | mean speed |
+| --- | --- | --- |
+| 40 | 1.9 | 9.6 m/s |
+| 128 | 6.1 | 6.0 m/s |
+| 255 | 8.0 | 3.2 m/s |
+
+Both numbers now track the load, which is the whole point: a jam has to read as
+a jam and not as a longer line of cars going the same speed as an empty street.
+
+### Measured
+
+- `./test.sh` **621 tests, green twice**; 14 new in `test/cars.test.js`.
+- **Twelve gates green.** No hash moved.
+- On a 64×64 with 297 buildings, 973 commuters and a mean road load of 66:
+  **997 cars**, `traffic.update` **0.09 ms** a step.
+- On a 128×128 with 2,036 buildings and 3,437 commuters: **3,660 cars**,
+  `traffic.update` **0.5 ms** a step.
+- The frame delta from drawing them is +0.9 ms on both, which under SwiftShader
+  is inside the noise; the honest number is the CPU one above.
+- A car is **82 triangles measured**, so a thousand of them is 82k — which is
+  why they are a ladder rung and why the ladder drops them at a wide zoom on a
+  saturated map (`cars dropped for budget` at span 24, kept at span 12 where a
+  player would be looking at them).
+- `?life=0` freezes them: two `screenshot.mjs` runs of one city are **byte
+  identical**, which is what lets every picture gate keep working.
+
+### What failed on the way
+
+**I overwrote `test/traffic.test.js`.** The hand-off names that file for V1's
+tests and it already held the ENGINE's traffic tests — the monthly commuter
+assignment. Caught by reading the diff stat (240 insertions, 124 deletions on a
+file I thought was new), restored from HEAD, and the new tests live in
+`test/cars.test.js`. Two different things with one name.
+
+**The first fixture grew no city.** A grid of roads and 898 zoned tiles produced
+zero buildings after 1,200 ticks, because nothing was connected to power or
+water. The probe now places homes and jobs directly and calls `trafficPass`,
+which is the shape `test/traffic.test.js` already uses to exercise the engine's
+own commuter pass — a real load field, without having to run an economy to get
+one.

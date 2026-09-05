@@ -7,12 +7,13 @@
 import * as THREE from "three";
 import { createCamera, applyZoom, applyPose, clampToMap } from "./camera.js";
 import { createTerrain, updateTerrain, markAllDirty } from "./terrain.js";
-import { createInstances, updateInstances } from "./instances.js";
+import { createInstances, updateInstances, pushInstance, CAR_COLOURS } from "./instances.js";
 import { UI } from "./palette.js";
 import { STYLES, createPost } from "./styles.js";
 import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown } from "./lod.js";
 import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
+import { createTraffic } from "../life/traffic.js";
 import { tierConfig } from "../world/config.js";
 import { createGovernor } from "./governor.js";
 
@@ -45,6 +46,8 @@ export function createRenderer(canvas, state, options = {}) {
 
   const scene = new THREE.Scene();
   const antialiasAtBuild = options.antialias ?? tier.antialias;
+  /** 0 in the tier table means uncapped (ruling 040). */
+  const carCap = () => (options.carCap ?? tier.carCap) || Infinity;
 
   /** Shadow map size and whether the pass runs at all. Re-applied when the
    * tier changes; the per-frame `castShadow` is decided in `draw`. */
@@ -107,6 +110,10 @@ export function createRenderer(canvas, state, options = {}) {
   // Rebuilt whole with the terrain when the world changes; the renderer reads
   // it and never writes it.
   let model = createModel(state);
+  // The cars (slice V1, ruling 037). Renderer-local: the engine says how busy a
+  // road is and this decides what busy looks like. `life: false` freezes them
+  // where they settled, so a screenshot is the same picture twice.
+  let traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
 
   const terrain = createTerrain(state, styleName);
   for (const chunk of terrain.chunks) chunk.mesh.receiveShadow = true;
@@ -173,6 +180,10 @@ export function createRenderer(canvas, state, options = {}) {
 
   function worldChanged() {
     model = createModel(state);
+    // The lane graph is part of the model, so the cars have to start again on
+    // the new one: a car holding a link id from a graph that no longer exists
+    // is a car in a field.
+    traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
     markAllDirty(terrain);
   }
 
@@ -215,6 +226,9 @@ export function createRenderer(canvas, state, options = {}) {
     // The frame time the caller measured. The budget cannot see fill rate, so
     // this is the second instrument (ruling 040): a rolling p95 that gives up a
     // post pass, then shadows, then the supersample.
+    // The cars move on wall-clock time, not on the game clock: a paused city
+    // still has traffic on it, and a city at ×4 does not have cars at ×4.
+    traffic.update(drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000);
     if (drawOptions.frameMs > 0) {
       const before = governor.disabled().length;
       governor.sample(drawOptions.frameMs);
@@ -223,6 +237,7 @@ export function createRenderer(canvas, state, options = {}) {
     stats.chunksRebuilt = updateTerrain(state, terrain);
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
+    counts.cars = traffic.count();
     const plan = choosePlan(counts, view, canvas.height, { budget: drawOptions.budget });
 
     clampToMap(view, state.width, state.height);
@@ -242,6 +257,12 @@ export function createRenderer(canvas, state, options = {}) {
     stats.rebuilds = 0;
     for (;;) {
       result = updateInstances(state, pools, { ...drawOptions, style: styleName, plan, bounds });
+      // After the instanced pass, into the same pools the parked cars use — so
+      // a car costs one instance whether it is driving or parked, and the
+      // budget's measurement loop sees it either way.
+      if (plan.cars !== false && drawOptions.life !== false) {
+        result.instances += traffic.pose(pools, pushInstance, CAR_COLOURS);
+      }
       if (shadowLight) {
         shadowLight.castShadow = plan.shadows
           && (options.shadows ?? tier.shadows) !== false
@@ -267,6 +288,7 @@ export function createRenderer(canvas, state, options = {}) {
     stats.corridors = model.stats.corridors;
     stats.lots = model.stats.lots;
     stats.tier = tierName;
+    stats.cars = traffic.count();
     stats.frameP95 = governor.p95();
     stats.given = governor.disabled();
     stats.frames += 1;
@@ -308,5 +330,5 @@ export function createRenderer(canvas, state, options = {}) {
     return { rebuild: (options.antialias ?? tier.antialias) !== antialiasAtBuild };
   }
 
-  return { renderer, scene, view, terrain, pools, style, setTier, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+  return { renderer, scene, view, terrain, pools, style, setTier, get traffic() { return traffic; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

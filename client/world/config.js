@@ -11,9 +11,13 @@ export const DEFAULTS = Object.freeze({
   // `lanes` is per direction, `stopLine` how far short of a junction a lane
   // stops, both read by the lane graph (E1). `speed` (m/s) and `maxDensity`
   // (cars per 100 m at full load) are read by the traffic simulation (V1).
+  // 12 per 100 m is a busy road that still flows: a 4.4 m car keeping a 2 m
+  // standing gap jams solid at about 15.6, so a full byte of engine load asks
+  // for heavy traffic rather than for gridlock — the jams should come from the
+  // signals, which is where a player can see the reason for them.
   road: {
     width: 8, sidewalk: 2.5, blend: 4,
-    lanes: 1, stopLine: 2, speed: 11, maxDensity: 40,
+    lanes: 1, stopLine: 2, speed: 11, maxDensity: 12,
   },
   lot: {
     setback: { none: 2, residential: 3, commercial: 0, industrial: 2 },

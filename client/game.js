@@ -109,7 +109,7 @@ export async function startGame(root, given = {}) {
   canvas.setAttribute("role", "application");
   canvas.setAttribute("aria-label", t("hud.map"));
 
-  const renderer = createRenderer(canvas, state, { style, tier: options.tier });
+  const renderer = createRenderer(canvas, state, { style, tier: options.tier, life: options.life });
   focusOn(renderer.view, state.width / 2, state.height / 2);
   renderer.view.span = 28;
 
@@ -276,7 +276,7 @@ export async function startGame(root, given = {}) {
     lastFrameAt = now;
     // Read from the HUD rather than a local: with "Auto" the overlay follows
     // the tool in hand, and no event fires when a shortcut changes the tool.
-    renderer.draw({ overlay: hud.overlay, frameMs });
+    renderer.draw({ overlay: hud.overlay, frameMs, dt: frameMs / 1000 });
     if (minimap && hud.minimapVisible) minimap.draw(canvas.clientWidth / canvas.clientHeight);
     frame = requestAnimationFrame(loop);
   };

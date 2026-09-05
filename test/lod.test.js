@@ -36,6 +36,7 @@ const CITY = {
   buildings: 900, trees: 1200, props: 4000, roads: 4400, poles: 600, groundChunks: 64,
   // A downtown grid: most road tiles are straight, a few hundred are junctions.
   markArms: 5200, wireTiles: 600, wireArms: 1100, pipeTiles: 600, pipeArms: 1100,
+  cars: 180,
 };
 
 function planAt(px, budget = 80000, counts = CITY) {
@@ -89,7 +90,7 @@ test("props are sacrificed before buildings", () => {
   // which is the only place the order is observable.
   const town = {
     buildings: 200, trees: 300, props: 800, roads: 900, poles: 100, groundChunks: 9,
-    markArms: 1000, wireTiles: 100, wireArms: 180, pipeTiles: 100, pipeArms: 180,
+    markArms: 1000, wireTiles: 100, wireArms: 180, pipeTiles: 100, pipeArms: 180, cars: 40,
   };
   const plan = planAt(60, 200000, town);
   assert.equal(plan.props, false, "props go first");
@@ -143,7 +144,7 @@ test("the estimate does NOT charge twice for a shadowed caster (P35)", () => {
   // truth at close zoom, and the ladder dropped the props you zoomed in to see.
   const counts = {
     buildings: 100, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
-    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0,
+    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0,
   };
   const base = { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: false, props: false, markings: false, poles: false };
   const lit = estimate(counts, { ...base, shadows: false });

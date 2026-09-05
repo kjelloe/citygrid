@@ -24,6 +24,9 @@ export const config = Object.freeze({
   join: params.get("join") ?? "",
   locale: params.get("lang") ?? "",
   debug: params.get("debug") === "1",
+  // `?life=0` freezes the traffic where it settled, so a gate that measures a
+  // frame or compares two screenshots is looking at the same city twice.
+  life: params.get("life") !== "0",
 });
 
 function show(html) {
@@ -98,6 +101,7 @@ async function boot() {
       onSettings: showSettings,
       audioSettings: mixerSettings(preferences),
       tier: preferences.quality,
+      life: config.life,
     });
     if (config.debug) {
       const { runDebugChecks } = await import("./debug.js");

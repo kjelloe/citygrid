@@ -26,7 +26,7 @@ import {
 
 /** Parked cars and flowers carry the only strong accent colours in the scene,
  * which is what the reference uses them for. */
-const CAR_COLOURS = [0xe0e4e8, 0x3f4a58, 0xc84a4a, 0x4a7fc8, 0xd8b84a, 0x5aa86a];
+export const CAR_COLOURS = [0xe0e4e8, 0x3f4a58, 0xc84a4a, 0x4a7fc8, 0xd8b84a, 0x5aa86a];
 const FLOWER_COLOURS = [0xf2e27a, 0xf0f0f0, 0xe8a0c8, 0xf0c060];
 
 const dummy = new THREE.Object3D();
@@ -133,7 +133,10 @@ export function createInstances(scene, styleName = "plain") {
     measured.tree[tier] = Math.round(treeSample / trees.length);
   }
   const cars = carVariants();
-  for (let v = 0; v < cars.length; v += 1) make(`car${v}`, cars[v], 0xffffff, 6000);
+  // Twice what the parked cars ever needed: the moving ones (V1) share these
+  // pools, and the High tier does not cap them. A pool that overflows drops
+  // instances silently, which reads as cars vanishing at the edge of a jam.
+  for (let v = 0; v < cars.length; v += 1) make(`car${v}`, cars[v], 0xffffff, 12000);
   const tufts = tuftVariants();
   for (let v = 0; v < tufts.length; v += 1) make(`tuft${v}`, tufts[v], 0xffffff, 30000);
   make("lamp", lampGeometry(), 0xffffff, 8000);
@@ -151,6 +154,7 @@ export function createInstances(scene, styleName = "plain") {
   ];
   setCosts({
     ...measured,
+    car: Math.round(propSample.slice(1, 1 + cars.length).reduce((a, b) => a + b, 0) / cars.length),
     prop: { 2: Math.round(propSample.reduce((a, b) => a + b, 0) / propSample.length), 1: 0, 0: 0 },
     road: 0,  // painted into the terrain mesh
     marking: triangleCount(pools.mark.geometry),
@@ -166,6 +170,13 @@ export function createInstances(scene, styleName = "plain") {
 
 function reset(pools) {
   for (const mesh of Object.values(pools)) mesh.count = 0;
+}
+
+/** Adds one instance to a pool. Exported for `client/life/`, which poses the
+ * moving cars into the same pools the parked ones use — so a car is one
+ * instance whether it is driving or parked, and the budget counts it once. */
+export function pushInstance(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {
+  push(mesh, x, y, z, sx, sy, sz, colour, rotation);
 }
 
 function push(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {

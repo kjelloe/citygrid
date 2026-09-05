@@ -82,7 +82,7 @@ try {
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=96`);
+  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=96&life=0`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
 
   // A city with something of everything in it, on every tile the camera can

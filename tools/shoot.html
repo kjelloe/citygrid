@@ -66,7 +66,10 @@ const style = params.get("style") ?? "plain";
 // (slice V2). `pixelRatio` stays pinned at 1 whatever the tier says, or two
 // shots of the same city would differ in size rather than in detail.
 const tier = params.get("tier") ?? "high";
-const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier });
+// `life=0` freezes the traffic where it settled, so two shots of one city are
+// the same picture (slice V1).
+const life = params.get("life") === "1";
+const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life });
 setYawStep(view.view, yaw);
 if (span > 0) {
   view.view.span = span;
