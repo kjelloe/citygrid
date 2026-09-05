@@ -18,6 +18,30 @@ changes, all from the V lane:
 Cost: unchanged at 512 triangles a chunk. A finer grid is the wrong lever; detail comes from
 ribbons and props.
 
+## 5.1a As built (V3, 2026-09-06)
+
+`client/world/ground-colour.js` — pure, and the palette is handed in, because
+`client/world/` never imports `client/render/`.
+
+`createGroundColour(state, palette)` returns `tile(x, y)` and `corner(x, y, c)`.
+A corner takes the mean of the four tiles meeting there **only when all four are
+natural**; the moment one carries a road, a zone or a building it keeps its own
+tile's colour, so the edge of the city stays crisp and the grid still reads. One
+knob, `ground.blend`, and 0 reproduces the flat picture exactly.
+
+The mottle is `jitter(index, 5)` at ±`ground.mottle` of lightness, natural tiles
+only — mottling tarmac would make it speckled.
+
+The distance-to-street tone is a **flood outward from the road layer**, not a
+corridor query per tile. `model.nearestCorridor` is the obvious way and measured
+16.6 ms of terrain rebuild against a 15 ms budget; it is also more precision
+than the answer needs, since `urbanReach` is 40 m, a tile is 20, and the value
+feeds a per-tile colour. Two rings, one pass over the map, 11.6 ms (Q28).
+
+Measured on a saturated 128×128, median of five full rebuilds: 10.2 ms with the
+slice off, 11.6 ms with all of it on. Triangles unchanged — this is vertex
+colour, not geometry.
+
 ## 5.2 Ribbons (L3 only)
 
 Union Square's `strip` and Higashiyama's `ribbon` are the same primitive: a quad strip along a

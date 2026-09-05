@@ -123,6 +123,25 @@ test("client/world stays pure: no three, no DOM, no clock", () => {
   assert.deepEqual(offenders, [], offenders.join("\n  "));
 });
 
+test("client/world never imports client/render", () => {
+  // The model is derived from state and must not depend on how anything is
+  // drawn — otherwise the import graph has a cycle waiting in it and a fixture
+  // test needs a palette to run. Anything from `render/` that the model needs
+  // is HANDED IN: `createGroundColour(state, model, palette)` takes the palette
+  // rather than reaching for one.
+  const offenders = [];
+  for (const name of readdirSync(join(repoRoot, "client", "world"))) {
+    if (!name.endsWith(".js")) continue;
+    const source = readFileSync(join(repoRoot, "client", "world", name), "utf8");
+    for (const line of source.split("\n")) {
+      if (/^\s*import\s/.test(line) && /["'][^"']*\/render\//.test(line)) {
+        offenders.push(`client/world/${name}: ${line.trim()}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], offenders.join("\n  "));
+});
+
 test("client/life keeps its own clock and never asks the machine for one", () => {
   // Traffic is renderer-local state (ruling 037) and therefore the one part of
   // cityviewer that remembers something between frames. It is still

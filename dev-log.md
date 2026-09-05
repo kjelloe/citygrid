@@ -2907,3 +2907,67 @@ water. The probe now places homes and jobs directly and calls `trafficPass`,
 which is the shape `test/traffic.test.js` already uses to exercise the engine's
 own commuter pass — a real load field, without having to run an economy to get
 one.
+
+---
+
+## V3 — Ground that is not a checkerboard
+
+`client/world/ground-colour.js`, pure. The rule is not "blend everything":
+blending the built land would take the grid away, and the grid is what makes a
+city legible. **Natural ground blends; anything a player has put there does
+not.** A corner shared by four untouched tiles takes their mean; a corner
+touching a road, a zone or a building keeps its own tile's colour.
+
+Two cheap signals on top, both from Higashiyama's `groundColorAt`: a per-tile
+mottle of ±6% lightness so a field is not one flat sheet, and a
+distance-to-street tone that darkens and desaturates open country by up to 12%.
+Neither touches built land. `ground.blend: 0` reproduces the old picture
+exactly, which is the escape hatch and what makes the change reviewable.
+
+### A deviation from the work item, with the measurement
+
+The item says to use `model.nearestCorridor` with a chunk-level cache and to
+keep the rebuild under 15 ms on a 128×128. Built that way it measured **16.6 ms
+against a 10.2 ms baseline** — the corridor query is about a microsecond and
+there are 5,404 natural tiles.
+
+It is also more precision than the answer needs. `urbanReach` is 40 m and a tile
+is 20, so the whole falloff is two tiles wide and the colour it feeds is per
+tile anyway. A flood outward from the road layer, stopped after two rings, is
+exact at that granularity and costs one pass over the map. **11.6 ms**, and the
+colour source no longer needs the model at all. Recorded as Q28.
+
+### Measured
+
+- `./test.sh` **639 tests, green twice**; 11 new in `test/ground-colour.test.js`.
+- **Twelve gates green.** No hash moved.
+- Full terrain rebuild on a saturated 128×128, median of five:
+
+  | | ms |
+  | --- | --- |
+  | V3 off (`blend 0, mottle 0, farTone 0`) | 10.2 |
+  | blend only | 11.2 |
+  | everything on | **11.6** |
+
+  So the whole slice costs 1.4 ms on the largest map, against the item's 15 ms
+  budget and N30's ~12 ms baseline for the same rebuild.
+- Triangles unchanged at every span — this is vertex colour, not geometry.
+- `reports/smoke-V3-{before,after}-span{default,24,12}.png`. The shoreline is
+  the clearest read: a stair-stepped boundary of flat green, sand and blue
+  becomes a graded shore, while the road grid and the zoned blocks beside it are
+  pixel-for-pixel as crisp as they were.
+
+### What failed on the way
+
+**`client/world/` imported `client/render/`.** The first version reached for
+`TERRAIN_COLOURS` as a fallback, which is a layering violation the work items
+name explicitly ("`world/` never imports `render/`") and which nothing checked.
+The palette is handed in — `createGroundColour(state, palette)` — and
+`test/purity.test.js` now refuses the import, verified by planting one.
+
+**Two N30 tests broke, and they were right to.** They asserted that
+`terrain.js` reads `tiles.road` and `palette.road`; that logic moved into
+`ground-colour.js`, which now owns every question about what the ground is
+coloured. The assertions moved with it rather than being deleted: the property
+they protect — a road is a colour of the ground, not a quad on it — is the one
+that took three slices and a playtest to arrive at.

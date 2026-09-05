@@ -348,8 +348,12 @@ test("the road follows the ground, so an elevation step is not a green seam", ()
   // ground, so it shares the ground's corners and there is no step to fill.
   const terrain = readFileSync(join(repoRoot, "client", "render", "terrain.js"), "utf8");
   const chunk = terrain.slice(terrain.indexOf("function buildChunk("));
-  assert.match(chunk, /tiles\.road\[index\]/, "the terrain does not read the road layer");
   assert.match(chunk, /cornerHeight/, "the ground no longer shares corners with its neighbours");
+  // The road's colour moved into `world/ground-colour.js` with V3, which owns
+  // every question about what the ground is coloured. It still paints roads.
+  const source = readFileSync(join(repoRoot, "client", "world", "ground-colour.js"), "utf8");
+  assert.match(source, /tiles\.road\[index\] & NET_PRESENT/, "the ground does not know a road when it sees one");
+  assert.match(source, /palette\.road/, "the ground never paints a road");
 });
 
 test("a network ribbon is one width from end to end", () => {
@@ -427,9 +431,9 @@ test("the road is painted into the ground, not stacked on top of it", () => {
   // for the roads alone on a saturated 96x96, measured. The ground is already a
   // continuous surface with corner-averaged heights: colouring its tiles is
   // seamless BY CONSTRUCTION, costs nothing, and follows the terrain exactly.
-  const terrain = readFileSync(join(repoRoot, "client", "render", "terrain.js"), "utf8");
-  assert.match(terrain, /NET_PRESENT|& 16/, "the terrain does not know a road when it sees one");
-  assert.match(terrain, /palette\.road|\.road\b/, "the terrain never paints a road");
+  const source = readFileSync(join(repoRoot, "client", "world", "ground-colour.js"), "utf8");
+  assert.match(source, /NET_PRESENT/, "the ground does not know a road when it sees one");
+  assert.match(source, /palette\.road/, "the ground never paints a road");
   assert.equal(/make\("road", /.test(instances), false,
     "there is still a road instance pool stacked over the ground");
 });

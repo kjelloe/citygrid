@@ -19,6 +19,11 @@ export const DEFAULTS = Object.freeze({
     width: 8, sidewalk: 2.5, blend: 4,
     lanes: 1, stopLine: 2, speed: 11, maxDensity: 12,
   },
+  // The ground's own colour (V3). `blend` at 0 reproduces the flat per-tile
+  // picture exactly; `mottle` is the per-tile lightness scatter; `urbanReach`
+  // is how far from a street the tended ground extends, and `farTone` how much
+  // darker and greyer the country beyond it goes.
+  ground: { blend: 1, mottle: 0.06, urbanReach: 40, farTone: 0.12 },
   lot: {
     setback: { none: 2, residential: 3, commercial: 0, industrial: 2 },
     bayW: { none: 6, residential: 6, commercial: 5, industrial: 8 },

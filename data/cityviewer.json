@@ -11,6 +11,12 @@
     "speed": 11,
     "maxDensity": 12
   },
+  "ground": {
+    "blend": 1,
+    "mottle": 0.06,
+    "urbanReach": 40,
+    "farTone": 0.12
+  },
   "lot": {
     "setback": {
       "none": 2,

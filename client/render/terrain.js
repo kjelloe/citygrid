@@ -6,9 +6,9 @@
 // middle, and the dirty set is what keeps a build to the tiles that moved.
 
 import * as THREE from "three";
-import { TERRAIN_COLOURS } from "./palette.js";
 import { PALETTES, makeMaterial } from "./style-assets.js";
 import { NET_PRESENT } from "../constants-mirror.js";
+import { createGroundColour } from "../world/ground-colour.js";
 
 export const CHUNK = 16;
 
@@ -63,7 +63,7 @@ function cornerHeight(state, x, y) {
 
 /** Rebuilds one chunk: two triangles per tile, flat-shaded, coloured by terrain
  * type. Flat rather than smoothed because a city grid wants to read as tiles. */
-function buildChunk(state, chunk, styleName) {
+function buildChunk(state, chunk, styleName, ground) {
   const x0 = chunk.cx * CHUNK;
   const y0 = chunk.cy * CHUNK;
   const x1 = Math.min(x0 + CHUNK, state.width);
@@ -83,21 +83,19 @@ function buildChunk(state, chunk, styleName) {
       const h10 = cornerHeight(state, x + 1, y);
       const h01 = cornerHeight(state, x, y + 1);
       const h11 = cornerHeight(state, x + 1, y + 1);
-      const palette = PALETTES[styleName] ?? PALETTES.plain;
-      const table = palette.terrain;
-      // A road is a COLOUR OF THE GROUND, not a quad stacked on it (slice N30).
+      // A road is a COLOUR OF THE GROUND, not a quad stacked on it (slice N30),
+      // and natural ground blends across its corners while built land does not
+      // (slice V3) — `client/world/ground-colour.js` decides both.
       //
-      // It was a quad, and a quad sits flat at its own tile's height while this
-      // surface shares corners with its neighbours — so every elevation step
-      // showed a green seam between two road tiles, which is what the P33
-      // playtest saw. N28 closed it with a skirt: twelve triangles a tile
-      // instead of two, 29,868 of them on a saturated 96x96, and a budget that
-      // could no longer be met with the whole sacrifice ladder spent (P35).
-      // Painted into the mesh, a road is seamless by construction, follows the
-      // terrain exactly, and costs nothing at all.
-      colour.setHex((state.tiles.road[index] & NET_PRESENT) !== 0
-        ? palette.road
-        : table[state.tiles.terrain[index]] ?? TERRAIN_COLOURS[state.tiles.terrain[index]] ?? 0xff00ff);
+      // The road was a quad, and a quad sits flat at its own tile's height
+      // while this surface shares corners with its neighbours: every elevation
+      // step showed a green seam between two road tiles, which is what the P33
+      // playtest saw. N28 closed it with a skirt at twelve triangles a tile;
+      // painted into the mesh it is seamless by construction and free.
+      const c00 = ground.corner(x, y, 0);
+      const c10 = ground.corner(x, y, 1);
+      const c01 = ground.corner(x, y, 2);
+      const c11 = ground.corner(x, y, 3);
 
       // Two triangles, corners at integer coordinates so tiles meet exactly.
       //
@@ -106,12 +104,13 @@ function buildChunk(state, chunk, styleName) {
       // -Y, and the whole ground plane is backface-culled: a city of roads and
       // buildings floating on an empty sky.
       const quad = [
-        [x, h00, y], [x + 1, h11, y + 1], [x + 1, h10, y],
-        [x, h00, y], [x, h01, y + 1], [x + 1, h11, y + 1],
+        [x, h00, y, c00], [x + 1, h11, y + 1, c11], [x + 1, h10, y, c10],
+        [x, h00, y, c00], [x, h01, y + 1, c01], [x + 1, h11, y + 1, c11],
       ];
-      for (const [vx, vy, vz] of quad) {
+      for (const [vx, vy, vz, hex] of quad) {
         positions[p] = vx; positions[p + 1] = vy; positions[p + 2] = vz;
         p += 3;
+        colour.setHex(hex);
         colours[c] = colour.r; colours[c + 1] = colour.g; colours[c + 2] = colour.b;
         c += 3;
       }
@@ -133,9 +132,14 @@ function buildChunk(state, chunk, styleName) {
  * overlay reports — a frame that rebuilds every chunk is a bug, not a cost. */
 export function updateTerrain(state, terrain) {
   let rebuilt = 0;
+  // One colour source for the whole pass: it caches a per-tile colour and
+  // floods the distance-to-street field once. Building it per chunk would redo
+  // both sixty-four times on a 128×128.
+  const palette = PALETTES[terrain.styleName] ?? PALETTES.plain;
+  const ground = createGroundColour(state, palette);
   for (const chunk of terrain.chunks) {
     if (!chunk.dirty) continue;
-    buildChunk(state, chunk, terrain.styleName);
+    buildChunk(state, chunk, terrain.styleName, ground);
     rebuilt += 1;
   }
   return rebuilt;
