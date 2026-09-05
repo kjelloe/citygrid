@@ -39,7 +39,10 @@ the feature that was asked for, so they go late) and **L3 chunks** (the first th
 when a street view is over budget: drop the farthest L3 chunk back to L2). Costs for both are
 measured by `createInstances` and the baker, never remembered (ruling 019).
 
-It grew a third in V2: **networks**, after poles and before shadows, with a resolvability gate
+It grew both in V1 and V2. **Cars** sit between props and markings as planned, with a
+resolvability gate at 18 px a tile — a car is 0.22 of a tile long, so below that it is four
+pixels of a colour already on the road, and there may be a thousand of them at 82 triangles
+each. And **networks**, after poles and before shadows, with a resolvability gate
 at 12 px a tile. A wire ribbon is 0.16 of a tile wide, so below that it draws a line thinner
 than a pixel — and on a wired city the two ribbons are the largest single thing on screen
 (13,476 instances, 43% of the frame at the default span on a 64x64). Without it the Low tier

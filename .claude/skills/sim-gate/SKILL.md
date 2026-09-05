@@ -35,17 +35,22 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Lobby gate** | `node tools/lobby_smoke.mjs` | New game, settings, Continue — hash for hash |
 | **Offline gate** | `node tools/offline_smoke.mjs` | Network off: does it open, start, build and save? |
 | **Update gate** | `node tools/update_smoke.mjs` | Does a NEW build ever reach a player who already has the app? |
-| **Budget gate** | `node tools/budget_gate.mjs` | Is the frame inside its triangle budget on a SATURATED city — and does the planner's estimate still match what three drew? |
+| **Budget gate** | `node tools/budget_gate.mjs [--tier=low\|medium\|high]` | Is the frame inside its triangle budget on a SATURATED city, at every tier and at the opening span — and does the planner's estimate still match what three drew? |
+| **Lane dump** | `node tools/lanes_dump.mjs [size]` | What did the lane graph come out as? Link, node, turn and signal counts, and the shortest link against a car's length. No browser: the model is pure |
 
 **Twelve browser gates, and they are cheap to run all of them.** Do:
 
 ```
 for g in serve_smoke reach_smoke ui_smoke a11y_smoke lobby_smoke \
          mvp_acceptance save_smoke play_smoke offline_smoke update_smoke \
-         budget_gate; do
+         budget_gate client_smoke; do
   printf "%-16s " "$g"; node tools/$g.mjs 2>&1 | tail -1
 done
 ```
+
+**Freeze the life before you measure or shoot.** `?life=0` (and `life: false` to
+`screenshot.mjs`) stops the traffic where it settled. Without it two shots of one city differ by
+however far the cars moved between them, and every picture gate becomes a flake.
 
 ### A cost model is a memory, and memories go stale
 
@@ -61,6 +66,11 @@ Two rules fall out of it:
 - **Price a new cost AND measure it.** `createInstances` measures every pool's
   real geometry and passes it to `setCosts`. A constant in a table is a claim
   about code somewhere else.
+- **Measure before you optimise, and delete what does not pay.** Three optimisations were
+  attempted on the model's `heightAt` in E1. A corridor-box index took the rebuild from 123 ms
+  to 75; a segment-level index on top of it measured **worse** and was reverted; taking a
+  connector's end heights from the links it joins took it to 35.7. Two of the three guesses
+  about where the time went were wrong, and only the measurement said which.
 - **An over-charging model is as damaging as an under-charging one.** The
   correction loop only steps DOWN, so an estimate that is too high silently
   sacrifices detail the frame had room for and nothing gives it back. The shadow

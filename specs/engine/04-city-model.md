@@ -111,6 +111,34 @@ Both derived from corridors and lots, both in `client/world/`, both plain data:
 - **Nav**: sidewalk edges along each corridor side at `half + SIDEWALK_W / 2`, crossings at
   nodes, a door node per lot frontage. Enough for commuters and shoppers; no plaza graph.
 
+## 4.6a As built (E1, 2026-09-06)
+
+`client/world/lanes.js`. One lane each way per corridor at `width / (2 × lanes)` offset to the
+**right** of the centreline (travelling north the lane is on the east side), trimmed short at
+each end, and every legal manoeuvre through a node as a curve.
+
+Three things the implementation settled that the paragraph above did not:
+
+- **Connectors are links.** Same `pts` / `cum` / `len` / `sample` shape as a block link, flagged
+  `kind: 'turn'`, in the same array. A car follows `next` from link to link and a junction is
+  not a special case anywhere in `client/life/`.
+- **A lane is trimmed to the junction BOX, not to the node centre.** With a 4 m lane offset and
+  a 2 m stop line the two are the same distance, so a right turn's endpoints coincided and the
+  connector came out zero metres long. An `end` node has no box to keep clear, so a straight
+  road is still `(n − 1) × TILE_M − 2 × stopLine`.
+- **A connector takes its two end heights from the links it joins** and interpolates between.
+  Those are the same points, the ground inside a junction box is flattened by the corridor
+  blend, and it removes 30,000 of the 37,332 ground queries a saturated 96×96 makes — 60 ms of
+  a 95 ms derivation.
+
+Signals on every `junction` node: `cycle 60`, offset `jitter(tile, 97) × 60`, `phaseAt(node, t)`
+returning `'ns' | 'ew' | 'amber'` with a 3 s amber at each change. A link's axis comes from the
+heading it arrives on, not from the mask, because a corridor may arrive round a bend.
+
+Measured on a saturated 96×96 (`tools/lanes_dump.mjs`): 773 corridors, 460 nodes, 1,546 lanes,
+5,810 links (1,546 block and 4,264 turn), 372 signals, turns balanced left 1,423 / right 1,423 /
+straight 1,418, shortest link 8.32 m against a 4.5 m car.
+
 ## 4.7 Life inputs
 
 `state.tiles.traffic` is a hashed u8 commuter load per tile that only an overlay tint reads

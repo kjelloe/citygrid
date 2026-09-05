@@ -21,6 +21,14 @@ the gate, or split the work until one exists.
   and ask** rather than guessing — a guessed answer becomes load-bearing before anyone notices.
 - Check `dev-log.md` for a previous attempt. Dead ends are recorded with their measurements
   precisely so they are not re-walked.
+- **For a cityviewer item, `workitems-cityviewer.md` is the contract** — its "Do", "Tests first",
+  "Gate", "Must not change" and "Review will check" lists are what the review re-runs. Read the
+  whole item before starting: V1's zero-length right turns were caused by reading past a phrase
+  ("short of the node **box**") that the item had already got right.
+- **Check whether the file you are about to create already exists.** V1's tests were named
+  `test/traffic.test.js` by the hand-off, which is also the ENGINE's traffic test — writing it
+  overwrote 124 lines of a passing suite. `ls` first; a name that describes two different things
+  is a name that needs two files.
 
 ## 2. Tests first
 

@@ -25,6 +25,42 @@ Vehicles: the existing two `car` variants in `building-kit.js` at L2, plus a van
 one instanced pool per variant with a per-instance colour from the accent palette; yaw from the
 link tangent; wheels not needed below L3. Per-tier cap (8.3) and a ladder rung.
 
+## 9.1a As built (V1, 2026-09-06)
+
+**B**, as recommended, in `client/life/traffic.js` — with one thing the plan had backwards, found
+by measuring rather than by reading.
+
+The plan says "a target density per link from `tiles.traffic`" and "a speed factor". Density
+first, speed as a modifier. Built that way it produced **the same picture at every load**: 36
+cars at 8.6 m/s whether the engine said 40 or 255. Two reasons, both arithmetic:
+
+1. **The density target is never the binding constraint.** At `HEADWAY = 1.2 s` and 11 m/s, free
+   flow is 5.7 cars per 100 m. You cannot push more onto a road than that without slowing it
+   down, so any `maxDensity` above it is a number the road never reaches.
+2. **The entry was a plug.** A car admitted a token gap behind another braked hard, and the slow
+   car it became throttled everything behind it — the tail ran at 3.8 m/s while the head ran at
+   9.1. A car now arrives at the speed of the traffic and one full headway behind it, or it does
+   not arrive at all.
+
+So the coupling is the other way round: **load sets the desired speed, and the density follows
+from it.** `LOAD_SLOWS = 0.65` — a fully loaded road wants 35% of the limit — with the density
+target kept only as a ceiling, itself capped by what the road physically holds
+(`len / (CAR_M + S0)`).
+
+| engine load | cars per 100 m | mean speed |
+| --- | --- | --- |
+| 40 | 1.9 | 9.6 m/s |
+| 128 | 6.1 | 6.0 m/s |
+| 255 | 8.0 | 3.2 m/s |
+
+Both numbers track the load, which is the point: a jam has to read as a jam and not as a longer
+line of cars going the same speed as an empty street.
+
+Measured: 997 cars on a 64×64 at **0.09 ms** a step, 3,660 on a 128×128 at **0.5 ms**. A car is
+82 measured triangles, so cars are a ladder rung between props and markings and a resolvability
+gate at 18 px a tile. `?life=0` freezes them where they settled and two `screenshot.mjs` runs of
+one city come out byte identical.
+
 ## 9.2 Signals
 
 Nodes with degree ≥ 3 on a corridor of `road` kind get a two-phase cycle (Union Square:

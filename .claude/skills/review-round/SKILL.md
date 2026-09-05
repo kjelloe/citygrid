@@ -114,6 +114,12 @@ It took two playtests: N27 joined the runs and N28 found them still reading as d
 was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
 player uses**, not only at the zoom that proves the change.
 
+**A boundary that is only a habit is not a boundary.** `client/world/`, `client/render/` and
+`client/life/` must never import `engine/`, and until V2 nothing checked it — they were clean
+because everyone had been careful. Ask of any architectural rule in a document: *what would go
+red if someone broke this?* `test/purity.test.js` now plants a violation's shape for each of
+them; a structural test that has never been shown to fire is a comment.
+
 **A model of the code is not the code, and nothing tells you when it drifts.**
 The LOD cost table priced a road at "one upward quad" for two slices after a
 road became a twelve-triangle box, so the triangle budget was 23% wrong and a

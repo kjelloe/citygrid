@@ -455,3 +455,58 @@ test("the triangle budget is spent against MEASURED ground costs", () => {
   assert.match(instances, /wireHub:/, "the wire ribbon is not measured");
   assert.match(instances, /pipeHub:/, "the pipe ribbon is not measured");
 });
+
+// --- the wiring the pure modules depend on (V1, V2) --------------------------
+//
+// A pure module is only worth its tests if something calls it. Each of these
+// is the one line that connects a tested decision to the picture, and each of
+// them is invisible to every other test in the suite.
+
+test("the scene asks the governor before it draws an optional pass", () => {
+  // `test/governor.test.js` proves the governor decides correctly. This is the
+  // half that makes the decision mean anything (ruling 040).
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.match(scene, /governor\.allows\("shadows"\)/, "shadows ignore the governor");
+  assert.match(scene, /tier\.post\.includes\(pass\) && governor\.allows\(pass\)/,
+    "a post pass ignores the tier's list or the governor");
+  assert.match(scene, /governor\.sample\(/, "nothing ever feeds the governor a frame time");
+  assert.match(scene, /governor\.reset\(\)/, "a tier change does not reset the governor");
+});
+
+test("the frame time is measured where wall-clock time means something", () => {
+  // In the render loop, not inside `draw` — `draw` is also called by the gates
+  // and the screenshot harness, where the clock is meaningless and a governor
+  // fed from it would sacrifice passes for no reason.
+  const game = readFileSync(join(repoRoot, "client", "game.js"), "utf8");
+  assert.match(game, /frameMs/, "the loop does not measure a frame");
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.equal(/const now = performance\.now/.test(scene), false,
+    "the scene measures its own frame time and the gates will feed it garbage");
+});
+
+test("the cars are posed into the pools the parked ones use", () => {
+  // One instance per car whether it is driving or parked, so the measured
+  // budget sees it either way (ruling 019).
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.match(scene, /traffic\.pose\(pools, pushInstance, CAR_COLOURS\)/);
+  assert.match(instances, /export function pushInstance\(/, "there is no way to add an instance");
+  assert.match(scene, /plan\.cars !== false/, "the cars ignore the LOD plan");
+});
+
+test("a rebuilt world rebuilds the traffic with it", () => {
+  // The lane graph is part of the model, so a car holding a link id from a
+  // graph that no longer exists is a car in a field.
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  const changed = scene.slice(scene.indexOf("function worldChanged()"),
+    scene.indexOf("function showGhost("));
+  assert.match(changed, /createModel\(state\)/);
+  assert.match(changed, /createTraffic\(/, "the cars survive a rebuild of the graph they drive on");
+});
+
+test("?life=0 reaches the renderer, or no picture gate is repeatable", () => {
+  const main = readFileSync(join(repoRoot, "client", "main.js"), "utf8");
+  const game = readFileSync(join(repoRoot, "client", "game.js"), "utf8");
+  assert.match(main, /params\.get\("life"\) !== "0"/);
+  assert.match(main, /life: config\.life/, "the flag stops at the boot module");
+  assert.match(game, /life: options\.life/, "the flag stops at the session");
+});

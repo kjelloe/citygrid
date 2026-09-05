@@ -6,7 +6,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { jsFilesIn, findViolations } from "./helpers/sources.js";
+import { jsFilesIn, findViolations, repoRoot } from "./helpers/sources.js";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
 const pure = () => [...jsFilesIn("engine"), ...jsFilesIn("shared")];
 
@@ -73,4 +75,86 @@ test("banned words in comments and strings do not trip the guard", () => {
   }];
   assert.deepEqual(findViolations(benign, /\bMath\s*\.\s*random\b/), []);
   assert.deepEqual(findViolations(benign, /\bDate\s*\.\s*now\b/), []);
+});
+
+// --- the other direction (cityviewer: rulings 032, 037, 040) ----------------
+//
+// `engine/` may not reach outward, and that has been checked since slice 0.
+// The reverse was a habit rather than a rule: the viewer must not reach into
+// `engine/` either, because the moment it does, a renderer detail is a
+// simulation input and the two can no longer be reasoned about apart. The
+// handful of constants the viewer needs are mirrored in
+// `client/constants-mirror.js`, which `test/render.test.js` keeps honest.
+
+test("the viewer never imports the engine", () => {
+  const offenders = [];
+  for (const dir of ["client/world", "client/render", "client/life"]) {
+    const root = join(repoRoot, dir);
+    if (!existsSync(root)) continue;
+    for (const name of readdirSync(root)) {
+      if (!name.endsWith(".js")) continue;
+      const source = readFileSync(join(root, name), "utf8");
+      for (const line of source.split("\n")) {
+        if (!/^\s*import\s/.test(line) && !/\bimport\(/.test(line)) continue;
+        if (/["'][^"']*\/engine\//.test(line) || /["']\.\.\/\.\.\/engine\//.test(line)) {
+          offenders.push(`${dir}/${name}: ${line.trim()}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(offenders, [],
+    `the viewer must read state, not the rules that produce it:\n  ${offenders.join("\n  ")}`);
+});
+
+test("client/world stays pure: no three, no DOM, no clock", () => {
+  // The model is derived and re-derivable (ruling 032). A model that reached
+  // for `performance.now` or a canvas would be a model whose value depended on
+  // when it was built, and every fixture assertion in test/world.test.js would
+  // be measuring the machine.
+  const banned = [/from "three"/, /\bdocument\b/, /\bwindow\b/, /performance\.now/, /Date\.now/, /Math\.random/];
+  const offenders = [];
+  for (const name of readdirSync(join(repoRoot, "client", "world"))) {
+    if (!name.endsWith(".js")) continue;
+    const source = readFileSync(join(repoRoot, "client", "world", name), "utf8");
+    for (const pattern of banned) {
+      if (pattern.test(source)) offenders.push(`client/world/${name}: ${pattern}`);
+    }
+  }
+  assert.deepEqual(offenders, [], offenders.join("\n  "));
+});
+
+test("client/life keeps its own clock and never asks the machine for one", () => {
+  // Traffic is renderer-local state (ruling 037) and therefore the one part of
+  // cityviewer that remembers something between frames. It is still
+  // deterministic: time enters as the delta the caller passes in, which is what
+  // makes `?life=0` freeze it and two screenshots identical.
+  const source = readFileSync(join(repoRoot, "client", "life", "traffic.js"), "utf8");
+  for (const pattern of [/Math\.random/, /performance\.now/, /Date\.now/, /from "three"/]) {
+    assert.equal(pattern.test(source), false, `client/life/traffic.js uses ${pattern}`);
+  }
+});
+
+test("the quality tier never reaches a command (ruling 040)", () => {
+  // A tier that changed the simulation would be hashed state, and two players
+  // on different tiers would desync on the first month tick.
+  const sources = [];
+  for (const dir of ["engine", "shared", "worker", "server"]) {
+    const root = join(repoRoot, dir);
+    if (!existsSync(root)) continue;
+    for (const name of readdirSync(root)) {
+      if (name.endsWith(".js")) sources.push([`${dir}/${name}`, readFileSync(join(root, name), "utf8")]);
+    }
+  }
+  // Names that can only mean rendering. NOT the bare word "tier": a building's
+  // `valueTier` is a game concept and has been since Wave 1, and a test that
+  // matches a word rather than a thing fails on the wrong file.
+  const banned = /carCap|pedCap|pixelRatio|triangleBudget|shadowMap|antialias|streetChunks|frameMs/;
+  const offenders = sources.filter(([, source]) => banned.test(source));
+  assert.deepEqual(offenders.map(([n]) => n), [],
+    "a rendering preference reached the simulation");
+
+  // And the other half of the promise: the tier is a stored PREFERENCE, so it
+  // must not be in the options record either (that is hashed).
+  const options = readFileSync(join(repoRoot, "engine", "options.js"), "utf8");
+  assert.equal(/quality/.test(options), false, "the quality tier is a game option");
 });
