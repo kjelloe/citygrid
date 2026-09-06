@@ -512,7 +512,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **V3** — ground that is not a checkerboard | **done** 2026-09-06 | `ec6ce50` | `reports/smoke-V3-{before,after}-span{default,24,12}.png`; rebuild 10.2 → 11.6 ms on a saturated 128×128 | `test/ground-colour.test.js` (11); spec §5.1a. **Q28**: the distance-to-street tone is a two-ring flood, not a corridor query per tile — the specified way measured 16.6 ms against a 15 ms budget |
 | **V4** — real relief | **done** 2026-09-06 | `f13b0dd` | `play_smoke` picks on a slope and the ghost stands on the ground; `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on an 84 m `hilly` map | `test/picking.test.js` (10); the flat-layer audit is spec §5.6. **Q29**: the overlay wash is the one layer still floating |
 | **V5** — the perspective play camera | **done** 2026-09-06 | `556fa0a` | `play_smoke` and `budget_gate` in **both** projections (4 viewport/projection combinations; 2 × 3 tiers × 4 spans); `style-sheet` in both; `reports/smoke-V5-*.png` at a 20° pitch | `test/lod.test.js` (+10), `test/input.test.js` (+4), `test/settings.test.js` (+2); spec §8.1a. Orthographic is **byte-identical to V4** at two zooms, checked against a worktree of `f13b0dd`. **Q30** |
-| **P1** — toon shading and the anime rig | not started | — | — | — |
+| **P1** — toon shading and the anime rig | **done** 2026-09-06 | `044da85` | `style-sheet` in **both** projections — three styles that differ in shading, not tint; `client_smoke` painted; `budget_gate` (toon costs no triangles and no draw calls: painted and plain report identical counts) | `test/toon.test.js` (17); spec §7.1a. Two findings: the painted palette collapsed for a deuteranope at 0.042, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **E2** — the baker and the chunk cache | not started | — | — | — |
 | **E3** — ribbons | not started | — | — | — |
 | **E4** — the street camera and collision | not started | — | — | — |
@@ -540,6 +540,10 @@ question so it can be reversed cheaply:**
   77% over the truth, and an over-charging estimate sacrifices detail for
   nothing (P35). Terrain is counted against the frustum footprint for the same
   reason.
+- **P1**'s ramps are a separate pure module (`client/render/ramps.js`) rather
+  than living in `style-assets.js`, so the arithmetic can be tested in node —
+  three cannot be resolved there, which the item's own "test the ramp arrays
+  instead" anticipated.
 
 **Three gates were wrong about the game before they could see it**, all of the
 same shape and all fixed in place: `lobby_smoke` hashed after an await, and
