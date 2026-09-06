@@ -608,7 +608,9 @@ eleven browser smokes.
 | **E6** — time of day | **done** 2026-09-06 | `ac7a2f5` | `budget_gate` gains four night rows on the saturated 96×96 at High: **266,538 triangles of 320,000, 44 draw calls, 8 lamps lit of 269 held**, night reaching exactly 1. `a11y_smoke` measures the overlay bands at both hours (**122 apart by day, 41 at night**, floor 30); `ui_smoke` drives all four settings values through the panel. `reports/smoke-E6-{night,sunset}.png` | `test/time-of-day.test.js` (14), `test/night-lights.test.js` (7), `test/settings.test.js` (+2); spec §7.3a |
 | **P2** — ink and grade | **done** 2026-09-06 | `0111c95` | `budget_gate` gains three painted rows on a High page loaded with `?style=painted`, and the check that the counted triangles are the CITY's rather than the quad's. `style-sheet` shoots all three styles from the pavement with the post passes on and off (`reports/style-sheet-street{,-nopost}.png`); `reports/smoke-P2-{ink,noink}.png` is a road at a grazing angle with no ink on it | `test/post-ink.test.js` (11), `test/render.test.js` (+3); spec §7.4a |
 | **V6** — lots with something on them | **done** 2026-09-06 | `b3f16bb` | `client_smoke` hashes every variant's vertices: **6 distinct silhouettes of 6** in all four categories, where before it was 4 of 4 with two categories carrying a clone. `budget_gate`, `walkthrough`, `passability` and the other ten gates green. `reports/smoke-V6-{city,suburb}.png`, `reports/style-sheet.png` re-baselined | `test/kit.test.js` (8); spec §6.6a, art-direction §3.1. `VARIANTS` was declared in two files and is now declared in one |
-| **V7** — overlays as a texture on the ground (ruling 041) | not started | — | — | — |
+| **R2** — review fixes after R1 (§2d) | not started | — | — | — |
+| **V7** — overlays as a texture on the ground (ruling 041), amended in §2d | not started | — | — | — |
+| **R3** — streets graded along their length (Q54) | waits for a decision | — | — | — |
 | **E7** — pedestrians | not started | — | — | — |
 
 **Deviations from this document, each with the measurement that forced it and a
@@ -825,11 +827,99 @@ find the assumption an item was built against without reading all of it.*
 | V6 | Q49 is a hedge worth drawing at L2 · Q50 the L2 box and the L3 facade do not share a footprint |
 | R1 | Q51 when the model derivation goes per chunk (**80.0 ms on a 128×128**) |
 | This update | Q52 the kerb and verge ignore the terrain under them · Q53 `chunksNear` orders by the target, not the eye |
+| Review after R1 | Q54 streets graded along their length (**needs a decision**) · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — and A35–A41 close Q34–Q38, Q42–Q53 |
 
 **Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
 ruling 033 names `painted` as the target and nothing in the interface selects it, so by ruling
 026's standard two of the three styles are currently unreachable. Q51 is a slice: 80 ms per build
 action on a 128×128 is five frames, and the lane graph is two thirds of it.
+
+## 2d. Review round after R1 (2026-09-06)
+
+*Read on `dev_night` at `b1ed16c`. The suite (twice), `client_smoke`, `budget_gate`,
+`walkthrough`, `passability` and `play_smoke` re-run by the reviewer: all green. E4, E5, E6, P2,
+V6 and R1 are accepted. What follows is what reading found that the gates cannot see, as one
+small fix slice (**R2**), one decision slice (**R3**), and amendments to V7 and E7. Do R2, then
+V7, then E7; R3 waits for Q54.*
+
+### R2 — Review fixes after R1 (S)
+
+Commit as `slice-R2`. Each item names its test.
+
+1. **A building is a member of two chunks by two different rules.** `bakeLots` builds a lot
+   whose **centre** is in the chunk; `instances.js` skips the L2 box whose **anchor tile** is in
+   a baked chunk. A 2×2 building straddling a boundary is either drawn twice (facade plus box)
+   or not at all. One rule, in `client/world/chunks.js`: `chunkOfLot(lot)` by centre, used by
+   both. Test: a lot straddling a boundary is claimed by exactly one chunk, and the L2 pass
+   skips it only when that chunk is baked.
+2. **Signs are `MeshLambertMaterial` whatever the style.** In `painted` the fascia is the one
+   surface on the street that is not toon-shaded; in `pixel` it is lit on an unlit city; at night
+   it is dark while the shopfront under it glows. `signs.js` asks `makeMaterial(style)` for its
+   material and sets `map`; the sign mesh gets `userData.emissive` so `setNight` dials it like
+   the shop windows. Test: `client_smoke` reports the sign meshes' material type per style.
+3. **Leaving the street forgets where you came from.** `leaveStreet` returns to `city` even if
+   the player entered from `ortho` (the phone default). Remember the previous mode on entry
+   and restore it. `play_smoke`: ortho → street → back lands in ortho.
+4. **The day is nineteen seconds long** (A41). `phaseOf(state.tick, 48)` at 400 ms a tick is a
+   full cycle in 19 s and 6 s at fast speed. `auto` becomes wall-clock: `DAY_SECONDS = 240` in
+   `game.js`, advanced by the frame delta, held while paused. Test: `phaseOf(seconds, DAY_SECONDS)`
+   — same function, different clock — and a check that speed does not change the cycle.
+5. **The style is a setting** (A36). `client/ui/settings-model.js` gains a `style` row (`plain |
+   painted | pixel`), default `painted` on High and `plain` otherwise, remembered; a change
+   reports `rebuild: true` the way antialias does and `main.js` rebuilds the renderer. `ui_smoke`
+   drives the row; `reach_smoke` finds it; `client_smoke` no longer needs `?style=` to reach
+   painted (keep the param for the gates).
+6. **Sign names per locale** (A40). `data/names.json` gains `no` with the same count as `en`;
+   `facade-spec.js` takes the locale's list; the mirror test covers both lists and their equal
+   length. A shop keeps its index across a language change.
+7. **The model derivation, profiled and cut** (A37). Two known costs: `deriveLots` calls
+   `nearestCorridor(cx, cz, Infinity)` per road-less lot (a full scan each), and `deriveLanes`
+   samples `heightAt` per lane point where the corridor centreline heights are already known.
+   Fix both, re-measure `tools/lanes_dump.mjs` on the 128×128 and record the split. If it is
+   still over 16 ms, write the per-chunk slice up as its own item; do not start it here.
+8. **Chunks are baked behind the camera** (A39). `street-chunks.js` filters `chunksNear` by
+   `bounds.footprint` before taking the tier's count, then orders by distance to the target.
+   Re-measure the "9 chunks live" gate rows and record what changed.
+9. **Two `THREE.Color` allocations per frame in `applyAtmosphere`**, which runs twice a frame
+   in city mode. Cache the palette colour and reuse one scratch colour.
+
+**Done when** all nine have a test or gate row, `budget_gate` and `play_smoke` are green in both
+projections, and the dev-log carries the new 128×128 derivation split.
+
+### V7 — amendments
+
+- **Verge colour from `ground-colour.js`** (A38): `streets-l3.js` colours the verge by the tile
+  under it; the kerb stays `roadMark`.
+- **Territory reaches the facades** (Q56): `chunkHash` takes the territory flag as a salt so
+  toggling the overlay marks every baked chunk stale and they rebake with `showOwner`; the
+  L2/L3 agreement then holds under the overlay too. `a11y_smoke` reads a facade's colour with
+  the overlay on.
+
+### E7 — amendments
+
+- **Street furniture is solid** (Q55): lamps and hedges become thin boxes in the collision
+  world, derived in `client/world/` from the same pure functions that place them (move
+  `lamps()` out of `props-l3.js`); bins are not. `passability` must stay above 0.88 m; the nav
+  graph routes round the same boxes.
+- **Price the pedestrians first.** A night frame at High is 266,538 of 320,000 before a single
+  pedestrian; 120 of them at a two-part body is what fits, and the budget gate row for night
+  must stay green with the cap.
+
+### R3 — Streets graded along their length (M) — waits for Q54
+
+Node heights are fixed (the land at each junction), each corridor's profile is smoothed between
+its two nodes to a maximum grade (data: `road.maxGrade`, 0.15) with cut and fill, and
+`heightAt` inside the corridor reads the profile. Everything that stands on a street re-seats
+automatically. Gate: `walkthrough` reports the steepest grade before and after; `budget_gate`
+unchanged; screenshots of the steepest street on the `hilly` fixture before and after.
+
+### Also noted
+
+- `main` is now 46 commits behind `dev_night`. Every gate speaks for `dev_night`.
+- The ink post's own 1.5× supersample is chosen at creation from the pixel ratio and is not
+  what the governor's `supersample` rung reduces; harmless, because ink is sacrificed before
+  supersample, but the two words should not mean two things. Fold it into `applyGovernor` when
+  P2 is next touched.
 
 ## 3. Review protocol
 

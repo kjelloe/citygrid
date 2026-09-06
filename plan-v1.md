@@ -366,6 +366,8 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | **P1** | **Toon shading and the anime rig** — `shading: 'toon'`, ramps, the shadow-tint patch, a painted palette | M | **Done (slice P1).** `painted` is a real style rather than a lighting treatment: toon materials through a ramp, a shadow tint that patches three's own shader and warns if the chunk has changed shape, an anime rig whose cool fill carries the unlit side, and a palette of desaturated ground and warm walls. Two findings on the way — the painted palette collapsed for a deuteranope, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **P2** | **Ink and grade** — depth-texture target, second-difference ink, split-tone grade, FXAA; desktop tier, governor-gated | M | **Done (slice P2).** The finish `painted` was named for. A second difference of linearised depth is zero across any plane at any angle, so the wall of windows an L3 facade puts in front of the camera draws no lines and the roofline draws one — which is why this pass is allowed where P1's luminance outline was not. The grade follows the hour. It also found that the budget had been measuring the full-screen quad, two triangles, for as long as any post pass has existed |
 | **R1** | **Review fixes after E3** — cars culled to the view and counted in bounds, car pools visible after the pose, the junction speed lookup, the governor's dead rung, the street cache surviving `worldChanged`, one orbit function for the camera and the budget, a fog that is not reallocated every frame | S | E3 |
+| **R2** | **Review fixes after R1** — the style setting (A36), the L2/L3 chunk-membership rule, signs shaded by the style and lit at night, the previous mode restored on leaving the street, a wall-clock day (A41), localised sign names (A40), the model derivation profiled and cut (A37), chunks ordered inside the footprint (A39) | S | R1 |
+| **R3** | **Streets graded along their length** — node heights fixed, corridor profiles smoothed to a maximum grade, buildings re-seat automatically (Q54) | M | V7, Q54 |
 | **V7** | **Overlays as a texture on the ground** (ruling 041) — one byte a tile in a `DataTexture` sampled by world x/z in the terrain material; the marks stay instanced; orthographic `tilePixels` fixed on portrait (A32) and the ortho screenshot re-baselined | S | V4 |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
@@ -393,25 +395,10 @@ by number from the code they create.
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
-| Q34 | How does a phone walk — tap-to-walk or a virtual stick? | answered by E4 |
-| Q35 | What is written on the signs, and is it localised? | answered by E5 |
-| Q36 | Is the day/night cycle on by default? | E6 |
-| Q37 | Was raising the tier budgets the right answer to L3's cost? | E5, revisit at E7 |
-| Q38 | Should the facade builder live in `client/render/` when it imports no three? | E5, settled |
+| Q54 | Should streets be graded along their length (15% maximum)? | R3, needs a decision |
+| Q55 | Should the walker collide with street furniture? | E7 |
+| Q56 | Should the territory overlay reach the L3 facades? | V7 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
-| Q41 | Should a road be graded along its length? | E4, revisit if traffic or pedestrians need it |
-| Q42 | Does the walker belong in `client/life/` rather than `client/render/`? | E4, settled |
-| Q43 | Should street mode have pointer lock? | E4, reversible |
-| Q44 | Should a preset scale the rig or replace it? | E6, revisit if a style needs its own night |
-| Q45 | Is 48 ticks the right length for a day? | E6, reversible |
-| Q46 | Should the lamp pool follow the camera or the walker? | E6, settled |
-| Q47 | Should the render style be a setting? | P2, needs a decision |
-| Q48 | Is two post passes enough, where the spec said three? | P2, settled |
-| Q49 | Is a hedge worth drawing at L2? | V6, first to drop |
-| Q50 | Should the L2 box and the L3 facade share a footprint? | V6, settled |
-| Q51 | When does the model derivation go per chunk? | its own slice, before the map grows past 128 |
-| Q52 | Should the kerb and the verge take their colour from the ground under them? | V7 or E7, small |
-| Q53 | Should `chunksNear` order by the eye rather than the orbit target? | its own slice, with Q51 |
 
 ## What would make us stop and re-plan
 
