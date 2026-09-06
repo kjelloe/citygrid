@@ -24,6 +24,7 @@ started. See `plan-v1.md` for what happens first.
 | `dev-log.md` | **What actually happened**, slice by slice, including dead ends | Wondering why an approach was abandoned |
 | `specs/referencedata.md` | A behavioural analysis of a classic open-source city simulator, used as a **specification to compare against** — never as source | Reasoning about a mechanic's shape |
 | `specs/art-direction.md` | Visual language | Making anything visual |
+| `workitems-mainline.md`, `workitems-measurement.md`, `workitems-film.md`, `workitems-worker.md` | **The lanes after cityviewer**, in that order: the merge and the gates, real-device numbers and the reference compare, the photo mode and the film, the simulation in a worker | Picking up work once cityviewer's last item is done |
 | `workitems-cityviewer.md` | **The cityviewer hand-off** — one implementable work item per slice, with tests, gate and review checks | Picking up the next renderer slice |
 | `specs/engine/` | **cityviewer** — the renderer rebuilt to match `../fable51-worlds/`: model, ground, kit, style, camera, life, QA, roadmap | Touching anything under `client/render/` or `client/world/` |
 

@@ -384,6 +384,18 @@ the singleplayer MVP by ruling 003 — the server is expensive and must not be
 built on an unproven loop. Audio, accessibility and PWA (slice 4.5) come after
 N10 for the same reason: they polish a game that has to be worth polishing first.
 
+## Proposed lanes after cityviewer (2026-09-06)
+
+*Four hand-offs, each its own file, to run in this order once `workitems-cityviewer.md` is
+done through V8. Nothing here is scheduled.*
+
+| Lane | File | What it is for |
+|---|---|---|
+| mainline | `workitems-mainline.md` | M1 merge `dev_night` into `main`; M2 a gate runner with a time budget; M3 the release page; M4 the Norwegian pass |
+| measurement | `workitems-measurement.md` | D1 a performance card (`?perf=1`); D2 real devices; D3 the tiers re-tuned from them; D4 the reference-compare sheet against the Transport Worlds shots; D5 the governor validated |
+| film | `workitems-film.md` | F1 photo mode (plan.md §10 bonus 4); F2 a shot list and storyboard tool; F3 encode and lead the README with it |
+| worker | `workitems-worker.md` | W1 the session seam on one thread; W2 the reducer in a Web Worker behind a mirror; W3 the model off the tick; W4 the seam proven against an echo transport, the door to Wave 5 |
+
 ## Open questions
 
 **`dev-questions.md` is the live list** — its bottom section holds everything still open, and its

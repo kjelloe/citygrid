@@ -25,6 +25,10 @@ const REQUIRED_DOCS = [
   "specs/art-direction.md",
   "specs/engine/README.md",
   "workitems-cityviewer.md",
+  "workitems-mainline.md",
+  "workitems-measurement.md",
+  "workitems-film.md",
+  "workitems-worker.md",
 ];
 
 /** cityviewer's specification (ruling 032). The README is its index and every
