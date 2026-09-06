@@ -410,6 +410,8 @@ by number from the code they create.
 | Q49 | Is a hedge worth drawing at L2? | V6, first to drop |
 | Q50 | Should the L2 box and the L3 facade share a footprint? | V6, settled |
 | Q51 | When does the model derivation go per chunk? | its own slice, before the map grows past 128 |
+| Q52 | Should the kerb and the verge take their colour from the ground under them? | V7 or E7, small |
+| Q53 | Should `chunksNear` order by the eye rather than the orbit target? | its own slice, with Q51 |
 
 ## What would make us stop and re-plan
 

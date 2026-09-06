@@ -553,19 +553,43 @@ SETBACK: the L2 box filled its tile, so a hedge and a path landed underneath the
 boxes are set back by the same 3 m E5's facade already leaves (**Q50**). At city zoom the hedge is
 a pixel or two and what reads is the setback and the lawn (**Q49**).
 
+---
+
+### V7 — Overlays as a texture on the ground (S) — ruling 041
+
+*Specified in §2b below, where the review that raised it is. **Not started** — it is the last
+outstanding item from that review, and it carries the fix for **Q30** (orthographic `tilePixels`
+on a portrait screen) with it.*
+
+---
+
 ### E7 — Pedestrians (M) — spec §9.3
 
-`client/world/nav.js` (sidewalk edges, crossings at nodes, a door node per lot);
+***Not started.*** `client/world/nav.js` (sidewalk edges, crossings at nodes, a door node per lot);
 `client/life/pedestrians.js` (commuters between a door and the map edge, shoppers between
 commercial doors, waiting at a red walk phase, a two-part instanced body with a bob), capped
 per tier, frozen by `?life=0`. Gate: `budget_gate` at High with the cap; `walkthrough` still
 walks (pedestrians do not collide with the player).
+
+**Three things it inherits.** (1) The tier now carries `pedCap` (0 / 40 / 120) and `lamps`, and a
+night frame at High is already 266,538 of 320,000 — the pedestrians land in what is left, so price
+them before building them. (2) `client/life/walker.js` and `client/world/collision.js` are the
+shapes to follow: pure, delta-driven, `?life=0` freezes them. (3) The nav graph wants the same
+`clip`/`trim` the kerbside already uses (`client/render/ribbon.js`), and the sidewalk edges are
+`half + sidewalk / 2` off the corridor — the number `props-l3.js` puts the lamps on.
 
 ## 2a. Status
 
 *Kept current by whoever implements. An item is **done** when it is implemented,
 its tests are written or updated, its gate is green, its docs are synced and it
 is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
+
+**Fifteen of seventeen done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2, E3,
+then the post-E3 review, then E4, E5, E6, P2, V6, R1. **V7 and E7 are what is
+left.** Every gate is green at `a4b8d26`: the suite twice, `budget_gate` (32 rows
+plus the opening spans, four street-chunk checks, three car rows, four night rows
+and three painted rows), `walkthrough`, `passability`, `lanes_dump` and the
+eleven browser smokes.
 
 | Item | Status | Commit | Gate | Left for review |
 |---|---|---|---|---|
@@ -577,14 +601,14 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **V5** — the perspective play camera | **done** 2026-09-06 | `556fa0a` | `play_smoke` and `budget_gate` in **both** projections (4 viewport/projection combinations; 2 × 3 tiers × 4 spans); `style-sheet` in both; `reports/smoke-V5-*.png` at a 20° pitch | `test/lod.test.js` (+10), `test/input.test.js` (+4), `test/settings.test.js` (+2); spec §8.1a. Orthographic is **byte-identical to V4** at two zooms, checked against a worktree of `f13b0dd`. **Q30** |
 | **P1** — toon shading and the anime rig | **done** 2026-09-06 | `044da85` | `style-sheet` in **both** projections — three styles that differ in shading, not tint; `client_smoke` painted; `budget_gate` (toon costs no triangles and no draw calls: painted and plain report identical counts) | `test/toon.test.js` (17); spec §7.1a. Two findings: the painted palette collapsed for a deuteranope at 0.042, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **E2** — the baker and the chunk cache | **done** 2026-09-06 | `7f8b595` | `budget_gate` gains four street-chunk checks on the saturated 96×96 at High: **9 chunks live, 9 draw calls, 5,184 triangles, build p95 1 ms** against an 8 ms budget, and **0 rebuilds** over six frames of an unchanged city | `test/merge.test.js` (9), `test/chunks.test.js` (11); spec §6.4a. The merge is pure typed-array arithmetic so it can be tested in node; `chunkHash` covers the buildings' RECORDS as well as their tiles |
-| **E3** — ribbons | **done** 2026-09-06 | `slice-E3` | `budget_gate` green on all 32 rows plus the three opening spans; street chunks **9 live, 9 groups / 9 meshes, 76,294 triangles, build p95 7 ms** against an 8 ms budget, **0 rebuilds** over six frames. `reports/smoke-E3-{street,junction,slope}.png` | `test/ribbon.test.js` (18, incl. winding-against-normals in both directions, `dashes` over a bend, `clip`, `trim`), `test/lod.test.js` (+2: L3 is a zoom; a baked chunk is charged once a frame), `test/world.test.js` (+1: `surfaceAt` puts the pavement a kerb above the carriageway); spec §5.2–5.3 |
-| **R1** — review fixes after E3 | **done** 2026-09-06 | `slice-R1` | `budget_gate` gains three car rows on a live page: **15 cars in the pools, 6 moving, no pool hidden with cars in it**. All eight findings have a test or a gate row; the 128×128 model rebuild is **80.0 ms** (lanes 53.0 of it) and recorded as **Q51** | `test/cars.test.js` (+4), `test/governor.test.js` (+3), `test/lod.test.js` (+2), `test/render.test.js` (+2), `test/streaming.test.js` (+1); `client/world/orbit.js` is new and pure; spec §3.4a |
+| **E3** — ribbons | **done** 2026-09-06 | `d4f19d3` | `budget_gate` green on all 32 rows plus the three opening spans; street chunks **9 live, 9 groups / 9 meshes, 76,294 triangles, build p95 7 ms** against an 8 ms budget, **0 rebuilds** over six frames. `reports/smoke-E3-{street,junction,slope}.png` | `test/ribbon.test.js` (18, incl. winding-against-normals in both directions, `dashes` over a bend, `clip`, `trim`), `test/lod.test.js` (+2: L3 is a zoom; a baked chunk is charged once a frame), `test/world.test.js` (+1: `surfaceAt` puts the pavement a kerb above the carriageway); spec §5.2–5.3 |
+| **R1** — review fixes after E3 | **done** 2026-09-06 | `a4b8d26` | `budget_gate` gains three car rows on a live page: **15 cars in the pools, 6 moving, no pool hidden with cars in it**. All eight findings have a test or a gate row; the 128×128 model rebuild is **80.0 ms** (lanes 53.0 of it) and recorded as **Q51** | `test/cars.test.js` (+4), `test/governor.test.js` (+3), `test/lod.test.js` (+2), `test/render.test.js` (+2), `test/streaming.test.js` (+1); `client/world/orbit.js` is new and pure; spec §3.4a |
+| **E4** — the street camera and collision | **done** 2026-09-06 | `4e7cc80` | `walkthrough`: 8,907 legs, **161 km walked, 0 unfinished, 0 refusals, 0 cliffs**, 1,127 lots walked into head-on and **0 entered**, 395,230 blocked steps. `passability`: 32,659 samples, 8,461 enclosed, narrowest **26.00 m**. `play_smoke` enters and leaves by key and by zoom on both viewports × both projections. `reports/smoke-E4-{street,pavement}.png` | `test/collision.test.js` (10), `test/walker.test.js` (9); spec §8.1b |
+| **E5** — street-level facades | **done** 2026-09-06 | `a5d6c8d` | `budget_gate` High on the saturated 96×96: **25.7k triangles a chunk**, 8 live holding 205,864, **2 meshes a group**, build p95 **6 ms**. A facade is 700–1,100 triangles. `walkthrough` and `passability` still clean. `reports/style-sheet-street.png` (all three styles from the pavement), `reports/smoke-E5-{street,shopfront}.png` | `test/facade-spec.test.js` (13), `test/facade.test.js` (8), `test/roof-kit.test.js` (9), `test/props-l3.test.js` (6); spec §6.2a, §6.5 |
+| **E6** — time of day | **done** 2026-09-06 | `ac7a2f5` | `budget_gate` gains four night rows on the saturated 96×96 at High: **266,538 triangles of 320,000, 44 draw calls, 8 lamps lit of 269 held**, night reaching exactly 1. `a11y_smoke` measures the overlay bands at both hours (**122 apart by day, 41 at night**, floor 30); `ui_smoke` drives all four settings values through the panel. `reports/smoke-E6-{night,sunset}.png` | `test/time-of-day.test.js` (14), `test/night-lights.test.js` (7), `test/settings.test.js` (+2); spec §7.3a |
+| **P2** — ink and grade | **done** 2026-09-06 | `0111c95` | `budget_gate` gains three painted rows on a High page loaded with `?style=painted`, and the check that the counted triangles are the CITY's rather than the quad's. `style-sheet` shoots all three styles from the pavement with the post passes on and off (`reports/style-sheet-street{,-nopost}.png`); `reports/smoke-P2-{ink,noink}.png` is a road at a grazing angle with no ink on it | `test/post-ink.test.js` (11), `test/render.test.js` (+3); spec §7.4a |
+| **V6** — lots with something on them | **done** 2026-09-06 | `b3f16bb` | `client_smoke` hashes every variant's vertices: **6 distinct silhouettes of 6** in all four categories, where before it was 4 of 4 with two categories carrying a clone. `budget_gate`, `walkthrough`, `passability` and the other ten gates green. `reports/smoke-V6-{city,suburb}.png`, `reports/style-sheet.png` re-baselined | `test/kit.test.js` (8); spec §6.6a, art-direction §3.1. `VARIANTS` was declared in two files and is now declared in one |
 | **V7** — overlays as a texture on the ground (ruling 041) | not started | — | — | — |
-| **E4** — the street camera and collision | **done** 2026-09-06 | `slice-E4` | `walkthrough`: 8,907 legs, **161 km walked, 0 unfinished, 0 refusals, 0 cliffs**, 1,127 lots walked into head-on and **0 entered**, 395,230 blocked steps. `passability`: 32,659 samples, 8,461 enclosed, narrowest **26.00 m**. `play_smoke` enters and leaves by key and by zoom on both viewports × both projections. `reports/smoke-E4-{street,pavement}.png` | `test/collision.test.js` (10), `test/walker.test.js` (9); spec §8.1b |
-| **E5** — street-level facades | **done** 2026-09-06 | `slice-E5` | `budget_gate` High on the saturated 96×96: **25.7k triangles a chunk**, 8 live holding 205,864, **2 meshes a group**, build p95 **6 ms**. A facade is 700–1,100 triangles. `walkthrough` and `passability` still clean. `reports/style-sheet-street.png` (all three styles from the pavement), `reports/smoke-E5-{street,shopfront}.png` | `test/facade-spec.test.js` (13), `test/facade.test.js` (8), `test/roof-kit.test.js` (9), `test/props-l3.test.js` (6); spec §6.2a, §6.5 |
-| **E6** — time of day | **done** 2026-09-06 | `slice-E6` | `budget_gate` gains four night rows on the saturated 96×96 at High: **266,538 triangles of 320,000, 44 draw calls, 8 lamps lit of 269 held**, night reaching exactly 1. `a11y_smoke` measures the overlay bands at both hours (**122 apart by day, 41 at night**, floor 30); `ui_smoke` drives all four settings values through the panel. `reports/smoke-E6-{night,sunset}.png` | `test/time-of-day.test.js` (14), `test/night-lights.test.js` (7), `test/settings.test.js` (+2); spec §7.3a |
-| **P2** — ink and grade | **done** 2026-09-06 | `slice-P2` | `budget_gate` gains three painted rows on a High page loaded with `?style=painted`, and the check that the counted triangles are the CITY's rather than the quad's. `style-sheet` shoots all three styles from the pavement with the post passes on and off (`reports/style-sheet-street{,-nopost}.png`); `reports/smoke-P2-{ink,noink}.png` is a road at a grazing angle with no ink on it | `test/post-ink.test.js` (11), `test/render.test.js` (+3); spec §7.4a |
-| **V6** — lots with something on them | **done** 2026-09-06 | `slice-V6` | `client_smoke` hashes every variant's vertices: **6 distinct silhouettes of 6** in all four categories, where before it was 4 of 4 with two categories carrying a clone. `budget_gate`, `walkthrough`, `passability` and the other ten gates green. `reports/smoke-V6-{city,suburb}.png`, `reports/style-sheet.png` re-baselined | `test/kit.test.js` (8); spec §6.6a, art-direction §3.1. `VARIANTS` was declared in two files and is now declared in one |
 | **E7** — pedestrians | not started | — | — | — |
 
 **Deviations from this document, each with the measurement that forced it and a
@@ -614,19 +638,50 @@ question so it can be reversed cheaply:**
   than living in `style-assets.js`, so the arithmetic can be tested in node —
   three cannot be resolved there, which the item's own "test the ramp arrays
   instead" anticipated.
+- **E3–V6** each carry their own deviation list in the item above, and the
+  pattern in all of them is the same one: **the item asked for a texture and the
+  answer was geometry**, or the other way round. E3's marking canvas is dashed
+  ribbons (Q31), E5's L2/L3 agreement is one shared `familyColour` rather than a
+  page check that two copies agree, P2 folds three passes into two (Q48), and
+  E6's presets scale the rig rather than replacing it per rig (Q44).
+- **E5 moved the tier budgets** from 200k/80k/40k to **320k/140k/40k** (Q37).
+  They were a V2 prediction; nine chunks of real facade is 200k on its own, so
+  the ladder was quietly selling the cars and the props to pay for the buildings
+  behind them and nothing went red. Every number measured before E5 belongs to
+  the old budgets.
+- **V6 was not pure content**, which the item called it: `VARIANTS` was declared
+  in both `client/world/params.js` and `client/render/building-kit.js` and the
+  two had to agree, two categories already carried a clone, and a front garden
+  turned out to be a setback.
 
 **Three gates were wrong about the game before they could see it**, all of the
 same shape and all fixed in place: `lobby_smoke` hashed after an await, and
 `play_smoke` and `mvp_acceptance` projected tile centres at `y = 0` to decide
 where to click, which with relief aims down the slope.
 
-**Three defects have now lived where the unit suite structurally cannot reach.**
+**Six defects have now lived where the unit suite structurally cannot reach.**
 `MARK_LIFT` was undefined on a branch only taken below 20 px a tile (V4);
-picking built an orthographic ray, exact at the centre of the frame (V5); and
+picking built an orthographic ray, exact at the centre of the frame (V5);
 `export { CHUNK } from "…"` re-exported without binding the name locally, so
-every use of it in `terrain.js` was `undefined` and the page threw on load
-(E2). All three are in modules that import three, which node cannot resolve —
-the browser gates are the only instrument that can see them.
+every use of it in `terrain.js` was `undefined` and the page threw on load (E2);
+E3's ribbons flipped a face's NORMAL when it pointed down and left the WINDING
+alone, so half the streets in the city were lit correctly and then culled, with
+the triangle count rising exactly as expected; E5's prop pass called
+`corridorsIn` with five arguments where it takes six, so every kerbside point
+came out `NaN` and the pass built nothing at all for a whole slice; and P2's ink
+shader named a local `step`, which shadows the builtin the same shader calls, so
+it did not compile for three runs and looked like the finish being too subtle.
+All six are in modules that import three, which node cannot resolve — the
+browser gates and a screenshot somebody opens are the only instruments that can
+see them.
+
+**And two of the six were found only because something downstream needed the
+output for a second purpose.** E5's prop pass returned an empty list, which is
+indistinguishable from a chunk with no streets in it; what exposed it was E6
+asking where the lamps were and getting nought. E3's culled ribbons were
+exposed by painting the carriageway magenta and floating it five metres in the
+air, after an hour of reasoning about depth precision. When a pass can
+legitimately produce nothing, count what it produced.
 
 **And two bugs were found only because a gate drives more than one
 configuration.** V5's picking built an orthographic ray — exact at the centre of
@@ -644,6 +699,12 @@ named the second one.
 Six findings are real defects, two are unwired promises, and E4 inherits three constraints.
 They are the **R1** and **V7** items below; do R1 before finishing E4, because E4 builds on the
 camera and the cars.*
+
+**What actually happened (2026-09-06).** R1 was not done before E4 — E4, E5, E6, P2 and V6 went
+first and R1 last, at `a4b8d26`. Two of the review's own E4 constraints were fixed inside E4
+anyway (the near plane per mode, and `mode !== "city"` not meaning orthographic), and the rest of
+R1 was unaffected by the four slices in between. **V7 is still not started** and is the last
+outstanding review item.
 
 ### R1 — Review fixes (S)
 
@@ -716,32 +777,59 @@ fixed in E4; `picking.js` still branched on `=== "city"` and does not now.
 at a low pitch; `budget_gate` with one overlay-on row; `play_smoke` toggles an overlay and
 reads a pixel.
 
-### Constraints E4 inherits
+### Constraints E4 inherited — all resolved
 
-- **Near plane.** `view.persp.near` is 0.5 tile units — 10 m. Street mode needs about 0.01
-  (0.2 m) and a far plane it can afford; set both per mode in `setMode`.
-- **`mode !== "city"` is not "orthographic".** `tilePixels`, `visibleBounds`, `chunksNear`,
-  `groundRay` and `applyAtmosphere` all branch on it. A third mode has to be perspective from
-  the eye, with the eye at `view.eye` rather than on the orbit. Do this through `orbit.js`
-  (R1.6) so the three agree.
-- **The working tree is red.** `test/collision.test.js` fails three ways (`pushOut` inside a
-  box picks the wrong face on the fixture; `floorAt` refuses a kerb) and `client/world/
-  collision.js` is not in the precache. Finish or stash before touching anything else; a slice
-  never leaves the tree red for the next one (CLAUDE.md, slice ritual step 3).
+- **Near plane.** ✅ E4. `applyZoom` sets `near` and `far` per mode: 0.02 and 100 tile units in
+  street mode, 0.5 and 4,000 otherwise. A near plane of half a TILE is ten metres and clipped the
+  pavement the walker was standing on.
+- **`mode !== "city"` is not "orthographic".** ✅ E4 for `tilePixels`, `visibleBounds` and
+  `applyAtmosphere`; ✅ R1.6 for `groundRay`, which was still building an orthographic ray in
+  street mode. All of them go through `client/world/orbit.js` now. `chunksNear` still orders by
+  the orbit target rather than the eye — in street mode those are the same point, so what is left
+  is a low-pitch CITY view (**Q53**).
+- **The working tree is red.** ✅ E4. `collision.js` came out as boxes rather than wall segments
+  (a segment push-out does not know which side of itself it is on) and is in the precache.
 - **Q34** (the planning question "how does a phone walk") is answered: tap-to-walk along the
-  corridors, no stick.
+  corridors, no stick. Note that E4 also wrote three slice questions as Q34–Q36 before noticing
+  the collision; they are **Q41–Q43** now, and `test/docs.test.js` is what caught it.
 
-### Also noted, no action
+### Also noted — where they stand
 
-- `main` is at `491f9bf`, thirty commits behind `dev_night`, including N22–N30 and everything
-  cityviewer. Merging is the owner's call; until then every gate and every doc test speaks for
-  `dev_night` only.
-- The kerb is drawn in `palette.roadMark` and the verge in `palette.lawn` regardless of the
-  terrain under it — fine for grass, wrong on sand or rock. E5's prop pass should take the
-  verge colour from `ground-colour.js`.
-- `chunksNear` orders by distance to the orbit target; under perspective the nearest chunks
-  to the **eye** are the ones on screen at a low pitch. Revisit when E4 puts the eye on the
-  pavement.
+- `main` is at `491f9bf`, now **38 commits** behind `dev_night`, including N22–N30 and the whole
+  cityviewer lane. Merging is the owner's call; until then every gate and every doc test speaks
+  for `dev_night` only.
+- **Still open.** The kerb is drawn in `palette.roadMark` and the verge in `palette.lawn`
+  regardless of the terrain under it — fine for grass, wrong on sand or rock. E5's prop pass did
+  not take the verge colour from `ground-colour.js` and neither did E3's ribbons (**Q52**).
+- **Half resolved.** `chunksNear` still orders by distance to the orbit target. In street mode
+  the target IS the eye (`poseFromWalker` writes it every frame), so what is left is a low-pitch
+  CITY view, where the chunks on screen are ahead of the target rather than around it
+  (**Q53**).
+
+## 2c. Questions this lane has raised
+
+*The live list is the bottom of `dev-questions.md`; this is the index by slice, so a reviewer can
+find the assumption an item was built against without reading all of it.*
+
+| Slice | Questions |
+|---|---|
+| V2 | Q27 the Low tier's dropped utility ribbons |
+| V3 | Q28 the two-ring flood instead of a corridor query |
+| V4 | Q29 the overlay wash floats |
+| V5 | Q30 orthographic `tilePixels` on a portrait screen |
+| E3 | Q31 dashed ribbons, not a marking canvas · Q32 the estimate's floor · Q33 the camera orbits the ground |
+| E4 | Q41 nothing grades a road along its length · Q42 the walker lives in `life/` · Q43 drag-look, no pointer lock |
+| E5 | Q37 the tier budgets moved · Q38 pure modules in `render/` · Q39 the two faces nobody sees |
+| E6 | Q44 a preset scales the rig · Q45 48 ticks a day · Q46 the lamp pool follows the eye |
+| P2 | Q47 should the render style be a setting (**needs a decision**) · Q48 two passes, not three |
+| V6 | Q49 is a hedge worth drawing at L2 · Q50 the L2 box and the L3 facade do not share a footprint |
+| R1 | Q51 when the model derivation goes per chunk (**80.0 ms on a 128×128**) |
+| This update | Q52 the kerb and verge ignore the terrain under them · Q53 `chunksNear` orders by the target, not the eye |
+
+**Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
+ruling 033 names `painted` as the target and nothing in the interface selects it, so by ruling
+026's standard two of the three styles are currently unreachable. Q51 is a slice: 80 ms per build
+action on a 128×128 is five frames, and the lane graph is two thirds of it.
 
 ## 3. Review protocol
 
@@ -750,9 +838,12 @@ For each item, leave in place for review:
 1. the dev-log entry with the numbers the gate produced (not "passed");
 2. the before/after screenshot pair in `reports/`;
 3. the commit `slice-<id>` on `main` or a branch named `cityviewer/<id>` — say which;
-   **so far: all of them on `dev_night`, one commit per item, listed in §2a;**
+   **so far: all of them on `dev_night`, one commit per item, with the SHA in §2a;**
 4. any question you had to guess at, written into the bottom of `dev-questions.md` as a new
-   Q with the assumption you built against, so the guess can be reversed cheaply.
+   Q with the assumption you built against, so the guess can be reversed cheaply — and indexed
+   by slice in §2c. **Take the next free number from `dev-questions.md`, not from `plan-v1.md`:
+   E4 wrote Q34–Q36 over three planning questions that already held them, and `test/docs.test.js`
+   is what noticed.**
 
 The review will re-run the item's gate, diff the screenshots, read the tests before the code,
 and check the four "must not change" lists above. An item that moved a fixture hash is sent
