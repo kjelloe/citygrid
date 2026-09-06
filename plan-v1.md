@@ -367,7 +367,9 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | **P2** | **Ink and grade** — depth-texture target, second-difference ink, split-tone grade, FXAA; desktop tier, governor-gated | M | **Done (slice P2).** The finish `painted` was named for. A second difference of linearised depth is zero across any plane at any angle, so the wall of windows an L3 facade puts in front of the camera draws no lines and the roofline draws one — which is why this pass is allowed where P1's luminance outline was not. The grade follows the hour. It also found that the budget had been measuring the full-screen quad, two triangles, for as long as any post pass has existed |
 | **R1** | **Review fixes after E3** — cars culled to the view and counted in bounds, car pools visible after the pose, the junction speed lookup, the governor's dead rung, the street cache surviving `worldChanged`, one orbit function for the camera and the budget, a fog that is not reallocated every frame | S | E3 |
 | **R2** | **Review fixes after R1** — the style setting (A36), the L2/L3 chunk-membership rule, signs shaded by the style and lit at night, the previous mode restored on leaving the street, a wall-clock day (A41), localised sign names (A40), the model derivation profiled and cut (A37), chunks ordered inside the footprint (A39) | S | R1 |
-| **R3** | **Streets graded along their length** — node heights fixed, corridor profiles smoothed to a maximum grade, buildings re-seat automatically (Q54) | M | V7, Q54 |
+| **R3** | **Streets graded along their length** (A42) — node heights fixed, corridor profiles smoothed to `road.maxGrade` 0.15, buildings re-seat automatically; then a taller `RELIEF_M` tried and ruled on | M | V7 |
+| **E8** | **Water** — a water surface per chunk, a shoreline, the walker kept out of it, a road over water as a causeway (Q58) | M | V7 |
+| **V8** | **The street, finished** — trees at eye height, signal heads and crosswalks, headlights, the minimap aware of the walker and the wedge, the lobby diorama on a cheap renderer, street ambience | L | E7 |
 | **V7** | **Overlays as a texture on the ground** (ruling 041) — one byte a tile in a `DataTexture` sampled by world x/z in the terrain material; the marks stay instanced; orthographic `tilePixels` fixed on portrait (A32) and the ortho screenshot re-baselined | S | V4 |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
@@ -395,9 +397,8 @@ by number from the code they create.
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
-| Q54 | Should streets be graded along their length (15% maximum)? | R3, needs a decision |
-| Q55 | Should the walker collide with street furniture? | E7 |
-| Q56 | Should the territory overlay reach the L3 facades? | V7 |
+| Q57 | Do cars and the walker see each other? | E7 |
+| Q58 | What does a road over water look like at street level? | E8 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

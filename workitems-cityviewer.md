@@ -610,7 +610,9 @@ eleven browser smokes.
 | **V6** — lots with something on them | **done** 2026-09-06 | `b3f16bb` | `client_smoke` hashes every variant's vertices: **6 distinct silhouettes of 6** in all four categories, where before it was 4 of 4 with two categories carrying a clone. `budget_gate`, `walkthrough`, `passability` and the other ten gates green. `reports/smoke-V6-{city,suburb}.png`, `reports/style-sheet.png` re-baselined | `test/kit.test.js` (8); spec §6.6a, art-direction §3.1. `VARIANTS` was declared in two files and is now declared in one |
 | **R2** — review fixes after R1 (§2d) | not started | — | — | — |
 | **V7** — overlays as a texture on the ground (ruling 041), amended in §2d | not started | — | — | — |
-| **R3** — streets graded along their length (Q54) | waits for a decision | — | — | — |
+| **R3** — streets graded along their length, then taller hills (A42) | not started | — | — | — |
+| **E8** — water | not started | — | — | — |
+| **V8** — the street, finished | not started | — | — | — |
 | **E7** — pedestrians | not started | — | — | — |
 
 **Deviations from this document, each with the measurement that forced it and a
@@ -827,7 +829,8 @@ find the assumption an item was built against without reading all of it.*
 | V6 | Q49 is a hedge worth drawing at L2 · Q50 the L2 box and the L3 facade do not share a footprint |
 | R1 | Q51 when the model derivation goes per chunk (**80.0 ms on a 128×128**) |
 | This update | Q52 the kerb and verge ignore the terrain under them · Q53 `chunksNear` orders by the target, not the eye |
-| Review after R1 | Q54 streets graded along their length (**needs a decision**) · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — and A35–A41 close Q34–Q38, Q42–Q53 |
+| Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
+| Omissions pass | Q57 cars and the walker · Q58 a road over water |
 
 **Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
 ruling 033 names `painted` as the target and nothing in the interface selects it, so by ruling
@@ -840,7 +843,7 @@ action on a 128×128 is five frames, and the lane graph is two thirds of it.
 `walkthrough`, `passability` and `play_smoke` re-run by the reviewer: all green. E4, E5, E6, P2,
 V6 and R1 are accepted. What follows is what reading found that the gates cannot see, as one
 small fix slice (**R2**), one decision slice (**R3**), and amendments to V7 and E7. Do R2, then
-V7, then E7; R3 waits for Q54.*
+V7, then E7; R3 is unblocked by A42 and follows V7.*
 
 ### R2 — Review fixes after R1 (S)
 
@@ -920,6 +923,91 @@ unchanged; screenshots of the steepest street on the `hilly` fixture before and 
   what the governor's `supersample` rung reduces; harmless, because ink is sacrificed before
   supersample, but the two words should not mean two things. Fold it into `applyGovernor` when
   P2 is next touched.
+
+## 2e. The omissions pass (2026-09-06)
+
+*Kjell answered Q54–Q56 (A42–A44) and asked for a pass over what the lane has overlooked. Read
+against `specs/engine/`, the rulings and `specs/plan.md`; the gates were green at `b1ed16c`
+and none of this is caught by one. Five items join R2, three are new slices, and the rest are
+noted for the record.*
+
+### R2 — five more items
+
+10. **Lamps and parked cars are drawn twice inside a baked chunk.** `instances.js` gates
+    markings, poles and networks on `drawn` but not `props`: the L2 lamp and parked-car pass
+    still runs in a chunk whose L3 pass has placed the real lamps — which is why E5's
+    screenshots showed lamps while its prop pass built nothing. And the parked car sits at
+    `±0.26` tiles = 5.2 m from the centre line, on the **pavement** at L3 (the carriageway is
+    4 m half-width). Gate `props` on `drawn` for paved tiles; tufts on grass stay. Test in
+    `client_smoke`: lamp instances are zero inside a baked chunk.
+11. **`renderer.dispose()` disposes the post pass and the context and nothing else.** The
+    pools, the terrain chunks, the sky, the lamp lights and every baked street group survive a
+    new city. `dispose` walks the scene and disposes geometries and materials, and
+    `streets.clear()` runs first. Test: `lobby_smoke` starts three cities in one page and
+    `renderer.info.memory.geometries` does not grow.
+12. **Reduced motion is ignored by cityviewer.** `main.js` sets `data-motion="reduced"`
+    (slice 4.5) and nothing in the renderer reads it: cars stream and the day cycles for a
+    player who asked for neither. `life: false` when motion is reduced; `auto` time refuses
+    and stays on `day`; the walker still walks because the player drives it.
+    `a11y_smoke` sets the preference and asserts the car count is 0.
+13. **The lobby diorama runs the full renderer.** `client/lobby/diorama.js` calls
+    `createRenderer` with defaults, which since V2–E6 means the High tier, live traffic and a
+    day clock behind a start screen. Pass `tier: "low", life: false` and an orthographic mode
+    (`mode: "ortho"`, which is what it was drawn for).
+14. **Docs drift.** Ruling 040's tier table said 200k/80k until this pass; `README.md`'s
+    gate list does not name `walkthrough`, `passability`, `lanes_dump` or `budget_gate`'s tier
+    and projection flags; `specs/engine/08` §8.1 still says "street comes in E4". Sync all
+    three in R2's doc step; `test/docs.test.js` gains a check that the ruling's table matches
+    `data/cityviewer.json`.
+
+### R3 — unblocked (A42)
+
+Grade to `road.maxGrade = 0.15`; then try `RELIEF_M = 1.0` on the `hilly` fixture, screenshot
+both at spans 40 and 12 and from the pavement, keep whichever reads as a place, and amend
+ruling 038 with the number. `walkthrough` reports the steepest grade before and after;
+`play_smoke` picks on the new slope; `budget_gate` unchanged.
+
+### E8 — Water (M) — spec §5.5, Q58
+
+Never built: a water tile is a terrain colour clamped to the water level, so at street level a
+lake is a flat blue floor the walker strolls across. One transparent plane per chunk that has
+water, at `waterLevel`, drawn after the terrain; the land mesh dips under it so the shoreline is
+where the two meet (spec §5.5); `collision.floorAt` refuses a water tile so the walker stops at
+the edge (or wades knee-deep — `road.kerb` tall, decide by screenshot); a road on water stays a
+causeway at water level with its kerb meeting the plane (Q58). Test: `surfaceAt` on water
+returns `water` with `y = waterLevel`; the walker cannot enter it. Gate: `reports/smoke-E8-*`
+from a shore at street level; `budget_gate` with a river fixture.
+
+### V8 — The street, finished (L) — the polish the spec promised and no slice owned
+
+- **Trees at eye height.** The L2 cones and blobs stand at street level inside baked chunks.
+  An L3 tree kit through the baker: a trunk and a cluster of faceted blobs (Higashiyama's
+  rule — never a billboard), instanced per chunk, species by terrain.
+- **Signal heads and crosswalks** (spec §9.2, A33). Cars stop at invisible lights. A head per
+  approach at each junction with the lit lamp an emissive swap by `phaseAt`; crosswalk bars
+  and stop bars as short ribbons at the lane graph's stop lines.
+- **Headlights and tail lights at night**: two emissive quads per car in the pool, dialled
+  with `night`.
+- **The minimap** frames the orthographic rectangle and does not know the walker exists.
+  Draw the frustum footprint under perspective and a dot for the walker in street mode.
+- **Street ambience**: the mixer has a bed since N18; at street level it should carry
+  traffic near a busy road and quiet on a residential one, driven by `tiles.traffic` under
+  the walker — Higashiyama's `audio.update` shape.
+- **Fog and sky in street mode** are derived from the last city `span` and a 1,800-tile dome
+  behind a 100-tile far plane. Fixed metres for street fog, and a dome scaled to sit inside
+  the far plane, so a low sun is a gradient rather than a clear colour.
+
+### Noted, no slice
+
+- **Real-device performance has never been measured.** Every number in this lane is
+  SwiftShader; `specs/plan.md` §11 layer 11 is a native run, and the governor's whole reason
+  is a phone. Needs a phone in Kjell's hand and `?debug=1`'s frame p95 written down.
+- **The simulation is on the render thread.** `specs/plan.md` §0 says "always a Web Worker";
+  `worker/` is empty. Not cityviewer's, but an 80 ms model rebuild after each build action
+  sits on the same thread as a 4 ms tick, and the worker is where the plan put the tick.
+- **Photo mode, tours, an animation lane** (fable51's `Tour`, `capture.mjs`,
+  `tour_video.mjs`): out of scope until a demo film is wanted; the walker and the presets
+  are the pieces it would be built from.
 
 ## 3. Review protocol
 

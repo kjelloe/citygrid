@@ -28,8 +28,12 @@ Two instruments, because a phone is fill-rate bound and a triangle budget cannot
 | Tier | Budget | Street chunks | Cars | Shadows | Post |
 |---|---|---|---|---|---|
 | Low | 40k | none | 60 | off | none |
-| Medium | 80k | 4, day only | 200 | soft | pixel only |
-| High | 200k | 9 | uncapped | soft, following frustum | any |
+| Medium | 140k | 4 | 200 | soft | pixel only |
+| High | 320k | 9 | uncapped | soft, following frustum | any |
+
+*Amended 2026-09-06 (slice E5, Q37 → A35): the budgets were a V2 prediction made before L3
+existed. Nine chunks of real facade measured 200k on their own, so High went 200k → 320k and
+Medium 80k → 140k. `data/cityviewer.json` is the source; this table mirrors it.*
 
 ## Why
 

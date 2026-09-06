@@ -58,3 +58,11 @@ enough that the flat layers can be re-checked one by one (V4's definition of don
 - `data/cityviewer.json` — `RELIEF_M` (after V4)
 - `test/world.test.js` — a corridor is level across its width; a building's seat is the minimum of its corners (after E0/V4)
 - `tools/play_shot.mjs` — the overlay-on-a-slope viewpoint in the capture list
+
+## Amendment pending (A42, 2026-09-06)
+
+Kjell: "hills can be taller, but streets to max 15%". Slice R3 grades every corridor along
+its length to `road.maxGrade = 0.15` (node heights fixed, profiles smoothed between them with
+cut and fill), which removes the reason relief was capped at half a metre a step. R3 then
+tries `RELIEF_M = 1.0` on the `hilly` fixture and this ruling is amended with the number that
+reads best and the screenshots that decided it.
