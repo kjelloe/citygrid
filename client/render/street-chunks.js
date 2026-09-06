@@ -16,6 +16,7 @@ import { createBaker } from "./baker.js";
 import { chunkHash, chunksNear, CHUNK } from "../world/chunks.js";
 import { buildingParams } from "../world/params.js";
 import { PALETTES } from "./palettes.js";
+import { nextBuild, expired } from "./streaming.js";
 
 /** How long a chunk outside the radius is kept before its geometry goes.
  *
@@ -88,28 +89,32 @@ export function createStreetChunks(scene, options = {}) {
       const wanted = chunksNear(view, radius, state.width, state.height).slice(0, budget);
       const wantedKeys = new Set(wanted.map((c) => c.key));
 
-      // One build, nearest first: the first chunk that is missing or stale.
+      for (const c of wanted) {
+        const entry = live.get(c.key);
+        if (entry) entry.seen = now;
+      }
+
+      // Which chunk to build, and which to let go, are decided in
+      // `streaming.js` — pure, and therefore tested, which nothing in this file
+      // can be (it imports three).
       let didBuild = 0;
-      for (const chunk of wanted) {
-        const hash = chunkHash(state, chunk.cx, chunk.cy);
-        const entry = live.get(chunk.key);
-        if (entry) { entry.seen = now; if (entry.hash === hash) continue; }
+      const next = nextBuild(wanted, live, (c) => chunkHash(state, c.cx, c.cy));
+      if (next) {
+        const { chunk, hash } = next;
         const started = Date.now();
         const baker = bake(state, model, chunk.cx, chunk.cy);
         const group = baker.build();
         lastBuildMs = Date.now() - started;
-        if (entry) { scene.remove(entry.group); baker.dispose(entry.group); }
+        const old = live.get(chunk.key);
+        if (old) { scene.remove(old.group); baker.dispose(old.group); }
         scene.add(group);
         live.set(chunk.key, { hash, group, cx: chunk.cx, cy: chunk.cy, seen: now, triangles: baker.triangles });
         built += 1;
         didBuild = 1;
-        break;
       }
 
-      // And drop what has been outside the radius for the grace period.
-      for (const [key, entry] of live) {
-        if (wantedKeys.has(key)) continue;
-        if (now - entry.seen < GRACE_MS) continue;
+      for (const key of expired(live, wantedKeys, now, GRACE_MS)) {
+        const entry = live.get(key);
         scene.remove(entry.group);
         createBaker(styleName).dispose(entry.group);
         live.delete(key);

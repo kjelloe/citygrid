@@ -13,19 +13,7 @@
 import * as THREE from "three";
 import { mergeNonIndexed } from "./merge.js";
 import { makeMaterial } from "./style-assets.js";
-
-/** The shading signature: two pieces share a mesh only if all of it matches.
- * `transparent` and `emissive` are the ones that matter — a transparent piece
- * in an opaque bucket is depth-sorted wrongly, and an emissive one in a plain
- * bucket cannot be dialled up at night (spec §6.5). */
-function signature(options) {
-  return [
-    options.transparent ? "t" : "o",
-    options.emissive ? `e${options.emissive.toString(16)}` : "-",
-    options.side ?? "front",
-    options.bands ?? "-",
-  ].join(":");
-}
+import { signature } from "./streaming.js";
 
 export function createBaker(styleName = "plain") {
   /** signature → { options, parts: [] } */

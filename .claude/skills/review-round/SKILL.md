@@ -114,6 +114,13 @@ It took two playtests: N27 joined the runs and N28 found them still reading as d
 was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
 player uses**, not only at the zoom that proves the change.
 
+**Ask what the unit suite structurally cannot see.** In this repo that is every
+module importing `three`, because node cannot resolve it — three defects have
+lived there behind a green suite. The answer is not more browser gates; it is to
+move the DECISION into a module node can load and leave the plumbing thin.
+`test/purity.test.js` pins the list of three-importing modules so it cannot grow
+without someone saying so.
+
 **An estimate that does not price what the renderer draws sacrifices detail for
 nothing.** This has now happened three times: the cost table went stale when a
 road became a box (P35), it priced every chunk at the frame's plan when the plan

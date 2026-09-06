@@ -48,6 +48,35 @@ for g in serve_smoke reach_smoke ui_smoke a11y_smoke lobby_smoke \
 done
 ```
 
+### Half the renderer is invisible to `node --test`
+
+`node` cannot resolve `three` — the vendored copy is reached through the page's
+importmap — so **every module that imports it is invisible to the unit suite**.
+Three real defects in the cityviewer lane lived exactly there:
+
+- `MARK_LIFT` used and never defined, on a branch only taken below 20 px a tile;
+- picking building an orthographic ray, exact at the centre of the frame;
+- `export { CHUNK } from "…"`, which re-exports without binding the name, so
+  every use of it in that module was `undefined` and the page threw on load.
+
+All three passed a green suite. So the split is deliberate: **decisions go in a
+module node can load; what imports three is plumbing**. `merge.js`, `ramps.js`,
+`streaming.js`, `lod.js`, `governor.js` and everything in `client/world/` are on
+the node side, and `test/purity.test.js` holds the list of what is not — so it
+cannot grow by accident.
+
+When something IS in the plumbing, the browser gates are the only instrument.
+Run `client_smoke` after any change to a three-importing module, before the
+suite feels like enough.
+
+### A gate that counts containers passes on an empty city
+
+E2's first street-chunk check reported "9 chunks live" and passed — on nine
+chunks holding **zero triangles**, because the gate's city has roads and zoning
+but no buildings (nothing develops without power and water) and there were no
+lots to bake. Count the contents, not the containers: triangles, not chunks;
+tiles paved, not commands accepted.
+
 ### A gate that drives one configuration proves one configuration
 
 City Grid now has two projections, three quality tiers, two viewports and a
