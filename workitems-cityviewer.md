@@ -543,6 +543,16 @@ Front gardens, fences, hedges, paths, a wider roof and wall range, two more silh
 category at L2. Pure content against the existing kit and `buildingParams`; every new colour
 through the palette test; `style-sheet` before/after.
 
+**Built, and it was not pure content.** Three things had to change first. (1) `VARIANTS` was
+written down twice — `client/world/params.js` picks a variant with it and `client/render/
+building-kit.js` builds a pool per variant from its own copy — so "two more silhouettes" would
+have made every building of variants 4 and 5 vanish silently. One copy now. (2) Two categories
+were already carrying a clone (`variant === 0 || variant === 2` in both commercial and
+industrial), so "six silhouettes" needed three new ones there, not two. (3) A front garden is a
+SETBACK: the L2 box filled its tile, so a hedge and a path landed underneath the house. Residential
+boxes are set back by the same 3 m E5's facade already leaves (**Q50**). At city zoom the hedge is
+a pixel or two and what reads is the setback and the lawn (**Q49**).
+
 ### E7 — Pedestrians (M) — spec §9.3
 
 `client/world/nav.js` (sidewalk edges, crossings at nodes, a door node per lot);
@@ -574,7 +584,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **E5** — street-level facades | **done** 2026-09-06 | `slice-E5` | `budget_gate` High on the saturated 96×96: **25.7k triangles a chunk**, 8 live holding 205,864, **2 meshes a group**, build p95 **6 ms**. A facade is 700–1,100 triangles. `walkthrough` and `passability` still clean. `reports/style-sheet-street.png` (all three styles from the pavement), `reports/smoke-E5-{street,shopfront}.png` | `test/facade-spec.test.js` (13), `test/facade.test.js` (8), `test/roof-kit.test.js` (9), `test/props-l3.test.js` (6); spec §6.2a, §6.5 |
 | **E6** — time of day | **done** 2026-09-06 | `slice-E6` | `budget_gate` gains four night rows on the saturated 96×96 at High: **266,538 triangles of 320,000, 44 draw calls, 8 lamps lit of 269 held**, night reaching exactly 1. `a11y_smoke` measures the overlay bands at both hours (**122 apart by day, 41 at night**, floor 30); `ui_smoke` drives all four settings values through the panel. `reports/smoke-E6-{night,sunset}.png` | `test/time-of-day.test.js` (14), `test/night-lights.test.js` (7), `test/settings.test.js` (+2); spec §7.3a |
 | **P2** — ink and grade | **done** 2026-09-06 | `slice-P2` | `budget_gate` gains three painted rows on a High page loaded with `?style=painted`, and the check that the counted triangles are the CITY's rather than the quad's. `style-sheet` shoots all three styles from the pavement with the post passes on and off (`reports/style-sheet-street{,-nopost}.png`); `reports/smoke-P2-{ink,noink}.png` is a road at a grazing angle with no ink on it | `test/post-ink.test.js` (11), `test/render.test.js` (+3); spec §7.4a |
-| **V6** — lots with something on them | not started | — | — | — |
+| **V6** — lots with something on them | **done** 2026-09-06 | `slice-V6` | `client_smoke` hashes every variant's vertices: **6 distinct silhouettes of 6** in all four categories, where before it was 4 of 4 with two categories carrying a clone. `budget_gate`, `walkthrough`, `passability` and the other ten gates green. `reports/smoke-V6-{city,suburb}.png`, `reports/style-sheet.png` re-baselined | `test/kit.test.js` (8); spec §6.6a, art-direction §3.1. `VARIANTS` was declared in two files and is now declared in one |
 | **E7** — pedestrians | not started | — | — | — |
 
 **Deviations from this document, each with the measurement that forced it and a

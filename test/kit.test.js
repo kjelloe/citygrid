@@ -1,0 +1,102 @@
+// The building kit's contract (slice V6).
+//
+// `building-kit.js` imports three, so node cannot load it and the geometry
+// itself is checked by `client_smoke` in a browser. What CAN be checked here is
+// the thing that made this test necessary: the number of variants was written
+// down twice, in `client/world/params.js` and in `client/render/building-kit.js`,
+// and `variantFor` picks a variant from one while `createInstances` builds pools
+// from the other. Raise one and not the other and `pools[kind + variant]` is
+// `undefined` — every building of that variant simply stops being drawn, with
+// no error and a green suite.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
+import { VARIANTS, variantFor, kindOf } from "../client/world/params.js";
+import { PALETTES } from "../client/render/palettes.js";
+
+const kit = () => readFileSync(join(repoRoot, "client", "render", "building-kit.js"), "utf8");
+
+test("the number of variants is written down once", () => {
+  assert.equal(/^export const VARIANTS = \d+;/m.test(kit()), false,
+    "building-kit.js declares its own VARIANTS; it must take the one params.js has");
+  assert.match(kit(), /VARIANTS[^\n]*from "\.\.\/world\/params\.js"/,
+    "building-kit.js does not import VARIANTS from the model");
+});
+
+test("every category names every variant", () => {
+  // The kit builds a pool per (category, variant), so a category that only
+  // branches on 0..3 gives the same silhouette to 4 and 5 — which is not an
+  // error, it is a city of clones.
+  const source = kit();
+  for (const category of ["function residential", "function commercial", "function industrial", "function civic"]) {
+    const body = source.slice(source.indexOf(category), source.indexOf("\n}", source.indexOf(category)));
+    const named = new Set([...body.matchAll(/variant === (\d)/g)].map((m) => Number(m[1])));
+    // 0 and the fall-through `else` need not be named; every other one must be.
+    for (let v = 1; v < VARIANTS; v += 1) {
+      assert.ok(named.has(v), `${category} never mentions variant ${v}`);
+    }
+  }
+});
+
+test("variantFor spreads over every variant", () => {
+  const seen = new Set();
+  for (let id = 1; id <= 400; id += 1) seen.add(variantFor(id));
+  assert.equal(seen.size, VARIANTS, `only ${seen.size} of ${VARIANTS} variants ever come up`);
+  // ...and not so unevenly that one is effectively absent.
+  const counts = new Array(VARIANTS).fill(0);
+  for (let id = 1; id <= 4000; id += 1) counts[variantFor(id)] += 1;
+  const least = Math.min(...counts);
+  assert.ok(least > 4000 / VARIANTS * 0.6, `the rarest variant is ${least} of 4000`);
+});
+
+test("a variant is a property of the building, not of the moment", () => {
+  for (const id of [1, 7, 99, 1234]) assert.equal(variantFor(id), variantFor(id));
+});
+
+// --- the palette -------------------------------------------------------------
+
+test("every style offers the same roof choices, so a style is not a different city", () => {
+  const shapes = Object.values(PALETTES).map((p) => [p.roof.house.length, p.roof.flat.length]);
+  for (const shape of shapes) assert.deepEqual(shape, shapes[0]);
+});
+
+test("there are enough roof colours that a street is not a pattern", () => {
+  for (const [name, palette] of Object.entries(PALETTES)) {
+    assert.ok(palette.roof.house.length >= 12, `${name} has ${palette.roof.house.length} house roofs`);
+    assert.ok(palette.roof.flat.length >= 6, `${name} has ${palette.roof.flat.length} flat roofs`);
+    // Distinct, or the count is a lie.
+    assert.equal(new Set(palette.roof.house).size, palette.roof.house.length, `${name} repeats a house roof`);
+    assert.equal(new Set(palette.roof.flat).size, palette.roof.flat.length, `${name} repeats a flat roof`);
+  }
+});
+
+test("the roof choices are not all one hue", () => {
+  // Terracotta, slate and a green or two. Measured as the spread of the hue
+  // angle, because "more colours" that are all the same red is more of nothing.
+  const hue = (hex) => {
+    const r = ((hex >> 16) & 255) / 255;
+    const g = ((hex >> 8) & 255) / 255;
+    const b = (hex & 255) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if (max === min) return 0;
+    const d = max - min;
+    const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return h * 60;
+  };
+  for (const [name, palette] of Object.entries(PALETTES)) {
+    const hues = palette.roof.house.map(hue);
+    const buckets = new Set(hues.map((h) => Math.floor(h / 45)));
+    assert.ok(buckets.size >= 3, `${name}'s house roofs sit in ${buckets.size} hue bands`);
+  }
+});
+
+test("every category the zones map to is one the kit builds", () => {
+  const source = kit();
+  for (const zone of [0, 1, 2, 3]) {
+    assert.match(source, new RegExp(`function ${kindOf(zone)}\\(`), `no kit for ${kindOf(zone)}`);
+  }
+});

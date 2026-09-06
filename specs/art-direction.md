@@ -151,8 +151,14 @@ rather than navy. A cosy toy world does not use realistic colours — §1.7.
 | Commercial wall | `0x8fd0f0` |
 | Industrial wall | `0xd9a45c` |
 | Civic wall | `0xd8d2c6` |
-| House roofs | `0xd4623a` `0xe07a45` `0xb8422c` `0x94302a` `0x5d6d80` `0x404a5c` `0x334152` `0x3b7358` |
-| Flat roofs | `0x4e535b` `0x424750` `0x5c6169` `0x6b6459` |
+| House roofs | `0xd4623a` `0xe07a45` `0xb8422c` `0x94302a` `0x5d6d80` `0x404a5c` `0x334152` `0x3b7358` `0xc9a97a` `0x8a6046` `0x7d8590` `0x2b3340` `0x5d7a52` `0xb07b74` |
+| Flat roofs | `0x4e535b` `0x424750` `0x5c6169` `0x6b6459` `0x7a736a` `0x3a3f47` |
+
+Fourteen house roofs and six flat ones since **V6**. Eight was a visible period: walking down one
+street of a saturated district, the repeat is legible. The six additions are the ones a real
+terrace has and this palette did not — a pale sand, a warm brown, a grey slate, a blue-black, a
+moss and a faded rose — and `test/kit.test.js` holds the floor at twelve and three hue bands, so
+"more roofs" cannot be satisfied with six more reds.
 
 Roof colour is a **hue, not a shade of the wall** (ruling 021). Houses draw from
 tile and slate; everything else from the flat greys of felt and gravel, and that

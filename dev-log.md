@@ -3569,3 +3569,53 @@ attempt guarded the whole painted block with `if (painted.style === "painted")`,
 silently reported nothing when the style did not load — the one case worth hearing about.
 
 Q47 (should the render style be a setting), Q48 (two passes where the spec said three).
+
+---
+
+## 2026-09-06 — Slice V6: six silhouettes, fourteen roofs, and a number written down twice
+
+The city at city zoom stops repeating. Six silhouettes per category instead of four, fourteen
+house roofs instead of eight and six flat ones instead of four, and residential boxes set back from
+the street so there is a front garden with a hedge on the lot line and a path to the door.
+
+**Measured.** `client_smoke` hashes the vertex positions of every variant of every category:
+**6 distinct silhouettes of 6** in all four, where before V6 it was 4 of 4 with commercial and
+industrial each carrying a clone. On the 64-tile fixture at a wide zoom: 198 lawns, 71 hedges,
+71 paths. Suite green twice; `budget_gate` (including its night and painted rows), `walkthrough`,
+`passability` and the other ten gates green. 8 new unit tests.
+
+**It was not pure content, which is what the item called it.** Three things had to change first.
+
+*`VARIANTS` was written down twice.* `client/world/params.js` picks a building's variant with it;
+`client/render/building-kit.js` built a pool per variant from its own copy of the same number.
+Raising one and not the other makes `pools[kind + variant]` come back `undefined` and every
+building of the new variants silently stops being drawn — the lawn still there, the house gone.
+The kit imports the model's number now, and `test/kit.test.js` refuses a second declaration.
+
+*Two categories already had a clone.* `variant === 0 || variant === 2` in both commercial and
+industrial, so those categories have had three silhouettes for four variants since the kit was
+written. "Two more" was three more there.
+
+*A front garden is a setback.* The L2 box fills its tile, so the first hedge and path landed
+underneath the house — 37 instances drawn correctly and invisibly. Residential boxes are set back
+by `lot.setback.residential`, the same 3 m E5's facade already leaves, so the box and the facade
+agree slightly better than before rather than worse.
+
+**What failed on the way.**
+
+*A duplicate-silhouette check on triangle COUNTS has false positives.* Residential 1 and 5 are
+different shapes with the same 316 triangles. It hashes positions.
+
+*A `str.replace` that does not match is a silent no-op.* The `garden` field never landed in
+`buildingParams` — the text I searched for was not the text in the file — and the pools reported
+`hedge: 0, path: 0` for two runs while everything else looked right. The instrument that caught it
+was the pool counts in the shot report, which are now permanent for exactly that reason: a pool
+that is empty looks like a pool whose conditions were not met.
+
+*The screenshot harness hid a page error behind a timeout.* `waitForFunction` timing out after two
+minutes says nothing about why the page never became ready; it reports what the page said now, and
+the first thing it said was `TypeError: g.getAttribute is not a function`.
+
+Q49 (is a hedge worth drawing at L2 — kept, and first to drop), Q50 (the L2 box and the L3 facade
+do not share a footprint, deliberately). `reports/smoke-V6-{city,suburb}.png`;
+`reports/style-sheet.png` re-baselined.

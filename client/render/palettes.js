@@ -24,8 +24,16 @@ export const PALETTES = {
     // everything else gets the flat grey-black of felt and gravel, which is
     // also what separates a terrace from an office block at a glance.
     roof: {
-      house: [0xd4623a, 0xe07a45, 0xb8422c, 0x94302a, 0x5d6d80, 0x404a5c, 0x334152, 0x3b7358],
-      flat: [0x4e535b, 0x424750, 0x5c6169, 0x6b6459],
+      house: [
+        0xd4623a, 0xe07a45, 0xb8422c, 0x94302a, 0x5d6d80, 0x404a5c, 0x334152, 0x3b7358,
+        // Slice V6 widened the range from eight to fourteen. Eight roofs over
+        // a saturated district is a visible period: you can see the repeat
+        // walking down one street. The additions are the ones a real terrace
+        // has and this palette did not — a pale sand, a warm brown, a grey
+        // slate, a blue-black, a moss and a faded rose.
+        0xc9a97a, 0x8a6046, 0x7d8590, 0x2b3340, 0x5d7a52, 0xb07b74,
+      ],
+      flat: [0x4e535b, 0x424750, 0x5c6169, 0x6b6459, 0x7a736a, 0x3a3f47],
     },
     roofFactor: 1.0,
     bandFactor: 1.0,
@@ -44,8 +52,11 @@ export const PALETTES = {
     lawn: 0x68c040,
     civic: 0xa8a098,
     roof: {
-      house: [0xe05828, 0xf07838, 0xb83820, 0x982818, 0x587898, 0x384858, 0x283848, 0x308068],
-      flat: [0x484f58, 0x383f48, 0x585f68, 0x686050],
+      house: [
+        0xe05828, 0xf07838, 0xb83820, 0x982818, 0x587898, 0x384858, 0x283848, 0x308068,
+        0xd0a870, 0x885838, 0x788090, 0x203040, 0x588048, 0xb07070,
+      ],
+      flat: [0x484f58, 0x383f48, 0x585f68, 0x686050, 0x787068, 0x303840],
     },
     roofFactor: 0.72,
     bandFactor: 0.85,
@@ -74,8 +85,11 @@ export const PALETTES = {
     lawn: 0x93bd78,
     civic: 0xe0cdb2,
     roof: {
-      house: [0xc85a38, 0xd87244, 0xa63e30, 0x8a2c26, 0x586680, 0x3c4757, 0x2f3b4a, 0x376c54],
-      flat: [0x484d55, 0x3d424a, 0x565b63, 0x655f55],
+      house: [
+        0xc85a38, 0xd87244, 0xa63e30, 0x8a2c26, 0x586680, 0x3c4757, 0x2f3b4a, 0x376c54,
+        0xbfa176, 0x835c45, 0x77808b, 0x28303c, 0x59734e, 0xa8776f,
+      ],
+      flat: [0x484d55, 0x3d424a, 0x565b63, 0x655f55, 0x746d64, 0x363b43],
     },
     roofFactor: 0.62,
     bandFactor: 0.74,

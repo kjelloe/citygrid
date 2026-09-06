@@ -342,7 +342,7 @@ no hash.*
 | **V3** | **Ground that is not a checkerboard** | S | See 2 above | **Done (slice V3).** `client/world/ground-colour.js`: a corner blends only when all four tiles meeting it are natural, so a shoreline grades and a road grid stays crisp. Plus a ±6% per-tile mottle and a distance-to-street tone. `ground.blend: 0` reproduces the old picture exactly. 1.4 ms of a 11.6 ms rebuild on a saturated 128×128; triangles unchanged |
 | **V4** | **Real relief** (ruling 038) | M | See 3 above. `RELIEF_M = 0.5`; a road is a corridor that owns the ground inside its half-width, so it climbs without breaking | **Done (slice V4).** The mesh, every pool, picking and the ghost read `model.heightAt`; buildings seat on the lowest corner of their lot. Picking marches the height field instead of a plane at y = 0. The **zone tint stopped being a quad** — it is a colour of the mesh like the road, because on a `hilly` slope a flat quad either sinks into the hillside or hovers over it. Full flat-layer audit in spec §5.6; the overlay wash is the one left floating (Q29) |
 | **V5** | **Perspective play camera** (ruling 034) | M | See 4 above | **Done (slice V5).** `view` holds both cameras and swaps which one it points at; target, yaw, pitch and span are shared, so switching does not move the city. Perspective is the default on a fine pointer, orthographic on a coarse one (ruling 034). The LOD plan is **per chunk** and the estimate prices each chunk at its own plan — without that it was 77% over at close zoom. A sky dome and a zoom-relative haze, perspective only. Orthographic is byte-identical to V4 |
-| **V6** | **Lots with something on them** | L | See 5 above | Front gardens, fences and hedges, more silhouettes per category, wider roof and wall colour range. Pure content against the existing kit |
+| **V6** | **Lots with something on them** | L | **Done (slice V6).** Six silhouettes per category instead of four, fourteen house roofs instead of eight, and residential boxes set back so there is a front garden with a hedge on the lot line and a path to the door. `VARIANTS` had been written down twice — in the model and in the kit — and the two had to agree or every building of a new variant would silently stop being drawn; it is written down once now, and `client_smoke` hashes every variant's vertices so a clone cannot pass as a silhouette |
 
 **Sequencing.** Set by `specs/engine/11-roadmap.md`: E0 → V2 → E1 → V1 → V3 →
 V4 → V5 → P1 → E2 → E3 → E4 → E5 → E6 → P2, with V6 and E7 when wanted.
@@ -407,6 +407,8 @@ by number from the code they create.
 | Q46 | Should the lamp pool follow the camera or the walker? | E6, settled |
 | Q47 | Should the render style be a setting? | P2, needs a decision |
 | Q48 | Is two post passes enough, where the spec said three? | P2, settled |
+| Q49 | Is a hedge worth drawing at L2? | V6, first to drop |
+| Q50 | Should the L2 box and the L3 facade share a footprint? | V6, settled |
 
 ## What would make us stop and re-plan
 

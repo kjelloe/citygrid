@@ -175,6 +175,18 @@ in the same places. What found it was E6 asking a question nobody had asked befo
 lamps* — and getting zero. When a builder can legitimately return nothing, give something
 downstream a reason to count what it produced.
 
+**A `replace` that does not match is a silent no-op.** V6's `garden` field never landed in
+`buildingParams` because the text searched for was not the text in the file, and two runs went by
+with everything looking right and the pools reporting zero. After any scripted edit, grep for what
+you meant to add — and where a pass can legitimately produce nothing, report its COUNT so an empty
+one cannot be mistaken for an unmet condition.
+
+**A number written down twice is a defect waiting for the next edit.** `VARIANTS` was in
+`client/world/params.js` (which picks a building's variant) and in `client/render/building-kit.js`
+(which builds a pool per variant). They agreed, so nothing was wrong — until the slice that raised
+one of them, at which point every building of the new variants would have silently stopped being
+drawn. Look for the pair before you change either.
+
 **A caption is a measurement nobody read.** The style sheet has printed "pixel — 1 draw, 2 tris"
 next to two styles reporting eighty thousand, in every run since the pixel style shipped, and it
 was a real defect the whole time: `renderer.info.render` is reset by every `render()` call, so the

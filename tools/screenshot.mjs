@@ -63,7 +63,13 @@ export async function shoot({
     const url = `http://127.0.0.1:${port}/tools/shoot.html`
       + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}&terrain=${terrain}&overlay=${overlay}&pitch=${pitch}&mode=${mode}&shadows=${shadows ? 1 : 0}&streets=${streets}&frames=${frames}&street=${street}&time=${time}&post=${post ? 1 : 0}`;
     await page.goto(url, { waitUntil: "load" });
-    await page.waitForFunction(() => globalThis.SHOT_READY === true, undefined, { timeout: 120000 });
+    try {
+      await page.waitForFunction(() => globalThis.SHOT_READY === true, undefined, { timeout: 120000 });
+    } catch (error) {
+      // A page that never becomes ready has almost always thrown, and the
+      // timeout hides the reason. Report what the page said (slice V6).
+      throw new Error(`the shot never became ready:\n  ${problems.join("\n  ") || String(error)}`);
+    }
 
     const report = await page.evaluate(() => globalThis.SHOT_REPORT);
     await mkdir(dirname(join(root, out)), { recursive: true });

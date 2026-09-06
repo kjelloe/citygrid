@@ -18,7 +18,7 @@ import {
   pushTri, pushQuad, addBox, addPanel, addWindowGrid, addDoor, addBalcony,
   addRoofClutter, addShopfront, addFence, addDormers,
 } from "./detail-kit.js";
-import { variantFor } from "../world/params.js";
+import { variantFor, VARIANTS } from "../world/params.js";
 
 const TOP = 1.0;
 const SOUTH = 0.88;
@@ -107,6 +107,25 @@ function pitchedRoof(parts, x0, y0, z0, x1, y1, z1, alongX, detail) {
   else addGable(parts, x0, y0, z0, x1, y1, z1, alongX);
 }
 
+/** A prism standing on the ground: a silo, a tank, a bin. Enough sides that it
+ * reads as round at the zoom a player uses and not one more. */
+function addCylinder(parts, cx, y0, cz, radius, height, sides, tint = 1) {
+  const y1 = y0 + height;
+  for (let i = 0; i < sides; i += 1) {
+    const a = (i / sides) * Math.PI * 2;
+    const b = ((i + 1) / sides) * Math.PI * 2;
+    const x0 = cx + Math.cos(a) * radius;
+    const z0 = cz + Math.sin(a) * radius;
+    const x1 = cx + Math.cos(b) * radius;
+    const z1 = cz + Math.sin(b) * radius;
+    // The face shade follows the angle, which is what gives a flat-shaded
+    // cylinder its roundness without a normal per vertex.
+    const face = tint * (0.72 + 0.28 * (0.5 + 0.5 * Math.cos(a)));
+    pushQuad(parts, [x0, y0, z0], [x1, y0, z1], [x1, y1, z1], [x0, y1, z0], face);
+    pushTri(parts, [cx, y1, cz], [x0, y1, z0], [x1, y1, z1], tint * 1.1);
+  }
+}
+
 function addCone(parts, cx, y0, cz, radius, y1, sides, tint = 1) {
   const apex = [cx, y1, cz];
   for (let i = 0; i < sides; i += 1) {
@@ -188,7 +207,33 @@ function residential(variant, detail) {
   const eave = 0.68;
   if (detail === 0) return blockForm(parts, 1.0, true);
 
-  if (variant === 3) {
+  if (variant === 4) {
+    // A semi-detached PAIR under one ridge, with the party wall showing as a
+    // chimney in the middle. Two front doors is what makes it read as two
+    // houses rather than one wide one.
+    addBox(parts, -W, 0, -W * 0.9, W, eave * 0.94, W * 0.9);
+    roofPart(parts, () => pitchedRoof(parts, -W - 0.06, eave * 0.94, -W * 0.9 - 0.06, W + 0.06, 1.02, W * 0.9 + 0.06, true, detail));
+    if (detail > 1) {
+      addWindowGrid(parts, 2, W * 0.9, W, { from: 0.34, to: eave * 0.86, columns: 4, rows: 1 });
+      addWindowGrid(parts, 0, W * 0.9, W, { from: 0.1, to: eave * 0.86, columns: 4, rows: 2 });
+      addPanel(parts, 2, W * 0.9, -W * 0.78, 0.005, -W * 0.5, 0.24, 0.4);
+      addPanel(parts, 2, W * 0.9, W * 0.5, 0.005, W * 0.78, 0.24, 0.4);
+    }
+    addBox(parts, -0.05, eave * 0.94, -0.06, 0.05, 1.16, 0.06, 0.58);
+    addBox(parts, -0.065, 1.16, -0.075, 0.065, 1.185, 0.075, 0.5);
+  } else if (variant === 5) {
+    // A tall narrow townhouse: three storeys on a deep, narrow plan with a
+    // steep roof, which is the silhouette a terrace of them makes.
+    addBox(parts, -W * 0.66, 0, -W, W * 0.66, eave * 1.35, W);
+    roofPart(parts, () => pitchedRoof(parts, -W * 0.66 - 0.05, eave * 1.35, -W - 0.05, W * 0.66 + 0.05, 1.42, W + 0.05, false, detail));
+    if (detail > 1) for (const side of [0, 1, 2, 3]) {
+      addWindowGrid(parts, side, side % 2 === 0 ? W * 0.66 : W, side % 2 === 0 ? W : W * 0.66, {
+        from: 0.12, to: eave * 1.28, columns: side % 2 === 0 ? 2 : 3, rows: 3,
+      });
+    }
+    if (detail > 1) addDoor(parts, W, 0.085, 0.22);
+    addBox(parts, W * 0.4, eave * 1.35, -W * 0.4, W * 0.52, 1.62, -W * 0.28, 0.58);
+  } else if (variant === 3) {
     // L-shaped cottage: two wings, two ridges, windows on both.
     addBox(parts, -W, 0, -W, 0.05, eave, W);
     addBox(parts, 0.05, 0, -0.05, W, eave * 0.85, W);
@@ -227,11 +272,20 @@ function residential(variant, detail) {
   }
 
   // Chimney, offset per variant so a row of houses is not a row of clones.
-  const cx = variant === 1 ? -W * 0.55 : W * 0.5;
-  addBox(parts, cx - 0.055, eave * 0.88, -W * 0.35, cx + 0.055, 1.13, -W * 0.35 + 0.11, 0.58);
-  addBox(parts, cx - 0.07, 1.13, -W * 0.35 - 0.012, cx + 0.07, 1.155, -W * 0.35 + 0.122, 0.5);
-  // A garden fence: suburbs read as suburbs because of boundaries.
-  if (variant !== 3) addFence(parts, W + 0.035, 0.05, 0.78);
+  // Variants 4 and 5 carry their own and would otherwise get two.
+  if (variant < 4) {
+    const cx = variant === 1 ? -W * 0.55 : W * 0.5;
+    addBox(parts, cx - 0.055, eave * 0.88, -W * 0.35, cx + 0.055, 1.13, -W * 0.35 + 0.11, 0.58);
+    addBox(parts, cx - 0.07, 1.13, -W * 0.35 - 0.012, cx + 0.07, 1.155, -W * 0.35 + 0.122, 0.5);
+  }
+  // A garden boundary: suburbs read as suburbs because of them. A fence on
+  // most, a HEDGE on some — one boundary treatment down a whole street is the
+  // thing that makes a row read as a housing estate rather than a street
+  // (slice V6).
+  // Variants 2 and 4 get a HEDGE instead, from the garden pool in
+  // `instances.js` — a hedge has to be green, and a shade baked into the
+  // building's geometry can only ever be a shade of the building's own colour.
+  if (variant !== 3 && variant !== 2 && variant !== 4) addFence(parts, W + 0.035, 0.05, 0.78);
   return finishBuilding(parts);
 }
 
@@ -259,11 +313,39 @@ function commercial(variant, detail) {
   if (detail > 1) addPanel(parts, 2, W, -W * 0.86, 0.05, W * 0.86, 0.2, 0.28);
   if (detail > 1) addPanel(parts, 0, W, -W * 0.86, 0.05, W * 0.86, 0.2, 0.28);
 
-  if (variant === 0 || variant === 2) addShopfront(parts, W, 0.21, W * 0.9);
+  if (variant === 0) addShopfront(parts, W, 0.21, W * 0.9);
+  if (variant === 2) {
+    // A double-height glazed ground floor under a continuous awning: the same
+    // box as variant 0 until V6, which is three storeys of clone down a street.
+    addShopfront(parts, W, 0.3, W * 0.92);
+    addBox(parts, -W, 0.3, W - 0.01, W, 0.34, W + 0.13, 1.18);
+    if (detail > 1) addPanel(parts, 2, W, -W * 0.9, 0.03, W * 0.9, 0.28, 0.26);
+  }
   if (variant === 1) {
     addBox(parts, -W * 0.72, top + 0.07, -W * 0.72, W * 0.72, top + 0.36, W * 0.72, 0.94);
     roofPart(parts, () => addBox(parts, -W * 0.75, top + 0.36, -W * 0.75, W * 0.75, top + 0.42, W * 0.75));
     if (detail > 1) addWindowGrid(parts, 2, W * 0.72, W * 0.72, { from: top + 0.12, to: top + 0.32, columns: 3, rows: 1 });
+  }
+  if (variant === 4) {
+    // A corner block: the top two storeys step back, which is the silhouette a
+    // 1930s high street corner makes and the one thing that breaks a row of
+    // identical boxes at city zoom.
+    addBox(parts, -W * 0.78, top + 0.07, -W * 0.78, W * 0.78, top + 0.3, W * 0.78, 0.96);
+    roofPart(parts, () => addBox(parts, -W * 0.81, top + 0.3, -W * 0.81, W * 0.81, top + 0.36, W * 0.81));
+    if (detail > 1) for (const side of [0, 2]) {
+      addWindowGrid(parts, side, W * 0.78, W * 0.78, { from: top + 0.12, to: top + 0.26, columns: 3, rows: 1, windowShade: 0.3 });
+    }
+    if (detail > 1) addShopfront(parts, W, 0.21, W * 0.9);
+  }
+  if (variant === 5) {
+    // An arcade: a colonnade at street level under a deep fascia band, so the
+    // ground floor is a row of openings rather than a wall.
+    if (detail > 1) for (let i = -2; i <= 2; i += 1) {
+      const px = i * W * 0.42;
+      addBox(parts, px - 0.028, 0, W - 0.01, px + 0.028, 0.26, W + 0.09, 0.62);
+    }
+    addBox(parts, -W, 0.26, W - 0.01, W, 0.32, W + 0.1, 0.9);
+    addBox(parts, -W - 0.02, 0.32, -W - 0.02, W + 0.02, 0.4, W + 0.02, 1.24);
   }
   if (variant === 3) {
     // A sign board standing above the parapet.
@@ -310,11 +392,38 @@ function industrial(variant, detail) {
     });
   }
 
+  if (variant === 2) {
+    // A gantry rail down the length of the shed — the same sawtooth as variant
+    // 0 until V6, which is half the industry in the city built twice.
+    addBox(parts, -W - 0.06, top + 0.16, -W * 0.12, W + 0.06, top + 0.2, W * 0.12, 0.62);
+    for (const px of [-W * 0.7, 0, W * 0.7]) {
+      addBox(parts, px - 0.02, top, -W * 0.06, px + 0.02, top + 0.16, W * 0.06, 0.55);
+    }
+  }
+
   const stacks = variant === 1 ? 2 : 1;
   for (let i = 0; i < stacks; i += 1) {
     const sx = stacks === 1 ? W * 0.5 : -W * 0.45 + i * W * 0.9;
     addBox(parts, sx - 0.05, top, -W * 0.5, sx + 0.05, 1.25 + i * 0.08, -W * 0.5 + 0.1, 0.5);
     addBox(parts, sx - 0.062, 1.25 + i * 0.08, -W * 0.5 - 0.012, sx + 0.062, 1.28 + i * 0.08, -W * 0.5 + 0.112, 0.42);
+  }
+  if (variant === 4) {
+    // Silos: two cylinders beside the shed, which is the one industrial
+    // silhouette nobody mistakes for an office block.
+    for (const sx of [-W * 0.55, -W * 0.1]) {
+      addCylinder(parts, sx, top, W * 0.45, 0.17, 0.62, 10, 0.86);
+      addCone(parts, sx, top + 0.62, W * 0.45, 0.19, 0.12, 10);
+    }
+  }
+  if (variant === 5) {
+    // A monitor roof: a raised glazed lantern down the ridge, which is how a
+    // long shed is daylit and the reason it has a stepped profile.
+    roofPart(parts, () => {
+      addBox(parts, -W * 0.4, top + 0.06, -W, W * 0.4, top + 0.2, W, 0.92);
+      addBox(parts, -W * 0.44, top + 0.2, -W - 0.02, W * 0.44, top + 0.25, W + 0.02);
+    });
+    if (detail > 1) addPanel(parts, 2, W * 0.4, -W * 0.34, top + 0.09, W * 0.34, top + 0.18, 0.3);
+    if (detail > 1) addPanel(parts, 0, W * 0.4, -W * 0.34, top + 0.09, W * 0.34, top + 0.18, 0.3);
   }
   if (variant === 3) {
     // Loading bay: canopy, and two roller doors under it.
@@ -351,14 +460,38 @@ function civic(variant, detail) {
   addBox(parts, 0.15, 0, W + 0.05, 0.19, 0.26, W + 0.09, 0.66);
   addBox(parts, -0.24, 0, W, 0.24, 0.025, W + 0.11, 0.85);
 
-  if (variant === 0) {
+  if (variant === 4) {
+    // A hall behind a full colonnade: six columns across the front and a
+    // pediment over them.
+    for (let i = -3; i <= 3; i += 1) {
+      const px = i * W * 0.3;
+      addBox(parts, px - 0.026, 0, W + 0.02, px + 0.026, top * 0.7, W + 0.11, 0.7);
+    }
+    addBox(parts, -W, top * 0.7, W + 0.01, W, top * 0.78, W + 0.13, 0.9);
+    roofPart(parts, () => addGable(parts, -W, top * 0.78, W + 0.01, W, top * 0.96, W + 0.13, false));
+  } else if (variant === 5) {
+    // A stepped tower: three setbacks, which is the civic silhouette that
+    // reads from across the map.
+    addBox(parts, -W * 0.62, top + 0.08, -W * 0.62, W * 0.62, top + 0.34, W * 0.62, 0.94);
+    addBox(parts, -W * 0.42, top + 0.34, -W * 0.42, W * 0.42, top + 0.6, W * 0.42, 0.9);
+    addBox(parts, -W * 0.24, top + 0.6, -W * 0.24, W * 0.24, top + 0.82, W * 0.24, 0.86);
+    roofPart(parts, () => addBox(parts, -W * 0.28, top + 0.82, -W * 0.28, W * 0.28, top + 0.88, W * 0.28));
+    if (detail > 1) for (const side of [0, 2]) {
+      addWindowGrid(parts, side, W * 0.42, W * 0.42, { from: top + 0.38, to: top + 0.56, columns: 2, rows: 1, windowShade: 0.3 });
+    }
+  } else if (variant === 0) {
     addBox(parts, -0.1, top + 0.08, -0.1, 0.1, top + 0.44, 0.1, 0.92);
     if (detail > 1) addPanel(parts, 2, 0.1, -0.05, top + 0.2, 0.05, top + 0.34, 1.3);
     roofPart(parts, () => addGable(parts, -0.135, top + 0.44, -0.135, 0.135, top + 0.6, 0.135, true));
   } else if (variant === 1) {
     addBox(parts, W * 0.3, top + 0.08, -0.03, W * 0.36, top + 0.52, 0.03, 0.55);
     if (detail > 1) roofPart(parts, () => addRoofClutter(parts, W, top + 0.08, seed));
-  } else {
+  } else if (variant === 3) {
+    // A rotunda on the roof: a drum with a shallow cone, which is the civic
+    // silhouette that is neither a tower nor a box.
+    addCylinder(parts, 0, top + 0.08, 0, W * 0.42, 0.22, 12, 0.94);
+    roofPart(parts, () => addCone(parts, 0, top + 0.3, 0, W * 0.46, top + 0.48, 12));
+  } else if (variant === 2) {
     addBox(parts, -W * 0.62, top + 0.08, -W * 0.62, W * 0.62, top + 0.18, W * 0.62, 0.88);
     if (detail > 1) roofPart(parts, () => addRoofClutter(parts, W * 0.6, top + 0.18, seed));
   }
@@ -432,7 +565,11 @@ function tuft(variant, detail = 2) {
   return finish(parts);
 }
 
-export const VARIANTS = 4;
+// VARIANTS comes from the MODEL (`world/params.js`), which is what picks a
+// variant per building. It was declared here as well, and the two numbers had
+// to agree or `pools[kind + variant]` came back undefined and every building of
+// the missing variant silently stopped being drawn (slice V6).
+export { VARIANTS };
 export const TREE_VARIANTS = 3;
 export const CAR_VARIANTS = 2;
 export const TUFT_VARIANTS = 2;

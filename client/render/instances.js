@@ -86,6 +86,14 @@ export function createInstances(scene, styleName = "plain") {
   // onto a road surface, and it is why the green there is foreground rather
   // than leftover background.
   make("lawn", flatGeometry(styleName, 1, 1, 0.055), 0xffffff, 12000);
+  // The rest of the front garden (slice V6). The lawn alone reads as a green
+  // rectangle; what makes it a garden is a boundary and a way in. Both are
+  // instanced per lot, so a suburb costs two more instances a house.
+  // A hedge ACROSS THE FRONTAGE, not a ring: at city zoom the two side hedges
+  // are behind the house and the back one is never seen, so a ring is three
+  // instances of nothing. One per lot.
+  make("hedge", slabGeometry(styleName, 1, 0.1, 0.07), 0xffffff, 12000);
+  make("path", flatGeometry(styleName, 0.16, 0.5, 0.06), 0xffffff, 12000);
 
   // The overlay pass. One tint quad per tile, plus a per-band MARK — a dot, a
   // bar, a cross — because §16 and §30 both say never colour alone, and a
@@ -500,6 +508,16 @@ export function updateInstances(state, pools, options = {}) {
     // ground the house was cut into, so on a slope the uphill half of it is
     // buried and that is what a plinth looks like from above (spec §5.6).
     if (p.lawn) push(pools.lawn, cx, h, cz, building.w, building.h, 1, p.lawn);
+    // The rest of the front garden (slice V6): a boundary and a way in. Both
+    // sit on the lot's own seat like the lawn, and both are skipped inside a
+    // baked chunk, where E5's prop pass draws the real thing.
+    if (p.garden && !isBaked(building.x, building.y)) {
+      // The hedge stands on the lot line and the path crosses the setback to
+      // the door. Both in the same +z direction the kit puts the door in, and
+      // both rotated with the house so a spun one keeps its own front.
+      push(pools.hedge, cx, h, cz + building.h / 2 - 0.03, building.w * 0.9, 1, 1, p.garden.hedge, p.spin);
+      push(pools.path, cx, h, cz + building.h / 2 - p.setback / 2, 1, 1, p.setback * 2, p.garden.path, p.spin);
+    }
 
     // A baked chunk builds this lot as a real facade (slice E5); drawing the
     // instanced box as well is the same house twice, z-fighting on every face.
@@ -508,8 +526,13 @@ export function updateInstances(state, pools, options = {}) {
     const pool = pools[`${p.kind}${p.variant}_${tier}`];
     if (!pool) continue;
     const roofPool = pools[`${p.kind}${p.variant}_${tier}_roof`];
-    push(pool, cx, h, cz, building.w * 0.98, p.height, building.h * 0.98, p.colour, p.spin);
-    if (roofPool) push(roofPool, cx, h, cz, building.w * 0.98, p.height, building.h * 0.98, p.roof, p.spin);
+    // Set back from the street, for residential only: the front of the lot is
+    // the garden (slice V6). The box moves back by half the setback and loses
+    // it from its depth, so the BACK of the house stays where it was.
+    const depth = (building.h - p.setback) * 0.98;
+    const bz = cz - p.setback / 2;
+    push(pool, cx, h, bz, building.w * 0.98, p.height, depth, p.colour, p.spin);
+    if (roofPool) push(roofPool, cx, h, bz, building.w * 0.98, p.height, depth, p.roof, p.spin);
   }
 
   // --- the overlay pass -----------------------------------------------------

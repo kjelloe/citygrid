@@ -9,7 +9,10 @@
 import { pseudo, jitter } from "./hash.js";
 import { getConfig } from "./config.js";
 
-export const VARIANTS = 4;
+/** How many silhouettes each category has. The kit imports this rather than
+ * keeping its own copy: `variantFor` picks from this number and `createInstances`
+ * builds a pool per variant from the same one (slice V6). */
+export const VARIANTS = 6;
 
 const ZONE_NONE = 0;
 const ZONE_RESIDENTIAL = 1;
@@ -106,6 +109,10 @@ export function storeys(building) {
  * owner's seat colour and the roof a darkened version of it, so ownership
  * reads at a glance rather than hiding under a terracotta hat.
  */
+/** Which residential variants take a hedge rather than a fence. The kit builds
+ * a fence into the geometry for the others (slice V6). */
+const HEDGE_VARIANTS = new Set([2, 4]);
+
 export function buildingParams(building, palette, family, showOwner = false) {
   const kind = kindOf(building.zone);
   const cfg = getConfig();
@@ -127,5 +134,24 @@ export function buildingParams(building, palette, family, showOwner = false) {
     lawn: kind === "residential" || kind === "civic"
       ? varyColour(palette.lawn, building.id * 5 + 3, 0.6)
       : 0,
+    // The rest of the garden (slice V6): a hedge across the frontage and a path
+    // to the door. Only on the variants where the kit did NOT build a fence
+    // into the geometry, because a fence and a hedge on the same boundary is a
+    // hedge behind a fence. A hedge has to be its own colour, and a shade baked
+    // into the building's geometry can only ever be a shade of the building's
+    // own colour — which is why this is a pool rather than four more boxes.
+    // How much of the lot's DEPTH is left in front of a house, as a fraction of
+    // a tile. Without it there is no front garden to put anything in: the L2
+    // box fills its tile, so a hedge and a path land underneath the house.
+    // `lot.setback.residential` metres, which is what E5's facade already
+    // leaves — so the box and the facade agree a little better than before
+    // rather than a little worse.
+    setback: kind === "residential" ? cfg.lot.setback.residential / cfg.tileM : 0,
+    garden: kind === "residential" && HEDGE_VARIANTS.has(variantFor(building.id, VARIANTS))
+      ? {
+        hedge: varyColour(darken(palette.lawn, 0.62), building.id * 3 + 1, 0.5),
+        path: varyColour(palette.civic, building.id * 7 + 2, 0.35),
+      }
+      : undefined,
   };
 }

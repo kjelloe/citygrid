@@ -40,6 +40,20 @@ for (const check of CHECKS) {
   if (!(report.buildings > 0)) problems.push("the fixture city grew nothing");
   if (!(report.instances > 0)) problems.push("no instances were placed");
   if (report.chunksRebuilt !== 16) problems.push(`rebuilt ${report.chunksRebuilt} chunks, expected 16`);
+  // Every category builds a DISTINCT silhouette per variant (slice V6). A
+  // variant the kit forgot falls through to another branch and comes out
+  // identical — a city of clones with a green suite, and node cannot see it
+  // because `building-kit.js` imports three.
+  for (const [kind, counts] of Object.entries(report.kit ?? {})) {
+    if (counts.length !== report.variants) {
+      problems.push(`${kind} builds ${counts.length} variants, not ${report.variants}`);
+    }
+    const distinct = new Set(counts).size;
+    if (distinct < counts.length) {
+      problems.push(`${kind} has ${counts.length - distinct} duplicate silhouette(s): ${counts.join(", ")}`);
+    }
+    if (counts.some((n) => !(n > 0))) problems.push(`${kind} has an empty variant`);
+  }
   // The whole point of instancing: a city of hundreds of buildings must not be
   // hundreds of draw calls.
   if (!check.post && report.drawCalls > 80) {
@@ -52,6 +66,11 @@ for (const check of CHECKS) {
     for (const problem of problems) console.log(`        ${problem}`);
   } else {
     console.log(`ok    ${label.padEnd(26)} ${report.drawCalls} draws, ${report.triangles} tris, ${report.buildings} buildings`);
+    if (check.span === 0) {
+      for (const [kind, counts] of Object.entries(report.kit ?? {})) {
+        console.log(`        ${kind.padEnd(12)} ${new Set(counts).size} distinct silhouettes of ${counts.length}`);
+      }
+    }
   }
 }
 

@@ -18,6 +18,7 @@
 // renderer. No fixtures and no mock state: a screenshot of something the
 // simulation did not actually produce would be worth nothing.
 import * as THREE from "three";
+import { buildingVariants, VARIANTS } from "../client/render/building-kit.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
@@ -160,7 +161,39 @@ globalThis.SHOT_REPORT = {
   night: stats.night,
   lamps: stats.lamps,
   lampsHeld: stats.lampsHeld,
+  variants: VARIANTS,
+  // How many of the garden pools were actually placed (slice V6). A pool that
+  // is silently empty looks exactly like a pool whose conditions were not met,
+  // which is the lesson E6 paid for.
+  garden: { lawn: view.pools.lawn?.count ?? -1, hedge: view.pools.hedge?.count ?? -1, path: view.pools.path?.count ?? -1 },
   mode,
+  // Every category's variants, as triangle counts (slice V6). A variant the kit
+  // does not build comes out identical to another, which is a city of clones
+  // and a green suite; node cannot see this because `building-kit.js` imports
+  // three.
+  kit: (() => {
+    const out = {};
+    for (const kind of ["residential", "commercial", "industrial", "civic"]) {
+      // `{ walls, roof }` per variant — the roof is its own geometry so it can
+      // take the roof colour.
+      // A hash of the POSITIONS, not a triangle count: two different shapes
+      // can have the same number of triangles, and two identical ones always
+      // hash the same.
+      out[kind] = buildingVariants(kind, 2).map(({ walls, roof }) => {
+        let h = 2166136261;
+        for (const g of [walls, roof]) {
+          if (!g) continue;
+          const p = g.getAttribute("position").array;
+          for (let i = 0; i < p.length; i += 1) {
+            h ^= Math.round(p[i] * 4096) & 0xffff;
+            h = Math.imul(h, 16777619) >>> 0;
+          }
+        }
+        return h;
+      });
+    }
+    return out;
+  })(),
   // What the baked groups actually hold and where they actually are. Kept
   // because the E3 ribbons were in the scene, in the right place, with the
   // right triangle count, and invisible — and this is the probe that proved

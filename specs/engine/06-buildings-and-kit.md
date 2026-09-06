@@ -149,6 +149,38 @@ saturated city, a High frame is ~316k and a Medium one ~130k, so the budgets are
 140k Medium**, Low unchanged at 40k because Low has no street chunks at all. The frame-time
 governor is still what protects a device; the triangle budget only decides what to sacrifice.
 
+## 6.6a As built (V6, 2026-09-06)
+
+**Six silhouettes per category, not four**, and `VARIANTS` is now written down ONCE. It was in
+`client/world/params.js` and again in `client/render/building-kit.js`; `variantFor` picks from the
+first and `createInstances` builds a pool per variant from the second, so raising one and not the
+other makes `pools[kind + variant]` undefined and every building of that variant silently stops
+being drawn. The kit imports the model's number.
+
+| Category | The two that V6 added | The one it separated |
+|---|---|---|
+| Residential | a semi-detached pair under one ridge; a tall narrow townhouse | — |
+| Commercial | a corner block that steps back at the top; an arcade with a colonnade | 2 was a clone of 0 |
+| Industrial | silos beside the shed; a monitor roof down the ridge | 2 was a clone of 0 |
+| Civic | a hall behind a full colonnade; a stepped tower | 2 and 3 shared the `else` |
+
+`client_smoke` hashes the vertex positions of every variant of every category and fails on a
+duplicate. A triangle COUNT was the first version and gave false positives — residential 1 and 5
+are different shapes with the same 316 triangles — and false negatives are the ones that matter
+anyway: commercial 0 and 2 really were the same building.
+
+**Fourteen house roofs and six flat ones**, up from eight and four. `test/kit.test.js` holds the
+floor and requires three hue bands, because "more colours" that are all the same red is more of
+nothing.
+
+**A front garden is a setback.** The L2 box filled its tile, so a hedge and a path landed
+underneath the house. Residential boxes are set back by `lot.setback.residential` — the same 3 m
+E5's facade already leaves, so the box and the facade agree slightly better than before — and the
+hedge stands on the lot line with the path crossing to the door. Measured on the 64-tile fixture:
+198 lawns, 71 hedges and 71 paths at a wide zoom. At city zoom the hedge is one or two pixels and
+mostly occluded; what reads there is the setback and the lawn, and the hedge is what E5's prop
+pass draws properly at street level (**Q49**).
+
 ## 6.5 Materials, with no binary assets
 
 Everything City Grid draws is flat colour with baked face shading, and ruling 022 chose that on
