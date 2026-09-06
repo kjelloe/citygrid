@@ -498,6 +498,49 @@ commercial doors, waiting at a red walk phase, a two-part instanced body with a 
 per tier, frozen by `?life=0`. Gate: `budget_gate` at High with the cap; `walkthrough` still
 walks (pedestrians do not collide with the player).
 
+## 2a. Status
+
+*Kept current by whoever implements. An item is **done** when it is implemented,
+its tests are written or updated, its gate is green, its docs are synced and it
+is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
+
+| Item | Status | Commit | Gate | Left for review |
+|---|---|---|---|---|
+| **V2** — the quality tier | **done** 2026-09-06 | `c12ca3a` | `budget_gate` at three tiers **and at the opening span**; `ui_smoke` 101 → 108 checks, hit-testing the row through the renderer | `test/governor.test.js` (8), `test/settings.test.js` (+6); tier table in `data/cityviewer.json`; ruling 040 satisfied by `test/purity.test.js`. **Q27** |
+| **E1** — the lane graph | **done** 2026-09-06 | `2a527d6` | `tools/lanes_dump.mjs`: 5,810 links, 372 signals, shortest link 8.32 m against a 4.5 m car | `test/lanes.test.js` (19); spec §4.6a. Right turns came out zero metres long until lanes were trimmed to the junction **box**; the model rebuild went 123 ms → 35.7 ms on the way |
+| **V1** — traffic you can see | **done** 2026-09-06 | `25adbc3` | `budget_gate` with cars; `reports/smoke-V1-a.png`; two `screenshot.mjs` runs byte identical under `?life=0` | `test/cars.test.js` (14) — **not** `test/traffic.test.js`, which is the engine's; spec §9.1a. Load sets the **speed** and density follows, which is the reverse of §9.1's order and the reason the first build looked the same at every load |
+| **V3** — ground that is not a checkerboard | **done** 2026-09-06 | `ec6ce50` | `reports/smoke-V3-{before,after}-span{default,24,12}.png`; rebuild 10.2 → 11.6 ms on a saturated 128×128 | `test/ground-colour.test.js` (11); spec §5.1a. **Q28**: the distance-to-street tone is a two-ring flood, not a corridor query per tile — the specified way measured 16.6 ms against a 15 ms budget |
+| **V4** — real relief | **done** 2026-09-06 | `f13b0dd` | `play_smoke` picks on a slope and the ghost stands on the ground; `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on an 84 m `hilly` map | `test/picking.test.js` (10); the flat-layer audit is spec §5.6. **Q29**: the overlay wash is the one layer still floating |
+| **V5** — the perspective play camera | not started | — | — | — |
+| **P1** — toon shading and the anime rig | not started | — | — | — |
+| **E2** — the baker and the chunk cache | not started | — | — | — |
+| **E3** — ribbons | not started | — | — | — |
+| **E4** — the street camera and collision | not started | — | — | — |
+| **E5** — street-level facades | not started | — | — | — |
+| **E6** — time of day | not started | — | — | — |
+| **P2** — ink and grade | not started | — | — | — |
+| **V6** — lots with something on them | not started | — | — | — |
+| **E7** — pedestrians | not started | — | — | — |
+
+**Deviations from this document, each with the measurement that forced it and a
+question so it can be reversed cheaply:**
+
+- **V3** was specified to use `model.nearestCorridor` per tile with a chunk-level
+  cache, held to ≤ 15 ms. It measured **16.6 ms** against a 10.2 ms baseline. A
+  flood outward from the road layer, stopped after `ceil(urbanReach / tileM)`
+  rings, is exact at the granularity the colour is computed at and gives
+  **11.6 ms** (Q28).
+- **V4**'s zone tint was to be checked as a quad and given a skirt or split into
+  triangles. Neither: it stopped being a quad and became a colour of the terrain
+  mesh, which is free and seamless. The overlay wash could not follow (Q29).
+- **V1**'s tests were named `test/traffic.test.js` by this document. That file is
+  the engine's traffic. They are `test/cars.test.js`.
+
+**Three gates were wrong about the game before they could see it**, all of the
+same shape and all fixed in place: `lobby_smoke` hashed after an await, and
+`play_smoke` and `mvp_acceptance` projected tile centres at `y = 0` to decide
+where to click, which with relief aims down the slope.
+
 ## 3. Review protocol
 
 For each item, leave in place for review:
@@ -505,6 +548,7 @@ For each item, leave in place for review:
 1. the dev-log entry with the numbers the gate produced (not "passed");
 2. the before/after screenshot pair in `reports/`;
 3. the commit `slice-<id>` on `main` or a branch named `cityviewer/<id>` — say which;
+   **so far: all of them on `dev_night`, one commit per item, listed in §2a;**
 4. any question you had to guess at, written into the bottom of `dev-questions.md` as a new
    Q with the assumption you built against, so the guess can be reversed cheaply.
 
