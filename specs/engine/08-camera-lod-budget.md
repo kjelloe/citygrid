@@ -114,3 +114,19 @@ Chunks outside `visibleBounds` push nothing (already true for pools). L3 chunks 
 the tier's radius are dropped back to L2 and their baked group disposed after a grace period,
 so panning along a street does not thrash. Union Square hides facade cells beyond 420 m and
 keeps massing; here L2 is the massing.
+
+## 8.5 Review round after E3 (2026-09-06)
+
+- **The orbit is around the ground under the target** (E3, A34): `applyPose` reads
+  `view.groundY`. `tilePixels` and `visibleBounds` must use the same eye; the pose arithmetic
+  moves to `client/world/orbit.js` and both call it (slice R1).
+- **Cars are culled and counted against the view** (R1). `traffic.pose` poses only cars inside
+  `bounds` and `counts.cars` is that number, not the city's. A saturated 128×128 holds 3,660
+  cars, which posed everywhere is 300k triangles a frame and a ladder that drops cars at every
+  zoom.
+- **The street camera (E4)** needs its own near plane — 0.5 tile units is 10 m and would clip
+  the pavement — and `tilePixels`, `visibleBounds` and `chunksNear` must treat `mode ===
+  'street'` as perspective from the eye, not as orthographic. `view.mode !== 'city'` is not a
+  safe test for "orthographic" once a third mode exists.
+- **The governor's `supersample` rung is wired** to a pixel-ratio step-down (R1); the `pixel`
+  post pass joins the sacrifice ladder, since it is a full-screen pass like ink.

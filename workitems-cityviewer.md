@@ -524,7 +524,9 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **P1** — toon shading and the anime rig | **done** 2026-09-06 | `044da85` | `style-sheet` in **both** projections — three styles that differ in shading, not tint; `client_smoke` painted; `budget_gate` (toon costs no triangles and no draw calls: painted and plain report identical counts) | `test/toon.test.js` (17); spec §7.1a. Two findings: the painted palette collapsed for a deuteranope at 0.042, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **E2** — the baker and the chunk cache | **done** 2026-09-06 | `7f8b595` | `budget_gate` gains four street-chunk checks on the saturated 96×96 at High: **9 chunks live, 9 draw calls, 5,184 triangles, build p95 1 ms** against an 8 ms budget, and **0 rebuilds** over six frames of an unchanged city | `test/merge.test.js` (9), `test/chunks.test.js` (11); spec §6.4a. The merge is pure typed-array arithmetic so it can be tested in node; `chunkHash` covers the buildings' RECORDS as well as their tiles |
 | **E3** — ribbons | **done** 2026-09-06 | `slice-E3` | `budget_gate` green on all 32 rows plus the three opening spans; street chunks **9 live, 9 groups / 9 meshes, 76,294 triangles, build p95 7 ms** against an 8 ms budget, **0 rebuilds** over six frames. `reports/smoke-E3-{street,junction,slope}.png` | `test/ribbon.test.js` (18, incl. winding-against-normals in both directions, `dashes` over a bend, `clip`, `trim`), `test/lod.test.js` (+2: L3 is a zoom; a baked chunk is charged once a frame), `test/world.test.js` (+1: `surfaceAt` puts the pavement a kerb above the carriageway); spec §5.2–5.3 |
-| **E4** — the street camera and collision | not started | — | — | — |
+| **R1** — review fixes after E3 | not started | — | — | — |
+| **V7** — overlays as a texture on the ground (ruling 041) | not started | — | — | — |
+| **E4** — the street camera and collision | in progress, uncommitted, tree red | — | — | — |
 | **E5** — street-level facades | not started | — | — | — |
 | **E6** — time of day | not started | — | — | — |
 | **P2** — ink and grade | not started | — | — | — |
@@ -579,6 +581,103 @@ passed it; and the perspective eye distance was derived from `span` as if it
 meant the vertical extent, which is right in landscape and wrong on a portrait
 phone. Desktop-perspective green beside phone-perspective red is the pair that
 named the second one.
+
+## 2b. Review round after E3 (2026-09-06)
+
+*Read on `dev_night` at `d4f19d3` plus the uncommitted E4 work. Suite, `client_smoke` and
+`budget_gate` re-run by the reviewer: smoke and budget green; the suite is red only on
+`test/collision.test.js`, which is E4 in progress and uncommitted. Everything V2–E3 stands.
+Six findings are real defects, two are unwired promises, and E4 inherits three constraints.
+They are the **R1** and **V7** items below; do R1 before finishing E4, because E4 builds on the
+camera and the cars.*
+
+### R1 — Review fixes (S)
+
+Each is a few lines and each has a test that can see it. Commit as `slice-R1`.
+
+1. **Cars are posed everywhere and counted everywhere.** `traffic.pose` walks every car in the
+   city and `counts.cars = traffic.count()`. On the saturated 128×128 (3,660 cars × 82
+   triangles) that is 300k triangles a frame under a 200k High budget: the ladder drops cars
+   at every zoom and the pools carry the cost anyway. Pose only cars inside `bounds` (a car's
+   link has `tiles`; the first tile is enough) and count the same set. Test: a city with cars on
+   two streets and bounds around one of them counts and poses only that street's cars.
+2. **Moving cars are invisible when no parked car of that variant is in view.**
+   `updateInstances` sets `mesh.visible = mesh.count > 0` and `traffic.pose` pushes afterwards.
+   Re-derive visibility (and add the cars' triangles to `result.triangles`) after the pose, in
+   `scene.js`. Test in `budget_gate`: a street-zoom row with `?life=1` reports car instances > 0.
+3. **A car in a junction takes a stranger's speed.** `desired.get(link.kind === "block" ?
+   link.id : link.from)` — `link.from` on a turn link is a node id, and `desired` is keyed by
+   link ids. Carry the entering link's desired speed on the car (`car.v0`) when it moves onto a
+   turn. Test: a car entering a turn from a loaded link keeps that link's speed through the box.
+4. **The governor's `supersample` rung does nothing**, and the `pixel` post pass is not in the
+   ladder at all (`allows("pixel")` is always true). Wire `supersample` to a pixel-ratio
+   step-down (`ratioFor` → 1) and put `pixel` in `SACRIFICE` before `ink`. Test in
+   `test/governor.test.js`: after the third sacrifice `allows("supersample")` is false; a
+   page-level check that `renderer.getPixelRatio()` drops.
+5. **`worldChanged` clears the street cache.** Every build action throws away nine baked chunks
+   and re-bakes them one a frame; `chunkHash` exists precisely so that only the chunk that
+   changed rebuilds. Remove `streets.clear()` from `worldChanged` and let `nextBuild`'s hash
+   comparison decide. Test in `test/streaming.test.js`: after a change in one chunk exactly one
+   entry is stale.
+6. **The camera and the budget disagree about where the eye is** (A34). `applyPose` orbits
+   `view.groundY`; `tilePixels` and `visibleBounds` orbit `y = 0`. Move the eye arithmetic into
+   `client/world/orbit.js` — `eyeOf(view) → { x, y, z }` from target, yaw, pitch, distance and
+   groundY — and call it from `camera.js`, `lod.js` and `picking.js`. Test: on a view with
+   `groundY = 4`, `tilePixels` at the target equals the orthographic value, as V5's test already
+   asserts for `groundY = 0`.
+7. **`scene.fog = new THREE.Fog(...)` every frame.** Mutate `fog.near`/`fog.far` instead.
+8. **The model rebuild is 35.7 ms on a 96×96 per build action**, and the ally measured nothing
+   on a 128×128. Measure it there; if it is over one frame (16 ms), the corridor and lane
+   derivation goes per chunk keyed by `chunkHash` — the deferral E0 recorded in
+   `specs/engine/03-architecture.md`. Record the number either way.
+
+**Done when** all eight have a test or a gate row, `budget_gate` shows `cars > 0` at a street
+zoom on the 128×128 fixture with the ladder above "cars dropped", and the dev-log carries the
+128×128 model rebuild time.
+
+### V7 — Overlays as a texture on the ground (S) — ruling 041
+
+- `client/render/overlay-texture.js`: a `DataTexture` of `width × height` bytes (`RedFormat`,
+  `NearestFilter`), filled from `bandAt` per tile when the overlay changes; a second byte plane
+  for the territory pattern later.
+- The terrain material only: `onBeforeCompile` adds `uOverlay`, `uOverlayOn`, `uMapSize`,
+  samples at `worldPosition.xz / tileM` and mixes `OVERLAY_COLOURS[band]` (as a 4-entry uniform
+  array) over the vertex colour at the wash's opacity. The marks stay instanced at `heightAt`.
+- `updateInstances` loses the `ovl` pool; `estimate` loses the overlay term.
+- Fix A32 in the same slice: orthographic `tilePixels` reads `canvasHeight / verticalSpan(view)`.
+  Re-baseline `reports/smoke-V7-*.png` and say so in the dev-log.
+
+**Tests first.** `test/render.test.js`: the byte array has one entry per tile and every value
+`bandAt` returns has a colour; `test/lod.test.js`: portrait ortho `tilePixels` is
+`canvasHeight × aspect / span`. **Gate.** `a11y_smoke` overlay contrast on the `hilly` fixture
+at a low pitch; `budget_gate` with one overlay-on row; `play_smoke` toggles an overlay and
+reads a pixel.
+
+### Constraints E4 inherits
+
+- **Near plane.** `view.persp.near` is 0.5 tile units — 10 m. Street mode needs about 0.01
+  (0.2 m) and a far plane it can afford; set both per mode in `setMode`.
+- **`mode !== "city"` is not "orthographic".** `tilePixels`, `visibleBounds`, `chunksNear`,
+  `groundRay` and `applyAtmosphere` all branch on it. A third mode has to be perspective from
+  the eye, with the eye at `view.eye` rather than on the orbit. Do this through `orbit.js`
+  (R1.6) so the three agree.
+- **The working tree is red.** `test/collision.test.js` fails three ways (`pushOut` inside a
+  box picks the wrong face on the fixture; `floorAt` refuses a kerb) and `client/world/
+  collision.js` is not in the precache. Finish or stash before touching anything else; a slice
+  never leaves the tree red for the next one (CLAUDE.md, slice ritual step 3).
+- **Q34** answers the touch question: tap-to-walk along the corridors, no stick.
+
+### Also noted, no action
+
+- `main` is at `491f9bf`, thirty commits behind `dev_night`, including N22–N30 and everything
+  cityviewer. Merging is the owner's call; until then every gate and every doc test speaks for
+  `dev_night` only.
+- The kerb is drawn in `palette.roadMark` and the verge in `palette.lawn` regardless of the
+  terrain under it — fine for grass, wrong on sand or rock. E5's prop pass should take the
+  verge colour from `ground-colour.js`.
+- `chunksNear` orders by distance to the orbit target; under perspective the nearest chunks
+  to the **eye** are the ones on screen at a low pitch. Revisit when E4 puts the eye on the
+  pavement.
 
 ## 3. Review protocol
 

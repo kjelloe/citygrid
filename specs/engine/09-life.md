@@ -88,3 +88,17 @@ per-frame uniform on an instanced pool, not per-instance work.
 - Cost anything when the tier says off: `Config.noLife` in Union Square exists for the QA
   capture; the same flag freezes life for a deterministic screenshot here.
 - Enter the hash. `tiles.traffic` is the only coupling and it is one-way.
+
+## 9.6 Review round after E3 (2026-09-06)
+
+- A car in a junction takes the desired speed of the block link it came from. `traffic.js`
+  looks it up by `link.from`, which for a turn link is a **node** id in a map keyed by **link**
+  ids, so a car in the box gets an unrelated street's speed or the limit (R1: carry the speed
+  on the car when it enters a turn).
+- The car pools must be marked visible after `pose`, not before: `updateInstances` sets
+  `visible = count > 0` and the moving cars are pushed afterwards, so a variant with no parked
+  car in view draws no moving cars either (R1).
+- Spawning happens at the tail of any under-target block link, which is "out of the last
+  junction"; despawning takes the car nearest the end. Both read as plausible at city zoom and
+  will not at street level. E7-time question: spawn only on `entry` links and at the map edge
+  of the view.

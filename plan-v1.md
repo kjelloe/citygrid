@@ -365,6 +365,8 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | **E7** | **Pedestrians** — nav graph, commuters and shoppers, signal waiting, a simplified rig | M | E4, E6 |
 | **P1** | **Toon shading and the anime rig** — `shading: 'toon'`, ramps, the shadow-tint patch, a painted palette | M | **Done (slice P1).** `painted` is a real style rather than a lighting treatment: toon materials through a ramp, a shadow tint that patches three's own shader and warns if the chunk has changed shape, an anime rig whose cool fill carries the unlit side, and a palette of desaturated ground and warm walls. Two findings on the way — the painted palette collapsed for a deuteranope, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **P2** | **Ink and grade** — depth-texture target, second-difference ink, split-tone grade, FXAA; desktop tier, governor-gated | M | P1, V2 |
+| **R1** | **Review fixes after E3** — cars culled to the view and counted in bounds, car pools visible after the pose, the junction speed lookup, the governor's dead rung, the street cache surviving `worldChanged`, one orbit function for the camera and the budget, a fog that is not reallocated every frame | S | E3 |
+| **V7** | **Overlays as a texture on the ground** (ruling 041) — one byte a tile in a `DataTexture` sampled by world x/z in the terrain material; the marks stay instanced; orthographic `tilePixels` fixed on portrait (A32) and the ortho screenshot re-baselined | S | V4 |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything
 visual, so they come first even though N3 is the more interesting work. N8 sits
@@ -390,13 +392,10 @@ by number from the code they create.
 | Q18 | Which mayor ranks unlock which advisor personas, and does the player then pick freely? | C3 |
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
-| Q27 | Is dropping the utility ribbons the right ladder rung for a Low tier? | V2, reversible |
-| Q28 | Is a two-ring flood from the road layer good enough for the distance-to-street tone? | V3, reversible |
-| Q29 | Should the overlay wash follow the ground instead of floating over it? | V4, revisit at E2 |
-| Q30 | Should orthographic `tilePixels` use the vertical extent rather than `span` on a portrait screen? | when the ortho picture next changes |
-| Q31 | Should the L3 centre line be a marking canvas rather than dashed ribbons? | E3, revisit at E5 |
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
-| Q33 | Should the camera orbit the ground under its target? | E3, reversible |
+| Q34 | How does a phone walk — tap-to-walk or a virtual stick? | E4 |
+| Q35 | What is written on the signs, and is it localised? | E5 |
+| Q36 | Is the day/night cycle on by default? | E6 |
 
 ## What would make us stop and re-plan
 

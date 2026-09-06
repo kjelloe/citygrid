@@ -94,15 +94,14 @@ Two mechanisms, chosen by level:
 **Built (E3): dashed ribbons, not a canvas.** The centre line is `dashes()` along the corridor —
 3 m of paint every 12 m, 15 cm wide, a centimetre above the crown — so it follows a bend instead
 of stepping round it, and it stops short of a junction with the rest of the kerbside. A canvas
-is still the right answer for crosswalk bars, stop bars and lane lines when E5 needs them; it was
-not needed to draw one line, and geometry the walker can be tested against was worth more than a
-texture. See **Q31**.
+was not needed to draw one line, and geometry the walker can be tested against was worth more
+than a texture. **A33** settles it: crosswalks and stop bars are ribbons too.
 
-- **L3, a marking canvas per chunk** - Union Square's `RoadMarkings` idea at chunk scale: lane
-  lines, centre line, crosswalk bars and stop bars drawn once into a canvas covering the chunk
-  and sampled in the road material by world x/z. No geometry, no z-fighting, follows any slope.
-  A 512 px canvas over a 320 m chunk is 0.6 m/px, fine for a 3 m crosswalk bar and coarse for a
-  10 cm lane line; 1024 px if the lines matter.
+- **L3, ribbons** (amended 2026-09-06, A33 — the canvas is dropped). The centre line is
+  `dashes()` along the corridor; E5 adds crosswalk bars and stop bars as short ribbons across
+  the carriageway at the lane graph's stop lines. One primitive, testable in node, and the
+  walker can be tested against it. A canvas would have been a second sampling path and a
+  texture per chunk for a few strips of paint.
 
 ## 5.4 Networks
 
@@ -147,7 +146,7 @@ Every layer that was flat, and what became of it. Measured on `terrainStyle: 'hi
 | lamps, parked cars, tufts, trees | tile centre, drawn at an offset | sampled at the offset they are actually drawn at |
 | buildings | tile height | `lot.seat` — the lowest corner of the lot (ruling 038) |
 | lawn | tile height | the building's seat, so the uphill half is buried and reads as the plinth |
-| **overlay wash and marks** | tile height | the **mean** of the tile's four corners. There is no right answer for a flat quad on a cliff, only a least wrong one: seating on the highest corner was tried and hovers visibly, the mean grazes. It cannot follow the zone tint into the mesh because it is toggled at runtime and that would rebuild every chunk on every switch (Q29) |
+| **overlay wash and marks** | tile height | the **mean** of the tile's four corners (V4). There is no right answer for a flat quad on a cliff, only a least wrong one. **A31 / ruling 041 (V7):** the wash becomes a `DataTexture` sampled by world x/z in the terrain material — it follows the ground because it is the ground's colour that frame, and toggling it uploads 16 KB instead of rebuilding a chunk. The marks stay instanced at `heightAt` |
 | build ghost and area preview | `elevation × 0.02` | `heightAt`, checked by `play_smoke` |
 | shadow camera | `far: 400` | `far: 400 + 128`, the depth a u8 elevation spans at `reliefM` |
 
