@@ -28,7 +28,7 @@ E0 is the slice that makes the rest cheap, and it is pure, so it is the safest f
 
 | # | Slice | Size | Depends on | Done when |
 |---|---|---|---|---|
-| **E2** | **The baker and the chunk cache** - `baker.js`, in-repo merge, per-chunk build keyed by content hash, one build per frame, disposal | M | E0 | A chunk rebuilds only when its hash moves; draw calls per L3 chunk ≤ materials in use |
+| **E2** | **The baker and the chunk cache** - `baker.js`, in-repo merge, per-chunk build keyed by content hash, one build per frame, disposal | M | E0 | **Done 2026-09-06.** 9 chunks live, 9 draw calls, 5,184 triangles, build p95 1 ms against an 8 ms budget, 0 rebuilds over six frames of an unchanged city. The merge is pure arithmetic over typed arrays so it can be tested in node; `chunkHash` covers the buildings' RECORDS as well as their tiles |
 | **E3** | **Ribbons** - carriageway, kerbs, sidewalks, junction boxes, connector curves; marking canvas per chunk | M | E2, V4 | Kerb is a 0.15 m step in `floorAt`; no z-fight on a slope |
 | **E4** | **Street camera and collision** - walk controls, `CollisionWorld` (walls from lots, patches from sidewalks), enter/exit, touch | M | E3, V5 | `walkthrough.mjs` walks every corridor of a saturated fixture; `passability` clean |
 | **E5** | **L3 facades** - the generated spec, the four category grammars, roofs with eaves, reveals built outward, signage canvases, emissive buckets | L | E2, D5 | Style sheet at street level; L2 and L3 agree per building id; budget at High tier with 9 chunks |

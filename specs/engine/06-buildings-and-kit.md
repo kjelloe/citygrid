@@ -75,6 +75,40 @@ Higashiyama densities; build at most one chunk per frame, nearest first, and let
 cover the rest until it lands. That is Union Square's streaming (`World.stream`, 130 m cells)
 with a build step instead of a visibility toggle.
 
+## 6.4a As built (E2, 2026-09-06)
+
+Four pieces, and the split between them is what makes three of the four testable in node —
+three cannot be resolved there.
+
+- **`client/render/merge.js`** is pure arithmetic over typed arrays: `{ position, normal, color,
+  uv, matrix }` in, one set of buffers out. Not three geometries, because the failures worth
+  catching are all arithmetic — a matrix applied to positions but not to normals, a colour
+  written per geometry rather than per vertex, a `uv` present on some inputs and not others
+  (half a uv buffer is worse than none).
+- **`client/render/baker.js`** wraps it for three: `add(geometry, matrix, colour, options)`
+  buckets by shading signature, `build()` merges each bucket into one mesh, `dispose(group)`
+  frees one.
+- **`client/world/chunks.js`** is pure: `chunkHash` is FNV-1a over the chunk's tile layers AND
+  the records of the buildings anchored in it — a lot that grows a storey changes what is drawn
+  without changing a tile. The chunk's own coordinates go in first, or two identical empty
+  chunks share a hash and the cache hands one chunk's geometry to another.
+- **`client/render/street-chunks.js`** is the cache: at most one build per frame, nearest
+  first, rebuild only when the hash moves, dispose two seconds after a chunk leaves the radius
+  so panning across a boundary does not thrash.
+
+`streetChunks` is a **count**, not a radius (ruling 040: none / 4 / 9), and the ladder's first
+rung drops the farthest one — it is the most expensive thing in the frame and the one the player
+is least likely to be looking at.
+
+The chunk size moved into `data/cityviewer.json` as `chunkTiles`. Three things key off it and
+they have to agree: the terrain mesh's rebuild unit, the LOD's per-chunk plan, and the street
+cache's bake unit.
+
+Measured on the budget gate's saturated 96×96 at High, placeholder slabs: **9 chunks live, 9
+groups / 9 meshes** — one draw call per chunk because one signature is in use — **5,184
+triangles**, build **p95 1 ms** against an 8 ms budget, and **0 rebuilds** over six frames of an
+unchanged city.
+
 ## 6.5 Materials, with no binary assets
 
 Everything City Grid draws is flat colour with baked face shading, and ruling 022 chose that on

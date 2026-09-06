@@ -17,6 +17,7 @@ import { createTraffic } from "../life/traffic.js";
 import { tierConfig } from "../world/config.js";
 import { createGovernor } from "./governor.js";
 import { createSky } from "./sky.js";
+import { createStreetChunks } from "./street-chunks.js";
 
 /** What the device would give us, capped by the tier (ruling 040). A cap, not a
  * replacement: a tier must never make a 1× screen render at 2×. */
@@ -198,6 +199,10 @@ export function createRenderer(canvas, state, options = {}) {
   // where they settled, so a screenshot is the same picture twice.
   let traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
 
+  // The baked street cache (slice E2). It draws nothing until a chunk is close
+  // enough to be worth baking and the tier allows any.
+  const streets = createStreetChunks(scene, { style: styleName });
+
   const terrain = createTerrain(state, styleName);
   for (const chunk of terrain.chunks) chunk.mesh.receiveShadow = true;
   scene.add(terrain.group);
@@ -267,6 +272,7 @@ export function createRenderer(canvas, state, options = {}) {
     // the new one: a car holding a link id from a graph that no longer exists
     // is a car in a field.
     traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
+    streets.clear();
     markAllDirty(terrain);
   }
 
@@ -329,7 +335,10 @@ export function createRenderer(canvas, state, options = {}) {
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
     counts.cars = traffic.count();
-    const plan = choosePlan(counts, view, canvas.height, { budget: drawOptions.budget });
+    const plan = choosePlan(counts, view, canvas.height, {
+      budget: drawOptions.budget,
+      streetChunks: drawOptions.streetChunks ?? tier.streetChunks,
+    });
     plan.mode = view.mode;
 
     clampToMap(view, state.width, state.height);
@@ -372,6 +381,9 @@ export function createRenderer(canvas, state, options = {}) {
     }
     plan.overBudget = plan.actual > plan.budget;
 
+    // At most one chunk baked per frame, nearest first (spec §6.4). After the
+    // budget loop, because the ladder may have dropped the radius.
+    stats.streets = streets.update(state, model, view, plan, drawOptions.now ?? Date.now());
     stats.instances = result.instances;
     // How many distinct per-chunk plans the frame used. 1 under orthographic
     // by construction; more than 1 under perspective is the proof that the

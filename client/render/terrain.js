@@ -11,7 +11,13 @@ import { NET_PRESENT } from "../constants-mirror.js";
 import { createGroundColour } from "../world/ground-colour.js";
 import { getConfig } from "../world/config.js";
 
-export const CHUNK = 16;
+// Imported AND re-exported: `export { X } from "…"` re-exports without binding
+// the name locally, and every use of CHUNK in this file was `undefined`. Node
+// cannot import this module (it imports three), so no unit test can see it —
+// only the page can.
+import { CHUNK } from "../world/chunks.js";
+
+export { CHUNK };
 
 // The heights come from `model.heightAt` now (slice V4, ruling 038), not from
 // `elevation × 0.02`. The old constant flattened the map to about a sixth of a

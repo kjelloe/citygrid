@@ -3186,3 +3186,71 @@ nothing is the failure ruling 026 is about.
   of the map, four times the texel density at the same size.
 - `reports/smoke-P1-painted.png` and `smoke-P1-{plain,painted}-city.png` at a 20°
   pitch.
+
+---
+
+## E2 — The baker and the chunk cache
+
+The machinery the street lane runs on. Four pieces, and the split between them
+is the interesting decision: three of the four are testable in node because
+three cannot be resolved there.
+
+**`merge.js` is pure arithmetic over typed arrays**, not over three geometries.
+`{ position, normal, color, uv, matrix }` in, one set of buffers out. The
+failures worth catching are all arithmetic — a matrix applied to positions but
+not to normals (every face then lit as though it pointed at the origin, which
+does not look broken, it looks slightly wrong everywhere), a colour written per
+geometry rather than per vertex, a `uv` present on some inputs and not others.
+Ruling 039 said write the addons rather than vendor them; this is 90 lines
+against `BufferGeometryUtils`'s 700.
+
+**`chunkHash` covers the buildings' records, not only their tiles.** A lot that
+grows a storey changes what is drawn without changing a single tile, so hashing
+`buildingId` alone leaves a stale chunk on screen. The chunk's own coordinates
+go in first: without them two identical empty chunks share a hash and a cache
+keyed by hash hands one chunk's geometry to another.
+
+**The cache builds one chunk a frame, nearest first**, rebuilds only when the
+hash moves, and disposes two seconds after a chunk leaves the radius — the grace
+is what makes it a cache rather than a thrash when a player pans across a
+boundary.
+
+### What failed on the way
+
+**`export { CHUNK } from "…"` does not bind the name locally.** The chunk size
+moved into `data/cityviewer.json` (three things key off it and they have to
+agree), and `terrain.js` re-exported it without importing it — so every use of
+`CHUNK` in that file was `undefined` and the page threw on load. **The suite was
+green**: `terrain.js` imports three, so no node test can import it, and the only
+thing that can see it is a browser. The third time this lane that a real defect
+lived on a path the unit tests structurally cannot reach.
+
+**`streetChunks` is a count, not a radius.** Used as a radius it gave 36 live
+chunks where the High tier allows 9 — four times the work, and the number E5's
+budget is specified against would have meant nothing.
+
+**The gate's city has no buildings.** Roads and zoning develop into nothing
+without power and water, so `model.lots` was empty and the first run baked 36
+chunks of nothing: "street chunks are baked at all" passed on 36 live chunks
+holding 0 triangles. The check now seeds buildings directly and counts
+triangles as well as chunks — a gate that counts containers rather than contents
+is a gate that passes on an empty city.
+
+### Measured
+
+- `./test.sh` **703 tests, green twice**; 9 new in `test/merge.test.js`, 11 in
+  `test/chunks.test.js`.
+- **Twelve gates green.**
+- On the budget gate's saturated 96×96 at High, with the placeholder slabs:
+
+  | | |
+  | --- | --- |
+  | chunks live | **9** (the tier's allowance) |
+  | groups / meshes | 9 / 9 — **one draw call per chunk**, one signature in use |
+  | triangles | 5,184, so 576 a chunk |
+  | build p95 | **1 ms** against an 8 ms budget |
+  | rebuilds over six frames of an unchanged city | **0** |
+
+- The placeholder is one slab per lot at `lot.seat`. E3 and E5 replace the
+  content; the machinery and these numbers are what they will be measured
+  against.

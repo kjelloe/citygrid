@@ -8,6 +8,10 @@
 export const DEFAULTS = Object.freeze({
   tileM: 20,
   reliefM: 0.5,
+  // How many tiles a chunk is on a side. One number, because three things key
+  // off it and they must agree: the terrain mesh's rebuild unit, the LOD's
+  // per-chunk plan, and the street cache's bake unit (slice E2).
+  chunkTiles: 16,
   // `lanes` is per direction, `stopLine` how far short of a junction a lane
   // stops, both read by the lane graph (E1). `speed` (m/s) and `maxDensity`
   // (cars per 100 m at full load) are read by the traffic simulation (V1).

@@ -112,7 +112,14 @@ export function tilePixels(view, canvasHeight, chunk) {
 
 /** The resolvability thresholds, in pixels per tile. One table, read by the
  * frame plan and by every chunk plan, so the two can never disagree. */
-const RESOLVE = { props: 42, cars: 18, markings: 20, poles: 14, networks: 12, shape: 30, shadows: 16, block: 13, trees: 8 };
+const RESOLVE = {
+  props: 42, cars: 18, markings: 20, poles: 14, networks: 12,
+  shape: 30, shadows: 16, block: 13, trees: 8,
+  // Above this a chunk is worth BAKING rather than instancing (slice E2, spec
+  // §8.2): 160 px a tile at TILE_M = 20 is a chunk within about 40–60 m of the
+  // camera, which is the range at which a wall stops being a silhouette.
+  l3: 160,
+};
 
 /** A chunk's own plan: the frame's plan with whatever this chunk's zoom cannot
  * resolve taken away.
@@ -123,6 +130,10 @@ const RESOLVE = { props: 42, cars: 18, markings: 20, poles: 14, networks: 12, sh
  * per-chunk policy is supposed to prevent. */
 export function planForChunk(plan, px) {
   const out = { ...plan };
+  // The one thing a chunk plan may ADD, and only when the frame allows any
+  // street chunks at all: L3 is per chunk by definition — it is the answer to
+  // "is this chunk close enough to be worth baking".
+  out.l3 = plan.streetChunks > 0 && px >= RESOLVE.l3;
   if (px < RESOLVE.props) out.props = false;
   if (px < RESOLVE.cars) out.cars = false;
   if (px < RESOLVE.markings) out.markings = false;
@@ -203,6 +214,10 @@ function estimateOne(counts, plan) {
  * so a plan cannot mean two different things depending on which gate produced
  * it. */
 const LADDER = [
+  // The farthest baked street chunk goes FIRST: it is the most expensive thing
+  // in the frame and the one the player is least likely to be looking at
+  // (spec §8.2, slice E2).
+  (p) => (p.streetChunks > 0 ? ((p.streetChunks -= 1), "street chunk dropped") : ""),
   (p) => (p.props ? ((p.props = false), "props dropped") : ""),
   // Cars go late, between props and markings: they are the thing that was
   // asked for, and a city with no traffic reads as a model rather than a place.
@@ -272,6 +287,10 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
     poles: true,
     networks: true,
     cars: true,
+    // How many chunks of baked street the tier allows around the camera. Set
+    // by the caller from the tier (ruling 040); 0 means none at all.
+    streetChunks: options.streetChunks ?? 0,
+    l3: false,
     shadows: true,
     reason: "full",
     tilePixels: Math.round(px),

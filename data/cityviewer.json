@@ -2,6 +2,7 @@
   "note": "cityviewer's frame and street dimensions, in metres (rulings 035, 038), and the quality tiers (ruling 040). Mirrored in client/world/config.js; test/world.test.js refuses drift. A tile is TILE_M metres; the engine never sees any of this. carCap 0 means uncapped.",
   "tileM": 20,
   "reliefM": 0.5,
+  "chunkTiles": 16,
   "road": {
     "width": 8,
     "sidewalk": 2.5,

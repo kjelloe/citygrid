@@ -188,6 +188,86 @@ try {
       `${row.actual} of ${row.budget} at span ${row.span}, ladder at "${row.lod}"`);
   }
 
+  // --- the street-chunk cache (slice E2, spec §6.4) ---------------------------
+  //
+  // The numbers E3 and E5 will be measured against: how long a chunk takes to
+  // bake, how many draw calls a baked chunk costs, and whether the cache
+  // actually caches — a second pass over an unchanged city must build nothing.
+  const streets = await page.evaluate(async () => {
+    const { renderer, state } = globalThis.CITY;
+    const { focusOn, zoomBy } = await import("/client/render/camera.js");
+    // The budget city is roads and zoning; nothing DEVELOPS without power and
+    // water, so it has no buildings and therefore no lots to bake. Placed
+    // directly, the way `test/traffic.test.js` seeds the engine's own commuter
+    // pass — this check runs last, after every budget row is collected.
+    if (state.buildings.length === 0) {
+      let id = 1;
+      const W = state.width;
+      for (let y = 10; y < W - 10; y += 1) {
+        for (let x = 10; x < W - 10; x += 1) {
+          if ((state.tiles.road[y * W + x] & 16) !== 0) continue;
+          if ((x + y) % 3 !== 0) continue;
+          state.buildings.push({
+            id, def: "res", zone: 1, x, y, w: 1, h: 1, owner: 1,
+            level: 2, valueTier: 1, occupancy: 20, condition: 100, builtTick: 0, flags: 0,
+          });
+          state.tiles.buildingId[y * W + x] = id;
+          id += 1;
+        }
+      }
+      state.nextId = id;
+      renderer.worldChanged();
+    }
+    globalThis.CITY.setQuality("high");
+    focusOn(renderer.view, state.width / 2, state.height / 2);
+    zoomBy(renderer.view, 4 / renderer.view.span);   // close enough for L3
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const builds = [];
+    let now = 0;
+    // One chunk a frame, so nine frames for nine chunks — plus a few spare.
+    for (let i = 0; i < 24; i += 1) {
+      now += 16;
+      renderer.draw({ now });
+      await frame();
+      const s = renderer.stats.streets;
+      if (s?.built) builds.push(s.buildMs);
+    }
+    const after = renderer.stats.streets;
+
+    // A second pass over an unchanged city: the cache must build nothing.
+    let rebuilt = 0;
+    for (let i = 0; i < 6; i += 1) {
+      now += 16;
+      renderer.draw({ now });
+      await frame();
+      rebuilt += renderer.stats.streets?.built ?? 0;
+    }
+
+    // What a baked group actually costs in draw calls.
+    let meshes = 0;
+    let groups = 0;
+    for (const child of renderer.scene.children) {
+      if (child.type === "Group" && child.children.length > 0 && String(child.children[0].name).includes(":")) {
+        groups += 1;
+        meshes += child.children.length;
+      }
+    }
+    return { builds, live: after?.live ?? 0, triangles: after?.triangles ?? 0, rebuilt, groups, meshes };
+  });
+
+  const sorted = [...streets.builds].sort((a, b) => a - b);
+  const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 0;
+  console.log(`      street chunks: ${streets.live} live, ${streets.groups} groups / ${streets.meshes} meshes, `
+    + `${streets.triangles} triangles, build p95 ${p95} ms over ${streets.builds.length} builds`);
+  check("street chunks are baked at all", streets.live > 0, JSON.stringify(streets));
+  check("a chunk bakes inside its frame budget", p95 <= 8, `p95 ${p95} ms over ${streets.builds.length} builds`);
+  check("a baked chunk is one draw call per material",
+    streets.groups > 0 && streets.meshes / streets.groups <= 4,
+    `${streets.meshes} meshes over ${streets.groups} groups`);
+  check("the cache caches: an unchanged city rebuilds nothing",
+    streets.rebuilt === 0, `${streets.rebuilt} rebuild(s) over six frames`);
+
   check("no page errors", errors.length === 0, errors.join(" | "));
   await context.close();
 } finally {
