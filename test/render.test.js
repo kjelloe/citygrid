@@ -475,7 +475,7 @@ test("the cars are posed into the pools the parked ones use", () => {
   // One instance per car whether it is driving or parked, so the measured
   // budget sees it either way (ruling 019).
   const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
-  assert.match(scene, /traffic\.pose\(pools, pushInstance, CAR_COLOURS\)/);
+  assert.match(scene, /traffic\.pose\(pools, pushInstance, CAR_COLOURS, bounds\)/);
   assert.match(instances, /export function pushInstance\(/, "there is no way to add an instance");
   assert.match(scene, /plan\.cars !== false/, "the cars ignore the LOD plan");
 });
@@ -507,7 +507,9 @@ test("one ray builder, and both projections go through it", () => {
   // not be written twice (slice V5).
   const picking = readFileSync(join(repoRoot, "client", "render", "picking.js"), "utf8");
   assert.match(picking, /export function groundRay\(/);
-  assert.match(picking, /view\.mode === "city"/, "the ray builder does not know the projection");
+  // `!== "ortho"`, not `=== "city"`: street mode is perspective too, and a
+  // third mode is not "not city" (R1.6's constraint).
+  assert.match(picking, /view\.mode !== "ortho"/, "the ray builder does not know the projection");
   const controller = readFileSync(join(repoRoot, "client", "input", "controller.js"), "utf8");
   assert.match(controller, /groundPoint\(/, "the pan builds its own ray");
   assert.equal(/unproject/.test(controller), false, "the controller unprojects a second time");
@@ -589,4 +591,24 @@ test("a GLSL local never shadows a builtin the same shader calls", () => {
     assert.equal(new RegExp(`\\b(?:float|vec2|vec3|vec4|int)\\s+${builtin}\\b`).test(shaders), false,
       `a local called ${builtin} shadows the builtin`);
   }
+});
+
+test("the pools are settled AFTER the cars are posed (R1.2)", () => {
+  // The moving cars go into the same pools as the parked ones, and they go in
+  // after `updateInstances` has written `visible = mesh.count > 0`. On a street
+  // with no parked car of that variant in view, every moving car of it was
+  // invisible — and its triangles were missing from the frame's count of
+  // itself, which is the number the ladder spends against.
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  const pose = scene.indexOf("traffic.pose(");
+  const settle = scene.indexOf("settlePools(pools)");
+  assert.ok(pose > 0 && settle > pose, "the pools are settled before the cars are posed");
+  assert.match(scene, /result\.triangles = settled\.triangles/,
+    "the cars' triangles are not added back to the frame's count");
+});
+
+test("only the cars on screen are counted for the budget (R1.1)", () => {
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.match(scene, /counts\.cars = traffic\.count\(bounds\)/,
+    "the budget counts every car in the city, not the ones on screen");
 });

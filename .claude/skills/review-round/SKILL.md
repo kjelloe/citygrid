@@ -181,6 +181,17 @@ with everything looking right and the pools reporting zero. After any scripted e
 you meant to add — and where a pass can legitimately produce nothing, report its COUNT so an empty
 one cannot be mistaken for an unmet condition.
 
+**A test that passes with the bug planted is worse than no test.** R1's junction-speed finding had
+two behavioural tests written for it and both passed with the defect restored — the two key spaces
+overlap, so the wrong answer is a plausible speed, and a car crosses an 8 m junction in under a
+second so nothing about its position moves. Plant the bug before believing the test. When the
+honest instrument turns out to be a source assertion, say in the file why the behavioural one could
+not be made to discriminate.
+
+**Moving code invalidates the tests that read it.** Four source assertions went red when the eye
+arithmetic moved into `client/world/orbit.js` — they were right to. A source test is a model of the
+code, and the moment to re-read it is the moment the code moves.
+
 **A number written down twice is a defect waiting for the next edit.** `VARIANTS` was in
 `client/world/params.js` (which picks a building's variant) and in `client/render/building-kit.js`
 (which builds a pool per variant). They agreed, so nothing was wrong — until the slice that raised

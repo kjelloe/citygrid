@@ -478,3 +478,34 @@ test("a baked chunk is charged once a frame, and only when it is on screen", () 
   // which is what the render-and-measure loop is for.
   assert.equal(estimate({ ...counts, bakedChunks: 0 }, plan) - 9 * 512, 0);
 });
+
+test("the camera and the budget ask the same function where the eye is (R1.6)", async () => {
+  // `applyPose` orbited `view.groundY` and `tilePixels` orbited `y = 0`, so on
+  // a map with fifty metres of relief the frame was priced from a camera that
+  // was not where the camera was. Both go through `client/world/orbit.js`.
+  const { eyeOf } = await import("../client/world/orbit.js");
+  const view = { mode: "city", span: 20, aspect: 16 / 9, fov: 50, yaw: 0, pitch: 0.6, targetX: 30, targetZ: 30, groundY: 4 };
+  const eye = eyeOf(view);
+  assert.ok(Math.abs(eye.y - (4 + Math.sin(0.6) * (20 / (2 * Math.tan(25 * Math.PI / 180))))) < 1e-9);
+  // A tile AT THE TARGET is the same size under both projections whatever the
+  // ground does — which is the property that makes switching projection free
+  // of a jump, and it held only for `groundY = 0` before R1.6.
+  const ortho = tilePixels({ ...view, mode: "ortho" }, 720);
+  assert.ok(Math.abs(tilePixels(view, 720) - ortho) < 1e-6,
+    `${tilePixels(view, 720)} against ${ortho} at groundY 4`);
+
+  const flat = { ...view, groundY: 0 };
+  assert.ok(Math.abs(tilePixels(flat, 720) - tilePixels({ ...flat, mode: "ortho" }, 720)) < 1e-6);
+});
+
+test("the eye arithmetic is written down once", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { repoRoot } = await import("./helpers/sources.js");
+  for (const file of [["client", "render", "camera.js"], ["client", "render", "lod.js"]]) {
+    const source = readFileSync(join(repoRoot, ...file), "utf8");
+    assert.match(source, /from "\.\.\/world\/orbit\.js"/, `${file.join("/")} does not use orbit.js`);
+    assert.equal(/Math\.sin\(view\.yaw\) \* Math\.cos\(pitch\) \* distance/.test(source), false,
+      `${file.join("/")} still has its own copy of the orbit`);
+  }
+});

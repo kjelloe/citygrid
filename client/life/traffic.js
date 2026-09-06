@@ -135,7 +135,7 @@ export function createTraffic(state, model, options = {}) {
     const id = nextId;
     nextId += 1;
     const car = {
-      id, link: link.id, s: 0, v: first ? Math.min(v0, first.v) : v0,
+      id, link: link.id, s: 0, v: first ? Math.min(v0, first.v) : v0, v0,
       variant: jitter(id, 23) > 0.5 ? 1 : 0,
       colour: Math.floor(jitter(id, 29) * 6),
     };
@@ -187,6 +187,18 @@ export function createTraffic(state, model, options = {}) {
     return ACCEL * (free - (wanted / room) ** 2);
   }
 
+  /** Is a link's first tile inside the visible box? A link is at most one
+   * corridor long, so its first tile is close enough to decide by — and the
+   * bounds already carry a margin for exactly this kind of approximation. */
+  function onScreen(link, bounds) {
+    if (!bounds) return true;
+    const tile = link.tiles?.[0];
+    if (tile === undefined) return true;
+    const x = tile % state.width;
+    const y = (tile - x) / state.width;
+    return x >= bounds.x0 && x <= bounds.x1 && y >= bounds.y0 && y <= bounds.y1;
+  }
+
   function step(dt) {
     bucket();
 
@@ -213,8 +225,18 @@ export function createTraffic(state, model, options = {}) {
       for (let i = 0; i < list.length; i += 1) {
         const car = list[i];
         const { gap, leadV, hard } = ahead(car, link, list, i);
-        // A car in a junction keeps the speed of the road it came from.
-        const v0 = desired.get(link.kind === "block" ? link.id : link.from) ?? VMAX;
+        // A car in a junction keeps the speed of the road it came FROM, which
+        // it carries. `link.from` on a turn link is a NODE id and `desired` is
+        // keyed by LINK ids, so the old lookup returned a stranger's speed —
+        // usually an empty road's, so a car crossing a busy junction sped up
+        // inside the box and braked on the far side (R1.3).
+        // Kept ON THE CAR, so it survives the junction and so a test can read
+        // it: a block's desired speed comes from its own load, and a turn has
+        // no load of its own, so it keeps whatever the approach was doing.
+        car.v0 = link.kind === "block"
+          ? (desired.get(link.id) ?? VMAX)
+          : (car.v0 ?? VMAX);
+        const v0 = car.v0;
         const a = accelerate(car.v, v0, gap, leadV, hard);
         car.v = Math.max(0, Math.min(VMAX, car.v + a * dt));
         // Never move further than the gap: the model is stable at these
@@ -264,11 +286,13 @@ export function createTraffic(state, model, options = {}) {
 
     /** Writes every car into the instanced pools, in TILE units — the pools are
      * still in tiles until V5 moves the camera to metres. */
-    pose(pools, push, colours) {
+    pose(pools, push, colours, bounds) {
       const tileM = model.tileM;
+      let posed = 0;
       for (const car of cars) {
         const link = links[car.link];
         if (!link) continue;
+        if (!onScreen(link, bounds)) continue;
         lanes.sample(link, car.s, out);
         const pool = pools[`car${car.variant}`];
         if (!pool) continue;
@@ -276,11 +300,24 @@ export function createTraffic(state, model, options = {}) {
         // (cos θ, −sin θ) in world x, z.
         push(pool, out.x / tileM, out.y / tileM, out.z / tileM, 1, 1, 1,
           colours[car.colour % colours.length], Math.atan2(-out.tz, out.tx));
+        posed += 1;
       }
-      return cars.length;
+      return posed;
     },
 
-    count: () => cars.length,
+    /** How many cars are on screen. The same set `pose` writes, or the budget
+     * is charged for cars nobody draws: on a saturated 128x128 that was 3,660
+     * cars at 82 triangles against a 200k budget, so the ladder dropped the
+     * cars at every zoom and the pools carried the cost anyway (R1.1). */
+    count(bounds) {
+      if (!bounds) return cars.length;
+      let n = 0;
+      for (const car of cars) {
+        const link = links[car.link];
+        if (link && onScreen(link, bounds)) n += 1;
+      }
+      return n;
+    },
     clock: () => clock,
     cars: () => cars.slice(),
 

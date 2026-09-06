@@ -268,6 +268,54 @@ try {
   check("the cache caches: an unchanged city rebuilds nothing",
     streets.rebuilt === 0, `${streets.rebuilt} rebuild(s) over six frames`);
 
+  // --- cars (R1.1, R1.2) -----------------------------------------------------
+  //
+  // Its own page, with `life=1`: the budget page is loaded frozen so two frames
+  // of it are the same picture, and a frozen city has no traffic to look at.
+  const carsPage = await context.newPage();
+  carsPage.on("pageerror", (error) => errors.push(`cars: ${error.message}`));
+  await carsPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await carsPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  const cars = await carsPage.evaluate(async () => {
+    const { apply } = await import("/engine/reducer.js");
+    const C = await import("/engine/commands.js");
+    await import("/engine/build-commands.js");
+    const state = globalThis.CITY.state;
+    const W = state.width;
+    // A road with traffic on it. The engine's commuter layer is what the
+    // renderer's cars read (ruling 037).
+    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [Math.round(W / 2) * W + 4, W - 8] });
+    for (let i = 0; i < state.tiles.road.length; i += 1) {
+      if (state.tiles.road[i] & 16) state.tiles.traffic[i] = 200;
+    }
+    globalThis.CITY.renderer.worldChanged();
+
+    const { focusOn, zoomBy } = await import("/client/render/camera.js");
+    const renderer = globalThis.CITY.renderer;
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    globalThis.CITY.setQuality("high");
+    focusOn(renderer.view, W / 2, Math.round(W / 2) + 0.5);
+    zoomBy(renderer.view, 14 / renderer.view.span);
+    for (let i = 0; i < 40; i += 1) await frame();
+
+    const pools = renderer.pools;
+    const keys = ["car0", "car1"];
+    return {
+      inPools: keys.reduce((n, k) => n + (pools[k]?.count ?? 0), 0),
+      hidden: keys.filter((k) => (pools[k]?.count ?? 0) > 0 && !pools[k].visible).length,
+      inCity: renderer.traffic.count(),
+      counted: renderer.stats.counted,
+      lod: renderer.stats.lod,
+    };
+  });
+  await carsPage.close();
+  console.log(`      cars: ${cars.inPools} in the pools, ${cars.inCity} moving in the city, `
+    + `ladder at "${cars.lod}"`);
+  check("cars are moving at a street zoom", cars.inCity > 0, JSON.stringify(cars));
+  check("and they are drawn", cars.inPools > 0, JSON.stringify(cars));
+  check("no pool is hidden after the cars went into it (R1.2)", cars.hidden === 0,
+    `${cars.hidden} pool(s) hidden with cars in them`);
+
   // --- night (slice E6, spec §7.3) -------------------------------------------
   //
   // Night is what pays for L3 — lit windows, lit shopfronts, lamp pools — and

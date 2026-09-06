@@ -3619,3 +3619,61 @@ the first thing it said was `TypeError: g.getAttribute is not a function`.
 Q49 (is a hedge worth drawing at L2 — kept, and first to drop), Q50 (the L2 box and the L3 facade
 do not share a footprint, deliberately). `reports/smoke-V6-{city,suburb}.png`;
 `reports/style-sheet.png` re-baselined.
+
+---
+
+## 2026-09-06 — Slice R1: the review's eight findings
+
+All eight, each with a test or a gate row that can see it.
+
+**1. Cars were posed everywhere and counted everywhere.** `traffic.pose` walked every car in the
+city and `counts.cars` counted every car in the city; on a saturated 128×128 that is 3,660 cars at
+82 triangles against a budget of 200k, so the ladder dropped the cars at every zoom and the pools
+carried the cost anyway. Both take `bounds` now and answer for the same set, which a unit test
+holds them to.
+
+**2. Moving cars were invisible when no parked car of that variant was in view.** The moving cars
+go into the same pools as the parked ones and they go in AFTER `updateInstances` has written
+`visible = mesh.count > 0`. The pools are settled again after the pose, and the cars' triangles go
+back into the frame's own count of itself — the number the ladder spends against.
+
+**3. A car in a junction took a stranger's speed.** `desired.get(link.kind === "block" ? link.id :
+link.from)` — `link.from` on a turn link is a NODE id and `desired` is keyed by LINK ids. The
+desired speed is carried on the car as `car.v0` now. This one has no behavioural test and the
+reason is worth writing down: the two key spaces overlap, so the wrong answer is a plausible speed
+rather than a wrong one, and a car crosses an 8 m junction box in well under a second, so nothing
+measurable about its position changes. It is asserted against the source, and `car.v0` is now
+observable so the next question about it can be answered.
+
+**4. The governor's `supersample` rung did nothing and `pixel` was not on the ladder at all.**
+`allows("pixel")` was always true, so the one post pass a phone actually runs could never be given
+up and the ladder's first rung was a pass no tier below High even has. `pixel` goes first now, and
+`applyGovernor` reads `allows("supersample")` and steps the pixel ratio down to 1.
+
+**5. `worldChanged` cleared the street cache.** Every build action threw away nine baked chunks and
+re-baked them one a frame — six frames of L2 after every road tile painted. `chunkHash` exists
+precisely so that only the chunk that changed is stale; the cache is told the model moved and drops
+the bake in flight, and `nextBuild` decides the rest.
+
+**6. The camera and the budget disagreed about where the eye is.** `client/world/orbit.js` is new
+and pure: `verticalSpan`, `eyeDistance` and `eyeOf` in one place, called by `camera.js` and
+`lod.js`. `applyPose` is eight lines now and handles all three modes. `picking.js` branched on
+`view.mode === "city"`, which made street mode build an orthographic ray — the constraint the
+review left for E4 and the one thing of it still outstanding.
+
+**7. `scene.fog = new THREE.Fog(...)` every frame.** Mutated.
+
+**8. The model rebuild, measured on a 128×128.** **80.0 ms** — corridors 7.7, ground 0.3, lanes
+**53.0**, lots 25.0; 38.7 ms on the 96×96. Over the one-frame threshold the finding named, so the
+per-chunk derivation E0 deferred is now due. That is a slice rather than a fix and it is **Q51**,
+recorded with the split so the next person starts at the lane graph rather than guessing.
+
+**Measured.** `budget_gate` gains three car rows on a live page (`life=1`, which the frozen budget
+page cannot be): **15 cars in the pools, 6 moving in the city, no pool hidden with cars in it**.
+Suite green twice; every gate green. 12 new or changed unit tests.
+
+**What failed on the way.** Four tests in `input.test.js` and `render.test.js` asserted against the
+old shape of `camera.js` and `picking.js` — a source test is a model of the code, and moving the
+code is exactly when it has to be read again. And the first two attempts at a behavioural test for
+finding 3 both passed with the bug planted, which is how it became a source assertion instead: a
+test that cannot fail is worse than no test, and saying so in the file is the honest version.

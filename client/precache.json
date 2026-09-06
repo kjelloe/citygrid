@@ -1,5 +1,5 @@
 {
- "version": "83559c865f82",
+ "version": "e3fa58498a29",
  "generated": "2026-09-06",
  "files": [
   "./client/audio/audio-model.js",
@@ -88,6 +88,7 @@
   "./client/world/lanes.js",
   "./client/world/lots.js",
   "./client/world/model.js",
+  "./client/world/orbit.js",
   "./client/world/params.js",
   "./client/world/raymarch.js",
   "./data/balance.json",

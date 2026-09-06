@@ -10,6 +10,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 import { createGovernor, SACRIFICE } from "../client/render/governor.js";
 
 /** Feeds `count` frames of `ms` each. */
@@ -54,7 +57,7 @@ test("the order of sacrifice is fixed, and it stops when it runs out", () => {
   // Ink first because it is three full-screen passes for a finish; shadows
   // next; the supersample last, because dropping it is the one the player sees
   // as "blurry" rather than "different".
-  assert.deepEqual(SACRIFICE, ["ink", "shadows", "supersample"]);
+  assert.deepEqual(SACRIFICE, ["pixel", "ink", "shadows", "supersample"]);
   const governor = createGovernor({ targetMs: 16 });
   for (let i = 0; i < SACRIFICE.length + 2; i += 1) run(governor, 100, 60);
   assert.deepEqual(governor.disabled(), [...SACRIFICE], "it did not walk the whole ladder");
@@ -70,9 +73,9 @@ test("a sacrifice is remembered even when the frames come good again", () => {
   // Ten frames to fill the minimum window, then just over a second of misery.
   const governor = createGovernor({ targetMs: 33 });
   run(governor, 100, 21);
-  assert.deepEqual(governor.disabled(), ["ink"]);
+  assert.deepEqual(governor.disabled(), [SACRIFICE[0]]);
   run(governor, 8, 600);
-  assert.deepEqual(governor.disabled(), ["ink"], "it handed the pass back and will now oscillate");
+  assert.deepEqual(governor.disabled(), [SACRIFICE[0]], "it handed the pass back and will now oscillate");
 });
 
 test("reset forgets, because a new tier is a new question", () => {
@@ -97,4 +100,37 @@ test("the window is bounded, so a long session costs no memory", () => {
   const governor = createGovernor({ targetMs: 33, window: 60 });
   run(governor, 16, 10000);
   assert.equal(governor.size(), 60);
+});
+
+// --- the review's finding (R1.4) ---------------------------------------------
+
+test("the pixel pass is on the ladder, and it goes first", () => {
+  // It was not on the ladder at all, so `allows("pixel")` was always true: the
+  // one post pass a phone actually runs could never be given up, and the
+  // ladder's first rung was a pass no tier below High even has.
+  assert.equal(SACRIFICE[0], "pixel", `the ladder starts with ${SACRIFICE[0]}`);
+  assert.ok(SACRIFICE.indexOf("pixel") < SACRIFICE.indexOf("ink"));
+  assert.ok(SACRIFICE.indexOf("supersample") === SACRIFICE.length - 1,
+    "the supersample is the bluntest sacrifice and goes last");
+});
+
+test("the supersample rung is read by something (R1.4)", () => {
+  // It was on the ladder and nothing consulted it: the governor gave it up and
+  // the renderer went on rendering at 2x. A rung nobody reads is a decision
+  // nobody takes — the same shape as `shadowRadius` in P1's rig table.
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.match(scene, /governor\.allows\("supersample"\)/,
+    "nothing reads the supersample rung");
+  assert.match(scene, /renderer\.setPixelRatio\(ratio\)/,
+    "the supersample rung is read and then not acted on");
+});
+
+test("every rung the ladder names is read by the renderer", () => {
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  for (const rung of SACRIFICE) {
+    // `pixel` and `ink` are read through `postAllowed(pass)`, which takes the
+    // style's own pass name; the other two are named directly.
+    const read = scene.includes(`allows("${rung}")`) || scene.includes("governor.allows(pass)");
+    assert.ok(read, `nothing in the renderer reads the ${rung} rung`);
+  }
 });

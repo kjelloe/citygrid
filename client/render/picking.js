@@ -30,7 +30,10 @@ export function groundRay(view, pixelX, pixelY, canvasWidth, canvasHeight) {
   ndc.set((pixelX / canvasWidth) * 2 - 1, -((pixelY / canvasHeight) * 2 - 1));
   const camera = view.camera;
   origin.set(ndc.x, ndc.y, -1).unproject(camera);
-  if (view.mode === "city") {
+  // Perspective is `city` AND `street` — a third mode is not "not city"
+  // (R1.6's constraint). An orthographic ray has no single origin; a
+  // perspective one has the eye.
+  if (view.mode !== "ortho") {
     direction.copy(origin).sub(camera.position).normalize();
     return { from: camera.position, direction };
   }

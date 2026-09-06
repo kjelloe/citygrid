@@ -16,6 +16,8 @@
 // tier whose estimated cost fits the budget, and never draw detail nobody can
 // see.
 
+import { eyeOf } from "../world/orbit.js";
+
 /** Tiers, coarsest last. Each names what it keeps. */
 export const TIER = {
   FULL: 2,   // windows, sills, doors, roof clutter, fences, props, trees
@@ -98,26 +100,6 @@ export function getCosts() {
  * from where the player actually is rather than from an orbit that is no
  * longer there (slice E4).
  */
-export function eyeOf(view, aspect = view.aspect ?? 1) {
-  const pitch = view.pitch ?? Math.atan(1 / Math.SQRT2);
-  if (view.mode === "street") {
-    const e = view.eye ?? { x: view.targetX, y: 0, z: view.targetZ };
-    const cp = Math.cos(pitch);
-    return { x: e.x, y: e.y, z: e.z, fx: -Math.sin(view.yaw) * cp, fy: Math.sin(pitch), fz: -Math.cos(view.yaw) * cp };
-  }
-  // `span` is tiles across the SHORTER axis; the field of view is vertical.
-  const vertical = aspect >= 1 ? view.span : view.span / aspect;
-  const distance = vertical / (2 * Math.tan(((view.fov ?? 50) * Math.PI) / 360));
-  const x = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
-  const y = (view.groundY ?? 0) + Math.sin(pitch) * distance;
-  const z = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
-  const fx = view.targetX - x;
-  const fy = (view.groundY ?? 0) - y;
-  const fz = view.targetZ - z;
-  const len = Math.hypot(fx, fy, fz) || 1;
-  return { x, y, z, fx: fx / len, fy: fy / len, fz: fz / len };
-}
-
 export function tilePixels(view, canvasHeight, chunk) {
   if (!view || !canvasHeight || !view.span) return 0;
   // Anything that is not a perspective mode is orthographic, including a bare
@@ -125,7 +107,7 @@ export function tilePixels(view, canvasHeight, chunk) {
   if (view.mode !== "city" && view.mode !== "street") return canvasHeight / view.span;
 
   const focalPx = canvasHeight / (2 * Math.tan(((view.fov ?? 50) * Math.PI) / 360));
-  const eye = eyeOf(view);
+  const eye = eyeOf(view);   // one arithmetic, shared with `camera.js` (R1.6)
   const eyeX = eye.x;
   const eyeY = eye.y;
   const eyeZ = eye.z;
@@ -135,7 +117,7 @@ export function tilePixels(view, canvasHeight, chunk) {
   // report an unbounded size, and a chunk BEHIND the eye is simply far away —
   // the distance is unsigned, which is what stops it coming back as the finest
   // detail in the frame.
-  const range = Math.max(0.5, Math.hypot(px - eyeX, eyeY - (view.groundY ?? 0), pz - eyeZ));
+  const range = Math.max(0.5, Math.hypot(px - eyeX, eyeY - eye.ground, pz - eyeZ));
   return focalPx / range;
 }
 
@@ -429,7 +411,7 @@ export function visibleBounds(view, aspect, margin = 3) {
     // stops the answer running to infinity at a low pitch (slice V5), and the
     // reason street mode pulls its far plane in to where the fog already is.
     const fov = ((view.fov ?? 50) * Math.PI) / 180;
-    const eye = eyeOf(view, aspect);
+    const eye = eyeOf({ ...view, aspect });
     const eyeX = eye.x;
     const eyeY = eye.y;
     const eyeZ = eye.z;

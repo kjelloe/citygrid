@@ -578,7 +578,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **P1** — toon shading and the anime rig | **done** 2026-09-06 | `044da85` | `style-sheet` in **both** projections — three styles that differ in shading, not tint; `client_smoke` painted; `budget_gate` (toon costs no triangles and no draw calls: painted and plain report identical counts) | `test/toon.test.js` (17); spec §7.1a. Two findings: the painted palette collapsed for a deuteranope at 0.042, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **E2** — the baker and the chunk cache | **done** 2026-09-06 | `7f8b595` | `budget_gate` gains four street-chunk checks on the saturated 96×96 at High: **9 chunks live, 9 draw calls, 5,184 triangles, build p95 1 ms** against an 8 ms budget, and **0 rebuilds** over six frames of an unchanged city | `test/merge.test.js` (9), `test/chunks.test.js` (11); spec §6.4a. The merge is pure typed-array arithmetic so it can be tested in node; `chunkHash` covers the buildings' RECORDS as well as their tiles |
 | **E3** — ribbons | **done** 2026-09-06 | `slice-E3` | `budget_gate` green on all 32 rows plus the three opening spans; street chunks **9 live, 9 groups / 9 meshes, 76,294 triangles, build p95 7 ms** against an 8 ms budget, **0 rebuilds** over six frames. `reports/smoke-E3-{street,junction,slope}.png` | `test/ribbon.test.js` (18, incl. winding-against-normals in both directions, `dashes` over a bend, `clip`, `trim`), `test/lod.test.js` (+2: L3 is a zoom; a baked chunk is charged once a frame), `test/world.test.js` (+1: `surfaceAt` puts the pavement a kerb above the carriageway); spec §5.2–5.3 |
-| **R1** — review fixes after E3 | not started | — | — | — |
+| **R1** — review fixes after E3 | **done** 2026-09-06 | `slice-R1` | `budget_gate` gains three car rows on a live page: **15 cars in the pools, 6 moving, no pool hidden with cars in it**. All eight findings have a test or a gate row; the 128×128 model rebuild is **80.0 ms** (lanes 53.0 of it) and recorded as **Q51** | `test/cars.test.js` (+4), `test/governor.test.js` (+3), `test/lod.test.js` (+2), `test/render.test.js` (+2), `test/streaming.test.js` (+1); `client/world/orbit.js` is new and pure; spec §3.4a |
 | **V7** — overlays as a texture on the ground (ruling 041) | not started | — | — | — |
 | **E4** — the street camera and collision | **done** 2026-09-06 | `slice-E4` | `walkthrough`: 8,907 legs, **161 km walked, 0 unfinished, 0 refusals, 0 cliffs**, 1,127 lots walked into head-on and **0 entered**, 395,230 blocked steps. `passability`: 32,659 samples, 8,461 enclosed, narrowest **26.00 m**. `play_smoke` enters and leaves by key and by zoom on both viewports × both projections. `reports/smoke-E4-{street,pavement}.png` | `test/collision.test.js` (10), `test/walker.test.js` (9); spec §8.1b |
 | **E5** — street-level facades | **done** 2026-09-06 | `slice-E5` | `budget_gate` High on the saturated 96×96: **25.7k triangles a chunk**, 8 live holding 205,864, **2 meshes a group**, build p95 **6 ms**. A facade is 700–1,100 triangles. `walkthrough` and `passability` still clean. `reports/style-sheet-street.png` (all three styles from the pavement), `reports/smoke-E5-{street,shopfront}.png` | `test/facade-spec.test.js` (13), `test/facade.test.js` (8), `test/roof-kit.test.js` (9), `test/props-l3.test.js` (6); spec §6.2a, §6.5 |
@@ -688,6 +688,15 @@ Each is a few lines and each has a test that can see it. Commit as `slice-R1`.
 **Done when** all eight have a test or a gate row, `budget_gate` shows `cars > 0` at a street
 zoom on the 128×128 fixture with the ladder above "cars dropped", and the dev-log carries the
 128×128 model rebuild time.
+
+**Done, with three notes.** (1) Finding 8 measured **80.0 ms** on a 128×128 — over the one-frame
+threshold it named — so the per-chunk derivation it points at is now due. It is a slice, not a
+fix, and it is **Q51** rather than part of this one. (2) Finding 3 has no behavioural test: the two
+key spaces overlap, so the wrong answer is a plausible speed rather than a wrong one, and a car
+crosses an 8 m junction box in under a second so nothing measurable about its position changes.
+It is asserted against the source, plus a new observable `car.v0`. (3) Findings 6's two constraints
+for E4 — the near plane per mode and `mode !== "city"` not meaning orthographic — were already
+fixed in E4; `picking.js` still branched on `=== "city"` and does not now.
 
 ### V7 — Overlays as a texture on the ground (S) — ruling 041
 

@@ -95,3 +95,28 @@ test("expiry names every chunk that qualifies, not just the first", () => {
   ]);
   assert.deepEqual(expired(live, new Set(), 10000, 2000).sort(), [1, 2]);
 });
+
+// --- the review's finding (R1.5) ---------------------------------------------
+
+test("a change in one chunk leaves the others alone", () => {
+  // `worldChanged` cleared the whole cache, so every road tile painted threw
+  // away nine baked chunks and re-baked them one a frame — six frames of L2
+  // after every build action. The hash is what decides.
+  const wanted = [
+    { key: 1, cx: 0, cy: 0 }, { key: 2, cx: 1, cy: 0 }, { key: 3, cx: 2, cy: 0 },
+  ];
+  const hashes = new Map([[1, "a"], [2, "b"], [3, "c"]]);
+  const live = new Map(wanted.map((c) => [c.key, { hash: hashes.get(c.key), seen: 0 }]));
+  const hashOf = (chunk) => hashes.get(chunk.key);
+
+  assert.equal(nextBuild(wanted, live, hashOf), undefined, "nothing changed, nothing to build");
+
+  hashes.set(2, "b2");
+  const next = nextBuild(wanted, live, hashOf);
+  assert.equal(next.chunk.key, 2, "the wrong chunk was picked as stale");
+  assert.equal(next.stale, true);
+
+  // ...and after it is rebuilt, the others are still not stale.
+  live.set(2, { hash: "b2", seen: 0 });
+  assert.equal(nextBuild(wanted, live, hashOf), undefined);
+});

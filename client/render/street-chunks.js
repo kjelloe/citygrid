@@ -124,6 +124,20 @@ export function createStreetChunks(scene, options = {}) {
       return { built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, total: built };
     },
 
+    /**
+     * The model was rebuilt; the geometry was not necessarily wrong.
+     *
+     * A build action rebuilds the whole city model, and the cache used to be
+     * cleared with it: nine chunks thrown away and re-baked one a frame, so
+     * every road tile painted cost six frames of L2 (R1.5). `chunkHash` already
+     * says which chunk changed, and `nextBuild` compares it every frame — so
+     * all this has to do is stop the bake that is in flight, which was built
+     * against the old model.
+     */
+    remodel() {
+      pending = undefined;
+    },
+
     /** Everything goes: a new world is a new set of chunks. */
     clear() {
       pending = undefined;

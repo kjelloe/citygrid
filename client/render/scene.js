@@ -7,7 +7,7 @@
 import * as THREE from "three";
 import { createCamera, applyZoom, applyPose, clampToMap, setMode } from "./camera.js";
 import { createTerrain, updateTerrain, markAllDirty } from "./terrain.js";
-import { createInstances, updateInstances, pushInstance, CAR_COLOURS } from "./instances.js";
+import { createInstances, updateInstances, pushInstance, settlePools, CAR_COLOURS } from "./instances.js";
 import { UI } from "./palette.js";
 import { STYLES, createPost } from "./styles.js";
 import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown, inFootprint, inBounds } from "./lod.js";
@@ -91,7 +91,12 @@ export function createRenderer(canvas, state, options = {}) {
     renderer.setClearColor(hour.sky);
     if (!on) { scene.fog = null; return; }
     const reach = Math.max(view.span, 12);
-    scene.fog = new THREE.Fog(hour.sky, reach * hour.fogNear, reach * hour.fogFar);
+    // Mutated, not replaced: a new `Fog` every frame is an allocation a frame
+    // and a uniform rebind three has to notice (R1.7).
+    if (!scene.fog) scene.fog = new THREE.Fog(hour.sky, reach * hour.fogNear, reach * hour.fogFar);
+    scene.fog.color.setHex(hour.sky);
+    scene.fog.near = reach * hour.fogNear;
+    scene.fog.far = reach * hour.fogFar;
   }
 
   const antialiasAtBuild = options.antialias ?? tier.antialias;
@@ -374,7 +379,12 @@ export function createRenderer(canvas, state, options = {}) {
     const was = { ...walker.pose };
     walker = createWalker(collision);
     walker.teleport(was.x, was.z, was.yaw, was.pitch);
-    streets.clear();
+    // NOT `streets.clear()`. Every build action threw away nine baked chunks
+    // and re-baked them one a frame — six frames of L2 after every road tile
+    // painted. `chunkHash` exists precisely so that only the chunk that
+    // actually changed is stale, and `nextBuild` compares it every frame
+    // (R1.5). The cache is told the model moved; it decides what that means.
+    streets.remodel(model);
     markAllDirty(terrain);
   }
 
@@ -513,7 +523,8 @@ export function createRenderer(canvas, state, options = {}) {
     stats.chunksRebuilt = updateTerrain(state, terrain, model);
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
-    counts.cars = traffic.count();
+    // Only the cars on screen, which is the same set `pose` writes (R1.1).
+    counts.cars = traffic.count(bounds);
     // What a baked street chunk actually cost, last frame (slice E3).
     const held = stats.streets;
     counts.streetPerChunk = held?.live > 0 ? held.triangles / held.live : 0;
@@ -564,7 +575,16 @@ export function createRenderer(canvas, state, options = {}) {
       // a car costs one instance whether it is driving or parked, and the
       // budget's measurement loop sees it either way.
       if (plan.cars !== false && drawOptions.life !== false) {
-        result.instances += traffic.pose(pools, pushInstance, CAR_COLOURS);
+        traffic.pose(pools, pushInstance, CAR_COLOURS, bounds);
+        // Settle the pools AGAIN. The moving cars go into the same pools as the
+        // parked ones and they go in after `updateInstances` has already
+        // written `visible = mesh.count > 0` — so on a street with no parked
+        // car of that variant in view, every moving car of it was invisible,
+        // and the frame's own triangle count did not include any of them
+        // (R1.2).
+        const settled = settlePools(pools);
+        result.instances = settled.instances;
+        result.triangles = settled.triangles;
       }
       if (shadowLight) {
         shadowLight.castShadow = plan.shadows
@@ -631,6 +651,17 @@ export function createRenderer(canvas, state, options = {}) {
     const wanted = postAllowed();
     if (wanted && !post) post = createPost(renderer, style, canvas.width, canvas.height);
     else if (!wanted && post) { post.dispose(); post = undefined; }
+    // The `supersample` rung was in the ladder and nothing read it: the
+    // governor gave it up and the renderer went on rendering at 2× (R1.4).
+    // It is the last thing sacrificed and the bluntest — a phone that is still
+    // dropping frames with no post pass and no shadows is a phone drawing four
+    // pixels for every one it shows.
+    const ratio = governor.allows("supersample") ? ratioFor(tier, options) : 1;
+    if (renderer.getPixelRatio() !== ratio) {
+      renderer.setPixelRatio(ratio);
+      renderer.setSize(canvas.width, canvas.height, false);
+      if (post) post.resize(canvas.width, canvas.height);
+    }
   }
 
   /** A tier change at runtime. Budget, shadows, caps and the post list re-apply

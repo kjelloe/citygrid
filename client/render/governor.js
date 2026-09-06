@@ -21,7 +21,16 @@
  * GPU real work and the picture survives without them. The supersample last,
  * because giving it up is the one the player reads as "blurry" rather than as
  * "different", and a blurry picture feels like a broken screen. */
-export const SACRIFICE = ["ink", "shadows", "supersample"];
+/**
+ * What is given up, in order.
+ *
+ * `pixel` was missing from this list entirely, so `allows("pixel")` was always
+ * true and the one post pass a phone actually runs could never be sacrificed —
+ * the ladder's whole first rung was a pass no tier below High even has (R1.4).
+ * It goes before `ink` because the styles are exclusive: a frame has one post
+ * pass or none, and dropping the one it has is the only move available.
+ */
+export const SACRIFICE = ["pixel", "ink", "shadows", "supersample"];
 
 /** How long the frame time has to stay bad before anything is given up.
  *

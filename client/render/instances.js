@@ -184,6 +184,31 @@ export function pushInstance(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {
   push(mesh, x, y, z, sx, sy, sz, colour, rotation);
 }
 
+/**
+ * Hides the empty pools and counts what is left.
+ *
+ * EXPORTED, and called again after the traffic has posed (R1.2). The moving
+ * cars go into the same pools as the parked ones and they go in AFTER this
+ * pass — so a pool whose parked cars were all off screen had `visible = false`
+ * written on it and then filled, and every moving car of that variant was
+ * invisible. It also means the cars' triangles were missing from the frame's
+ * own count of itself.
+ */
+export function settlePools(pools) {
+  let triangles = 0;
+  let instances = 0;
+  for (const mesh of Object.values(pools)) {
+    // An empty pool is hidden rather than drawn with zero instances, so unused
+    // tiers cost nothing at all.
+    mesh.visible = mesh.count > 0;
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor.needsUpdate = true;
+    instances += mesh.count;
+    if (mesh.visible) triangles += mesh.count * triangleCount(mesh.geometry);
+  }
+  return { instances, triangles };
+}
+
 function push(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {
   const i = mesh.count;
   if (i >= mesh.instanceMatrix.count) return;
@@ -557,18 +582,10 @@ export function updateInstances(state, pools, options = {}) {
     }
   }
 
-  let triangles = 0;
-  for (const mesh of Object.values(pools)) {
-    // An empty pool is hidden rather than drawn with zero instances, so unused
-    // tiers cost nothing at all.
-    mesh.visible = mesh.count > 0;
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.instanceColor.needsUpdate = true;
-    if (mesh.visible) triangles += mesh.count * triangleCount(mesh.geometry);
-  }
+  const settled = settlePools(pools);
   return {
-    instances: Object.values(pools).reduce((sum, mesh) => sum + mesh.count, 0),
-    triangles,
+    ...settled,
+
     // How many chunks were planned separately. One under orthographic by
     // construction; more than one under perspective is the proof that the
     // policy is per chunk and not per frame (slice V5).

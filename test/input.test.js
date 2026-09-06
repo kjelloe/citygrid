@@ -237,11 +237,15 @@ test("the pitch belongs to the view, not to the module", () => {
   // drop the camera towards the ground, which is a deliberate amendment: the
   // pitch moves, and the four snapped YAW angles stay on Q and E.
   assert.match(camera, /pitch: PITCH/, "a new view does not start at the isometric angle");
-  const pose = camera.slice(camera.indexOf("export function applyPose("));
-  const body = pose.slice(0, pose.indexOf("\n}"));
-  assert.match(body, /view\.pitch/, "applyPose does not read the view's own pitch");
-  assert.equal(/Math\.(sin|cos)\(PITCH\)/.test(body), false,
-    "applyPose still poses the camera from the module constant");
+  // `applyPose` delegates the arithmetic to `client/world/orbit.js` since R1.6,
+  // so the pitch is read there — and it has to be read from the VIEW in
+  // whichever module does it.
+  const orbit = readFileSync(join(repoRoot, "client", "world", "orbit.js"), "utf8");
+  const eye = orbit.slice(orbit.indexOf("export function eyeOf("));
+  const body = eye.slice(0, eye.indexOf("\n}"));
+  assert.match(body, /view\.pitch/, "the eye is not posed from the view's own pitch");
+  assert.equal(/Math\.(sin|cos)\(PITCH\)(?!\s*\?\?)/.test(body.replace(/view\.pitch \?\? PITCH/g, "")), false,
+    "the eye is still posed from the module constant");
 });
 
 test("the pitch is clamped at both ends", () => {
@@ -304,13 +308,16 @@ test("zoom means the same thing in both: span", () => {
   // `span` stays the single zoom control. Under perspective the eye distance is
   // derived from it, so switching projection does not jump the view — which is
   // what makes the setting a preference rather than a different game.
-  assert.match(camera, /verticalSpan\(view\) \/ \(2 \* Math\.tan/,
+  // In `orbit.js` since R1.6, with the rest of the eye arithmetic.
+  const orbit = readFileSync(join(repoRoot, "client", "world", "orbit.js"), "utf8");
+  assert.match(orbit, /verticalSpan\(view\) \/ \(2 \* Math\.tan/,
     "the eye distance is not derived from span");
   // And `span` keeps its meaning: tiles across the SHORTER axis, which on a
   // portrait phone is the width. Deriving the distance as if it were the
   // vertical extent put the phone's camera at the wrong distance and every
   // drag on it missed (slice V5).
-  assert.match(camera, /export function verticalSpan\(/);
+  assert.match(orbit, /export function verticalSpan\(/);
+  assert.match(camera, /verticalSpan/, "camera.js no longer speaks of the span at all");
   const zoom = camera.slice(camera.indexOf("export function zoomBy("));
   assert.match(zoom.slice(0, zoom.indexOf("\n}")), /view\.span/);
 });

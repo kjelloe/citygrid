@@ -25,6 +25,9 @@ import { adjacencyMask, tileAt } from "../shared/grid.js";
 import { NET_PRESENT } from "../client/constants-mirror.js";
 import { DEFAULTS } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 import { createTraffic, CAR_M } from "../client/life/traffic.js";
 
 const { stopLine, speed: VMAX, maxDensity } = DEFAULTS.road;
@@ -281,4 +284,85 @@ test("a road with nowhere to go still runs", () => {
   const traffic = createTraffic(state, createModel(state), { cap: 50 });
   run(traffic, 20);
   assert.equal(traffic.count(), 0);
+});
+
+// --- the review's findings (slice R1) ----------------------------------------
+
+test("a junction's desired speed is never looked up by a node id (R1.3)", () => {
+  // `desired` is keyed by LINK id. On a turn link `link.from` is a NODE id, so
+  // `desired.get(link.from)` returned whichever link happened to have that
+  // number — a stranger's speed.
+  //
+  // Asserted against the SOURCE, which is not how this project prefers to test
+  // anything, and here is why it is the honest instrument: the two key spaces
+  // overlap, so the wrong answer is a plausible speed rather than a wrong one;
+  // and a car crosses an 8 m junction box in well under a second, so nothing
+  // measurable about its position changes. What is wrong is which map the
+  // lookup is in, and that is a fact about the code.
+  const source = readFileSync(join(repoRoot, "client", "life", "traffic.js"), "utf8");
+  assert.equal(/desired\.get\([^)]*link\.from/.test(source), false,
+    "a node id is being used as a key into a map of link ids");
+  assert.match(source, /car\.v0 = link\.kind === "block"/,
+    "the desired speed is not carried on the car through the junction");
+});
+
+test("a car carries a desired speed, and a loaded road slows it", () => {
+  const { state, model } = highway(255);
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 20);
+  const busy = traffic.cars();
+  assert.ok(busy.length > 4);
+  for (const car of busy) {
+    assert.ok(car.v0 > 0 && car.v0 < VMAX,
+      `a car on a fully loaded road aiming at ${car.v0} of ${VMAX} m/s`);
+  }
+
+  // A LIGHT load, not none: an empty road has no cars on it to ask.
+  const { state: light, model: lightModel } = highway(30);
+  const quiet = createTraffic(light, lightModel, { cap: 400 });
+  run(quiet, 20);
+  const fastest = Math.max(...quiet.cars().map((c) => c.v0), 0);
+  assert.ok(fastest > Math.max(...busy.map((c) => c.v0)),
+    `an empty road aims at ${fastest} and a full one at ${Math.max(...busy.map((c) => c.v0))}`);
+});
+
+test("only the cars on screen are posed, and the count agrees with the pose", () => {
+  // `traffic.pose` walked every car in the city and `counts.cars` counted every
+  // car in the city. On a saturated 128×128 that is 3,660 cars at 82 triangles
+  // — 300k against a 200k budget — so the ladder dropped the cars at every
+  // zoom and the pools carried the cost anyway (R1.1).
+  const state = blank(40);
+  pave(state, row(6, 2, 37), row(30, 2, 37));
+  load(state, 200);
+  const model = createModel(state);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 30);
+
+  const all = traffic.count();
+  assert.ok(all > 8, `only ${all} cars in the whole city`);
+
+  // A box around the first street only.
+  const bounds = { x0: 0, y0: 3, x1: 40, y1: 12 };
+  const near = traffic.count(bounds);
+  assert.ok(near > 0 && near < all, `${near} of ${all} cars are in the box`);
+
+  const posed = [];
+  const pools = { car0: {}, car1: {} };
+  const push = (pool, x, y, z) => posed.push({ x, y, z });
+  assert.equal(traffic.pose(pools, push, [0xffffff], bounds), near,
+    "the pose and the count disagree, which is what makes the budget wrong");
+  assert.equal(posed.length, near);
+  for (const at of posed) {
+    assert.ok(at.z >= bounds.y0 - 1 && at.z <= bounds.y1 + 1, `a car posed at z ${at.z}`);
+  }
+});
+
+test("no bounds means the whole city, so nothing else has to know about this", () => {
+  const { state, model } = highway(200);
+  const traffic = createTraffic(state, model, { cap: 200 });
+  run(traffic, 20);
+  const pools = { car0: {}, car1: {} };
+  let posed = 0;
+  assert.equal(traffic.pose(pools, () => { posed += 1; }, [0xffffff]), traffic.count());
+  assert.equal(posed, traffic.count());
 });

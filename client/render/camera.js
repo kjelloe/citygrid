@@ -13,6 +13,7 @@
 // that is what makes the setting a preference rather than a different game.
 
 import * as THREE from "three";
+import { eyeOf, verticalSpan, eyeDistance, PITCH, ORTHO_DISTANCE } from "../world/orbit.js";
 
 export const YAW_STEPS = 4;
 
@@ -22,7 +23,7 @@ export const MODES = ["city", "ortho", "street"];
 /** Vertical field of view for the perspective camera, degrees. Wide enough to
  * feel like a place, narrow enough that the edges do not smear. */
 const FOV = 50;
-const PITCH = Math.atan(1 / Math.SQRT2); // classic isometric-ish, ~35.26°
+// PITCH comes from `orbit.js`, which is where the eye arithmetic is (R1.6).
 
 /** How far the camera may be tilted, in radians from the ground plane.
  *
@@ -62,27 +63,10 @@ export function createCamera(aspect, mode = "city") {
   return view;
 }
 
-/** How many tiles fill the screen VERTICALLY.
- *
- * `span` is tiles across the shorter axis — the same meaning the orthographic
- * camera has given it since the first renderer — so on a landscape screen that
- * is the height and on a portrait phone it is the width. Perspective has to
- * agree, because three's field of view is vertical: deriving the eye distance
- * from `span` on a portrait screen put the phone's camera at the wrong distance
- * and every drag on it missed (slice V5). */
-export function verticalSpan(view) {
-  return view.aspect >= 1 ? view.span : view.span / view.aspect;
-}
-
-/** How far the eye sits from the orbit target so that a tile AT THE TARGET is
- * the same size as the orthographic camera would draw it.
- *
- * The vertical extent subtends `fov`, so the distance is half of it over the
- * tangent of half the angle. Deriving it rather than storing it is what makes
- * `setMode` free of a jump. */
-export function eyeDistance(view) {
-  return verticalSpan(view) / (2 * Math.tan((view.fov * Math.PI) / 360));
-}
+// `verticalSpan` and `eyeDistance` live in `client/world/orbit.js` now, with
+// the eye arithmetic they belong to (R1.6). Re-exported, because the whole
+// renderer already imports them from here.
+export { verticalSpan, eyeDistance };
 
 /** Swaps the projection and re-poses. Everything else about the view — target,
  * yaw, pitch, span — is shared, so the city does not move. */
@@ -129,20 +113,14 @@ export function applyZoom(view, aspect) {
  * camera does not care, and a far camera keeps the whole map inside the near
  * and far planes at every zoom. */
 export function applyPose(view) {
+  const eye = eyeOf(view);
+  const camera = view.camera;
+  camera.position.set(eye.x, eye.y, eye.z);
+  camera.up.set(0, 1, 0);
   if (view.mode === "street") {
-    // The walker IS the camera. `view.eye` is in tile units, written by the
-    // scene from the walker's pose each frame; positive pitch looks up.
-    const e = view.eye ?? { x: view.targetX, y: 0, z: view.targetZ };
-    const pitch = view.pitch ?? 0;
-    const cp = Math.cos(pitch);
-    const camera = view.camera;
-    camera.position.set(e.x, e.y, e.z);
-    camera.up.set(0, 1, 0);
-    camera.lookAt(
-      e.x - Math.sin(view.yaw) * cp,
-      e.y + Math.sin(pitch),
-      e.z - Math.cos(view.yaw) * cp,
-    );
+    // The walker IS the camera, so it looks along its own heading rather than
+    // at an orbit target.
+    camera.lookAt(eye.x + eye.fx, eye.y + eye.fy, eye.z + eye.fz);
     camera.updateMatrixWorld();
     return;
   }
@@ -150,20 +128,7 @@ export function applyPose(view) {
   // looks, so it sits far enough out to keep the whole map inside its near and
   // far planes at every zoom. Perspective cares a great deal: its distance IS
   // the zoom (ruling 034).
-  const distance = view.mode === "city" ? eyeDistance(view) : 1200;   // ortho does not care
-  const pitch = view.pitch ?? PITCH;
-  // The orbit is around the GROUND under the target, not around y = 0. On a map
-  // with 50 m of relief a low pitch put the eye below the hill it was looking
-  // at and the frame filled with sky and the underside of the terrain — the
-  // "closer to the ground" view P34 asked for, aimed fifty metres into it.
-  const ground = view.groundY ?? 0;
-  const x = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
-  const y = ground + Math.sin(pitch) * distance;
-  const z = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
-  const camera = view.camera;
-  camera.position.set(x, y, z);
-  camera.up.set(0, 1, 0);
-  camera.lookAt(view.targetX, ground, view.targetZ);
+  camera.lookAt(view.targetX, eye.ground, view.targetZ);
   camera.updateMatrixWorld();
 }
 

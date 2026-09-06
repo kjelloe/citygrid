@@ -409,6 +409,7 @@ by number from the code they create.
 | Q48 | Is two post passes enough, where the spec said three? | P2, settled |
 | Q49 | Is a hedge worth drawing at L2? | V6, first to drop |
 | Q50 | Should the L2 box and the L3 facade share a footprint? | V6, settled |
+| Q51 | When does the model derivation go per chunk? | its own slice, before the map grows past 128 |
 
 ## What would make us stop and re-plan
 

@@ -92,3 +92,19 @@ Nothing above is stored. Delete the client cache and the same picture comes back
   own def and a name table.
 - Binary assets: none, unless D5 says otherwise. Higashiyama proves a full street at eye height
   without one.
+
+## 3.4a The model rebuild, measured (R1, 2026-09-06)
+
+E0 deferred per-chunk derivation and said to measure it before deciding. Measured on the
+saturated fixture, median of three full rebuilds:
+
+| Map | Whole model | corridors | ground | lanes | lots |
+|---|---|---|---|---|---|
+| 96×96 | **38.7 ms** | — | — | — | — |
+| 128×128 | **80.0 ms** | 7.7 | 0.3 | **53.0** | 25.0 |
+
+A build action rebuilds the whole model, so on the largest map that is five frames of hitch —
+once per action, not per tile, because a drag-paint is coalesced into one command. It is over one
+frame, which is the threshold E0 named, so the deferral is now due: the corridor and lane
+derivation goes per chunk keyed by `chunkHash`. The lane graph is two thirds of the cost and is
+where that work starts (**Q51**).
