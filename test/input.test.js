@@ -230,6 +230,7 @@ test("a stroke that never started does not end", () => {
 // `tools/play_smoke.mjs` drags the real mouse across the real canvas.
 
 const camera = readFileSync(join(repoRoot, "client", "render", "camera.js"), "utf8");
+const controller = readFileSync(join(repoRoot, "client", "input", "controller.js"), "utf8");
 
 test("the pitch belongs to the view, not to the module", () => {
   // Ruling 006 fixed the pitch at ~35.26°. The playtest asked to be able to
@@ -271,4 +272,55 @@ test("turning past a full circle keeps the yaw finite", () => {
   const yawBy = camera.slice(camera.indexOf("export function yawBy("));
   assert.match(yawBy.slice(0, yawBy.indexOf("\n}")), /Math\.PI \* 2/,
     "the yaw is never wrapped, so it grows without bound");
+});
+
+// --- one view, two projections (slice V5; ruling 034) ------------------------
+
+test("the four snapped yaws survive the projection", () => {
+  // Ruling 034 amends 006 and keeps the thing 006 was actually about: Q, E and
+  // the twist land on the four comfortable angles in every mode. A camera that
+  // snapped only in orthographic would make the promise "the same city, the
+  // same four angles" false the moment anyone tilted.
+  assert.match(camera, /export function setMode\(/, "there is no way to change projection");
+  const rotate = camera.slice(camera.indexOf("export function rotate("));
+  assert.match(rotate.slice(0, rotate.indexOf("\n}")), /Math\.round\(/,
+    "rotate no longer snaps from wherever a drag left the camera");
+  // `setYawStep` and `pitchBy` are mode-independent: they set the pose, and
+  // `applyPose` is the only thing that knows which camera it is posing.
+  const pose = camera.slice(camera.indexOf("export function applyPose("));
+  assert.match(pose.slice(0, pose.indexOf("\n}")), /mode/,
+    "applyPose does not know which projection it is posing");
+});
+
+test("the pitch is clamped in both projections", () => {
+  // One clamp, applied in `pitchBy`, which neither camera can get around.
+  assert.match(camera, /export function pitchBy\(/);
+  const body = camera.slice(camera.indexOf("export function pitchBy("));
+  assert.match(body.slice(0, body.indexOf("\n}")), /MIN_PITCH/);
+  assert.match(body.slice(0, body.indexOf("\n}")), /MAX_PITCH/);
+});
+
+test("zoom means the same thing in both: span", () => {
+  // `span` stays the single zoom control. Under perspective the eye distance is
+  // derived from it, so switching projection does not jump the view — which is
+  // what makes the setting a preference rather than a different game.
+  assert.match(camera, /verticalSpan\(view\) \/ \(2 \* Math\.tan/,
+    "the eye distance is not derived from span");
+  // And `span` keeps its meaning: tiles across the SHORTER axis, which on a
+  // portrait phone is the width. Deriving the distance as if it were the
+  // vertical extent put the phone's camera at the wrong distance and every
+  // drag on it missed (slice V5).
+  assert.match(camera, /export function verticalSpan\(/);
+  const zoom = camera.slice(camera.indexOf("export function zoomBy("));
+  assert.match(zoom.slice(0, zoom.indexOf("\n}")), /view\.span/);
+});
+
+test("a pan keeps the ground under the pointer where the pointer is", () => {
+  // Under orthographic, pixels convert to tiles by a constant. Under
+  // perspective they do not: the same drag moves the ground a long way at the
+  // horizon and barely at all under the eye. The controller picks the tile at
+  // the start of the drag and pans so it stays under the pointer.
+  assert.match(controller, /grabbed/, "there is no grabbed point for a perspective pan");
+  assert.match(controller, /mode === "ortho"|mode !== "city"/,
+    "the pan does not distinguish the projections");
 });

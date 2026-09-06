@@ -23,13 +23,13 @@ const STYLES = [
 
 export async function sheet({
   out = "reports/style-sheet.png", seed = 1003, years = 20,
-  span = 9, tileWidth = 1180, tileHeight = 560, layout = "column",
+  span = 9, tileWidth = 1180, tileHeight = 560, layout = "column", mode = "ortho",
 } = {}) {
   const shots = [];
   for (const style of STYLES) {
     const file = `reports/.sheet-${style.name}.png`;
     const result = await shoot({
-      out: file, seed, years, style: style.name, span,
+      out: file, seed, years, style: style.name, span, mode,
       width: tileWidth, height: tileHeight,
     });
     shots.push({ ...style, file, report: result.report, problems: result.problems });
@@ -105,6 +105,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     years: Number(process.argv[4] ?? process.env.YEARS ?? 20),
     span: Number(process.env.SPAN ?? 9),
     layout: process.env.LAYOUT ?? "column",
+    // MODE=city shoots the same three styles through the perspective camera
+    // (slice V5): a style is geometry, shading and palette, and none of those
+    // should change with the projection.
+    mode: process.env.MODE ?? "ortho",
   });
   console.log(`wrote ${result.out}`);
   for (const shot of result.shots) {

@@ -14,7 +14,10 @@
 //   - a stroke left open by a pointer the browser took away
 //
 // Intents:
-//   {type:"panBy", dx, dy}      screen pixels, already sign-corrected
+//   {type:"panBy", dx, dy, x, y} screen pixels, already sign-corrected, plus
+//                               where the pointer is now — a perspective pan
+//                               keeps the grabbed ground under the pointer and
+//                               a delta is not enough to do that (slice V5)
 //   {type:"zoomBy", factor}     >1 zooms in
 //   {type:"rotate", direction}  +1 or -1, one quarter turn (ruling 006)
 //   {type:"paintStart", x, y}   screen pixels; the caller picks the tile
@@ -134,7 +137,7 @@ export function move(g, p) {
     if (g.anchor) {
       const dx = middle.x - g.anchor.x;
       const dy = middle.y - g.anchor.y;
-      if (dx !== 0 || dy !== 0) out.push({ type: "panBy", dx, dy });
+      if (dx !== 0 || dy !== 0) out.push({ type: "panBy", dx, dy, x: middle.x, y: middle.y });
     }
     g.anchor = middle;
     return out;
@@ -163,7 +166,7 @@ export function move(g, p) {
   const dx = p.x - g.anchor.x;
   const dy = p.y - g.anchor.y;
   g.anchor = { x: p.x, y: p.y };
-  if (dx !== 0 || dy !== 0) out.push({ type: "panBy", dx, dy });
+  if (dx !== 0 || dy !== 0) out.push({ type: "panBy", dx, dy, x: p.x, y: p.y });
   return out;
 }
 

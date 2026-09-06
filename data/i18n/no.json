@@ -35,6 +35,9 @@
   "settings.quality.low": "Lav — mobil",
   "settings.quality.medium": "Middels — bærbar",
   "settings.quality.high": "Høy — skjermkort",
+  "settings.camera": "Kamera",
+  "settings.camera.perspective": "Perspektiv",
+  "settings.camera.orthographic": "Flatt (kartaktig)",
   "settings.highContrast": "Høy kontrast",
 
   "lobby.size": "Størrelse på området",

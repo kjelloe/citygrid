@@ -511,7 +511,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **V1** — traffic you can see | **done** 2026-09-06 | `25adbc3` | `budget_gate` with cars; `reports/smoke-V1-a.png`; two `screenshot.mjs` runs byte identical under `?life=0` | `test/cars.test.js` (14) — **not** `test/traffic.test.js`, which is the engine's; spec §9.1a. Load sets the **speed** and density follows, which is the reverse of §9.1's order and the reason the first build looked the same at every load |
 | **V3** — ground that is not a checkerboard | **done** 2026-09-06 | `ec6ce50` | `reports/smoke-V3-{before,after}-span{default,24,12}.png`; rebuild 10.2 → 11.6 ms on a saturated 128×128 | `test/ground-colour.test.js` (11); spec §5.1a. **Q28**: the distance-to-street tone is a two-ring flood, not a corridor query per tile — the specified way measured 16.6 ms against a 15 ms budget |
 | **V4** — real relief | **done** 2026-09-06 | `f13b0dd` | `play_smoke` picks on a slope and the ghost stands on the ground; `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on an 84 m `hilly` map | `test/picking.test.js` (10); the flat-layer audit is spec §5.6. **Q29**: the overlay wash is the one layer still floating |
-| **V5** — the perspective play camera | not started | — | — | — |
+| **V5** — the perspective play camera | **done** 2026-09-06 | `<pending>` | `play_smoke` and `budget_gate` in **both** projections (4 viewport/projection combinations; 2 × 3 tiers × 4 spans); `style-sheet` in both; `reports/smoke-V5-*.png` at a 20° pitch | `test/lod.test.js` (+10), `test/input.test.js` (+4), `test/settings.test.js` (+2); spec §8.1a. Orthographic is **byte-identical to V4** at two zooms, checked against a worktree of `f13b0dd`. **Q30** |
 | **P1** — toon shading and the anime rig | not started | — | — | — |
 | **E2** — the baker and the chunk cache | not started | — | — | — |
 | **E3** — ribbons | not started | — | — | — |
@@ -535,11 +535,24 @@ question so it can be reversed cheaply:**
   mesh, which is free and seamless. The overlay wash could not follow (Q29).
 - **V1**'s tests were named `test/traffic.test.js` by this document. That file is
   the engine's traffic. They are `test/cars.test.js`.
+- **V5** also had to change `countScene` and `estimate`, which the item did not
+  mention: a per-chunk plan that is priced at the frame's plan is an estimate
+  77% over the truth, and an over-charging estimate sacrifices detail for
+  nothing (P35). Terrain is counted against the frustum footprint for the same
+  reason.
 
 **Three gates were wrong about the game before they could see it**, all of the
 same shape and all fixed in place: `lobby_smoke` hashed after an await, and
 `play_smoke` and `mvp_acceptance` projected tile centres at `y = 0` to decide
 where to click, which with relief aims down the slope.
+
+**And two bugs were found only because a gate drives more than one
+configuration.** V5's picking built an orthographic ray — exact at the centre of
+the frame and wrong at its edges, so a single-configuration gate would have
+passed it; and the perspective eye distance was derived from `span` as if it
+meant the vertical extent, which is right in landscape and wrong on a portrait
+phone. Desktop-perspective green beside phone-perspective red is the pair that
+named the second one.
 
 ## 3. Review protocol
 

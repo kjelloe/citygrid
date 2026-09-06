@@ -80,6 +80,7 @@ async function boot() {
         // only took effect on the next city would be a control that appears to
         // do nothing, which is the failure ruling 026 is about.
         session?.setQuality(next.quality);
+        session?.setProjection(next.camera);
       },
       onLocaleChange() {
         // Re-render whatever is on screen. The panel knows the language
@@ -101,6 +102,7 @@ async function boot() {
       onSettings: showSettings,
       audioSettings: mixerSettings(preferences),
       tier: preferences.quality,
+      mode: preferences.camera,
       life: config.life,
     });
     if (config.debug) {

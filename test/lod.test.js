@@ -13,7 +13,7 @@ import { repoRoot } from "./helpers/sources.js";
 import {
   TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels,
   visibleBounds, inBounds, setBudget, getBudget, setCosts, getCosts,
-  countScene, markingInstances,
+  countScene, markingInstances, planForChunk,
 } from "../client/render/lod.js";
 
 /** A tiny hand-built state, enough for countScene to walk. */
@@ -243,4 +243,110 @@ test("dropping the networks removes them from the estimate", () => {
   const withNetworks = estimate(CITY, { ...base, networks: true });
   const without = estimate(CITY, { ...base, networks: false });
   assert.ok(without < withNetworks, `${without} is not less than ${withNetworks}`);
+});
+
+// --- two projections, one policy (slice V5; ruling 034, spec §8.2) -----------
+//
+// `lod.js` decides by pixels per tile because an orthographic camera puts every
+// tile at the same size. A perspective camera does not, so the quantity becomes
+// per chunk — and the whole risk of the change is that the two answers drift
+// apart, or that a far chunk ends up with MORE detail than a near one.
+
+const CHUNK_M = 16;
+
+/** A view at a given mode, target and span. */
+function viewAt(mode, span = 40, pitch = 35 * (Math.PI / 180)) {
+  return { mode, span, pitch, yaw: 0, targetX: 50, targetZ: 50, aspect: 16 / 9, fov: 50 };
+}
+
+test("orthographic pixels per tile are unchanged", () => {
+  // The review checks that ortho is untouched. This is the arithmetic half.
+  assert.equal(tilePixels(viewAt("ortho", 40), 720), 18);
+  assert.equal(tilePixels(viewAt("ortho", 10), 720), 72);
+});
+
+test("at the orbit target the two projections agree", () => {
+  // The eye distance is derived from `span` so that switching mode does not
+  // jump: at the point the camera is looking at, a tile is the same size in
+  // both. Everything nearer is bigger and everything further is smaller.
+  const span = 30;
+  const canvas = 720;
+  const ortho = tilePixels(viewAt("ortho", span), canvas);
+  const city = tilePixels(viewAt("city", span), canvas, { x: 50, z: 50 });
+  assert.ok(Math.abs(city - ortho) / ortho < 0.02,
+    `perspective ${city.toFixed(2)} against orthographic ${ortho.toFixed(2)} at the target`);
+});
+
+test("under perspective a far chunk is smaller than a near one", () => {
+  const view = viewAt("city", 30);
+  const near = tilePixels(view, 720, { x: 50, z: 50 });
+  const mid = tilePixels(view, 720, { x: 50 + 20 * CHUNK_M, z: 50 });
+  const far = tilePixels(view, 720, { x: 50 + 60 * CHUNK_M, z: 50 });
+  assert.ok(mid < near, `${mid.toFixed(2)} is not smaller than ${near.toFixed(2)}`);
+  assert.ok(far < mid, `${far.toFixed(2)} is not smaller than ${mid.toFixed(2)}`);
+  assert.ok(far > 0, "a far chunk came out at zero or negative pixels");
+});
+
+test("a chunk behind the camera does not come back as a huge one", () => {
+  // The trap in a distance formula: a signed distance flips and a chunk behind
+  // the eye reports the finest detail in the frame.
+  const view = viewAt("city", 30);
+  const behind = tilePixels(view, 720, { x: 50, z: 50 + 4000 });
+  assert.ok(behind >= 0 && behind < tilePixels(view, 720, { x: 50, z: 50 }),
+    `a chunk 4 km away reported ${behind}`);
+});
+
+test("a chunk's plan is never finer than the frame's", () => {
+  // The frame's plan is what the budget bought; a chunk may only give more up.
+  const base = planAt(60, 200000);
+  for (const px of [200, 60, 30, 15, 6]) {
+    const chunk = planForChunk(base, px);
+    assert.ok(chunk.buildings <= base.buildings, `buildings finer at ${px} px`);
+    assert.ok(chunk.treeDetail <= base.treeDetail, `trees finer at ${px} px`);
+    for (const flag of ["props", "markings", "poles", "networks", "cars", "trees"]) {
+      assert.ok(!(chunk[flag] && !base[flag]), `${flag} came back at ${px} px`);
+    }
+  }
+});
+
+test("a chunk plan drops what its own zoom cannot resolve", () => {
+  const base = planAt(200, 5000000);
+  assert.equal(base.props, true, "the frame plan is not the rich one this test needs");
+  assert.equal(planForChunk(base, 10).props, false, "props survive at ten pixels a tile");
+  assert.equal(planForChunk(base, 10).markings, false, "markings survive at ten pixels a tile");
+  assert.equal(planForChunk(base, 200).props, true, "a near chunk lost its props");
+});
+
+test("visible bounds under perspective reach further away than behind", () => {
+  // Orthographic bounds are a box centred on the target, and that is right: an
+  // orthographic frustum is a box. A perspective frustum is a WEDGE — it opens
+  // out toward the horizon — so a symmetric box either cuts the distance off or
+  // pays for a huge area behind the eye. At yaw 0 the camera sits on +z and
+  // looks toward −z, so the ground it sees runs away in −z.
+  const view = { ...viewAt("city", 40, 20 * (Math.PI / 180)), targetX: 500, targetZ: 500 };
+  const bounds = visibleBounds(view, 16 / 9);
+  assert.ok(bounds.x0 <= 500 && bounds.x1 >= 500, "the target is outside its own bounds");
+  const ahead = 500 - bounds.y0;      // toward the horizon
+  const behind = bounds.y1 - 500;     // behind the eye
+  assert.ok(ahead > behind * 1.5,
+    `${ahead.toFixed(0)} tiles toward the horizon against ${behind.toFixed(0)} behind — not a wedge`);
+  assert.ok(ahead > view.span * 2, `the frustum only reaches ${ahead.toFixed(0)} tiles at span 40`);
+});
+
+test("orthographic bounds stay centred on the target", () => {
+  // The other half of "ortho is untouched": its box is symmetric because its
+  // frustum is.
+  const view = { ...viewAt("ortho", 40, 20 * (Math.PI / 180)), targetX: 500, targetZ: 500 };
+  const bounds = visibleBounds(view, 16 / 9);
+  assert.ok(Math.abs((500 - bounds.y0) - (bounds.y1 - 500)) < 1e-6, "the ortho box moved off centre");
+});
+
+test("a camera near the horizon still returns finite bounds", () => {
+  // At 12° the frustum's top edge is close to parallel with the ground and the
+  // intersection runs away; the far plane is what stops it.
+  const view = { ...viewAt("city", 40, 12 * (Math.PI / 180)), targetX: 500, targetZ: 500 };
+  const bounds = visibleBounds(view, 16 / 9);
+  for (const v of [bounds.x0, bounds.x1, bounds.y0, bounds.y1]) {
+    assert.ok(Number.isFinite(v), `bounds ran to ${v}`);
+  }
 });

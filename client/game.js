@@ -109,7 +109,9 @@ export async function startGame(root, given = {}) {
   canvas.setAttribute("role", "application");
   canvas.setAttribute("aria-label", t("hud.map"));
 
-  const renderer = createRenderer(canvas, state, { style, tier: options.tier, life: options.life });
+  const renderer = createRenderer(canvas, state, {
+    style, tier: options.tier, life: options.life, mode: options.mode,
+  });
   focusOn(renderer.view, state.width / 2, state.height / 2);
   renderer.view.span = 28;
 
@@ -313,6 +315,9 @@ export async function startGame(root, given = {}) {
      * command. Returns whether a renderer rebuild would be needed to honour it
      * fully; antialias is a constructor argument of the WebGL context. */
     setQuality(name) { return renderer.setTier(name); },
+    /** The projection (ruling 034). Shared target, yaw, pitch and span, so the
+     * city does not move when it changes. */
+    setProjection(mode) { return renderer.setProjection(mode); },
     pause: () => setSpeed(0),
     resume: () => setSpeed(1),
     stop() {

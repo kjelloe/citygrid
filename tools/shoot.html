@@ -76,7 +76,10 @@ const tier = params.get("tier") ?? "high";
 // `life=0` freezes the traffic where it settled, so two shots of one city are
 // the same picture (slice V1).
 const life = params.get("life") === "1";
-const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life });
+// `mode=ortho|city` so the review can diff the orthographic picture before and
+// after V5 and see that it did not move.
+const mode = params.get("mode") ?? "ortho";
+const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode });
 setYawStep(view.view, yaw);
 if (pitchDeg > 0) pitchBy(view.view, pitchDeg * (Math.PI / 180) - view.view.pitch);
 if (span > 0) {
@@ -122,6 +125,9 @@ globalThis.SHOT_REPORT = {
   lod: stats.lod,
   tilePixels: stats.tilePixels,
   budget: stats.budget,
+  chunkPlans: stats.chunkPlans,
+  chunkTiers: stats.chunkTiers,
+  mode,
   estimate: stats.estimate,
   counted: stats.counted,
   shadows: stats.shadows,

@@ -118,6 +118,8 @@ try {
   });
 
   const rows = [];
+  for (const mode of ["ortho", "city"]) {
+  await page.evaluate((m) => globalThis.CITY.setProjection(m), mode);
   for (const tier of TIERS) {
   const applied = await page.evaluate((name) => {
     globalThis.CITY.setQuality(name);
@@ -143,14 +145,15 @@ try {
         rebuilds: s.rebuilds,
       };
     }, span);
-    rows.push({ ...row, tier });
-    console.log(`      ${tier.padEnd(6)} span ${String(row.span).padStart(3)}  estimate ${String(row.estimate).padStart(7)}`
+    rows.push({ ...row, tier, mode });
+    console.log(`      ${mode.padEnd(5)} ${tier.padEnd(6)} span ${String(row.span).padStart(3)}  estimate ${String(row.estimate).padStart(7)}`
       + `  actual ${String(row.actual).padStart(7)}  budget ${String(row.budget).padStart(6)}  ${row.lod || "full detail"}`);
+  }
   }
   }
 
   for (const row of rows) {
-    check(`${row.tier} span ${row.span}: the frame is inside its budget`, row.actual <= row.budget,
+    check(`${row.mode} ${row.tier} span ${row.span}: the frame is inside its budget`, row.actual <= row.budget,
       `${row.actual} of ${row.budget}, ladder at "${row.lod || "full detail"}"`);
   }
 
@@ -159,7 +162,7 @@ try {
   // an under-charging model by stepping down until the truth fits.
   for (const row of rows) {
     const drift = Math.abs(row.estimate - row.actual) / Math.max(row.actual, 1);
-    check(`${row.tier} span ${row.span}: the estimate is worth planning with`, drift <= TOLERANCE,
+    check(`${row.mode} ${row.tier} span ${row.span}: the estimate is worth planning with`, drift <= TOLERANCE,
       `estimate ${row.estimate} against ${row.actual} actual — ${Math.round(drift * 100)}% out`);
   }
 

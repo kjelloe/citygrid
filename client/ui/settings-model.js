@@ -48,6 +48,13 @@ export const QUALITY = [
   { value: "high", labelKey: "settings.quality.high" },
 ];
 
+/** The projection (ruling 034). Perspective is the play camera; orthographic
+ * stays for the phone and for anyone who prefers a diagram. */
+export const CAMERA = [
+  { value: "city", labelKey: "settings.camera.perspective" },
+  { value: "ortho", labelKey: "settings.camera.orthographic" },
+];
+
 export const SOUND = [
   { value: true, labelKey: "settings.sound.on" },
   { value: false, labelKey: "settings.sound.off" },
@@ -64,6 +71,7 @@ export const LEVELS = [
 
 export const SETTING_ROWS = [
   { field: "quality", labelKey: "settings.quality", choices: QUALITY },
+  { field: "camera", labelKey: "settings.camera", choices: CAMERA },
   { field: "skin", labelKey: "settings.skin", choices: SKINS },
   { field: "sound", labelKey: "settings.sound", choices: SOUND },
   { field: "volumeEffects", labelKey: "settings.volume.effects", choices: LEVELS },
@@ -75,10 +83,14 @@ export const SETTING_ROWS = [
 
 /** `deviceClassName` comes from `capabilities.js`, which touches `navigator`;
  * this module stays pure and is handed the answer. */
-export function defaultSettings(locale = "en", deviceClassName = "desktop") {
+export function defaultSettings(locale = "en", deviceClassName = "desktop", coarsePointer = false) {
   return {
     locale: LANGUAGES.some((l) => l.value === locale) ? locale : "en",
     quality: tierFor(deviceClassName),
+    // Orthographic on a coarse pointer: a phone is the case ruling 006 was
+    // protecting, and a perspective orbit on a small screen with a finger is
+    // harder to aim than a diagram.
+    camera: coarsePointer ? "ortho" : "city",
     contrast: "normal",
     motion: "auto",
     // Sound ON by default, at a level that does not startle. A browser will not
@@ -96,13 +108,14 @@ export function defaultSettings(locale = "en", deviceClassName = "desktop") {
  * What comes out of `localStorage` was written by an older build, or by hand,
  * or is corrupt. An unrecognised value falls back rather than throwing: a bad
  * preference must never be a game that will not start. */
-export function sanitiseSettings(given = {}, locale = "en", deviceClassName = "desktop") {
-  const base = defaultSettings(locale, deviceClassName);
+export function sanitiseSettings(given = {}, locale = "en", deviceClassName = "desktop", coarsePointer = false) {
+  const base = defaultSettings(locale, deviceClassName, coarsePointer);
   const pick = (choices, value, fallback) =>
     (choices.some((c) => c.value === value) ? value : fallback);
   return {
     locale: pick(LANGUAGES, given.locale, base.locale),
     quality: pick(QUALITY, given.quality, base.quality),
+    camera: pick(CAMERA, given.camera, base.camera),
     contrast: pick(CONTRAST, given.contrast, base.contrast),
     motion: pick(MOTION, given.motion, base.motion),
     sound: pick(SOUND, given.sound, base.sound),

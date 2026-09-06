@@ -1,5 +1,5 @@
 {
- "version": "cc6d863ccd0b",
+ "version": "b0bae3f5ba8f",
  "generated": "2026-09-06",
  "files": [
   "./client/audio/audio-model.js",
@@ -34,6 +34,7 @@
   "./client/render/palettes.js",
   "./client/render/picking.js",
   "./client/render/scene.js",
+  "./client/render/sky.js",
   "./client/render/style-assets.js",
   "./client/render/style-light.js",
   "./client/render/styles.js",

@@ -5,7 +5,7 @@
 // server, with the renderer as one of several possible readers.
 
 import * as THREE from "three";
-import { createCamera, applyZoom, applyPose, clampToMap } from "./camera.js";
+import { createCamera, applyZoom, applyPose, clampToMap, setMode } from "./camera.js";
 import { createTerrain, updateTerrain, markAllDirty } from "./terrain.js";
 import { createInstances, updateInstances, pushInstance, CAR_COLOURS } from "./instances.js";
 import { UI } from "./palette.js";
@@ -16,6 +16,7 @@ import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { tierConfig } from "../world/config.js";
 import { createGovernor } from "./governor.js";
+import { createSky } from "./sky.js";
 
 /** What the device would give us, capped by the tier (ruling 040). A cap, not a
  * replacement: a tier must never make a 1× screen render at 2×. */
@@ -45,6 +46,29 @@ export function createRenderer(canvas, state, options = {}) {
   renderer.setClearColor(palette.sky);
 
   const scene = new THREE.Scene();
+
+  // A sky and a distance haze, in perspective only (slice V5). An orthographic
+  // view has no horizon — the map fills the frame or the clear colour does —
+  // and a dome behind it would be a flat wash with a seam.
+  const sky = createSky(palette);
+  scene.add(sky);
+
+  /** A haze that starts beyond what the camera is looking at and reaches a few
+   * spans past it, so the far edge of the map fades into the sky rather than
+   * ending at a line.
+   *
+   * The distances are in TILE units — the whole scene is — and they follow the
+   * zoom, or the same numbers would be invisible on a 64-tile map and opaque on
+   * a 128-tile one. Off in orthographic for the same reason the sky is: there
+   * is no horizon to fade into. */
+  function applyAtmosphere() {
+    const on = view.mode === "city";
+    sky.visible = on;
+    if (!on) { scene.fog = null; return; }
+    const reach = Math.max(view.span, 12);
+    scene.fog = new THREE.Fog(palette.sky, reach * 1.4, reach * 5);
+  }
+
   const antialiasAtBuild = options.antialias ?? tier.antialias;
   /** 0 in the tier table means uncapped (ruling 040). */
   const carCap = () => (options.carCap ?? tier.carCap) || Infinity;
@@ -99,12 +123,13 @@ export function createRenderer(canvas, state, options = {}) {
   }
   scene.add(new THREE.HemisphereLight(lights.hemiSky, lights.hemiGround, lights.hemi));
 
-  const view = createCamera(canvas.width / canvas.height);
+  const view = createCamera(canvas.width / canvas.height, options.mode ?? "city");
   view.targetX = state.width / 2;
   view.targetZ = state.height / 2;
   view.span = Math.max(state.width, state.height) * 0.7;
   applyZoom(view, canvas.width / canvas.height);
   applyPose(view);
+  applyAtmosphere();
 
   // The derived city model (ruling 032): corridors, lots, the height function.
   // Rebuilt whole with the terrain when the world changes; the renderer reads
@@ -228,6 +253,8 @@ export function createRenderer(canvas, state, options = {}) {
   const ghostMarker = new THREE.Object3D();
 
   function draw(drawOptions = {}) {
+    // The haze follows the zoom, so it is re-derived rather than remembered.
+    if (view.mode === "city") applyAtmosphere();
     // The frame time the caller measured. The budget cannot see fill rate, so
     // this is the second instrument (ruling 040): a rolling p95 that gives up a
     // post pass, then shadows, then the supersample.
@@ -244,6 +271,7 @@ export function createRenderer(canvas, state, options = {}) {
     counts = countScene(state, bounds);
     counts.cars = traffic.count();
     const plan = choosePlan(counts, view, canvas.height, { budget: drawOptions.budget });
+    plan.mode = view.mode;
 
     clampToMap(view, state.width, state.height);
 
@@ -261,7 +289,11 @@ export function createRenderer(canvas, state, options = {}) {
     let result;
     stats.rebuilds = 0;
     for (;;) {
-      result = updateInstances(state, pools, { ...drawOptions, style: styleName, plan, bounds, model });
+      result = updateInstances(state, pools, {
+        ...drawOptions, style: styleName, plan, bounds, model,
+        // For the per-chunk plan (V5): under orthographic these are ignored.
+        view, canvasHeight: canvas.height,
+      });
       // After the instanced pass, into the same pools the parked cars use — so
       // a car costs one instance whether it is driving or parked, and the
       // budget's measurement loop sees it either way.
@@ -282,6 +314,11 @@ export function createRenderer(canvas, state, options = {}) {
     plan.overBudget = plan.actual > plan.budget;
 
     stats.instances = result.instances;
+    // How many distinct per-chunk plans the frame used. 1 under orthographic
+    // by construction; more than 1 under perspective is the proof that the
+    // policy is per chunk and not per frame (slice V5).
+    stats.chunkPlans = result.chunkPlans ?? 1;
+    stats.chunkTiers = result.chunkTiers ?? 1;
     stats.counted = Math.round(result.triangles);
     stats.overBudget = plan.overBudget;
     stats.lod = plan.reason;
@@ -317,6 +354,14 @@ export function createRenderer(canvas, state, options = {}) {
   /** A tier change at runtime. Budget, shadows, caps and the post list re-apply
    * immediately; pixel ratio and antialias are constructor arguments of the
    * WebGL context, so the caller is told what it would take to honour them. */
+  /** Switches projection (ruling 034). The target, yaw, pitch and span are
+   * shared, so the city does not move; the sky and the fog follow the mode. */
+  function setProjection(mode) {
+    const next = setMode(view, mode);
+    applyAtmosphere();
+    return next;
+  }
+
   function setTier(name) {
     tierName = name;
     tier = tierConfig(name);
@@ -335,5 +380,5 @@ export function createRenderer(canvas, state, options = {}) {
     return { rebuild: (options.antialias ?? tier.antialias) !== antialiasAtBuild };
   }
 
-  return { renderer, scene, view, terrain, pools, style, setTier, get traffic() { return traffic; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+  return { renderer, scene, view, terrain, pools, style, setTier, setProjection, get traffic() { return traffic; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

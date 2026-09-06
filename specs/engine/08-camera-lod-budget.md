@@ -72,6 +72,42 @@ Tiers (V2), defaulted from `deviceClass()`:
 The budget gate runs at all three and at both projections; a saturated fixture at street level
 is the case that has never been measured.
 
+## 8.1a As built (V5, 2026-09-06)
+
+`view` holds **both** cameras and swaps which one `view.camera` points at; the target, yaw,
+pitch and span are shared, so `setMode` does not move the city. `span` keeps the meaning it has
+always had — **tiles across the shorter axis** — and the perspective eye distance is derived
+from it. Deriving it from `span` as if it were the *vertical* extent put a portrait phone's
+camera at the wrong distance and every drag on it missed; `verticalSpan(view)` is the fix and
+the reason the function exists.
+
+**The LOD plan is per chunk**, not per frame. `tilePixels(view, canvasHeight, chunk)` answers
+for a chunk under perspective and for the frame under orthographic; `planForChunk(plan, px)`
+takes the frame's plan and removes whatever that chunk's own distance cannot resolve — never
+adds anything back, so a far chunk can never come out finer than a near one. Measured on a
+saturated 128×128 at span 14: **64 chunks, 3 distinct plans**; orthographic reports 1 by
+construction.
+
+Two things had to follow it, both the same lesson as P35 — an estimate that does not price what
+the renderer draws is an estimate that sacrifices detail for nothing:
+
+- **`countScene` counts per chunk as well as in total**, and `estimate` prices each chunk at its
+  own plan when the view is perspective. Without it the estimate was **77% over** the truth at
+  close zoom.
+- **Terrain is counted against the frustum's ground footprint**, not against its bounding box.
+  The box of a wedge holds far more chunks than the wedge, and three frustum-culls the terrain.
+  A chunk counts if any of its corners or its centre is inside: testing the centre alone
+  under-counted by 40%, which is the more dangerous direction, because the render-and-measure
+  loop corrects an over-estimate and cannot see the other.
+
+A sky dome (`client/render/sky.js`, one draw call, vertex-colour gradient, no asset) and a
+zoom-relative fog, both perspective only: an orthographic view has no horizon to fade into.
+
+Estimate against actual after all of it, on a saturated 96×96: orthographic **0–7%**,
+perspective **1–23%**, against a 25% gate. Draw calls rise from 55 to 91 in perspective, because
+a per-chunk plan means more building tiers are in use at once — triangles bought with draw
+calls, and both are inside their budgets.
+
 ## 8.4 Streaming
 
 Chunks outside `visibleBounds` push nothing (already true for pools). L3 chunks farther than

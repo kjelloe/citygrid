@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS,
+  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS, CAMERA,
   defaultSettings, sanitiseSettings, documentAttributes, mixerSettings,
 } from "../client/ui/settings-model.js";
 import { LOCALES } from "../client/i18n.js";
@@ -79,7 +79,7 @@ test("every row has at least two choices and a label", () => {
     }
   }
   assert.deepEqual(SETTING_ROWS.map((r) => r.choices),
-    [QUALITY, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
+    [QUALITY, CAMERA, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
 });
 
 // --- audio (slice 4.4) ------------------------------------------------------
@@ -195,4 +195,24 @@ test("no tier knob is a simulation knob", () => {
         `tier knob ${knob} sounds like the simulation`);
     }
   }
+});
+
+// --- the projection (slice V5, ruling 034) ----------------------------------
+
+test("the projection is offered, and a coarse pointer gets the flat one", () => {
+  // Ruling 034: perspective is the play camera, orthographic stays for the
+  // phone. A perspective orbit on a small screen with a finger is harder to aim
+  // than a diagram, and the diagram is what ruling 006 was protecting.
+  const row = SETTING_ROWS.find((r) => r.field === "camera");
+  assert.ok(row, "there is no camera row");
+  assert.deepEqual(row.choices.map((c) => c.value), ["city", "ortho"]);
+  assert.equal(defaultSettings("en", "desktop", false).camera, "city");
+  assert.equal(defaultSettings("en", "phone", true).camera, "ortho");
+  assert.equal(sanitiseSettings({ camera: "isometric" }, "en", "desktop", false).camera, "city",
+    "an unknown projection did not fall back");
+  assert.equal(sanitiseSettings({ camera: "ortho" }, "en", "desktop", false).camera, "ortho");
+});
+
+test("the projection is a preference, never a game option", () => {
+  assert.equal(OPTION_FIELDS.includes("camera"), false);
 });

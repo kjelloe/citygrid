@@ -35,6 +35,9 @@
   "settings.quality.low": "Low — phone",
   "settings.quality.medium": "Medium — laptop",
   "settings.quality.high": "High — desktop card",
+  "settings.camera": "Camera",
+  "settings.camera.perspective": "Perspective",
+  "settings.camera.orthographic": "Flat (map-like)",
   "settings.highContrast": "High contrast",
 
   "lobby.size": "Region size",

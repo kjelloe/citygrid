@@ -18,7 +18,7 @@ import { buildingParams } from "../world/params.js";
 import { jitter } from "../world/hash.js";
 import { setFaceContrast } from "./detail-kit.js";
 import { DIR4 } from "../../shared/grid.js";
-import { TIER, setCosts, inBounds } from "./lod.js";
+import { TIER, setCosts, inBounds, planForChunk, tilePixels } from "./lod.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
   TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, FLAG_RUINED, NET_PRESENT,
@@ -331,17 +331,31 @@ export function updateInstances(state, pools, options = {}) {
   // The LOD plan decides what exists this frame. Callers may still force
   // things off (reduced-effects mode), but never on.
   const plan = options.plan ?? { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: true, props: true };
-  const buildingTier = plan.buildings;
-  const treeTier = plan.treeDetail;
-  const trees = plan.trees && options.trees !== false;
-  const props = plan.props && options.props !== false;
+  // A plan per CHUNK, not per frame (slice V5, spec §8.2).
+  //
+  // An orthographic camera puts every tile at the same size, so one plan for the
+  // frame was the whole truth. A perspective camera does not, and drawing the
+  // horizon at the same fidelity as the tile under the cursor is most of a
+  // frame spent on things a pixel wide. A chunk's plan is the frame's plan with
+  // whatever that chunk's own distance cannot resolve taken away — never
+  // anything added back, so a far chunk can never come out finer than a near
+  // one.
+  const CHUNK = 16;
+  const chunkPlans = new Map();
+  const planAt = (x, y) => {
+    if (options.canvasHeight === undefined || plan.mode !== "city") return plan;
+    const key = ((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0);
+    let found = chunkPlans.get(key);
+    if (found) return found;
+    const cx = (((x / CHUNK) | 0) + 0.5) * CHUNK;
+    const cz = (((y / CHUNK) | 0) + 0.5) * CHUNK;
+    found = planForChunk(plan, tilePixels(options.view, options.canvasHeight, { x: cx, z: cz }));
+    chunkPlans.set(key, found);
+    return found;
+  };
+
   const bounds = options.bounds;
-  const markings = plan.markings !== false;
-  const poles = plan.poles !== false;
-  // The utility ribbons. Sub-pixel below about twelve pixels a tile, and the
-  // largest single thing on screen on a wired city, so they are both a
-  // resolvability gate and a ladder rung (slice V2).
-  const networks = plan.networks !== false;
+
 
   // Only what the camera can see. Everything below is per-tile work, and on a
   // 128x128 region at street zoom that is 16k tiles of which perhaps 300 are
@@ -355,6 +369,15 @@ export function updateInstances(state, pools, options = {}) {
     for (let x = x0; x <= x1; x += 1) {
       const index = y * state.width + x;
       const h = ground(index);
+      // This tile's chunk decides what it may draw; under orthographic every
+      // chunk gets the frame's plan and nothing changes.
+      const local = planAt(x, y);
+      const markings = local.markings !== false;
+      const poles = local.poles !== false;
+      const networks = local.networks !== false;
+      const props = local.props !== false && options.props !== false;
+      const trees = local.trees !== false && options.trees !== false;
+      const treeTier = local.treeDetail;
 
       if (state.tiles.road[index] & NET_PRESENT) {
         // The road surface itself is the terrain mesh's colour; only the
@@ -474,9 +497,10 @@ export function updateInstances(state, pools, options = {}) {
     // buried and that is what a plinth looks like from above (spec §5.6).
     if (p.lawn) push(pools.lawn, cx, h, cz, building.w, building.h, 1, p.lawn);
 
-    const pool = pools[`${p.kind}${p.variant}_${buildingTier}`];
+    const tier = planAt(building.x, building.y).buildings;
+    const pool = pools[`${p.kind}${p.variant}_${tier}`];
     if (!pool) continue;
-    const roofPool = pools[`${p.kind}${p.variant}_${buildingTier}_roof`];
+    const roofPool = pools[`${p.kind}${p.variant}_${tier}_roof`];
     push(pool, cx, h, cz, building.w * 0.98, p.height, building.h * 0.98, p.colour, p.spin);
     if (roofPool) push(roofPool, cx, h, cz, building.w * 0.98, p.height, building.h * 0.98, p.roof, p.spin);
   }
@@ -512,5 +536,17 @@ export function updateInstances(state, pools, options = {}) {
     mesh.instanceColor.needsUpdate = true;
     if (mesh.visible) triangles += mesh.count * triangleCount(mesh.geometry);
   }
-  return { instances: Object.values(pools).reduce((sum, mesh) => sum + mesh.count, 0), triangles };
+  return {
+    instances: Object.values(pools).reduce((sum, mesh) => sum + mesh.count, 0),
+    triangles,
+    // How many chunks were planned separately. One under orthographic by
+    // construction; more than one under perspective is the proof that the
+    // policy is per chunk and not per frame (slice V5).
+    chunkPlans: Math.max(1, chunkPlans.size),
+    // And how many of them actually DIFFER. Sixteen chunks all planned the
+    // same way is a per-chunk policy that is doing nothing.
+    chunkTiers: Math.max(1, new Set([...chunkPlans.values()].map(
+      (p) => `${p.buildings}${p.treeDetail}${p.props ? 1 : 0}${p.markings ? 1 : 0}${p.trees ? 1 : 0}${p.cars ? 1 : 0}`,
+    )).size),
+  };
 }

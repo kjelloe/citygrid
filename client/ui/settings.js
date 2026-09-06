@@ -10,7 +10,7 @@
 
 import { t, loadLocale } from "../i18n.js";
 import { SETTING_ROWS, defaultSettings, sanitiseSettings, documentAttributes } from "./settings-model.js";
-import { deviceClass } from "../capabilities.js";
+import { deviceClass, isCoarsePointer } from "../capabilities.js";
 
 const KEY = "citygrid.settings";
 
@@ -26,16 +26,17 @@ function el(tag, className, text) {
  * reason to refuse to start the game. */
 export function loadSettings(fallbackLocale = "en") {
   const device = deviceClass();
+  const coarse = isCoarsePointer();
   try {
-    return sanitiseSettings(JSON.parse(globalThis.localStorage?.getItem(KEY) ?? "{}"), fallbackLocale, device);
+    return sanitiseSettings(JSON.parse(globalThis.localStorage?.getItem(KEY) ?? "{}"), fallbackLocale, device, coarse);
   } catch {
-    return defaultSettings(fallbackLocale, device);
+    return defaultSettings(fallbackLocale, device, coarse);
   }
 }
 
 export function saveSettings(settings) {
   try {
-    globalThis.localStorage?.setItem(KEY, JSON.stringify(sanitiseSettings(settings, settings.locale, deviceClass())));
+    globalThis.localStorage?.setItem(KEY, JSON.stringify(sanitiseSettings(settings, settings.locale, deviceClass(), isCoarsePointer())));
   } catch {
     // A preference that cannot be remembered still applies to this session.
   }
@@ -82,7 +83,7 @@ export async function openSettings({ onLocaleChange, onChange } = {}) {
       button.dataset.field = row.field;
       button.dataset.value = choice.value;
       button.addEventListener("click", async () => {
-        settings = sanitiseSettings({ ...settings, [row.field]: choice.value }, settings.locale, deviceClass());
+        settings = sanitiseSettings({ ...settings, [row.field]: choice.value }, settings.locale, deviceClass(), isCoarsePointer());
         saveSettings(settings);
         applyDisplaySettings(settings);
         onChange?.(settings);

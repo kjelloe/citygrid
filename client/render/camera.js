@@ -1,12 +1,27 @@
-// Orthographic low-isometric camera with four snapped yaw angles.
+// One view, two projections, four snapped yaw angles.
 //
 // Rotation is a hard requirement (ruling 006), and snapped rather than free
 // because the design asks for "comfortable angles" rather than disorienting
-// freedom. Four angles also means a future sprite pipeline stays expressible.
+// freedom. Ruling 034 amends it: **perspective is the play camera** and
+// orthographic stays as a mode, because what 006 protected was being able to
+// look behind a building and mobile and desktop seeing the same city — not the
+// projection itself, which was chosen when a sprite pipeline was still possible
+// and 022 chose meshes.
+//
+// `span` remains the single zoom control in both. Under perspective the eye
+// distance is derived from it, so switching projection does not jump the view;
+// that is what makes the setting a preference rather than a different game.
 
 import * as THREE from "three";
 
 export const YAW_STEPS = 4;
+
+/** Modes, as ruling 034 names them. `street` arrives with E4. */
+export const MODES = ["city", "ortho"];
+
+/** Vertical field of view for the perspective camera, degrees. Wide enough to
+ * feel like a place, narrow enough that the edges do not smear. */
+const FOV = 50;
 const PITCH = Math.atan(1 / Math.SQRT2); // classic isometric-ish, ~35.26°
 
 /** How far the camera may be tilted, in radians from the ground plane.
@@ -23,22 +38,59 @@ const PITCH = Math.atan(1 / Math.SQRT2); // classic isometric-ish, ~35.26°
 const MIN_PITCH = 12 * (Math.PI / 180);
 const MAX_PITCH = 82 * (Math.PI / 180);
 
-export function createCamera(aspect) {
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 4000);
+export function createCamera(aspect, mode = "city") {
   const view = {
-    camera,
+    ortho: new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 4000),
+    persp: new THREE.PerspectiveCamera(FOV, aspect, 0.5, 4000),
+    mode: MODES.includes(mode) ? mode : "city",
+    fov: FOV,
     targetX: 0,
     targetZ: 0,
-    /** Tiles visible across the shorter screen axis. The only zoom control. */
+    /** Tiles visible across the shorter screen axis. The only zoom control, in
+     * both projections. */
     span: 40,
     yawStep: 0,
     yaw: 0,
     pitch: PITCH,
     aspect,
   };
+  view.camera = view.mode === "ortho" ? view.ortho : view.persp;
   applyZoom(view, aspect);
   applyPose(view);
   return view;
+}
+
+/** How many tiles fill the screen VERTICALLY.
+ *
+ * `span` is tiles across the shorter axis — the same meaning the orthographic
+ * camera has given it since the first renderer — so on a landscape screen that
+ * is the height and on a portrait phone it is the width. Perspective has to
+ * agree, because three's field of view is vertical: deriving the eye distance
+ * from `span` on a portrait screen put the phone's camera at the wrong distance
+ * and every drag on it missed (slice V5). */
+export function verticalSpan(view) {
+  return view.aspect >= 1 ? view.span : view.span / view.aspect;
+}
+
+/** How far the eye sits from the orbit target so that a tile AT THE TARGET is
+ * the same size as the orthographic camera would draw it.
+ *
+ * The vertical extent subtends `fov`, so the distance is half of it over the
+ * tangent of half the angle. Deriving it rather than storing it is what makes
+ * `setMode` free of a jump. */
+export function eyeDistance(view) {
+  return verticalSpan(view) / (2 * Math.tan((view.fov * Math.PI) / 360));
+}
+
+/** Swaps the projection and re-poses. Everything else about the view — target,
+ * yaw, pitch, span — is shared, so the city does not move. */
+export function setMode(view, mode) {
+  if (!MODES.includes(mode) || view.mode === mode) return view.mode;
+  view.mode = mode;
+  view.camera = mode === "ortho" ? view.ortho : view.persp;
+  applyZoom(view, view.aspect);
+  applyPose(view);
+  return view.mode;
 }
 
 export function applyZoom(view, aspect) {
@@ -46,26 +98,42 @@ export function applyZoom(view, aspect) {
   const half = view.span / 2;
   const halfX = aspect >= 1 ? half * aspect : half;
   const halfY = aspect >= 1 ? half : half / aspect;
-  view.camera.left = -halfX;
-  view.camera.right = halfX;
-  view.camera.top = halfY;
-  view.camera.bottom = -halfY;
-  view.camera.updateProjectionMatrix();
+  const ortho = view.ortho ?? view.camera;
+  ortho.left = -halfX;
+  ortho.right = halfX;
+  ortho.top = halfY;
+  ortho.bottom = -halfY;
+  ortho.updateProjectionMatrix();
+  if (view.persp) {
+    view.persp.aspect = aspect;
+    view.persp.fov = view.fov;
+    // Far enough to see the whole of a 128-tile map from a low pitch, near
+    // enough that the depth buffer still separates a kerb from the road.
+    view.persp.far = 4000;
+    view.persp.updateProjectionMatrix();
+  }
+  // Under perspective the eye distance follows the span, so a zoom is a move.
+  if (view.mode === "city") applyPose(view);
 }
 
 /** Places the camera on its orbit. Distance is fixed and large: an orthographic
  * camera does not care, and a far camera keeps the whole map inside the near
  * and far planes at every zoom. */
 export function applyPose(view) {
-  const distance = 1200;
+  // Orthographic does not care how far away the eye is, only which way it
+  // looks, so it sits far enough out to keep the whole map inside its near and
+  // far planes at every zoom. Perspective cares a great deal: its distance IS
+  // the zoom (ruling 034).
+  const distance = view.mode === "city" ? eyeDistance(view) : 1200;
   const pitch = view.pitch ?? PITCH;
   const x = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
   const y = Math.sin(pitch) * distance;
   const z = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
-  view.camera.position.set(x, y, z);
-  view.camera.up.set(0, 1, 0);
-  view.camera.lookAt(view.targetX, 0, view.targetZ);
-  view.camera.updateMatrixWorld();
+  const camera = view.camera;
+  camera.position.set(x, y, z);
+  camera.up.set(0, 1, 0);
+  camera.lookAt(view.targetX, 0, view.targetZ);
+  camera.updateMatrixWorld();
 }
 
 export function setYawStep(view, step) {

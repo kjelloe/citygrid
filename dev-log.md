@@ -3047,3 +3047,72 @@ red gate was the gate's own defect.
 - `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on the steepest
   window: the hillside reads as a hillside, the zoning is painted onto it, and
   nothing floats.
+
+---
+
+## V5 — The perspective play camera
+
+Ruling 034: perspective is the play camera and orthographic stays for the phone.
+`view` holds both cameras and swaps which one `view.camera` points at; the
+target, yaw, pitch and `span` are shared, so switching projection does not move
+the city. That is what makes it a preference rather than a different game.
+
+### What the estimate had to learn
+
+The LOD plan is **per chunk** now — an orthographic camera puts every tile at the
+same size and a perspective one does not, so drawing the horizon at the fidelity
+of the tile under the cursor is most of a frame spent on things a pixel wide.
+`planForChunk` takes the frame's plan and removes what a chunk's own distance
+cannot resolve, never adding anything back, so a far chunk can never come out
+finer than a near one.
+
+Two consequences, both the P35 lesson again:
+
+**The estimate priced every chunk at the frame's plan** and came out **77% over**
+the truth at close zoom. `countScene` now accumulates per-chunk sub-counts
+alongside the totals, and `estimate` sums them at each chunk's own plan.
+
+**Terrain was counted against a bounding box.** The box of a wedge holds far more
+ground than the wedge, and three frustum-culls the terrain — the same shape as
+N30's "charged 49k for ground never drawn". `visibleBounds` returns the
+footprint quad as well as its box, and a chunk counts if any of its corners or
+its centre is inside. Testing the centre alone under-counted by 40%, which is
+the more dangerous direction: the render-and-measure loop corrects an
+over-estimate and cannot see the other.
+
+### What failed on the way
+
+**Picking built an orthographic ray.** One direction for every pixel is exactly
+right for one camera and exactly wrong for the other, and the error is zero at
+the centre of the frame and largest at its edges — which is where a gate does
+not look. `groundRay` in `picking.js` is now the only place that knows the
+difference, and the controller's pan uses it too.
+
+**`span` means the shorter axis, and I derived the eye distance as if it meant
+the vertical one.** Landscape was fine; on a 390×844 phone the camera sat at the
+wrong distance and every drag missed. Four `play_smoke` checks caught it —
+desktop perspective green, phone perspective red, which is the pair that names
+the cause.
+
+### Measured
+
+- `./test.sh` **660 tests, green twice**; 10 new in `test/lod.test.js`, 4 in
+  `test/input.test.js`, 2 in `test/settings.test.js`.
+- **Twelve gates green**, and `play_smoke` and `budget_gate` now run **both
+  projections** — 4 viewport/projection combinations and 2 × 3 tiers × 4 spans.
+- **Orthographic is byte-identical to V4** at the default span and at span 12,
+  compared against a worktree checkout of `f13b0dd` rather than against memory.
+- Per-chunk plans on a saturated 128×128 at span 14: **64 chunks, 3 distinct
+  plans**. Orthographic reports 1, by construction.
+- Estimate against actual on a saturated 96×96, after the two fixes:
+
+  | | before | after |
+  | --- | --- | --- |
+  | orthographic | 0–7% | 0–7% (untouched) |
+  | perspective | 25–77% over | **1–23%** |
+
+- Draw calls 55 → 91 in perspective: a per-chunk plan means more building tiers
+  are in use at once. Triangles bought with draw calls, and both are inside
+  their budgets (`plan.md` §6 allows 150).
+- `reports/smoke-V5-{ortho,city}.png`, `smoke-V5-city-span14-p20.png` at a 20°
+  pitch showing convergence, and `style-sheet-city.png`.

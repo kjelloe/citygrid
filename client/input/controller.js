@@ -16,15 +16,19 @@ import { price, undoLast, lastUndoFor } from "../../engine/build-commands.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { footprintAt } from "../ui/build-model.js";
 import { RESULT } from "../../shared/protocol.js";
-import { pickTile } from "../render/picking.js";
-import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap } from "../render/camera.js";
+import { pickTile, groundPoint } from "../render/picking.js";
+import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap, applyPose } from "../render/camera.js";
 import { createGestures, down, move, up, cancel } from "./gestures.js";
 import { lineTiles, rectTiles, toRuns, tileIndex, runsLength } from "./runs.js";
 import { TOOLS, DRAG, buildCommand, toolForKey } from "./tools.js";
 
 /** Screen pixels to world tiles for a pan. An orthographic camera shows
  * `span` tiles down the canvas height, so this ratio is exact rather than
- * tuned — the map moves precisely with the finger at any zoom. */
+ * tuned — the map moves precisely with the finger at any zoom.
+ *
+ * Under perspective there IS no such ratio: the same drag moves the ground a
+ * long way at the horizon and barely at all under the eye. That case is handled
+ * by `panToGrab` instead, which is exact for a different reason. */
 function pixelsToTiles(view, canvasHeight, pixels) {
   return (pixels / canvasHeight) * view.span;
 }
@@ -135,12 +139,50 @@ export function createController(canvas, state, renderer, options = {}) {
     }
   }
 
+  /** The ground point the drag started on, in tile coordinates. Under
+   * perspective a pan is "keep this point under the pointer" rather than "move
+   * the camera by so many tiles", because the conversion is not a constant
+   * (slice V5). Exact by construction, and it is what makes a drag near the
+   * horizon feel like dragging the ground rather than nudging the camera. */
+  let grabbed;
+
+  function grabAt(x, y) {
+    const view = renderer.view;
+    if (view.mode !== "city") { grabbed = undefined; return; }
+    const tile = groundAtPixel(x, y);
+    grabbed = tile ? { ...tile, px: x, py: y } : undefined;
+  }
+
+  /** Where the pointer is on the ground, in TILE coordinates and unrounded —
+   * `pickTile` floors to a tile and a pan needs the fraction. One ray builder
+   * for both projections, in `picking.js`. */
+  const groundAtPixel = (px, py) => groundPoint(
+    renderer.view, px, py, canvas.clientWidth, canvas.clientHeight,
+    renderer.model, state.width, state.height,
+  );
+
+  /** Moves the camera so the grabbed ground point sits under the pointer. */
+  function panToGrab(px, py) {
+    if (!grabbed) return false;
+    const now = groundAtPixel(px, py);
+    if (!now) return false;
+    renderer.view.targetX += grabbed.x - now.x;
+    renderer.view.targetZ += grabbed.z - now.z;
+    applyPose(renderer.view);
+    clampToMap(renderer.view, state.width, state.height);
+    return true;
+  }
+
   function handle(intents) {
     for (const intent of intents) {
       switch (intent.type) {
         case "panBy":
           // Negated: dragging the map right must move the CITY right, which
           // means moving the camera left.
+          if (renderer.view.mode === "city") {
+            if (!grabbed) grabAt(intent.x - intent.dx, intent.y - intent.dy);
+            if (panToGrab(intent.x, intent.y)) break;
+          }
           panBy(renderer.view,
             -pixelsToTiles(renderer.view, canvas.clientHeight, intent.dx),
             -pixelsToTiles(renderer.view, canvas.clientHeight, intent.dy));
@@ -254,10 +296,11 @@ export function createController(canvas, state, renderer, options = {}) {
   };
   const onPointerUp = (event) => {
     canvas.releasePointerCapture?.(event.pointerId);
+    grabbed = undefined;
     if (drag.button >= 0) { drag.button = -1; return; }
     handle(up(gestures, point(event)));
   };
-  const onPointerCancel = () => { drag.button = -1; handle(cancel(gestures)); };
+  const onPointerCancel = () => { drag.button = -1; grabbed = undefined; handle(cancel(gestures)); };
   const onWheel = (event) => {
     event.preventDefault();
     zoomBy(renderer.view, event.deltaY > 0 ? 1.12 : 1 / 1.12);

@@ -294,9 +294,15 @@ const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
 
 try {
-  for (const [label, viewport, touch] of [
-    ["desktop", { width: 1280, height: 720 }, false],
-    ["phone", { width: 390, height: 844 }, true],
+  // Both projections (slice V5, ruling 034). A gate that only ever drives the
+  // orthographic camera proves half a promise: everything below — the drag, the
+  // undo, the rectangle, the orbit — runs through picking and panning, and
+  // those are the two things that stop being a constant under perspective.
+  for (const [label, viewport, touch, mode] of [
+    ["desktop", { width: 1280, height: 720 }, false, "ortho"],
+    ["desktop perspective", { width: 1280, height: 720 }, false, "city"],
+    ["phone", { width: 390, height: 844 }, true, "ortho"],
+    ["phone perspective", { width: 390, height: 844 }, true, "city"],
   ]) {
     const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
     const page = await context.newPage();
@@ -305,10 +311,11 @@ try {
     // Expose three's Vector3 for the tile→pixel helper, using the very module
     // the page already loaded rather than a second copy.
     await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
-    await page.evaluate(async () => {
+    await page.evaluate(async (wanted) => {
       const THREE = await import("/vendor/three.module.js");
       globalThis.THREE_VEC = THREE.Vector3;
-    });
+      globalThis.CITY.setProjection(wanted);
+    }, mode);
     await run(page, label, { touch });
     await context.close();
   }
