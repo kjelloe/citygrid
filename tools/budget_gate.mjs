@@ -82,7 +82,10 @@ try {
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=96&life=0`);
+  // `style=plain` PINNED: R2 made the style a setting whose default is
+  // `painted` on a desktop, and every number in this gate's history was
+  // measured on plain. The painted rows below load their own page.
+  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=96&life=0&style=plain`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
 
   // A city with something of everything in it, on every tile the camera can
@@ -338,7 +341,9 @@ try {
       night: renderer.night,
       lamps: s.lamps, held: s.lampsHeld,
       actual: s.triangles, budget: s.budget, lod: s.lod,
-      calls: renderer.renderer.info.render.calls,
+      // From the STATS: with a post pass `info.render` has been reset by the
+      // full-screen quad (P2).
+      calls: s.drawCalls,
     };
   });
   console.log(`      night: ${night.lamps} of ${night.held} lamps lit, ${night.actual} triangles `

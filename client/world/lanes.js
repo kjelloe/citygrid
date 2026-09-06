@@ -110,6 +110,52 @@ function pack(points, heightAt) {
   return { pts, cum, len: run };
 }
 
+/**
+ * A corridor's own centreline heights, once.
+ *
+ * A lane is a two-metre offset of the corridor and the ground inside a corridor
+ * is flattened to its centreline (spec §5.1), so the height at a lane point IS
+ * the corridor's height at the same fraction along it. Querying it per lane
+ * point asked the ground 14,780 times while deriving the lane graph of a
+ * 128×128 — 23 ms of the 52 that took (R2).
+ */
+function profileOf(corridor, heightAt) {
+  const points = corridor.points;
+  const ys = new Float64Array(points.length);
+  const cum = new Float64Array(points.length);
+  let run = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    ys[i] = heightAt(points[i].x, points[i].z);
+    if (i > 0) run += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+    cum[i] = run;
+  }
+  return { ys, cum, len: run || 1 };
+}
+
+/** `pack`, reading the corridor's profile by fraction of length instead of
+ * asking the ground. */
+function packAlong(points, profile) {
+  const pts = new Float32Array(points.length * 3);
+  const cum = new Float32Array(points.length);
+  let run = 0;
+  for (let i = 0; i > -1 && i < points.length; i += 1) {
+    if (i > 0) run += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+    cum[i] = run;
+  }
+  const total = run || 1;
+  for (let i = 0; i < points.length; i += 1) {
+    const want = (cum[i] / total) * profile.len;
+    let k = 1;
+    while (k < profile.cum.length - 1 && profile.cum[k] < want) k += 1;
+    const span = profile.cum[k] - profile.cum[k - 1] || 1;
+    const t = Math.min(1, Math.max(0, (want - profile.cum[k - 1]) / span));
+    pts[i * 3] = points[i].x;
+    pts[i * 3 + 1] = profile.ys[k - 1] + (profile.ys[k] - profile.ys[k - 1]) * t;
+    pts[i * 3 + 2] = points[i].z;
+  }
+  return { pts, cum, len: run };
+}
+
 /** As `pack`, with the two end heights given and the interior interpolated —
  * a straight line in y across the junction, which on flat ground is exact. */
 function packBetween(points, y0, y1) {
@@ -157,6 +203,8 @@ export function deriveLanes(state, network, heightAt) {
 
   // --- one lane each way along every corridor --------------------------------
   for (const corridor of network.corridors) {
+    // Once per corridor, shared by both directions.
+    const profile = profileOf(corridor, heightAt);
     for (const dir of [0, 1]) {
       const along = dir === 0 ? corridor.points : [...corridor.points].reverse();
       if (along.length < 2) continue;
@@ -176,7 +224,7 @@ export function deriveLanes(state, network, heightAt) {
       };
       const cut = trim(centre, clear(from), clear(to));
       if (cut.length < 2) continue;
-      const packed = pack(cut, heightAt);
+      const packed = packAlong(cut, profile);
       if (packed.len < 1e-6) continue;
       const lane = { id: lanes.length, corridor: corridor.id, dir, from, to };
       lanes.push(lane);

@@ -3677,3 +3677,71 @@ old shape of `camera.js` and `picking.js` — a source test is a model of the co
 code is exactly when it has to be read again. And the first two attempts at a behavioural test for
 finding 3 both passed with the bug planted, which is how it became a source assertion instead: a
 test that cannot fail is worse than no test, and saying so in the file is the honest version.
+
+---
+
+## 2026-09-06 — Slice R2: fourteen review findings, and a fifteenth found doing them
+
+The architect's pass after R1 gave nine findings and the omissions pass five more. All fourteen
+have a test or a gate row.
+
+**Measured.** `ui_smoke` 114 → 118 checks — the render style is a settings row now and the gate
+drives it through a renderer rebuild. `a11y_smoke` gains reduced motion with a baseline to compare
+against (4 cars on a page without the preference). `lobby_smoke` starts three cities in one page
+and the geometry count goes **15 → 2 → 2** where before it climbed. `budget_gate` is green with its
+street-chunk, car, night and painted rows. The 128×128 model rebuild is **80.0 → 53.7 ms**. Suite
+green twice; every gate green.
+
+**The nine.**
+
+1. **A building was a member of two chunks by two rules** — the baker claimed a lot by its centre,
+   the instanced pass skipped the L2 box by its anchor tile, so a 2×2 across a boundary was drawn
+   twice or not at all. `chunkOfLot` is the one rule.
+2. **Signs were Lambert whatever the style** — in `painted` the one surface on the street that was
+   not toon-shaded, in `pixel` lit on an unlit city, and dark at night above a glowing shopfront.
+   They take `makeMaterial(style)` and a `userData.emissive` mark, so `setNight` dials them.
+3. **Leaving the street forgot where you came from** — a phone defaults to orthographic and always
+   came back to perspective. `play_smoke` checks the round trip in both.
+4. **The day was nineteen seconds long.** Ticks were the wrong clock: at the play speed a tick is
+   400 ms, and at fast speed the day was six seconds — the sun raced because the GAME sped up. It
+   is `DAY_SECONDS = 240` of wall clock now, held while paused.
+5. **The style is a setting.** Ruling 033 named `painted` as the target and nothing selected it;
+   by ruling 026's standard two of the three styles did not exist. Default `painted` on High.
+6. **Sign names per locale**, equal lengths, so a language change renames every shop and moves
+   none of them.
+7. **The derivation, profiled and cut.** `deriveLots` searched every corridor for every road-less
+   lot; it widens rings now (25.0 → 15.0 ms). `deriveLanes` asked the ground for a height at every
+   lane point — 14,780 queries, 23 of its 52 ms — and reads the corridor's own centreline profile
+   instead (53.0 → 41.3). **80.0 → 53.7 ms**, still over a frame, and 28 ms of what is left is the
+   graph construction rather than the ground: the per-chunk slice stands (**Q60**).
+8. **Chunks were baked behind the camera.** The cache filters by the visible footprint before
+   taking the tier's count. Also the answer to Q53.
+9. **Two `THREE.Color` allocations a frame** in a function that runs twice a frame.
+
+**The five from the omissions pass.** Lamps and parked cars were drawn twice inside a baked chunk
+(`props` was not gated on `drawn`, which is why E5's screenshots showed lamps while its prop pass
+built nothing); `renderer.dispose()` freed the context and nothing in the scene; reduced motion was
+ignored by the renderer entirely; the lobby diorama ran the High tier with live traffic and a day
+clock behind a start screen; and three documents had drifted — ruling 040's tier table, the
+README's gate list, `specs/engine/08` §8.1 — with `test/docs.test.js` now holding the ruling's
+table against `data/cityviewer.json`.
+
+**A fifteenth, found doing them.** `instances.js` kept its own `const CHUNK = 16` — a fourth copy
+of the number E2 moved into `data/cityviewer.json` because three things had three copies.
+
+**What failed on the way.**
+
+*A silent blank page for half an hour.* `stillness` was declared below the `createRenderer` call
+that read it, so `startGame` threw a temporal-dead-zone `ReferenceError` — and `main.js` awaited
+`play()` in three places without a catch, so it became an unhandled rejection with no console
+output at all. `client_smoke` stayed green throughout, because it drives `tools/shoot.html` and
+never loads `index.html`. `play()` is caught now and says so on screen.
+
+*The reduced-motion check had a baseline of zero.* "0 cars with the preference, 0 without" passes
+and proves nothing; the gate lays a road with traffic on it first. And the check itself changed:
+`life: false` settles the street and stops the clock, so what is asserted is that no car MOVES,
+not that none exist (**Q59**).
+
+*The budget gate quietly changed what it was measuring.* Making `painted` the default on High
+meant the gate's own page was rendering the ink finish, and every number in its history was taken
+on `plain`. It pins `?style=plain` now, and the painted rows keep their own page.

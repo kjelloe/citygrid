@@ -4,6 +4,8 @@
   "boot.loading": "Loading…",
   "boot.unsupported.title": "This device cannot run City Grid",
   "boot.unsupported.body": "City Grid needs WebGL2. Try a newer browser, or a different device.",
+  "boot.failed.title": "Something went wrong",
+  "boot.failed.body": "The city could not be started. Reloading the page usually clears it.",
   "boot.error.title": "Something went wrong",
 
   "menu.singleplayer": "Play alone",
@@ -43,6 +45,10 @@
   "settings.time.sunset": "Sunset",
   "settings.time.night": "Night",
   "settings.time.auto": "Follow the clock",
+  "settings.style": "Look",
+  "settings.style.plain": "Plain",
+  "settings.style.painted": "Illustrated",
+  "settings.style.pixel": "Pixel art",
   "settings.highContrast": "High contrast",
 
   "lobby.size": "Region size",

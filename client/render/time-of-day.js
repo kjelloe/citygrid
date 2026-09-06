@@ -54,14 +54,17 @@ export function blendPresets(a, b, t) {
 }
 
 /**
- * Which preset the game clock is in.
+ * Which preset the clock is in.
  *
- * `dayTicks` is how many ticks a whole day is worth. The shape is deliberate:
- * over half the day is daylight, dusk is short, and night is long enough to be
- * worth having built (spec §7.3 — night is what pays for L3).
+ * `period` is how long a whole day is, in whatever unit `at` is measured in.
+ * It was game TICKS and is now wall-clock SECONDS (R2, A41): at the play speed
+ * a tick is 400 ms, so 48 ticks was a nineteen-second day — and six seconds at
+ * fast speed, because the game's clock speeds up and the sun is scenery. The
+ * shape is deliberate: over half is daylight, dusk is short, and night is long
+ * enough to be worth having built (spec §7.3 — night is what pays for L3).
  */
-export function phaseOf(tick, dayTicks) {
-  const phase = ((tick % dayTicks) + dayTicks) % dayTicks / dayTicks;
+export function phaseOf(at, period) {
+  const phase = ((at % period) + period) % period / period;
   if (phase < 0.5) return "day";
   if (phase < 0.62) return "sunset";
   if (phase < 0.9) return "night";

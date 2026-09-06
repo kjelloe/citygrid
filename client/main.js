@@ -88,6 +88,10 @@ async function boot() {
         session?.setQuality(next.quality);
         session?.setProjection(next.camera);
         session?.setTime(next.time);
+        // The style decides the materials, so it needs a rebuilt renderer —
+        // the same answer antialias gets. Rebuilding is restarting the city
+        // with the same state, which `play` already does (R2).
+        if (session && next.style !== session.style) restartWithStyle(next.style);
       },
       onLocaleChange() {
         // Re-render whatever is on screen. The panel knows the language
@@ -96,6 +100,25 @@ async function boot() {
         else newGame();
       },
     });
+  }
+
+  /** The style decides the materials, so changing it is a new renderer over the
+   * same city — the state is untouched, which is the whole point (R2). */
+  async function restartWithStyle() {
+    if (!session) return;
+    const { state } = session;
+    session.stop();
+    await play({ world: { ok: true, state } }).catch(failed);
+  }
+
+  /** A failed start must SAY so. `play` is awaited without a catch in three
+   * places, so a throw inside `startGame` became an unhandled rejection and a
+   * blank page — which is how a temporal dead zone in `game.js` cost half an
+   * hour in R2. */
+  function failed(error) {
+    console.error("the city failed to start", error);
+    show(notice("boot.failed.title", "boot.failed.body"));
+    return undefined;
   }
 
   async function play(given) {
@@ -108,7 +131,11 @@ async function boot() {
       onNewCity: newGame,
       onSettings: showSettings,
       audioSettings: mixerSettings(preferences),
-      style: config.style || undefined,
+      style: config.style || preferences.style,
+      // Reduced motion reaches the CITY, not only the interface (R2). Slice 4.5
+      // set `data-motion` and nothing in the renderer read it, so a player who
+      // asked for stillness got streaming traffic and a cycling sun.
+      reducedMotion: document.documentElement.dataset.motion === "reduced",
       tier: preferences.quality,
       mode: preferences.camera,
       time: preferences.time,
@@ -128,7 +155,7 @@ async function boot() {
     const record = await getSave(slot);
     const restored = record ? fromSave(record.save) : { ok: false };
     if (!restored.ok) { await newGame(); return; }
-    await play({ world: { ok: true, state: restored.state } });
+    await play({ world: { ok: true, state: restored.state } }).catch(failed);
   }
 
   async function newGame() {
@@ -157,7 +184,7 @@ async function boot() {
     // that needed a param has one.
     const choices = choicesFromParams(params);
     if (!config.debug) rememberInUrl(choices);
-    await play({ options: optionsFor(choices) });
+    await play({ options: optionsFor(choices) }).catch(failed);
     return;
   }
 

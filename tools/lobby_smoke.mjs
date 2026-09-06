@@ -374,6 +374,37 @@ try {
     await context.close();
   }
 
+  // --- three cities in one page (R2, finding 11) ------------------------------
+  //
+  // `renderer.dispose()` freed the post pass and the WebGL context and nothing
+  // else: the pools, the terrain chunks, the sky, the lamp lights and every
+  // baked street group survived into the next city. Nothing throws; the tab
+  // just grows.
+  {
+    const context = await browser.newContext({ viewport: { width: 1000, height: 700 } });
+    const page = await context.newPage();
+    page.on("pageerror", (error) => pageErrors.push(`leak: ${error.message}`));
+    await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48&life=0`);
+    await started(page);
+    const counts = await page.evaluate(async () => {
+      const out = [];
+      for (let i = 0; i < 3; i += 1) {
+        globalThis.CITY.renderer.draw({});
+        out.push(globalThis.CITY.renderer.renderer.info.memory.geometries);
+        globalThis.CITY.stop();
+        globalThis.CITY.renderer.dispose();
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      return out;
+    });
+    // Not "the same": a dispose can leave the context's own scratch buffers.
+    // What must not happen is the count CLIMBING city after city.
+    const grew = counts[counts.length - 1] - counts[0];
+    check("three cities in one page do not pile up geometries",
+      grew <= 0, `geometries went ${counts.join(" → ")}`);
+    await context.close();
+  }
+
   check("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
 } finally {
   await browser.close();

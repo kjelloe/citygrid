@@ -410,6 +410,8 @@ by number from the code they create.
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
 | Q58 | What does a road over water look like at street level? | E8 |
+| Q59 | Should reduced motion empty the street or still it? | R2, reversible |
+| Q60 | When does the model derivation go per chunk — the number, again? | its own slice, unchanged from Q51 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

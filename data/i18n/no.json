@@ -4,6 +4,8 @@
   "boot.loading": "Laster…",
   "boot.unsupported.title": "Denne enheten kan ikke kjøre City Grid",
   "boot.unsupported.body": "City Grid trenger WebGL2. Prøv en nyere nettleser, eller en annen enhet.",
+  "boot.failed.title": "Noe gikk galt",
+  "boot.failed.body": "Byen kunne ikke startes. Å laste siden på nytt pleier å hjelpe.",
   "boot.error.title": "Noe gikk galt",
 
   "menu.singleplayer": "Spill alene",
@@ -43,6 +45,10 @@
   "settings.time.sunset": "Solnedgang",
   "settings.time.night": "Natt",
   "settings.time.auto": "Følg klokka",
+  "settings.style": "Utseende",
+  "settings.style.plain": "Enkel",
+  "settings.style.painted": "Illustrert",
+  "settings.style.pixel": "Pikselkunst",
   "settings.highContrast": "Høy kontrast",
 
   "lobby.size": "Størrelse på området",

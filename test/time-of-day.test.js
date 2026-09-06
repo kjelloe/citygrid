@@ -9,6 +9,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 import { DEFAULTS } from "../client/world/config.js";
 import {
   PRESET_NAMES, presetFor, blendPresets, createTimeOfDay, phaseOf,
@@ -111,8 +114,8 @@ test("changing the target mid-fade continues from where it is", () => {
 
 test("the clock walks day, sunset, night and back", () => {
   const seen = [];
-  for (let tick = 0; tick < 96; tick += 1) {
-    const name = phaseOf(tick, 24);
+  for (let at = 0; at < 96; at += 1) {
+    const name = phaseOf(at, 24);
     if (seen[seen.length - 1] !== name) seen.push(name);
   }
   assert.ok(seen.length >= 4, `the day only had ${seen.length} phases: ${seen}`);
@@ -125,7 +128,7 @@ test("the clock walks day, sunset, night and back", () => {
 
 test("the schedule spends most of the day in daylight", () => {
   let day = 0;
-  for (let tick = 0; tick < 240; tick += 1) if (phaseOf(tick, 24) === "day") day += 1;
+  for (let at = 0; at < 240; at += 1) if (phaseOf(at, 24) === "day") day += 1;
   assert.ok(day / 240 > 0.4 && day / 240 < 0.75, `${(day / 240 * 100).toFixed(0)}% daylight`);
 });
 
@@ -148,4 +151,19 @@ test("a rig with no key is left with no key", () => {
   // `pixel` is unlit (spec §7.1) and a time of day must not switch a sun on.
   const flat = { key: 0, keyColour: 0xffffff, hemi: 1, hemiSky: 0xffffff, hemiGround: 0xffffff };
   assert.equal(createTimeOfDay("night").applyTo(flat).key, 0);
+});
+
+test("the light cycle runs on the WALL clock, not the game clock (R2)", () => {
+  // Ticks were the wrong unit: at the play speed a tick is 400 ms, so the
+  // 48-tick day was nineteen seconds, and six at fast speed — the sun raced
+  // because the GAME sped up.
+  const game = readFileSync(join(repoRoot, "client", "game.js"), "utf8");
+  assert.match(game, /const DAY_SECONDS = \d+;/, "the day is still measured in ticks");
+  assert.equal(/phaseOf\(state\.tick/.test(game), false, "the sun still reads the game clock");
+  assert.match(game, /if \(speed > 0\) daySeconds \+=/, "the cycle does not stop when paused");
+
+  // Four minutes, and a whole day is walked in it.
+  const seen = new Set();
+  for (let s = 0; s < 240; s += 1) seen.add(phaseOf(s, 240));
+  assert.deepEqual([...seen].sort(), ["day", "night", "sunset"]);
 });

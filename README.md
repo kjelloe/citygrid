@@ -61,6 +61,24 @@ node tools/ui_smoke.mjs        # every button hit-tested, every overlay rendered
 node tools/save_smoke.mjs      # a city survives a closed tab, hash for hash
 node tools/mvp_acceptance.mjs  # all thirteen §24 criteria, desktop and phone
 node tools/play_shot.mjs       # screenshots of the real page
+node tools/a11y_smoke.mjs      # keyboard, contrast, reduced motion, the overlays at night
+node tools/lobby_smoke.mjs     # the start screen, and three cities in one page
+node tools/serve_smoke.mjs     # the REAL server, so a CSP that blocks the importmap goes red
+node tools/offline_smoke.mjs   # the game runs with the network off
+node tools/update_smoke.mjs    # a new build actually reaches a returning player
+```
+
+**The renderer's own gates** (cityviewer). The first is the one every number in
+`dev-log.md` comes from:
+
+```sh
+node tools/budget_gate.mjs     # 3 tiers x 2 projections x 4 spans, plus street chunks,
+                               # cars, night and the painted finish
+node tools/walkthrough.mjs     # the walker walks every corridor and into every building
+node tools/passability.mjs     # a clear lane wide enough for a walker, everywhere
+node tools/lanes_dump.mjs      # link, node and signal counts for the saturated fixture
+node tools/style-sheet.mjs     # the three styles from one city — STREET=x,y for eye height
+node tools/screenshot.mjs      # one shot; ?style= ?time= ?street= ?streets= ?frames=
 ```
 
 **Soaks** (slow, and the only honest way to talk about balance):

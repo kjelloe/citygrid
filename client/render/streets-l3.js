@@ -13,6 +13,7 @@
 import * as THREE from "three";
 import { ribbon, skirt, sagCurve, dashes, clip, trim } from "./ribbon.js";
 import { getConfig } from "../world/config.js";
+import { chunkOfLot } from "../world/chunks.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
 import { buildProps } from "./props-l3.js";
@@ -181,17 +182,21 @@ export function bakeStreets(baker, state, model, cx, cy, palette) {
  * built once — a building drawn twice is a building with z-fighting on every
  * face, which at street level is the most obvious artefact there is.
  */
-export function bakeLots(baker, state, model, cx, cy, palette) {
+export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en") {
   const cfg = getConfig();
   const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
   const fronts = [];
   const specs = [];
   for (const lot of model.lots) {
-    if (lot.cx < box.x0 || lot.cx >= box.x1 || lot.cz < box.z0 || lot.cz >= box.z1) continue;
+    // ONE rule, shared with the instanced pass (R2): a lot belongs to the chunk
+    // its centre is in. Comparing against this chunk's box here and against the
+    // anchor TILE there drew a straddling building twice or not at all.
+    const owner = chunkOfLot(lot);
+    if (owner.cx !== cx || owner.cy !== cy) continue;
     // The SAME family colour the instanced kit uses, from the same function, so
     // the L2 box and the L3 facade are the same house (ruling 032, spec §6.1).
     const params = buildingParams(lot.building, palette, familyColour(lot.building, palette, false, ZONE_NONE));
-    const spec = facadeSpec(lot, params);
+    const spec = facadeSpec(lot, params, locale);
     specs.push(spec);
     for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
     fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind });
@@ -214,7 +219,7 @@ export function bakeLots(baker, state, model, cx, cy, palette) {
   // The fascias, which cannot go through the vertex-colour baker because they
   // carry a texture. One mesh per distinct NAME, added to the same group, so a
   // high street of forty shops is eighteen draw calls at worst (spec §6.5).
-  baker.extra(buildSigns(specs));
+  baker.extra(buildSigns(specs, styleName));
 }
 
 /** The outward normal of each lot side, in the order `lots.js` numbers them. */

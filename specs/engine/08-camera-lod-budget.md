@@ -6,9 +6,9 @@
 |---|---|---|---|
 | city | orthographic, `span` zoom | pan, wheel zoom, Q/E snapped yaw, right-drag orbit 12-82° | yes (ruling 006) |
 | tilt | perspective, same orbit target and yaw, pitch down to 12° | same inputs; zoom moves the eye along the view ray | V5, Q25 |
-| street | perspective at 1.62-1.7 m eye height, pointer lock or drag-look, WASD | walk with collision; touch: tap-to-walk or a stick | new |
+| street | perspective at 1.62-1.7 m eye height, drag-look, WASD | walk with collision; touch: tap-to-walk | yes (E4) |
 
-`view` in `camera.js` gains `mode`, keeps `targetX/targetZ/yaw/pitch/span`, and the tilt camera
+`view` in `camera.js` has `mode`, keeps `targetX/targetZ/yaw/pitch/span`, and the tilt camera
 derives its distance from `span` so switching projection does not jump. The four snapped yaws
 still snap in every mode. Entering street mode is "zoom past the minimum span while tilted
 below ~25°, or press a key": the eye drops to the picked tile's sidewalk, the exit is the same

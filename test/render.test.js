@@ -495,7 +495,9 @@ test("?life=0 reaches the renderer, or no picture gate is repeatable", () => {
   const game = readFileSync(join(repoRoot, "client", "game.js"), "utf8");
   assert.match(main, /params\.get\("life"\) !== "0"/);
   assert.match(main, /life: config\.life/, "the flag stops at the boot module");
-  assert.match(game, /life: options\.life/, "the flag stops at the session");
+  // R2 made reduced motion freeze the city too, so the session ANDs the two:
+  // `?life=0` still reaches the renderer, and so does the preference.
+  assert.match(game, /life: stillness \? false : options\.life/, "the flag stops at the session");
 });
 
 // --- the wiring V4 and V5 depend on ------------------------------------------

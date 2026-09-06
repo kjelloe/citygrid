@@ -53,6 +53,9 @@ export function createRenderer(canvas, state, options = {}) {
   renderer.setClearColor(palette.sky);
 
   const scene = new THREE.Scene();
+  /** Reused every frame; see `applyAtmosphere`. */
+  const SKY_BASE = new THREE.Color();
+  const SKY_WANT = new THREE.Color();
 
   // A sky and a distance haze, in perspective only (slice V5). An orthographic
   // view has no horizon — the map fills the frame or the clear colour does —
@@ -77,8 +80,10 @@ export function createRenderer(canvas, state, options = {}) {
     // vertex colour by `material.color`, and the ratio of the hour's sky to the
     // palette's keeps the gradient's shape while moving where it sits.
     if (sky.material) {
-      const base = new THREE.Color(palette.sky);
-      const want = new THREE.Color(hour.sky);
+      // Scratch colours, allocated once: `applyAtmosphere` runs twice a frame
+      // in city mode and was making two of these every time (R2).
+      const base = SKY_BASE.setHex(palette.sky);
+      const want = SKY_WANT.setHex(hour.sky);
       sky.material.color.setRGB(
         Math.min(1, want.r / Math.max(base.r, 1e-3)),
         Math.min(1, want.g / Math.max(base.g, 1e-3)),
@@ -296,7 +301,7 @@ export function createRenderer(canvas, state, options = {}) {
 
   // The baked street cache (slice E2). It draws nothing until a chunk is close
   // enough to be worth baking and the tier allows any.
-  const streets = createStreetChunks(scene, { style: styleName });
+  const streets = createStreetChunks(scene, { style: styleName, locale: options.locale });
 
   // The walker (slice E4). Both halves are pure and neither knows a camera
   // exists: the collision world is the lots as solids, and the walker takes its
@@ -421,6 +426,8 @@ export function createRenderer(canvas, state, options = {}) {
       near.x + (dx / off) * kerbside, near.z + (dz / off) * kerbside,
       Math.atan2(-tangent.x, -tangent.z), 0,
     );
+    // Remember where to come back to, before the mode changes under us.
+    if (view.mode !== "street") cameFrom = view.mode;
     poseFromWalker();
     setProjection("street");
     return true;
@@ -442,11 +449,17 @@ export function createRenderer(canvas, state, options = {}) {
     return { x: (b.x - a.x) / len, z: (b.z - a.z) / len };
   }
 
+  /** Where the player was before street mode. Restored on the way out: a phone
+   * defaults to orthographic, so leaving always to `city` handed it a
+   * projection it had never asked for (R2). */
+  let cameFrom = "city";
+
   /** Back to the city, over the place the walker was standing. */
-  function leaveStreet(mode = "city") {
+  function leaveStreet(mode) {
     view.targetX = walker.pose.x / model.tileM;
     view.targetZ = walker.pose.z / model.tileM;
-    return setProjection(mode === "street" ? "city" : mode);
+    const wanted = mode && mode !== "street" ? mode : cameFrom;
+    return setProjection(wanted);
   }
 
   /** The camera reads the walker; the walker never hears about the camera. */
@@ -606,7 +619,7 @@ export function createRenderer(canvas, state, options = {}) {
 
     // At most one chunk baked per frame, nearest first (spec §6.4). After the
     // budget loop, because the ladder may have dropped the radius.
-    stats.streets = streets.update(state, model, view, plan, drawOptions.now ?? Date.now());
+    stats.streets = streets.update(state, model, view, plan, drawOptions.now ?? Date.now(), bounds);
     stats.instances = result.instances;
     // How many distinct per-chunk plans the frame used. 1 under orthographic
     // by construction; more than 1 under perspective is the proof that the
@@ -639,7 +652,27 @@ export function createRenderer(canvas, state, options = {}) {
     return stats;
   }
 
+  /**
+   * Everything, not just the context.
+   *
+   * This disposed the post pass and the WebGL context and nothing else: the
+   * instanced pools, the terrain chunks, the sky, the lamp lights and every
+   * baked street group survived into the next city, and `lobby_smoke` starting
+   * three cities in one page leaked all of it (R2). A `renderer.dispose()` frees
+   * the context's own resources; the GEOMETRIES and MATERIALS in the scene are
+   * ours to free.
+   */
   function dispose() {
+    streets.clear();
+    for (const light of lampPool) scene.remove(light);
+    lampPool.length = 0;
+    scene.traverse((object) => {
+      object.geometry?.dispose?.();
+      const material = object.material;
+      if (Array.isArray(material)) for (const m of material) m.dispose?.();
+      else material?.dispose?.();
+    });
+    scene.clear();
     if (post) post.dispose();
     renderer.dispose();
   }

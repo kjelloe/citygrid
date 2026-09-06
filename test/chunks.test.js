@@ -14,7 +14,8 @@ import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { tileAt } from "../shared/grid.js";
 import { NET_PRESENT } from "../client/constants-mirror.js";
-import { CHUNK, chunkHash, chunksNear, chunkKey, chunkOf } from "../client/world/chunks.js";
+import { CHUNK, chunkHash, chunksNear, chunkKey, chunkOf, chunkOfLot } from "../client/world/chunks.js";
+import { DEFAULTS } from "../client/world/config.js";
 
 function blank(size = 64) {
   const state = createState(defaultOptions({ width: size, height: size, seed: 7 }));
@@ -135,4 +136,43 @@ test("a key round-trips", () => {
     assert.notEqual(chunkKey(cx, cy), chunkKey(cy, cx === cy ? cy + 1 : cx));
   }
   assert.deepEqual(chunkOf(20, 40), { cx: 1, cy: 2 });
+});
+
+// --- one rule for which chunk owns a lot (slice R2, finding 1) ---------------
+
+test("a lot straddling a boundary is claimed by exactly one chunk", () => {
+  // `bakeLots` claimed a lot whose CENTRE was in the chunk; `instances.js`
+  // skipped the L2 box whose ANCHOR TILE was in a baked chunk. A 2×2 building
+  // across a boundary was therefore drawn twice — facade and box, z-fighting on
+  // every face — or not at all.
+  const T = DEFAULTS.tileM;
+  // A 2×2 lot whose anchor tile is in chunk (0,0) and whose centre is in (1,0).
+  const lot = {
+    x0: (CHUNK - 1) * T, x1: (CHUNK + 1) * T,
+    z0: 2 * T, z1: 4 * T,
+    cx: CHUNK * T, cz: 3 * T,
+    building: { x: CHUNK - 1, y: 2, w: 2, h: 2 },
+  };
+  const claimed = chunkOfLot(lot);
+  assert.deepEqual(claimed, chunkOf(lot.cx / T, lot.cz / T),
+    "the owner is not the chunk the centre is in");
+  const byAnchor = chunkOf(lot.building.x, lot.building.y);
+  assert.notDeepEqual(claimed, byAnchor, "the fixture must actually straddle a boundary");
+});
+
+test("every lot is claimed exactly once", () => {
+  const T = DEFAULTS.tileM;
+  const seen = new Map();
+  for (let i = 0; i < 40; i += 1) {
+    const lot = { cx: (i * 7 + 0.5) * T, cz: (i * 11 + 0.5) * T };
+    const owner = chunkOfLot(lot);
+    const key = chunkKey(owner.cx, owner.cy);
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  }
+  // Every lot got an answer, and the answer is stable.
+  for (let i = 0; i < 40; i += 1) {
+    const lot = { cx: (i * 7 + 0.5) * T, cz: (i * 11 + 0.5) * T };
+    assert.deepEqual(chunkOfLot(lot), chunkOfLot(lot));
+  }
+  assert.ok(seen.size > 1);
 });

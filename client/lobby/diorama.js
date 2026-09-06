@@ -39,7 +39,13 @@ export function createDiorama(canvas, state, { style = "plain", motion = true } 
   };
   fit();
 
-  const renderer = createRenderer(canvas, state, { style, antialias: false, pixelRatio: 1 });
+  // A start screen is not a city: `createRenderer` with defaults means the High
+  // tier, live traffic and a day clock behind a menu (R2). Low, frozen, and
+  // orthographic — which is what this was drawn for.
+  const renderer = createRenderer(canvas, state, {
+    style, antialias: false, pixelRatio: 1,
+    tier: "low", life: false, mode: "ortho",
+  });
   let frame;
   let last = 0;
   let disposed = false;

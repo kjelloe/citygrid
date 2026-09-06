@@ -828,7 +828,8 @@ find the assumption an item was built against without reading all of it.*
 | P2 | Q47 should the render style be a setting (**needs a decision**) · Q48 two passes, not three |
 | V6 | Q49 is a hedge worth drawing at L2 · Q50 the L2 box and the L3 facade do not share a footprint |
 | R1 | Q51 when the model derivation goes per chunk (**80.0 ms on a 128×128**) |
-| This update | Q52 the kerb and verge ignore the terrain under them · Q53 `chunksNear` orders by the target, not the eye |
+| R2 | Q59 reduced motion stills the street rather than emptying it · Q60 the derivation after R2's cuts (**53.7 ms**) · Q53 answered |
+| The R1 doc pass | Q52 the kerb and verge ignore the terrain under them (**V7**) · Q53 `chunksNear` orders by the target (**done in R2**) |
 | Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
 | Omissions pass | Q57 cars and the walker (answered, A45: cars yield) · Q58 a road over water |
 
@@ -888,6 +889,17 @@ Commit as `slice-R2`. Each item names its test.
 
 **Done when** all nine have a test or gate row, `budget_gate` and `play_smoke` are green in both
 projections, and the dev-log carries the new 128×128 derivation split.
+
+**Done 2026-09-06 as `slice-R2`, all fourteen** (nine here plus §2e's five). Four notes.
+(1) Finding 7 cut the 128×128 rebuild **80.0 → 53.7 ms** (corridors 7.3, ground 0.0, lanes 41.3,
+lots 15.0) — still over a frame, and 28 ms of what is left is the graph construction rather than
+the ground, so the per-chunk slice stands (**Q60**, unchanged from Q51). (2) Finding 12 stills the
+street rather than emptying it: reduced motion sets `life: false`, which settles the traffic and
+stops the clock, and the gate asserts no car MOVES over thirty frames (**Q59**) — the review asked
+for a count of zero, and an empty road is a different city rather than a calmer one. (3) Finding 8
+is also the answer to **Q53**. (4) Finding 5 made `painted` the default on High, so
+`budget_gate` now pins `?style=plain`: every number in its history was measured on plain, and the
+painted rows load their own page.
 
 ### V7 — amendments
 
@@ -959,6 +971,10 @@ noted for the record.*
     and projection flags; `specs/engine/08` §8.1 still says "street comes in E4". Sync all
     three in R2's doc step; `test/docs.test.js` gains a check that the ruling's table matches
     `data/cityviewer.json`.
+
+**And a fifteenth, found while doing them.** `instances.js` kept its own `const CHUNK = 16` — a
+fourth copy of the number E2 put in `data/cityviewer.json` precisely because three things had
+three copies. It imports it now.
 
 ### R3 — unblocked (A42)
 

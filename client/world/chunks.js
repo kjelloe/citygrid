@@ -25,6 +25,19 @@ export function chunkOf(x, y) {
   return { cx: Math.floor(x / CHUNK), cy: Math.floor(y / CHUNK) };
 }
 
+/**
+ * Which chunk owns a lot: the one its CENTRE is in.
+ *
+ * One rule, because there were two. The baker claimed a lot by its centre and
+ * the instanced pass skipped the L2 box by its anchor tile, so a 2×2 building
+ * across a boundary was drawn twice — facade and box, z-fighting on every face
+ * — or not at all (slice R2).
+ */
+export function chunkOfLot(lot) {
+  const cfg = getConfig();
+  return chunkOf(lot.cx / cfg.tileM, lot.cz / cfg.tileM);
+}
+
 /** FNV-1a over 32 bits. Cheap, well spread, and — unlike a sum or an xor —
  * sensitive to ORDER, so two tiles swapping values changes the answer. */
 function fnv(hash, value) {

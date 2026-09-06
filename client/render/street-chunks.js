@@ -17,12 +17,27 @@ import { PALETTES } from "./palettes.js";
 import { bakeStreets, bakeLots } from "./streets-l3.js";
 import { getConfig } from "../world/config.js";
 import { nextBuild, expired } from "./streaming.js";
+import { inFootprint, inBounds } from "./lod.js";
 
 /** How long a chunk outside the radius is kept before its geometry goes.
  *
  * Panning a street back and forth across a boundary would otherwise rebuild the
  * same chunk every second — the grace is what makes the cache a cache. */
 const GRACE_MS = 2000;
+
+/** Is any part of this chunk inside what the camera can see? The same "any
+ * corner or the centre" rule `countScene` uses for the terrain, because they
+ * are the same chunks. */
+function inView(chunk, bounds) {
+  const x0 = chunk.cx * CHUNK;
+  const z0 = chunk.cy * CHUNK;
+  const test = bounds.footprint
+    ? (x, z) => inFootprint(bounds, x, z)
+    : (x, z) => inBounds(bounds, x, z);
+  return test(x0 + CHUNK / 2, z0 + CHUNK / 2)
+    || test(x0, z0) || test(x0 + CHUNK, z0)
+    || test(x0, z0 + CHUNK) || test(x0 + CHUNK, z0 + CHUNK);
+}
 
 export function createStreetChunks(scene, options = {}) {
   const styleName = options.style ?? "plain";
@@ -44,7 +59,7 @@ export function createStreetChunks(scene, options = {}) {
 
   const PHASES = [
     (baker, state, model, cx, cy) => bakeStreets(baker, state, model, cx, cy, palette),
-    (baker, state, model, cx, cy) => bakeLots(baker, state, model, cx, cy, palette),
+    (baker, state, model, cx, cy) => bakeLots(baker, state, model, cx, cy, palette, styleName, options.locale ?? "en"),
   ];
 
   return {
@@ -52,7 +67,7 @@ export function createStreetChunks(scene, options = {}) {
      * Brings the cache one step closer to what the view wants. At most one
      * chunk is built per call — the budget for a frame is a frame.
      */
-    update(state, model, view, plan, now = 0) {
+    update(state, model, view, plan, now = 0, bounds = undefined) {
       // A COUNT, not a radius (ruling 040: Low none, Medium 4, High 9). Nine
       // chunks is a 3×3 block around the camera, which at 16 tiles a chunk and
       // 20 m a tile is about a thousand metres of street — the range E5's
@@ -71,7 +86,13 @@ export function createStreetChunks(scene, options = {}) {
       }
 
       const radius = Math.max(1, Math.ceil(Math.sqrt(budget) / 2));
-      const wanted = chunksNear(view, radius, state.width, state.height).slice(0, budget);
+      // ON SCREEN first, then nearest (R2). `chunksNear` orders by distance to
+      // the orbit target, and under perspective at a low pitch the chunks
+      // around the target include the ones BEHIND the camera — so the cache
+      // spent its budget baking a block the player had walked past.
+      const near = chunksNear(view, radius, state.width, state.height);
+      const visible = bounds ? near.filter((c) => inView(c, bounds)) : near;
+      const wanted = (visible.length > 0 ? visible : near).slice(0, budget);
       const wantedKeys = new Set(wanted.map((c) => c.key));
 
       for (const c of wanted) {

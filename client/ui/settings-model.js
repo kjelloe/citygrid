@@ -65,6 +65,16 @@ export const TIME = [
   { value: "auto", labelKey: "settings.time.auto" },
 ];
 
+/** The render style (ruling 033: painted is the target). It was reachable only
+ * through `?style=` until R2 — a capability with no control is not a feature
+ * (ruling 026), and two of the three styles were in that state. A change needs
+ * a renderer rebuild, because the style decides the materials. */
+export const STYLE = [
+  { value: "plain", labelKey: "settings.style.plain" },
+  { value: "painted", labelKey: "settings.style.painted" },
+  { value: "pixel", labelKey: "settings.style.pixel" },
+];
+
 export const SOUND = [
   { value: true, labelKey: "settings.sound.on" },
   { value: false, labelKey: "settings.sound.off" },
@@ -83,6 +93,7 @@ export const SETTING_ROWS = [
   { field: "quality", labelKey: "settings.quality", choices: QUALITY },
   { field: "camera", labelKey: "settings.camera", choices: CAMERA },
   { field: "time", labelKey: "settings.time", choices: TIME },
+  { field: "style", labelKey: "settings.style", choices: STYLE },
   { field: "skin", labelKey: "settings.skin", choices: SKINS },
   { field: "sound", labelKey: "settings.sound", choices: SOUND },
   { field: "volumeEffects", labelKey: "settings.volume.effects", choices: LEVELS },
@@ -105,6 +116,9 @@ export function defaultSettings(locale = "en", deviceClassName = "desktop", coar
     contrast: "normal",
     motion: "auto",
     time: "day",
+    // `painted` where there is a machine for it — the ink is two full-screen
+    // passes over a depth texture — and `plain` everywhere else.
+    style: tierFor(deviceClassName) === "high" ? "painted" : "plain",
     // Sound ON by default, at a level that does not startle. A browser will not
     // let it make a noise until the player interacts anyway, so defaulting it
     // off would mean two decisions before the game says anything.
@@ -129,6 +143,7 @@ export function sanitiseSettings(given = {}, locale = "en", deviceClassName = "d
     quality: pick(QUALITY, given.quality, base.quality),
     camera: pick(CAMERA, given.camera, base.camera),
     time: pick(TIME, given.time, base.time),
+    style: pick(STYLE, given.style, base.style),
     contrast: pick(CONTRAST, given.contrast, base.contrast),
     motion: pick(MOTION, given.motion, base.motion),
     sound: pick(SOUND, given.sound, base.sound),

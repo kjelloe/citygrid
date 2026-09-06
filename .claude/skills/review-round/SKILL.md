@@ -181,6 +181,12 @@ with everything looking right and the pools reporting zero. After any scripted e
 you meant to add — and where a pass can legitimately produce nothing, report its COUNT so an empty
 one cannot be mistaken for an unmet condition.
 
+**An unhandled rejection is a blank page with no error in it.** `main.js` awaited `play()` in three
+places without a catch, so a `ReferenceError` inside `startGame` produced a silent white screen —
+no `pageerror`, no console output, nothing for a gate to report. `client_smoke` stayed green
+throughout because it drives `tools/shoot.html` and never loads `index.html`. Catch what you await
+at the boot boundary, and remember that the renderer gates do not exercise the real page.
+
 **A test that passes with the bug planted is worse than no test.** R1's junction-speed finding had
 two behavioural tests written for it and both passed with the defect restored — the two key spaces
 overlap, so the wrong answer is a plausible speed, and a car crosses an 8 m junction in under a

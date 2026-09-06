@@ -231,3 +231,35 @@ test("every cityviewer work item is a slice in plan-v1", () => {
   const missing = items.filter((id) => !new RegExp("^\\| \\*\\*" + id + "\\*\\* \\|", "m").test(plan));
   assert.deepEqual(missing, [], `work items with no plan-v1 row: ${missing}`);
 });
+
+test("ruling 040's tier table is the one in the data (R2)", () => {
+  // The ruling said 200k/80k for two slices after E5 measured them at
+  // 320k/140k. A table in a document describing numbers in a file is the same
+  // defect class as a cost table describing code elsewhere — nothing goes red
+  // when the file moves under it.
+  const ruling = readdirSync(join(repoRoot, "specs", "rulings"))
+    .filter((n) => n.startsWith("040"))
+    .map((n) => readFileSync(join(repoRoot, "specs", "rulings", n), "utf8"))
+    .join("\n");
+  const data = JSON.parse(readFileSync(join(repoRoot, "data", "cityviewer.json"), "utf8")).tiers;
+  const thousands = (n) => `${Math.round(n / 1000)}k`;
+  for (const [name, tier] of Object.entries(data)) {
+    const row = ruling.split("\n").find((l) => l.trim().startsWith(`| ${name[0].toUpperCase()}${name.slice(1)} |`));
+    assert.ok(row, `ruling 040 has no row for the ${name} tier`);
+    assert.ok(row.includes(thousands(tier.budget)),
+      `ruling 040's ${name} row does not say ${thousands(tier.budget)}: ${row.trim()}`);
+    const chunks = tier.streetChunks === 0 ? "none" : String(tier.streetChunks);
+    assert.ok(row.includes(chunks),
+      `ruling 040's ${name} row does not say ${chunks} street chunks: ${row.trim()}`);
+  }
+});
+
+test("the README names every gate a slice has to run", () => {
+  const readme = readDoc("README.md");
+  for (const gate of [
+    "budget_gate", "walkthrough", "passability", "lanes_dump",
+    "a11y_smoke", "lobby_smoke", "serve_smoke", "offline_smoke", "update_smoke",
+  ]) {
+    assert.match(readme, new RegExp(`tools/${gate}`), `the README does not name ${gate}`);
+  }
+});

@@ -447,6 +447,27 @@ try {
     }
   }
 
+  // The render style (R2). Ruling 033 names `painted` as the target and nothing
+  // in the interface selected it until now; a change rebuilds the renderer, so
+  // this drives the row and then waits for a live one on the other side.
+  const styleRow = await page.locator('.settings-choice[data-field="style"]').count();
+  check("the settings panel offers a render style", styleRow === 3, `${styleRow} choices`);
+  for (const look of ["pixel", "painted", "plain"]) {
+    await page.click(`.settings-choice[data-field="style"][data-value="${look}"]`);
+    await page.waitForFunction(
+      (want) => globalThis.CITY?.style === want && globalThis.CITY.renderer?.stats?.frames >= 0,
+      look, { timeout: 30000 },
+    ).catch(() => {});
+    const applied = await page.evaluate(() => ({
+      style: globalThis.CITY?.style,
+      drawn: globalThis.CITY?.renderer?.style?.name,
+      stored: JSON.parse(globalThis.localStorage.getItem("citygrid.settings") ?? "{}").style,
+    }));
+    check(`choosing ${look} reaches the renderer`,
+      applied.style === look && applied.drawn === look && applied.stored === look,
+      JSON.stringify(applied));
+  }
+
   const qualityRow = await page.locator('.settings-choice[data-field="quality"]').count();
   check("the settings panel offers a quality tier", qualityRow === 3, `${qualityRow} choices`);
   // From the DATA, not from a copy of it. Three tier budgets written into this

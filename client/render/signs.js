@@ -13,6 +13,7 @@
 
 import * as THREE from "three";
 import { EDGES, originOf } from "./facade.js";
+import { makeMaterial } from "./style-assets.js";
 
 const CACHE = new Map();
 const WIDTH = 256;
@@ -75,7 +76,7 @@ function fasciaQuad(spec, front, from, to) {
  * One mesh per distinct sign text, holding every fascia in the chunk that says
  * it. `specs` are the facade specs of the chunk's lots.
  */
-export function buildSigns(specs) {
+export function buildSigns(specs, styleName = "plain") {
   const byText = new Map();
   for (const spec of specs) {
     const front = spec.edges.find((e) => e.street);
@@ -123,7 +124,20 @@ export function buildSigns(specs) {
     geometry.setAttribute("normal", new THREE.BufferAttribute(normal, 3));
     geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
     geometry.computeBoundingSphere();
-    const material = new THREE.MeshLambertMaterial({ map: signTexture(text) });
+    // The STYLE's material, not a Lambert one whatever the style (R2). A
+    // fascia in `painted` was the one surface on the street that was not
+    // toon-shaded; in `pixel` it was lit on an unlit city; and at night it was
+    // dark while the shopfront under it glowed.
+    const material = makeMaterial(styleName, 0xffffff);
+    material.map = signTexture(text);
+    if (material.emissive) {
+      material.emissive = new THREE.Color(0xffdca8);
+      material.emissiveIntensity = 0;
+      material.emissiveMap = material.map;
+      // Marked so `setNight` finds it, like the lit windows behind it.
+      material.userData.emissive = true;
+    }
+    material.needsUpdate = true;
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `sign:${text}`;
     meshes.push(mesh);

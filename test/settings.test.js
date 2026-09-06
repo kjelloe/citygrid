@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS, CAMERA, TIME,
+  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS, CAMERA, TIME, STYLE,
   defaultSettings, sanitiseSettings, documentAttributes, mixerSettings,
 } from "../client/ui/settings-model.js";
 import { LOCALES } from "../client/i18n.js";
@@ -79,7 +79,7 @@ test("every row has at least two choices and a label", () => {
     }
   }
   assert.deepEqual(SETTING_ROWS.map((r) => r.choices),
-    [QUALITY, CAMERA, TIME, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
+    [QUALITY, CAMERA, TIME, STYLE, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
 });
 
 // --- audio (slice 4.4) ------------------------------------------------------
@@ -230,4 +230,15 @@ test("`auto` is the only hour the game clock is allowed to move", () => {
   // The renderer has no clock; `game.js` maps `state.tick` onto a preset and
   // only when the player asked for it (spec §7.3, plan.md §6: off by default).
   assert.deepEqual(TIME.map((c) => c.value), ["day", "sunset", "night", "auto"]);
+});
+
+test("the render style is a setting, defaulting to painted where there is a machine for it", () => {
+  // Ruling 033 names `painted` as the target and nothing in the interface
+  // selected it until R2: `?style=` was a gate affordance, and by ruling 026's
+  // standard two of the three styles did not exist.
+  assert.deepEqual(STYLE.map((c) => c.value), ["plain", "painted", "pixel"]);
+  assert.equal(defaultSettings("en", "desktop").style, "painted");
+  assert.equal(defaultSettings("en", "phone-weak").style, "plain");
+  assert.equal(sanitiseSettings({ style: "watercolour" }).style, defaultSettings().style);
+  assert.equal(sanitiseSettings({ style: "pixel" }).style, "pixel");
 });

@@ -1,23 +1,45 @@
 {
-  "note": "Shop names for L3 fascia signs (slice E5). Picked by jitter(building.id) so a shop keeps its name for its whole life without the name ever entering game state. Deliberately generic: a sign at eye height has to read as a high street, not as a joke you notice twice.",
-  "shops": [
-    "Bakery",
-    "Books",
-    "Butcher",
-    "Cafe",
-    "Chemist",
-    "Cycles",
-    "Deli",
-    "Flowers",
-    "Grocer",
-    "Hardware",
-    "Launderette",
-    "Newsagent",
-    "Optician",
-    "Pizzeria",
-    "Records",
-    "Shoes",
-    "Tailor",
-    "Toys"
-  ]
+  "note": "Shop names for L3 fascia signs (slice E5). Picked by jitter(building.id) so a shop keeps its name for its whole life without the name ever entering game state. Deliberately generic: a sign at eye height has to read as a high street, not as a joke you notice twice. One list per locale, the same length in each, so a shop keeps its index across a language change (slice R2).",
+  "shops": {
+    "en": [
+      "Bakery",
+      "Books",
+      "Butcher",
+      "Cafe",
+      "Chemist",
+      "Cycles",
+      "Deli",
+      "Flowers",
+      "Grocer",
+      "Hardware",
+      "Launderette",
+      "Newsagent",
+      "Optician",
+      "Pizzeria",
+      "Records",
+      "Shoes",
+      "Tailor",
+      "Toys"
+    ],
+    "no": [
+      "Bakeri",
+      "Bøker",
+      "Slakter",
+      "Kafé",
+      "Apotek",
+      "Sykler",
+      "Deli",
+      "Blomster",
+      "Kolonial",
+      "Jernvare",
+      "Vaskeri",
+      "Kiosk",
+      "Optiker",
+      "Pizzeria",
+      "Plater",
+      "Sko",
+      "Skredder",
+      "Leker"
+    ]
+  }
 }

@@ -44,7 +44,6 @@ const NOT_YET = {
   "lobby.privacy.public": "slice 5.2",
   "settings.volume.master": "no master fader: the mixer runs master at full and the two bus levels are the controls",
   "settings.volume.music": "there is no composed music, so a slider for it would control silence",
-  "settings.style": "ruling 022 settled the style; a picker would offer one choice",
   "settings.advisor": "slice 4.2 personas, Q18",
   "ping.help": "slice 5.3",
   "ping.building": "slice 5.3",

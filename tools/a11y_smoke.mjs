@@ -58,8 +58,11 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   page.on("pageerror", (e) => pageErrors.push(e.message));
+  page.on("console", (m) => { if (m.type() === "error") pageErrors.push(m.text()); });
   await page.goto(game);
-  await started(page);
+  try { await started(page); } catch (e) {
+    throw new Error(`the page never became ready:\n  ${pageErrors.join("\n  ") || String(e)}`);
+  }
   await page.evaluate(() => globalThis.CITY.pause());
 
   // --- a toolbar is one tab stop -------------------------------------------
@@ -274,6 +277,61 @@ try {
   // notice a palette or a preset that eats it.
   check("the overlay bands are told apart by day", worstDay >= 30, `nearest pair ${worstDay} apart`);
   check("and still at night", worstNight >= 30, `nearest pair ${worstNight} apart`);
+
+  // --- reduced motion reaches the CITY (R2, finding 12) ----------------------
+  //
+  // Slice 4.5 set `data-motion="reduced"` on the document and nothing in the
+  // renderer read it: a player who asked for stillness got streaming traffic
+  // and a sun that cycled. Nothing throws; it is simply ignored.
+  // A road with traffic on it, so the two pages have something to differ about:
+  // a check whose baseline is also zero is a check that cannot fail.
+  const seedTraffic = async (target) => target.evaluate(async () => {
+    const { apply } = await import("/engine/reducer.js");
+    const C = await import("/engine/commands.js");
+    await import("/engine/build-commands.js");
+    const state = globalThis.CITY.state;
+    const W = state.width;
+    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [Math.round(W / 2) * W + 4, W - 8] });
+    for (let i = 0; i < state.tiles.road.length; i += 1) {
+      if (state.tiles.road[i] & 16) state.tiles.traffic[i] = 200;
+    }
+    globalThis.CITY.renderer.worldChanged();
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    for (let i = 0; i < 40; i += 1) await frame();
+    return globalThis.CITY.renderer.traffic.count();
+  });
+  const moving = await seedTraffic(page);
+  check("the reduced-motion check has a baseline to compare against",
+    moving > 0, `${moving} cars on a page with no preference set`);
+  const stillContext = await browser.newContext({ viewport: { width: 1000, height: 700 }, reducedMotion: "reduce" });
+  const stillPage = await stillContext.newPage();
+  stillPage.on("pageerror", (error) => problems.push(`motion: ${error.message}`));
+  await stillPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48`);
+  await stillPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  const stillCars = await seedTraffic(stillPage);
+  const still = await stillPage.evaluate(async () => {
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const at = () => globalThis.CITY.renderer.traffic.cars().map((c) => `${c.link}:${c.s.toFixed(4)}`).join("|");
+    const before = at();
+    for (let i = 0; i < 30; i += 1) await frame();
+    const after = at();
+    globalThis.CITY.setTime("auto");
+    return {
+      motion: document.documentElement.dataset.motion,
+      time: globalThis.CITY.time,
+      moved: before !== after,
+      cars: globalThis.CITY.renderer.traffic.count(),
+    };
+  });
+  await stillContext.close();
+  check("reduced motion is picked up", still.motion === "reduced", `data-motion is "${still.motion}"`);
+  // NOTHING MOVES, rather than nothing is there: `life: false` settles the
+  // traffic and stops the clock, which is what a still street looks like — an
+  // empty road is a different city, not a calmer one (R2, deviating from the
+  // review's "car count is 0").
+  check("and nothing on it moves", still.moved === false,
+    `the cars moved over thirty frames (${still.cars} of them, ${moving} on a page without the preference)`);
+  check("and refuses a cycling sun", still.time === "day", `the hour is "${still.time}"`);
 
   // --- the settings dialog is a real modal ----------------------------------
   await page.click("#settings");

@@ -20,32 +20,58 @@
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
 /**
- * The names over the shops — a mirror of `data/names.json`.
+ * The names over the shops — a mirror of `data/names.json`, one list per locale.
  *
  * The browser cannot import JSON without a build step, so this is the same
  * arrangement `config.js` has with `data/cityviewer.json`: the file is the
  * source of truth and `test/facade-spec.test.js` refuses to let the two drift.
+ *
+ * Equal length in every locale, deliberately: a shop's name is picked by INDEX
+ * from a hash of its id, so a language change renames every shop and moves
+ * none of them (slice R2, A40).
  */
-export const SHOP_NAMES = Object.freeze([
-  "Bakery",
-  "Books",
-  "Butcher",
-  "Cafe",
-  "Chemist",
-  "Cycles",
-  "Deli",
-  "Flowers",
-  "Grocer",
-  "Hardware",
-  "Launderette",
-  "Newsagent",
-  "Optician",
-  "Pizzeria",
-  "Records",
-  "Shoes",
-  "Tailor",
-  "Toys",
-]);
+export const SHOP_NAMES = Object.freeze({
+  en: Object.freeze([
+    "Bakery",
+    "Books",
+    "Butcher",
+    "Cafe",
+    "Chemist",
+    "Cycles",
+    "Deli",
+    "Flowers",
+    "Grocer",
+    "Hardware",
+    "Launderette",
+    "Newsagent",
+    "Optician",
+    "Pizzeria",
+    "Records",
+    "Shoes",
+    "Tailor",
+    "Toys",
+  ]),
+  no: Object.freeze([
+    "Bakeri",
+    "Bøker",
+    "Slakter",
+    "Kafé",
+    "Apotek",
+    "Sykler",
+    "Deli",
+    "Blomster",
+    "Kolonial",
+    "Jernvare",
+    "Vaskeri",
+    "Kiosk",
+    "Optiker",
+    "Pizzeria",
+    "Plater",
+    "Sko",
+    "Skredder",
+    "Leker",
+  ]),
+});
 
 /** A window module, in metres. Not per category: a window is a window. */
 const WINDOW = { w: 1.2, h: 1.5, sill: 0.9, reveal: 0.12 };
@@ -73,9 +99,10 @@ function bayCount(length, module) {
 }
 
 /** The name over a shop. From the id, so it survives a reload and never enters
- * game state. */
-function signFor(id, index) {
-  return SHOP_NAMES[Math.floor(jitter(id * 31 + index * 7, 53) * SHOP_NAMES.length) % SHOP_NAMES.length];
+ * game state; the LOCALE only chooses which list the index is read from. */
+function signFor(id, index, locale) {
+  const list = SHOP_NAMES[locale] ?? SHOP_NAMES.en;
+  return list[Math.floor(jitter(id * 31 + index * 7, 53) * list.length) % list.length];
 }
 
 function roofOf(kind, variant, params, id) {
@@ -121,7 +148,7 @@ function extrasOf(kind, variant, spec, id) {
  * two the instanced kit reads, which is the guarantee that L2 and L3 are the
  * same house.
  */
-export function facadeSpec(lot, params) {
+export function facadeSpec(lot, params, locale = "en") {
   const cfg = getConfig();
   const kind = params.kind;
   const id = lot.building.id;
@@ -176,7 +203,7 @@ export function facadeSpec(lot, params) {
         from: (b / front.bays) * front.length,
         to: (to / front.bays) * front.length,
         module: front.bayW,
-        sign: signFor(id, b),
+        sign: signFor(id, b, locale),
         // An awning on some of them, by hash. All of them is a market.
         awning: jitter(id * 13 + b, 37) > 0.6,
       });

@@ -44,19 +44,22 @@ import { clampRate, clampFunding } from "./ui/budget-model.js";
 import { toSave, fromSave } from "../engine/save.js";
 import { shouldAutosave, slotSummary, packExport, unpackImport, SLOTS } from "./storage/saves.js";
 import { putSave, getSave, listSaves, available } from "./storage/db.js";
-import { t } from "./i18n.js";
+import { t, locale as currentLocale } from "./i18n.js";
 
 const SEAT = 1;
 
 /** Real milliseconds per game tick at each speed. Slow enough to watch, fast
  * enough that a house appears within a minute of laying a road. */
-/** How many game ticks a whole day of the light cycle is worth.
+/** How long a whole day of the light cycle is, in SECONDS of wall clock.
  *
- * Not a month and not a year: it is scenery, and a player who turns the cycle
- * on wants to see dusk within a few minutes of play rather than next February.
- * The reducer knows nothing about it — `state.tick` is the only thing read, and
- * read-only (ruling 037's shape: the renderer never writes state). */
-const DAY_TICKS = 48;
+ * Ticks were the wrong clock (R2, A41): at the play speed a tick is 400 ms, so
+ * 48 of them was a nineteen-second day, and at fast speed six — the sun raced
+ * because the GAME sped up, and the light is scenery, not simulation. It moves
+ * with the wall clock like the cars and the walker do (ruling 037's shape), and
+ * it stops when the game is paused, because a paused city is a held moment.
+ * Four minutes: long enough that dusk is an event, short enough that a player
+ * who turns it on sees one. */
+const DAY_SECONDS = 240;
 
 const SPEEDS = [
   { labelKey: "speed.paused", ms: 0 },
@@ -119,8 +122,19 @@ export async function startGame(root, given = {}) {
   canvas.setAttribute("role", "application");
   canvas.setAttribute("aria-label", t("hud.map"));
 
+  // Before the renderer, which reads it: declared after it, this was a
+  // temporal dead zone and `startGame` rejected silently, because `main.js`
+  // awaited `play()` without a catch (R2).
+  const stillness = given.reducedMotion === true;
   const renderer = createRenderer(canvas, state, {
-    style, tier: options.tier, life: options.life, mode: options.mode,
+    style, tier: options.tier, mode: options.mode,
+    // The cars are motion too (slice 4.5's preference, wired in R2). At the
+    // RENDERER, not per draw: `life` at draw time gates the pose, and a car
+    // that is simulated and not drawn is still a car being simulated.
+    life: stillness ? false : options.life,
+    time: options.time,
+    // The shop signs are drawn in the player's language (R2, A40).
+    locale: currentLocale(),
   });
   focusOn(renderer.view, state.width / 2, state.height / 2);
   renderer.view.span = 28;
@@ -128,7 +142,11 @@ export async function startGame(root, given = {}) {
   let overlay;
   let speed = 1;
   /** The hour the player chose, or `auto` (spec §7.3). Default `day`. */
-  let timeSetting = TIME.some((c) => c.value === given.time) ? given.time : "day";
+  // `auto` is a moving sun, which is exactly what reduced motion asks against.
+  let timeSetting = stillness ? "day"
+    : TIME.some((c) => c.value === given.time) ? given.time : "day";
+  /** Seconds of wall clock the light cycle has run for. */
+  let daySeconds = 0;
   let clock;
   let lastAutosaveTick;
   // The live state is replaced wholesale on load, so everything that holds it
@@ -294,12 +312,15 @@ export async function startGame(root, given = {}) {
     const now = performance.now();
     const frameMs = lastFrameAt > 0 ? now - lastFrameAt : 0;
     lastFrameAt = now;
+    // The light cycle's own clock. Held while paused, and unaffected by the
+    // game speed — the sun is scenery (R2).
+    if (speed > 0) daySeconds += Math.min(frameMs, 250) / 1000;
     // Read from the HUD rather than a local: with "Auto" the overlay follows
     // the tool in hand, and no event fires when a shortcut changes the tool.
     renderer.draw({
       overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move,
       // The clock chooses only when the player asked it to (plan.md §6).
-      time: timeSetting === "auto" ? phaseOf(state.tick, DAY_TICKS) : timeSetting,
+      time: timeSetting === "auto" ? phaseOf(daySeconds, DAY_SECONDS) : timeSetting,
     });
     if (minimap && hud.minimapVisible) minimap.draw(canvas.clientWidth / canvas.clientHeight);
     frame = requestAnimationFrame(loop);
@@ -340,11 +361,20 @@ export async function startGame(root, given = {}) {
     /** The projection (ruling 034). Shared target, yaw, pitch and span, so the
      * city does not move when it changes. */
     setProjection(mode) { return renderer.setProjection(mode); },
+    /** The render style this session was built with. Changing it is a rebuild,
+     * so the caller compares and restarts (R2). */
+    get style() { return style; },
     /** The hour (spec §7.3). `auto` hands the game clock to the renderer one
      * preset at a time; anything else pins it. The renderer has no clock of
      * its own and must not grow one — a renderer that read `state.tick` would
      * be a renderer that could disagree with the reducer about what time it is. */
-    setTime(name) { timeSetting = TIME.some((c) => c.value === name) ? name : "day"; return timeSetting; },
+    setTime(name) {
+      const wanted = TIME.some((c) => c.value === name) ? name : "day";
+      // A player who asked for reduced motion does not get a cycling sun, even
+      // by choosing it in the panel — the two settings would contradict.
+      timeSetting = stillness && wanted === "auto" ? "day" : wanted;
+      return timeSetting;
+    },
     get time() { return timeSetting; },
     pause: () => setSpeed(0),
     resume: () => setSpeed(1),

@@ -55,7 +55,16 @@ export function deriveLots(state, network, ground) {
       const tied = counts.map((c, side) => (c === best ? side : -1)).filter((s) => s >= 0);
       frontage = tied[Math.floor(jitter(b.id, 61) * tied.length) % tied.length];
     } else {
-      const near = network.nearest(cx, cz, Infinity);
+      // Widening rings, not `Infinity` (R2). An unbounded search scans EVERY
+      // corridor for every road-less lot, and on the 128×128 fixture that was
+      // most of the 25 ms `deriveLots` took; a building with no road beside it
+      // is looking for the nearest street, and the nearest street is nearly
+      // always within a tile or two.
+      let near;
+      for (const reach of [tileM * 2, tileM * 6, tileM * 20, Infinity]) {
+        near = network.nearest(cx, cz, reach);
+        if (near) break;
+      }
       if (near) frontage = sideTowards(near.x - cx, near.z - cz);
       else { frontage = 0; facing = false; }
     }

@@ -9,6 +9,10 @@
 import * as THREE from "three";
 import { buildingColour, familyColour, PLAYER_COLOURS, OVERLAY_COLOURS } from "./palette.js";
 import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
+// CHUNK from the DATA, not a fourth copy of 16 (E2 put it in
+// `data/cityviewer.json` because three things had three copies; this was the
+// fourth, found in R2).
+import { CHUNK, chunkKey, chunkOfLot } from "../world/chunks.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, tuftVariants, lampGeometry,
@@ -373,7 +377,7 @@ export function updateInstances(state, pools, options = {}) {
   // whatever that chunk's own distance cannot resolve taken away — never
   // anything added back, so a far chunk can never come out finer than a near
   // one.
-  const CHUNK = 16;
+
   const chunkPlans = new Map();
   const planAt = (x, y) => {
     if (options.canvasHeight === undefined || plan.mode !== "city") return plan;
@@ -393,6 +397,13 @@ export function updateInstances(state, pools, options = {}) {
   const baked = options.bakedChunks;
   const isBaked = (x, y) => baked !== undefined
     && baked.has(((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0));
+  /** The same question for a LOT, by the one rule (R2): its centre's chunk, not
+   * its anchor tile's. */
+  const lotIsBaked = (lot) => {
+    if (baked === undefined || !lot) return false;
+    const owner = chunkOfLot(lot);
+    return baked.has(chunkKey(owner.cx, owner.cy));
+  };
 
   const bounds = options.bounds;
 
@@ -416,7 +427,15 @@ export function updateInstances(state, pools, options = {}) {
       const markings = drawn && local.markings !== false;
       const poles = drawn && local.poles !== false;
       const networks = drawn && local.networks !== false;
-      const props = local.props !== false && options.props !== false;
+      // Street furniture is gated on `drawn` like the markings and the networks
+      // are (R2, finding 10). It was not, so inside a baked chunk the L2 lamp
+      // and parked-car pass still ran on top of the L3 one — which is why E5's
+      // screenshots showed lamps while its prop pass was building nothing at
+      // all. And the parked car sits 5.2 m from the centre line, which at L3 is
+      // on the PAVEMENT: the carriageway is 4 m half-width.
+      const props = drawn && local.props !== false && options.props !== false;
+      // Tufts are on GRASS, which no baked chunk draws, so they stay.
+      const grassDetail = local.props !== false && options.props !== false;
       const trees = local.trees !== false && options.trees !== false;
       const treeTier = local.treeDetail;
 
@@ -481,7 +500,7 @@ export function updateInstances(state, pools, options = {}) {
       // Grass detail. The reference's fields are covered in tufts and flowers,
       // and they are most of the reason its ground does not look like a
       // bedsheet. Sparse enough to stay cheap, dense enough to read.
-      if (props && !paved && state.tiles.buildingId[index] === 0
+      if (grassDetail && !paved && state.tiles.buildingId[index] === 0
         && (state.tiles.terrain[index] === TERRAIN_GRASS || state.tiles.terrain[index] === TERRAIN_MARSH)) {
         const count = jitter(index, 71) > 0.55 ? 2 : 1;
         for (let k = 0; k < count; k += 1) {
@@ -536,7 +555,7 @@ export function updateInstances(state, pools, options = {}) {
     // The rest of the front garden (slice V6): a boundary and a way in. Both
     // sit on the lot's own seat like the lawn, and both are skipped inside a
     // baked chunk, where E5's prop pass draws the real thing.
-    if (p.garden && !isBaked(building.x, building.y)) {
+    if (p.garden && !lotIsBaked(lot)) {
       // The hedge stands on the lot line and the path crosses the setback to
       // the door. Both in the same +z direction the kit puts the door in, and
       // both rotated with the house so a spun one keeps its own front.
@@ -546,7 +565,7 @@ export function updateInstances(state, pools, options = {}) {
 
     // A baked chunk builds this lot as a real facade (slice E5); drawing the
     // instanced box as well is the same house twice, z-fighting on every face.
-    if (isBaked(building.x, building.y)) continue;
+    if (lotIsBaked(lot)) continue;
     const tier = planAt(building.x, building.y).buildings;
     const pool = pools[`${p.kind}${p.variant}_${tier}`];
     if (!pool) continue;

@@ -134,7 +134,7 @@ test("a shop has storefronts on its street edge and a house does not", () => {
   assert.equal(house.storefronts.length, 0);
   for (const front of shop.storefronts) {
     assert.ok(front.to > front.from, "a storefront with no width is a storefront nobody drew");
-    assert.ok(SHOP_NAMES.includes(front.sign), `"${front.sign}" is not in the name table`);
+    assert.ok(SHOP_NAMES.en.includes(front.sign), `"${front.sign}" is not in the name table`);
   }
 });
 
@@ -158,11 +158,34 @@ test("a civic building has a portico", () => {
   assert.ok(spec.extras.some((e) => e.kind === "portico"), JSON.stringify(spec.extras));
 });
 
-test("the name table is data, not a string in the code", () => {
+test("the name table is data, not a string in the code — in every locale", () => {
   const file = JSON.parse(readFileSync(join(repoRoot, "data", "names.json"), "utf8"));
-  assert.deepEqual(SHOP_NAMES, file.shops);
-  assert.ok(file.shops.length >= 12, `${file.shops.length} shop names is not a high street`);
-  for (const name of file.shops) assert.equal(typeof name, "string");
+  assert.deepEqual(JSON.parse(JSON.stringify(SHOP_NAMES)), file.shops);
+  const locales = Object.keys(file.shops);
+  assert.deepEqual(locales.sort(), ["en", "no"], "a locale has no shop names");
+  for (const locale of locales) {
+    assert.ok(file.shops[locale].length >= 12, `${locale} has ${file.shops[locale].length} names`);
+    for (const name of file.shops[locale]) assert.equal(typeof name, "string");
+  }
+  // The SAME length in each, or the index a shop is picked by means something
+  // different per language and a shop changes name AND neighbours (R2, A40).
+  const lengths = new Set(locales.map((l) => file.shops[l].length));
+  assert.equal(lengths.size, 1, `the lists are ${[...lengths]} long`);
+});
+
+test("a shop keeps its index across a language change (R2)", () => {
+  const { lot, params } = lotOf({ zone: ZONE.commercial, w: 2 });
+  const english = facadeSpec(lot, params, "en");
+  const norsk = facadeSpec(lot, params, "no");
+  assert.equal(english.storefronts.length, norsk.storefronts.length);
+  for (let i = 0; i < english.storefronts.length; i += 1) {
+    const at = SHOP_NAMES.en.indexOf(english.storefronts[i].sign);
+    assert.ok(at >= 0);
+    assert.equal(norsk.storefronts[i].sign, SHOP_NAMES.no[at],
+      "the same shop is a different trade in Norwegian");
+  }
+  // An unknown locale falls back rather than throwing.
+  assert.deepEqual(facadeSpec(lot, params, "fr"), english);
 });
 
 // --- what the facade must not do ---------------------------------------------

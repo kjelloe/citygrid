@@ -68,7 +68,7 @@ async function tilePixel(page, x, y) {
   }, [x, y]);
 }
 
-async function run(page, label, { touch }) {
+async function run(page, label, { touch, mode }) {
   const type = touch ? "touch" : "mouse";
   await page.evaluate(() => {
     // Pause the clock so the assertions are about input, not about whatever the
@@ -343,6 +343,11 @@ async function run(page, label, { touch }) {
     await page.keyboard.press("Escape");
     const left = await page.evaluate(() => globalThis.CITY.renderer.view.mode);
     check(`${label}: Escape comes back to the city`, left !== "street", `still "${left}"`);
+    // And back to the projection the player was USING, not always `city`. A
+    // phone defaults to orthographic, so leaving always to perspective handed
+    // it a projection it never asked for (R2).
+    check(`${label}: and to the projection it came from`, left === mode,
+      `entered from "${mode}" and came back to "${left}"`);
   }
 
   // And in by the wheel: zoomed to the minimum span with the camera tilted
@@ -404,7 +409,7 @@ try {
       globalThis.THREE_VEC = THREE.Vector3;
       globalThis.CITY.setProjection(wanted);
     }, mode);
-    await run(page, label, { touch });
+    await run(page, label, { touch, mode });
     await context.close();
   }
 
