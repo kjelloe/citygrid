@@ -397,7 +397,6 @@ by number from the code they create.
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
-| Q57 | Do cars and the walker see each other? | E7 |
 | Q58 | What does a road over water look like at street level? | E8 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 

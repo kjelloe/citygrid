@@ -830,7 +830,7 @@ find the assumption an item was built against without reading all of it.*
 | R1 | Q51 when the model derivation goes per chunk (**80.0 ms on a 128×128**) |
 | This update | Q52 the kerb and verge ignore the terrain under them · Q53 `chunksNear` orders by the target, not the eye |
 | Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
-| Omissions pass | Q57 cars and the walker · Q58 a road over water |
+| Omissions pass | Q57 cars and the walker (answered, A45: cars yield) · Q58 a road over water |
 
 **Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
 ruling 033 names `painted` as the target and nothing in the interface selects it, so by ruling
