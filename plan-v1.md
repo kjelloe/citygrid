@@ -364,7 +364,7 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | **E6** | **Time of day** — presets per rig, clock-driven with an off switch, lit windows, lamp pools, a following snapped shadow frustum | M | **Done (slice E6).** Three presets that scale the rig rather than replace it, interpolated over a second by a pure module that takes its time as a delta. Lit windows and shopfronts come on, the tier's few point lights go to the lamps nearest the eye with hysteresis so the pool does not strobe, and the sky, the fog and the clear colour all move together. A night frame is 266,538 of 320,000 triangles. `auto` is off by default and the clock mapping lives in `game.js`, because a renderer that read `state.tick` could disagree with the reducer about what time it is |
 | **E7** | **Pedestrians** — nav graph, commuters and shoppers, signal waiting, a simplified rig | M | E4, E6 |
 | **P1** | **Toon shading and the anime rig** — `shading: 'toon'`, ramps, the shadow-tint patch, a painted palette | M | **Done (slice P1).** `painted` is a real style rather than a lighting treatment: toon materials through a ramp, a shadow tint that patches three's own shader and warns if the chunk has changed shape, an anime rig whose cool fill carries the unlit side, and a palette of desaturated ground and warm walls. Two findings on the way — the painted palette collapsed for a deuteranope, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
-| **P2** | **Ink and grade** — depth-texture target, second-difference ink, split-tone grade, FXAA; desktop tier, governor-gated | M | P1, V2 |
+| **P2** | **Ink and grade** — depth-texture target, second-difference ink, split-tone grade, FXAA; desktop tier, governor-gated | M | **Done (slice P2).** The finish `painted` was named for. A second difference of linearised depth is zero across any plane at any angle, so the wall of windows an L3 facade puts in front of the camera draws no lines and the roofline draws one — which is why this pass is allowed where P1's luminance outline was not. The grade follows the hour. It also found that the budget had been measuring the full-screen quad, two triangles, for as long as any post pass has existed |
 | **R1** | **Review fixes after E3** — cars culled to the view and counted in bounds, car pools visible after the pose, the junction speed lookup, the governor's dead rung, the street cache surviving `worldChanged`, one orbit function for the camera and the budget, a fog that is not reallocated every frame | S | E3 |
 | **V7** | **Overlays as a texture on the ground** (ruling 041) — one byte a tile in a `DataTexture` sampled by world x/z in the terrain material; the marks stay instanced; orthographic `tilePixels` fixed on portrait (A32) and the ortho screenshot re-baselined | S | V4 |
 
@@ -405,6 +405,8 @@ by number from the code they create.
 | Q44 | Should a preset scale the rig or replace it? | E6, revisit if a style needs its own night |
 | Q45 | Is 48 ticks the right length for a day? | E6, reversible |
 | Q46 | Should the lamp pool follow the camera or the walker? | E6, settled |
+| Q47 | Should the render style be a setting? | P2, needs a decision |
+| Q48 | Is two post passes enough, where the spec said three? | P2, settled |
 
 ## What would make us stop and re-plan
 

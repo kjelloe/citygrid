@@ -83,7 +83,9 @@ const mode = params.get("mode") ?? "ortho";
 // `time=day|sunset|night` (slice E6). The hour is a preset, and the shot takes
 // it at once rather than fading in — `frames` then settles the cache.
 const time = params.get("time") ?? "day";
-const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode, time });
+// `post=0` turns the style's post pass off without changing anything else,
+// which is how the ink is shown to be a finish rather than the style (P2).
+const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode, time, post: params.get("post") !== "0" });
 setYawStep(view.view, yaw);
 if (pitchDeg > 0) pitchBy(view.view, pitchDeg * (Math.PI / 180) - view.view.pitch);
 if (span > 0) {
@@ -143,8 +145,11 @@ globalThis.SHOT_REPORT = {
   corridors: stats.corridors,
   lots: stats.lots,
   instances: stats.instances,
-  drawCalls: view.renderer.info.render.calls,
-  triangles: view.renderer.info.render.triangles,
+  // From the STATS, not from `renderer.info`: with a post pass the counter has
+  // been reset by the full-screen quad by the time this runs, and every shot of
+  // a post-processed style has reported "1 draw, 2 triangles" (P2).
+  drawCalls: stats.drawCalls ?? view.renderer.info.render.calls,
+  triangles: stats.triangles ?? view.renderer.info.render.triangles,
   lod: stats.lod,
   tilePixels: stats.tilePixels,
   budget: stats.budget,

@@ -27,6 +27,12 @@ export const config = Object.freeze({
   // `?life=0` freezes the traffic where it settled, so a gate that measures a
   // frame or compares two screenshots is looking at the same city twice.
   life: params.get("life") !== "0",
+  // `?style=painted` — the render style, which is chosen at boot because it
+  // decides the materials (spec §7.1). There is no control for it yet: ruling
+  // 033 names painted as the target and the decision to ship it is not this
+  // slice's to take, but a gate that cannot reach a style cannot measure it,
+  // and `budget_gate` has to (P2, Q47).
+  style: params.get("style") ?? "",
 });
 
 function show(html) {
@@ -102,6 +108,7 @@ async function boot() {
       onNewCity: newGame,
       onSettings: showSettings,
       audioSettings: mixerSettings(preferences),
+      style: config.style || undefined,
       tier: preferences.quality,
       mode: preferences.camera,
       time: preferences.time,

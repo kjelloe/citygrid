@@ -138,6 +138,49 @@ orthographic camera the depth is linear already and `uNear`/`uFar` become the or
 The important ruling-017 caveat holds: the ink is a *finish*. `painted` needs the anime rig,
 the toon shading and its own palette first, or it is the same grey city with lines on it.
 
+## 7.4a As built (P2, 2026-09-06)
+
+`painted` has a post pass now, and P1's reason for it not having one is exactly why this one is
+allowed: a screen-space **luminance** edge test fires on every window, sill and roof tile, and with
+L3 facades in front of it the image turns to mud. The **second difference of linearised depth**
+does not: it is zero across any plane at any angle, so a wall of windows draws no lines and the
+roofline against the sky draws one.
+
+| Piece | Where |
+|---|---|
+| shader sources, grade table | `client/render/ink-shaders.js` — imports nothing, so node reads them |
+| the pipeline | `client/render/post-ink.js` — three targets, two materials |
+| the door | `styles.js: createPost`, dispatching on `style.postPass` |
+
+**Two passes, not three.** Ink and grade are one — the grade is a per-pixel function of the inked
+colour with nothing between them that needs its own texture fetch — and FXAA is the second. The
+grade follows the hour: one per time-of-day preset in `data/cityviewer.json`, and `setGrade` is
+called from the same place that moves the sun.
+
+Four things the shader has to get right, and all four are asserted in `test/post-ink.test.js`
+because a shader is a string until the GPU sees it:
+
+- **A second difference, not a gradient.** Four neighbours against four times the centre.
+- **Linearised first**, with an orthographic branch — an ortho depth buffer is linear already.
+- **Divided by the distance**, or the horizon is drawn in a fat line.
+- **Convex and concave are separate strengths.** Silhouettes strongly, creases faintly; having the
+  sign the wrong way round draws every roof ridge as heavily as the roofline and the roofline
+  faintly, which is the picture upside down.
+
+**The line is three texels wide** over a 1.5× supersampled target. At one texel it is less than a
+device pixel and averages away to a grey haze in the downsample, which is what the first version
+drew and what made it look as though the pass was not running.
+
+**And the budget had been measuring the full-screen quad.** `renderer.info.render` is reset by
+every `render()` call, so reading the counter after a post pass gives two triangles and one draw
+call. The measurement loop — the thing that makes the budget a promise rather than a hope — has
+believed that for as long as any post pass has existed, which means the ladder never stepped down
+for `pixel`, and every style sheet since that style shipped has reported "1 draw, 2 tris". Both
+pipelines snapshot `sceneInfo` between the scene render and the passes.
+
+Measured at High on the saturated city: painted is inside its budget with the ink on, and
+`reports/smoke-P2-{ink,noink}.png` are the same street a second apart with one difference.
+
 ## 7.5 Sky
 
 City Grid clears to a flat sky colour, which is right for an orthographic city view where the

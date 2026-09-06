@@ -3513,3 +3513,59 @@ behind it to white. 0.7 over 30 m.
 
 Q44 (a preset scales the rig), Q45 (48 ticks a day, deliberately not in `data/`), Q46 (the pool
 follows the eye). `reports/smoke-E6-{night,sunset}.png`.
+
+---
+
+## 2026-09-06 — Slice P2: ink and grade, and a budget that was measuring a quad
+
+`painted` has the finish it was named for. P1 shipped it with no post pass and said why: a
+screen-space **luminance** edge test fires on every window, sill and roof tile, and with L3 facades
+in front of it the image turns to mud. The **second difference of linearised depth** does not — it
+is zero across any plane at any angle — so a wall of windows draws no lines and the roofline
+against the sky draws one. That is the whole argument for the pass and it is what
+`reports/smoke-P2-{ink,noink}.png` photographs: the same street with one difference, and no ink
+anywhere on the road at a grazing angle.
+
+Shader sources and the grade table are in `client/render/ink-shaders.js`, which imports nothing, so
+node reads them: the tests assert that the edge test is a Laplacian rather than a gradient, that
+depth is linearised first with an orthographic branch, that the line is divided by the distance,
+that convex and concave are separate strengths, and that every uniform the shaders declare is one
+the pipeline sets. A shader is a string until the GPU sees it, and everything that goes wrong with
+one is silent.
+
+**The budget had been measuring the full-screen quad.** `renderer.info.render` is reset by every
+`render()` call, so reading the counter after a post pass gives two triangles and one draw call.
+The render-and-measure loop — the thing that makes the budget a promise rather than a hope — has
+believed that for as long as any post pass has existed. The `pixel` ladder never stepped down; the
+style sheet has printed "pixel — 1 draw, 2 tris" in its own caption in every run since that style
+shipped, next to two styles reporting eighty thousand, and nobody read it as a bug. Both pipelines
+snapshot `sceneInfo` between the scene render and the passes now, and `budget_gate` checks that the
+number is the city's.
+
+**What failed on the way.**
+
+*The shader did not compile for three runs and the picture just looked unfinished.* `vec2 step =
+uTexel * uWidth;` shadows the GLSL builtin `step()`, which the same shader then calls. three logs
+`Fragment shader is not compiled` to the console and otherwise swallows it: the material draws
+nothing, the pass does not happen, and what you get is the scene without its finish — which is
+exactly what "the ink is too subtle" looks like. Found by printing every page problem instead of
+the first two. `test/render.test.js` now refuses a local named after any builtin the shaders use.
+
+*A backtick in a GLSL comment.* Twice. The shaders are template literals and a comment reading
+"a line is \`uWidth\` texels wide" ends the string.
+
+*The line was a grey haze.* At one texel over a 1.5× supersampled target the ink is less than a
+device pixel and averages away in the downsample. Three texels.
+
+*Convex and concave were the wrong way round* — every roof ridge drawn as heavily as the roofline
+and the roofline faintly, which is the picture upside down. Worked out from the sign of the
+Laplacian rather than by swapping and looking.
+
+*The gate could not reach the style it was gating.* `painted` is chosen at boot because it decides
+the materials, and nothing in the game selects it — ruling 033 names it as the target and there is
+still no control. `?style=` joins `?seed=` and `?life=0` in the URL config so the gate can load it;
+whether it should be a setting is **Q47**, and that is Kjell's call rather than a slice's. A first
+attempt guarded the whole painted block with `if (painted.style === "painted")`, which meant it
+silently reported nothing when the style did not load — the one case worth hearing about.
+
+Q47 (should the render style be a setting), Q48 (two passes where the spec said three).

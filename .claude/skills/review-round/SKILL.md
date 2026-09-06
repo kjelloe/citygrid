@@ -175,6 +175,17 @@ in the same places. What found it was E6 asking a question nobody had asked befo
 lamps* — and getting zero. When a builder can legitimately return nothing, give something
 downstream a reason to count what it produced.
 
+**A caption is a measurement nobody read.** The style sheet has printed "pixel — 1 draw, 2 tris"
+next to two styles reporting eighty thousand, in every run since the pixel style shipped, and it
+was a real defect the whole time: `renderer.info.render` is reset by every `render()` call, so the
+budget's measurement loop was reading the full-screen quad. When a tool prints a number beside
+comparable numbers, read the comparison.
+
+**A shader that does not compile looks exactly like a shader that is too subtle.** three logs
+`Fragment shader is not compiled` to the console and otherwise draws nothing; the picture is the
+scene without its finish. Print every page problem, not the first two — and never name a GLSL local
+after a builtin the same shader calls (`vec2 step` cost three runs).
+
 **A gate that shares a page with a running game must drive the game, not the frame.** `budget_gate`
 set the hour by calling `renderer.draw({time: "night"})` and then waited two animation frames — in
 which the page's own loop drew again with the setting's value and undid it. Go through the session.

@@ -1,5 +1,5 @@
 {
- "version": "bf0f10743026",
+ "version": "1993634b407f",
  "generated": "2026-09-06",
  "files": [
   "./client/audio/audio-model.js",
@@ -29,6 +29,7 @@
   "./client/render/detail-kit.js",
   "./client/render/facade.js",
   "./client/render/governor.js",
+  "./client/render/ink-shaders.js",
   "./client/render/instances.js",
   "./client/render/lod.js",
   "./client/render/merge.js",
@@ -38,6 +39,7 @@
   "./client/render/palette.js",
   "./client/render/palettes.js",
   "./client/render/picking.js",
+  "./client/render/post-ink.js",
   "./client/render/props-l3.js",
   "./client/render/ramps.js",
   "./client/render/ribbon.js",

@@ -207,6 +207,9 @@ test("the modules that node can load are the ones that carry decisions", async (
     "baker.js", "building-kit.js", "camera.js", "instances.js", "picking.js",
     "scene.js", "sky.js", "street-chunks.js", "streets-l3.js",
   "signs.js",
+  // The ink pipeline is three render targets and two materials; the SHADERS
+  // and the grade table are in `ink-shaders.js`, which node can read (P2).
+  "post-ink.js",
     "style-assets.js", "styles.js", "terrain.js",
   ]);
   const unloadable = [];

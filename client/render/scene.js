@@ -265,6 +265,9 @@ export function createRenderer(canvas, state, options = {}) {
       hemiLight.groundColor.setHex(hour.hemiGround);
     }
     streets.setNight(hour.night);
+    // The grade follows the hour (spec §7.4): a split tone that is right at
+    // noon is a different one at midnight.
+    post?.setGrade(timeOfDay.target);
     applyNightLights(hour.night);
     applyAtmosphere();
   }
@@ -570,7 +573,12 @@ export function createRenderer(canvas, state, options = {}) {
       }
       if (post) post.render(scene, view.camera);
       else renderer.render(scene, view.camera);
-      plan.actual = renderer.info.render.triangles;
+      // The SCENE's triangles, not the full-screen quad's. A post pass renders
+      // twice and three resets `info.render` on each, so reading the counter
+      // after one gave 2 — and the ladder, which is the only thing that makes
+      // the budget a promise, spent every frame believing the city was free
+      // (found in P2, and true for as long as any post pass has existed).
+      plan.actual = post ? post.sceneInfo.triangles : renderer.info.render.triangles;
       if (plan.actual <= plan.budget || !stepDown(plan)) break;
       stats.rebuilds += 1;
     }
@@ -586,6 +594,7 @@ export function createRenderer(canvas, state, options = {}) {
     stats.chunkPlans = result.chunkPlans ?? 1;
     stats.chunkTiers = result.chunkTiers ?? 1;
     stats.counted = Math.round(result.triangles);
+    stats.drawCalls = post ? post.sceneInfo.calls : renderer.info.render.calls;
     stats.overBudget = plan.overBudget;
     stats.lod = plan.reason;
     stats.shadows = plan.shadows;

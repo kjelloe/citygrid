@@ -62,6 +62,25 @@ export const DEFAULTS = Object.freeze({
     floorH: { none: 4, residential: 3, commercial: 3.6, industrial: 5 },
     groundH: { none: 4.5, residential: 3, commercial: 4.5, industrial: 6 },
   },
+  // The ink and grade pass (P2, spec §7.4). One grade per time-of-day preset,
+  // because a split-tone that is right at noon is a different one at midnight:
+  // `shadowTint` and `highlightTint` are what the darks and the lights are
+  // pulled towards, and `ink` scales the line so a night street is not drawn in
+  // hard black.
+  grades: {
+    day: {
+      shadowTint: 0xb9c6e0, highlightTint: 0xfff2d8,
+      lift: 0.015, gain: 1.02, saturation: 1.05, ink: 1, inkColour: 0x2a2f3a,
+    },
+    sunset: {
+      shadowTint: 0x8f8ec0, highlightTint: 0xffd2a0,
+      lift: 0.02, gain: 1, saturation: 1.1, ink: 0.9, inkColour: 0x3a2a2e,
+    },
+    night: {
+      shadowTint: 0x6f86c0, highlightTint: 0xffe0b0,
+      lift: 0.03, gain: 0.98, saturation: 0.85, ink: 0.75, inkColour: 0x10141f,
+    },
+  },
   // Ruling 040: rendering only. Nothing here reaches a command, a reducer or
   // the map size — a tier that changed the simulation would be hashed state,
   // and two players on different tiers would desync on the first month tick.

@@ -25,6 +25,7 @@ export async function sheet({
   out = "reports/style-sheet.png", seed = 1003, years = 20,
   span = 9, tileWidth = 1180, tileHeight = 560, layout = "column", mode = "ortho",
   street = "", terrain = "rolling", frames = 1, streets = -1, yaw = 0, pitch = 0, budget = 0,
+  time = "day", post = true,
 } = {}) {
   const shots = [];
   for (const style of STYLES) {
@@ -34,7 +35,7 @@ export async function sheet({
       // A style is geometry, shading and palette (ruling 017), and none of the
       // three should change with the camera — so the sheet is shot at street
       // level too, which is where L3 puts geometry the other zooms never see.
-      street, terrain, frames, streets, yaw, pitch,
+      street, terrain, frames, streets, yaw, pitch, time, post,
       budget: budget > 0 ? budget : undefined,
       width: tileWidth, height: tileHeight,
     });
@@ -122,6 +123,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     yaw: Number(process.env.YAW ?? 0),
     pitch: Number(process.env.PITCH ?? 0),
     budget: Number(process.env.BUDGET ?? 0),
+    time: process.env.TIME ?? "day",
+    // POST=0 shoots the same three styles with their post passes off, which is
+    // how "the ink is a finish" is checked rather than asserted: the same city,
+    // the same light, one difference (slice P2, ruling 017).
+    post: process.env.POST !== "0",
   });
   console.log(`wrote ${result.out}`);
   for (const shot of result.shots) {

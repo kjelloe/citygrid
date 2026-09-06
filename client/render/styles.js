@@ -9,6 +9,7 @@
 // could still be expressed here without the rest of the client having to know.
 
 import * as THREE from "three";
+import { createInkPost } from "./post-ink.js";
 
 // The table itself is `style-table.js`, which imports nothing, so a test can
 // load it. Re-exported here because this is where the renderer looks for it.
@@ -82,6 +83,10 @@ void main() {
 
 export function createPost(renderer, style, width, height) {
   if (!style.post) return undefined;
+  // Two pipelines behind one door (spec §7.4). `ink` is a depth-texture read
+  // and two passes of fill rate, which is why the tier and the governor gate it
+  // separately from `pixel` (ruling 040).
+  if (style.postPass === "ink") return createInkPost(renderer, style, width, height);
   const divisor = style.resolutionDivisor ?? 1;
   const w = Math.max(1, Math.floor(width / divisor));
   const h = Math.max(1, Math.floor(height / divisor));
@@ -120,12 +125,27 @@ export function createPost(renderer, style, width, height) {
   scene.add(quad);
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
+  /** What the SCENE cost, before the quad overwrote the counter.
+   *
+   * `renderer.info.render` is reset by every `render()` call, so reading it
+   * after a post pass gives the full-screen quad — two triangles, one call.
+   * The budget's measurement loop has believed that for as long as any post
+   * pass has existed, so the ladder never stepped down for `pixel` and the
+   * style sheet has been reporting "1 draw, 2 tris" in every run (P2). */
+  const sceneInfo = { triangles: 0, calls: 0 };
+
   return {
     target,
     material,
+    sceneInfo,
+    /** `pixel` has no grade; the door is here so the caller need not ask which
+     * pipeline it got (spec §7.1 — nothing outside knows the style). */
+    setGrade() {},
     render(sceneToDraw, sceneCamera) {
       renderer.setRenderTarget(target);
       renderer.render(sceneToDraw, sceneCamera);
+      sceneInfo.triangles = renderer.info.render.triangles;
+      sceneInfo.calls = renderer.info.render.calls;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
     },

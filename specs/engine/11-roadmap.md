@@ -40,7 +40,7 @@ E0 is the slice that makes the rest cheap, and it is pure, so it is the safest f
 | # | Slice | Size | Depends on | Done when |
 |---|---|---|---|---|
 | **P1** | **Toon shading** - `MeshToonMaterial` ramps and the shadow-tint patch as `shading: 'toon'`, the anime rig, a painted palette | M | V2 | **Done 2026-09-06.** `makeMaterial` branches on `shading`, never on a style's name; ramps are a pure module and NearestFilter; the shadow-tint patch checks three's chunk and warns rather than throwing. The rig is a temperature split at about 3.0 total exposure, and `faceContrastFor('painted')` drops to 0.3 because the ramp already quantises. The painted palette's grass and dirt had been collapsing for a deuteranope at 0.042 |
-| **P2** | **Ink and grade** - depth-texture target, second-difference ink, split-tone grade, FXAA, desktop tier only, governor-gated | M | P1, V2 | Ink on silhouettes and creases, none on flat road at grazing angle; frame time inside High tier |
+| **P2** | **Ink and grade** - depth-texture target, second-difference ink, split-tone grade, FXAA, desktop tier only, governor-gated | M | P1, V2 | **Done 2026-09-06.** A second difference of linearised depth, so a wall of windows draws no lines and the roofline draws one; two passes rather than three (ink and grade fold together); the line is three texels over a 1.5x supersample, because at one it averages away in the downsample. The grade follows the hour. And the budget had been measuring the full-screen quad — two triangles — for as long as any post pass has existed, so the ladder never stepped down for `pixel` |
 
 ## Order
 

@@ -551,3 +551,42 @@ test("every instanced piece is placed against the height field", () => {
   assert.match(instances, /model\.heightAt/, "the instanced pass does not read the height field");
   assert.match(instances, /lot\.seat/, "buildings are not seated on their lot");
 });
+
+test("the budget measures the SCENE, not the full-screen quad (slice P2)", () => {
+  // `renderer.info.render` is reset by every `render()` call. With a post pass
+  // the last one is the quad — two triangles and one draw call — so the
+  // measurement loop that makes the budget a promise was reading 2 for as long
+  // as any post pass has existed, and the ladder never stepped down for
+  // `pixel`. Both pipelines snapshot the scene's own cost.
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.match(scene, /plan\.actual = post \? post\.sceneInfo\.triangles/);
+  assert.match(scene, /stats\.drawCalls = post \? post\.sceneInfo\.calls/);
+  for (const file of ["styles.js", "post-ink.js"]) {
+    const source = readFileSync(join(repoRoot, "client", "render", file), "utf8");
+    assert.match(source, /sceneInfo\.triangles = renderer\.info\.render\.triangles/,
+      `${file} does not snapshot the scene's triangles`);
+    // ...and BEFORE the pass that overwrites it.
+    const snapshot = source.indexOf("sceneInfo.triangles =");
+    const afterScene = source.indexOf("renderer.setRenderTarget(null)");
+    assert.ok(snapshot < afterScene, `${file} snapshots after the pass, which is the bug`);
+  }
+});
+
+test("the shot harness reads the same number the budget does", () => {
+  // Every screenshot of a post-processed style reported "1 draw, 2 triangles",
+  // including every style sheet since the pixel style shipped.
+  const shoot = readFileSync(join(repoRoot, "tools", "shoot.html"), "utf8");
+  assert.match(shoot, /triangles: stats\.triangles/);
+  assert.match(shoot, /drawCalls: stats\.drawCalls/);
+});
+
+test("a GLSL local never shadows a builtin the same shader calls", () => {
+  // `vec2 step = ...` stopped the ink shader compiling, and three reports that
+  // to the console and otherwise swallows it: the pass simply does not happen
+  // and the picture is the scene without its finish (slice P2).
+  const shaders = readFileSync(join(repoRoot, "client", "render", "ink-shaders.js"), "utf8");
+  for (const builtin of ["step", "mix", "clamp", "length", "normalize", "reflect", "smoothstep"]) {
+    assert.equal(new RegExp(`\\b(?:float|vec2|vec3|vec4|int)\\s+${builtin}\\b`).test(shaders), false,
+      `a local called ${builtin} shadows the builtin`);
+  }
+});

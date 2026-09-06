@@ -144,5 +144,34 @@
       "night": 1.0,
       "sunHeight": 0.5
     }
+  },
+  "grades": {
+    "day": {
+      "shadowTint": 12175072,
+      "highlightTint": 16773848,
+      "lift": 0.015,
+      "gain": 1.02,
+      "saturation": 1.05,
+      "ink": 1.0,
+      "inkColour": 2764602
+    },
+    "sunset": {
+      "shadowTint": 9408192,
+      "highlightTint": 16765600,
+      "lift": 0.02,
+      "gain": 1.0,
+      "saturation": 1.1,
+      "ink": 0.9,
+      "inkColour": 3811886
+    },
+    "night": {
+      "shadowTint": 7308992,
+      "highlightTint": 16769200,
+      "lift": 0.03,
+      "gain": 0.98,
+      "saturation": 0.85,
+      "ink": 0.75,
+      "inkColour": 1053727
+    }
   }
 }

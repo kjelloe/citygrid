@@ -71,11 +71,28 @@ export const STYLES = {
     rig: "anime",
     shading: "toon",
     ramp: "soft3",
-    // No post-process at all. A screen-space outline fights detailed geometry:
-    // with windows, sills and roof clutter, EVERY edge fires the edge test and
-    // the image turns to mud — it read as dusk rather than as illustration.
-    // This style is a lighting and palette treatment instead, which is what
-    // separates an illustration from a photograph anyway.
-    post: false,
+    // The INK finish (P2, spec §7.4). P1 shipped this style with no post pass
+    // at all and said why: a screen-space LUMINANCE outline fights detailed
+    // geometry, and with windows, sills and roof clutter every edge fires and
+    // the image turns to mud.
+    //
+    // The depth second difference does not have that problem, and that is the
+    // whole reason it is the pass that arrived: it is zero across any plane at
+    // any angle, so a wall of windows draws no lines and the roofline against
+    // the sky draws one. Convex edges — silhouettes — strongly; concave ones —
+    // creases — faintly.
+    post: true,
+    postPass: "ink",
+    ink: 1,
+    inkConvex: 1,
+    inkConcave: 0.3,
+    // In TEXELS. The target is supersampled 1.5x, so a one-texel line is less
+    // than a device pixel and averages away to a grey haze in the downsample —
+    // which is exactly what the first version drew.
+    inkWidth: 3,
+    // In metres of second difference per metre of distance. Below this a
+    // surface is flat enough to be flat: the terrain mesh is faceted and every
+    // facet boundary is a real crease that nobody wants drawn.
+    inkThreshold: 0.02,
   },
 };

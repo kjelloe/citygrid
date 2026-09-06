@@ -302,6 +302,44 @@ try {
   check("a night frame is inside the same budget as a day one",
     night.actual <= night.budget, `${night.actual} of ${night.budget}`);
 
+  // --- the painted finish (slice P2, spec §7.4) -------------------------------
+  //
+  // The ink is two full-screen passes over a depth texture and the style that
+  // wears it is the most expensive one there is. It is also the case where the
+  // budget's own measurement was wrong until P2: with a post pass the counter
+  // reads the full-screen quad, so the ladder spent every frame believing the
+  // city was free.
+  // A style is chosen at boot (it decides the materials), so this is a second
+  // page rather than a switch.
+  const paintedPage = await context.newPage();
+  paintedPage.on("pageerror", (error) => errors.push(`painted: ${error.message}`));
+  paintedPage.on("console", (m) => { if (m.type() === "error") errors.push(`painted: ${m.text()}`); });
+  await paintedPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=painted`);
+  await paintedPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  const painted = await paintedPage.evaluate(async () => {
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    globalThis.CITY.setQuality("high");
+    for (let i = 0; i < 6; i += 1) await frame();
+    const renderer = globalThis.CITY.renderer;
+    const s = renderer.stats;
+    return {
+      style: renderer.style?.name, actual: s.triangles, budget: s.budget,
+      calls: s.drawCalls, lod: s.lod, quadOnly: renderer.renderer.info.render.triangles,
+    };
+  });
+  await paintedPage.close();
+  console.log(`      painted: ${painted.actual} triangles of ${painted.budget}, `
+    + `${painted.calls} draw calls, ladder at "${painted.lod}"`);
+  // Checked, not skipped: a block guarded by "if the style loaded" is a block
+  // that reports nothing when the style did not, which is the one case worth
+  // hearing about.
+  check("the painted style loads", painted.style === "painted", `the page is in "${painted.style}"`);
+  check("the painted finish is inside its budget",
+    painted.actual > 0 && painted.actual <= painted.budget, `${painted.actual} of ${painted.budget}`);
+  check("and the budget is measuring the CITY, not the full-screen quad",
+    painted.actual > 1000 && painted.quadOnly <= 6,
+    `${painted.actual} counted, ${painted.quadOnly} in three's counter after the pass`);
+
   check("no page errors", errors.length === 0, errors.join(" | "));
   await context.close();
 } finally {

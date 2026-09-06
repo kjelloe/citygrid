@@ -523,6 +523,18 @@ not the quad's, when post is on.
 of a road at a grazing angle with no ink on the flat surface (the whole reason for the second
 difference).
 
+**Built, with three deviations.** (1) Two passes, not three: ink and grade fold together
+(**Q48**). (2) The shader SOURCES and the grade table are in `ink-shaders.js`, which imports
+nothing, so node reads them — the pipeline that needs three is `post-ink.js`. (3) `?style=` was
+added to the URL config so the gate could reach a style the game cannot: ruling 033 names painted
+as the target and nothing in the interface selects it, which is **Q47** and is Kjell's call.
+
+**And it found the defect the item predicted.** `renderer.info.render` is reset by every
+`render()` call, so the budget's measurement loop — the thing that makes the budget a promise —
+had been reading the full-screen quad's two triangles for as long as any post pass has existed.
+The `pixel` ladder never stepped down, and every style sheet since that style shipped reported
+"1 draw, 2 tris" in its own caption.
+
 ---
 
 ### V6 — Lots with something on them (L) — spec §6.6
@@ -561,7 +573,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **E4** — the street camera and collision | **done** 2026-09-06 | `slice-E4` | `walkthrough`: 8,907 legs, **161 km walked, 0 unfinished, 0 refusals, 0 cliffs**, 1,127 lots walked into head-on and **0 entered**, 395,230 blocked steps. `passability`: 32,659 samples, 8,461 enclosed, narrowest **26.00 m**. `play_smoke` enters and leaves by key and by zoom on both viewports × both projections. `reports/smoke-E4-{street,pavement}.png` | `test/collision.test.js` (10), `test/walker.test.js` (9); spec §8.1b |
 | **E5** — street-level facades | **done** 2026-09-06 | `slice-E5` | `budget_gate` High on the saturated 96×96: **25.7k triangles a chunk**, 8 live holding 205,864, **2 meshes a group**, build p95 **6 ms**. A facade is 700–1,100 triangles. `walkthrough` and `passability` still clean. `reports/style-sheet-street.png` (all three styles from the pavement), `reports/smoke-E5-{street,shopfront}.png` | `test/facade-spec.test.js` (13), `test/facade.test.js` (8), `test/roof-kit.test.js` (9), `test/props-l3.test.js` (6); spec §6.2a, §6.5 |
 | **E6** — time of day | **done** 2026-09-06 | `slice-E6` | `budget_gate` gains four night rows on the saturated 96×96 at High: **266,538 triangles of 320,000, 44 draw calls, 8 lamps lit of 269 held**, night reaching exactly 1. `a11y_smoke` measures the overlay bands at both hours (**122 apart by day, 41 at night**, floor 30); `ui_smoke` drives all four settings values through the panel. `reports/smoke-E6-{night,sunset}.png` | `test/time-of-day.test.js` (14), `test/night-lights.test.js` (7), `test/settings.test.js` (+2); spec §7.3a |
-| **P2** — ink and grade | not started | — | — | — |
+| **P2** — ink and grade | **done** 2026-09-06 | `slice-P2` | `budget_gate` gains three painted rows on a High page loaded with `?style=painted`, and the check that the counted triangles are the CITY's rather than the quad's. `style-sheet` shoots all three styles from the pavement with the post passes on and off (`reports/style-sheet-street{,-nopost}.png`); `reports/smoke-P2-{ink,noink}.png` is a road at a grazing angle with no ink on it | `test/post-ink.test.js` (11), `test/render.test.js` (+3); spec §7.4a |
 | **V6** — lots with something on them | not started | — | — | — |
 | **E7** — pedestrians | not started | — | — | — |
 
