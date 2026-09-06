@@ -16,8 +16,8 @@ import * as THREE from "three";
 
 export const YAW_STEPS = 4;
 
-/** Modes, as ruling 034 names them. `street` arrives with E4. */
-export const MODES = ["city", "ortho"];
+/** Modes, as ruling 034 names them. */
+export const MODES = ["city", "ortho", "street"];
 
 /** Vertical field of view for the perspective camera, degrees. Wide enough to
  * feel like a place, narrow enough that the edges do not smear. */
@@ -55,6 +55,8 @@ export function createCamera(aspect, mode = "city") {
     aspect,
   };
   view.camera = view.mode === "ortho" ? view.ortho : view.persp;
+  /** The walker's eye in tile units, in street mode only (slice E4). */
+  view.eye = undefined;
   applyZoom(view, aspect);
   applyPose(view);
   return view;
@@ -109,22 +111,46 @@ export function applyZoom(view, aspect) {
     view.persp.fov = view.fov;
     // Far enough to see the whole of a 128-tile map from a low pitch, near
     // enough that the depth buffer still separates a kerb from the road.
-    view.persp.far = 4000;
+    //
+    // Street mode moves both. A near plane of 0.5 TILES is ten metres: from
+    // eye height it would clip the pavement, the kerb and the front of every
+    // building the walker is standing next to. And a far plane of 4,000 tiles
+    // is eighty kilometres of depth range spent on a city that ends at the fog
+    // (slice E4).
+    view.persp.near = view.mode === "street" ? 0.02 : 0.5;
+    view.persp.far = view.mode === "street" ? 100 : 4000;
     view.persp.updateProjectionMatrix();
   }
   // Under perspective the eye distance follows the span, so a zoom is a move.
-  if (view.mode === "city") applyPose(view);
+  if (view.mode !== "ortho") applyPose(view);
 }
 
 /** Places the camera on its orbit. Distance is fixed and large: an orthographic
  * camera does not care, and a far camera keeps the whole map inside the near
  * and far planes at every zoom. */
 export function applyPose(view) {
+  if (view.mode === "street") {
+    // The walker IS the camera. `view.eye` is in tile units, written by the
+    // scene from the walker's pose each frame; positive pitch looks up.
+    const e = view.eye ?? { x: view.targetX, y: 0, z: view.targetZ };
+    const pitch = view.pitch ?? 0;
+    const cp = Math.cos(pitch);
+    const camera = view.camera;
+    camera.position.set(e.x, e.y, e.z);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(
+      e.x - Math.sin(view.yaw) * cp,
+      e.y + Math.sin(pitch),
+      e.z - Math.cos(view.yaw) * cp,
+    );
+    camera.updateMatrixWorld();
+    return;
+  }
   // Orthographic does not care how far away the eye is, only which way it
   // looks, so it sits far enough out to keep the whole map inside its near and
   // far planes at every zoom. Perspective cares a great deal: its distance IS
   // the zoom (ruling 034).
-  const distance = view.mode === "city" ? eyeDistance(view) : 1200;
+  const distance = view.mode === "city" ? eyeDistance(view) : 1200;   // ortho does not care
   const pitch = view.pitch ?? PITCH;
   // The orbit is around the GROUND under the target, not around y = 0. On a map
   // with 50 m of relief a low pitch put the eye below the hill it was looking

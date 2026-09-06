@@ -62,6 +62,7 @@ export function createHud(root, {
   state, seat, controller, onOverlay, onSpeed, onUndo,
   onSave, onLoad, onExport, onImport, slots,
   onQuestChoice, quests, onTax, onFunding, onNewCity, onSettings, onStatistics, onHelp, minimap,
+  onStreet, onLeaveStreet,
 }) {
   root.innerHTML = "";
   const alerts = createAlerts();
@@ -85,7 +86,19 @@ export function createHud(root, {
   speedButton.type = "button";
   speedButton.id = "speed";
   speedButton.addEventListener("click", () => onSpeed?.());
-  top.append(cityName, money, trend, pop, date, speedButton);
+  // Street mode (slice E4, ruling 027: the F key must have a screen). One
+  // button, two labels: it is the way in and the way back, and in street mode
+  // it is the ONLY interface control left — the build rail is hidden, so a
+  // player who cannot find Escape still has a way out that they can see.
+  const streetButton = el("button", "hud-street", t("street.enter"));
+  streetButton.type = "button";
+  streetButton.id = "street";
+  streetButton.title = t("street.enter.hint");
+  streetButton.addEventListener("click", () => {
+    if (root.dataset.camera === "street") onLeaveStreet?.();
+    else onStreet?.();
+  });
+  top.append(cityName, money, trend, pop, date, speedButton, streetButton);
   // Leaving a city is how you start another one. Without it the only way to
   // play a second region was to edit the address bar (P18 audit).
   if (onNewCity) {
@@ -739,6 +752,15 @@ export function createHud(root, {
      * renderer's, and neither owns the other. */
     get minimapVisible() { return Boolean(minimapCanvas) && !minimapCanvas.hidden; },
     setSpeedLabel(key) { speedButton.textContent = t(key); },
+    /** Street mode dresses the whole HUD: `[data-camera="street"]` hides the
+     * build rail and the overlays in `style.css`, and the one button that is
+     * left says what it now does. */
+    setCameraMode(mode) {
+      root.dataset.camera = mode;
+      const inStreet = mode === "street";
+      streetButton.textContent = t(inStreet ? "street.leave" : "street.enter");
+      streetButton.title = t(inStreet ? "street.leave.hint" : "street.enter.hint");
+    },
     /** What is actually drawn — Auto resolved against the tool in hand. */
     get overlay() { return activeOverlay(); },
     /** What the player picked from the menu. */

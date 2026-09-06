@@ -285,6 +285,94 @@ async function run(page, label, { touch }) {
     await page.click('#tools button[data-tool="road"]');  // put it down again
   }
 
+  // --- street mode (slice E4, ruling 034, spec §8.1) -------------------------
+  //
+  // Both ways in and both ways out, on both viewports and both projections.
+  // The key and the wheel are separate promises and the second playtest is
+  // full of controls that were recorded as working and did nothing.
+  // There has to BE a street. Everything above builds a road and then undoes
+  // it, so by here the city is bare ground — and `enterStreet` refusing to
+  // stand in a field is correct behaviour, not a failure to report.
+  const street = await page.evaluate(async () => {
+    const { apply } = await import("/engine/reducer.js");
+    const C = await import("/engine/commands.js");
+    await import("/engine/build-commands.js");
+    const state = globalThis.CITY.state;
+    const W = state.width;
+    const y = Math.round(W / 2);
+    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [y * W + 8, W - 16] });
+    globalThis.CITY.renderer.worldChanged();
+    const { focusOn } = await import("/client/render/camera.js");
+    focusOn(globalThis.CITY.renderer.view, W / 2, y + 0.5);
+    return { paved: state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0), y };
+  });
+  check(`${label}: the street gate has a street to stand in`, street.paved > 10,
+    `${street.paved} tiles paved`);
+
+  await page.evaluate(() => document.getElementById("city").focus());
+  await page.keyboard.press("f");
+  const walked = await page.evaluate(async () => {
+    const view = globalThis.CITY.renderer.view;
+    if (view.mode !== "street") return { mode: view.mode };
+    const before = { ...globalThis.CITY.renderer.walker.pose };
+    // Hold W for a few frames through the REAL key handler and frame loop.
+    return { mode: view.mode, before, eye: view.eye && { ...view.eye } };
+  });
+  check(`${label}: F drops the camera into the street`, walked.mode === "street",
+    `the camera is in "${walked.mode}" mode`);
+  if (walked.mode === "street") {
+    check(`${label}: the eye is on the ground, not on the orbit`,
+      walked.eye !== undefined && walked.before !== undefined
+        && Math.abs(walked.eye.y * 20 - walked.before.y) < 1e-6,
+      `eye ${JSON.stringify(walked.eye)} against pose ${JSON.stringify(walked.before)}`);
+    // The build rail is GONE, not merely inert: a street is for looking at.
+    const railHidden = await page.evaluate(() => {
+      const rail = document.querySelector("#hud .hud-build") ?? document.querySelector("#hud .hud-tools");
+      return rail ? getComputedStyle(rail).display === "none" : false;
+    });
+    check(`${label}: the build tools are gone in the street`, railHidden,
+      railHidden ? "the toolbar is display:none" : "the toolbar is still displayed at eye height");
+
+    await page.keyboard.down("w");
+    await page.waitForTimeout(400);
+    await page.keyboard.up("w");
+    const after = await page.evaluate(() => ({ ...globalThis.CITY.renderer.walker.pose }));
+    const stepped = Math.hypot(after.x - walked.before.x, after.z - walked.before.z);
+    check(`${label}: W walks`, stepped > 0.1, `moved ${stepped.toFixed(2)} m in 0.4 s`);
+
+    await page.keyboard.press("Escape");
+    const left = await page.evaluate(() => globalThis.CITY.renderer.view.mode);
+    check(`${label}: Escape comes back to the city`, left !== "street", `still "${left}"`);
+  }
+
+  // And in by the wheel: zoomed to the minimum span with the camera tilted
+  // down towards the horizon, one more notch steps out of the car.
+  const byWheel = await page.evaluate(async () => {
+    const { setMode, zoomBy, pitchBy } = await import("/client/render/camera.js");
+    const view = globalThis.CITY.renderer.view;
+    setMode(view, "city");
+    zoomBy(view, 0.01 / view.span);          // hard against the 8-tile floor
+    pitchBy(view, 0.3 - (view.pitch ?? 0));  // ~17°, below the 25° threshold
+    return { span: view.span, pitch: view.pitch };
+  });
+  const canvas = await page.locator("#city").boundingBox();
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+  await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(50);
+  const zoomedIn = await page.evaluate(() => globalThis.CITY.renderer.view.mode);
+  check(`${label}: zooming past the minimum span drops into the street`,
+    zoomedIn === "street", `span ${byWheel.span}, pitch ${byWheel.pitch} left the camera in "${zoomedIn}"`);
+  if (zoomedIn === "street") {
+    await page.mouse.wheel(0, 240);
+    await page.waitForTimeout(50);
+    const zoomedOut = await page.evaluate(() => globalThis.CITY.renderer.view.mode);
+    check(`${label}: zooming out comes back`, zoomedOut !== "street", `still "${zoomedOut}"`);
+  }
+  await page.evaluate(async (wanted) => {
+    const { setMode } = await import("/client/render/camera.js");
+    setMode(globalThis.CITY.renderer.view, wanted);
+  }, "city");
+
   return { type };
 }
 

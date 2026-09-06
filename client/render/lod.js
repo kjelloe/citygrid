@@ -88,25 +88,54 @@ export function getCosts() {
  * the orbit target, which is where the two projections agree by construction —
  * the eye distance is derived from `span` for exactly that reason.
  */
+/**
+ * Where the perspective eye is and which way it looks, in TILE units.
+ *
+ * Two modes share it. In city mode the eye is on the orbit at a distance
+ * derived from `span`, and the forward direction is toward the target. In
+ * street mode the walker IS the eye and the look direction comes from its own
+ * yaw and pitch — so the budget, the bounds and the per-chunk plan all measure
+ * from where the player actually is rather than from an orbit that is no
+ * longer there (slice E4).
+ */
+export function eyeOf(view, aspect = view.aspect ?? 1) {
+  const pitch = view.pitch ?? Math.atan(1 / Math.SQRT2);
+  if (view.mode === "street") {
+    const e = view.eye ?? { x: view.targetX, y: 0, z: view.targetZ };
+    const cp = Math.cos(pitch);
+    return { x: e.x, y: e.y, z: e.z, fx: -Math.sin(view.yaw) * cp, fy: Math.sin(pitch), fz: -Math.cos(view.yaw) * cp };
+  }
+  // `span` is tiles across the SHORTER axis; the field of view is vertical.
+  const vertical = aspect >= 1 ? view.span : view.span / aspect;
+  const distance = vertical / (2 * Math.tan(((view.fov ?? 50) * Math.PI) / 360));
+  const x = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
+  const y = (view.groundY ?? 0) + Math.sin(pitch) * distance;
+  const z = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
+  const fx = view.targetX - x;
+  const fy = (view.groundY ?? 0) - y;
+  const fz = view.targetZ - z;
+  const len = Math.hypot(fx, fy, fz) || 1;
+  return { x, y, z, fx: fx / len, fy: fy / len, fz: fz / len };
+}
+
 export function tilePixels(view, canvasHeight, chunk) {
   if (!view || !canvasHeight || !view.span) return 0;
-  if (view.mode !== "city") return canvasHeight / view.span;
+  // Anything that is not a perspective mode is orthographic, including a bare
+  // `{ span }` a test hands in.
+  if (view.mode !== "city" && view.mode !== "street") return canvasHeight / view.span;
 
   const focalPx = canvasHeight / (2 * Math.tan(((view.fov ?? 50) * Math.PI) / 360));
-  const pitch = view.pitch ?? Math.atan(1 / Math.SQRT2);
-  // `span` is tiles across the SHORTER axis; the field of view is vertical.
-  const vertical = (view.aspect ?? 1) >= 1 ? view.span : view.span / view.aspect;
-  const distance = vertical / (2 * Math.tan(((view.fov ?? 50) * Math.PI) / 360));
-  const eyeX = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
-  const eyeY = Math.sin(pitch) * distance;
-  const eyeZ = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
+  const eye = eyeOf(view);
+  const eyeX = eye.x;
+  const eyeY = eye.y;
+  const eyeZ = eye.z;
   const px = chunk ? chunk.x : view.targetX;
   const pz = chunk ? chunk.z : view.targetZ;
   // Never smaller than the near plane: a chunk at the eye would otherwise
   // report an unbounded size, and a chunk BEHIND the eye is simply far away —
   // the distance is unsigned, which is what stops it coming back as the finest
   // detail in the frame.
-  const range = Math.max(0.5, Math.hypot(px - eyeX, eyeY, pz - eyeZ));
+  const range = Math.max(0.5, Math.hypot(px - eyeX, eyeY - (view.groundY ?? 0), pz - eyeZ));
   return focalPx / range;
 }
 
@@ -386,26 +415,22 @@ export function visibleBounds(view, aspect, margin = 3) {
   const halfX = halfY * Math.max(1, aspect);
   const pitch = view.pitch ?? Math.atan(1 / Math.SQRT2);
 
-  if (view.mode === "city") {
+  if (view.mode === "city" || view.mode === "street") {
     // A perspective frustum is a WEDGE, not a box: it opens out toward the
     // horizon, so a symmetric reach either cuts the distance off or pays for a
     // huge area behind the eye. The four corner rays are intersected with the
     // ground and the box is drawn round what they hit — with a ray that escapes
     // over the horizon clamped to the far plane, which is the only thing that
-    // stops the answer running to infinity at a low pitch (slice V5).
+    // stops the answer running to infinity at a low pitch (slice V5), and the
+    // reason street mode pulls its far plane in to where the fog already is.
     const fov = ((view.fov ?? 50) * Math.PI) / 180;
-    const vertical = aspect >= 1 ? view.span : view.span / aspect;
-    const distance = (vertical / 2) / Math.tan(fov / 2);
-    const eyeX = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
-    const eyeY = Math.sin(pitch) * distance;
-    const eyeZ = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
+    const eye = eyeOf(view, aspect);
+    const eyeX = eye.x;
+    const eyeY = eye.y;
+    const eyeZ = eye.z;
 
-    // Camera basis: forward toward the target, right and up from it.
-    const fx = view.targetX - eyeX;
-    const fy = -eyeY;
-    const fz = view.targetZ - eyeZ;
-    const flen = Math.hypot(fx, fy, fz) || 1;
-    const f = [fx / flen, fy / flen, fz / flen];
+    // Camera basis: forward from the eye, right and up from it.
+    const f = [eye.fx, eye.fy, eye.fz];
     // right = normalise(f × up), up' = right × f
     const r = [f[2], 0, -f[0]];
     const rlen = Math.hypot(r[0], r[2]) || 1;

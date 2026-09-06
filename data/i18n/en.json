@@ -266,6 +266,12 @@
   "speed.play": "Play",
   "speed.fast": "Fast",
 
+  "street.enter": "Street view",
+  "street.leave": "Back to the city",
+  "street.enter.hint": "Walk the street at eye height (F). WASD walks, Shift runs, drag looks.",
+  "street.leave.hint": "Back to the city view (Escape).",
+  "street.noStreet": "There is no street here to stand on.",
+
   "funding.fire": "Fire",
   "funding.police": "Police",
   "funding.health": "Health",
@@ -296,6 +302,7 @@
   "help.rotate": "Turn the view a quarter",
   "help.zoom": "Zoom in and out",
   "help.pause": "Pause and play",
+  "help.street": "Street view — then WASD walks, Shift runs, Escape leaves",
   "help.clearTool": "Put the tool down",
   "help.undo": "Undo the last thing you built",
   "help.help": "Open this card",

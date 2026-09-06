@@ -173,6 +173,45 @@ export function createController(canvas, state, renderer, options = {}) {
     return true;
   }
 
+  /**
+   * Street mode's input (slice E4, spec §8.1).
+   *
+   * The keys are held rather than pressed, so the walker is driven from the
+   * frame loop by a set the key handler maintains — a keypress repeat rate is
+   * the operating system's business and has nothing to do with how fast a
+   * person walks. `move` is read once a frame by `game.js`.
+   */
+  const held = new Set();
+  const WALK_KEYS = {
+    w: "forward", s: "back", a: "left", d: "right",
+    ArrowUp: "forward", ArrowDown: "back", ArrowLeft: "left", ArrowRight: "right",
+  };
+  const walkKey = (key) => WALK_KEYS[key] ?? WALK_KEYS[key?.toLowerCase?.()];
+  const street = () => renderer.view.mode === "street";
+
+  /** Enters street mode over a tile, or over the middle of the view. */
+  function enterStreet(tile) {
+    if (street()) return false;
+    // The tile under the pointer first, the middle of the view second. A key
+    // pressed with the pointer over a field would otherwise refuse, which
+    // reads as the key being broken rather than as that field having no
+    // pavement in it.
+    const middle = { x: Math.round(renderer.view.targetX - 0.5), y: Math.round(renderer.view.targetZ - 0.5) };
+    const entered = (tile && renderer.enterStreet?.(tile.x, tile.y))
+      || renderer.enterStreet?.(middle.x, middle.y);
+    if (entered) { setTool(undefined); options.onMode?.("street"); onChange(); }
+    return entered === true;
+  }
+
+  function leaveStreet() {
+    if (!street()) return false;
+    held.clear();
+    renderer.leaveStreet?.();
+    options.onMode?.("city");
+    onChange();
+    return true;
+  }
+
   function handle(intents) {
     for (const intent of intents) {
       switch (intent.type) {
@@ -189,7 +228,7 @@ export function createController(canvas, state, renderer, options = {}) {
           clampToMap(renderer.view, state.width, state.height);
           break;
         case "zoomBy":
-          zoomBy(renderer.view, 1 / intent.factor);
+          zoomStep(1 / intent.factor);
           break;
         case "rotate":
           rotate(renderer.view, intent.direction);
@@ -219,9 +258,17 @@ export function createController(canvas, state, renderer, options = {}) {
           else renderer.hideGhost();
           break;
         }
-        case "tap":
+        case "tap": {
+          if (street()) {
+            // Touch has no keyboard and a stick on a phone is a thumb over the
+            // thing you are looking at: a tap on the ground is where to walk.
+            const at = groundAtPixel(intent.x, intent.y);
+            if (at) renderer.walker?.seek(at.x * renderer.model.tileM, at.z * renderer.model.tileM);
+            break;
+          }
           options.onTap?.(tileAtPixel(intent.x, intent.y));
           break;
+        }
         default:
           break;
       }
@@ -260,6 +307,15 @@ export function createController(canvas, state, renderer, options = {}) {
 
   const onPointerDown = (event) => {
     canvas.setPointerCapture?.(event.pointerId);
+    if (street()) {
+      // Every button looks, and the gesture recogniser still runs so a TAP on
+      // a touch screen comes through as one.
+      drag.button = event.button;
+      drag.x = event.offsetX;
+      drag.y = event.offsetY;
+      handle(down(gestures, point(event)));
+      return;
+    }
     if (event.button === 1 || event.button === 2) {
       drag.button = event.button;
       drag.x = event.offsetX;
@@ -269,6 +325,18 @@ export function createController(canvas, state, renderer, options = {}) {
     handle(down(gestures, point(event)));
   };
   const onPointerMove = (event) => {
+    if (street()) {
+      if (drag.button < 0) return;
+      const dx = event.offsetX - drag.x;
+      const dy = event.offsetY - drag.y;
+      drag.x = event.offsetX;
+      drag.y = event.offsetY;
+      // Drag-look, the way the city camera's orbit reads: the hand is on the
+      // world. Dragging right turns you left, so the street swings right.
+      renderer.walker?.look(-dx * YAW_PER_PIXEL, -dy * PITCH_PER_PIXEL);
+      onChange();
+      return;
+    }
     if (drag.button >= 0) {
       const dx = event.offsetX - drag.x;
       const dy = event.offsetY - drag.y;
@@ -297,13 +365,39 @@ export function createController(canvas, state, renderer, options = {}) {
   const onPointerUp = (event) => {
     canvas.releasePointerCapture?.(event.pointerId);
     grabbed = undefined;
-    if (drag.button >= 0) { drag.button = -1; return; }
+    // In street mode the drag IS the gesture, so the recogniser still has to
+    // see the release — otherwise a tap never completes and touch cannot walk.
+    if (drag.button >= 0 && !street()) { drag.button = -1; return; }
+    drag.button = -1;
     handle(up(gestures, point(event)));
   };
   const onPointerCancel = () => { drag.button = -1; grabbed = undefined; handle(cancel(gestures)); };
+  /** The minimum span, and the pitch below which zooming past it steps out of
+   * the car and onto the pavement (spec §8.1). Both match `camera.js`: the
+   * zoom stops at 8 tiles, so "past the minimum" is a zoom-in that would not
+   * move. */
+  const MIN_SPAN = 8;
+  const STREET_PITCH = 25 * (Math.PI / 180);
+
+  /** One notch of zoom, and the two mode changes it can cause. */
+  function zoomStep(factor) {
+    const view = renderer.view;
+    if (street()) {
+      // Zooming out is the way back, which is the same gesture that brought
+      // you here run backwards.
+      if (factor > 1) leaveStreet();
+      return;
+    }
+    const wouldStick = view.span <= MIN_SPAN + 1e-9 && factor < 1;
+    if (wouldStick && view.mode === "city" && (view.pitch ?? 1) <= STREET_PITCH) {
+      if (enterStreet(ui.hover)) return;
+    }
+    zoomBy(view, factor);
+  }
+
   const onWheel = (event) => {
     event.preventDefault();
-    zoomBy(renderer.view, event.deltaY > 0 ? 1.12 : 1 / 1.12);
+    zoomStep(event.deltaY > 0 ? 1.12 : 1 / 1.12);
   };
   const onContextMenu = (event) => event.preventDefault();
 
@@ -335,6 +429,25 @@ export function createController(canvas, state, renderer, options = {}) {
 
     const modified = event.ctrlKey || event.metaKey || event.altKey;
 
+    // Street mode owns the keyboard: WASD walks, Shift runs, Escape leaves. The
+    // build tools are not merely ignored, they are gone — a street is for
+    // looking at (ruling 034), and a zoning drag from eye height would be a
+    // player painting a district they cannot see.
+    if (street() && !modified) {
+      if (event.key === "Escape") { event.preventDefault(); leaveStreet(); return; }
+      const walk = walkKey(event.key);
+      if (walk) { event.preventDefault(); held.add(walk); return; }
+      if (event.key === "Shift") { held.add("run"); return; }
+      if (event.key === "f" || event.key === "F") { event.preventDefault(); leaveStreet(); return; }
+      return;
+    }
+    // The key that gets you there. It has a button too (ruling 027).
+    if (!modified && (event.key === "f" || event.key === "F")) {
+      event.preventDefault();
+      if (!enterStreet(ui.hover)) options.onStatus?.("street.noStreet");
+      return;
+    }
+
     if (modified && (event.key === "z" || event.key === "Z")) {
       event.preventDefault();
       undo();
@@ -365,8 +478,8 @@ export function createController(canvas, state, renderer, options = {}) {
     if (!modified && (event.key === "q" || event.key === "Q")) rotate(renderer.view, -1);
     else if (!modified && (event.key === "e" || event.key === "E")) rotate(renderer.view, 1);
     else if (event.key === "Escape") { setTool(undefined); handle(cancel(gestures)); }
-    else if (!modified && (event.key === "+" || event.key === "=")) zoomBy(renderer.view, 1 / 1.2);
-    else if (!modified && event.key === "-") zoomBy(renderer.view, 1.2);
+    else if (!modified && (event.key === "+" || event.key === "=")) zoomStep(1 / 1.2);
+    else if (!modified && event.key === "-") zoomStep(1.2);
     else if (!modified && event.key === " ") {
       event.preventDefault();
       options.onSpeedToggle?.();
@@ -381,6 +494,15 @@ export function createController(canvas, state, renderer, options = {}) {
     onChange();
   };
 
+  const onKeyUp = (event) => {
+    const walk = walkKey(event.key);
+    if (walk) held.delete(walk);
+    if (event.key === "Shift") held.delete("run");
+  };
+  // A key held while the window loses focus is a key that never comes up, and
+  // the walker walks into a wall for as long as the tab is in the background.
+  const onBlur = () => held.clear();
+
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -389,6 +511,8 @@ export function createController(canvas, state, renderer, options = {}) {
   canvas.addEventListener("contextmenu", onContextMenu);
   canvas.addEventListener("dblclick", onDoubleClick);
   globalThis.addEventListener?.("keydown", onKey);
+  globalThis.addEventListener?.("keyup", onKeyUp);
+  globalThis.addEventListener?.("blur", onBlur);
 
   function setTool(name, def) {
     handle(cancel(gestures));
@@ -411,6 +535,16 @@ export function createController(canvas, state, renderer, options = {}) {
   return {
     setTool,
     undo,
+    enterStreet,
+    leaveStreet,
+    /** What the walker should do this frame. Read by the frame loop; empty in
+     * every mode but street. */
+    get move() {
+      if (!street()) return undefined;
+      const forward = (held.has("forward") ? 1 : 0) - (held.has("back") ? 1 : 0);
+      const strafe = (held.has("right") ? 1 : 0) - (held.has("left") ? 1 : 0);
+      return { forward, strafe, run: held.has("run") };
+    },
     canUndo: () => lastUndoFor(actor) !== undefined,
     get tool() { return ui.tool; },
     /** Which building the building tool is holding. The toolbar needs it to
@@ -425,6 +559,8 @@ export function createController(canvas, state, renderer, options = {}) {
       canvas.removeEventListener("contextmenu", onContextMenu);
       canvas.removeEventListener("dblclick", onDoubleClick);
       globalThis.removeEventListener?.("keydown", onKey);
+      globalThis.removeEventListener?.("keyup", onKeyUp);
+      globalThis.removeEventListener?.("blur", onBlur);
     },
   };
 }

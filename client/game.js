@@ -146,6 +146,9 @@ export async function startGame(root, given = {}) {
     onSpeedToggle: () => setSpeed((speed + 1) % SPEEDS.length),
     onHelp: () => openHelp(),
     onFocusTile: (tile) => { focusOn(renderer.view, tile.x, tile.y); },
+    onStatus: (key) => hud.setStatus(t(key)),
+    // Street mode hides the build tools and shows the way back (slice E4).
+    onMode: (mode) => hud.setCameraMode?.(mode),
   });
 
   // Rebuildable, because a language change has to take effect on the screen the
@@ -159,6 +162,9 @@ export async function startGame(root, given = {}) {
     onOverlay: (name) => { overlay = name; },
     onSpeed: () => setSpeed((speed + 1) % SPEEDS.length),
     onUndo: () => controller.undo(),
+    // The way into street mode and the way back (slice E4, ruling 027).
+    onStreet: () => { if (!controller.enterStreet()) hud.setStatus(t("street.noStreet")); },
+    onLeaveStreet: () => controller.leaveStreet(),
     onNewCity: onNewCity && (() => { session.stop(); onNewCity(); }),
     onQuestChoice(id, option) {
       apply(state, { type: CMD_QUEST_CHOICE, actor: SEAT, id, option });
@@ -278,7 +284,7 @@ export async function startGame(root, given = {}) {
     lastFrameAt = now;
     // Read from the HUD rather than a local: with "Auto" the overlay follows
     // the tool in hand, and no event fires when a shortcut changes the tool.
-    renderer.draw({ overlay: hud.overlay, frameMs, dt: frameMs / 1000 });
+    renderer.draw({ overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move });
     if (minimap && hud.minimapVisible) minimap.draw(canvas.clientWidth / canvas.clientHeight);
     frame = requestAnimationFrame(loop);
   };

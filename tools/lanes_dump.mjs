@@ -9,68 +9,14 @@
 //
 //   node tools/lanes_dump.mjs [size]
 
-import { generateWorld } from "../engine/worldgen.js";
-import { defaultOptions } from "../engine/options.js";
-import { apply } from "../engine/reducer.js";
-import {
-  CMD_TICK, CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_JOIN,
-} from "../engine/commands.js";
-// Imported for its side effect: `registerNetwork` runs at module load, and
-// without it the reducer has no handler for `placeRoad` and refuses every
-// command as INVALID.
-import "../engine/build-commands.js";
-import "../engine/development.js";
+import { saturatedCity } from "./lib/saturated.mjs";
 import { createModel } from "../client/world/model.js";
 
 const size = Number(process.argv[2] ?? 96);
-// A GENERATED world, not a blank state: `createState` leaves every tile at
-// terrain 0 with no elevation, and the reducer refuses to build on it.
-const world = generateWorld(defaultOptions({ seed: 1003, width: size, height: size, waterStyle: "river" }));
-if (!world.ok) { console.error(`generation failed: ${world.reason}`); process.exit(1); }
-const state = world.state;
-apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Surveyor" });
-state.players[0].treasury = 90000000;
-
-// The budget gate's city: a grid every four tiles, zoned between — but only on
-// land. `placeNetwork` refuses water, and a command that touches one tile of
-// river is refused whole, which on seed 1003 is most of them.
-const W = state.width;
-const land = (x, y) => {
-  const t = state.tiles.terrain[y * W + x];
-  return t !== 3 && t !== 4;   // WATER, SHALLOW
-};
-/** Splits a line of tiles into runs of dry ones and issues each. */
-function paveLine(tiles) {
-  let start = -1;
-  for (let k = 0; k <= tiles.length; k += 1) {
-    const dry = k < tiles.length && land(tiles[k][0], tiles[k][1]);
-    if (dry && start < 0) start = k;
-    if (!dry && start >= 0) {
-      const [x, y] = tiles[start];
-      apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: [y * W + x, k - start] });
-      start = -1;
-    }
-  }
-}
-for (let y = 8; y < W - 8; y += 4) {
-  paveLine(Array.from({ length: W - 16 }, (_, k) => [8 + k, y]));
-}
-for (let x = 8; x < W - 8; x += 4) {
-  for (let y = 8; y < W - 8; y += 1) if (land(x, y)) apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: [y * W + x, 1] });
-}
-for (let y = 9; y < W - 9; y += 4) {
-  for (let x = 9; x < W - 9; x += 1) {
-    if (land(x, y)) apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: [y * W + x, 1], zone: ((y / 4) | 0) % 3 + 1 });
-  }
-}
-for (let i = 0; i < 400; i += 1) apply(state, { type: CMD_TICK });
-
-let paved = 0;
-for (let i = 0; i < state.tiles.road.length; i += 1) if (state.tiles.road[i] & 16) paved += 1;
-if (paved === 0) {
-  console.error("no road was built");
-  process.exit(1);
-}
+// The gates' shared city (`tools/lib/saturated.mjs`), without the seeded
+// buildings: a lane graph is derived from roads, and E1's numbers were
+// recorded on a city that had none.
+const { state } = saturatedCity({ size, buildings: false });
 
 // Two timings, because the model is rebuilt on every build action and E1 adds
 // to it: the lane graph is the difference between them.
@@ -78,7 +24,6 @@ const t0 = Date.now();
 for (let i = 0; i < 3; i += 1) createModel(state);
 const ms = (Date.now() - t0) / 3;
 const model = createModel(state);
-const t1 = Date.now();
 const { deriveCorridors } = await import("../client/world/corridors.js");
 const { createGround } = await import("../client/world/ground.js");
 const { deriveLanes } = await import("../client/world/lanes.js");
@@ -90,7 +35,6 @@ let lanesMs = 0;
   for (let i = 0; i < 3; i += 1) deriveLanes(state, net, ground.heightAt);
   lanesMs = (Date.now() - t) / 3;
 }
-void t1;
 const lanes = model.lanes;
 
 const blocks = lanes.links.filter((l) => l.kind === "block");

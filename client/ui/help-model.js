@@ -19,6 +19,12 @@ export const CAMERA_KEYS = [
   { keys: ["Q", "E"], labelKey: "help.rotate" },
   { keys: ["+", "−"], labelKey: "help.zoom" },
   { keys: ["Space"], labelKey: "help.pause" },
+  // Street mode (slice E4). Listed because ruling 027 is the rule that a key a
+  // player cannot find is a key that does not exist — but as ONE row, because
+  // WASD only walks once you are down there and W is the wire tool up here.
+  // The help table has no notion of a mode, and a duplicate in it is a real
+  // hazard everywhere else, so the mode-scoped keys go in the label.
+  { keys: ["F"], labelKey: "help.street" },
 ];
 
 export const ACTION_KEYS = [

@@ -102,6 +102,14 @@ if (focusX >= 0 && focusY >= 0) {
   }
   if (n > 0) focusOn(view.view, sx / n, sy / n);
 }
+// Street mode (slice E4): `street=x,z` drops the walker at a tile and looks
+// along `yaw`. The camera is the walker, so the shot is what a player sees.
+const streetAt = params.get("street");
+if (streetAt) {
+  const [sx, sz] = streetAt.split(",").map(Number);
+  if (!view.enterStreet(sx, sz)) throw new Error("no street to stand on");
+  view.walker.look(yaw * (Math.PI / 2) - view.walker.pose.yaw, pitchDeg * (Math.PI / 180));
+}
 const reduced = params.get("reduced") === "1";
 const budgetParam = Number(params.get("budget") ?? 0);
 // `streetChunks` so the L3 gate can shoot the baked street without needing the

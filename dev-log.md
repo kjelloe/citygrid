@@ -3329,3 +3329,62 @@ junction box while the carriageway runs through.
 
 Markings are dashed ribbons, not the canvas §5.3 specifies (**Q31**). `reports/smoke-E3-street.png`,
 `-junction.png`, `-slope.png`.
+
+---
+
+## 2026-09-06 — Slice E4: the street camera, and a gate that was measuring a field
+
+A third camera mode in which **the camera is the walker**. `client/life/walker.js` owns a pose in
+metres and takes its time as a delta; `client/world/collision.js` is every lot as a solid box in an
+8 m spatial hash; `scene.js` copies the pose into `view.eye` each frame and `camera.js` points the
+perspective camera out of it. Neither half knows the other exists, and neither imports three — so
+every way a street camera goes wrong is an assertion here rather than a walk around the city.
+
+**Measured.** `walkthrough`: 8,907 legs, **161 km** walked down every carriageway and both
+pavements of a saturated 96×96 — **0 unfinished, 0 refusals, 0 cliffs**, steepest ground 0.86 m
+over 2 m — plus all 1,127 lots walked into head-on with **0 entered** and **395,230** steps pushed
+back by the collision world. `passability`: 32,659 samples, 8,461 enclosed on both sides, narrowest
+street **26.00 m** against a 20 m right of way and a walker needing 0.88 m. `play_smoke` enters and
+leaves by key and by wheel on desktop and phone × orthographic and perspective. Suite green twice;
+`budget_gate` and the other ten gates green. 19 new unit tests.
+
+**What failed on the way.**
+
+*The gate was measuring a field.* The first `walkthrough` walked every corridor centre line, 54 km
+of it, and reported a clean sweep — with **zero** steps blocked by anything. Ruling 035 puts an 8 m
+carriageway and 2.5 m pavements inside a 20 m right of way, and lots are set back beyond that, so
+the nearest wall in the whole city is seven metres past the kerb: walking the streets never touches
+one. The gate now walks the pavements too, then walks head-on into every building, and **fails if
+`walker.blocked` is zero** — the instrument checks itself before the reading is believed.
+
+*A segment push-out does not know which side of itself it is on.* The colliders were four wall
+segments per lot, as the work item specifies. A walker 0.2 m inside a building was pushed to 0.34 m
+inside it, because the push is away from the nearest point on the segment and that direction is
+inward from inside. Lots are rectangles and a rectangle knows its own inside; they are boxes now.
+
+*`floorAt` was measured seven metres away.* The first `surfaceAt` test asked about a point beyond
+the frontage, got `ground` at y = 0 and compared it to a road at 0.02. Not a code defect — a test
+written without checking what it was standing on.
+
+*The budget was measured from a camera fifty metres above the player's head.* `tilePixels` and
+`visibleBounds` both derived the eye from `span` and the orbit, which in street mode is an orbit
+that no longer exists. `lod.js` gained `eyeOf(view)`, one answer for both modes. And a near plane
+of 0.5 **tiles** is ten metres — from eye height it clips the pavement, the kerb and the front of
+the building you are standing next to — so the planes are per mode now, with the far plane pulled
+in to where the fog already is.
+
+*`play_smoke` had no street to stand in.* Everything above it in that gate builds a road and then
+undoes it, so `enterStreet` was correctly refusing to put the player in a field and the gate was
+reading that as a broken key. It lays a street first now. It also found the asymmetry that fixed a
+real defect: on desktop the pointer had been left over open ground, and entering from a hovered
+tile with no pavement gave up instead of falling back to the middle of the view.
+
+**Looked at, and changed because of it.** Arriving in street mode put the eye in the middle of the
+carriageway facing across it: `enterStreet` offsets away from the corridor, and the offset is zero
+when the tile you picked *is* the road tile. It now steps to the kerbside on the camera's own side
+and faces along the street.
+
+Three deviations: the walker is in `client/life/` rather than `client/render/` (**Q35**), colliders
+are boxes rather than wall segments, and look is by drag rather than pointer lock (**Q36**). The
+walkthrough also turned up that nothing grades a road along its length — 37% streets on the gate's
+own city (**Q34**). `reports/smoke-E4-{street,pavement}.png`.

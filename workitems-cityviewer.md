@@ -403,6 +403,15 @@ wall; the spatial hash returns the same answer as brute force on 200 random poin
 **Gate.** `walkthrough` walks every corridor; `passability` clean; `play_smoke` enters and
 leaves street mode by key and by zoom on both viewports.
 
+**Built, with four deviations.** (1) The walker is `client/life/walker.js`, not
+`client/render/walk.js` — it is pure, so node walks it into a wall (**Q35**). (2) Colliders are
+lot BOXES, not four wall segments each: a segment push-out does not know which side of itself it
+is on, and pushed a walker who was 0.2 m inside a building further inside it. (3) Drag-look only,
+no pointer lock (**Q36**). (4) `walkthrough` walks the pavements and then walks head-on into every
+lot, because the centre line alone covers 54 km without meeting a single building — ruling 035
+puts the nearest lot line seven metres beyond the kerb, so a gate that only walks the carriageway
+proves the walker can cross a field. It now fails if nothing was ever in the way.
+
 ---
 
 ### E5 — Street-level facades (L) — spec §6.1–6.3, §6.5–6.6, ruling 036
@@ -526,7 +535,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **E3** — ribbons | **done** 2026-09-06 | `slice-E3` | `budget_gate` green on all 32 rows plus the three opening spans; street chunks **9 live, 9 groups / 9 meshes, 76,294 triangles, build p95 7 ms** against an 8 ms budget, **0 rebuilds** over six frames. `reports/smoke-E3-{street,junction,slope}.png` | `test/ribbon.test.js` (18, incl. winding-against-normals in both directions, `dashes` over a bend, `clip`, `trim`), `test/lod.test.js` (+2: L3 is a zoom; a baked chunk is charged once a frame), `test/world.test.js` (+1: `surfaceAt` puts the pavement a kerb above the carriageway); spec §5.2–5.3 |
 | **R1** — review fixes after E3 | not started | — | — | — |
 | **V7** — overlays as a texture on the ground (ruling 041) | not started | — | — | — |
-| **E4** — the street camera and collision | in progress, uncommitted, tree red | — | — | — |
+| **E4** — the street camera and collision | **done** 2026-09-06 | `slice-E4` | `walkthrough`: 8,907 legs, **161 km walked, 0 unfinished, 0 refusals, 0 cliffs**, 1,127 lots walked into head-on and **0 entered**, 395,230 blocked steps. `passability`: 32,659 samples, 8,461 enclosed, narrowest **26.00 m**. `play_smoke` enters and leaves by key and by zoom on both viewports × both projections. `reports/smoke-E4-{street,pavement}.png` | `test/collision.test.js` (10), `test/walker.test.js` (9); spec §8.1b |
 | **E5** — street-level facades | not started | — | — | — |
 | **E6** — time of day | not started | — | — | — |
 | **P2** — ink and grade | not started | — | — | — |

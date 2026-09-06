@@ -1179,3 +1179,16 @@ button, [role="button"] {
   .hud-legend { flex-wrap: nowrap; overflow-x: auto; }
   .hud-inspector { width: auto; inset-inline: 0.6rem; }
 }
+
+/* Street mode (slice E4). A street is for looking at (ruling 034), so the
+   build tools, the rail and the minimap are gone rather than merely inert —
+   an interface that is still there but refuses every press reads as broken.
+   What is left is the one button that says how to get back, which is why the
+   whole mode is a data attribute on the HUD root rather than a per-control
+   `disabled`. */
+#hud[data-camera="street"] .hud-build,
+#hud[data-camera="street"] .hud-rail,
+#hud[data-camera="street"] .hud-tools,
+#hud[data-camera="street"] .hud-minimap,
+#hud[data-camera="street"] .hud-preview { display: none; }
+#hud[data-camera="street"] .hud-street { outline: 2px solid var(--accent, currentColor); }

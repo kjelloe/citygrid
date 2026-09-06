@@ -158,6 +158,14 @@ are a blue staircase down the middle of the road, and the pavement runs across t
 side street. None of that is visible at city zoom, none of it fails a test, and all three were
 found in the first screenshot anybody actually opened.
 
+**Verify the instrument before believing the reading — including a gate that PASSES.** E4's
+walkthrough walked 54 km of city and reported a clean sweep with zero steps blocked by anything,
+because a corridor centre line never comes within seven metres of a building (ruling 035). A gate
+that cannot fail is not a gate. Every sweep should count how often the thing it is testing actually
+fired, and refuse to report success when that count is zero; the same check turned E3's
+passability sweep from "narrowest street 33 m" (the search ceiling wearing a number's clothes) into
+a real measurement.
+
 **A screenshot harness that draws one frame cannot photograph a cache.** The street cache bakes one
 chunk a frame on purpose; the shot tool drew once, so an L3 city photographed with one chunk of
 street in it and the gate believed it. If the thing under test converges over frames, the harness

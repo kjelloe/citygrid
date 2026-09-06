@@ -266,6 +266,12 @@
   "speed.play": "Spill",
   "speed.fast": "Rask",
 
+  "street.enter": "Gatenivå",
+  "street.leave": "Tilbake til byen",
+  "street.enter.hint": "Gå i gata i øyehøyde (F). WASD går, Shift løper, dra for å se deg om.",
+  "street.leave.hint": "Tilbake til byvisningen (Escape).",
+  "street.noStreet": "Det er ingen gate å stå i her.",
+
   "funding.fire": "Brann",
   "funding.police": "Politi",
   "funding.health": "Helse",
@@ -296,6 +302,7 @@
   "help.rotate": "Vri utsnittet en kvart omdreining",
   "help.zoom": "Zoom inn og ut",
   "help.pause": "Pause og spill",
+  "help.street": "Gatenivå — så går du med WASD, Shift løper, Escape avslutter",
   "help.clearTool": "Legg fra deg verktøyet",
   "help.undo": "Angre det siste du bygget",
   "help.help": "Åpne dette kortet",

@@ -17,6 +17,43 @@ key or zooming out.
 Picking in tilt and street mode is already a ray; with relief (V4) it marches the height field
 in both projections instead of intersecting `y = 0`.
 
+## 8.1b As built (E4, 2026-09-06) — the street camera
+
+`street` is a third mode of the same `view`. What is new is that in it the CAMERA IS THE WALKER:
+`client/life/walker.js` owns a pose in metres, `scene.js` copies it into `view.eye` in tile units
+each frame, and `applyPose` points the perspective camera out of it. Nothing in the walker knows a
+camera exists, and nothing in the camera knows a city model exists.
+
+Three things had to move with it:
+
+- **`lod.js` gained `eyeOf(view)`**, which answers where the perspective eye is and which way it
+  looks for BOTH modes. `tilePixels` and `visibleBounds` had each derived the eye from `span` and
+  the orbit, which in street mode is an orbit that is no longer there — the budget would have been
+  measured from a camera fifty metres above the player's head.
+- **The near and far planes are per mode.** A near plane of 0.5 *tiles* is ten metres: from eye
+  height it clips the pavement, the kerb and the front of the building you are standing next to.
+  Street mode uses 0.02 and pulls the far plane in to 100 tiles, which is where the fog already is.
+- **The interface is a mode, not a set of disabled buttons.** `#hud[data-camera="street"]` hides
+  the build rail, the tools, the minimap and the preview. A street is for looking at (ruling 034),
+  and an interface that is still there and refuses every press reads as broken.
+
+Entering is `F`, the street-view button, or zooming past the minimum span below 25° of pitch;
+leaving is `F`, `Escape`, the same button, or zooming out. On a coarse pointer a tap on the ground
+walks there (`walker.seek`), because a virtual stick on a phone is a thumb over the thing you are
+trying to look at.
+
+Collision is `client/world/collision.js`: every lot as a solid box seated on its own ground, in an
+8 m spatial hash. **A box and not four wall segments** — a segment push-out has no idea which side
+of itself it is on, so a walker a few centimetres inside a building came out further inside it.
+`floorAt` is `surfaceAt(...).y` with a 0.6 m step-up limit, which is what makes E3's kerb a step
+you walk up and a garden wall something you do not.
+
+Measured on the saturated 96×96 (`tools/walkthrough.mjs`): 8,907 legs, 161 km walked down every
+carriageway and both pavements of every corridor, **0 unfinished, 0 refusals, 0 cliffs**, steepest
+ground 0.86 m over 2 m; 1,127 lots walked at head-on and **0 entered**; 395,230 steps pushed back
+by the collision world. `tools/passability.mjs`: 32,659 samples, 8,461 of them enclosed on both
+sides, narrowest street 26.00 m against a right of way of 20 m and a walker needing 0.88 m.
+
 ## 8.2 One LOD policy for two projections
 
 `lod.js` decides by *pixels per tile* because an orthographic camera puts every tile at the same

@@ -1,5 +1,5 @@
 {
- "version": "d102696d1f4c",
+ "version": "629dd13c2f9f",
  "generated": "2026-09-06",
  "files": [
   "./client/audio/audio-model.js",
@@ -17,6 +17,7 @@
   "./client/input/runs.js",
   "./client/input/tools.js",
   "./client/life/traffic.js",
+  "./client/life/walker.js",
   "./client/lobby/diorama.js",
   "./client/lobby/new-game.js",
   "./client/lobby/options-model.js",
@@ -68,6 +69,7 @@
   "./client/ui/statistics-model.js",
   "./client/ui/statistics.js",
   "./client/world/chunks.js",
+  "./client/world/collision.js",
   "./client/world/config.js",
   "./client/world/corridors.js",
   "./client/world/ground-colour.js",

@@ -18,6 +18,9 @@ import { tierConfig } from "../world/config.js";
 import { createGovernor } from "./governor.js";
 import { createSky } from "./sky.js";
 import { createStreetChunks } from "./street-chunks.js";
+import { createCollision } from "../world/collision.js";
+import { getConfig } from "../world/config.js";
+import { createWalker } from "../life/walker.js";
 
 /** What the device would give us, capped by the tier (ruling 040). A cap, not a
  * replacement: a tier must never make a 1× screen render at 2×. */
@@ -203,6 +206,12 @@ export function createRenderer(canvas, state, options = {}) {
   // enough to be worth baking and the tier allows any.
   const streets = createStreetChunks(scene, { style: styleName });
 
+  // The walker (slice E4). Both halves are pure and neither knows a camera
+  // exists: the collision world is the lots as solids, and the walker takes its
+  // time as a delta, so `life: false` freezes it exactly as it freezes traffic.
+  let collision = createCollision(model);
+  let walker = createWalker(collision);
+
   const terrain = createTerrain(state, styleName);
   for (const chunk of terrain.chunks) chunk.mesh.receiveShadow = true;
   scene.add(terrain.group);
@@ -272,8 +281,86 @@ export function createRenderer(canvas, state, options = {}) {
     // the new one: a car holding a link id from a graph that no longer exists
     // is a car in a field.
     traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
+    collision = createCollision(model);
+    // Where the walker stands is a fact about the OLD lots; a rebuild can put a
+    // building on top of it, so it is settled onto the new ground.
+    const was = { ...walker.pose };
+    walker = createWalker(collision);
+    walker.teleport(was.x, was.z, was.yaw, was.pitch);
     streets.clear();
     markAllDirty(terrain);
+  }
+
+  /**
+   * Drops the eye onto the pavement nearest a tile and switches to street mode
+   * (spec §8.1). Returns false when there is no street to stand on — the mode
+   * is a place, not a setting, and entering it in the middle of a field would
+   * leave the player with no way to tell what had happened.
+   */
+  function enterStreet(tileX, tileZ) {
+    const x = ((tileX ?? view.targetX) + 0.5) * model.tileM;
+    const z = ((tileZ ?? view.targetZ) + 0.5) * model.tileM;
+    const near = model.nearestCorridor(x, z, model.tileM * 3);
+    if (!near) return false;
+    // On the PAVEMENT, facing along the street. Two things have to be right or
+    // the mode reads as broken on arrival: standing in the middle of the
+    // carriageway (which is where "offset away from the corridor" puts you when
+    // the tile you picked IS the road tile, because the offset is then zero),
+    // and facing across the street into a wall.
+    const cfg = getConfig();
+    const kerbside = cfg.road.width / 2 + cfg.road.sidewalk / 2;
+    const tangent = tangentAt(near);
+    let dx = x - near.x;
+    let dz = z - near.z;
+    if (Math.hypot(dx, dz) < cfg.road.width / 2) {
+      // Already over the carriageway: step onto the pavement on the side the
+      // camera is coming from.
+      const side = Math.sign(-Math.sin(view.yaw) * tangent.z + Math.cos(view.yaw) * tangent.x) || 1;
+      dx = -tangent.z * side;
+      dz = tangent.x * side;
+    }
+    const off = Math.hypot(dx, dz) || 1;
+    walker.teleport(
+      near.x + (dx / off) * kerbside, near.z + (dz / off) * kerbside,
+      Math.atan2(-tangent.x, -tangent.z), 0,
+    );
+    poseFromWalker();
+    setProjection("street");
+    return true;
+  }
+
+  /** Which way the street runs where `near` landed on it. */
+  function tangentAt(near) {
+    const points = near.corridor?.points;
+    if (!points || points.length < 2) return { x: 1, z: 0 };
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < points.length; i += 1) {
+      const d = Math.hypot(points[i].x - near.x, points[i].z - near.z);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    const a = points[Math.max(0, best - 1)];
+    const b = points[Math.min(points.length - 1, best + 1)];
+    const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    return { x: (b.x - a.x) / len, z: (b.z - a.z) / len };
+  }
+
+  /** Back to the city, over the place the walker was standing. */
+  function leaveStreet(mode = "city") {
+    view.targetX = walker.pose.x / model.tileM;
+    view.targetZ = walker.pose.z / model.tileM;
+    return setProjection(mode === "street" ? "city" : mode);
+  }
+
+  /** The camera reads the walker; the walker never hears about the camera. */
+  function poseFromWalker() {
+    const t = model.tileM;
+    view.eye = { x: walker.pose.x / t, y: walker.pose.y / t, z: walker.pose.z / t };
+    view.targetX = view.eye.x;
+    view.targetZ = view.eye.z;
+    view.yaw = walker.pose.yaw;
+    view.pitch = walker.pose.pitch;
+    applyPose(view);
   }
 
   /** A tile centre's height in tile units — the ghost and its area preview sit
@@ -346,10 +433,15 @@ export function createRenderer(canvas, state, options = {}) {
     });
     plan.mode = view.mode;
 
-    clampToMap(view, state.width, state.height);
-    // The camera orbits the ground under its target, in the scene's tile units.
-    const groundY = model.cornerHeightAt(Math.round(view.targetX), Math.round(view.targetZ)) / model.tileM;
-    if (groundY !== view.groundY) { view.groundY = groundY; applyPose(view); }
+    if (view.mode === "street") {
+      // The walker moves on wall-clock time like the cars do, and for the same
+      // reason: a paused city is still a place you can walk around.
+      walker.update(drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000, drawOptions.move);
+      poseFromWalker();
+    }
+    else clampToMapAndGround();
+
+
 
     // The estimate gets us close in one pass. What makes the budget a promise
     // rather than a hope is this loop.
@@ -461,5 +553,16 @@ export function createRenderer(canvas, state, options = {}) {
     return { rebuild: (options.antialias ?? tier.antialias) !== antialiasAtBuild };
   }
 
-  return { renderer, scene, view, terrain, pools, style, setTier, setProjection, get traffic() { return traffic; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+  /** The city camera's clamp and its ground orbit, which street mode has
+   * neither of: a walker is already on the ground and is kept off the map edge
+   * by the map's own edge. */
+  function clampToMapAndGround() {
+    clampToMap(view, state.width, state.height);
+    // The camera orbits the ground under its target, in the scene's tile units.
+    const groundY = model.cornerHeightAt(Math.round(view.targetX), Math.round(view.targetZ)) / model.tileM;
+    if (groundY !== view.groundY) { view.groundY = groundY; applyPose(view); }
+  }
+
+  return { renderer, scene, view, terrain, pools, style, setTier, setProjection,
+    enterStreet, leaveStreet, get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }
