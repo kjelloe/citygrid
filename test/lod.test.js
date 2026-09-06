@@ -13,8 +13,26 @@ import { repoRoot } from "./helpers/sources.js";
 import {
   TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels,
   visibleBounds, inBounds, setBudget, getBudget, setCosts, getCosts,
-  countScene, markingInstances, planForChunk,
+  countScene, markingInstances, planForChunk, inFootprint,
 } from "../client/render/lod.js";
+
+/** A blank state of `n × n` tiles, enough for `countScene` to walk. */
+function blank(n) {
+  const cells = n * n;
+  return {
+    width: n,
+    height: n,
+    buildings: [],
+    tiles: {
+      terrain: new Uint8Array(cells),
+      road: new Uint8Array(cells),
+      wire: new Uint8Array(cells),
+      pipe: new Uint8Array(cells),
+      buildingId: new Uint16Array(cells),
+      elevation: new Uint8Array(cells),
+    },
+  };
+}
 
 /** A tiny hand-built state, enough for countScene to walk. */
 const SAMPLE = {
@@ -349,4 +367,86 @@ test("a camera near the horizon still returns finite bounds", () => {
   for (const v of [bounds.x0, bounds.x1, bounds.y0, bounds.y1]) {
     assert.ok(Number.isFinite(v), `bounds ran to ${v}`);
   }
+});
+
+// --- the frustum footprint (V5) ----------------------------------------------
+//
+// `inFootprint` decides how much terrain the budget is charged for, and it was
+// wrong in both directions before it was right: testing a chunk's centre alone
+// under-counted by 40%, and not testing at all over-counted by a quarter. It is
+// four cross products and it is worth pinning.
+
+test("a point inside the footprint is inside it", () => {
+  const quad = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }, { x: 0, z: 10 }];
+  const bounds = { footprint: quad };
+  assert.equal(inFootprint(bounds, 5, 5), true);
+  assert.equal(inFootprint(bounds, 0.1, 0.1), true);
+  assert.equal(inFootprint(bounds, -1, 5), false);
+  assert.equal(inFootprint(bounds, 5, 11), false);
+});
+
+test("a trapezoid is what a tilted frustum actually lays on the ground", () => {
+  // Narrow at the eye, wide at the horizon. A point that a bounding box would
+  // accept but the wedge does not is exactly the over-count being avoided.
+  const quad = [{ x: 4, z: 0 }, { x: 6, z: 0 }, { x: 20, z: 20 }, { x: -10, z: 20 }];
+  const bounds = { footprint: quad };
+  assert.equal(inFootprint(bounds, 5, 1), true, "just in front of the eye");
+  assert.equal(inFootprint(bounds, 0, 18), true, "wide at the far end");
+  assert.equal(inFootprint(bounds, 0, 1), false, "wide at the NEAR end — the box would say yes");
+  assert.equal(inFootprint(bounds, 18, 2), false);
+});
+
+test("no footprint means everything is inside, which is what ortho wants", () => {
+  assert.equal(inFootprint(undefined, 99, 99), true);
+  assert.equal(inFootprint({}, 99, 99), true);
+  assert.equal(inFootprint({ footprint: [{ x: 0, z: 0 }] }, 99, 99), true, "a degenerate quad excludes nothing");
+});
+
+test("winding does not change the answer", () => {
+  // The corner rays come out in whichever order the loop produces; a test on
+  // the sign of one cross product would depend on that.
+  const cw = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }, { x: 0, z: 10 }];
+  const ccw = [...cw].reverse();
+  assert.equal(inFootprint({ footprint: cw }, 5, 5), inFootprint({ footprint: ccw }, 5, 5));
+  assert.equal(inFootprint({ footprint: cw }, 15, 5), inFootprint({ footprint: ccw }, 15, 5));
+});
+
+// --- per-chunk counting (V5) -------------------------------------------------
+
+test("the per-chunk counts add up to the totals", () => {
+  // The estimate sums the chunks; if they do not add up to what the frame
+  // contains, the budget is spent against a different city from the one drawn.
+  const state = blank(40);
+  for (let y = 6; y < 34; y += 3) {
+    for (let x = 6; x < 34; x += 1) state.tiles.road[y * 40 + x] = 16 | 10;
+  }
+  for (let i = 0; i < 200; i += 1) state.tiles.wire[(i * 7) % 1600] = 16 | 5;
+  const counts = countScene(state, undefined);
+  const summed = { roads: 0, trees: 0, props: 0, wireTiles: 0, markArms: 0, buildings: 0 };
+  for (const part of counts.chunks.values()) {
+    for (const key of Object.keys(summed)) summed[key] += part[key];
+  }
+  for (const key of Object.keys(summed)) {
+    assert.ok(Math.abs(summed[key] - counts[key]) < 1e-6,
+      `${key}: chunks sum to ${summed[key]}, the total says ${counts[key]}`);
+  }
+  assert.ok(counts.chunks.size > 1, "one chunk is not a per-chunk count");
+});
+
+test("pricing per chunk is never more than pricing at the frame's plan", () => {
+  // A chunk plan is the frame's plan with things REMOVED, so the sum over
+  // chunks can only be smaller. If it were ever larger the ladder would step
+  // down under perspective for no reason.
+  const state = blank(40);
+  for (let y = 6; y < 34; y += 3) {
+    for (let x = 6; x < 34; x += 1) state.tiles.road[y * 40 + x] = 16 | 10;
+  }
+  const counts = countScene(state, undefined);
+  const plan = planAt(60, 5000000);
+  const whole = estimate(counts, plan);
+  const perChunk = estimate(counts, plan, () => planForChunk(plan, 9));
+  assert.ok(perChunk <= whole, `${perChunk} priced per chunk against ${whole} for the frame`);
+  const same = estimate(counts, plan, () => plan);
+  assert.ok(Math.abs(same - whole) < 1e-6,
+    `pricing every chunk at the frame's own plan gave ${same}, not ${whole}`);
 });

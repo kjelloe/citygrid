@@ -27,7 +27,7 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Traffic gate** | `node tools/traffic_gate.mjs [games] [years]` | Does routing fit the month tick? Does congestion track the city or the dice? |
 | **Balance sweep** | `node tools/sim_sweep.mjs [games] [years]` | 200 games × 4 configurations; writes reports/balance-eraN.md |
 | **Play shot** | `node tools/play_shot.mjs` | What does the real page look like, both viewports? |
-| **Style sheet** | `node tools/style-sheet.mjs` | All three styles from one city, side by side |
+| **Style sheet** | `MODE=city node tools/style-sheet.mjs` | All three styles from one city, side by side. `MODE=city` shoots them through the perspective camera: a style is geometry, shading and palette, and none of those should change with the projection |
 | **Where is it?** | `ZONE=residential node tools/where.mjs` | The densest window of a zone, the zone mix, the paved fraction |
 | **Server gate** | `node tools/serve_smoke.mjs` | Does the game work on the server `run.sh` starts, at the bare origin? |
 | **Reach gate** | `node tools/reach_smoke.mjs` | Can every control be brought on screen and clicked — and does the map still take a click? |
@@ -35,7 +35,7 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Lobby gate** | `node tools/lobby_smoke.mjs` | New game, settings, Continue — hash for hash |
 | **Offline gate** | `node tools/offline_smoke.mjs` | Network off: does it open, start, build and save? |
 | **Update gate** | `node tools/update_smoke.mjs` | Does a NEW build ever reach a player who already has the app? |
-| **Budget gate** | `node tools/budget_gate.mjs [--tier=low\|medium\|high]` | Is the frame inside its triangle budget on a SATURATED city, at every tier and at the opening span — and does the planner's estimate still match what three drew? |
+| **Budget gate** | `node tools/budget_gate.mjs [--tier=low\|medium\|high]` | Is the frame inside its triangle budget on a SATURATED city, at **both projections**, every tier and the opening span — and does the planner's estimate still match what three drew? |
 | **Lane dump** | `node tools/lanes_dump.mjs [size]` | What did the lane graph come out as? Link, node, turn and signal counts, and the shortest link against a car's length. No browser: the model is pure |
 
 **Twelve browser gates, and they are cheap to run all of them.** Do:
@@ -47,6 +47,25 @@ for g in serve_smoke reach_smoke ui_smoke a11y_smoke lobby_smoke \
   printf "%-16s " "$g"; node tools/$g.mjs 2>&1 | tail -1
 done
 ```
+
+### A gate that drives one configuration proves one configuration
+
+City Grid now has two projections, three quality tiers, two viewports and a
+height field, and the same code path behaves differently in each. Three bugs
+this lane were invisible to a single-configuration gate:
+
+- **picking built an orthographic ray** — exact at the centre of the frame and
+  wrong at its edges, so a gate that clicks the middle passes it;
+- **`span` means tiles across the shorter axis**, so a perspective eye distance
+  derived from it as if it were the vertical extent is right in landscape and
+  wrong on a portrait phone;
+- **markings are not drawn below 20 px a tile**, so a `ReferenceError` on that
+  branch survived the default-span screenshot and 639 source-reading tests.
+
+So `play_smoke` runs four viewport/projection combinations and `budget_gate`
+runs two projections × three tiers × four spans. When a gate goes red in one
+combination and green in another, **the pair names the cause** — desktop
+perspective green beside phone perspective red said "portrait", not "perspective".
 
 **Freeze the life before you measure or shoot.** `?life=0` (and `life: false` to
 `screenshot.mjs`) stops the traffic where it settled. Without it two shots of one city differ by

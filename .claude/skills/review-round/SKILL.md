@@ -114,6 +114,15 @@ It took two playtests: N27 joined the runs and N28 found them still reading as d
 was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
 player uses**, not only at the zoom that proves the change.
 
+**An estimate that does not price what the renderer draws sacrifices detail for
+nothing.** This has now happened three times: the cost table went stale when a
+road became a box (P35), it priced every chunk at the frame's plan when the plan
+became per chunk (V5, 77% over), and it charged for terrain inside a bounding
+box when the frustum is a wedge (V5, a quarter over). Ask of any budget: *does
+the thing that spends it know what the thing that draws it actually did?* And
+watch the direction — a render-and-measure loop corrects an over-estimate by
+stepping down and is blind to an under-estimate.
+
 **A boundary that is only a habit is not a boundary.** `client/world/`, `client/render/` and
 `client/life/` must never import `engine/`, and until V2 nothing checked it — they were clean
 because everyone had been careful. Ask of any architectural rule in a document: *what would go

@@ -73,6 +73,10 @@ Every change is a slice, named after its entry in `plan-v1.md`:
 
 - **Never tune on five seeds.** Five seeds tell you a system fires; 200+ games tell you what is
   fair.
+- **A gate that drives one configuration proves one configuration.** Two projections, three
+  quality tiers, two viewports and a height field: the same code path behaves differently in
+  each, and three renderer bugs in the V lane were invisible to a single-configuration gate.
+  When one combination is red and another green, the pair names the cause.
 - **Every measured number belongs to an era.** Name the commit and the balance era. Numbers from a
   previous era are void, not "roughly comparable".
 - **Telemetry must record failure**, not only success. Verify the instrument before believing the

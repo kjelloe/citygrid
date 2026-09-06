@@ -517,7 +517,10 @@ export function countScene(state, bounds) {
       part.props += PROPS_PER_FIELD;
     }
   }
-  props = Math.round(props);
+  // NOT rounded: `props` is an expectation (0.56 a paved tile, 1.45 a field),
+  // and rounding the total while the per-chunk parts stay fractional makes the
+  // two disagree — which under perspective means the budget is spent against a
+  // slightly different city from the one drawn.
   let buildings = 0;
   for (const b of state.buildings) {
     if (!inBounds(bounds, b.x, b.y)) continue;

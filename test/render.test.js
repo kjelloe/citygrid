@@ -520,3 +520,55 @@ test("?life=0 reaches the renderer, or no picture gate is repeatable", () => {
   assert.match(main, /life: config\.life/, "the flag stops at the boot module");
   assert.match(game, /life: options\.life/, "the flag stops at the session");
 });
+
+// --- the wiring V4 and V5 depend on ------------------------------------------
+
+test("one ray builder, and both projections go through it", () => {
+  // An orthographic ray has one direction for every pixel; a perspective ray
+  // has one origin. Getting it wrong is exact at the centre of the frame and
+  // wrong at its edges, which is where a gate does not look — so the two must
+  // not be written twice (slice V5).
+  const picking = readFileSync(join(repoRoot, "client", "render", "picking.js"), "utf8");
+  assert.match(picking, /export function groundRay\(/);
+  assert.match(picking, /view\.mode === "city"/, "the ray builder does not know the projection");
+  const controller = readFileSync(join(repoRoot, "client", "input", "controller.js"), "utf8");
+  assert.match(controller, /groundPoint\(/, "the pan builds its own ray");
+  assert.equal(/unproject/.test(controller), false, "the controller unprojects a second time");
+});
+
+test("the sky and the haze are perspective only, and cost one draw call", () => {
+  // An orthographic view has no horizon: a dome behind it is a flat wash with a
+  // seam, and fog on a diagram is fog on a diagram.
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  const atmosphere = scene.slice(scene.indexOf("function applyAtmosphere()"));
+  const body = atmosphere.slice(0, atmosphere.indexOf("\n  }"));
+  assert.match(body, /view\.mode === "city"/);
+  assert.match(body, /sky\.visible = on/);
+  assert.match(body, /scene\.fog = null/, "the fog survives a switch to orthographic");
+  const sky = readFileSync(join(repoRoot, "client", "render", "sky.js"), "utf8");
+  assert.match(sky, /BackSide/, "the dome is not drawn from the inside");
+  assert.match(sky, /depthWrite: false/, "the dome writes depth and will occlude the city");
+  assert.match(sky, /frustumCulled = false/, "a sphere the camera is inside is being frustum-tested");
+  assert.equal((sky.match(/new THREE\.Mesh\(/g) ?? []).length, 1,
+    "the sky is more than one draw call");
+});
+
+test("the projection reaches the renderer from the settings panel", () => {
+  const main = readFileSync(join(repoRoot, "client", "main.js"), "utf8");
+  const game = readFileSync(join(repoRoot, "client", "game.js"), "utf8");
+  assert.match(main, /session\?\.setProjection\(next\.camera\)/, "the row stops at the panel");
+  assert.match(main, /mode: preferences\.camera/, "a new city ignores the stored projection");
+  assert.match(game, /setProjection\(mode\)/);
+});
+
+test("every instanced piece is placed against the height field", () => {
+  // V4's audit, as an assertion rather than a promise: nothing may take a
+  // remembered flattening of the ground. `elevation × 0.02` was the constant.
+  for (const file of ["instances.js", "terrain.js", "scene.js"]) {
+    const source = readFileSync(join(repoRoot, "client", "render", file), "utf8");
+    assert.equal(/tiles\.elevation\[[^\]]+\] \* 0\.02/.test(source), false,
+      `${file} still flattens the ground by hand`);
+  }
+  assert.match(instances, /model\.heightAt/, "the instanced pass does not read the height field");
+  assert.match(instances, /lot\.seat/, "buildings are not seated on their lot");
+});
