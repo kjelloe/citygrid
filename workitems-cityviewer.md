@@ -513,7 +513,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **V4** — real relief | **done** 2026-09-06 | `f13b0dd` | `play_smoke` picks on a slope and the ghost stands on the ground; `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on an 84 m `hilly` map | `test/picking.test.js` (10); the flat-layer audit is spec §5.6. **Q29**: the overlay wash is the one layer still floating |
 | **V5** — the perspective play camera | **done** 2026-09-06 | `556fa0a` | `play_smoke` and `budget_gate` in **both** projections (4 viewport/projection combinations; 2 × 3 tiers × 4 spans); `style-sheet` in both; `reports/smoke-V5-*.png` at a 20° pitch | `test/lod.test.js` (+10), `test/input.test.js` (+4), `test/settings.test.js` (+2); spec §8.1a. Orthographic is **byte-identical to V4** at two zooms, checked against a worktree of `f13b0dd`. **Q30** |
 | **P1** — toon shading and the anime rig | **done** 2026-09-06 | `044da85` | `style-sheet` in **both** projections — three styles that differ in shading, not tint; `client_smoke` painted; `budget_gate` (toon costs no triangles and no draw calls: painted and plain report identical counts) | `test/toon.test.js` (17); spec §7.1a. Two findings: the painted palette collapsed for a deuteranope at 0.042, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
-| **E2** — the baker and the chunk cache | not started | — | — | — |
+| **E2** — the baker and the chunk cache | **done** 2026-09-06 | `7f8b595` | `budget_gate` gains four street-chunk checks on the saturated 96×96 at High: **9 chunks live, 9 draw calls, 5,184 triangles, build p95 1 ms** against an 8 ms budget, and **0 rebuilds** over six frames of an unchanged city | `test/merge.test.js` (9), `test/chunks.test.js` (11); spec §6.4a. The merge is pure typed-array arithmetic so it can be tested in node; `chunkHash` covers the buildings' RECORDS as well as their tiles |
 | **E3** — ribbons | not started | — | — | — |
 | **E4** — the street camera and collision | not started | — | — | — |
 | **E5** — street-level facades | not started | — | — | — |
@@ -540,6 +540,11 @@ question so it can be reversed cheaply:**
   77% over the truth, and an over-charging estimate sacrifices detail for
   nothing (P35). Terrain is counted against the frustum footprint for the same
   reason.
+- **E2** put the chunk size in `data/cityviewer.json` as `chunkTiles`: three
+  things key off it — the terrain mesh's rebuild unit, the LOD's per-chunk plan
+  and the street cache's bake unit — and they had three copies of `16`. And
+  `streetChunks` is read as a **count** (none / 4 / 9), not a radius, which is
+  what ruling 040's table says and what E5's "9 chunks" gate needs.
 - **P1**'s ramps are a separate pure module (`client/render/ramps.js`) rather
   than living in `style-assets.js`, so the arithmetic can be tested in node —
   three cannot be resolved there, which the item's own "test the ramp arrays
@@ -549,6 +554,14 @@ question so it can be reversed cheaply:**
 same shape and all fixed in place: `lobby_smoke` hashed after an await, and
 `play_smoke` and `mvp_acceptance` projected tile centres at `y = 0` to decide
 where to click, which with relief aims down the slope.
+
+**Three defects have now lived where the unit suite structurally cannot reach.**
+`MARK_LIFT` was undefined on a branch only taken below 20 px a tile (V4);
+picking built an orthographic ray, exact at the centre of the frame (V5); and
+`export { CHUNK } from "…"` re-exported without binding the name locally, so
+every use of it in `terrain.js` was `undefined` and the page threw on load
+(E2). All three are in modules that import three, which node cannot resolve —
+the browser gates are the only instrument that can see them.
 
 **And two bugs were found only because a gate drives more than one
 configuration.** V5's picking built an orthographic ray — exact at the centre of
