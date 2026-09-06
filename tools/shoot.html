@@ -33,13 +33,16 @@ import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
 import { createRenderer } from "../client/render/scene.js";
-import { setYawStep, zoomBy, focusOn } from "../client/render/camera.js";
+import { setYawStep, zoomBy, focusOn, pitchBy } from "../client/render/camera.js";
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get("seed") ?? 1003);
 const years = Number(params.get("years") ?? 20);
 const span = Number(params.get("span") ?? 0);
 const yaw = Number(params.get("yaw") ?? 0);
+// Degrees. The default is the camera's own start; a slope gate wants a low one,
+// because relief seen from directly above is not relief (slice V4).
+const pitchDeg = Number(params.get("pitch") ?? 0);
 
 const canvas = document.getElementById("city");
 canvas.width = window.innerWidth;
@@ -47,7 +50,11 @@ canvas.height = window.innerHeight;
 
 const size = Number(params.get("size") ?? 64);
 const seats = Number(params.get("seats") ?? 1);
-const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats, waterStyle: "river" }));
+// `terrain` and `overlay` so the slope gate can shoot a hillside with every
+// overlay on (slice V4).
+const terrainStyle = params.get("terrain") ?? "rolling";
+const overlay = params.get("overlay") ?? "";
+const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats, waterStyle: "river", terrainStyle }));
 if (!world.ok) throw new Error("generation failed: " + world.reason);
 const state = world.state;
 
@@ -71,6 +78,7 @@ const tier = params.get("tier") ?? "high";
 const life = params.get("life") === "1";
 const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life });
 setYawStep(view.view, yaw);
+if (pitchDeg > 0) pitchBy(view.view, pitchDeg * (Math.PI / 180) - view.view.pitch);
 if (span > 0) {
   view.view.span = span;
   zoomBy(view.view, 1);
@@ -95,6 +103,7 @@ const budgetParam = Number(params.get("budget") ?? 0);
 const stats = view.draw({
   props: !reduced, trees: !reduced,
   budget: budgetParam > 0 ? budgetParam : undefined,
+  overlay: overlay || undefined,
 });
 
 const firstChunk = view.terrain.chunks[0];
@@ -122,6 +131,9 @@ globalThis.SHOT_REPORT = {
     .map(([n, m]) => `${n}:${m.count}x${m.geometry.getAttribute("position").count / 3}`)
     .join(" "),
 };
+// The renderer itself, so a slope gate can read the mesh it produced rather
+// than guessing from a picture (slice V4).
+globalThis.SHOT_VIEW = view;
 globalThis.SHOT_READY = true;
 </script>
 </body>

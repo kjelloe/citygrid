@@ -2971,3 +2971,79 @@ The palette is handed in — `createGroundColour(state, palette)` — and
 coloured. The assertions moved with it rather than being deleted: the property
 they protect — a road is a colour of the ground, not a quad on it — is the one
 that took three slices and a playtest to arrive at.
+
+---
+
+## V4 — Real relief
+
+`RELIEF_M = 0.5` was already in the config and `model.heightAt` already returned
+it; what V4 does is make the renderer read it. The terrain mesh, every
+instanced pool, picking and the ghost now sample the height field, and buildings
+seat on the lowest corner of their lot (ruling 038).
+
+### The flat-layer audit
+
+The full table is in `specs/engine/05-ground-and-streets.md` §5.6, which is what
+the review asked for. The short version: everything that stands on a point now
+samples at the point it is actually drawn at, everything that spans a tile had
+to be decided, and two of those decisions are worth the words.
+
+**The zone tint stopped being a quad.** Seated on the tile's own height it sank
+into a hillside; seated on the highest corner — tried, screenshotted — it
+hovered as a visible pale sheet over the grass, which reads as a bug rather
+than as a tint. It is a colour of the terrain mesh now, exactly as the road
+became one in N30, and it follows any slope for free. One fewer pool, 1,209
+fewer instances at the default span on a saturated map.
+
+**The overlay wash could not follow it.** It is toggled at runtime and folding
+it into the mesh would rebuild every chunk on every switch. It sits at the
+**mean** of the tile's four corners instead: on a cliff there is no right
+placement for a flat quad, only a least wrong one, and a wash that grazes the
+surface reads as a wash while one that hovers does not. Recorded as Q29 to
+revisit with E2's chunk cache.
+
+### Picking
+
+`client/world/raymarch.js`, pure, tested against hand-written height fields.
+It marches in coarse steps and bisects: the field is continuous and mostly
+gentle, so a step of a tile finds the crossing in a few samples and eight
+halvings pin it to a centimetre.
+
+The first version marched from the camera and picked nothing at all. The
+orthographic camera sits 1,200 tiles out along its orbit so the frustum clears
+the map at every zoom — 24 km in metres — so the march ran out of its `far`
+limit before reaching the ground, and at a tile a step it would have been over a
+thousand height queries for one pointer move. It skips to the band between the
+field's own `maxHeight` and `minHeight` first; the whole search is then the few
+steps across that band.
+
+### What failed on the way
+
+**A `ReferenceError` that the suite and the first smoke check both walked past.**
+`MARK_LIFT` was used and never defined. Road markings are not drawn below 20
+pixels a tile, so the default-span screenshot passed and only the span-9 one
+hung — and it hung rather than failing, because the harness waits for a flag the
+crashed module never sets. Nothing in 639 source-reading tests can see a name
+that is missing on a branch they do not execute.
+
+**Two gates were projecting tile centres at `y = 0`.** `play_smoke` and
+`mvp_acceptance` each compute where a tile is on screen so they can click it,
+and both did it on the plane the map used to lie on. With relief that aims the
+click down the slope, picking correctly reports the tile that is actually
+there, and the gate calls a working drag broken: six failures in `play_smoke`
+and two §24 criteria in `mvp_acceptance`. The third time this session that a
+red gate was the gate's own defect.
+
+### Measured
+
+- `./test.sh` **649 tests, green twice**; 10 new in `test/picking.test.js`.
+- **Twelve gates green**, including §24's thirteen criteria.
+- On `terrainStyle: 'hilly'`, seed 1003: elevation range 39–207, so **84 m** of
+  relief, and a 57 m drop inside one 7×7 window. The mesh spans 1.0 to 5.16 tile
+  units, which is the model's 19.5–103.5 m divided by `tileM`.
+- `play_smoke` on the steepest tile it can find: a click on a 3.3 m drop picks
+  the tile it landed on, and the ghost stands within 0.4 tile units of the
+  ground under it.
+- `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on the steepest
+  window: the hillside reads as a hillside, the zoning is painted onto it, and
+  nothing floats.

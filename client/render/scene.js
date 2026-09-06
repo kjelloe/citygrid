@@ -187,9 +187,14 @@ export function createRenderer(canvas, state, options = {}) {
     markAllDirty(terrain);
   }
 
+  /** A tile centre's height in tile units — the ghost and its area preview sit
+   * on the same ground everything else does. */
+  const tileHeight = (x, y) => model.heightAt((x + 0.5) * model.tileM, (y + 0.5) * model.tileM) / model.tileM;
+
   function showGhost(x, y, valid) {
     ghost.visible = true;
-    ghost.position.set(x + 0.5, state.tiles.elevation[y * state.width + x] * 0.02 + 0.15, y + 0.5);
+    // On the ground, not on a remembered flattening of it (slice V4).
+    ghost.position.set(x + 0.5, tileHeight(x, y) + 0.15, y + 0.5);
     ghost.material.color.setHex(valid ? UI.ghostValid : UI.ghostInvalid);
   }
 
@@ -208,7 +213,7 @@ export function createRenderer(canvas, state, options = {}) {
     const limit = Math.min(tiles.length, ghostArea.instanceMatrix.count);
     for (let i = 0; i < limit; i += 1) {
       const { x, y } = tiles[i];
-      const h = state.tiles.elevation[y * state.width + x] * 0.02 + 0.09;
+      const h = tileHeight(x, y) + 0.09;
       ghostMarker.position.set(x + 0.5, h, y + 0.5);
       ghostMarker.scale.set(0.94, 1, 0.94);
       ghostMarker.updateMatrix();
@@ -234,7 +239,7 @@ export function createRenderer(canvas, state, options = {}) {
       governor.sample(drawOptions.frameMs);
       if (governor.disabled().length !== before) applyGovernor();
     }
-    stats.chunksRebuilt = updateTerrain(state, terrain);
+    stats.chunksRebuilt = updateTerrain(state, terrain, model);
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
     counts.cars = traffic.count();
@@ -256,7 +261,7 @@ export function createRenderer(canvas, state, options = {}) {
     let result;
     stats.rebuilds = 0;
     for (;;) {
-      result = updateInstances(state, pools, { ...drawOptions, style: styleName, plan, bounds });
+      result = updateInstances(state, pools, { ...drawOptions, style: styleName, plan, bounds, model });
       // After the instanced pass, into the same pools the parked cars use — so
       // a car costs one instance whether it is driving or parked, and the
       // budget's measurement loop sees it either way.

@@ -1,6 +1,6 @@
 {
- "version": "70f42a32d24c",
- "generated": "2026-09-05",
+ "version": "cc6d863ccd0b",
+ "generated": "2026-09-06",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -67,6 +67,7 @@
   "./client/world/lots.js",
   "./client/world/model.js",
   "./client/world/params.js",
+  "./client/world/raymarch.js",
   "./data/balance.json",
   "./data/buildings.json",
   "./data/cityviewer.json",

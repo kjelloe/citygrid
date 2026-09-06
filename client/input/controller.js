@@ -48,8 +48,12 @@ export function createController(canvas, state, renderer, options = {}) {
 
   const treasury = () => state.players.find((p) => p.seat === actor)?.treasury ?? 0;
 
+  // The model comes from the renderer rather than being held: it is rebuilt
+  // whole on `worldChanged`, and a picker holding the old one would march a
+  // height field the city no longer has.
   const tileAtPixel = (x, y) => pickTile(
     renderer.view, x, y, canvas.clientWidth, canvas.clientHeight, state.width, state.height,
+    renderer.model,
   );
 
   function tilesForStroke() {

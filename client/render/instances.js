@@ -14,7 +14,7 @@ import {
   buildingVariants, treeVariants, carVariants, tuftVariants, lampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
-import { buildingParams, zoneTint } from "../world/params.js";
+import { buildingParams } from "../world/params.js";
 import { jitter } from "../world/hash.js";
 import { setFaceContrast } from "./detail-kit.js";
 import { DIR4 } from "../../shared/grid.js";
@@ -60,7 +60,9 @@ export function createInstances(scene, styleName = "plain") {
   // A unit-length stripe, scaled per instance: one centred dash on a straight
   // run, an arm per direction at a corner or a junction. Four a tile at an X,
   // where there used to be one.
-  make("mark", flatGeometry(styleName, 0.06, 1, 0.056), 0xffffff, 60000);
+  // Every lift is applied at push time now (slice V4) so the whole table of
+  // them is in one place and each can be reasoned about against the slope.
+  make("mark", flatGeometry(styleName, 0.06, 1, 0), 0xffffff, 60000);
   make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), 0xffffff, 24000);
   // A hub and four possible arms per tile, so a run READS as a run. A square
   // per tile left a dotted line with a gap at every boundary — the playtest
@@ -78,11 +80,6 @@ export function createInstances(scene, styleName = "plain") {
   // cable over it. Its own silhouette, so the two never need a legend.
   make("pipeHub", flatGeometry(styleName, 0.28, 0.28, 0), 0xffffff, 40000);
   make("pipeArm", flatGeometry(styleName, 0.28, 0.56, 0), 0xffffff, 80000);
-  // Zoned but not yet built. Without this a painted zone is INVISIBLE until
-  // something develops on it — the player draws a district and the map shows
-  // nothing back (found in playtest, P29). A flat tint just above the ground,
-  // not a block: it is a plan for the land, not a thing standing on it.
-  make("zone", flatGeometry(styleName, 0.92, 0.92, 0.02), 0xffffff, 40000);
   make("ruin", slabGeometry(styleName, 0.7, 0.14, 0.7), 0xffffff, 6000);
   // A garden plot under every house. In the reference this is doing far more
   // work than it looks: it is what stops a suburb reading as buildings dropped
@@ -192,7 +189,8 @@ function push(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {
   mesh.count = i + 1;
 }
 
-const HEIGHT_SCALE = 0.02;
+// Heights come from the model now (slice V4, ruling 038). See `terrain.js` for
+// why the flattening constant went.
 
 /** Triangles in a geometry. An INDEXED geometry has fewer vertices than
  * triangle corners — a PlaneGeometry has four vertices and two triangles — so
@@ -218,20 +216,33 @@ const PIPE_COLOUR = 0x4a86a8;
  * An isolated tile still gets its hub: a single pole with nothing attached is
  * something the player placed and must be able to see.
  */
-function connect(hubPool, armPool, tile, x, y, height, colour) {
+function connect(hubPool, armPool, tile, x, y, lift, colour, at) {
   const cx = x + 0.5;
   const cy = y + 0.5;
-  push(hubPool, cx, height, cy, 1, 1, 1, colour);
+  push(hubPool, cx, at(cx, cy) + lift, cy, 1, 1, 1, colour);
   const mask = tile & 15;
   for (let d = 0; d < 4; d += 1) {
     if ((mask & (1 << d)) === 0) continue;
     const dir = DIR4[d];
     // Half a tile long, so it stops exactly on the boundary the neighbour's
     // own arm starts from. Rotated a quarter turn when it runs east-west.
-    push(armPool, cx + dir.dx * 0.25, height, cy + dir.dy * 0.25,
+    //
+    // Sampled at the ARM's own centre rather than at the tile's (slice V4): an
+    // arm reaching into the next tile at this tile's height is the flat-layer
+    // problem in miniature, and on a slope the run would step.
+    const ax = cx + dir.dx * 0.25;
+    const az = cy + dir.dy * 0.25;
+    push(armPool, ax, at(ax, az) + lift, az,
       1, 1, 1, colour, dir.dx === 0 ? 0 : Math.PI / 2);
   }
 }
+
+/** How far the centre markings sit above the road surface, in tile units.
+ *
+ * It used to be baked into the geometry. Since V4 every lift is applied at push
+ * time against a height sampled at the piece's own position, so the whole table
+ * of them is in one place and each can be reasoned about against a slope. */
+const MARK_LIFT = 0.056;
 
 /** How far a junction's markings stop short of the tile centre.
  *
@@ -252,7 +263,7 @@ const JUNCTION_GAP = 0.22;
  * A stub with one connection or none gets nothing: there is no lane to divide,
  * and a lone dash on the end of a road reads as a mistake.
  */
-function roadMarkings(pool, mask, x, y, height, colour) {
+function roadMarkings(pool, mask, x, y, lift, colour, at) {
   const cx = x + 0.5;
   const cy = y + 0.5;
   let bits = 0;
@@ -262,7 +273,7 @@ function roadMarkings(pool, mask, x, y, height, colour) {
   // North and south, or east and west: a road running through.
   const straight = mask === 5 || mask === 10;
   if (straight) {
-    push(pool, cx, height, cy, 1, 1, 0.34, colour, (mask & 10) !== 0 ? Math.PI / 2 : 0);
+    push(pool, cx, at(cx, cy) + lift, cy, 1, 1, 0.34, colour, (mask & 10) !== 0 ? Math.PI / 2 : 0);
     return;
   }
 
@@ -272,7 +283,11 @@ function roadMarkings(pool, mask, x, y, height, colour) {
     if ((mask & (1 << d)) === 0) continue;
     const dir = DIR4[d];
     const centre = inner + length / 2;
-    push(pool, cx + dir.dx * centre, height, cy + dir.dy * centre,
+    // Each arm at its own height (slice V4): a junction on a slope has four
+    // approaches at four heights, and one shared y sinks half of them.
+    const mx = cx + dir.dx * centre;
+    const mz = cy + dir.dy * centre;
+    push(pool, mx, at(mx, mz) + lift, mz,
       1, 1, length, colour, dir.dx === 0 ? 0 : Math.PI / 2);
   }
 }
@@ -281,7 +296,37 @@ export function updateInstances(state, pools, options = {}) {
   reset(pools);
   const styleName = options.style ?? "plain";
   const palette = PALETTES[styleName] ?? PALETTES.plain;
-  const ground = (index) => state.tiles.elevation[index] * HEIGHT_SCALE;
+  const model = options.model;
+  const tileM = model.tileM;
+  /** A tile CENTRE's height, in tile units. Everything that stands on a tile
+   * uses this; anything that spans more than one samples at its own position,
+   * because a flat quad at its tile's height does not meet its neighbour on a
+   * slope (ruling 030's amendment, spec §5.6). */
+  const ground = (index) => {
+    const x = index % state.width;
+    const y = (index - x) / state.width;
+    return model.heightAt((x + 0.5) * tileM, (y + 0.5) * tileM) / tileM;
+  };
+  /** Any point's height, in tile units, from tile coordinates. */
+  const at = (x, z) => model.heightAt(x * tileM, z * tileM) / tileM;
+  /** The MEAN of a tile's four corners, in tile units.
+   *
+   * A flat quad covering a whole tile cannot follow a slope, and there is no
+   * placement that is right on a cliff — only a least wrong one. Seating it on
+   * the highest corner was tried and is worse than it sounds: on the steepest
+   * slope of a `hilly` map the overlay hovered as a visible sheet above the
+   * grass, which reads as a bug rather than as a diagnostic. The mean grazes
+   * the surface instead, half in and half out, which at a glance reads as a
+   * wash lying on the ground.
+   *
+   * The zone tint took the other way out and stopped being a quad at all
+   * (`world/ground-colour.js`); the overlay cannot, because it is toggled at
+   * runtime and folding it into the mesh would rebuild every chunk on every
+   * switch. Recorded in spec §5.6 and as a question. */
+  const tileMid = (x, y) => (
+    model.cornerHeightAt(x, y) + model.cornerHeightAt(x + 1, y)
+    + model.cornerHeightAt(x, y + 1) + model.cornerHeightAt(x + 1, y + 1)
+  ) / 4 / tileM;
   const showOwner = options.territory === true;
   // The LOD plan decides what exists this frame. Callers may still force
   // things off (reduced-effects mode), but never on.
@@ -316,16 +361,11 @@ export function updateInstances(state, pools, options = {}) {
         // markings are instanced. Below a few pixels a tile they are invisible
         // and there are thousands of them.
         if (markings) {
-          roadMarkings(pools.mark, state.tiles.road[index] & 15, x, y, h, palette.roadMark);
+          roadMarkings(pools.mark, state.tiles.road[index] & 15, x, y, MARK_LIFT, palette.roadMark, at);
         }
       }
-      // Zoned ground, drawn under everything else. It fades out as the lot
-      // develops: an empty plot needs to say "this is zoned", a built one is
-      // already saying it with a building.
-      const zone = state.tiles.zone[index];
-      if (zone !== 0 && state.tiles.buildingId[index] === 0) {
-        push(pools.zone, x + 0.5, h + 0.012, y + 0.5, 1, 1, 1, zoneTint(zone, palette));
-      }
+      // Zoned ground is a COLOUR of the terrain mesh since V4, not a quad on
+      // top of it — see `client/world/ground-colour.js`.
 
       // Wire and pipe are drawn like roads are: joined. The connection mask is
       // the low four bits the network pass already maintains, so an arm is
@@ -335,7 +375,7 @@ export function updateInstances(state, pools, options = {}) {
         // ABOVE the road surface (0.05), not under it. Both networks were drawn
         // below it, so a run crossing a street broke in two — the boundary gap
         // again, one tile wide (P33).
-        connect(pools.wireHub, pools.wireArm, state.tiles.wire[index], x, y, h + 0.07, palette.wire);
+        connect(pools.wireHub, pools.wireArm, state.tiles.wire[index], x, y, 0.07, palette.wire, at);
         // A pole per tile is a picket fence down every street, and it buries
         // the city in clutter — every third, and only where one is resolvable.
         if (poles && ((x + y) % 3 === 0)) {
@@ -343,7 +383,7 @@ export function updateInstances(state, pools, options = {}) {
         }
       }
       if (networks && (state.tiles.pipe[index] & NET_PRESENT)) {
-        connect(pools.pipeHub, pools.pipeArm, state.tiles.pipe[index], x, y, h + 0.064, PIPE_COLOUR);
+        connect(pools.pipeHub, pools.pipeArm, state.tiles.pipe[index], x, y, 0.064, PIPE_COLOUR, at);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
         push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, 0x5a5048);
@@ -359,15 +399,16 @@ export function updateInstances(state, pools, options = {}) {
         const roll = jitter(index, 41);
         if (roll > 0.72) {
           const side = jitter(index, 43) > 0.5 ? 0.34 : -0.34;
-          push(pools.lamp,
-            x + 0.5 + (horizontal ? 0 : side), h, y + 0.5 + (horizontal ? side : 0),
+          const lx = x + 0.5 + (horizontal ? 0 : side);
+          const lz = y + 0.5 + (horizontal ? side : 0);
+          push(pools.lamp, lx, at(lx, lz), lz,
             1, 1, 1, palette.lamp ?? 0x9aa0a6, horizontal ? 0 : Math.PI / 2);
         } else if (roll > 0.44) {
           const side = jitter(index, 47) > 0.5 ? 0.26 : -0.26;
           const v = Math.floor(jitter(index, 53) * CAR_VARIANTS) % CAR_VARIANTS;
-          push(pools[`car${v}`],
-            x + 0.5 + (horizontal ? (jitter(index, 59) - 0.5) * 0.5 : side),
-            h, y + 0.5 + (horizontal ? side : (jitter(index, 61) - 0.5) * 0.5),
+          const px = x + 0.5 + (horizontal ? (jitter(index, 59) - 0.5) * 0.5 : side);
+          const pz = y + 0.5 + (horizontal ? side : (jitter(index, 61) - 0.5) * 0.5);
+          push(pools[`car${v}`], px, at(px, pz), pz,
             1, 1, 1, CAR_COLOURS[Math.floor(jitter(index, 67) * CAR_COLOURS.length)],
             horizontal ? 0 : Math.PI / 2);
         }
@@ -381,8 +422,9 @@ export function updateInstances(state, pools, options = {}) {
         const count = jitter(index, 71) > 0.55 ? 2 : 1;
         for (let k = 0; k < count; k += 1) {
           const v = Math.floor(jitter(index, 73 + k) * TUFT_VARIANTS) % TUFT_VARIANTS;
-          push(pools[`tuft${v}`],
-            x + 0.12 + jitter(index, 79 + k) * 0.76, h, y + 0.12 + jitter(index, 83 + k) * 0.76,
+          const tx = x + 0.12 + jitter(index, 79 + k) * 0.76;
+          const tz = y + 0.12 + jitter(index, 83 + k) * 0.76;
+          push(pools[`tuft${v}`], tx, at(tx, tz), tz,
             1, 0.8 + jitter(index, 89 + k) * 0.6, 1,
             v === 1 ? FLOWER_COLOURS[Math.floor(jitter(index, 97 + k) * FLOWER_COLOURS.length)]
               : palette.terrain[TERRAIN_GRASS], jitter(index, 101 + k) * Math.PI * 2);
@@ -396,8 +438,9 @@ export function updateInstances(state, pools, options = {}) {
         && state.tiles.buildingId[index] === 0 && !paved) {
         const v = Math.floor(jitter(index, 3) * TREE_VARIANTS) % TREE_VARIANTS;
         const scale = 0.72 + jitter(index, 5) * 0.6;
-        push(pools[`tree${v}_${treeTier}`],
-          x + 0.2 + jitter(index, 7) * 0.6, h, y + 0.2 + jitter(index, 11) * 0.6,
+        const rx = x + 0.2 + jitter(index, 7) * 0.6;
+        const rz = y + 0.2 + jitter(index, 11) * 0.6;
+        push(pools[`tree${v}_${treeTier}`], rx, at(rx, rz), rz,
           scale, scale, scale, palette.tree ?? palette.terrain[TERRAIN_FOREST],
           jitter(index, 13) * Math.PI * 2);
       }
@@ -406,10 +449,15 @@ export function updateInstances(state, pools, options = {}) {
 
   for (const building of state.buildings) {
     if (!inBounds(bounds, building.x, building.y)) continue;
-    const index = building.y * state.width + building.x;
-    const h = ground(index);
     const cx = building.x + building.w / 2;
     const cz = building.y + building.h / 2;
+    // Seated on the LOWEST corner of its lot (ruling 038), which is what the
+    // model already computed. Seating on the tile's own height put a building
+    // that spans a slope half in the air at one corner and half buried at the
+    // other; a plinth makes the difference up, and under the lawn that reads
+    // as the ground the house was cut into.
+    const lot = model.lotOf(building.id);
+    const h = lot ? lot.seat / tileM : at(cx, cz);
 
     // Zone and value tier set the family; the model sets the individual —
     // variant, colour, roof, height, spin — from the building's id, so the
@@ -421,6 +469,9 @@ export function updateInstances(state, pools, options = {}) {
         ? palette.civic
         : buildingColour(building.zone, building.valueTier, palette);
     const p = buildingParams(building, palette, family, showOwner);
+    // The lawn takes the building's seat, not its own tile's height: it is the
+    // ground the house was cut into, so on a slope the uphill half of it is
+    // buried and that is what a plinth looks like from above (spec §5.6).
     if (p.lawn) push(pools.lawn, cx, h, cz, building.w, building.h, 1, p.lawn);
 
     const pool = pools[`${p.kind}${p.variant}_${buildingTier}`];
@@ -445,10 +496,10 @@ export function updateInstances(state, pools, options = {}) {
       // Grey is not drawn. A tile with nothing to say is more useful showing
       // the city than showing a wash of grey over it.
       if (band === BAND.NONE) continue;
-      const h = ground(index);
-      push(pools.ovl, x + 0.5, h, y + 0.5, 1, 1, 1, OVERLAY_COLOURS[band]);
+      const mid = tileMid(x, y);
+      push(pools.ovl, x + 0.5, mid, y + 0.5, 1, 1, 1, OVERLAY_COLOURS[band]);
       const mark = MARKS[band];
-      if (mark) push(mark, x + 0.5, h, y + 0.5, 1, 1, 1, 0x1b1d21);
+      if (mark) push(mark, x + 0.5, mid, y + 0.5, 1, 1, 1, 0x1b1d21);
     }
   }
 

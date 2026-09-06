@@ -52,7 +52,14 @@ async function tilePixel(page, x, y) {
   return page.evaluate(([tx, ty]) => {
     const { renderer } = globalThis.CITY;
     const canvas = document.getElementById("city");
-    const v = new globalThis.THREE_VEC(tx + 0.5, 0, ty + 0.5);
+    // At the tile's own HEIGHT, not at y = 0 (slice V4). Projecting the centre
+    // of a hillside tile from the plane it used to lie on puts the click
+    // somewhere down the slope, and picking — which marches the height field
+    // now — correctly reports the tile that is actually there. The gate would
+    // have called that a broken drag.
+    const model = renderer.model;
+    const h = model.heightAt((tx + 0.5) * model.tileM, (ty + 0.5) * model.tileM) / model.tileM;
+    const v = new globalThis.THREE_VEC(tx + 0.5, h, ty + 0.5);
     v.project(renderer.view.camera);
     return {
       x: ((v.x + 1) / 2) * canvas.clientWidth,
@@ -155,6 +162,61 @@ async function run(page, label, { touch }) {
   const distance = Math.hypot(panned.x - before.targetX, panned.z - before.targetZ);
   check(`${label}: dragging with no tool pans the camera`, distance > 1,
     `moved ${distance.toFixed(2)} tiles from (${before.targetX}, ${before.targetZ})`);
+
+  // --- the ground has a shape now (V4, ruling 038) ---------------------------
+  //
+  // Picking marched a plane at y = 0 until this slice. On a slope that lands
+  // past the hillside the ray actually struck, so a click on the near face
+  // builds on the far side of it — an error that grows with the slope and with
+  // the tilt, and that no unit test of the maths can see because the maths was
+  // right about the plane.
+  if (!touch) {
+    const slope = await page.evaluate(() => {
+      const { renderer, state } = globalThis.CITY;
+      const m = renderer.model;
+      // The steepest tile on screen, and what the two answers would be there.
+      let best = { drop: 0 };
+      for (let y = 4; y < state.height - 4; y += 1) {
+        for (let x = 4; x < state.width - 4; x += 1) {
+          const h = m.heightAt((x + 0.5) * m.tileM, (y + 0.5) * m.tileM);
+          const e = m.heightAt((x + 1.5) * m.tileM, (y + 0.5) * m.tileM);
+          const drop = Math.abs(h - e);
+          if (drop > best.drop) best = { drop, x, y, h };
+        }
+      }
+      return best;
+    });
+    if (slope.drop > 1) {
+      const at = await tilePixel(page, slope.x, slope.y);
+      const picked = await page.evaluate(async ([px, py]) => {
+        const { renderer, state } = globalThis.CITY;
+        const { pickTile } = await import("/client/render/picking.js");
+        const canvas = document.getElementById("city");
+        return pickTile(renderer.view, px, py, canvas.clientWidth, canvas.clientHeight,
+          state.width, state.height, renderer.model);
+      }, [at.x, at.y]);
+      check(`${label}: a click on a slope picks the tile it landed on`,
+        picked && Math.abs(picked.x - slope.x) <= 1 && Math.abs(picked.y - slope.y) <= 1,
+        `aimed at ${slope.x},${slope.y} on a ${slope.drop.toFixed(1)} m drop, got ${JSON.stringify(picked)}`);
+    }
+
+    // And the ghost stands on the ground rather than on a remembered flattening
+    // of it: a preview floating over a hill is a preview of the wrong tile.
+    const ghost = await page.evaluate(() => {
+      const { renderer, state } = globalThis.CITY;
+      const m = renderer.model;
+      const x = Math.floor(state.width / 2);
+      const y = Math.floor(state.height / 2);
+      renderer.showGhost(x, y, true);
+      const ground = m.heightAt((x + 0.5) * m.tileM, (y + 0.5) * m.tileM) / m.tileM;
+      const ghostY = renderer.scene.children.find((c) => c.geometry?.type === "BoxGeometry" && c.visible)?.position.y;
+      renderer.hideGhost();
+      return { ground, ghostY };
+    });
+    check(`${label}: the ghost stands on the ground`,
+      ghost.ghostY !== undefined && Math.abs(ghost.ghostY - ghost.ground) < 0.4,
+      `ghost at ${ghost.ghostY}, ground at ${ghost.ground?.toFixed(3)}`);
+  }
 
   // --- the other two buttons (P33, P34) --------------------------------------
   //

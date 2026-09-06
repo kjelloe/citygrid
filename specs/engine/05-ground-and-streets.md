@@ -97,3 +97,29 @@ field (Higashiyama's `addCut`) are a later slice.
   `RELIEF_M` before anything ships.
 - A crease in the height field is a line the ink pass draws (07). The corridor blend uses a
   smooth weight, not a clamp.
+
+### The audit (V4, 2026-09-06)
+
+Every layer that was flat, and what became of it. Measured on `terrainStyle: 'hilly'`, seed
+1003 — 84 m of range and a 57 m drop inside one 7×7 window, which is far steeper than the
+`rolling` default and is the case worth designing against.
+
+| Layer | Was | Is |
+|---|---|---|
+| terrain mesh | `elevation × 0.02` per corner | `model.cornerHeightAt`, cached once per model; a corner touching a road drops by `road.dip` |
+| road surface | a colour of the mesh (N30) | unchanged — it follows the field for free |
+| **zone tint** | a 0.92 quad at `tile height + 0.012` | **stopped being a quad.** A colour of the mesh, like the road. It was the layer that failed visibly: seated on the tile's own height it sank into a hillside, and seated on the highest corner it hovered as a sheet over the grass |
+| road markings | one lift baked into the geometry, one height per tile | each arm sampled at its own centre — a junction on a slope has four approaches at four heights |
+| wire and pipe ribbons | one height per tile | hub and each arm sampled at their own centre |
+| poles, ruins | tile centre | unchanged; they stand on one point |
+| lamps, parked cars, tufts, trees | tile centre, drawn at an offset | sampled at the offset they are actually drawn at |
+| buildings | tile height | `lot.seat` — the lowest corner of the lot (ruling 038) |
+| lawn | tile height | the building's seat, so the uphill half is buried and reads as the plinth |
+| **overlay wash and marks** | tile height | the **mean** of the tile's four corners. There is no right answer for a flat quad on a cliff, only a least wrong one: seating on the highest corner was tried and hovers visibly, the mean grazes. It cannot follow the zone tint into the mesh because it is toggled at runtime and that would rebuild every chunk on every switch (Q29) |
+| build ghost and area preview | `elevation × 0.02` | `heightAt`, checked by `play_smoke` |
+| shadow camera | `far: 400` | `far: 400 + 128`, the depth a u8 elevation spans at `reliefM` |
+
+Picking marches the height field (`client/world/raymarch.js`) instead of intersecting `y = 0`.
+The march skips to the band between `maxHeight` and `minHeight` before stepping, because the
+orthographic camera sits 1,200 tiles out along its orbit and stepping from there would be over a
+thousand height queries for one pointer move.

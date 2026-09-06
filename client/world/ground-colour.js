@@ -20,6 +20,7 @@
 import { jitter } from "./hash.js";
 import { getConfig } from "./config.js";
 import { NET_PRESENT } from "../constants-mirror.js";
+import { zoneTint } from "./params.js";
 
 const r8 = (hex) => (hex >> 16) & 0xff;
 const g8 = (hex) => (hex >> 8) & 0xff;
@@ -112,9 +113,19 @@ export function createGroundColour(state, palette) {
     const index = y * width + x;
     if (built(index)) {
       // Flat, and deliberately so: the grid is the thing being protected.
-      return (state.tiles.road[index] & NET_PRESENT) !== 0
-        ? palette.road
-        : table[state.tiles.terrain[index]] ?? 0xff00ff;
+      if ((state.tiles.road[index] & NET_PRESENT) !== 0) return palette.road;
+      // A ZONE IS A COLOUR OF THE GROUND TOO (slice V4), for the same reason a
+      // road is (N30). It was a quad at the tile's height, and with relief that
+      // quad either sinks into a hillside or hovers over it — at the steepest
+      // slope on a `hilly` map it floated a visible sheet above the grass.
+      // Painted into the mesh it follows the ground exactly, costs nothing, and
+      // stops at the tile edge like every other built thing.
+      //
+      // Only where nothing has developed: an empty plot has to say "this is
+      // zoned", a built one is already saying it with a building.
+      const zone = state.tiles.zone[index];
+      if (zone !== 0 && state.tiles.buildingId[index] === 0) return zoneTint(zone, palette);
+      return table[state.tiles.terrain[index]] ?? 0xff00ff;
     }
     const base = table[state.tiles.terrain[index]] ?? 0xff00ff;
     let r = r8(base);

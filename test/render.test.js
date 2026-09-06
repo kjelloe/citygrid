@@ -245,17 +245,21 @@ const instances = readFileSync(join(repoRoot, "client", "render", "instances.js"
 test("an empty zoned lot is drawn", () => {
   // It was invisible until something developed on it: the player painted a
   // district and the map showed nothing back, so zoning appeared not to work.
-  assert.match(instances, /make\("zone"/, "there is no pool for zoned ground");
-  assert.match(instances, /pools\.zone/, "the zone pool is created and never filled");
-  assert.match(instances, /state\.tiles\.zone\[index\]/,
-    "nothing reads the zone layer while walking tiles");
+  //
+  // A COLOUR of the terrain mesh since V4, not a quad above it: a flat quad at
+  // a tile's height either sinks into a hillside or hovers over it, and at the
+  // steepest slope of a `hilly` map it hovered visibly.
+  const source = readFileSync(join(repoRoot, "client", "world", "ground-colour.js"), "utf8");
+  assert.match(source, /zoneTint\(zone, palette\)/, "nothing paints a zone into the ground");
+  assert.equal(/make\("zone"/.test(instances), false, "the zone quad is still stacked on the ground");
 });
 
 test("a zoned lot stops being tinted once it is built on", () => {
   // Kjell's call (P29): subtle, and gone once the lot is built — a built lot
   // says what it is with a building.
-  const block = instances.slice(instances.indexOf("pools.zone") - 400, instances.indexOf("pools.zone"));
-  assert.match(block, /buildingId\[index\] === 0/,
+  const source = readFileSync(join(repoRoot, "client", "world", "ground-colour.js"), "utf8");
+  const block = source.slice(source.indexOf("const zone = state.tiles.zone[index]"));
+  assert.match(block.slice(0, 200), /buildingId\[index\] === 0/,
     "the tint is drawn regardless of whether the lot is built on");
 });
 
@@ -377,10 +381,12 @@ test("wire and pipe cross a road instead of vanishing under it", () => {
   // Both were drawn below the road surface, so a run crossing a street broke
   // in two — the same complaint as the boundary gap, one tile wide. The road
   // surface IS the ground now (N30), so anything above the ground clears it —
-  // but only just, and the margin is what this holds on to.
+  // but only just, and the margin is what this holds on to. Since V4 the lift
+  // is passed to `connect` and applied to a height sampled at each arm's own
+  // position, so the number here is the lift rather than a tile's height.
   const surface = 0.02;
   for (const [pool, name] of [["wire", "power line"], ["pipe", "water pipe"]]) {
-    const height = /h \+ ([0-9.]+), (?:palette\.wire|PIPE_COLOUR)/.exec(
+    const height = /, ([0-9.]+), (?:palette\.wire|PIPE_COLOUR)/.exec(
       instances.slice(instances.indexOf(`connect(pools.${pool}Hub`)),
     );
     assert.ok(height, `the ${name}'s height is not readable`);

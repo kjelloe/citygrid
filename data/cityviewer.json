@@ -9,7 +9,8 @@
     "lanes": 1,
     "stopLine": 2,
     "speed": 11,
-    "maxDensity": 12
+    "maxDensity": 12,
+    "dip": 0.16
   },
   "ground": {
     "blend": 1,

@@ -9,12 +9,17 @@ import * as THREE from "three";
 import { PALETTES, makeMaterial } from "./style-assets.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 import { createGroundColour } from "../world/ground-colour.js";
+import { getConfig } from "../world/config.js";
 
 export const CHUNK = 16;
 
-/** Elevation is drawn flattened: full relief at city scale reads as noise and
- * makes roads look broken. A gentle lift is enough to show a valley. */
-const HEIGHT_SCALE = 0.02;
+// The heights come from `model.heightAt` now (slice V4, ruling 038), not from
+// `elevation × 0.02`. The old constant flattened the map to about a sixth of a
+// tile of relief across its whole width, because "full relief at city scale
+// reads as noise and makes roads look broken" — which was true of a road drawn
+// as a flat quad at its own tile's height. A road is a corridor now: inside its
+// half-width the ground IS the corridor's centreline height, so the road does
+// not break and the hill can be a hill.
 
 export function createTerrain(state, styleName = "plain") {
   const chunksX = Math.ceil(state.width / CHUNK);
@@ -44,26 +49,9 @@ export function markAllDirty(terrain) {
   for (const chunk of terrain.chunks) chunk.dirty = true;
 }
 
-function heightAt(state, x, y) {
-  const cx = Math.max(0, Math.min(state.width - 1, x));
-  const cy = Math.max(0, Math.min(state.height - 1, y));
-  return state.tiles.elevation[cy * state.width + cx] * HEIGHT_SCALE;
-}
-
-/** Height at a tile CORNER: the average of the four tiles meeting there.
- *
- * Giving each tile one flat height leaves a vertical gap wherever two
- * neighbours differ, and the map renders with sky showing through in thin
- * horizontal seams. Sharing corners makes the surface continuous while the
- * per-tile colour keeps it reading as a grid. */
-function cornerHeight(state, x, y) {
-  return (heightAt(state, x - 1, y - 1) + heightAt(state, x, y - 1)
-    + heightAt(state, x - 1, y) + heightAt(state, x, y)) / 4;
-}
-
 /** Rebuilds one chunk: two triangles per tile, flat-shaded, coloured by terrain
  * type. Flat rather than smoothed because a city grid wants to read as tiles. */
-function buildChunk(state, chunk, styleName, ground) {
+function buildChunk(state, chunk, styleName, ground, height) {
   const x0 = chunk.cx * CHUNK;
   const y0 = chunk.cy * CHUNK;
   const x1 = Math.min(x0 + CHUNK, state.width);
@@ -79,10 +67,10 @@ function buildChunk(state, chunk, styleName, ground) {
   for (let y = y0; y < y1; y += 1) {
     for (let x = x0; x < x1; x += 1) {
       const index = y * state.width + x;
-      const h00 = cornerHeight(state, x, y);
-      const h10 = cornerHeight(state, x + 1, y);
-      const h01 = cornerHeight(state, x, y + 1);
-      const h11 = cornerHeight(state, x + 1, y + 1);
+      const h00 = height(x, y);
+      const h10 = height(x + 1, y);
+      const h01 = height(x, y + 1);
+      const h11 = height(x + 1, y + 1);
       // A road is a COLOUR OF THE GROUND, not a quad stacked on it (slice N30),
       // and natural ground blends across its corners while built land does not
       // (slice V3) — `client/world/ground-colour.js` decides both.
@@ -130,16 +118,39 @@ function buildChunk(state, chunk, styleName, ground) {
 
 /** Rebuilds every dirty chunk. Returns how many were rebuilt, which the debug
  * overlay reports — a frame that rebuilds every chunk is a bug, not a cost. */
-export function updateTerrain(state, terrain) {
+export function updateTerrain(state, terrain, model) {
   let rebuilt = 0;
   // One colour source for the whole pass: it caches a per-tile colour and
   // floods the distance-to-street field once. Building it per chunk would redo
   // both sixty-four times on a 128×128.
   const palette = PALETTES[terrain.styleName] ?? PALETTES.plain;
   const ground = createGroundColour(state, palette);
+  const cfg = getConfig();
+  const tileM = cfg.tileM;
+  const dip = cfg.road.dip / tileM;
+
+  /** A mesh corner's height, in TILE units — the mesh is built in tiles and
+   * the pools are in tiles until V5 moves the camera to metres.
+   *
+   * A corner any of whose four tiles carries a road drops by `road.dip`, so the
+   * whole carriageway plus a half-tile margin sits below the verge. That is
+   * what a kerb is, and it is what stops E3's ribbons — drawn at `heightAt +
+   * 0.02` — poking through the ground they lie on. */
+  const height = (cx, cz) => {
+    let paved = false;
+    for (let j = -1; j <= 0 && !paved; j += 1) {
+      for (let i = -1; i <= 0 && !paved; i += 1) {
+        const x = cx + i;
+        const y = cz + j;
+        if (x < 0 || y < 0 || x >= state.width || y >= state.height) continue;
+        if ((state.tiles.road[y * state.width + x] & NET_PRESENT) !== 0) paved = true;
+      }
+    }
+    return model.cornerHeightAt(cx, cz) / tileM - (paved ? dip : 0);
+  };
   for (const chunk of terrain.chunks) {
     if (!chunk.dirty) continue;
-    buildChunk(state, chunk, terrain.styleName, ground);
+    buildChunk(state, chunk, terrain.styleName, ground, height);
     rebuilt += 1;
   }
   return rebuilt;

@@ -159,7 +159,12 @@ try {
   const pixel = (tx, ty) => page.evaluate(([x, y]) => {
     const { renderer } = globalThis.CITY;
     const canvas = document.getElementById("city");
-    const v = new globalThis.THREE_VEC(x + 0.5, 0, y + 0.5);
+    // At the tile's own height, not at y = 0 (slice V4): projecting the centre
+    // of a hillside tile from the plane it used to lie on aims the click down
+    // the slope, and picking marches the height field now.
+    const m = globalThis.CITY.renderer.model;
+    const v = new globalThis.THREE_VEC(
+      x + 0.5, m.heightAt((x + 0.5) * m.tileM, (y + 0.5) * m.tileM) / m.tileM, y + 0.5);
     v.project(renderer.view.camera);
     return { x: ((v.x + 1) / 2) * canvas.clientWidth, y: ((1 - v.y) / 2) * canvas.clientHeight };
   }, [tx, ty]);
@@ -220,7 +225,12 @@ try {
     const at = await target.evaluate(([x, y]) => {
       const { renderer } = globalThis.CITY;
       const canvas = document.getElementById("city");
-      const v = new globalThis.THREE_VEC(x + 0.5, 0, y + 0.5);
+      // At the tile's own height, not at y = 0 (slice V4): projecting the centre
+    // of a hillside tile from the plane it used to lie on aims the click down
+    // the slope, and picking marches the height field now.
+    const m = globalThis.CITY.renderer.model;
+    const v = new globalThis.THREE_VEC(
+      x + 0.5, m.heightAt((x + 0.5) * m.tileM, (y + 0.5) * m.tileM) / m.tileM, y + 0.5);
       v.project(renderer.view.camera);
       return { x: ((v.x + 1) / 2) * canvas.clientWidth, y: ((1 - v.y) / 2) * canvas.clientHeight };
     }, [tx, ty]);

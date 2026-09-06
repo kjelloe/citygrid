@@ -39,9 +39,18 @@ export function createGround(state, network) {
     + tileHeight(x - 1, y) + tileHeight(x, y)) / 4;
 
   let waterLevel = -Infinity;
+  // The field's vertical extent, so a ray march can skip straight to the band
+  // the ground is actually in rather than stepping down from the camera
+  // (slice V4). Corridor blending only ever interpolates between land heights,
+  // so these bound the blended field too.
+  let minHeight = Infinity;
+  let maxHeight = -Infinity;
   for (let i = 0; i < terrain.length; i += 1) {
+    const h = elevation[i] * reliefM;
+    if (h < minHeight) minHeight = h;
+    if (h > maxHeight) maxHeight = h;
     if (terrain[i] === TERRAIN_WATER || terrain[i] === TERRAIN_SHALLOW) {
-      waterLevel = Math.max(waterLevel, elevation[i] * reliefM);
+      waterLevel = Math.max(waterLevel, h);
     }
   }
 
@@ -58,6 +67,25 @@ export function createGround(state, network) {
     const h01 = cornerHeight(i, j + 1);
     const h11 = cornerHeight(i + 1, j + 1);
     return (h00 * (1 - tx) + h10 * tx) * (1 - tz) + (h01 * (1 - tx) + h11 * tx) * tz;
+  }
+
+  // Heights at every tile CORNER, filled on first ask.
+  //
+  // The terrain mesh wants four per tile and its neighbours want the same ones:
+  // a 128×128 chunk pass would make 65,536 `heightAt` calls where there are
+  // only 16,641 distinct corners, and a corridor-blended `heightAt` is about a
+  // microsecond. Once per model, and a single dirty chunk then costs nothing.
+  let corners;
+  function cornerHeightAt(cx, cz) {
+    if (!corners) {
+      corners = new Float32Array((width + 1) * (height + 1));
+      for (let j = 0; j <= height; j += 1) {
+        for (let i = 0; i <= width; i += 1) corners[j * (width + 1) + i] = heightAt(i * tileM, j * tileM);
+      }
+    }
+    const i = cx < 0 ? 0 : cx > width ? width : cx;
+    const j = cz < 0 ? 0 : cz > height ? height : cz;
+    return corners[j * (width + 1) + i];
   }
 
   function tileOf(x, z) {
@@ -119,5 +147,5 @@ export function createGround(state, network) {
     return { x: nx / len, y: 1 / len, z: nz / len };
   }
 
-  return { landAt, heightAt, normalAt, waterLevel, tileOf };
+  return { landAt, heightAt, cornerHeightAt, normalAt, waterLevel, minHeight, maxHeight, tileOf };
 }

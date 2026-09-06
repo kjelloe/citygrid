@@ -42,7 +42,7 @@ async function serve() {
 export async function shoot({
   out = "reports/city.png", seed = 1003, years = 20, width = 1280, height = 720,
   style = "plain", span = 0, yaw = 0, fx = -1, fy = -1, reduced = false, budget = 0, size = 64, seats = 1,
-  tier = "high", life = false,
+  tier = "high", life = false, terrain = "rolling", overlay = "", pitch = 0,
 } = {}) {
   const { server, port } = await serve();
   const browser = await chromium.launch({
@@ -60,7 +60,7 @@ export async function shoot({
     });
 
     const url = `http://127.0.0.1:${port}/tools/shoot.html`
-      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}`;
+      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}&terrain=${terrain}&overlay=${overlay}&pitch=${pitch}`;
     await page.goto(url, { waitUntil: "load" });
     await page.waitForFunction(() => globalThis.SHOT_READY === true, undefined, { timeout: 120000 });
 

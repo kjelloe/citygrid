@@ -17,7 +17,7 @@ export const DEFAULTS = Object.freeze({
   // signals, which is where a player can see the reason for them.
   road: {
     width: 8, sidewalk: 2.5, blend: 4,
-    lanes: 1, stopLine: 2, speed: 11, maxDensity: 12,
+    lanes: 1, stopLine: 2, speed: 11, maxDensity: 12, dip: 0.16,
   },
   // The ground's own colour (V3). `blend` at 0 reproduces the flat per-tile
   // picture exactly; `mottle` is the per-tile lightness scatter; `urbanReach`
