@@ -152,6 +152,68 @@ function tintShadows(material, tint) {
   return material;
 }
 
+/**
+ * Patches a material to blend an overlay byte plane over its vertex colour
+ * (slice V7, ruling 041).
+ *
+ * The TERRAIN material only. `uOverlay` is one byte a tile sampled at world
+ * x/z; `uOverlayOn` is the wash's opacity, zero when no overlay is showing;
+ * `uBands` is the four-entry colour array the byte indexes. The wash follows
+ * any slope because it is the ground's own colour for that frame, and toggling
+ * an overlay uploads `width × height` bytes and rebuilds nothing.
+ *
+ * `PLANE_NONE` is a sentinel rather than a band: a tile the overlay is silent
+ * about shows the city, not a wash of grey over it.
+ *
+ * Over `outgoingLight`, not into `diffuseColor`. Mixed in before the light, the
+ * wash is shaded with the grass — which looks right and reads wrong: on the
+ * `hilly` fixture at a low pitch the darkest twentieth of the ground separated
+ * adjacent bands by 25 in 8-bit RGB against E6's floor of 30, so a slope in
+ * shadow turned amber and red into one colour. Over the lit result the
+ * separation is the palette's own gap times the wash, everywhere, and the
+ * ground's shading still shows through the 45% that is left (slice V7).
+ */
+export function overlayed(material, uniforms) {
+  // CHAINED, not assigned. The painted style's terrain is a toon material whose
+  // shadow tint is already an `onBeforeCompile` patch, and overwriting it would
+  // silently take the temperature split out of the ground (slice V7).
+  const already = material.onBeforeCompile;
+  const wasKey = material.customProgramCacheKey?.bind(material);
+  material.onBeforeCompile = (shader, renderer) => {
+    already?.call(material, shader, renderer);
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>
+        varying vec3 vGroundWorld;`)
+      .replace("#include <worldpos_vertex>", `#include <worldpos_vertex>
+        vGroundWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>
+        varying vec3 vGroundWorld;
+        uniform sampler2D uOverlay;
+        uniform float uOverlayOn;
+        uniform vec2 uMapSize;
+        uniform vec3 uBands[4];`)
+      .replace("#include <opaque_fragment>", `
+        if (uOverlayOn > 0.0) {
+          vec2 cell = floor(vGroundWorld.xz);
+          vec2 uv = (cell + 0.5) / uMapSize;
+          if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
+            float raw = texture2D(uOverlay, uv).r * 255.0;
+            if (raw < 3.5) {
+              outgoingLight = mix(outgoingLight, uBands[int(raw + 0.5)], uOverlayOn);
+            }
+          }
+        }
+        #include <opaque_fragment>`);
+    material.userData.shader = shader;
+  };
+  // A patched material is a different program; without this three reuses the
+  // cached one and the patch never runs.
+  material.customProgramCacheKey = () => `overlay|${wasKey ? wasKey() : ""}`;
+  return material;
+}
+
 /** The material a style's surfaces are made of, chosen by its `shading` field
  * and never by its name (spec §7.1).
  *

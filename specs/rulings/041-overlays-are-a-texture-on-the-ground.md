@@ -14,8 +14,13 @@ the tile's corners and grazes the slope. Is that the answer?
 ## Ruling
 
 **No. An overlay is a `DataTexture`** — one byte per tile, the band — **sampled by world x/z
-in the terrain material** through `onBeforeCompile`, and blended over the ground colour in the
-fragment shader. Toggling an overlay uploads `width × height` bytes and rebuilds nothing. The
+in the terrain material** through `onBeforeCompile`, and blended over the ground in the fragment
+shader. **Over the lit result, not into the diffuse colour** (V7): mixed in before the light it is
+shaded with the grass, and on the `hilly` fixture at a low pitch the darkest twentieth of the
+ground separated adjacent bands by 25 in 8-bit RGB against E6's floor of 30 — a slope in shadow
+turned amber and red into one colour. Over `outgoingLight` the separation is the palette's own gap
+times the wash everywhere on the map, and the 45% of the ground that is left still shows its
+shading. Toggling an overlay uploads `width × height` bytes and rebuilds nothing. The
 wash follows any slope because it is the ground's colour for that frame. The per-band marks
 (dot, bar, cross — never colour alone, art-direction §1.6) stay instanced, seated on
 `heightAt`.
@@ -41,8 +46,18 @@ which one is showing.
   portrait `tilePixels`) in the same slice, since both change it.
 - `estimate` loses the overlay term; `budget_gate` runs one row with an overlay on.
 
+## What it does not cover (V7)
+
+The wash is the **terrain mesh's**. Baked street chunks — carriageway, kerb, pavement, verge — and
+the baked facades carry their own materials and are not washed; the marks and the terrain under
+them are what say which band a tile is in at street level. Nothing in the interface selects the
+territory overlay, so `drawOptions.territory` is reachable only from a gate (**Q61**).
+
 ## Enforced by
 
 - `specs/engine/05-ground-and-streets.md` §5.6 — the flat-layer table
-- `test/render.test.js` — the overlay texture has one byte per tile and a band for every value `bandAt` can return (after V7)
-- `tools/a11y_smoke.mjs` — overlay contrast on the `hilly` fixture (after V7)
+- `test/overlay-texture.test.js` — the plane has one byte per tile, every value `bandAt` can return has a colour, and `PLANE_NONE` is a sentinel rather than a band index
+- `test/chunks.test.js` — the territory flag salts `chunkHash`, so a toggle marks every baked chunk stale (A44)
+- `tools/a11y_smoke.mjs` — three shots of one city differing only in the wash: adjacent bands 37 and 32 apart in the darkest twentieth of a shaded hillside, against a floor of 30
+- `tools/play_smoke.mjs` — the overlay button is pressed and the screen is read: 6,042 of 7,540 sampled pixels move with the wash on, 0 keep it after it is switched off
+- `tools/budget_gate.mjs` — an overlay adds 0 triangles, and the territory toggle rebakes 8 of 8 live chunks on, 0 while it stays on, 8 coming back off

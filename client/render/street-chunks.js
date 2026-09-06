@@ -15,6 +15,7 @@ import { createBaker } from "./baker.js";
 import { chunkHash, chunksNear, CHUNK } from "../world/chunks.js";
 import { PALETTES } from "./palettes.js";
 import { bakeStreets, bakeLots } from "./streets-l3.js";
+import { createGroundColour } from "../world/ground-colour.js";
 import { getConfig } from "../world/config.js";
 import { nextBuild, expired } from "./streaming.js";
 import { inFootprint, inBounds } from "./lod.js";
@@ -57,9 +58,17 @@ export function createStreetChunks(scene, options = {}) {
    * its own, so the group is published only when both are done. */
   let pending;
 
+  /** Is the territory overlay showing? It changes what colour a baked building
+   * is painted without changing a tile, so it is a salt on the chunk hash
+   * rather than something the bake can read for itself (slice V7, A44). */
+  let territory = false;
+  /** The ground module, for the verge's colour (A38). Built once per world:
+   * `natural()` reads the terrain layer, which a build action does not move. */
+  let ground;
+
   const PHASES = [
-    (baker, state, model, cx, cy) => bakeStreets(baker, state, model, cx, cy, palette),
-    (baker, state, model, cx, cy) => bakeLots(baker, state, model, cx, cy, palette, styleName, options.locale ?? "en"),
+    (baker, state, model, cx, cy) => bakeStreets(baker, state, model, cx, cy, palette, ground),
+    (baker, state, model, cx, cy) => bakeLots(baker, state, model, cx, cy, palette, styleName, options.locale ?? "en", territory),
   ];
 
   return {
@@ -67,7 +76,9 @@ export function createStreetChunks(scene, options = {}) {
      * Brings the cache one step closer to what the view wants. At most one
      * chunk is built per call — the budget for a frame is a frame.
      */
-    update(state, model, view, plan, now = 0, bounds = undefined) {
+    update(state, model, view, plan, now = 0, bounds = undefined, showTerritory = false) {
+      territory = showTerritory === true;
+      ground ??= createGroundColour(state, palette);
       // A COUNT, not a radius (ruling 040: Low none, Medium 4, High 9). Nine
       // chunks is a 3×3 block around the camera, which at 16 tiles a chunk and
       // 20 m a tile is about a thousand metres of street — the range E5's
@@ -105,7 +116,7 @@ export function createStreetChunks(scene, options = {}) {
       // can be (it imports three).
       let didBuild = 0;
       if (!pending) {
-        const next = nextBuild(wanted, live, (c) => chunkHash(state, c.cx, c.cy));
+        const next = nextBuild(wanted, live, (c) => chunkHash(state, c.cx, c.cy, territory));
         if (next) pending = { ...next, baker: createBaker(styleName), phase: 0 };
       }
       if (pending) {
@@ -162,6 +173,7 @@ export function createStreetChunks(scene, options = {}) {
     /** Everything goes: a new world is a new set of chunks. */
     clear() {
       pending = undefined;
+      ground = undefined;
       const baker = createBaker(styleName);
       for (const entry of live.values()) {
         scene.remove(entry.group);

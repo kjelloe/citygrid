@@ -6,7 +6,9 @@
 // middle, and the dirty set is what keeps a build to the tiles that moved.
 
 import * as THREE from "three";
-import { PALETTES, makeMaterial } from "./style-assets.js";
+import { PALETTES, makeMaterial, overlayed } from "./style-assets.js";
+import { OVERLAY_COLOURS } from "./palette.js";
+import { fillOverlayPlane, PLANE_NONE } from "./overlay-texture.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 import { createGroundColour } from "../world/ground-colour.js";
 import { getConfig } from "../world/config.js";
@@ -33,15 +35,60 @@ export function createTerrain(state, styleName = "plain") {
   const group = new THREE.Group();
   const chunks = [];
 
+  // The overlay, as one byte a tile (ruling 041). SHARED by every chunk's
+  // material: it is one texture over the whole map, sampled by world x/z, so a
+  // toggle is one upload and no chunk is rebuilt. `RedFormat` and
+  // `NearestFilter`, because a band is a category and interpolating between
+  // two of them makes a third that means nothing.
+  const plane = new Uint8Array(state.width * state.height).fill(PLANE_NONE);
+  const texture = new THREE.DataTexture(plane, state.width, state.height, THREE.RedFormat);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  const uniforms = {
+    uOverlay: { value: texture },
+    uOverlayOn: { value: 0 },
+    uMapSize: { value: new THREE.Vector2(state.width, state.height) },
+    uBands: { value: OVERLAY_COLOURS.map((hex) => new THREE.Color(hex)) },
+  };
+
   for (let cy = 0; cy < chunksY; cy += 1) {
     for (let cx = 0; cx < chunksX; cx += 1) {
-      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), makeMaterial(styleName, 0xffffff));
+      const material = overlayed(makeMaterial(styleName, 0xffffff), uniforms);
+      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
       mesh.frustumCulled = true;
       group.add(mesh);
       chunks.push({ cx, cy, mesh, dirty: true });
     }
   }
-  return { group, chunks, chunksX, chunksY, styleName };
+
+  /** The wash's opacity. Enough to read a band at a glance and little enough
+   * that the city under it is still a city (art-direction §1.6). */
+  const WASH = 0.55;
+  let showing = "";
+
+  return {
+    group, chunks, chunksX, chunksY, styleName,
+    /** Switches the overlay. One `width × height` upload, no rebuild. */
+    setOverlay(name) {
+      const wanted = name ?? "";
+      if (wanted === showing) return;
+      showing = wanted;
+      fillOverlayPlane(plane, state, wanted);
+      texture.needsUpdate = true;
+      uniforms.uOverlayOn.value = wanted ? WASH : 0;
+    },
+    /** The tiles moved under a showing overlay — a build action changes what
+     * the bands say. */
+    refreshOverlay() {
+      if (!showing) return;
+      fillOverlayPlane(plane, state, showing);
+      texture.needsUpdate = true;
+    },
+    get overlay() { return showing; },
+    disposeOverlay() { texture.dispose(); },
+  };
 }
 
 export function markDirty(terrain, x, y) {

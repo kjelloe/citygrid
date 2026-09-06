@@ -285,6 +285,62 @@ async function run(page, label, { touch, mode }) {
     await page.click('#tools button[data-tool="road"]');  // put it down again
   }
 
+  // The overlay list lives in a drawer; it is opened the way a player opens it.
+  await page.click("#rail-overlays");
+  await page.click('.hud-overlays button[data-overlay="pollution"]');
+  check(`${label}: the overlay button selects an overlay`,
+    await page.evaluate(() => globalThis.CITY.overlay) === "pollution",
+    `the HUD says "${await page.evaluate(() => globalThis.CITY.overlay)}"`);
+
+  // --- an overlay is a wash on the GROUND (slice V7, ruling 041) -------------
+  //
+  // The overlay used to be 24,000 instanced quads at the mean of each tile's
+  // four corners; it is now one byte a tile mixed into the terrain material.
+  // Every existing overlay check reads a MODEL — which band a tile is in, what
+  // colour that band is — and every one of them would still have passed with a
+  // shader that compiled and drew nothing (V7 spent an hour there). This reads
+  // the screen.
+  const wash = await page.evaluate(() => {
+    const { renderer } = globalThis.CITY;
+    const gl = document.getElementById("city");
+    // Draw and read in ONE task. The game's canvas has no preserved drawing
+    // buffer, so a read on a later turn of the event loop gets a blank one.
+    const read = (overlay) => {
+      renderer.draw({ overlay });
+      const flat = document.createElement("canvas");
+      flat.width = gl.width;
+      flat.height = gl.height;
+      const c = flat.getContext("2d");
+      c.drawImage(gl, 0, 0);
+      const d = c.getImageData(0, 0, flat.width, flat.height).data;
+      const out = [];
+      for (let y = 6; y < flat.height; y += 11) {
+        for (let x = 6; x < flat.width; x += 11) {
+          const i = (y * flat.width + x) * 4;
+          out.push([d[i], d[i + 1], d[i + 2]]);
+        }
+      }
+      return out;
+    };
+    const off = read(undefined);
+    const on = read(globalThis.CITY.overlay);
+    const back = read(undefined);
+    let changed = 0;
+    let stuck = 0;
+    for (let i = 0; i < off.length; i += 1) {
+      const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+      if (gap(on[i], off[i]) > 8) changed += 1;
+      if (gap(back[i], off[i]) > 8) stuck += 1;
+    }
+    return { samples: off.length, changed, stuck, showing: globalThis.CITY.overlay };
+  });
+  check(`${label}: turning an overlay on changes the picture`, wash.changed > 20,
+    `${wash.changed} of ${wash.samples} sampled pixels moved with "${wash.showing}" on`);
+  check(`${label}: and turning it off puts the picture back`, wash.stuck === 0,
+    `${wash.stuck} of ${wash.samples} pixels kept the wash after it was switched off`);
+  await page.click('.hud-overlays button[data-overlay="pollution"]');
+  await page.click("#rail-overlays");
+
   // --- street mode (slice E4, ruling 034, spec §8.1) -------------------------
   //
   // Both ways in and both ways out, on both viewports and both projections.

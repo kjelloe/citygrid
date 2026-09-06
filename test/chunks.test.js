@@ -35,6 +35,20 @@ const place = (state, b) => {
 
 // --- the hash ----------------------------------------------------------------
 
+test("the territory overlay is part of a chunk's identity (V7, A44)", () => {
+  // The L2 instanced buildings take their colour from the owner the moment the
+  // overlay is on; a BAKED chunk keeps whatever colour it was built with, so at
+  // street zoom the same city showed player colours in the distance and family
+  // colours underfoot. Salting the hash with the flag marks every baked chunk
+  // stale on the toggle and they come back painted the other way.
+  const state = blank();
+  place(state, { id: 1, x: 20, y: 20, owner: 2 });
+  assert.notEqual(chunkHash(state, 1, 1, true), chunkHash(state, 1, 1, false));
+  assert.equal(chunkHash(state, 1, 1, true), chunkHash(state, 1, 1, true));
+  assert.equal(chunkHash(state, 1, 1), chunkHash(state, 1, 1, false),
+    "the flag defaults to off, so nothing else has to pass it");
+});
+
 test("a hash is stable for a state that has not changed", () => {
   const state = blank();
   assert.equal(chunkHash(state, 1, 1), chunkHash(state, 1, 1));

@@ -52,6 +52,28 @@ function shift(points, distance) {
   });
 }
 
+/** A verge, split into runs of one colour.
+ *
+ * The verge takes the ground's own colour (A38), and a corridor 300 m long can
+ * cross grass, sand and rock — but a strip is one colour, so it is emitted as
+ * one strip per RUN of spans the ground agrees about. Most streets collapse to
+ * a single run, which is why this is grouping rather than a strip a span. */
+function vergeRuns(points, tileM, natural) {
+  const runs = [];
+  let current;
+  for (let i = 1; i < points.length; i += 1) {
+    const mx = (points[i - 1].x + points[i].x) / 2;
+    const mz = (points[i - 1].z + points[i].z) / 2;
+    const colour = natural(Math.floor(mx / tileM), Math.floor(mz / tileM));
+    if (!current || current.colour !== colour) {
+      current = { colour, points: [points[i - 1]] };
+      runs.push(current);
+    }
+    current.points.push(points[i]);
+  }
+  return runs;
+}
+
 function addStrip(baker, strip, colour, options) {
   if (!strip || strip.triangles === 0) return;
   const geometry = toGeometry(strip);
@@ -96,7 +118,7 @@ function corridorsIn(model, cx, cy, chunkTiles, tileM, junction) {
  * caller scales it. Everything samples `model.heightAt`, which is what makes a
  * kerb follow a hill instead of cutting into it.
  */
-export function bakeStreets(baker, state, model, cx, cy, palette) {
+export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
   const cfg = getConfig();
   const { width: roadW, sidewalk, kerb, camber, lift } = cfg.road;
   const half = roadW / 2;
@@ -137,10 +159,16 @@ export function bakeStreets(baker, state, model, cx, cy, palette) {
         // street zoom it leaves an 8 m carriageway floating in twelve metres of
         // grey and the kerb has nothing to be a kerb against (ruling 035: a
         // road tile is a carriageway, sidewalks AND verges).
+        //
+        // And in the colour of the land under it, not a flat lawn (A38): a
+        // road through sand or rock had two metres of green either side of it.
+        // `natural`, because the tile the verge sits on is a ROAD tile and
+        // `tile()` rightly answers tarmac for it.
         if (vergeHalf > 0) {
-          addStrip(baker, ribbon(
-            shift(walk, sign * (junction + vergeHalf)), vergeHalf, height, { lift: 0.01 },
-          ), palette.lawn);
+          const line = shift(walk, sign * (junction + vergeHalf));
+          for (const run of vergeRuns(line, cfg.tileM, ground.natural)) {
+            addStrip(baker, ribbon(run.points, vergeHalf, height, { lift: 0.01 }), run.colour);
+          }
         }
       }
       for (const dash of dashes(walk, cfg.road.stopLine * 1.5, cfg.road.stopLine * 4.5)) {
@@ -182,7 +210,7 @@ export function bakeStreets(baker, state, model, cx, cy, palette) {
  * built once — a building drawn twice is a building with z-fighting on every
  * face, which at street level is the most obvious artefact there is.
  */
-export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en") {
+export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false) {
   const cfg = getConfig();
   const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
   const fronts = [];
@@ -195,7 +223,11 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
     if (owner.cx !== cx || owner.cy !== cy) continue;
     // The SAME family colour the instanced kit uses, from the same function, so
     // the L2 box and the L3 facade are the same house (ruling 032, spec §6.1).
-    const params = buildingParams(lot.building, palette, familyColour(lot.building, palette, false, ZONE_NONE));
+    // With the territory overlay on it is the OWNER's colour, exactly as the
+    // instanced boxes do it — the chunk hash is salted with the flag so this
+    // runs again on the toggle (slice V7, A44).
+    const family = familyColour(lot.building, palette, showOwner, ZONE_NONE);
+    const params = buildingParams(lot.building, palette, family, showOwner);
     const spec = facadeSpec(lot, params, locale);
     specs.push(spec);
     for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);

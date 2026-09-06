@@ -191,6 +191,41 @@ try {
       `${row.actual} of ${row.budget} at span ${row.span}, ladder at "${row.lod}"`);
   }
 
+  // --- an overlay costs no geometry (slice V7, ruling 041) -------------------
+  //
+  // It used to cost 24,000 instanced quads — one a tile, at the mean of the
+  // tile's four corners — which on the Low tier was more than half the whole
+  // triangle budget and was the reason overlays were the first thing the
+  // ladder sacrificed. As a byte plane in the terrain material it costs the
+  // upload and nothing else, and the marks that say where wire and pipe reach
+  // are all that is left in the pools.
+  const overlayCost = await page.evaluate(async () => {
+    const { renderer } = globalThis.CITY;
+    const { focusOn, zoomBy } = await import("/client/render/camera.js");
+    globalThis.CITY.setQuality("high");
+    focusOn(renderer.view, 48, 48);
+    zoomBy(renderer.view, 40 / renderer.view.span);
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const settle = async (overlay) => {
+      for (let i = 0; i < 6; i += 1) { renderer.draw({ overlay }); await frame(); }
+      const s = renderer.stats;
+      return { triangles: s.triangles, estimate: s.estimate, budget: s.budget, draws: s.drawCalls };
+    };
+    const off = await settle(undefined);
+    const on = await settle("pollution");
+    return { off, on };
+  });
+  const extra = overlayCost.on.triangles - overlayCost.off.triangles;
+  console.log(`      overlay on: ${overlayCost.on.triangles} triangles against ${overlayCost.off.triangles} off`
+    + ` (+${extra}), ${overlayCost.on.draws} draws, estimate ${overlayCost.on.estimate}`);
+  check("an overlay adds no ground geometry", extra <= 2000,
+    `${extra} triangles more with the wash on`);
+  check("an overlay stays inside the budget", overlayCost.on.triangles <= overlayCost.on.budget,
+    `${overlayCost.on.triangles} of ${overlayCost.on.budget}`);
+  check("the estimate still knows what the frame costs with an overlay on",
+    Math.abs(overlayCost.on.estimate - overlayCost.on.triangles) / Math.max(overlayCost.on.triangles, 1) <= TOLERANCE,
+    `estimate ${overlayCost.on.estimate} against ${overlayCost.on.triangles} actual`);
+
   // --- the street-chunk cache (slice E2, spec §6.4) ---------------------------
   //
   // The numbers E3 and E5 will be measured against: how long a chunk takes to
@@ -256,8 +291,48 @@ try {
         meshes += child.children.length;
       }
     }
-    return { builds, live: after?.live ?? 0, triangles: after?.triangles ?? 0, rebuilt, groups, meshes };
+    // The territory overlay reaches the BAKED half of the city too (V7, A44).
+    // The instanced boxes take the owner's colour the moment it is on; a baked
+    // chunk keeps the colour it was built with, so the far half of the city was
+    // in player colours and the near half was not. The hash is salted with the
+    // flag, so the toggle marks every live chunk stale — this counts the
+    // rebakes rather than trusting that it does.
+    //
+    // Through the renderer's own `draw`, not as an argument to a draw of our
+    // own: the page runs its own frame loop, and a gate that passed the flag on
+    // alternate frames measured the cache thrashing between the two answers —
+    // 15 rebakes on, 9 more with nothing changing, 0 coming back off.
+    const realDraw = renderer.draw.bind(renderer);
+    const rebakes = async (territory) => {
+      renderer.draw = (options = {}) => realDraw({ ...options, territory });
+      let count = 0;
+      for (let i = 0; i < 24; i += 1) {
+        now += 16;
+        renderer.draw({ now });
+        await frame();
+        count += renderer.stats.streets?.built ?? 0;
+      }
+      return count;
+    };
+    const onToggle = await rebakes(true);
+    const settled = await rebakes(true);
+    const offToggle = await rebakes(false);
+    renderer.draw = realDraw;
+
+    return {
+      builds, live: after?.live ?? 0, triangles: after?.triangles ?? 0, rebuilt, groups, meshes,
+      onToggle, settled, offToggle,
+    };
   });
+
+  console.log(`      territory toggle: ${streets.onToggle} chunks rebaked on, ${streets.settled} while it stayed on, `
+    + `${streets.offToggle} coming back off`);
+  check("turning the territory overlay on rebakes the streets", streets.onToggle >= streets.live,
+    `${streets.onToggle} rebakes for ${streets.live} live chunks`);
+  check("and it settles again rather than rebaking every frame", streets.settled === 0,
+    `${streets.settled} rebakes with nothing changing`);
+  check("and turning it off rebakes them back", streets.offToggle >= streets.live,
+    `${streets.offToggle} rebakes for ${streets.live} live chunks`);
 
   const sorted = [...streets.builds].sort((a, b) => a - b);
   const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 0;

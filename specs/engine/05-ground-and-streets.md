@@ -52,7 +52,7 @@ polyline, every vertex sampled from `heightAt`, a small lift. Per corridor at L3
 | carriageway | `ROAD_W` | `heightAt + 0.02`, 0.035 m camber | asphalt (vertex colour or Canvas2D) |
 | kerb face | - | vertical from road to `+0.15` | kerb |
 | sidewalk | `SIDEWALK_W` each side | `+0.15` | concrete |
-| verge | to the lot line | ground | grass / lawn |
+| verge | to the lot line | ground | **the ground's own colour** — `groundColour.natural()` for the tile under it (A38, V7), not a flat lawn |
 
 At a junction the carriageway is the node box, the corner sidewalks are squares with kerbs on
 their two exposed edges (Union Square `buildIntersection`), and a bezier connector gets a
@@ -76,6 +76,11 @@ Three things the table does not say, all found by looking at the render:
   (§5.1), which is right at eighteen pixels a tile and wrong at a hundred and eighty: it leaves
   the 8 m carriageway floating in twelve metres of grey with nothing for the kerb to be a kerb
   against. The baked chunk lays its own verge from the pavement edge out to the tile edge.
+  It is painted in the colour of the land it is on, not `palette.lawn` (A38, V7): a road through
+  sand or rock had two metres of green either side of it. `tile()` answers tarmac for a road tile
+  — the verge is INSIDE it (ruling 035) — so the verge asks `natural()`, which is the same tile
+  with nothing built on it. A corridor is emitted as one strip per run of spans the ground agrees
+  about, which on most streets is one.
 - **The kerbside stops at the junction, the carriageway does not.** Pavement, verge and centre
   line are built from the corridor `trim`med by `ROAD_W / 2 + SIDEWALK_W`; trimmed before the
   chunk clip, or a corridor crossing a chunk boundary loses its pavement at the seam instead.
@@ -146,7 +151,7 @@ Every layer that was flat, and what became of it. Measured on `terrainStyle: 'hi
 | lamps, parked cars, tufts, trees | tile centre, drawn at an offset | sampled at the offset they are actually drawn at |
 | buildings | tile height | `lot.seat` — the lowest corner of the lot (ruling 038) |
 | lawn | tile height | the building's seat, so the uphill half is buried and reads as the plinth |
-| **overlay wash and marks** | tile height | the **mean** of the tile's four corners (V4). There is no right answer for a flat quad on a cliff, only a least wrong one. **A31 / ruling 041 (V7):** the wash becomes a `DataTexture` sampled by world x/z in the terrain material — it follows the ground because it is the ground's colour that frame, and toggling it uploads 16 KB instead of rebuilding a chunk. The marks stay instanced at `heightAt` |
+| **overlay wash and marks** | tile height | the **mean** of the tile's four corners (V4). There is no right answer for a flat quad on a cliff, only a least wrong one. **A31 / ruling 041 (V7): done.** The wash is a `DataTexture`, one byte a tile, sampled by world x/z in the terrain material and mixed over `outgoingLight` — it follows the ground because it is the ground's colour that frame, and toggling it uploads `width x height` bytes instead of rebuilding a chunk. Over the lit result rather than into the diffuse colour, or a slope in shadow merges two bands (measured: 25 apart against a floor of 30). The marks stay instanced at `heightAt`. A tile the overlay is silent about is left showing the city, so `PLANE_NONE` is a sentinel and not a fourth band. The BAKED street and facades are not washed: at street level the terrain between them and the marks on it are what carry the band |
 | build ghost and area preview | `elevation × 0.02` | `heightAt`, checked by `play_smoke` |
 | shadow camera | `far: 400` | `far: 400 + 128`, the depth a u8 elevation spans at `reliefM` |
 

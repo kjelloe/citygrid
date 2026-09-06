@@ -197,3 +197,35 @@ test("the ground's numbers live in data", () => {
   assert.ok(ground.blend >= 0 && ground.blend <= 1);
   assert.ok(ground.mottle < 0.2, "a mottle that big is a repaint");
 });
+
+// --- the verge (slice V7, A38) ------------------------------------------------
+
+test("a road tile still knows what the land under it is", () => {
+  // `tile()` on a road answers tarmac, which is right for the mesh and useless
+  // for the verge: the strip of ground either side of a carriageway is inside
+  // the road TILE (ruling 035), so asking `tile()` for its colour paints two
+  // metres of asphalt-coloured grass. `natural()` is the same tile with nothing
+  // built on it — the answer the verge wants.
+  const state = blank();
+  state.tiles.terrain[tileAt(state.width, 6, 6)] = FOREST;
+  pave(state, row(6, 2, 12));
+  const g = colours(state, { blend: 0, mottle: 0, farTone: 0 });
+  assert.equal(g.tile(6, 6), PALETTE.road, "a road tile is not tarmac any more");
+  assert.equal(g.natural(6, 6), PALETTE.terrain[FOREST], "the verge would be painted grass");
+});
+
+test("natural ground is natural whether or not anything is built on it", () => {
+  const state = blank();
+  const g = colours(state, { blend: 0, mottle: 0, farTone: 0 });
+  const before = g.natural(4, 4);
+  assert.equal(before, g.tile(4, 4));
+  state.tiles.zone[tileAt(state.width, 4, 4)] = 1;
+  assert.equal(g.natural(4, 4), before, "a zone changed what the land is made of");
+});
+
+test("natural clamps to the map like every other accessor", () => {
+  const state = blank();
+  const g = colours(state, { blend: 0, mottle: 0, farTone: 0 });
+  assert.equal(g.natural(-3, -3), g.natural(0, 0));
+  assert.equal(g.natural(999, 999), g.natural(state.width - 1, state.height - 1));
+});

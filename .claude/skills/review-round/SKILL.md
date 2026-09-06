@@ -114,6 +114,13 @@ It took two playtests: N27 joined the runs and N28 found them still reading as d
 was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
 player uses**, not only at the zoom that proves the change.
 
+**A screenshot proves nothing if the fixture has nothing to show.** V7's overlay wash was invisible
+in three screenshots while every diagnostic said the shader had compiled, the uniform was set and
+the byte plane was filled — and the plane was filled, with band GOOD for the whole map, because the
+fixture had no pollution. A green wash over green grass is a green picture. **Verify the
+instrument, then verify what the instrument is pointed at**: histogram the data the picture is
+supposed to be showing before concluding anything from the picture.
+
 **Ask what the unit suite structurally cannot see.** In this repo that is every
 module importing `three`, because node cannot resolve it — three defects have
 lived there behind a green suite. The answer is not more browser gates; it is to
@@ -241,6 +248,12 @@ cache-first and re-installed only when its own bytes changed, which they never d
 playtest items were reports about code that had shipped three days earlier and could not arrive
 (ruling 031). Every gate opens a clean profile and every gate was green. When a report contradicts
 what the code plainly does, check delivery before you check the code.
+
+**A gate that sets a flag on its own draw is racing the page's frame loop.** V7 measured the
+territory toggle by calling `renderer.draw({territory: true})` and read a cache thrashing — the
+game's own loop drew without the flag on alternate frames, so every chunk rebaked forever. Wrap
+the real entry point for the duration of the measurement, or drive the control the player uses.
+The same shape as "a feature is not built until it is driven on the real page", one level down.
 
 **A setting is not built until a pixel changes.** High contrast set an attribute for two slices
 while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate checked only that the

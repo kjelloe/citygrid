@@ -16,7 +16,7 @@
 // tier whose estimated cost fits the budget, and never draw detail nobody can
 // see.
 
-import { eyeOf } from "../world/orbit.js";
+import { eyeOf, verticalSpan } from "../world/orbit.js";
 
 /** Tiers, coarsest last. Each names what it keeps. */
 export const TIER = {
@@ -104,7 +104,13 @@ export function tilePixels(view, canvasHeight, chunk) {
   if (!view || !canvasHeight || !view.span) return 0;
   // Anything that is not a perspective mode is orthographic, including a bare
   // `{ span }` a test hands in.
-  if (view.mode !== "city" && view.mode !== "street") return canvasHeight / view.span;
+  //
+  // The VERTICAL extent, not `span` (A32, fixed in V7). `span` is tiles across
+  // the shorter axis, so on a portrait phone it is the WIDTH and a tile covers
+  // `canvasHeight / (span / aspect)` pixels — fewer than `canvasHeight / span`.
+  // Reporting the larger number kept more detail on the device least able to
+  // afford it, which is the wrong direction to be wrong in.
+  if (view.mode !== "city" && view.mode !== "street") return canvasHeight / verticalSpan(view);
 
   const focalPx = canvasHeight / (2 * Math.tan(((view.fov ?? 50) * Math.PI) / 360));
   const eye = eyeOf(view);   // one arithmetic, shared with `camera.js` (R1.6)

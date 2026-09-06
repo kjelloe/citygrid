@@ -109,24 +109,14 @@ export function createGroundColour(state, palette) {
     return Math.min(1, (distance[y * width + x] * tileM) / urbanReach);
   }
 
-  function computeTile(x, y) {
+  /** The colour this tile would be with nothing built on it.
+   *
+   * Split out for the verge (slice V7, A38): the strip of ground either side of
+   * a carriageway is INSIDE the road tile (ruling 035), so `tile()` answers
+   * tarmac for it and a flat `palette.lawn` was the workaround — green grass
+   * beside a road through sand. */
+  function naturalTile(x, y) {
     const index = y * width + x;
-    if (built(index)) {
-      // Flat, and deliberately so: the grid is the thing being protected.
-      if ((state.tiles.road[index] & NET_PRESENT) !== 0) return palette.road;
-      // A ZONE IS A COLOUR OF THE GROUND TOO (slice V4), for the same reason a
-      // road is (N30). It was a quad at the tile's height, and with relief that
-      // quad either sinks into a hillside or hovers over it — at the steepest
-      // slope on a `hilly` map it floated a visible sheet above the grass.
-      // Painted into the mesh it follows the ground exactly, costs nothing, and
-      // stops at the tile edge like every other built thing.
-      //
-      // Only where nothing has developed: an empty plot has to say "this is
-      // zoned", a built one is already saying it with a building.
-      const zone = state.tiles.zone[index];
-      if (zone !== 0 && state.tiles.buildingId[index] === 0) return zoneTint(zone, palette);
-      return table[state.tiles.terrain[index]] ?? 0xff00ff;
-    }
     const base = table[state.tiles.terrain[index]] ?? 0xff00ff;
     let r = r8(base);
     let g = g8(base);
@@ -150,6 +140,27 @@ export function createGroundColour(state, palette) {
     return pack(r, g, b);
   }
 
+  function computeTile(x, y) {
+    const index = y * width + x;
+    if (built(index)) {
+      // Flat, and deliberately so: the grid is the thing being protected.
+      if ((state.tiles.road[index] & NET_PRESENT) !== 0) return palette.road;
+      // A ZONE IS A COLOUR OF THE GROUND TOO (slice V4), for the same reason a
+      // road is (N30). It was a quad at the tile's height, and with relief that
+      // quad either sinks into a hillside or hovers over it — at the steepest
+      // slope on a `hilly` map it floated a visible sheet above the grass.
+      // Painted into the mesh it follows the ground exactly, costs nothing, and
+      // stops at the tile edge like every other built thing.
+      //
+      // Only where nothing has developed: an empty plot has to say "this is
+      // zoned", a built one is already saying it with a building.
+      const zone = state.tiles.zone[index];
+      if (zone !== 0 && state.tiles.buildingId[index] === 0) return zoneTint(zone, palette);
+      return table[state.tiles.terrain[index]] ?? 0xff00ff;
+    }
+    return naturalTile(x, y);
+  }
+
   /** One tile's own colour. */
   function tile(x, y) {
     const index = clampY(y) * width + clampX(x);
@@ -157,6 +168,11 @@ export function createGroundColour(state, palette) {
     const value = computeTile(clampX(x), clampY(y));
     cache[index] = value;
     return value;
+  }
+
+  /** What the land here is made of, ignoring anything built on it (A38). */
+  function natural(x, y) {
+    return naturalTile(clampX(x), clampY(y));
   }
 
   /** The colour of one corner of one tile.
@@ -189,5 +205,5 @@ export function createGroundColour(state, palette) {
     );
   }
 
-  return { tile, corner };
+  return { tile, corner, natural };
 }

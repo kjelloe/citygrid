@@ -70,6 +70,23 @@ for (let tick = 1; tick <= years * TICKS_PER_YEAR; tick += 1) {
   if (tick % 6 === 0) for (const d of deputies) deputyTurn(state, d);
 }
 
+// `pollute` fills the pollution layer with one value, which puts the WHOLE map
+// in one overlay band without changing a single thing that is drawn (slice V7).
+// Three shots at three values then differ only in the wash, which is what makes
+// "are the bands still told apart once the ground shades them" measurable.
+const pollute = Number(params.get("pollute") ?? -1);
+if (pollute >= 0) state.tiles.pollution.fill(pollute);
+// `sand=1` turns every dry tile to sand AFTER the city is grown, so the streets
+// are where they were and the ground under them is not grass. The verge takes
+// the ground's own colour (slice V7, A38) and green grass beside a road through
+// a desert is exactly the bug that answer was written for.
+if (params.get("sand") === "1") {
+  for (let i = 0; i < state.tiles.terrain.length; i += 1) {
+    const t = state.tiles.terrain[i];
+    if (t !== 3 && t !== 4) state.tiles.terrain[i] = 6;
+  }
+}
+
 const style = params.get("style") ?? "plain";
 // `tier` so the harness can shoot what each quality setting actually draws
 // (slice V2). `pixelRatio` stays pinned at 1 whatever the tier says, or two
@@ -131,6 +148,10 @@ const drawOptions = {
   shadows: params.get("shadows") !== "0",
   budget: budgetParam > 0 ? budgetParam : undefined,
   overlay: overlay || undefined,
+  // `territory=1` paints every building in its owner's colour (slice V7, A44).
+  // The baked chunks honour it too now, so this is the shot that shows the near
+  // half of the city agreeing with the far half.
+  territory: params.get("territory") === "1",
 };
 let stats;
 for (let f = 0; f < frames; f += 1) stats = view.draw({ ...drawOptions, now: f * 16 });

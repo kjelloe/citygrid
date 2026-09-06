@@ -533,7 +533,11 @@ export function createRenderer(canvas, state, options = {}) {
     timeOfDay.update(drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000);
     applyHour();
     followShadow();
+    // The overlay is a byte plane on the terrain material (ruling 041): one
+    // upload when it changes, nothing rebuilt.
+    terrain.setOverlay(drawOptions.overlay);
     stats.chunksRebuilt = updateTerrain(state, terrain, model);
+    if (stats.chunksRebuilt > 0) terrain.refreshOverlay();
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
     // Only the cars on screen, which is the same set `pose` writes (R1.1).
@@ -619,7 +623,8 @@ export function createRenderer(canvas, state, options = {}) {
 
     // At most one chunk baked per frame, nearest first (spec §6.4). After the
     // budget loop, because the ladder may have dropped the radius.
-    stats.streets = streets.update(state, model, view, plan, drawOptions.now ?? Date.now(), bounds);
+    stats.streets = streets.update(state, model, view, plan, drawOptions.now ?? Date.now(), bounds,
+      drawOptions.territory === true);
     stats.instances = result.instances;
     // How many distinct per-chunk plans the frame used. 1 under orthographic
     // by construction; more than 1 under perspective is the proof that the

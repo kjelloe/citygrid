@@ -509,3 +509,27 @@ test("the eye arithmetic is written down once", async () => {
       `${file.join("/")} still has its own copy of the orbit`);
   }
 });
+
+test("orthographic tile pixels read the VERTICAL extent, on a portrait screen too (A32)", async () => {
+  const { verticalSpan } = await import("../client/world/orbit.js");
+  // `span` is tiles across the SHORTER axis, so on a portrait phone the
+  // vertical extent is `span / aspect` and a tile is BIGGER on screen than
+  // `canvasHeight / span` says. The orthographic branch has returned that
+  // since the first renderer, so the device least able to afford detail was
+  // the one being told it could not resolve it (V5 left it; V7 fixes it).
+  const landscape = { mode: "ortho", span: 20, aspect: 16 / 9 };
+  assert.equal(tilePixels(landscape, 720), 720 / 20, "landscape must not move");
+
+  const portrait = { mode: "ortho", span: 20, aspect: 390 / 844 };
+  assert.equal(verticalSpan(portrait), 20 / portrait.aspect);
+  assert.ok(Math.abs(tilePixels(portrait, 844) - 844 / verticalSpan(portrait)) < 1e-9,
+    `${tilePixels(portrait, 844)} against ${844 / verticalSpan(portrait)}`);
+  // Which is `canvasHeight × aspect / span`, and SMALLER than the old answer.
+  assert.ok(Math.abs(tilePixels(portrait, 844) - (844 * portrait.aspect) / 20) < 1e-9);
+  assert.ok(tilePixels(portrait, 844) < 844 / 20,
+    "the portrait phone is still being told a tile is bigger than it is");
+
+  // A view with no aspect at all is landscape by default, so a bare `{ span }`
+  // in a test keeps meaning what it meant.
+  assert.equal(tilePixels({ mode: "ortho", span: 20 }, 720), 36);
+});

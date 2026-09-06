@@ -3745,3 +3745,73 @@ not that none exist (**Q59**).
 *The budget gate quietly changed what it was measuring.* Making `painted` the default on High
 meant the gate's own page was rendering the ink finish, and every number in its history was taken
 on `plain`. It pins `?style=plain` now, and the painted rows keep their own page.
+
+## slice-V7 — overlays as a texture on the ground (2026-09-07)
+
+Ruling 041, with the two §2d amendments (A38, A44) and A32.
+
+**What it is.** `client/render/overlay-texture.js` fills a `width × height` byte plane from
+`bandAt`, one byte a tile; `terrain.js` owns a shared `RedFormat` / `NearestFilter` `DataTexture`
+over it and hands every chunk's material the same four uniforms; `style-assets.js`'s `overlayed()`
+patches the terrain material through `onBeforeCompile` to mix `OVERLAY_COLOURS[band]` over the
+ground at 0.55. `updateInstances` lost the `ovl` pool — the marks stay — and `estimate` lost its
+overlay term. Toggling an overlay is now one upload of 4 KB on a 64×64 and no geometry at all:
+`budget_gate` measures **0 extra triangles** with the wash on, against the 24,000 instanced quads
+it replaces.
+
+**A38 — the verge takes the ground's colour.** `ground-colour.js` grew `natural(x, y)`: the tile
+with nothing built on it. `tile()` cannot answer for a verge, because the verge is INSIDE the road
+tile (ruling 035) and `tile()` rightly says tarmac. `streets-l3.js` emits the verge as one strip
+per run of spans the ground agrees about, which on most streets is one strip.
+`reports/smoke-V7-verge-sand.png` and `-grass.png` are the same frame with the terrain layer
+switched: a green verge in one, a sand verge in the other.
+
+**A44 — territory reaches the facades.** `chunkHash(state, cx, cy, territory)` takes the flag as a
+salt, so a toggle marks every live chunk stale and it rebakes with `showOwner`; `bakeLots` passes
+it through the same `familyColour`/`buildingParams` pair the instanced boxes use.
+`reports/smoke-V7-territory.png` and `-off.png`: the near baked half and the far instanced half
+agree.
+
+**A32.** Orthographic `tilePixels` reads `canvasHeight / verticalSpan(view)`.
+
+**Measured.** `budget_gate` — overlay on 70,016 triangles against 70,016 off, 38 draws, estimate
+68,900; territory toggle 8 rebakes on, 0 while it stays on, 8 coming back off; every other row
+unchanged. `a11y_smoke` — on `hilly` at 16° pitch, three shots of one city differing only in the
+wash: bands 0→1 **102 apart at the median, 37 in the darkest twentieth**, bands 1→2 **77 and 32**,
+against E6's floor of 30. `play_smoke` — the overlay button pressed on four viewport/projection
+pairs: 6,042 of 7,540 sampled pixels move with the wash on, **0** keep it after it is switched
+off. Suite green twice; `client_smoke`, `ui_smoke` unchanged.
+
+**Re-baselined** `reports/smoke-V7-*.png` (slope zoning/plain, verge sand/grass, territory on/off).
+They supersede the V4 overlay-on-a-slope shots.
+
+**What failed on the way.**
+
+*The wash was invisible for three screenshots, and the shader was fine.* Every diagnostic said the
+patch had applied — `material.userData.shader` present, `uOverlayOn` 0.55, `uOverlay` in the
+fragment source — and the picture did not change. The plane was right too: a histogram of it read
+`{0: 3309, 1: 2, 255: 785}`. The city simply had no pollution, so the whole map was band GOOD and
+a green wash over green grass is a green picture. `zoning`, which has three bands on that fixture,
+showed it immediately. **Verify the instrument, then verify what the instrument is pointed at.**
+
+*The wash failed the accessibility floor.* Mixed into `diffuseColor` — the obvious place, before
+the light — the ground's own shading multiplies it, and on `hilly` at a low pitch the darkest
+twentieth of the ground separated adjacent bands by **25** against the floor of 30: a slope in
+shadow turned amber and red into one colour. Mixing over `outgoingLight` instead makes the
+separation the palette's gap times the wash everywhere, and the 45% of the ground that is left
+still carries the shading. Found only because the gate reads rendered pixels; the existing overlay
+check is arithmetic on the palette and was green throughout.
+
+*The territory gate measured a cache thrashing.* `renderer.draw({territory: true})` from the gate
+alternates with the page's own frame loop, which draws without it — so the flag flipped every
+frame and the chunks rebaked forever: 15 on, 9 more with nothing changing, 0 coming back off. The
+gate wraps `renderer.draw` for the duration instead, which is the renderer's real interface. The
+underlying fact is **Q61**: nothing in the game selects territory, so the only thing that can turn
+it on is a gate.
+
+*Two harness flags were silently dropped.* `screenshot.mjs` maps a fixed list of named parameters
+into the URL, so `territory=1` never reached the page and the shot that was supposed to prove the
+overlay reached the facades was a shot of the city without it — with a plausible triangle count.
+It takes an `extra` object now. And removing a diagnostic probe from `shoot.html` left a dangling
+`}`, which surfaced as a 120-second timeout in `a11y_smoke` rather than as a syntax error, until
+the page's `pageerror` was listened for (the V6 lesson, paid for again).

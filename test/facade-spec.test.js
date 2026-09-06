@@ -220,3 +220,26 @@ test("both levels take their colour from one function, not two copies of it", ()
   assert.equal(again.variant, params.variant);
   assert.equal(facadeSpec(lot, again).wall, again.colour);
 });
+
+// --- what the two levels do under an overlay (slice V7, A44) -----------------
+
+test("the baked facades honour the territory overlay the instanced boxes do", () => {
+  // `bakeLots` passed `false` for `showOwner`, hard-coded, so with territory on
+  // the far half of the city was in player colours and the near half — the
+  // baked half — was not. Not visible to any test that does not import three,
+  // hence a source assertion (R1's rule).
+  const source = readFileSync(join(repoRoot, "client", "render", "streets-l3.js"), "utf8");
+  assert.match(source, /familyColour\(lot\.building, palette, showOwner, ZONE_NONE\)/,
+    "bakeLots still hard-codes the family colour");
+  assert.match(source, /buildingParams\([^)]*showOwner\)/,
+    "the params do not know about the overlay, so the roof stays a roof colour");
+});
+
+test("the verge takes the colour of the land under it, not a flat lawn (A38)", () => {
+  // A road through sand or rock had two metres of green either side of it. The
+  // ground module answers for what the land is made of; `palette.lawn` answers
+  // for grass and nothing else.
+  const source = readFileSync(join(repoRoot, "client", "render", "streets-l3.js"), "utf8");
+  assert.match(source, /ground\.natural/, "the verge does not ask the ground what it is");
+  assert.equal(/palette\.lawn/.test(source), false, "a flat lawn colour is still in there");
+});

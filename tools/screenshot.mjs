@@ -44,6 +44,11 @@ export async function shoot({
   style = "plain", span = 0, yaw = 0, fx = -1, fy = -1, reduced = false, budget = 0, size = 64, seats = 1,
   tier = "high", life = false, terrain = "rolling", overlay = "", pitch = 0, mode = "ortho",
   shadows = true, streets = -1, frames = 1, street = "", time = "day", post = true,
+  // Anything the harness grew after this signature was written. A named
+  // parameter per flag meant `?territory=1` was silently dropped and the shot
+  // that was supposed to prove the overlay reached the facades was a shot of
+  // the city without it (slice V7).
+  extra = {},
 } = {}) {
   const { server, port } = await serve();
   const browser = await chromium.launch({
@@ -61,7 +66,8 @@ export async function shoot({
     });
 
     const url = `http://127.0.0.1:${port}/tools/shoot.html`
-      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}&terrain=${terrain}&overlay=${overlay}&pitch=${pitch}&mode=${mode}&shadows=${shadows ? 1 : 0}&streets=${streets}&frames=${frames}&street=${street}&time=${time}&post=${post ? 1 : 0}`;
+      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}&terrain=${terrain}&overlay=${overlay}&pitch=${pitch}&mode=${mode}&shadows=${shadows ? 1 : 0}&streets=${streets}&frames=${frames}&street=${street}&time=${time}&post=${post ? 1 : 0}`
+      + Object.entries(extra).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("");
     await page.goto(url, { waitUntil: "load" });
     try {
       await page.waitForFunction(() => globalThis.SHOT_READY === true, undefined, { timeout: 120000 });

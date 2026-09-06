@@ -278,6 +278,79 @@ try {
   check("the overlay bands are told apart by day", worstDay >= 30, `nearest pair ${worstDay} apart`);
   check("and still at night", worstNight >= 30, `nearest pair ${worstNight} apart`);
 
+  // --- the wash is on the GROUND now, so a slope shades it (slice V7) --------
+  //
+  // The check above is arithmetic on the palette, and it was enough while the
+  // overlay was a flat unlit quad floating over the tile. Ruling 041 put the
+  // wash INSIDE the terrain material, mixed into the diffuse colour before the
+  // light touches it — so a hillside facing away from the sun now dims the
+  // bands as well as the grass, and the palette's separation is an upper bound
+  // rather than what the player sees.
+  //
+  // Measured on rendered pixels, on `hilly`, at a low pitch, which is where the
+  // shading spread is widest. `?pollute=` puts the whole map in one band while
+  // changing nothing that is drawn, so three shots of one city differ ONLY in
+  // the wash and the distance between them is the wash's own separation.
+  const washPixels = async (pollute) => {
+    const shotContext = await browser.newContext({ viewport: { width: 640, height: 400 } });
+    const shot = await shotContext.newPage();
+    // A shoot page that throws otherwise looks exactly like a slow one (V6).
+    shot.on("pageerror", (error) => console.log(`      shoot page error: ${error.message}`));
+    shot.on("console", (msg) => { if (msg.type() === "error") console.log(`      shoot console: ${msg.text()}`); });
+    await shot.goto(`http://127.0.0.1:${port}/tools/shoot.html`
+      + `?seed=1003&size=48&years=20&terrain=hilly&pitch=16&mode=city&span=14`
+      + `&overlay=pollution&pollute=${pollute}&frames=6&life=0`);
+    await shot.waitForFunction(() => globalThis.SHOT_REPORT !== undefined, undefined, { timeout: 120000 });
+    const pixels = await shot.evaluate(() => {
+      const gl = document.getElementById("city");
+      const flat = document.createElement("canvas");
+      flat.width = gl.width;
+      flat.height = gl.height;
+      flat.getContext("2d").drawImage(gl, 0, 0);
+      const data = flat.getContext("2d").getImageData(0, 0, flat.width, flat.height).data;
+      // A fixed lattice, so the three shots sample the same points.
+      const out = [];
+      for (let y = 8; y < flat.height; y += 7) {
+        for (let x = 8; x < flat.width; x += 7) {
+          const i = (y * flat.width + x) * 4;
+          out.push([data[i], data[i + 1], data[i + 2]]);
+        }
+      }
+      return out;
+    });
+    await shotContext.close();
+    return pixels;
+  };
+  // 0 clean, 100 hazy, 200 foul — either side of the 60/150 thresholds.
+  const washes = [];
+  for (const value of [0, 100, 200]) washes.push(await washPixels(value));
+  const gaps = [];
+  for (let b = 1; b < washes.length; b += 1) {
+    const distances = [];
+    for (let i = 0; i < washes[b].length; i += 1) {
+      const [r1, g1, b1] = washes[b][i];
+      const [r0, g0, b0] = washes[b - 1][i];
+      const d = Math.hypot(r1 - r0, g1 - g0, b1 - b0);
+      // Only pixels the wash actually reaches: sky, water and rooftops are the
+      // same in all three shots and would drag a mean to zero.
+      if (d > 1) distances.push(d);
+    }
+    distances.sort((a, c) => a - c);
+    gaps.push({
+      lit: distances.length,
+      worst: Math.round(distances[Math.floor(distances.length * 0.05)] ?? 0),
+      median: Math.round(distances[Math.floor(distances.length / 2)] ?? 0),
+    });
+  }
+  for (const [i, gap] of gaps.entries()) {
+    console.log(`      band ${i} to ${i + 1} on a hillside: ${gap.median} apart at the median, `
+      + `${gap.worst} in the darkest twentieth (${gap.lit} washed pixels)`);
+  }
+  check("the wash reaches the ground at all", gaps.every((g) => g.lit > 200),
+    gaps.map((g) => g.lit).join(", "));
+  check("adjacent bands are told apart on a shaded hillside",
+    gaps.every((g) => g.worst >= 30), gaps.map((g) => g.worst).join(", "));
+
   // --- reduced motion reaches the CITY (R2, finding 12) ----------------------
   //
   // Slice 4.5 set `data-motion="reduced"` on the document and nothing in the

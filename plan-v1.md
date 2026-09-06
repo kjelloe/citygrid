@@ -412,6 +412,7 @@ by number from the code they create.
 | Q58 | What does a road over water look like at street level? | E8 |
 | Q59 | Should reduced motion empty the street or still it? | R2, reversible |
 | Q60 | When does the model derivation go per chunk — the number, again? | its own slice, unchanged from Q51 |
+| Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

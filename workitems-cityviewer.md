@@ -608,8 +608,8 @@ eleven browser smokes.
 | **E6** — time of day | **done** 2026-09-06 | `ac7a2f5` | `budget_gate` gains four night rows on the saturated 96×96 at High: **266,538 triangles of 320,000, 44 draw calls, 8 lamps lit of 269 held**, night reaching exactly 1. `a11y_smoke` measures the overlay bands at both hours (**122 apart by day, 41 at night**, floor 30); `ui_smoke` drives all four settings values through the panel. `reports/smoke-E6-{night,sunset}.png` | `test/time-of-day.test.js` (14), `test/night-lights.test.js` (7), `test/settings.test.js` (+2); spec §7.3a |
 | **P2** — ink and grade | **done** 2026-09-06 | `0111c95` | `budget_gate` gains three painted rows on a High page loaded with `?style=painted`, and the check that the counted triangles are the CITY's rather than the quad's. `style-sheet` shoots all three styles from the pavement with the post passes on and off (`reports/style-sheet-street{,-nopost}.png`); `reports/smoke-P2-{ink,noink}.png` is a road at a grazing angle with no ink on it | `test/post-ink.test.js` (11), `test/render.test.js` (+3); spec §7.4a |
 | **V6** — lots with something on them | **done** 2026-09-06 | `b3f16bb` | `client_smoke` hashes every variant's vertices: **6 distinct silhouettes of 6** in all four categories, where before it was 4 of 4 with two categories carrying a clone. `budget_gate`, `walkthrough`, `passability` and the other ten gates green. `reports/smoke-V6-{city,suburb}.png`, `reports/style-sheet.png` re-baselined | `test/kit.test.js` (8); spec §6.6a, art-direction §3.1. `VARIANTS` was declared in two files and is now declared in one |
-| **R2** — review fixes after R1 (§2d) | not started | — | — | — |
-| **V7** — overlays as a texture on the ground (ruling 041), amended in §2d | not started | — | — | — |
+| **R2** — review fixes after R1 (§2d) | **done** 2026-09-06 | `06102b0` | All fourteen findings plus a fifteenth found doing them; `budget_gate` pins `?style=plain`, `a11y_smoke` gains a reduced-motion baseline that is not zero | The blank page was a temporal-dead-zone `ReferenceError` behind an uncaught `play()`; **Q59**, **Q60** |
+| **V7** — overlays as a texture on the ground (ruling 041), amended in §2d | **done** 2026-09-07 | *this slice* | `budget_gate`: overlay on **70,016 triangles against 70,016 off** (0 extra) at 38 draws, and the territory toggle **rebakes 8 of 8 live chunks on, 0 while it stays on, 8 coming back off**. `a11y_smoke`: three shots of one `hilly` city at a 16° pitch differing only in the wash — bands **102/37** and **77/32** apart (median / darkest twentieth) against a floor of 30. `play_smoke`: the overlay button pressed on all four viewport/projection pairs, **6,042 of 7,540** sampled pixels move with it on and **0** keep it after. `reports/smoke-V7-{slope,verge,territory}-*.png` | `test/overlay-texture.test.js` (7), `test/chunks.test.js` (+1: the territory salt), `test/ground-colour.test.js` (+3: `natural()`), `test/facade-spec.test.js` (+2 source), `test/lod.test.js` (+1: A32). The wash mixes over `outgoingLight`, not into `diffuseColor` — before the light it failed the contrast floor at 25. **Q61** |
 | **R3** — streets graded along their length, then taller hills (A42) | not started | — | — | — |
 | **E8** — water | not started | — | — | — |
 | **V8** — the street, finished | not started | — | — | — |
@@ -829,9 +829,10 @@ find the assumption an item was built against without reading all of it.*
 | V6 | Q49 is a hedge worth drawing at L2 · Q50 the L2 box and the L3 facade do not share a footprint |
 | R1 | Q51 when the model derivation goes per chunk (**80.0 ms on a 128×128**) |
 | R2 | Q59 reduced motion stills the street rather than emptying it · Q60 the derivation after R2's cuts (**53.7 ms**) · Q53 answered |
-| The R1 doc pass | Q52 the kerb and verge ignore the terrain under them (**V7**) · Q53 `chunksNear` orders by the target (**done in R2**) |
+| The R1 doc pass | Q52 the kerb and verge ignore the terrain under them (**done in V7**) · Q53 `chunksNear` orders by the target (**done in R2**) |
 | Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
 | Omissions pass | Q57 cars and the walker (answered, A45: cars yield) · Q58 a road over water |
+| V7 | Q61 nothing in the interface selects the territory overlay — it is a draw option a gate passes (A38 and A44 both **done**; Q52 and Q56 answered) |
 
 **Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
 ruling 033 names `painted` as the target and nothing in the interface selects it, so by ruling
@@ -903,12 +904,21 @@ painted rows load their own page.
 
 ### V7 — amendments
 
+**Done 2026-09-07 as `slice-V7`, both.**
+
 - **Verge colour from `ground-colour.js`** (A38): `streets-l3.js` colours the verge by the tile
-  under it; the kerb stays `roadMark`.
-- **Territory reaches the facades** (Q56): `chunkHash` takes the territory flag as a salt so
-  toggling the overlay marks every baked chunk stale and they rebake with `showOwner`; the
-  L2/L3 agreement then holds under the overlay too. `a11y_smoke` reads a facade's colour with
-  the overlay on.
+  under it; the kerb stays `roadMark`. `ground-colour.js` grew `natural(x, y)` — `tile()` cannot
+  answer, because the verge is inside the road tile (ruling 035) and `tile()` rightly says
+  tarmac. Emitted as one strip per run of spans the ground agrees about, which on most streets
+  is one. `reports/smoke-V7-verge-{sand,grass}.png` is the same frame with the terrain switched.
+- **Territory reaches the facades** (Q56): `chunkHash(state, cx, cy, territory)` takes the flag
+  as a salt so toggling the overlay marks every baked chunk stale and they rebake with
+  `showOwner`; the L2/L3 agreement then holds under the overlay too.
+  **The gate is `budget_gate`, not `a11y_smoke`** — nothing in the interface selects territory
+  (**Q61**), so what the gate drives is the renderer's own `draw`, wrapped for the duration.
+  Wrapping matters: passing the flag to a draw of the gate's own alternates with the page's frame
+  loop, and the first version measured the cache thrashing between the two answers.
+  8 rebakes on, 0 while it stays on, 8 coming back off. `reports/smoke-V7-territory{,-off}.png`.
 
 ### E7 — amendments
 

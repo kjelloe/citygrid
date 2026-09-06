@@ -7,7 +7,7 @@
 // mesh however many of them stand in the city.
 
 import * as THREE from "three";
-import { buildingColour, familyColour, PLAYER_COLOURS, OVERLAY_COLOURS } from "./palette.js";
+import { buildingColour, familyColour, PLAYER_COLOURS } from "./palette.js";
 import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
 // CHUNK from the DATA, not a fourth copy of 16 (E2 put it in
 // `data/cityviewer.json` because three things had three copies; this was the
@@ -105,7 +105,11 @@ export function createInstances(scene, styleName = "plain") {
   //
   // Four pools, whichever overlay is showing, so the cost of an overlay does
   // not depend on which one it is.
-  make("ovl", flatGeometry(styleName, 0.98, 0.98, 0.075), 0xffffff, 24000);
+  // No `ovl` pool. The wash is a byte plane on the terrain material now
+  // (ruling 041, slice V7): it followed the ground for nothing, it costs one
+  // upload on toggle instead of 24,000 quads a frame, and the mean-of-four-
+  // corners float that V4 left behind is gone. The MARKS stay instanced,
+  // seated on `heightAt` — never colour alone (art-direction §1.6).
   make("ovlGood", flatGeometry(styleName, 0.2, 0.2, 0.08), 0xffffff, 24000);
   make("ovlFair", flatGeometry(styleName, 0.5, 0.14, 0.08), 0xffffff, 24000);
   make("ovlSevere", flatGeometry(styleName, 0.62, 0.14, 0.08), 0xffffff, 24000);
@@ -595,7 +599,6 @@ export function updateInstances(state, pools, options = {}) {
       // the city than showing a wash of grey over it.
       if (band === BAND.NONE) continue;
       const mid = tileMid(x, y);
-      push(pools.ovl, x + 0.5, mid, y + 0.5, 1, 1, 1, OVERLAY_COLOURS[band]);
       const mark = MARKS[band];
       if (mark) push(mark, x + 0.5, mid, y + 0.5, 1, 1, 1, 0x1b1d21);
     }
