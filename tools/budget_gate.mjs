@@ -268,6 +268,40 @@ try {
   check("the cache caches: an unchanged city rebuilds nothing",
     streets.rebuilt === 0, `${streets.rebuilt} rebuild(s) over six frames`);
 
+  // --- night (slice E6, spec §7.3) -------------------------------------------
+  //
+  // Night is what pays for L3 — lit windows, lit shopfronts, lamp pools — and
+  // it is also the frame that carries the most: every emissive bucket is on and
+  // the tier's point lights are all live. The budget has never been measured
+  // there, and a tier that fits by day and not by night is a tier that is
+  // wrong.
+  const night = await page.evaluate(async () => {
+    const renderer = globalThis.CITY.renderer;
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    globalThis.CITY.setQuality("high");
+    // Through the SESSION, not by passing `time` to `draw`: the page's own
+    // frame loop is still running and hands the renderer whatever the setting
+    // says, so a gate that only overrides one draw is a gate measuring the
+    // frame after it.
+    globalThis.CITY.setTime("night");
+    for (let i = 0; i < 8; i += 1) await frame();
+    const s = renderer.stats;
+    return {
+      night: renderer.night,
+      lamps: s.lamps, held: s.lampsHeld,
+      actual: s.triangles, budget: s.budget, lod: s.lod,
+      calls: renderer.renderer.info.render.calls,
+    };
+  });
+  console.log(`      night: ${night.lamps} of ${night.held} lamps lit, ${night.actual} triangles `
+    + `of ${night.budget}, ${night.calls} draw calls, ladder at "${night.lod}"`);
+  check("night arrives", night.night === 1, `night is ${night.night}`);
+  check("the street has lamps to light", night.held > 0, `${night.held} lamps in the cache`);
+  check("the lamp pool fills to the tier's cap", night.lamps > 0 && night.lamps <= 8,
+    `${night.lamps} lit against a cap of 8`);
+  check("a night frame is inside the same budget as a day one",
+    night.actual <= night.budget, `${night.actual} of ${night.budget}`);
+
   check("no page errors", errors.length === 0, errors.join(" | "));
   await context.close();
 } finally {

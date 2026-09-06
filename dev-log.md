@@ -3456,3 +3456,60 @@ Q37 (the budgets), Q38 (pure modules in `render/`), Q39 (the two faces nobody se
 questions had been given numbers Q34–Q36, which three planning questions already held; they are
 Q41–Q43 now, and `test/docs.test.js` — which compares the open list in `plan-v1.md` against the one
 in `dev-questions.md` — is what caught it.
+
+---
+
+## 2026-09-06 — Slice E6: night, and a prop pass that had been building nothing
+
+Three presets — `day`, `sunset`, `night` — in `data/cityviewer.json`, interpolated over a second
+by `client/render/time-of-day.js`, which is pure and takes its time as a delta so `?life=0` freezes
+the hour along with the traffic and the walker. A preset **scales** the rig rather than replacing
+it: `key`, `hemi` and `sunHeight` are factors on whatever `lightingFor(style)` said and only the
+colours are absolute, so dusk is dusk in all three styles and none of them stops being itself
+(ruling 017). A rig with no key keeps no key — `pixel` is unlit and a time of day must not switch a
+sun on in a style that has never had one.
+
+Night is what pays for L3. E5's emissive buckets come on, the fascias and the shopfronts light,
+and `night-lights.js` gives the tier's few point lights to the lamps nearest the eye — nearest
+first, with six metres of hysteresis, because a light that appears and vanishes at 60 Hz is a
+strobe rather than a lamp.
+
+**Measured** on the saturated 96×96 at High: a night frame is **266,538 triangles of 320,000**
+with 44 draw calls, **8 lamps lit of 269 held**, the ladder at "detail dropped for budget". The
+overlay bands' nearest pair is **122 apart in 8-bit RGB by day and 41 at night** against a floor of
+30. Suite green twice; `budget_gate` gains four night rows, `a11y_smoke` two, `ui_smoke` six; every
+gate green. 23 new unit tests.
+
+**The prop pass had been building nothing since E5.** `bakeLots` called `corridorsIn` with five
+arguments where it takes six, so `trim` was handed `undefined` as its junction distance, every
+kerbside point came out `NaN`, `clip` dropped all of them, and `buildProps` was handed an empty
+list. No error, no red test, and a screenshot that looked right because the lamps in it were the
+L2 instanced poles standing in the same places. What found it was the night rig asking a question
+the renderer had never asked before — *where are the lamps* — and getting 0. The lesson is not
+about the argument: it is that a pass which returns nothing looks exactly like a pass whose
+conditions were not met, and the only thing that separates them is something downstream that needs
+the output for a second purpose.
+
+**What else failed on the way.**
+
+*The sky stayed daylight blue at night.* The dome is a 1,800-tile sphere and street mode's far
+plane is 100, so at eye height the sky is entirely behind it and what the player sees is the
+renderer's clear colour. Both move with the hour now. And the dome is TINTED rather than rebuilt —
+its gradient is baked into vertex colours, and a basic material multiplies them by `material.color`,
+so the ratio of the hour's sky to the palette's keeps the gradient's shape.
+
+*The gate measured the frame after the one it set up.* `budget_gate` called `renderer.draw({time:
+"night"})` directly and then waited for two animation frames — during which the page's own loop
+drew again with whatever the SETTING said, pulling the sun back up. It goes through the session
+now, which is the only way a gate that shares a page with a running game can mean anything.
+
+*The first night contrast check measured the wrong thing.* WCAG luminance ratio on four overlay
+colours that are told apart by hue: the worst adjacent pair is 1.29 in broad daylight, so any
+threshold either failed the palette the game has always shipped or proved nothing. It measures
+distance in 8-bit RGB instead, with the floor set from the measurement and written down.
+
+*A lamp blew out the pavement.* At 1.6 intensity a player standing under one lost the shopfront
+behind it to white. 0.7 over 30 m.
+
+Q44 (a preset scales the rig), Q45 (48 ticks a day, deliberately not in `data/`), Q46 (the pool
+follows the eye). `reports/smoke-E6-{night,sunset}.png`.

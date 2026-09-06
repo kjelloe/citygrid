@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS, CAMERA,
+  SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS, CAMERA, TIME,
   defaultSettings, sanitiseSettings, documentAttributes, mixerSettings,
 } from "../client/ui/settings-model.js";
 import { LOCALES } from "../client/i18n.js";
@@ -79,7 +79,7 @@ test("every row has at least two choices and a label", () => {
     }
   }
   assert.deepEqual(SETTING_ROWS.map((r) => r.choices),
-    [QUALITY, CAMERA, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
+    [QUALITY, CAMERA, TIME, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
 });
 
 // --- audio (slice 4.4) ------------------------------------------------------
@@ -215,4 +215,19 @@ test("the projection is offered, and a coarse pointer gets the flat one", () => 
 
 test("the projection is a preference, never a game option", () => {
   assert.equal(OPTION_FIELDS.includes("camera"), false);
+});
+
+// --- time of day (slice E6) --------------------------------------------------
+
+test("the hour defaults to day and survives a nonsense stored value", () => {
+  assert.equal(defaultSettings().time, "day");
+  assert.equal(sanitiseSettings({ time: "twilight" }).time, "day");
+  assert.equal(sanitiseSettings({ time: "night" }).time, "night");
+  assert.equal(sanitiseSettings({ time: "auto" }).time, "auto");
+});
+
+test("`auto` is the only hour the game clock is allowed to move", () => {
+  // The renderer has no clock; `game.js` maps `state.tick` onto a preset and
+  // only when the player asked for it (spec §7.3, plan.md §6: off by default).
+  assert.deepEqual(TIME.map((c) => c.value), ["day", "sunset", "night", "auto"]);
 });

@@ -38,6 +38,11 @@
   "settings.camera": "Camera",
   "settings.camera.perspective": "Perspective",
   "settings.camera.orthographic": "Flat (map-like)",
+  "settings.time": "Time of day",
+  "settings.time.day": "Day",
+  "settings.time.sunset": "Sunset",
+  "settings.time.night": "Night",
+  "settings.time.auto": "Follow the clock",
   "settings.highContrast": "High contrast",
 
   "lobby.size": "Region size",

@@ -198,10 +198,19 @@ export function bakeLots(baker, state, model, cx, cy, palette) {
   }
   // The prop pass, which is the difference between a street and a diagram
   // (spec §6.6). Lamps come from the corridors, hedges and paths from the lots.
-  for (const piece of buildProps({
-    corridors: corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM).flatMap((c) => c.kerbside),
+  const props = buildProps({
+    // WITH the junction distance. Called without it, `trim` was handed
+    // `undefined`, every kerbside point came out NaN, `clip` dropped all of
+    // them, and the prop pass has been silently building nothing since E5 —
+    // the lamps in that slice's screenshots were the L2 instanced poles.
+    corridors: corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM, cfg.road.width / 2 + cfg.road.sidewalk)
+      .flatMap((c) => c.kerbside),
     lots: fronts, cfg, heightAt: model.heightAt, palette,
-  })) baker.addPart(piece.part, piece.colour, piece.options);
+    chunk: cy * 4096 + cx,
+  });
+  for (const piece of props.pieces) baker.addPart(piece.part, piece.colour, piece.options);
+  // Where the lamps are, for the night rig to hang point lights on (E6).
+  baker.lamps.push(...props.lamps);
   // The fascias, which cannot go through the vertex-colour baker because they
   // carry a texture. One mesh per distinct NAME, added to the same group, so a
   // high street of forty shops is eighteen draw calls at worst (spec §6.5).

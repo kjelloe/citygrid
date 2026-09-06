@@ -166,6 +166,19 @@ fired, and refuse to report success when that count is zero; the same check turn
 passability sweep from "narrowest street 33 m" (the search ceiling wearing a number's clothes) into
 a real measurement.
 
+**A pass that returns nothing looks exactly like a pass whose conditions were not met.** E5's prop
+pass built no lamps, no hedges and no paths for a whole slice, because `bakeLots` called
+`corridorsIn` with five arguments where it takes six: `trim` got `undefined`, every point came out
+`NaN`, and the empty list that came back was indistinguishable from "this chunk has no streets in
+it". No error, no red test, and the screenshots looked right because the L2 instanced lamps stood
+in the same places. What found it was E6 asking a question nobody had asked before — *where are the
+lamps* — and getting zero. When a builder can legitimately return nothing, give something
+downstream a reason to count what it produced.
+
+**A gate that shares a page with a running game must drive the game, not the frame.** `budget_gate`
+set the hour by calling `renderer.draw({time: "night"})` and then waited two animation frames — in
+which the page's own loop drew again with the setting's value and undid it. Go through the session.
+
 **A budget is a prediction until something measures it.** City Grid's tier budgets were written in
 V2 and not revisited until E5 put real facades in a chunk — at which point nine chunks of L3 cost
 more than the whole High-tier budget, and the ladder was quietly selling the cars and the props to

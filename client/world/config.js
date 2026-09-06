@@ -31,6 +31,26 @@ export const DEFAULTS = Object.freeze({
   // The L3 prop pass (E5, spec §6.6). A lamp every 24 m alternating sides is
   // about what a residential street has; every 12 m is a runway.
   props: { lampSpacing: 24, lampH: 4.5, hedgeH: 0.9, pathW: 1.2, binEvery: 60 },
+  // Time of day (E6, spec §7.3). Presets, not a slider: each one is a
+  // composition. `key`, `hemi` and `sunHeight` are FACTORS on whatever the
+  // style's rig already says, so a preset changes the hour without changing
+  // which of the three looks you chose (ruling 017); the colours are absolute,
+  // because "the same blue, dimmer" is not what dusk looks like. `night` is
+  // what the lit windows and the lamps are dialled by.
+  presets: {
+    day: {
+      key: 1, keyColour: 0xfffaf0, hemi: 1, hemiSky: 0xdcecff, hemiGround: 0x93aa78,
+      sky: 0xbfe0f0, fogNear: 1.4, fogFar: 5, night: 0, sunHeight: 1,
+    },
+    sunset: {
+      key: 0.9, keyColour: 0xffb066, hemi: 0.8, hemiSky: 0xffc9a0, hemiGround: 0x6d5f66,
+      sky: 0xf2b98a, fogNear: 1, fogFar: 3.6, night: 0.4, sunHeight: 0.22,
+    },
+    night: {
+      key: 0.16, keyColour: 0x8fa8d8, hemi: 0.34, hemiSky: 0x2b3a5c, hemiGround: 0x1b2130,
+      sky: 0x121a2c, fogNear: 0.7, fogFar: 2.6, night: 1, sunHeight: 0.5,
+    },
+  },
   // The ground's own colour (V3). `blend` at 0 reproduces the flat per-tile
   // picture exactly; `mottle` is the per-tile lightness scatter; `urbanReach`
   // is how far from a street the tended ground extends, and `farTone` how much
@@ -51,17 +71,17 @@ export const DEFAULTS = Object.freeze({
   // frame-time governor may still take one away (`frameMs` is its target).
   tiers: {
     low: {
-      budget: 40000, pixelRatio: 1, antialias: false, shadowMap: 0,
+      budget: 40000, pixelRatio: 1, antialias: false, shadowMap: 0, lamps: 0,
       shadows: false, streetChunks: 0, carCap: 60, pedCap: 0,
       post: [], frameMs: 33,
     },
     medium: {
-      budget: 140000, pixelRatio: 1.5, antialias: true, shadowMap: 2048,
+      budget: 140000, pixelRatio: 1.5, antialias: true, shadowMap: 2048, lamps: 5,
       shadows: true, streetChunks: 4, carCap: 200, pedCap: 40,
       post: ["pixel"], frameMs: 33,
     },
     high: {
-      budget: 320000, pixelRatio: 2, antialias: true, shadowMap: 4096,
+      budget: 320000, pixelRatio: 2, antialias: true, shadowMap: 4096, lamps: 8,
       shadows: true, streetChunks: 9, carCap: 0, pedCap: 120,
       post: ["pixel", "ink"], frameMs: 16,
     },

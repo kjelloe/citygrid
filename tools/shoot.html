@@ -80,7 +80,10 @@ const life = params.get("life") === "1";
 // `mode=ortho|city` so the review can diff the orthographic picture before and
 // after V5 and see that it did not move.
 const mode = params.get("mode") ?? "ortho";
-const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode });
+// `time=day|sunset|night` (slice E6). The hour is a preset, and the shot takes
+// it at once rather than fading in — `frames` then settles the cache.
+const time = params.get("time") ?? "day";
+const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode, time });
 setYawStep(view.view, yaw);
 if (pitchDeg > 0) pitchBy(view.view, pitchDeg * (Math.PI / 180) - view.view.pitch);
 if (span > 0) {
@@ -148,6 +151,10 @@ globalThis.SHOT_REPORT = {
   chunkPlans: stats.chunkPlans,
   chunkTiers: stats.chunkTiers,
   streets: stats.streets,
+  time: stats.time,
+  night: stats.night,
+  lamps: stats.lamps,
+  lampsHeld: stats.lampsHeld,
   mode,
   // What the baked groups actually hold and where they actually are. Kept
   // because the E3 ribbons were in the scene, in the right place, with the

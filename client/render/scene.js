@@ -19,6 +19,8 @@ import { createGovernor } from "./governor.js";
 import { createSky } from "./sky.js";
 import { createStreetChunks } from "./street-chunks.js";
 import { createCollision } from "../world/collision.js";
+import { createTimeOfDay, phaseOf } from "./time-of-day.js";
+import { nearestLamps, lampsOf } from "./night-lights.js";
 import { CHUNK } from "../world/chunks.js";
 import { getConfig } from "../world/config.js";
 import { createWalker } from "../life/walker.js";
@@ -67,11 +69,29 @@ export function createRenderer(canvas, state, options = {}) {
    * a 128-tile one. Off in orthographic for the same reason the sky is: there
    * is no horizon to fade into. */
   function applyAtmosphere() {
-    const on = view.mode === "city";
+    const on = view.mode !== "ortho";
     sky.visible = on;
+    const hour = timeOfDay.current;
+    // The dome's gradient is baked into its vertex colours (spec §7.2), so the
+    // hour is a TINT on it rather than a rebuild: a basic material multiplies
+    // vertex colour by `material.color`, and the ratio of the hour's sky to the
+    // palette's keeps the gradient's shape while moving where it sits.
+    if (sky.material) {
+      const base = new THREE.Color(palette.sky);
+      const want = new THREE.Color(hour.sky);
+      sky.material.color.setRGB(
+        Math.min(1, want.r / Math.max(base.r, 1e-3)),
+        Math.min(1, want.g / Math.max(base.g, 1e-3)),
+        Math.min(1, want.b / Math.max(base.b, 1e-3)),
+      );
+    }
+    // The dome is a 1,800-unit sphere and street mode's far plane is 100, so at
+    // eye height the sky is entirely BEHIND it: what the player sees there is
+    // the clear colour, and it has to know the hour too (slice E6).
+    renderer.setClearColor(hour.sky);
     if (!on) { scene.fog = null; return; }
     const reach = Math.max(view.span, 12);
-    scene.fog = new THREE.Fog(palette.sky, reach * 1.4, reach * 5);
+    scene.fog = new THREE.Fog(hour.sky, reach * hour.fogNear, reach * hour.fogFar);
   }
 
   const antialiasAtBuild = options.antialias ?? tier.antialias;
@@ -122,7 +142,12 @@ export function createRenderer(canvas, state, options = {}) {
   // none at all — its faces are shaded in the vertices, because a lit gradient
   // across a face is exactly what pixel art does not have.
   let shadowLight;
+  let keyLight;
+  let hemiLight;
   const lights = lightingFor(styleName);
+  // The hour (E6, spec §7.3). Pure and delta-driven, so `life: false` freezes
+  // the sun where it stood along with the traffic and the walker.
+  const timeOfDay = createTimeOfDay(options.time ?? "day");
   if (lights.key > 0) {
     const key = new THREE.DirectionalLight(lights.keyColour, lights.key);
     const sun = lights.sunHeight ?? 120;
@@ -139,6 +164,7 @@ export function createRenderer(canvas, state, options = {}) {
     // got a light that had been told to cast into a shadow map nobody had
     // sized (ruling 040 — a tier changes at runtime).
     shadowLight = key;
+    keyLight = key;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // Tight enough to be worth following: a quarter of the map rather than
     // three quarters, which quadruples the texel density at the same map size.
@@ -184,7 +210,64 @@ export function createRenderer(canvas, state, options = {}) {
     scene.add(up.target);
     scene.add(up);
   }
-  scene.add(new THREE.HemisphereLight(lights.hemiSky, lights.hemiGround, lights.hemi));
+  hemiLight = new THREE.HemisphereLight(lights.hemiSky, lights.hemiGround, lights.hemi);
+  scene.add(hemiLight);
+
+  /** The lamp pool: `tier.lamps` point lights, moved to whichever lamps are
+   * nearest, rather than created and destroyed as the player walks (spec §7.3).
+   * A light that appears and vanishes at 60 Hz is a strobe. */
+  const lampPool = [];
+  let litLamps = [];
+  function applyNightLights(night) {
+    const cap = night > 0.35 ? (options.lamps ?? tier.lamps ?? 0) : 0;
+    while (lampPool.length < cap) {
+      const light = new THREE.PointLight(0xffdca8, 0, 30, 2);
+      light.visible = false;
+      lampPool.push(light);
+      scene.add(light);
+    }
+    if (cap === 0) {
+      litLamps = [];
+      for (const light of lampPool) light.visible = false;
+      return;
+    }
+    const eye = view.mode === "street" && view.eye
+      ? { x: view.eye.x * model.tileM, y: view.eye.y * model.tileM, z: view.eye.z * model.tileM }
+      : { x: view.targetX * model.tileM, y: 0, z: view.targetZ * model.tileM };
+    litLamps = nearestLamps(lampsOf(streets.entries()), eye, cap, litLamps);
+    for (let i = 0; i < lampPool.length; i += 1) {
+      const lamp = litLamps[i];
+      lampPool[i].visible = Boolean(lamp);
+      if (!lamp) continue;
+      lampPool[i].position.set(lamp.x / model.tileM, lamp.y / model.tileM, lamp.z / model.tileM);
+      // The pool is in TILE units like the rest of the scene, so the reach is
+      // too: 26 m of useful light is a little over a tile.
+      // The reach is in TILE units like the rest of the scene. A lamp pools
+      // about thirty metres of light, and the intensity is low because the
+      // player can stand directly under one: at 1.6 the pavement blew out to
+      // white and took the shopfront behind it with it.
+      lampPool[i].distance = 30 / model.tileM;
+      lampPool[i].intensity = 0.7 * night;
+    }
+  }
+
+  /** Everything the hour touches, in one place. */
+  function applyHour() {
+    const hour = timeOfDay.applyTo(lights);
+    if (keyLight) {
+      keyLight.intensity = hour.key;
+      keyLight.color.setHex(hour.keyColour);
+      keyLight.position.set(state.width * 0.6, hour.sunHeight, state.height * 0.35);
+    }
+    if (hemiLight) {
+      hemiLight.intensity = hour.hemi;
+      hemiLight.color.setHex(hour.hemiSky);
+      hemiLight.groundColor.setHex(hour.hemiGround);
+    }
+    streets.setNight(hour.night);
+    applyNightLights(hour.night);
+    applyAtmosphere();
+  }
 
   const view = createCamera(canvas.width / canvas.height, options.mode ?? "city");
   view.targetX = state.width / 2;
@@ -418,6 +501,11 @@ export function createRenderer(canvas, state, options = {}) {
       governor.sample(drawOptions.frameMs);
       if (governor.disabled().length !== before) applyGovernor();
     }
+    // The hour, before anything is measured: it decides the sky, the fog and
+    // how many point lights the frame is about to carry.
+    if (drawOptions.time !== undefined) timeOfDay.set(drawOptions.time);   // spec §7.3
+    timeOfDay.update(drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000);
+    applyHour();
     followShadow();
     stats.chunksRebuilt = updateTerrain(state, terrain, model);
     const bounds = visibleBounds(view, canvas.width / canvas.height);
@@ -501,6 +589,13 @@ export function createRenderer(canvas, state, options = {}) {
     stats.overBudget = plan.overBudget;
     stats.lod = plan.reason;
     stats.shadows = plan.shadows;
+    stats.time = timeOfDay.target;
+    stats.night = timeOfDay.current.night;
+    stats.lamps = litLamps.length;
+    // How many lamps the cache holds against how many are LIT: the pool is
+    // capped by the tier, and a gate that only saw the cap could not tell a
+    // full pool from an empty city.
+    stats.lampsHeld = lampsOf(streets.entries()).length;
     stats.tilePixels = plan.tilePixels;
     stats.budget = plan.budget;
     stats.estimate = plan.estimate;
@@ -588,6 +683,15 @@ export function createRenderer(canvas, state, options = {}) {
     if (groundY !== view.groundY) { view.groundY = groundY; applyPose(view); }
   }
 
-  return { renderer, scene, view, terrain, pools, style, setTier, setProjection,
+  /** The hour, by name (E6). `auto` is the caller's business: `game.js` maps
+   * the game clock onto a preset and hands the name down, because the renderer
+   * has no clock of its own and must not grow one. */
+  function setTime(name) {
+    timeOfDay.set(name);
+    return timeOfDay.target;
+  }
+
+  return { renderer, scene, view, terrain, pools, style, setTier, setProjection, setTime,
+    get night() { return timeOfDay.current.night; },
     enterStreet, leaveStreet, get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

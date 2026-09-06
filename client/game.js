@@ -29,6 +29,8 @@ import "../engine/quests.js";
 import { createRenderer } from "./render/scene.js";
 import { focusOn } from "./render/camera.js";
 import { createController } from "./input/controller.js";
+import { phaseOf } from "./render/time-of-day.js";
+import { TIME } from "./ui/settings-model.js";
 import { createHud } from "./ui/hud.js";
 import { createMinimap } from "./render/minimap.js";
 import { openStatistics } from "./ui/statistics.js";
@@ -48,6 +50,14 @@ const SEAT = 1;
 
 /** Real milliseconds per game tick at each speed. Slow enough to watch, fast
  * enough that a house appears within a minute of laying a road. */
+/** How many game ticks a whole day of the light cycle is worth.
+ *
+ * Not a month and not a year: it is scenery, and a player who turns the cycle
+ * on wants to see dusk within a few minutes of play rather than next February.
+ * The reducer knows nothing about it — `state.tick` is the only thing read, and
+ * read-only (ruling 037's shape: the renderer never writes state). */
+const DAY_TICKS = 48;
+
 const SPEEDS = [
   { labelKey: "speed.paused", ms: 0 },
   { labelKey: "speed.play", ms: 400 },
@@ -117,6 +127,8 @@ export async function startGame(root, given = {}) {
 
   let overlay;
   let speed = 1;
+  /** The hour the player chose, or `auto` (spec §7.3). Default `day`. */
+  let timeSetting = TIME.some((c) => c.value === given.time) ? given.time : "day";
   let clock;
   let lastAutosaveTick;
   // The live state is replaced wholesale on load, so everything that holds it
@@ -284,7 +296,11 @@ export async function startGame(root, given = {}) {
     lastFrameAt = now;
     // Read from the HUD rather than a local: with "Auto" the overlay follows
     // the tool in hand, and no event fires when a shortcut changes the tool.
-    renderer.draw({ overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move });
+    renderer.draw({
+      overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move,
+      // The clock chooses only when the player asked it to (plan.md §6).
+      time: timeSetting === "auto" ? phaseOf(state.tick, DAY_TICKS) : timeSetting,
+    });
     if (minimap && hud.minimapVisible) minimap.draw(canvas.clientWidth / canvas.clientHeight);
     frame = requestAnimationFrame(loop);
   };
@@ -324,6 +340,12 @@ export async function startGame(root, given = {}) {
     /** The projection (ruling 034). Shared target, yaw, pitch and span, so the
      * city does not move when it changes. */
     setProjection(mode) { return renderer.setProjection(mode); },
+    /** The hour (spec §7.3). `auto` hands the game clock to the renderer one
+     * preset at a time; anything else pins it. The renderer has no clock of
+     * its own and must not grow one — a renderer that read `state.tick` would
+     * be a renderer that could disagree with the reducer about what time it is. */
+    setTime(name) { timeSetting = TIME.some((c) => c.value === name) ? name : "day"; return timeSetting; },
+    get time() { return timeSetting; },
     pause: () => setSpeed(0),
     resume: () => setSpeed(1),
     stop() {

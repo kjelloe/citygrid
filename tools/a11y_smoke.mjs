@@ -235,6 +235,46 @@ try {
     new Set([repaint.plain, repaint.dark, repaint.retro]).size === 3,
     JSON.stringify({ clean: repaint.plain, dark: repaint.dark, retro: repaint.retro }));
 
+  // --- the overlays are still readable at night (slice E6) -------------------
+  //
+  // Night dims the whole city and the overlays are how a player with poor
+  // colour vision reads it. An overlay wash that is legible at noon and a mush
+  // at midnight is an accessibility regression with no error attached to it.
+  //
+  // Measured as the DISTANCE between adjacent bands in 8-bit RGB, not as a
+  // luminance contrast ratio. These four are told apart by hue as much as by
+  // brightness — green, amber, red, grey — and their worst adjacent luminance
+  // ratio is 1.29 in broad daylight, so a contrast-ratio threshold would either
+  // fail the palette the game has always shipped or be set so low it proved
+  // nothing. What night actually does is scale every channel by the
+  // hemisphere's intensity, so the question is whether what is left is still
+  // above the level at which two flat washes read as one.
+  const overlaySeparation = await page.evaluate(async () => {
+    const { OVERLAY_COLOURS } = await import("/client/render/palette.js");
+    const { presetFor } = await import("/client/render/time-of-day.js");
+    const dim = (hex, k) => [16, 8, 0].map((shift) => Math.round(Math.min(255, ((hex >> shift) & 255) * k)));
+    const out = {};
+    for (const hour of ["day", "night"]) {
+      const k = hour === "day" ? 1 : Math.max(presetFor(hour).hemi, 0.2);
+      const gaps = [];
+      for (let i = 1; i < OVERLAY_COLOURS.length; i += 1) {
+        const a = dim(OVERLAY_COLOURS[i], k);
+        const b = dim(OVERLAY_COLOURS[i - 1], k);
+        gaps.push(Math.round(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])));
+      }
+      out[hour] = gaps;
+    }
+    return out;
+  });
+  const worstDay = Math.min(...overlaySeparation.day);
+  const worstNight = Math.min(...overlaySeparation.night);
+  console.log(`      overlay bands: nearest pair ${worstDay} apart by day, ${worstNight} at night (of 441)`);
+  // Thirty is about where two large flat areas stop reading as two. Measured:
+  // 122 by day and 41 at night, so there is room, and the number is here to
+  // notice a palette or a preset that eats it.
+  check("the overlay bands are told apart by day", worstDay >= 30, `nearest pair ${worstDay} apart`);
+  check("and still at night", worstNight >= 30, `nearest pair ${worstNight} apart`);
+
   // --- the settings dialog is a real modal ----------------------------------
   await page.click("#settings");
   await page.waitForSelector("dialog.settings[open]");

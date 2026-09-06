@@ -38,6 +38,11 @@
   "settings.camera": "Kamera",
   "settings.camera.perspective": "Perspektiv",
   "settings.camera.orthographic": "Flatt (kartaktig)",
+  "settings.time": "Tid på døgnet",
+  "settings.time.day": "Dag",
+  "settings.time.sunset": "Solnedgang",
+  "settings.time.night": "Natt",
+  "settings.time.auto": "Følg klokka",
   "settings.highContrast": "Høy kontrast",
 
   "lobby.size": "Størrelse på området",

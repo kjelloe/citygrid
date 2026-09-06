@@ -515,11 +515,13 @@ test("one ray builder, and both projections go through it", () => {
 
 test("the sky and the haze are perspective only, and cost one draw call", () => {
   // An orthographic view has no horizon: a dome behind it is a flat wash with a
-  // seam, and fog on a diagram is fog on a diagram.
+  // seam, and fog on a diagram is fog on a diagram. Street mode is perspective
+  // too, and gets both (slice E6 — before which the street had no sky at all,
+  // only the clear colour).
   const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
   const atmosphere = scene.slice(scene.indexOf("function applyAtmosphere()"));
   const body = atmosphere.slice(0, atmosphere.indexOf("\n  }"));
-  assert.match(body, /view\.mode === "city"/);
+  assert.match(body, /view\.mode !== "ortho"/);
   assert.match(body, /sky\.visible = on/);
   assert.match(body, /scene\.fog = null/, "the fog survives a switch to orthographic");
   const sky = readFileSync(join(repoRoot, "client", "render", "sky.js"), "utf8");

@@ -59,7 +59,8 @@
       "carCap": 60,
       "pedCap": 0,
       "post": [],
-      "frameMs": 33
+      "frameMs": 33,
+      "lamps": 0
     },
     "medium": {
       "budget": 140000,
@@ -73,7 +74,8 @@
       "post": [
         "pixel"
       ],
-      "frameMs": 33
+      "frameMs": 33,
+      "lamps": 5
     },
     "high": {
       "budget": 320000,
@@ -88,7 +90,8 @@
         "pixel",
         "ink"
       ],
-      "frameMs": 16
+      "frameMs": 16,
+      "lamps": 8
     }
   },
   "wire": {
@@ -103,5 +106,43 @@
     "hedgeH": 0.9,
     "pathW": 1.2,
     "binEvery": 60
+  },
+  "presets": {
+    "day": {
+      "key": 1.0,
+      "keyColour": 16775920,
+      "hemi": 1.0,
+      "hemiSky": 14478591,
+      "hemiGround": 9677432,
+      "sky": 12574960,
+      "fogNear": 1.4,
+      "fogFar": 5.0,
+      "night": 0.0,
+      "sunHeight": 1.0
+    },
+    "sunset": {
+      "key": 0.9,
+      "keyColour": 16756838,
+      "hemi": 0.8,
+      "hemiSky": 16763296,
+      "hemiGround": 7167846,
+      "sky": 15907210,
+      "fogNear": 1.0,
+      "fogFar": 3.6,
+      "night": 0.4,
+      "sunHeight": 0.22
+    },
+    "night": {
+      "key": 0.16,
+      "keyColour": 9414872,
+      "hemi": 0.34,
+      "hemiSky": 2832988,
+      "hemiGround": 1777968,
+      "sky": 1186348,
+      "fogNear": 0.7,
+      "fogFar": 2.6,
+      "night": 1.0,
+      "sunHeight": 0.5
+    }
   }
 }

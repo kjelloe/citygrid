@@ -19,6 +19,9 @@ export function createBaker(styleName = "plain") {
   /** signature → { options, parts: [] } */
   const buckets = new Map();
   const extras = [];
+  /** Where this chunk's lamps hang. Geometry alone cannot answer "which eight
+   * lamps are nearest the player", and the night rig has to (spec §7.3). */
+  const lamps = [];
   let triangles = 0;
 
   const IDENTITY = new THREE.Matrix4();
@@ -95,6 +98,8 @@ export function createBaker(styleName = "plain") {
       }
     },
 
+    lamps,
+
     get triangles() { return triangles; },
     get buckets() { return buckets.size; },
 
@@ -121,6 +126,9 @@ export function createBaker(styleName = "plain") {
         if (bucket.options.emissive !== undefined && material.emissive) {
           material.emissive = new THREE.Color(bucket.options.emissive);
           material.emissiveIntensity = 0;
+          // Marked, so the night rig can find its own buckets without asking
+          // whether a black emissive colour means "unlit" or "not emissive".
+          material.userData.emissive = true;
         }
         const mesh = new THREE.Mesh(geometry, material);
         mesh.name = key;

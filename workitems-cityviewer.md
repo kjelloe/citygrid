@@ -484,6 +484,20 @@ night (contrast check on the overlay colours against the night ground).
 
 **Gate.** `budget_gate` at night on High; `reports/smoke-E6-night.png` from the sidewalk.
 
+**Built, with three deviations.** (1) One preset table, not one per rig: a preset SCALES the rig's
+own intensities and only the colours are absolute (**Q44**), so dusk cannot quietly change which
+of the three styles you chose. (2) The sky dome is TINTED rather than rebuilt — its gradient is
+baked into vertex colours — and the renderer's clear colour moves with it, because street mode's
+far plane is 100 tiles and the dome is 1,800. (3) The shadow frustum already followed and snapped
+(V5); E6 added nothing there.
+
+**And it found an E5 defect.** The prop pass had been building nothing at all since the slice that
+introduced it: `bakeLots` called `corridorsIn` without its `junction` argument, `trim` was handed
+`undefined`, every kerbside point came out `NaN` and `clip` dropped all of them. The lamps in E5's
+screenshots were the L2 instanced poles. Nothing failed — the pass returned an empty list and the
+baker added nothing — and it was only visible because the night rig asked "where are the lamps"
+and got 0.
+
 ---
 
 ### P2 — Ink and grade (M) — ruling 033, spec §7.4
@@ -546,7 +560,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **V7** — overlays as a texture on the ground (ruling 041) | not started | — | — | — |
 | **E4** — the street camera and collision | **done** 2026-09-06 | `slice-E4` | `walkthrough`: 8,907 legs, **161 km walked, 0 unfinished, 0 refusals, 0 cliffs**, 1,127 lots walked into head-on and **0 entered**, 395,230 blocked steps. `passability`: 32,659 samples, 8,461 enclosed, narrowest **26.00 m**. `play_smoke` enters and leaves by key and by zoom on both viewports × both projections. `reports/smoke-E4-{street,pavement}.png` | `test/collision.test.js` (10), `test/walker.test.js` (9); spec §8.1b |
 | **E5** — street-level facades | **done** 2026-09-06 | `slice-E5` | `budget_gate` High on the saturated 96×96: **25.7k triangles a chunk**, 8 live holding 205,864, **2 meshes a group**, build p95 **6 ms**. A facade is 700–1,100 triangles. `walkthrough` and `passability` still clean. `reports/style-sheet-street.png` (all three styles from the pavement), `reports/smoke-E5-{street,shopfront}.png` | `test/facade-spec.test.js` (13), `test/facade.test.js` (8), `test/roof-kit.test.js` (9), `test/props-l3.test.js` (6); spec §6.2a, §6.5 |
-| **E6** — time of day | not started | — | — | — |
+| **E6** — time of day | **done** 2026-09-06 | `slice-E6` | `budget_gate` gains four night rows on the saturated 96×96 at High: **266,538 triangles of 320,000, 44 draw calls, 8 lamps lit of 269 held**, night reaching exactly 1. `a11y_smoke` measures the overlay bands at both hours (**122 apart by day, 41 at night**, floor 30); `ui_smoke` drives all four settings values through the panel. `reports/smoke-E6-{night,sunset}.png` | `test/time-of-day.test.js` (14), `test/night-lights.test.js` (7), `test/settings.test.js` (+2); spec §7.3a |
 | **P2** — ink and grade | not started | — | — | — |
 | **V6** — lots with something on them | not started | — | — | — |
 | **E7** — pedestrians | not started | — | — | — |

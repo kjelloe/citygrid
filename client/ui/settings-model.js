@@ -55,6 +55,16 @@ export const CAMERA = [
   { value: "ortho", labelKey: "settings.camera.orthographic" },
 ];
 
+/** Time of day (E6, spec §7.3). `auto` lets the game clock choose; the other
+ * three pin it. Default `day`, because plan.md §6 wants the cycle off until it
+ * is stable and a player who has not asked for night should not get it. */
+export const TIME = [
+  { value: "day", labelKey: "settings.time.day" },
+  { value: "sunset", labelKey: "settings.time.sunset" },
+  { value: "night", labelKey: "settings.time.night" },
+  { value: "auto", labelKey: "settings.time.auto" },
+];
+
 export const SOUND = [
   { value: true, labelKey: "settings.sound.on" },
   { value: false, labelKey: "settings.sound.off" },
@@ -72,6 +82,7 @@ export const LEVELS = [
 export const SETTING_ROWS = [
   { field: "quality", labelKey: "settings.quality", choices: QUALITY },
   { field: "camera", labelKey: "settings.camera", choices: CAMERA },
+  { field: "time", labelKey: "settings.time", choices: TIME },
   { field: "skin", labelKey: "settings.skin", choices: SKINS },
   { field: "sound", labelKey: "settings.sound", choices: SOUND },
   { field: "volumeEffects", labelKey: "settings.volume.effects", choices: LEVELS },
@@ -93,6 +104,7 @@ export function defaultSettings(locale = "en", deviceClassName = "desktop", coar
     camera: coarsePointer ? "ortho" : "city",
     contrast: "normal",
     motion: "auto",
+    time: "day",
     // Sound ON by default, at a level that does not startle. A browser will not
     // let it make a noise until the player interacts anyway, so defaulting it
     // off would mean two decisions before the game says anything.
@@ -116,6 +128,7 @@ export function sanitiseSettings(given = {}, locale = "en", deviceClassName = "d
     locale: pick(LANGUAGES, given.locale, base.locale),
     quality: pick(QUALITY, given.quality, base.quality),
     camera: pick(CAMERA, given.camera, base.camera),
+    time: pick(TIME, given.time, base.time),
     contrast: pick(CONTRAST, given.contrast, base.contrast),
     motion: pick(MOTION, given.motion, base.motion),
     sound: pick(SOUND, given.sound, base.sound),

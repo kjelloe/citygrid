@@ -80,6 +80,44 @@ not a cut. Night is what pays for L3: lit shopfronts, lit windows by hash, lamp 
 pavement (Union Square `NightLights`: a capped set of point lights nearest the camera, the rest
 as emissive geometry).
 
+## 7.3a As built (E6, 2026-09-06)
+
+Three presets in `data/cityviewer.json` — `day`, `sunset`, `night` — mirrored in `config.js` and
+interpolated by `client/render/time-of-day.js`, which is pure and takes its time as a delta, so
+`?life=0` freezes the hour along with the traffic and the walker.
+
+A preset **scales** the rig rather than replacing it. `key`, `hemi` and `sunHeight` are factors on
+whatever `lightingFor(style)` said, so dusk is dusk in all three styles and none of them stops
+being itself (ruling 017); the colours are absolute, because "the same blue, dimmer" is not what
+dusk looks like. A rig with no key keeps no key — `pixel` is unlit and a time of day must not
+switch a sun on in a style that has never had one.
+
+| Piece | What the hour moves |
+|---|---|
+| key light | intensity, colour, and how high the sun stands |
+| hemisphere | intensity, sky colour, ground colour |
+| sky dome | a TINT on its baked vertex gradient, so the gradient's shape survives |
+| clear colour | the same colour — street mode's far plane is 100 tiles and the 1,800-tile dome is behind it |
+| fog | colour, and near/far as multiples of the zoom |
+| emissive buckets | `emissiveIntensity` from 0 to 1: the lit windows and shopfronts E5 baked |
+| lamps | the tier's cap of point lights, on the nearest lamps |
+
+`client/render/night-lights.js` picks which lamps are real lights: nearest first, capped by the
+tier (Low none, Medium 5, High 8), with **six metres of hysteresis** so a lamp on the boundary
+does not swap in and out as the player walks — a point light appearing and vanishing at 60 Hz is
+a strobe. Every other lamp is emissive geometry that glows without lighting anything.
+
+The clock chooses only when asked. The setting is `time: day | sunset | night | auto`, default
+`day` (plan.md §6: the cycle is off until it is stable), and `auto` maps `state.tick` onto a preset
+in `game.js` — the renderer has no clock of its own and must not grow one, because a renderer that
+read the tick could disagree with the reducer about what time it is.
+
+**Measured** on the saturated 96×96 at High: a night frame is 266,538 triangles of 320,000 with
+44 draw calls, 8 lamps lit of 269 held, the ladder at "detail dropped for budget". The overlay
+bands' nearest pair is 122 apart in 8-bit RGB by day and 41 at night, against a floor of 30 —
+`a11y_smoke` measures both, because an overlay that is legible at noon and a mush at midnight is
+an accessibility regression with no error attached to it.
+
 ## 7.4 Post
 
 Two pipelines, both behind `createPost`:

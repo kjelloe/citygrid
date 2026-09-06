@@ -101,7 +101,10 @@ export function createStreetChunks(scene, options = {}) {
           // (V5 left that boundary where it was).
           group.scale.setScalar(1 / getConfig().tileM);
           scene.add(group);
-          live.set(chunk.key, { hash, group, cx: chunk.cx, cy: chunk.cy, seen: now, triangles: baker.triangles });
+          live.set(chunk.key, {
+            hash, group, cx: chunk.cx, cy: chunk.cy, seen: now,
+            triangles: baker.triangles, lamps: baker.lamps,
+          });
           built += 1;
           didBuild = 1;
           pending = undefined;
@@ -133,6 +136,27 @@ export function createStreetChunks(scene, options = {}) {
     },
 
     get size() { return live.size; },
+
+    /** Everything the cache is holding, for the night rig to find its lamps
+     * in and for the budget to price. */
+    entries() { return [...live.values()]; },
+
+    /**
+     * Dials every emissive bucket in every baked chunk (spec §7.3, E6).
+     *
+     * The baker put the lit windows and shopfronts in their own bucket with
+     * their own material precisely so this is one number rather than a shader
+     * patch — `intensity` 0 is noon and 1 is midnight.
+     */
+    setNight(intensity) {
+      for (const entry of live.values()) {
+        for (const mesh of entry.group.children) {
+          const material = mesh.material;
+          if (material?.emissive === undefined || !material.userData?.emissive) continue;
+          material.emissiveIntensity = intensity;
+        }
+      }
+    },
 
     /** Which chunks are actually baked right now. The instanced pass draws the
      * L2 street furniture everywhere EXCEPT here, so the two never double up —

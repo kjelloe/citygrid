@@ -81,6 +81,7 @@ async function boot() {
         // do nothing, which is the failure ruling 026 is about.
         session?.setQuality(next.quality);
         session?.setProjection(next.camera);
+        session?.setTime(next.time);
       },
       onLocaleChange() {
         // Re-render whatever is on screen. The panel knows the language
@@ -103,6 +104,7 @@ async function boot() {
       audioSettings: mixerSettings(preferences),
       tier: preferences.quality,
       mode: preferences.camera,
+      time: preferences.time,
       life: config.life,
     });
     if (config.debug) {

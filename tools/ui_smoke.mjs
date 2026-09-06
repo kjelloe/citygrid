@@ -422,6 +422,31 @@ try {
   // it replaces sat in the catalogue for four slices doing precisely that.
   await page.click("#settings");
   await page.waitForSelector("dialog.settings[open]");
+  // The hour (slice E6). A setting that stores a value and never reaches the
+  // renderer is the failure ruling 026 is about, and this one is three clicks
+  // from a picture that looks broken if it half-arrives.
+  const timeRow = await page.locator('.settings-choice[data-field="time"]').count();
+  check("the settings panel offers a time of day", timeRow === 4, `${timeRow} choices`);
+  for (const hour of ["night", "sunset", "auto", "day"]) {
+    await page.click(`.settings-choice[data-field="time"][data-value="${hour}"]`);
+    const applied = await page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return {
+        time: globalThis.CITY.time,
+        night: globalThis.CITY.renderer.night,
+        stored: JSON.parse(globalThis.localStorage.getItem("citygrid.settings") ?? "{}").time,
+      };
+    });
+    check(`choosing ${hour} reaches the renderer`, applied.time === hour && applied.stored === hour,
+      JSON.stringify(applied));
+    if (hour === "night") {
+      // And it is a fade, not a cut: two frames in, the sun is on its way down
+      // rather than already off.
+      check("the hour changes over a second, not in a frame",
+        applied.night > 0 && applied.night < 1, `night is ${applied.night}`);
+    }
+  }
+
   const qualityRow = await page.locator('.settings-choice[data-field="quality"]').count();
   check("the settings panel offers a quality tier", qualityRow === 3, `${qualityRow} choices`);
   // From the DATA, not from a copy of it. Three tier budgets written into this

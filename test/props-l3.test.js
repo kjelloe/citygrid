@@ -48,7 +48,7 @@ test("a street with no length gets no lamps and does not throw", () => {
 
 test("the pass builds something, and its pieces are never empty", () => {
   const lot = { x0: 20, z0: 12, x1: 34, z1: 12 };
-  const pieces = buildProps({
+  const { pieces } = buildProps({
     corridors: [STREET],
     lots: [{ lot, out: { x: 0, z: -1 }, kind: "residential" }],
     cfg: DEFAULTS,
@@ -61,7 +61,7 @@ test("the pass builds something, and its pieces are never empty", () => {
 
 test("the hedge leaves a gap for the path, and the path crosses it", () => {
   const lot = { x0: 20, z0: 12, x1: 34, z1: 12 };
-  const pieces = buildProps({
+  const { pieces } = buildProps({
     corridors: [],
     lots: [{ lot, out: { x: 0, z: -1 }, kind: "residential" }],
     cfg: DEFAULTS,
@@ -78,4 +78,22 @@ test("the hedge leaves a gap for the path, and the path crosses it", () => {
   }
   const path = pieces.find((p) => p.colour === PALETTES.plain.civic).part;
   assert.ok(path.triangles > 0, "there is no path to the door");
+});
+
+test("a lamp reports where its light hangs, and every id is its own", () => {
+  const { lamps: placed } = buildProps({
+    corridors: [STREET],
+    lots: [],
+    cfg: DEFAULTS,
+    heightAt: flat,
+    palette: PALETTES.plain,
+    chunk: 3,
+  });
+  assert.ok(placed.length > 4);
+  assert.equal(new Set(placed.map((l) => l.id)).size, placed.length);
+  for (const lamp of placed) {
+    // The light is on the end of the bracket, over the road — not on the post.
+    assert.ok(Math.abs(lamp.z) < HALF + DEFAULTS.road.sidewalk, `a light at z ${lamp.z}`);
+    assert.ok(lamp.y > DEFAULTS.props.lampH - 1, `a light ${lamp.y} m up a ${DEFAULTS.props.lampH} m lamp`);
+  }
 });

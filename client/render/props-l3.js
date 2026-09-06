@@ -108,18 +108,33 @@ export function bin(s, x, y, z) {
   s.box(x - 0.24, y, z - 0.24, x + 0.24, y + 0.9, z + 0.24);
 }
 
-/** Everything, as pieces. `lots` are the lots whose frontage is in this chunk. */
-export function buildProps({ corridors, lots, cfg, heightAt, palette }) {
+/**
+ * Everything, as `{ pieces, lamps }`.
+ *
+ * The lamp POSITIONS come back as well as their geometry: at night the nearest
+ * few of them become real point lights (spec §7.3) and the rest stay emissive,
+ * and the night rig needs to know where they are without re-deriving them from
+ * the geometry it was handed.
+ */
+export function buildProps({ corridors, lots, cfg, heightAt, palette, chunk = 0 }) {
   const metal = sink();
   const green = sink();
   const stone = sink();
   const all = [];
   const half = cfg.road.width / 2;
   const offset = half + cfg.road.sidewalk / 2;
+  const placed_ = [];
   let placed = 0;
   for (const points of corridors) {
     for (const lamp of lamps(points, offset, cfg.props.lampSpacing, cfg.props.lampH, heightAt)) {
       lampGeometry(metal, lamp);
+      // Where the light hangs: the head, on the end of the bracket.
+      placed_.push({
+        id: chunk * 4096 + placed_.length,
+        x: lamp.x - lamp.along.z * 0.9 * lamp.arm,
+        y: lamp.y + lamp.h - 0.2,
+        z: lamp.z + lamp.along.x * 0.9 * lamp.arm,
+      });
       placed += 1;
       if (placed % Math.max(1, Math.round(cfg.props.binEvery / cfg.props.lampSpacing)) === 0) {
         bin(metal, lamp.x + 1.2, lamp.y, lamp.z);
@@ -133,5 +148,5 @@ export function buildProps({ corridors, lots, cfg, heightAt, palette }) {
   all.push({ part: metal.done(), colour: palette.lamp });
   all.push({ part: green.done(), colour: palette.lawn });
   all.push({ part: stone.done(), colour: palette.civic });
-  return all.filter((p) => p.part.triangles > 0);
+  return { pieces: all.filter((p) => p.part.triangles > 0), lamps: placed_ };
 }
