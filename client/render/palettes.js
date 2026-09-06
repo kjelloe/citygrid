@@ -50,19 +50,29 @@ export const PALETTES = {
     roofFactor: 0.72,
     bandFactor: 0.85,
   },
-  // Warm and contrasty, with roofs and window bands doing the work that
-  // texture would do in a drawn atlas.
+  // Illustrated: a toon ramp, a warm key and a cool fill (slice P1).
+  //
+  // The ground is DESATURATED and the built things are warm, which is the
+  // opposite arrangement from `plain` and the reason the two do not look like
+  // the same city with a filter on it (ruling 017). A quantising ramp makes
+  // saturation read harder than it does under Lambert, so a vivid ground under
+  // it becomes a poster; dropping it back lets the roofs and the walls carry
+  // the colour, which is what the reference does.
+  //
+  // The old palette had grass and dirt collapsing for a deuteranope at 0.042 —
+  // nothing tested a style palette until P1, and that is the first thing the
+  // test found. They are separated here by luminance as well as by hue.
   painted: {
-    sky: 0xdcd8c0,
-    terrain: [0x6aba48, 0xc09a60, 0x3f8f34, 0x2f96c8, 0x86d4ec, 0xa09890, 0xf0d69a, 0x789460],
-    tree: 0x2a7f38,
-    zone: [0x000000, 0xf0c8a0, 0x9fc8e8, 0xd8a860],
-    road: 0x6b6672,
-    roadMark: 0xc8b060,
-    wire: 0x847d70,
-    lamp: 0xb0b4b8,
-    lawn: 0x74c250,
-    civic: 0xbfb6a6,
+    sky: 0xd8e2ea,
+    terrain: [0x86ad72, 0xcfae86, 0x4f7f52, 0x4f9ec4, 0xa9d6e4, 0x9d9aa4, 0xe8d8b0, 0x7c8f6a],
+    tree: 0x477a48,
+    zone: [0x000000, 0xe8c4a2, 0xa6c4dc, 0xd2ab72],
+    road: 0x76727e,
+    roadMark: 0xe6dcc4,
+    wire: 0x8b8378,
+    lamp: 0xbcbcc4,
+    lawn: 0x93bd78,
+    civic: 0xe0cdb2,
     roof: {
       house: [0xc85a38, 0xd87244, 0xa63e30, 0x8a2c26, 0x586680, 0x3c4757, 0x2f3b4a, 0x376c54],
       flat: [0x484d55, 0x3d424a, 0x565b63, 0x655f55],

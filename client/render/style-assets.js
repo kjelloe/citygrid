@@ -13,6 +13,8 @@
 import * as THREE from "three";
 import { PALETTES } from "./palettes.js";
 import { faceContrastFor, lightingFor } from "./style-light.js";
+import { STYLES } from "./styles.js";
+import { rampBytes } from "./ramps.js";
 
 export { PALETTES, faceContrastFor, lightingFor };
 
@@ -84,12 +86,95 @@ export function slabGeometry(styleName, w, h, d) {
 
 // --- materials --------------------------------------------------------------
 
-/** The pixel style is UNLIT. Lighting produces smooth gradients across a face,
- * and smooth gradients are the one thing pixel art does not have — the shading
- * is baked into the vertices instead. */
+/** Gradient maps, one per ramp name, built once and shared.
+ *
+ * NEAREST at both ends, and that is the whole point: a linearly filtered
+ * gradient map interpolates between the bands and the quantisation is gone —
+ * it reads as slightly banded Lambert rather than as a drawing. */
+const gradientMaps = new Map();
+function gradientMap(kind) {
+  let map = gradientMaps.get(kind);
+  if (map) return map;
+  const bytes = rampBytes(kind);
+  map = new THREE.DataTexture(bytes, bytes.length, 1, THREE.RedFormat);
+  map.magFilter = THREE.NearestFilter;
+  map.minFilter = THREE.NearestFilter;
+  map.generateMipmaps = false;
+  map.needsUpdate = true;
+  gradientMaps.set(kind, map);
+  return map;
+}
+
+/** Tints the unlit side rather than merely darkening it.
+ *
+ * A toon material's shadow side is the ramp's dark end times the light's own
+ * colour, which makes it a darker version of the lit side. An illustration does
+ * something else: the shadow takes the colour of what is filling it — cool
+ * against a warm key — and that temperature split is most of what separates a
+ * drawing from a render (spec §7.2).
+ *
+ * This is string surgery on three's own shader and therefore the most brittle
+ * thing in the renderer: a version bump changes a chunk and the patch either
+ * does nothing or produces a shader that will not compile. So it looks before
+ * it leaps and says so when the shape is not what it expected.
+ */
+const TOON_ANCHOR = "vec3 irradiance = getGradientIrradiance( geometryNormal, directLight.direction );";
+let warnedAboutToon = false;
+
+function tintShadows(material, tint) {
+  material.userData.shadowTint = tint;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uShadowTint = { value: new THREE.Color(tint) };
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <lights_toon_pars_fragment>",
+      "uniform vec3 uShadowTint;\n#include <lights_toon_pars_fragment>",
+    );
+    if (!shader.fragmentShader.includes(TOON_ANCHOR)) {
+      if (!warnedAboutToon) {
+        warnedAboutToon = true;
+        // Not an exception: a style that loses its shadow tint is a style that
+        // looks slightly wrong, and a renderer that will not start is a game
+        // nobody can play.
+        console.warn("toon shadow tint: three's lights_toon_pars_fragment has changed shape; "
+          + "shadows will darken rather than take a colour");
+      }
+      return;
+    }
+    shader.fragmentShader = shader.fragmentShader.replace(
+      TOON_ANCHOR,
+      `${TOON_ANCHOR}
+      irradiance = mix( uShadowTint * ( 1.0 - irradiance.r ), irradiance, irradiance.r );`,
+    );
+  };
+  // Two materials that differ only in a uniform still share a program; one that
+  // differs in its SOURCE must not.
+  material.customProgramCacheKey = () => `toon-tint-${tint}`;
+  return material;
+}
+
+/** The material a style's surfaces are made of, chosen by its `shading` field
+ * and never by its name (spec §7.1).
+ *
+ * - `unlit`: lighting produces smooth gradients across a face, and smooth
+ *   gradients are the one thing pixel art does not have — the shading is baked
+ *   into the vertices instead.
+ * - `toon`: the shade comes from a ramp texture, so a wall is two or three
+ *   flat values rather than a continuum.
+ * - `lambert`: the default.
+ */
 export function makeMaterial(styleName, colour) {
-  if (styleName === "pixel") {
+  const style = STYLES[styleName] ?? STYLES.plain;
+  const shading = style.shading ?? "lambert";
+  if (shading === "unlit") {
     return new THREE.MeshBasicMaterial({ color: colour, vertexColors: true });
+  }
+  if (shading === "toon") {
+    const material = new THREE.MeshToonMaterial({
+      color: colour,
+      vertexColors: true,
+      gradientMap: gradientMap(style.ramp ?? "3"),
+    });
+    return tintShadows(material, lightingFor(styleName).shadowTint ?? 0x6a6ea8);
   }
   return new THREE.MeshLambertMaterial({ color: colour, vertexColors: true });
 }

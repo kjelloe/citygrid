@@ -363,7 +363,7 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | **E5** | **Street-level facades** — the generated spec, four category grammars, roofs with eaves, openings built outward, signage canvases, emissive buckets | L | E2, P1, 036 |
 | **E6** | **Time of day** — presets per rig, clock-driven with an off switch, lit windows, lamp pools, a following snapped shadow frustum | M | E5 |
 | **E7** | **Pedestrians** — nav graph, commuters and shoppers, signal waiting, a simplified rig | M | E4, E6 |
-| **P1** | **Toon shading and the anime rig** — `shading: 'toon'`, ramps, the shadow-tint patch, a painted palette | M | V2, 033 |
+| **P1** | **Toon shading and the anime rig** — `shading: 'toon'`, ramps, the shadow-tint patch, a painted palette | M | **Done (slice P1).** `painted` is a real style rather than a lighting treatment: toon materials through a ramp, a shadow tint that patches three's own shader and warns if the chunk has changed shape, an anime rig whose cool fill carries the unlit side, and a palette of desaturated ground and warm walls. Two findings on the way — the painted palette collapsed for a deuteranope, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **P2** | **Ink and grade** — depth-texture target, second-difference ink, split-tone grade, FXAA; desktop tier, governor-gated | M | P1, V2 |
 
 **Sequencing note.** N1 and N2 are both small and both unblock everything

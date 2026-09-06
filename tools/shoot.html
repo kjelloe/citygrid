@@ -105,6 +105,8 @@ const reduced = params.get("reduced") === "1";
 const budgetParam = Number(params.get("budget") ?? 0);
 const stats = view.draw({
   props: !reduced, trees: !reduced,
+  // `shadows=0` to tell a toon ramp's banding apart from a cast shadow.
+  shadows: params.get("shadows") !== "0",
   budget: budgetParam > 0 ? budgetParam : undefined,
   overlay: overlay || undefined,
 });

@@ -16,11 +16,19 @@ export const STYLES = {
     label: "Clean low-poly diorama",
     freeRotation: true,
     continuousZoom: true,
+    // Three fields per style (spec §7.1): which lights it asks for, what
+    // material its surfaces are made of, and what finish sits on top. Nothing
+    // else in the renderer knows which style it got — that is the seam, and it
+    // is what lets a fourth style exist without touching `instances.js`.
+    rig: "soft",
+    shading: "lambert",
     post: false,
   },
   pixel: {
     name: "pixel",
     label: "Pixel-art post-process",
+    rig: "none",
+    shading: "unlit",
     freeRotation: true,
     continuousZoom: false, // integer zoom steps keep the pixel grid stable
     post: true,
@@ -42,6 +50,8 @@ export const STYLES = {
   passthrough: {
     name: "passthrough",
     label: "Post-process with no effect — a colour-space control",
+    rig: "soft",
+    shading: "lambert",
     freeRotation: true,
     continuousZoom: true,
     post: true,
@@ -53,9 +63,15 @@ export const STYLES = {
   },
   painted: {
     name: "painted",
-    label: "Illustrated — warm light, deep shadow",
+    label: "Illustrated — toon ramp, warm key, cool fill",
     freeRotation: true,
     continuousZoom: true,
+    // A REAL style since P1, not a lighting treatment on the same material:
+    // the surfaces are toon-shaded through a ramp and the rig is a temperature
+    // split rather than a dimmer (ruling 033, ruling 017's standard).
+    rig: "anime",
+    shading: "toon",
+    ramp: "soft3",
     // No post-process at all. A screen-space outline fights detailed geometry:
     // with windows, sills and roof clutter, EVERY edge fires the edge test and
     // the image turns to mud — it read as dusk rather than as illustration.

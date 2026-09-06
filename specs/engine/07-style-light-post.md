@@ -31,6 +31,45 @@ Grid's shadow camera is fixed over the whole map today, which is fine for a 64×
 zoom and becomes 2048 px over 2.6 km - 1.3 m a texel - at street level. A following, snapped
 frustum is the fix and it is a dozen lines.
 
+## 7.1a As built (P1, 2026-09-06)
+
+`STYLES` declares `rig`, `shading` and `post` per style, and `makeMaterial` branches on
+`shading` — never on the style's name, which is what lets a fourth style exist without touching
+`instances.js`.
+
+**The ramps are a pure module** (`client/render/ramps.js`), because three cannot be resolved in
+node and a ramp that goes backwards or never reaches full light is the failure worth testing.
+`2 3 4 soft soft3`, and the gradient map is `NearestFilter` at both ends: a linearly filtered
+gradient interpolates between the bands and the quantisation is gone.
+
+**The shadow tint** patches `lights_toon_pars_fragment` through `onBeforeCompile`, mixing the
+unlit side toward a violet rather than merely darkening it. It checks for its anchor first and
+**warns rather than throwing** when three's chunk changes shape — a style that loses its shadow
+tint looks slightly wrong, and a renderer that will not start is a game nobody can play.
+
+**The anime rig is a temperature split, not a dimmer.** The interesting light is the cool fill:
+it carries the whole unlit side, and without it a toon ramp's shadow is just the dark end of the
+ramp. Total exposure matters more than any one number — four lights at the intensities a
+physically-lit reference uses sum past the top of the ramp and every surface lands on its
+brightest band. Plain totals about 2.4; the anime rig totals about 3.0.
+
+`faceContrastFor('painted')` drops from 1.0 to **0.3**: a ramp already quantises, and baked
+contrast on top of it multiplies until a wall reads as two flat sheets.
+
+**The painted palette** is desaturated ground and warm walls — the opposite arrangement from
+`plain`, which is why the two do not read as one city with a filter on it (ruling 017). The old
+one had grass and dirt collapsing for a deuteranope at 0.042; nothing tested a style palette
+until P1 and that is the first thing the test found.
+
+**The shadow frustum follows the orbit target, snapped to a texel**, and its extent came down
+from 0.75 of the map to 0.28 — four times the texel density at the same map size. Snapping is
+what stops every cast edge crawling as the view pans.
+
+`shadowRadius` and `shadowIntensity` had been in the rig table since it was written and
+**nothing read them** (the same shape as P35's stale cost table). Both are wired now, and
+painted's shadow intensity is 0.72 rather than 1: a low sun casts long shadows, and at full
+strength they swallow the cool fill that is supposed to colour them.
+
 ## 7.3 Time of day
 
 Both worlds ship presets, not a slider, and say why: each preset is a composition. City Grid's

@@ -20,6 +20,7 @@ import { pseudo, setFaceContrast, shade } from "../client/render/detail-kit.js";
 import { faceContrastFor, lightingFor } from "../client/render/style-light.js";
 import { zoneTint } from "../client/world/params.js";
 import { NET_PRESENT } from "../engine/network.js";
+import { simulate, distance } from "./helpers/colour-vision.js";
 
 test("the renderer's constants mirror matches the engine exactly", () => {
   // The renderer may not import engine/ — it reads state, it does not
@@ -54,34 +55,6 @@ test("there is a zone colour for every zone", () => {
 });
 
 // --- colour vision ----------------------------------------------------------
-
-/** Brettel-style simulation, simplified: project the colour onto the plane a
- * given dichromat can see. Good enough to catch a pair that collapses. */
-function simulate(hex, kind) {
-  const r = ((hex >> 16) & 0xff) / 255;
-  const g = ((hex >> 8) & 0xff) / 255;
-  const b = (hex & 0xff) / 255;
-  // Linearise, convert to LMS, flatten the missing channel, come back.
-  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const R = lin(r); const G = lin(g); const B = lin(b);
-  const L = 0.31399 * R + 0.63951 * G + 0.04649 * B;
-  const M = 0.15537 * R + 0.75789 * G + 0.08670 * B;
-  const S = 0.01775 * R + 0.10944 * G + 0.87262 * B;
-  let l = L; let m = M; let s = S;
-  if (kind === "protan") l = 1.05118294 * M - 0.05116099 * S;
-  if (kind === "deutan") m = 0.9513092 * L + 0.04866992 * S;
-  if (kind === "tritan") s = -0.86744736 * L + 1.86727089 * M;
-  const R2 = 5.47221206 * l - 4.6419601 * m + 0.16963708 * s;
-  const G2 = -1.1252419 * l + 2.29317094 * m - 0.1678952 * s;
-  const B2 = 0.02980165 * l - 0.19318073 * m + 1.16364789 * s;
-  return [R2, G2, B2];
-}
-
-/** Perceptual-ish distance. Crude, but the question is only "could these two
- * be confused", and for that a Euclidean distance in linear light is enough. */
-function distance(a, b) {
-  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-}
 
 test("player colours stay distinguishable under colour-vision deficiency", () => {
   // gamedesign.md §30: the palette is checked by simulation, not by eye.
@@ -199,7 +172,11 @@ test("each style bakes a different face contrast", () => {
   const contrasts = ["plain", "pixel", "painted"].map(faceContrastFor);
   assert.equal(new Set(contrasts).size, 3, `two styles bake the same contrast: ${contrasts}`);
   // Plain is the soft one and pixel is unlit, so the bake IS its light.
-  assert.ok(faceContrastFor("plain") < faceContrastFor("painted"), "plain should bake softer than painted");
+  // Painted bakes LEAST since P1, and that is the point: its toon ramp does the
+  // quantising, so baked contrast on top of it multiplies and a wall reads as
+  // two flat sheets. Plain has no ramp and has to bake its own form.
+  assert.ok(faceContrastFor("painted") < faceContrastFor("plain"),
+    "painted bakes as hard as plain, on top of a ramp that already quantises");
   assert.ok(faceContrastFor("pixel") > faceContrastFor("painted"), "pixel is unlit and needs the hardest bake");
 });
 

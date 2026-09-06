@@ -3116,3 +3116,73 @@ the cause.
   their budgets (`plan.md` §6 allows 150).
 - `reports/smoke-V5-{ortho,city}.png`, `smoke-V5-city-span14-p20.png` at a 20°
   pitch showing convergence, and `style-sheet-city.png`.
+
+---
+
+## P1 — Toon shading and the anime rig
+
+`painted` has been a lighting-and-palette treatment on Lambert materials since
+ruling 022 chose it: a style that differed from `plain` in tint and contrast and
+in nothing else. Ruling 017 is the standard — a style is geometry, shading and
+palette, and a finish is the least of the four. This is the shading.
+
+`makeMaterial` branches on the style's `shading` field and never on its name,
+which is the seam that lets a fourth style exist without touching
+`instances.js`. The ramps are a **pure module**, because three cannot be
+resolved in node and a ramp that goes backwards or never reaches full light is
+the failure worth testing. `NearestFilter` at both ends: a linearly filtered
+gradient map interpolates between the bands and the quantisation is gone.
+
+The shadow tint patches `lights_toon_pars_fragment` through `onBeforeCompile` so
+the unlit side takes a violet rather than merely darkening. It is the most
+brittle thing in the renderer — string surgery on three's own shader — so it
+looks for its anchor first and **warns rather than throwing**: a style that
+loses its shadow tint looks slightly wrong, and a renderer that will not start
+is a game nobody can play.
+
+### Two things found by writing the tests
+
+**The painted palette collapsed for a deuteranope.** Grass and dirt at 0.042
+against a 0.045 threshold. Nothing had ever tested a *style* palette — the
+colour-vision test covered the sixteen player colours and stopped there. The new
+palette separates them by luminance as well as by hue, and the colour model is
+now a shared helper rather than two copies of the same arithmetic.
+
+**`shadowRadius` and `shadowIntensity` had been in the rig table since the day
+it was written and nothing read them.** The same shape as P35's stale cost
+table: a number in a table that nothing consults is a decision nobody took. Both
+are wired now, and painted's shadow intensity is 0.72 rather than 1 — a low sun
+casts long shadows and at full strength they swallow the cool fill that is
+supposed to colour them.
+
+### What the pictures corrected
+
+**Total exposure, not any one light.** The reference rig's intensities are for a
+physically-lit renderer; under a ramp they sum past the top of it and every
+surface lands on its brightest band. The first shot was a washed-out city with
+the form gone. Plain totals about 2.4; the anime rig is tuned to about 3.0, and
+the extra is what the cool fill costs.
+
+**And one non-bug chased for too long.** A dark diagonal region across open
+ground looked like a shadow-map edge. It was not a shadow: shooting with the
+distance-to-street tone at zero changed nothing, and shooting with shadows off
+changed nothing — because the `shadows` draw option had never been wired and was
+silently ignored. It was **forest terrain**, correctly darker than grass, with
+trees standing on it. The draw option is wired now, since a control that does
+nothing is the failure ruling 026 is about.
+
+### Measured
+
+- `./test.sh` **683 tests, green twice**; 17 new in `test/toon.test.js`.
+- **Twelve gates green.**
+- `style-sheet` in both projections: three styles from one city that differ in
+  **shading**, not just tint — 55 draws / 83,930 triangles for plain and painted
+  in orthographic, 91 / 81,675 in perspective, 1 / 2 for pixel (its post pass
+  renders the scene to a target).
+- Toon costs **no triangles and no draw calls**: painted and plain report
+  identical counts in every frame measured, which is the check the item asked
+  for.
+- `faceContrastFor('painted')` 1.0 → 0.3; the shadow frustum's extent 0.75 → 0.28
+  of the map, four times the texel density at the same size.
+- `reports/smoke-P1-painted.png` and `smoke-P1-{plain,painted}-city.png` at a 20°
+  pitch.

@@ -75,6 +75,31 @@ export function createRenderer(canvas, state, options = {}) {
 
   /** Shadow map size and whether the pass runs at all. Re-applied when the
    * tier changes; the per-frame `castShadow` is decided in `draw`. */
+  /** Keeps the shadow frustum over what the camera is looking at, snapped to a
+   * shadow texel.
+   *
+   * It was fixed over the whole map, which is fine for a 64×64 at city zoom and
+   * becomes 2048 px over 2.6 km — 1.3 m a texel — at street level. Following it
+   * costs nothing and buys back the resolution; SNAPPING it is what stops every
+   * cast edge crawling as the view pans, which on a row of fences reads as
+   * shimmer (spec §7.2).
+   */
+  function followShadow() {
+    if (!shadowLight || !renderer.shadowMap.enabled) return;
+    const cam = shadowLight.shadow.camera;
+    const extent = cam.right - cam.left;
+    if (!(extent > 0)) return;
+    const texel = extent / (shadowLight.shadow.mapSize.x || 1);
+    const tx = Math.round(view.targetX / texel) * texel;
+    const tz = Math.round(view.targetZ / texel) * texel;
+    const dx = shadowLight.position.x - shadowLight.target.position.x;
+    const dz = shadowLight.position.z - shadowLight.target.position.z;
+    shadowLight.target.position.set(tx, 0, tz);
+    shadowLight.position.set(tx + dx, shadowLight.position.y, tz + dz);
+    shadowLight.target.updateMatrixWorld();
+    cam.updateProjectionMatrix();
+  }
+
   function applyShadowMap() {
     const on = (options.shadows ?? tier.shadows) !== false;
     renderer.shadowMap.enabled = on;
@@ -110,7 +135,9 @@ export function createRenderer(canvas, state, options = {}) {
     // sized (ruling 040 — a tier changes at runtime).
     shadowLight = key;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    const reach = Math.max(state.width, state.height) * 0.75;
+    // Tight enough to be worth following: a quarter of the map rather than
+    // three quarters, which quadruples the texel density at the same map size.
+    const reach = Math.max(state.width, state.height) * 0.28;
     key.shadow.camera.left = -reach;
     key.shadow.camera.right = reach;
     key.shadow.camera.top = reach;
@@ -118,8 +145,39 @@ export function createRenderer(canvas, state, options = {}) {
     key.shadow.camera.near = 1;
     key.shadow.camera.far = 400;
     key.shadow.bias = -0.0012;
+    // Both of these have been in the rig table since it was written and NOTHING
+    // READ THEM (found in P1) — the same shape as P35's stale cost table. A
+    // number in a table that nothing consults is a decision nobody took.
+    //
+    // `radius` is the softness of the edge; `intensity` is how dark the shadow
+    // goes, and for the anime rig it must be less than 1 or the long shadows a
+    // low sun casts swallow the cool fill that is supposed to colour them.
+    key.shadow.radius = lights.shadowRadius ?? 4;
+    key.shadow.intensity = lights.shadowIntensity ?? 1;
     applyShadowMap();
     scene.add(key);
+  }
+
+  // The rest of the rig, built only when the style asks for it (spec §7.2).
+  //
+  // The anime rig's fill is the interesting light: strong, cool, from the
+  // opposite quarter, and it is what carries the unlit side. Without it a toon
+  // ramp's shadow is simply the dark end of the ramp and the picture reads as a
+  // render with fewer values rather than as a drawing. The up-light is the
+  // bounce off the ground that keeps the underside of an eave off black.
+  if (lights.fill > 0) {
+    const fill = new THREE.DirectionalLight(lights.fillColour ?? 0xffffff, lights.fill);
+    fill.position.set(state.width * 0.4, (lights.sunHeight ?? 120) * 0.55, state.height * 0.75);
+    fill.target.position.set(state.width / 2, 0, state.height / 2);
+    scene.add(fill.target);
+    scene.add(fill);
+  }
+  if (lights.up > 0) {
+    const up = new THREE.DirectionalLight(lights.upColour ?? 0xffffff, lights.up);
+    up.position.set(state.width / 2, -40, state.height / 2);
+    up.target.position.set(state.width / 2, 0, state.height / 2);
+    scene.add(up.target);
+    scene.add(up);
   }
   scene.add(new THREE.HemisphereLight(lights.hemiSky, lights.hemiGround, lights.hemi));
 
@@ -266,6 +324,7 @@ export function createRenderer(canvas, state, options = {}) {
       governor.sample(drawOptions.frameMs);
       if (governor.disabled().length !== before) applyGovernor();
     }
+    followShadow();
     stats.chunksRebuilt = updateTerrain(state, terrain, model);
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
@@ -302,7 +361,7 @@ export function createRenderer(canvas, state, options = {}) {
       }
       if (shadowLight) {
         shadowLight.castShadow = plan.shadows
-          && (options.shadows ?? tier.shadows) !== false
+          && (drawOptions.shadows ?? options.shadows ?? tier.shadows) !== false
           && governor.allows("shadows");
       }
       if (post) post.render(scene, view.camera);

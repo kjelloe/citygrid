@@ -18,7 +18,7 @@ const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const STYLES = [
   { name: "plain", label: "PLAIN — soft cool light, bright cosy palette" },
   { name: "pixel", label: "PIXEL — unlit, baked face shading, limited palette, dither" },
-  { name: "painted", label: "PAINTED — low warm sun, deep cool shadow, no post-process" },
+  { name: "painted", label: "PAINTED — toon ramp, warm key, cool fill, tinted shadows" },
 ];
 
 export async function sheet({
