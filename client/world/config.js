@@ -28,6 +28,9 @@ export const DEFAULTS = Object.freeze({
   },
   // Poles and their sagging spans at L3 (E3, spec §5.4).
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },
+  // The L3 prop pass (E5, spec §6.6). A lamp every 24 m alternating sides is
+  // about what a residential street has; every 12 m is a runway.
+  props: { lampSpacing: 24, lampH: 4.5, hedgeH: 0.9, pathW: 1.2, binEvery: 60 },
   // The ground's own colour (V3). `blend` at 0 reproduces the flat per-tile
   // picture exactly; `mottle` is the per-tile lightness scatter; `urbanReach`
   // is how far from a street the tended ground extends, and `farTone` how much
@@ -53,12 +56,12 @@ export const DEFAULTS = Object.freeze({
       post: [], frameMs: 33,
     },
     medium: {
-      budget: 80000, pixelRatio: 1.5, antialias: true, shadowMap: 2048,
+      budget: 140000, pixelRatio: 1.5, antialias: true, shadowMap: 2048,
       shadows: true, streetChunks: 4, carCap: 200, pedCap: 40,
       post: ["pixel"], frameMs: 33,
     },
     high: {
-      budget: 200000, pixelRatio: 2, antialias: true, shadowMap: 4096,
+      budget: 320000, pixelRatio: 2, antialias: true, shadowMap: 4096,
       shadows: true, streetChunks: 9, carCap: 0, pedCap: 120,
       post: ["pixel", "ink"], frameMs: 16,
     },

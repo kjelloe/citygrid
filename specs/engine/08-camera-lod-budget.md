@@ -103,8 +103,14 @@ Tiers (V2), defaulted from `deviceClass()`:
 | Tier | Budget | L3 | Cars | Shadows | Post |
 |---|---|---|---|---|---|
 | Low (phone-weak) | 40k | none | capped 60 | off | none |
-| Medium (phone / weak desktop) | 80k | 4 chunks, day only | capped 200 | soft | pixel only |
-| High (desktop) | 200k | 9 chunks | uncapped | soft, following frustum | any |
+| Medium (phone / weak desktop) | 140k | 4 chunks, day only | capped 200 | soft | pixel only |
+| High (desktop) | 320k | 9 chunks | uncapped | soft, following frustum | any |
+
+The Medium and High numbers were 80k and 200k until E5. They were set in V2, before L3 existed,
+and a chunk of real facades is 25.7k triangles — nine of them is 200k on its own. Measured on a
+saturated city at street level: a High frame is ~316k, a Medium one ~130k. Low is unchanged
+because Low has no street chunks at all. The frame-time governor is still what protects a device;
+the triangle budget only decides what gets sacrificed first.
 
 The budget gate runs at all three and at both projections; a saturated fixture at street level
 is the case that has never been measured.

@@ -75,3 +75,17 @@ export function buildingColour(zone, valueTier, palette) {
   const b = Math.min(255, (base & 0xff) + (lift & 0xff));
   return (r << 16) | (g << 8) | b;
 }
+
+/**
+ * The colour family one building draws from, at EVERY level.
+ *
+ * Extracted so the instanced box (`instances.js`) and the baked facade
+ * (`streets-l3.js`) cannot disagree: ruling 032's promise is that an L3
+ * building is recognisably the L2 one, and two copies of this expression is
+ * exactly how that promise gets broken by an edit to one of them (slice E5).
+ */
+export function familyColour(building, palette, showOwner = false, zoneNone = 0) {
+  if (showOwner) return PLAYER_COLOURS[building.owner] ?? palette.civic;
+  if (building.zone === zoneNone) return palette.civic;
+  return buildingColour(building.zone, building.valueTier, palette);
+}

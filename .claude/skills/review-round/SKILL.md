@@ -166,6 +166,18 @@ fired, and refuse to report success when that count is zero; the same check turn
 passability sweep from "narrowest street 33 m" (the search ceiling wearing a number's clothes) into
 a real measurement.
 
+**A budget is a prediction until something measures it.** City Grid's tier budgets were written in
+V2 and not revisited until E5 put real facades in a chunk — at which point nine chunks of L3 cost
+more than the whole High-tier budget, and the ladder was quietly selling the cars and the props to
+pay for the buildings behind them. The frame was never over budget and no gate went red; what went
+wrong was that the number the budget was defending had stopped meaning anything. When a slice adds
+a new KIND of geometry, re-measure the budget it lands in, and put the measurement in the spec next
+to the prediction it replaces.
+
+**A gate with its own copy of a number will one day measure a different game.** `ui_smoke` carried
+all three tier budgets as literals and went red the moment the data changed; `budget_gate` and the
+LOD cost table have each done the same. A gate reads the data file.
+
 **A screenshot harness that draws one frame cannot photograph a cache.** The street cache bakes one
 chunk a frame on purpose; the shot tool drew once, so an L3 city photographed with one chunk of
 street in it and the gate believed it. If the thing under test converges over frames, the harness

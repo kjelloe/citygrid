@@ -62,7 +62,7 @@
       "frameMs": 33
     },
     "medium": {
-      "budget": 80000,
+      "budget": 140000,
       "pixelRatio": 1.5,
       "antialias": true,
       "shadowMap": 2048,
@@ -76,7 +76,7 @@
       "frameMs": 33
     },
     "high": {
-      "budget": 200000,
+      "budget": 320000,
       "pixelRatio": 2,
       "antialias": true,
       "shadowMap": 4096,
@@ -96,5 +96,12 @@
     "poleHeight": 7,
     "sag": 1.2,
     "armWidth": 1.4
+  },
+  "props": {
+    "lampSpacing": 24,
+    "lampH": 4.5,
+    "hedgeH": 0.9,
+    "pathW": 1.2,
+    "binEvery": 60
   }
 }

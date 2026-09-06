@@ -10,7 +10,7 @@ import { createTerrain, updateTerrain, markAllDirty } from "./terrain.js";
 import { createInstances, updateInstances, pushInstance, CAR_COLOURS } from "./instances.js";
 import { UI } from "./palette.js";
 import { STYLES, createPost } from "./styles.js";
-import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown } from "./lod.js";
+import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown, inFootprint, inBounds } from "./lod.js";
 import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
@@ -19,6 +19,7 @@ import { createGovernor } from "./governor.js";
 import { createSky } from "./sky.js";
 import { createStreetChunks } from "./street-chunks.js";
 import { createCollision } from "../world/collision.js";
+import { CHUNK } from "../world/chunks.js";
 import { getConfig } from "../world/config.js";
 import { createWalker } from "../life/walker.js";
 
@@ -425,8 +426,12 @@ export function createRenderer(canvas, state, options = {}) {
     // What a baked street chunk actually cost, last frame (slice E3).
     const held = stats.streets;
     counts.streetPerChunk = held?.live > 0 ? held.triangles / held.live : 0;
-    // How many chunks the instanced pass will skip, for the same reason.
-    counts.bakedChunks = held?.live ?? 0;
+    // How many baked chunks are ON SCREEN, not how many are held. A chunk is
+    // one mesh and three culls it whole, so charging the budget for the eight
+    // the cache is holding when two are in the frustum put the estimate 51%
+    // over at close zoom (slice E5) — the same failure as N30's "charged 49k
+    // for ground never drawn", one lane along.
+    counts.bakedChunks = countVisible(streets.keys, bounds);
     const plan = choosePlan(counts, view, canvas.height, {
       budget: drawOptions.budget,
       streetChunks: drawOptions.streetChunks ?? tier.streetChunks,
@@ -551,6 +556,26 @@ export function createRenderer(canvas, state, options = {}) {
     // Antialias is a constructor argument of the WebGL context and cannot be
     // changed on a live one, so the caller is told rather than lied to.
     return { rebuild: (options.antialias ?? tier.antialias) !== antialiasAtBuild };
+  }
+
+  /** How many of the cache's chunks the camera can actually see. The same
+   * "any corner or the centre" rule `countScene` uses for the terrain, because
+   * they are the same 16-tile chunks. */
+  function countVisible(keys, bounds) {
+    let n = 0;
+    for (const key of keys) {
+      const cx = key % 4096;
+      const cy = (key - cx) / 4096;
+      const x0 = cx * CHUNK;
+      const z0 = cy * CHUNK;
+      const inside = bounds.footprint
+        ? inFootprint(bounds, x0 + CHUNK / 2, z0 + CHUNK / 2)
+          || inFootprint(bounds, x0, z0) || inFootprint(bounds, x0 + CHUNK, z0)
+          || inFootprint(bounds, x0, z0 + CHUNK) || inFootprint(bounds, x0 + CHUNK, z0 + CHUNK)
+        : inBounds(bounds, x0 + CHUNK / 2, z0 + CHUNK / 2);
+      if (inside) n += 1;
+    }
+    return n;
   }
 
   /** The city camera's clamp and its ground orbit, which street mode has

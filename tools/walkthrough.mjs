@@ -18,7 +18,7 @@
 //     apart. Half a metre was the first threshold and it caught 47 places on
 //     the saturated 96×96; every one of them was a genuinely steep street —
 //     the corridor's own centreline reaches 0.74 m per 2 m on this terrain,
-//     because nothing grades a road ALONG its length (Q34). A hill is not a
+//     because nothing grades a road ALONG its length (Q41). A hill is not a
 //     hole, and a gate that cannot tell them apart measures neither.
 //
 //   node tools/walkthrough.mjs [size]

@@ -19,7 +19,10 @@ const BANS = [
   ["performance.now", /\bperformance\s*\.\s*now\b/],
   ["setTimeout/setInterval", /\bset(Timeout|Interval)\b/],
   ["fetch", /\bfetch\s*\(/],
-  ["DOM access", /\b(document|window|localStorage|indexedDB)\b/],
+  // `window` only where it is USED as the global — a facade has windows in
+  // it, and a purity check that cannot tell one from the other is a check
+  // nobody can keep green (slice E5).
+  ["DOM access", /\b(document|localStorage|indexedDB)\b|(?:^|[^.\w])window\s*[.[]|typeof window/],
 ];
 
 for (const [label, pattern] of BANS) {
@@ -106,16 +109,26 @@ test("the viewer never imports the engine", () => {
     `the viewer must read state, not the rules that produce it:\n  ${offenders.join("\n  ")}`);
 });
 
+/** Source with its comments removed.
+ *
+ * A purity check reads source text, and source text includes prose. "a window
+ * is a window." tripped the DOM rule on a facade module that has never touched
+ * a browser (slice E5) — and the answer to a false positive in a rule like this
+ * one is never to weaken the rule. */
+function code(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+}
+
 test("client/world stays pure: no three, no DOM, no clock", () => {
   // The model is derived and re-derivable (ruling 032). A model that reached
   // for `performance.now` or a canvas would be a model whose value depended on
   // when it was built, and every fixture assertion in test/world.test.js would
   // be measuring the machine.
-  const banned = [/from "three"/, /\bdocument\b/, /\bwindow\b/, /performance\.now/, /Date\.now/, /Math\.random/];
+  const banned = [/from "three"/, /\bdocument\b/, /(?:^|[^.\w])window\s*[.[]/, /typeof window/, /performance\.now/, /Date\.now/, /Math\.random/];
   const offenders = [];
   for (const name of readdirSync(join(repoRoot, "client", "world"))) {
     if (!name.endsWith(".js")) continue;
-    const source = readFileSync(join(repoRoot, "client", "world", name), "utf8");
+    const source = code(readFileSync(join(repoRoot, "client", "world", name), "utf8"));
     for (const pattern of banned) {
       if (pattern.test(source)) offenders.push(`client/world/${name}: ${pattern}`);
     }
@@ -193,6 +206,7 @@ test("the modules that node can load are the ones that carry decisions", async (
   const plumbing = new Set([
     "baker.js", "building-kit.js", "camera.js", "instances.js", "picking.js",
     "scene.js", "sky.js", "street-chunks.js", "streets-l3.js",
+  "signs.js",
     "style-assets.js", "styles.js", "terrain.js",
   ]);
   const unloadable = [];

@@ -18,15 +18,13 @@ import { signature } from "./streaming.js";
 export function createBaker(styleName = "plain") {
   /** signature → { options, parts: [] } */
   const buckets = new Map();
+  const extras = [];
   let triangles = 0;
 
-  /** Pulls the attribute arrays out of a three geometry. Non-indexed only: the
-   * merge concatenates, and an index buffer would have to be renumbered. */
-  function partOf(geometry, matrix, colour) {
-    const position = geometry.getAttribute("position");
-    const normal = geometry.getAttribute("normal");
-    const uv = geometry.getAttribute("uv");
-    const count = position.count;
+  const IDENTITY = new THREE.Matrix4();
+
+  /** Fills a vertex colour array. */
+  function colourFor(count, colour) {
     const rgb = new THREE.Color(colour);
     const color = new Float32Array(count * 3);
     for (let i = 0; i < count; i += 1) {
@@ -34,13 +32,29 @@ export function createBaker(styleName = "plain") {
       color[i * 3 + 1] = rgb.g;
       color[i * 3 + 2] = rgb.b;
     }
+    return color;
+  }
+
+  /** Pulls the attribute arrays out of a three geometry. Non-indexed only: the
+   * merge concatenates, and an index buffer would have to be renumbered. */
+  function partOf(geometry, matrix, colour) {
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const uv = geometry.getAttribute("uv");
     return {
       position: position.array,
       normal: normal ? normal.array : undefined,
-      color,
+      color: colourFor(position.count, colour),
       uv: uv ? uv.array : undefined,
       matrix: matrix.elements,
     };
+  }
+
+  function bucketFor(options) {
+    const key = signature(options);
+    let bucket = buckets.get(key);
+    if (!bucket) { bucket = { options, parts: [] }; buckets.set(key, bucket); }
+    return bucket;
   }
 
   return {
@@ -48,12 +62,37 @@ export function createBaker(styleName = "plain") {
      * `THREE.Matrix4`; `colour` is written into every vertex. */
     add(geometry, matrix, colour, options = {}) {
       const source = geometry.index ? geometry.toNonIndexed() : geometry;
-      const key = signature(options);
-      let bucket = buckets.get(key);
-      if (!bucket) { bucket = { options, parts: [] }; buckets.set(key, bucket); }
-      bucket.parts.push(partOf(source, matrix, colour));
+      bucketFor(options).parts.push(partOf(source, matrix, colour));
       triangles += source.getAttribute("position").count / 3;
       if (source !== geometry) source.dispose();
+    },
+
+    /** The same, from the raw buffers the hand-rolled kits produce.
+     *
+     * Wrapping every one of them in a `BufferGeometry` first was what the
+     * facades did at first, and a chunk of thirty buildings is two hundred
+     * geometries allocated and thrown away to hand over arrays the baker was
+     * about to read anyway — 18 ms a bake against an 8 ms budget (slice E5). */
+    addPart(part, colour, options = {}) {
+      if (!part || part.triangles === 0) return;
+      bucketFor(options).parts.push({
+        position: part.position,
+        normal: part.normal,
+        color: colourFor(part.position.length / 3, colour),
+        uv: part.uv,
+        matrix: IDENTITY.elements,
+      });
+      triangles += part.triangles;
+    },
+
+    /** Meshes that cannot be merged into a vertex-colour bucket — a fascia
+     * carries a texture, and a textured mesh has its own material. They ride in
+     * the same group so a chunk is still one cull unit. */
+    extra(meshes) {
+      for (const mesh of meshes) {
+        extras.push(mesh);
+        triangles += mesh.geometry.getAttribute("position").count / 3;
+      }
     },
 
     get triangles() { return triangles; },
@@ -85,6 +124,11 @@ export function createBaker(styleName = "plain") {
         }
         const mesh = new THREE.Mesh(geometry, material);
         mesh.name = key;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+      }
+      for (const mesh of extras) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         group.add(mesh);

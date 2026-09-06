@@ -14,7 +14,7 @@
 import { createBaker } from "./baker.js";
 import { chunkHash, chunksNear, CHUNK } from "../world/chunks.js";
 import { PALETTES } from "./palettes.js";
-import { bakeStreets } from "./streets-l3.js";
+import { bakeStreets, bakeLots } from "./streets-l3.js";
 import { getConfig } from "../world/config.js";
 import { nextBuild, expired } from "./streaming.js";
 
@@ -32,15 +32,20 @@ export function createStreetChunks(scene, options = {}) {
   let built = 0;
   let lastBuildMs = 0;
 
-  function bake(state, model, cx, cy) {
-    const baker = createBaker(styleName);
-    // E2 baked a placeholder slab per lot so the mechanism could be measured;
-    // E3 puts the street there instead — carriageway, kerbs, pavements,
-    // junction boxes and the wire runs above them, all draped on the height
-    // field (spec §5.2).
-    bakeStreets(baker, state, model, cx, cy, palette);
-    return baker;
-  }
+  /** A bake in progress. One PHASE a frame, not one chunk a frame.
+   *
+   * E2's placeholder took a millisecond and E3's streets seven; adding E5's
+   * facades took a chunk to 15 ms against an 8 ms budget, which on a 16 ms
+   * frame is a visible hitch every time the player walks into a new block.
+   * The work splits cleanly in two — the street is one pass over the corridors,
+   * the buildings another over the lots — and neither half is worth showing on
+   * its own, so the group is published only when both are done. */
+  let pending;
+
+  const PHASES = [
+    (baker, state, model, cx, cy) => bakeStreets(baker, state, model, cx, cy, palette),
+    (baker, state, model, cx, cy) => bakeLots(baker, state, model, cx, cy, palette),
+  ];
 
   return {
     /**
@@ -56,6 +61,7 @@ export function createStreetChunks(scene, options = {}) {
       if (budget <= 0) {
         // The tier does not allow street chunks at all (Low). Drop everything
         // immediately rather than holding geometry nothing will draw.
+        pending = undefined;
         for (const [key, entry] of live) {
           scene.remove(entry.group);
           createBaker(styleName).dispose(entry.group);
@@ -77,22 +83,30 @@ export function createStreetChunks(scene, options = {}) {
       // `streaming.js` — pure, and therefore tested, which nothing in this file
       // can be (it imports three).
       let didBuild = 0;
-      const next = nextBuild(wanted, live, (c) => chunkHash(state, c.cx, c.cy));
-      if (next) {
-        const { chunk, hash } = next;
+      if (!pending) {
+        const next = nextBuild(wanted, live, (c) => chunkHash(state, c.cx, c.cy));
+        if (next) pending = { ...next, baker: createBaker(styleName), phase: 0 };
+      }
+      if (pending) {
         const started = Date.now();
-        const baker = bake(state, model, chunk.cx, chunk.cy);
-        const group = baker.build();
+        if (pending.phase < PHASES.length) {
+          PHASES[pending.phase](pending.baker, state, model, pending.chunk.cx, pending.chunk.cy);
+          pending.phase += 1;
+        } else {
+          const { chunk, hash, baker } = pending;
+          const group = baker.build();
+          const old = live.get(chunk.key);
+          if (old) { scene.remove(old.group); baker.dispose(old.group); }
+          // Baked in METRES; the scene is in tile units until the camera moves
+          // (V5 left that boundary where it was).
+          group.scale.setScalar(1 / getConfig().tileM);
+          scene.add(group);
+          live.set(chunk.key, { hash, group, cx: chunk.cx, cy: chunk.cy, seen: now, triangles: baker.triangles });
+          built += 1;
+          didBuild = 1;
+          pending = undefined;
+        }
         lastBuildMs = Date.now() - started;
-        const old = live.get(chunk.key);
-        if (old) { scene.remove(old.group); baker.dispose(old.group); }
-        // Baked in METRES; the scene is in tile units until the camera moves
-        // (V5 left that boundary where it was).
-        group.scale.setScalar(1 / getConfig().tileM);
-        scene.add(group);
-        live.set(chunk.key, { hash, group, cx: chunk.cx, cy: chunk.cy, seen: now, triangles: baker.triangles });
-        built += 1;
-        didBuild = 1;
       }
 
       for (const key of expired(live, wantedKeys, now, GRACE_MS)) {
@@ -109,6 +123,7 @@ export function createStreetChunks(scene, options = {}) {
 
     /** Everything goes: a new world is a new set of chunks. */
     clear() {
+      pending = undefined;
       const baker = createBaker(styleName);
       for (const entry of live.values()) {
         scene.remove(entry.group);

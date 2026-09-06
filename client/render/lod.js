@@ -211,7 +211,12 @@ export function estimate(counts, plan, planFor) {
  * is what the render-and-measure loop is for.
  */
 function streetCost(counts, plan) {
-  const held = Math.min(plan.streetChunks ?? 0, counts.groundChunks ?? 0);
+  // What the cache is holding AND the camera can see, never more than the plan
+  // wants. `groundChunks` was the first cap and it is the wrong one: it counts
+  // terrain chunks in the footprint whether or not a street was ever baked
+  // there, which at close zoom charged for six blocks of facades that did not
+  // exist and put the estimate 51% over (slice E5).
+  const held = Math.min(plan.streetChunks ?? 0, counts.bakedChunks ?? 0);
   return held * (counts.streetPerChunk ?? 0);
 }
 

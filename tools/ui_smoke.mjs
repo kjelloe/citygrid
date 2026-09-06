@@ -424,7 +424,13 @@ try {
   await page.waitForSelector("dialog.settings[open]");
   const qualityRow = await page.locator('.settings-choice[data-field="quality"]').count();
   check("the settings panel offers a quality tier", qualityRow === 3, `${qualityRow} choices`);
-  for (const [tier, budget] of [["low", 40000], ["high", 200000], ["medium", 80000]]) {
+  // From the DATA, not from a copy of it. Three tier budgets written into this
+  // gate went stale the moment L3 facades made a street frame cost more than
+  // the old High tier allowed (slice E5) — a gate that carries its own copy of
+  // a number is a gate that eventually measures the wrong game.
+  const tiers = JSON.parse(await readFile(new URL("../data/cityviewer.json", import.meta.url), "utf8")).tiers;
+  for (const tier of ["low", "high", "medium"]) {
+    const budget = tiers[tier].budget;
     await page.click(`.settings-choice[data-field="quality"][data-value="${tier}"]`);
     const applied = await page.evaluate(async () => {
       globalThis.CITY.renderer.draw({});

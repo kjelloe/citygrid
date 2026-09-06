@@ -463,15 +463,18 @@ test("street chunks are a zoom, not a tier setting (slice E3)", () => {
   assert.equal(choosePlan(counts, near, 720, { budget: 200000, streetChunks: 9 }).streetChunks, 9);
 });
 
-test("a baked chunk is charged once a frame, not once a chunk (slice E3)", () => {
+test("a baked chunk is charged once a frame, and only when it is on screen", () => {
   const counts = {
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 9,
     markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0,
-    cars: 0, streetPerChunk: 1000, chunks: [],
+    cars: 0, streetPerChunk: 1000, bakedChunks: 9, chunks: [],
   };
   const plan = { buildings: 0, treeDetail: 0, trees: false, props: false, streetChunks: 4 };
-  // Four chunks held, at a thousand triangles each, plus the ground.
+  // Four wanted, nine baked and visible: four are charged, once, plus ground.
   assert.equal(estimate(counts, plan) - counts.groundChunks * 512, 4000);
-  // And never more of them than there is ground on screen to hold them.
-  assert.equal(estimate({ ...counts, groundChunks: 2 }, plan) - 2 * 512, 2000);
+  // Two baked chunks on screen: two are charged, whatever the plan wants.
+  assert.equal(estimate({ ...counts, bakedChunks: 2 }, plan) - 9 * 512, 2000);
+  // And a frame whose cache has not caught up yet charges nothing for it,
+  // which is what the render-and-measure loop is for.
+  assert.equal(estimate({ ...counts, bakedChunks: 0 }, plan) - 9 * 512, 0);
 });

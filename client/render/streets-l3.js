@@ -13,6 +13,13 @@
 import * as THREE from "three";
 import { ribbon, skirt, sagCurve, dashes, clip, trim } from "./ribbon.js";
 import { getConfig } from "../world/config.js";
+import { facadeSpec } from "../world/facade-spec.js";
+import { buildFacade } from "./facade.js";
+import { buildProps } from "./props-l3.js";
+import { buildSigns } from "./signs.js";
+import { buildingParams } from "../world/params.js";
+import { familyColour } from "./palette.js";
+import { ZONE_NONE } from "../constants-mirror.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 
 const IDENTITY = new THREE.Matrix4();
@@ -164,6 +171,52 @@ export function bakeStreets(baker, state, model, cx, cy, palette) {
   }
 
   bakeWires(baker, state, model, cx, cy, palette);
+}
+
+/**
+ * Every lot whose centre is in this chunk, built at its real size on its real
+ * lot from the generated facade spec (slice E5, spec §6.2).
+ *
+ * By CENTRE rather than by overlap, so a lot that straddles a chunk boundary is
+ * built once — a building drawn twice is a building with z-fighting on every
+ * face, which at street level is the most obvious artefact there is.
+ */
+export function bakeLots(baker, state, model, cx, cy, palette) {
+  const cfg = getConfig();
+  const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
+  const fronts = [];
+  const specs = [];
+  for (const lot of model.lots) {
+    if (lot.cx < box.x0 || lot.cx >= box.x1 || lot.cz < box.z0 || lot.cz >= box.z1) continue;
+    // The SAME family colour the instanced kit uses, from the same function, so
+    // the L2 box and the L3 facade are the same house (ruling 032, spec §6.1).
+    const params = buildingParams(lot.building, palette, familyColour(lot.building, palette, false, ZONE_NONE));
+    const spec = facadeSpec(lot, params);
+    specs.push(spec);
+    for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
+    fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind });
+  }
+  // The prop pass, which is the difference between a street and a diagram
+  // (spec §6.6). Lamps come from the corridors, hedges and paths from the lots.
+  for (const piece of buildProps({
+    corridors: corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM).flatMap((c) => c.kerbside),
+    lots: fronts, cfg, heightAt: model.heightAt, palette,
+  })) baker.addPart(piece.part, piece.colour, piece.options);
+  // The fascias, which cannot go through the vertex-colour baker because they
+  // carry a texture. One mesh per distinct NAME, added to the same group, so a
+  // high street of forty shops is eighteen draw calls at worst (spec §6.5).
+  baker.extra(buildSigns(specs));
+}
+
+/** The outward normal of each lot side, in the order `lots.js` numbers them. */
+const OUTWARD = [{ x: 0, z: -1 }, { x: 1, z: 0 }, { x: 0, z: 1 }, { x: -1, z: 0 }];
+
+/** A lot's street edge as two endpoints, running the way the facade does. */
+function frontEdgeOf(lot) {
+  if (lot.frontage === 0) return { x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z0 };
+  if (lot.frontage === 1) return { x0: lot.x1, z0: lot.z0, x1: lot.x1, z1: lot.z1 };
+  if (lot.frontage === 2) return { x0: lot.x1, z0: lot.z1, x1: lot.x0, z1: lot.z1 };
+  return { x0: lot.x0, z0: lot.z1, x1: lot.x0, z1: lot.z0 };
 }
 
 /** Poles with a cross-arm and a sagging span between them (spec §5.4). */

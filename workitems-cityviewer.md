@@ -404,10 +404,10 @@ wall; the spatial hash returns the same answer as brute force on 200 random poin
 leaves street mode by key and by zoom on both viewports.
 
 **Built, with four deviations.** (1) The walker is `client/life/walker.js`, not
-`client/render/walk.js` — it is pure, so node walks it into a wall (**Q35**). (2) Colliders are
+`client/render/walk.js` — it is pure, so node walks it into a wall (**Q42**). (2) Colliders are
 lot BOXES, not four wall segments each: a segment push-out does not know which side of itself it
 is on, and pushed a walker who was 0.2 m inside a building further inside it. (3) Drag-look only,
-no pointer lock (**Q36**). (4) `walkthrough` walks the pavements and then walks head-on into every
+no pointer lock (**Q43**). (4) `walkthrough` walks the pavements and then walks head-on into every
 lot, because the centre line alone covers 54 km without meeting a single building — ruling 035
 puts the nearest lot line seven metres beyond the kerb, so a gate that only walks the carriageway
 proves the walker can cross a field. It now fails if nothing was ever in the way.
@@ -450,6 +450,15 @@ draw calls per chunk); `walkthrough` still walks (facades must not collide beyon
 **Review will check:** every building at L3 matches its L2 box in variant, roof hue, wall
 colour and door side (write a page-level check in `tools/shoot.html` that compares
 `buildingParams` with what the facade used); nothing under `client/` is a binary asset.
+
+**Built, with five deviations.** (1) The L2/L3 agreement is not a page check — the two levels now
+take their colour from one exported `familyColour`, and a unit test asserts both call it. A check
+that two copies agree is weaker than not having two copies. (2) `facade.js`, `roof-kit.js`,
+`props-l3.js` and `solid.js` are all PURE and live in `client/render/` (**Q38**); only `signs.js`
+touches three. (3) The marking canvas §5.3 asks for is still dashed ribbons (**Q31**, from E3);
+the Canvas2D work here is the shop fascias. (4) A chunk bake is two phases on two frames, because
+streets plus facades is 15 ms against an 8 ms budget. (5) The tier budgets moved to 320k/140k/40k
+(**Q37**) — 200k at High was set before L3 existed and nine chunks of facade is 200k on its own.
 
 ---
 
@@ -536,7 +545,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **R1** — review fixes after E3 | not started | — | — | — |
 | **V7** — overlays as a texture on the ground (ruling 041) | not started | — | — | — |
 | **E4** — the street camera and collision | **done** 2026-09-06 | `slice-E4` | `walkthrough`: 8,907 legs, **161 km walked, 0 unfinished, 0 refusals, 0 cliffs**, 1,127 lots walked into head-on and **0 entered**, 395,230 blocked steps. `passability`: 32,659 samples, 8,461 enclosed, narrowest **26.00 m**. `play_smoke` enters and leaves by key and by zoom on both viewports × both projections. `reports/smoke-E4-{street,pavement}.png` | `test/collision.test.js` (10), `test/walker.test.js` (9); spec §8.1b |
-| **E5** — street-level facades | not started | — | — | — |
+| **E5** — street-level facades | **done** 2026-09-06 | `slice-E5` | `budget_gate` High on the saturated 96×96: **25.7k triangles a chunk**, 8 live holding 205,864, **2 meshes a group**, build p95 **6 ms**. A facade is 700–1,100 triangles. `walkthrough` and `passability` still clean. `reports/style-sheet-street.png` (all three styles from the pavement), `reports/smoke-E5-{street,shopfront}.png` | `test/facade-spec.test.js` (13), `test/facade.test.js` (8), `test/roof-kit.test.js` (9), `test/props-l3.test.js` (6); spec §6.2a, §6.5 |
 | **E6** — time of day | not started | — | — | — |
 | **P2** — ink and grade | not started | — | — | — |
 | **V6** — lots with something on them | not started | — | — | — |
@@ -674,7 +683,8 @@ reads a pixel.
   box picks the wrong face on the fixture; `floorAt` refuses a kerb) and `client/world/
   collision.js` is not in the precache. Finish or stash before touching anything else; a slice
   never leaves the tree red for the next one (CLAUDE.md, slice ritual step 3).
-- **Q34** answers the touch question: tap-to-walk along the corridors, no stick.
+- **Q34** (the planning question "how does a phone walk") is answered: tap-to-walk along the
+  corridors, no stick.
 
 ### Also noted, no action
 

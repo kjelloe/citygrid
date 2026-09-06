@@ -3384,7 +3384,75 @@ carriageway facing across it: `enterStreet` offsets away from the corridor, and 
 when the tile you picked *is* the road tile. It now steps to the kerbside on the camera's own side
 and faces along the street.
 
-Three deviations: the walker is in `client/life/` rather than `client/render/` (**Q35**), colliders
-are boxes rather than wall segments, and look is by drag rather than pointer lock (**Q36**). The
+Three deviations: the walker is in `client/life/` rather than `client/render/` (**Q42**), colliders
+are boxes rather than wall segments, and look is by drag rather than pointer lock (**Q43**). The
 walkthrough also turned up that nothing grades a road along its length — 37% streets on the gate's
-own city (**Q34**). `reports/smoke-E4-{street,pavement}.png`.
+own city (**Q41**). (These three were written down as Q34–Q36 and renumbered in E5, which is when
+the collision with three planning questions of the same numbers was noticed.) `reports/smoke-E4-{street,pavement}.png`.
+
+---
+
+## 2026-09-06 — Slice E5: facades, and a budget that was a prediction
+
+Every lot in a baked chunk is now built at its real size on its real lot from a generated spec:
+walls with real holes in them, reveals built outward so an opening has shadow in it, a ground band
+and a stringcourse, five roof forms with eaves, lamps and hedges and a path to the door, and a
+Canvas2D fascia over every shop. `facade-spec.js`, `facade.js`, `roof-kit.js`, `props-l3.js` and
+`solid.js` are all pure; `signs.js` is the only part that touches three or a canvas.
+
+**Measured** on the saturated 96×96 at High with 9 street chunks: **25.7k triangles a chunk**,
+8 live holding 205,864, **2 meshes a group**, build p95 **6 ms** against an 8 ms budget. A facade
+is 700–1,100 triangles — a five-storey shop 1,136, a house 862, a shed 712, a civic block 438. All
+32 budget rows green, `walkthrough` and `passability` still clean, suite green twice, every gate
+green. 36 new unit tests.
+
+**The budget was a prediction and this is the measurement that replaces it.** 200k at High was set
+in V2, before L3 existed. Nine chunks of real facade is 200k on its own, so the ladder was selling
+the props and the cars to pay for the buildings behind them — a street frame at High measured
+~316k with the whole ladder spent. The tiers are now **320k High, 140k Medium**, Low unchanged at
+40k because Low has no street chunks. Recorded as **Q37**. `ui_smoke` had its own copy of all three
+numbers written into it and went red; it reads `data/cityviewer.json` now, which is the third time
+this project has found a gate carrying a stale copy of a number.
+
+**What failed on the way.**
+
+*A chunk bake went to 15 ms against an 8 ms budget* — a visible hitch every time the player walks
+into a new block. Three things: every piece was wrapped in a `BufferGeometry` to hand the baker
+arrays it was about to read anyway (`baker.addPart` now takes the buffers), the sink was a JS array
+taking half a million `push` calls a chunk (a growable `Float32Array` now), and after both it was
+still 15 ms. The fix is that **a bake is two phases on two frames** — the street pass and the lot
+pass — with the group published when both are done. p95 6 ms.
+
+*A wall was a grid where it should have been bands.* Splitting a face at every opening's coordinate
+in both axes gives 77 quads where 31 will do. And a reveal was emitted with both windings, which
+doubled the cost of every window in the city for a face nobody can see.
+
+*The estimate was 51% over at close zoom.* The street term was capped at the number of GROUND
+chunks in the footprint — terrain chunks, whether or not a street had ever been baked there — so a
+close view was charged for six blocks of facades that did not exist. It is capped at the number of
+baked chunks the camera can actually see, which `scene.js` now counts against the same footprint
+the terrain uses. Fourth time in this lane, and the fifth variation on "an estimate that does not
+price what the renderer draws".
+
+*The purity test went red on the word "window".* `client/world/facade-spec.js` says "a window is a
+window." in a comment and the DOM ban is `/\bwindow\b/`. The answer to a false positive in a rule
+like that is never to weaken the rule: the scan strips comments first, and the pattern now wants
+`window.` or `window[`.
+
+*A whole high street read its signs back to front.* The fascia quads took their normal from their
+own cross product, which pointed into the building on every edge, and a double-sided material
+showed the back. Fixing the normal was not enough — the facade's edges run anticlockwise round the
+lot seen from above, so "along the edge" is screen-LEFT to a reader standing outside, and `u` has
+to run from 1 down to 0. Worked out on paper after guessing twice.
+
+**Looked at, and changed because of it.** The L2 instanced box was still drawn inside baked chunks,
+which is the same house twice with z-fighting on every face. And the two levels each had their own
+copy of the family-colour expression: they now share `familyColour`, because a review check that
+two copies agree is weaker than not having two copies (which is what the item asked for, done the
+other way round).
+
+`reports/style-sheet-street.png` shoots all three styles from the pavement; `reports/smoke-E5-*.png`.
+Q37 (the budgets), Q38 (pure modules in `render/`), Q39 (the two faces nobody sees). E4's three
+questions had been given numbers Q34–Q36, which three planning questions already held; they are
+Q41–Q43 now, and `test/docs.test.js` — which compares the open list in `plan-v1.md` against the one
+in `dev-questions.md` — is what caught it.

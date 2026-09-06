@@ -360,7 +360,7 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | **E2** | **The baker and the chunk cache** — vertex-colour merge per 16×16 chunk, keyed by content hash, one build a frame | M | **Done (slice E2).** A pure typed-array merge (ruling 039 — the addons are written, not vendored), a baker that buckets by shading signature, a pure chunk hash over the tile layers and the buildings' own records, and a cache that builds one chunk a frame nearest first and disposes two seconds after a chunk leaves. 9 chunks / 9 draw calls / p95 1 ms on the saturated fixture, and an unchanged city rebuilds nothing |
 | **E3** | **Ribbons** — carriageway, kerbs, sidewalks, junction boxes, a marking canvas per chunk | M | **Done (slice E3).** A pure ribbon addon — draping, mitred offsets, a crown, kerb faces, sag curves, dashes, chunk clipping and junction trimming — with the three-facing plumbing in `streets-l3.js`. 9 chunks holding 76,294 triangles, build p95 7 ms against 8 ms, `budget_gate` green on every row. `surfaceAt` returns the `y` E4's walker stands on. Three things found by looking rather than by testing: half the ribbons were backface-culled because the normal was flipped and the winding was not, the pipes were a blue staircase down the middle of the road, and the low-pitch camera was underground on any map with hills |
 | **E4** | **Street camera and collision** — walk controls, walls from lots, patches from sidewalks, enter and exit; `walkthrough` and `passability` gates | M | **Done (slice E4).** A third camera mode in which the camera IS the walker. The walker and the collision world are both pure and both in node's reach (`client/life/walker.js`, `client/world/collision.js`), so a wall you can walk through is an assertion rather than a walk around the city. 161 km walked over every carriageway and both pavements of a saturated 96×96 with 0 unfinished legs, 1,127 buildings walked into head-on and none entered, and 395,230 steps pushed back — the last number being the one that proves the gate was not measuring a field |
-| **E5** | **Street-level facades** — the generated spec, four category grammars, roofs with eaves, openings built outward, signage canvases, emissive buckets | L | E2, P1, 036 |
+| **E5** | **Street-level facades** — the generated spec, four category grammars, roofs with eaves, openings built outward, signage canvases, emissive buckets | L | **Done (slice E5).** Every lot in a baked chunk built at its real size on its real lot from a generated spec: walls with real holes in them, reveals built outward, a ground band, a stringcourse, five roof forms with eaves, lamps and hedges and a path to the door, and a Canvas2D fascia over every shop. All of it pure except the signs, so a hole in a roof and a window that stretched are assertions. 25.7k triangles a chunk, 2 meshes a group, build p95 6 ms — and the measurement that moved the tier budgets from a V2 prediction to a number |
 | **E6** | **Time of day** — presets per rig, clock-driven with an off switch, lit windows, lamp pools, a following snapped shadow frustum | M | E5 |
 | **E7** | **Pedestrians** — nav graph, commuters and shoppers, signal waiting, a simplified rig | M | E4, E6 |
 | **P1** | **Toon shading and the anime rig** — `shading: 'toon'`, ramps, the shadow-tint patch, a painted palette | M | **Done (slice P1).** `painted` is a real style rather than a lighting treatment: toon materials through a ramp, a shadow tint that patches three's own shader and warns if the chunk has changed shape, an anime rig whose cool fill carries the unlit side, and a palette of desaturated ground and warm walls. Two findings on the way — the painted palette collapsed for a deuteranope, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
@@ -393,9 +393,15 @@ by number from the code they create.
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
-| Q34 | How does a phone walk — tap-to-walk or a virtual stick? | E4 |
-| Q35 | What is written on the signs, and is it localised? | E5 |
+| Q34 | How does a phone walk — tap-to-walk or a virtual stick? | answered by E4 |
+| Q35 | What is written on the signs, and is it localised? | answered by E5 |
 | Q36 | Is the day/night cycle on by default? | E6 |
+| Q37 | Was raising the tier budgets the right answer to L3's cost? | E5, revisit at E7 |
+| Q38 | Should the facade builder live in `client/render/` when it imports no three? | E5, settled |
+| Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
+| Q41 | Should a road be graded along its length? | E4, revisit if traffic or pedestrians need it |
+| Q42 | Does the walker belong in `client/life/` rather than `client/render/`? | E4, settled |
+| Q43 | Should street mode have pointer lock? | E4, reversible |
 
 ## What would make us stop and re-plan
 

@@ -24,12 +24,18 @@ const STYLES = [
 export async function sheet({
   out = "reports/style-sheet.png", seed = 1003, years = 20,
   span = 9, tileWidth = 1180, tileHeight = 560, layout = "column", mode = "ortho",
+  street = "", terrain = "rolling", frames = 1, streets = -1, yaw = 0, pitch = 0, budget = 0,
 } = {}) {
   const shots = [];
   for (const style of STYLES) {
     const file = `reports/.sheet-${style.name}.png`;
     const result = await shoot({
       out: file, seed, years, style: style.name, span, mode,
+      // A style is geometry, shading and palette (ruling 017), and none of the
+      // three should change with the camera — so the sheet is shot at street
+      // level too, which is where L3 puts geometry the other zooms never see.
+      street, terrain, frames, streets, yaw, pitch,
+      budget: budget > 0 ? budget : undefined,
       width: tileWidth, height: tileHeight,
     });
     shots.push({ ...style, file, report: result.report, problems: result.problems });
@@ -109,6 +115,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     // (slice V5): a style is geometry, shading and palette, and none of those
     // should change with the projection.
     mode: process.env.MODE ?? "ortho",
+    street: process.env.STREET ?? "",
+    terrain: process.env.TERRAIN ?? "rolling",
+    frames: Number(process.env.FRAMES ?? 1),
+    streets: Number(process.env.STREETS ?? -1),
+    yaw: Number(process.env.YAW ?? 0),
+    pitch: Number(process.env.PITCH ?? 0),
+    budget: Number(process.env.BUDGET ?? 0),
   });
   console.log(`wrote ${result.out}`);
   for (const shot of result.shots) {

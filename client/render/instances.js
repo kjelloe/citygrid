@@ -7,7 +7,7 @@
 // mesh however many of them stand in the city.
 
 import * as THREE from "three";
-import { buildingColour, PLAYER_COLOURS, OVERLAY_COLOURS } from "./palette.js";
+import { buildingColour, familyColour, PLAYER_COLOURS, OVERLAY_COLOURS } from "./palette.js";
 import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
@@ -494,17 +494,16 @@ export function updateInstances(state, pools, options = {}) {
     // variant, colour, roof, height, spin — from the building's id, so the
     // box drawn here and the facade drawn at street level are the same house
     // (ruling 032).
-    const family = showOwner
-      ? PLAYER_COLOURS[building.owner] ?? palette.civic
-      : building.zone === ZONE_NONE
-        ? palette.civic
-        : buildingColour(building.zone, building.valueTier, palette);
+    const family = familyColour(building, palette, showOwner, ZONE_NONE);
     const p = buildingParams(building, palette, family, showOwner);
     // The lawn takes the building's seat, not its own tile's height: it is the
     // ground the house was cut into, so on a slope the uphill half of it is
     // buried and that is what a plinth looks like from above (spec §5.6).
     if (p.lawn) push(pools.lawn, cx, h, cz, building.w, building.h, 1, p.lawn);
 
+    // A baked chunk builds this lot as a real facade (slice E5); drawing the
+    // instanced box as well is the same house twice, z-fighting on every face.
+    if (isBaked(building.x, building.y)) continue;
     const tier = planAt(building.x, building.y).buildings;
     const pool = pools[`${p.kind}${p.variant}_${tier}`];
     if (!pool) continue;
