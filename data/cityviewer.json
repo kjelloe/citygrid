@@ -11,7 +11,10 @@
     "stopLine": 2,
     "speed": 11,
     "maxDensity": 12,
-    "dip": 0.16
+    "dip": 0.16,
+    "kerb": 0.15,
+    "camber": 0.035,
+    "lift": 0.02
   },
   "ground": {
     "blend": 1,
@@ -87,5 +90,11 @@
       ],
       "frameMs": 16
     }
+  },
+  "wire": {
+    "poleSpacing": 60,
+    "poleHeight": 7,
+    "sag": 1.2,
+    "armWidth": 1.4
   }
 }

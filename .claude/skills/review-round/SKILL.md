@@ -144,6 +144,25 @@ constants that describes code elsewhere: **what re-derives this, and would
 anything go red if the thing it describes changed?** If the answer is nothing,
 either measure it at runtime or write the gate that compares the two.
 
+**A rising triangle count is not proof anything was drawn.** E3's ribbons flipped a face's normal
+when it pointed downward and left the vertex order alone — so half the streets in the city were lit
+correctly and then backface-culled, while `info.render.triangles` went up exactly as expected and
+every unit test passed. Winding and normals are two halves of one fact; assert them against each
+other. And when a render looks wrong, **make the suspect geometry impossible to miss** — a magenta
+carriageway floated five metres in the air answers in one shot what an hour of reasoning about
+depth precision, frustum culling and material flags will not.
+
+**Look at it at the zoom the slice is ABOUT.** E3's job was the street at street level, where a road
+tile painted asphalt for its whole 20 m leaves an 8 m carriageway floating in grey, the water pipes
+are a blue staircase down the middle of the road, and the pavement runs across the mouth of every
+side street. None of that is visible at city zoom, none of it fails a test, and all three were
+found in the first screenshot anybody actually opened.
+
+**A screenshot harness that draws one frame cannot photograph a cache.** The street cache bakes one
+chunk a frame on purpose; the shot tool drew once, so an L3 city photographed with one chunk of
+street in it and the gate believed it. If the thing under test converges over frames, the harness
+has to run frames.
+
 **A green suite says nothing about which build the player is running.** The service worker served
 cache-first and re-installed only when its own bytes changed, which they never did — so two P33
 playtest items were reports about code that had shipped three days earlier and could not arrive

@@ -22,19 +22,27 @@ export function createModel(state) {
   // else here — a discarded lane graph and a rebuilt one are the same graph.
   const lanes = deriveLanes(state, network, ground.heightAt);
 
-  /** What is underfoot: `{ kind, corridor?, node?, lot?, dist }`. */
+  /** What is underfoot: `{ kind, y, corridor?, node?, lot?, dist }`.
+   *
+   * `y` is the surface the walker's feet are ON, which is not the height field:
+   * E3 lays the carriageway `road.lift` above it and the pavement a kerb higher
+   * again, so a walker reading `heightAt` alone would sink through the kerb it
+   * can see (spec §5.2, and what E4's `floorAt` steps up). */
   function surfaceAt(x, z) {
     const tile = ground.tileOf(x, z);
     if (tile >= 0) {
       const t = state.tiles.terrain[tile];
-      if (t === TERRAIN_WATER || t === TERRAIN_SHALLOW) return { kind: "water", dist: 0 };
+      if (t === TERRAIN_WATER || t === TERRAIN_SHALLOW) return { kind: "water", y: ground.heightAt(x, z), dist: 0 };
     }
     const lot = lots.lotAt(x, z);
-    if (lot) return { kind: "lot", lot, dist: 0 };
+    if (lot) return { kind: "lot", y: ground.heightAt(x, z), lot, dist: 0 };
     const near = network.nearest(x, z);
-    if (near && near.dist <= network.half) return { kind: "road", ...near };
-    if (near && near.dist <= network.frontage) return { kind: "sidewalk", ...near };
-    return { kind: "ground", dist: near ? near.dist : Infinity };
+    const base = ground.heightAt(x, z);
+    if (near && near.dist <= network.half) return { ...near, kind: "road", y: base + cfg.road.lift };
+    if (near && near.dist <= network.frontage) {
+      return { ...near, kind: "sidewalk", y: base + cfg.road.lift + cfg.road.kerb };
+    }
+    return { kind: "ground", y: base, dist: near ? near.dist : Infinity };
   }
 
   return {

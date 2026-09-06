@@ -13,7 +13,7 @@
 import * as THREE from "three";
 import { PALETTES } from "./palettes.js";
 import { faceContrastFor, lightingFor } from "./style-light.js";
-import { STYLES } from "./styles.js";
+import { STYLES } from "./style-table.js";
 import { rampBytes } from "./ramps.js";
 
 export { PALETTES, faceContrastFor, lightingFor };

@@ -335,6 +335,11 @@ export function createRenderer(canvas, state, options = {}) {
     const bounds = visibleBounds(view, canvas.width / canvas.height);
     counts = countScene(state, bounds);
     counts.cars = traffic.count();
+    // What a baked street chunk actually cost, last frame (slice E3).
+    const held = stats.streets;
+    counts.streetPerChunk = held?.live > 0 ? held.triangles / held.live : 0;
+    // How many chunks the instanced pass will skip, for the same reason.
+    counts.bakedChunks = held?.live ?? 0;
     const plan = choosePlan(counts, view, canvas.height, {
       budget: drawOptions.budget,
       streetChunks: drawOptions.streetChunks ?? tier.streetChunks,
@@ -342,6 +347,9 @@ export function createRenderer(canvas, state, options = {}) {
     plan.mode = view.mode;
 
     clampToMap(view, state.width, state.height);
+    // The camera orbits the ground under its target, in the scene's tile units.
+    const groundY = model.cornerHeightAt(Math.round(view.targetX), Math.round(view.targetZ)) / model.tileM;
+    if (groundY !== view.groundY) { view.groundY = groundY; applyPose(view); }
 
     // The estimate gets us close in one pass. What makes the budget a promise
     // rather than a hope is this loop.
@@ -359,6 +367,8 @@ export function createRenderer(canvas, state, options = {}) {
     for (;;) {
       result = updateInstances(state, pools, {
         ...drawOptions, style: styleName, plan, bounds, model,
+        // The baked chunks draw their own markings, poles and wires (slice E3).
+        bakedChunks: streets.keys,
         // For the per-chunk plan (V5): under orthographic these are ignored.
         view, canvasHeight: canvas.height,
       });

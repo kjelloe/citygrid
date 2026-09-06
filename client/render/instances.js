@@ -354,6 +354,13 @@ export function updateInstances(state, pools, options = {}) {
     return found;
   };
 
+  // Chunks the street cache has actually baked. Inside one, the L2 street
+  // furniture is not drawn: the baked group carries the real markings, poles
+  // and wires, and a pipe is underground (slice E3).
+  const baked = options.bakedChunks;
+  const isBaked = (x, y) => baked !== undefined
+    && baked.has(((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0));
+
   const bounds = options.bounds;
 
 
@@ -372,9 +379,10 @@ export function updateInstances(state, pools, options = {}) {
       // This tile's chunk decides what it may draw; under orthographic every
       // chunk gets the frame's plan and nothing changes.
       const local = planAt(x, y);
-      const markings = local.markings !== false;
-      const poles = local.poles !== false;
-      const networks = local.networks !== false;
+      const drawn = !isBaked(x, y);
+      const markings = drawn && local.markings !== false;
+      const poles = drawn && local.poles !== false;
+      const networks = drawn && local.networks !== false;
       const props = local.props !== false && options.props !== false;
       const trees = local.trees !== false && options.trees !== false;
       const treeTier = local.treeDetail;

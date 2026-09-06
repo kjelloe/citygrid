@@ -178,33 +178,38 @@ test("the quality tier never reaches a command (ruling 040)", () => {
   assert.equal(/quality/.test(options), false, "the quality tier is a game option");
 });
 
-test("the modules that node can load are the ones that carry decisions", () => {
+test("the modules that node can load are the ones that carry decisions", async () => {
   // Three defects in the cityviewer lane lived where this suite structurally
   // cannot reach: `MARK_LIFT` undefined on a branch below 20 px a tile (V4), an
   // orthographic ray that is exact at the centre of the frame (V5), and an
   // `export … from` that never bound its name (E2). All three were in modules
-  // that import three, which node cannot resolve.
+  // that cannot be loaded here, because node cannot resolve `three`.
   //
   // So the split is deliberate and worth holding: every DECISION lives in a
-  // module node can load, and what imports three is plumbing. This test names
-  // the plumbing, so the list cannot grow by accident.
+  // module node can load, and what reaches three is plumbing. This asks the
+  // real question — it tries to IMPORT each one — rather than grepping for the
+  // import, because a module with no `three` of its own is still unloadable if
+  // anything it depends on has one.
   const plumbing = new Set([
-    "baker.js", "building-kit.js", "camera.js", "instances.js",
-    "picking.js", "scene.js", "sky.js", "street-chunks.js",
+    "baker.js", "building-kit.js", "camera.js", "instances.js", "picking.js",
+    "scene.js", "sky.js", "street-chunks.js", "streets-l3.js",
     "style-assets.js", "styles.js", "terrain.js",
   ]);
-  const actual = new Set();
-  for (const name of readdirSync(join(repoRoot, "client", "render"))) {
+  const unloadable = [];
+  for (const name of readdirSync(join(repoRoot, "client", "render")).sort()) {
     if (!name.endsWith(".js")) continue;
-    const source = readFileSync(join(repoRoot, "client", "render", name), "utf8");
-    if (/from "three"/.test(source)) actual.add(name);
+    try {
+      await import(`../client/render/${name}`);
+    } catch {
+      unloadable.push(name);
+    }
   }
-  const added = [...actual].filter((n) => !plumbing.has(n));
+  const added = unloadable.filter((n) => !plumbing.has(n));
   assert.deepEqual(added, [],
-    `these modules newly import three and are now invisible to this suite:\n  ${added.join("\n  ")}`
+    `these modules can no longer be loaded in node and are now invisible to this suite:\n  ${added.join("\n  ")}`
     + "\n  Move the decision into a module node can load, or add it here deliberately.");
-  const gone = [...plumbing].filter((n) => !actual.has(n) && existsSync(join(repoRoot, "client", "render", n)));
-  assert.deepEqual(gone, [], `these no longer import three and should leave the list: ${gone.join(", ")}`);
+  const gone = [...plumbing].filter((n) => !unloadable.includes(n));
+  assert.deepEqual(gone, [], `these load in node now and should leave the list: ${gone.join(", ")}`);
 });
 
 test("client/world imports three nowhere at all", () => {

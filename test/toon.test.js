@@ -19,10 +19,11 @@ import { repoRoot } from "./helpers/sources.js";
 import { RAMPS, rampBytes } from "../client/render/ramps.js";
 import { lightingFor, faceContrastFor } from "../client/render/style-light.js";
 import { PALETTES } from "../client/render/palettes.js";
+import { STYLES } from "../client/render/style-table.js";
 import { simulate, distance } from "./helpers/colour-vision.js";
 
 const assets = readFileSync(join(repoRoot, "client", "render", "style-assets.js"), "utf8");
-const styles = readFileSync(join(repoRoot, "client", "render", "styles.js"), "utf8");
+
 const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
 
 // --- the ramps ---------------------------------------------------------------
@@ -78,15 +79,22 @@ test("the ramp texture is NEAREST, or it is not a ramp at all", () => {
 test("every style declares its rig, its shading and its finish", () => {
   // Spec §7.1: three fields per style, and nothing else in the renderer knows
   // which one it got.
+  //
+  // The table IS loaded here since E3 split it out of `styles.js`, which
+  // imports three for `createPost`. Grepping the source for `rig:` passed on a
+  // comment mentioning it; asking the object cannot.
   for (const name of ["plain", "pixel", "painted"]) {
-    const entry = styles.slice(styles.indexOf(`  ${name}: {`));
-    const body = entry.slice(0, entry.indexOf("\n  },"));
-    for (const field of ["rig:", "shading:"]) {
-      assert.match(body, new RegExp(field), `${name} does not declare ${field}`);
-    }
+    const style = STYLES[name];
+    assert.ok(style, `there is no ${name} style`);
+    assert.equal(typeof style.rig, "string", `${name} declares no rig`);
+    assert.equal(typeof style.shading, "string", `${name} declares no shading`);
+    assert.ok("post" in style, `${name} declares no finish`);
   }
-  assert.match(styles, /shading: "toon"/, "no style is toon-shaded");
-  assert.match(styles, /rig: "anime"/, "no style uses the anime rig");
+  assert.equal(STYLES.painted.shading, "toon");
+  assert.equal(STYLES.painted.rig, "anime");
+  assert.equal(STYLES.pixel.shading, "unlit");
+  assert.equal(STYLES.plain.shading, "lambert");
+  assert.ok(STYLES.painted.ramp, "the toon style names no ramp");
 });
 
 test("the material is chosen by the shading, not by the style's name", () => {

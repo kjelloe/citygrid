@@ -363,6 +363,15 @@ ribbons; a marking canvas per chunk; wires with poles and sag.
 **Gate.** `reports/smoke-E3-*.png` at street zoom on a slope: no z-fighting, kerbs continuous
 through a junction, markings following the curve of a bend; `budget_gate` High.
 
+**Built, with four deviations.** (1) The centre line is dashed ribbons, not a marking canvas —
+one line does not need a texture and a second sampling path, and geometry is what E4's walker can
+be tested against (**Q31**). (2) The kerbside — pavement, verge and centre line — stops short of
+each junction rather than being drawn as corner squares; the carriageway runs through. (3) The
+chunk lays its own **verge** out to the tile edge, because a road tile is painted asphalt for its
+whole 20 m at city zoom and that leaves the carriageway floating in grey at street zoom. (4)
+`streetChunks` is now gated on resolvability: L3 is a zoom, not a tier setting, and the cache had
+been baking its tier's quota at every span.
+
 ---
 
 ### E4 — The street camera and collision (M) — ruling 034, spec §8.1, Union Square
@@ -514,7 +523,7 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 | **V5** — the perspective play camera | **done** 2026-09-06 | `556fa0a` | `play_smoke` and `budget_gate` in **both** projections (4 viewport/projection combinations; 2 × 3 tiers × 4 spans); `style-sheet` in both; `reports/smoke-V5-*.png` at a 20° pitch | `test/lod.test.js` (+10), `test/input.test.js` (+4), `test/settings.test.js` (+2); spec §8.1a. Orthographic is **byte-identical to V4** at two zooms, checked against a worktree of `f13b0dd`. **Q30** |
 | **P1** — toon shading and the anime rig | **done** 2026-09-06 | `044da85` | `style-sheet` in **both** projections — three styles that differ in shading, not tint; `client_smoke` painted; `budget_gate` (toon costs no triangles and no draw calls: painted and plain report identical counts) | `test/toon.test.js` (17); spec §7.1a. Two findings: the painted palette collapsed for a deuteranope at 0.042, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **E2** — the baker and the chunk cache | **done** 2026-09-06 | `7f8b595` | `budget_gate` gains four street-chunk checks on the saturated 96×96 at High: **9 chunks live, 9 draw calls, 5,184 triangles, build p95 1 ms** against an 8 ms budget, and **0 rebuilds** over six frames of an unchanged city | `test/merge.test.js` (9), `test/chunks.test.js` (11); spec §6.4a. The merge is pure typed-array arithmetic so it can be tested in node; `chunkHash` covers the buildings' RECORDS as well as their tiles |
-| **E3** — ribbons | not started | — | — | — |
+| **E3** — ribbons | **done** 2026-09-06 | `slice-E3` | `budget_gate` green on all 32 rows plus the three opening spans; street chunks **9 live, 9 groups / 9 meshes, 76,294 triangles, build p95 7 ms** against an 8 ms budget, **0 rebuilds** over six frames. `reports/smoke-E3-{street,junction,slope}.png` | `test/ribbon.test.js` (18, incl. winding-against-normals in both directions, `dashes` over a bend, `clip`, `trim`), `test/lod.test.js` (+2: L3 is a zoom; a baked chunk is charged once a frame), `test/world.test.js` (+1: `surfaceAt` puts the pavement a kerb above the carriageway); spec §5.2–5.3 |
 | **E4** — the street camera and collision | not started | — | — | — |
 | **E5** — street-level facades | not started | — | — | — |
 | **E6** — time of day | not started | — | — | — |

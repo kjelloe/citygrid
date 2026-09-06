@@ -358,7 +358,7 @@ of done are in `specs/engine/11-roadmap.md`; this table is the index.*
 | **E0** | **The city model** — `client/world/`: `TILE_M`, `heightAt`, corridors from masks, lots and frontages, the building parameter function; node-tested; gate is a pixel-identical picture. **Done 2026-09-05**: 21 model tests, `instances.js` reads every building through `buildingParams`, both screenshots byte-identical before and after, `client_smoke` green | M | 035 |
 | **E1** | **Lane graph** in the model. **Done 2026-09-06**: a link each way per corridor trimmed to the junction box, every non-U-turn connector as a link of the same shape, a signal on every junction offset by a hash of its tile. 5,810 links and 372 signals on a saturated 96×96, shortest link 8.32 m against a 4.5 m car (`tools/lanes_dump.mjs`). The model rebuild went **123 ms → 35.7 ms** on the way: `heightAt` had been walking every corridor per call | S | E0 |
 | **E2** | **The baker and the chunk cache** — vertex-colour merge per 16×16 chunk, keyed by content hash, one build a frame | M | **Done (slice E2).** A pure typed-array merge (ruling 039 — the addons are written, not vendored), a baker that buckets by shading signature, a pure chunk hash over the tile layers and the buildings' own records, and a cache that builds one chunk a frame nearest first and disposes two seconds after a chunk leaves. 9 chunks / 9 draw calls / p95 1 ms on the saturated fixture, and an unchanged city rebuilds nothing |
-| **E3** | **Ribbons** — carriageway, kerbs, sidewalks, junction boxes, a marking canvas per chunk | M | E2, V4 |
+| **E3** | **Ribbons** — carriageway, kerbs, sidewalks, junction boxes, a marking canvas per chunk | M | **Done (slice E3).** A pure ribbon addon — draping, mitred offsets, a crown, kerb faces, sag curves, dashes, chunk clipping and junction trimming — with the three-facing plumbing in `streets-l3.js`. 9 chunks holding 76,294 triangles, build p95 7 ms against 8 ms, `budget_gate` green on every row. `surfaceAt` returns the `y` E4's walker stands on. Three things found by looking rather than by testing: half the ribbons were backface-culled because the normal was flipped and the winding was not, the pipes were a blue staircase down the middle of the road, and the low-pitch camera was underground on any map with hills |
 | **E4** | **Street camera and collision** — walk controls, walls from lots, patches from sidewalks, enter and exit; `walkthrough` and `passability` gates | M | E3, V5 |
 | **E5** | **Street-level facades** — the generated spec, four category grammars, roofs with eaves, openings built outward, signage canvases, emissive buckets | L | E2, P1, 036 |
 | **E6** | **Time of day** — presets per rig, clock-driven with an off switch, lit windows, lamp pools, a following snapped shadow frustum | M | E5 |
@@ -394,6 +394,9 @@ by number from the code they create.
 | Q28 | Is a two-ring flood from the road layer good enough for the distance-to-street tone? | V3, reversible |
 | Q29 | Should the overlay wash follow the ground instead of floating over it? | V4, revisit at E2 |
 | Q30 | Should orthographic `tilePixels` use the vertical extent rather than `span` on a portrait screen? | when the ortho picture next changes |
+| Q31 | Should the L3 centre line be a marking canvas rather than dashed ribbons? | E3, revisit at E5 |
+| Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
+| Q33 | Should the camera orbit the ground under its target? | E3, reversible |
 
 ## What would make us stop and re-plan
 

@@ -450,3 +450,28 @@ test("pricing per chunk is never more than pricing at the frame's plan", () => {
   assert.ok(Math.abs(same - whole) < 1e-6,
     `pricing every chunk at the frame's own plan gave ${same}, not ${whole}`);
 });
+
+test("street chunks are a zoom, not a tier setting (slice E3)", () => {
+  const counts = {
+    buildings: 200, trees: 100, props: 50, roads: 400, poles: 60, groundChunks: 16,
+    markArms: 200, wireTiles: 100, wireArms: 200, pipeTiles: 100, pipeArms: 200,
+    cars: 20, streetPerChunk: 4768,
+  };
+  const far = { mode: "ortho", span: 40, targetX: 32, targetZ: 32, yaw: 0 };
+  const near = { mode: "ortho", span: 4, targetX: 32, targetZ: 32, yaw: 0 };
+  assert.equal(choosePlan(counts, far, 720, { budget: 200000, streetChunks: 9 }).streetChunks, 0);
+  assert.equal(choosePlan(counts, near, 720, { budget: 200000, streetChunks: 9 }).streetChunks, 9);
+});
+
+test("a baked chunk is charged once a frame, not once a chunk (slice E3)", () => {
+  const counts = {
+    buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 9,
+    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0,
+    cars: 0, streetPerChunk: 1000, chunks: [],
+  };
+  const plan = { buildings: 0, treeDetail: 0, trees: false, props: false, streetChunks: 4 };
+  // Four chunks held, at a thousand triangles each, plus the ground.
+  assert.equal(estimate(counts, plan) - counts.groundChunks * 512, 4000);
+  // And never more of them than there is ground on screen to hold them.
+  assert.equal(estimate({ ...counts, groundChunks: 2 }, plan) - 2 * 512, 2000);
+});

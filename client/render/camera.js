@@ -126,13 +126,18 @@ export function applyPose(view) {
   // the zoom (ruling 034).
   const distance = view.mode === "city" ? eyeDistance(view) : 1200;
   const pitch = view.pitch ?? PITCH;
+  // The orbit is around the GROUND under the target, not around y = 0. On a map
+  // with 50 m of relief a low pitch put the eye below the hill it was looking
+  // at and the frame filled with sky and the underside of the terrain — the
+  // "closer to the ground" view P34 asked for, aimed fifty metres into it.
+  const ground = view.groundY ?? 0;
   const x = view.targetX + Math.sin(view.yaw) * Math.cos(pitch) * distance;
-  const y = Math.sin(pitch) * distance;
+  const y = ground + Math.sin(pitch) * distance;
   const z = view.targetZ + Math.cos(view.yaw) * Math.cos(pitch) * distance;
   const camera = view.camera;
   camera.position.set(x, y, z);
   camera.up.set(0, 1, 0);
-  camera.lookAt(view.targetX, 0, view.targetZ);
+  camera.lookAt(view.targetX, ground, view.targetZ);
   camera.updateMatrixWorld();
 }
 

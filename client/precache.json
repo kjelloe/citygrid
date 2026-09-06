@@ -1,5 +1,5 @@
 {
- "version": "49c8551f130f",
+ "version": "d102696d1f4c",
  "generated": "2026-09-06",
  "files": [
   "./client/audio/audio-model.js",
@@ -36,12 +36,15 @@
   "./client/render/palettes.js",
   "./client/render/picking.js",
   "./client/render/ramps.js",
+  "./client/render/ribbon.js",
   "./client/render/scene.js",
   "./client/render/sky.js",
   "./client/render/streaming.js",
   "./client/render/street-chunks.js",
+  "./client/render/streets-l3.js",
   "./client/render/style-assets.js",
   "./client/render/style-light.js",
+  "./client/render/style-table.js",
   "./client/render/styles.js",
   "./client/render/terrain.js",
   "./client/storage/db.js",

@@ -11,11 +11,11 @@
 // mechanism is visible and measurable. E3 and E5 replace the content, not the
 // machinery.
 
-import * as THREE from "three";
 import { createBaker } from "./baker.js";
 import { chunkHash, chunksNear, CHUNK } from "../world/chunks.js";
-import { buildingParams } from "../world/params.js";
 import { PALETTES } from "./palettes.js";
+import { bakeStreets } from "./streets-l3.js";
+import { getConfig } from "../world/config.js";
 import { nextBuild, expired } from "./streaming.js";
 
 /** How long a chunk outside the radius is kept before its geometry goes.
@@ -24,42 +24,21 @@ import { nextBuild, expired } from "./streaming.js";
  * same chunk every second — the grace is what makes the cache a cache. */
 const GRACE_MS = 2000;
 
-/** The placeholder: a lot's footprint as a thin slab at its seat. Flat, so it
- * is obviously not a building; visible, so the mechanism can be seen working;
- * and the right SIZE, so the triangle and draw-call numbers E3 and E5 will be
- * measured against mean something now. */
-const SLAB = new THREE.BoxGeometry(1, 0.06, 1);
-
 export function createStreetChunks(scene, options = {}) {
   const styleName = options.style ?? "plain";
   const palette = PALETTES[styleName] ?? PALETTES.plain;
   /** chunkKey → { hash, group, cx, cy, seen } */
   const live = new Map();
-  const matrix = new THREE.Matrix4();
   let built = 0;
   let lastBuildMs = 0;
 
   function bake(state, model, cx, cy) {
     const baker = createBaker(styleName);
-    const x0 = cx * CHUNK;
-    const y0 = cy * CHUNK;
-    const tileM = model.tileM;
-    for (const lot of model.lots) {
-      // A lot belongs to the chunk its building is anchored in, so a lot that
-      // straddles a boundary is baked once rather than twice.
-      const b = lot.building;
-      if (b.x < x0 || b.x >= x0 + CHUNK || b.y < y0 || b.y >= y0 + CHUNK) continue;
-      const p = buildingParams(b, palette, palette.civic, false);
-      const w = (lot.x1 - lot.x0) / tileM;
-      const d = (lot.z1 - lot.z0) / tileM;
-      matrix.makeScale(Math.max(w, 0.1), 1, Math.max(d, 0.1));
-      matrix.setPosition(
-        (lot.x0 + lot.x1) / 2 / tileM,
-        lot.seat / tileM + 0.03,
-        (lot.z0 + lot.z1) / 2 / tileM,
-      );
-      baker.add(SLAB, matrix, p.lawn ?? palette.lawn);
-    }
+    // E2 baked a placeholder slab per lot so the mechanism could be measured;
+    // E3 puts the street there instead — carriageway, kerbs, pavements,
+    // junction boxes and the wire runs above them, all draped on the height
+    // field (spec §5.2).
+    bakeStreets(baker, state, model, cx, cy, palette);
     return baker;
   }
 
@@ -107,6 +86,9 @@ export function createStreetChunks(scene, options = {}) {
         lastBuildMs = Date.now() - started;
         const old = live.get(chunk.key);
         if (old) { scene.remove(old.group); baker.dispose(old.group); }
+        // Baked in METRES; the scene is in tile units until the camera moves
+        // (V5 left that boundary where it was).
+        group.scale.setScalar(1 / getConfig().tileM);
         scene.add(group);
         live.set(chunk.key, { hash, group, cx: chunk.cx, cy: chunk.cy, seen: now, triangles: baker.triangles });
         built += 1;
@@ -136,5 +118,11 @@ export function createStreetChunks(scene, options = {}) {
     },
 
     get size() { return live.size; },
+
+    /** Which chunks are actually baked right now. The instanced pass draws the
+     * L2 street furniture everywhere EXCEPT here, so the two never double up —
+     * and it asks the cache rather than the plan, because a chunk the plan
+     * wants at L3 has not been baked until the frame that bakes it. */
+    get keys() { return new Set(live.keys()); },
   };
 }

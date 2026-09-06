@@ -22,7 +22,12 @@ export const DEFAULTS = Object.freeze({
   road: {
     width: 8, sidewalk: 2.5, blend: 4,
     lanes: 1, stopLine: 2, speed: 11, maxDensity: 12, dip: 0.16,
+    // L3 only (E3): how far the kerb steps up from the carriageway, how much
+    // the road is crowned, and how far the carriageway sits above the ground.
+    kerb: 0.15, camber: 0.035, lift: 0.02,
   },
+  // Poles and their sagging spans at L3 (E3, spec §5.4).
+  wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },
   // The ground's own colour (V3). `blend` at 0 reproduces the flat per-tile
   // picture exactly; `mottle` is the per-tile lightness scatter; `urbanReach`
   // is how far from a street the tended ground extends, and `farTone` how much

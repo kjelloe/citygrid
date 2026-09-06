@@ -159,15 +159,48 @@ export function planForChunk(plan, px) {
  * right for an orthographic camera. */
 export function estimate(counts, plan, planFor) {
   if (planFor && counts.chunks) {
-    let total = counts.groundChunks * CHUNK_TRIANGLES;
+    // The whole-frame terms go in once: terrain is counted against the frustum
+    // footprint, and the baked street chunks are a count around the camera, not
+    // a property of any one chunk being priced.
+    let total = counts.groundChunks * CHUNK_TRIANGLES + streetCost(counts, plan);
     for (const [key, part] of counts.chunks) {
       const cz = Math.floor(key / 4096);
       const cx = key - cz * 4096;
-      total += estimateOne({ ...part, groundChunks: 0 }, planFor(cx, cz));
+      total += estimateOne({ ...part, groundChunks: 0, streetPerChunk: 0 }, planFor(cx, cz));
     }
     return total;
   }
   return estimateOne(counts, plan);
+}
+
+/** The baked street chunks, at what they MEASURED last frame (slice E3).
+ *
+ * The estimate cannot know what a chunk will hold before it is baked, and
+ * guessing from the corridor count would be a remembered cost — the exact thing
+ * P35 was about. So it is fed the average of what the cache is actually
+ * holding; on the first frame that is zero and the estimate is low once, which
+ * is what the render-and-measure loop is for.
+ */
+function streetCost(counts, plan) {
+  const held = Math.min(plan.streetChunks ?? 0, counts.groundChunks ?? 0);
+  return held * (counts.streetPerChunk ?? 0);
+}
+
+/**
+ * How much of the frame's instanced street furniture the baked chunks have
+ * taken over.
+ *
+ * A baked chunk draws its own markings, poles and wires, so the instanced pass
+ * skips those tiles — and an estimate that still charges for them is not merely
+ * pessimistic, it drives the ladder down. At ortho medium span 40 the nine
+ * baked chunks covered half a 64-tile city: the estimate read 78,776 against an
+ * actual of 37,504, and the ladder threw away the trees to pay for triangles
+ * nothing was drawing (slice E3).
+ */
+function bakedShare(counts) {
+  const chunks = counts.groundChunks ?? 0;
+  if (chunks <= 0) return 0;
+  return Math.min(counts.bakedChunks ?? 0, chunks) / chunks;
 }
 
 function estimateOne(counts, plan) {
@@ -176,17 +209,30 @@ function estimateOne(counts, plan) {
   const p = plan.props ? costs.prop[2] : 0;
 
   const casters = counts.buildings * b + counts.trees * t + counts.props * p;
+  // What the baked chunks have taken over is not drawn by the instanced pass.
+  const loose = 1 - bakedShare(counts);
   const flat = counts.roads * costs.road
     + (plan.cars !== false ? counts.cars * costs.car : 0)
-    + (plan.markings ? counts.markArms * costs.marking : 0)
+    + (plan.markings ? counts.markArms * costs.marking * loose : 0)
     // Every network the renderer draws has a term here. Wire and pipe had
     // none, and `counts.poles` was computed and then never read — a term
     // missing from the estimate is a term the budget cannot trade away (P35).
     + (plan.networks !== false
-      ? counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm
-        + counts.pipeTiles * costs.pipeHub + counts.pipeArms * costs.pipeArm
+      ? (counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm
+        + counts.pipeTiles * costs.pipeHub + counts.pipeArms * costs.pipeArm) * loose
       : 0)
-    + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole : 0)
+    + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole * loose : 0)
+    // The baked street chunks, at what they MEASURED last frame (slice E3).
+    //
+    // The estimate cannot know what a chunk will hold before it is baked, and
+    // guessing from the corridor count would be a remembered cost — the exact
+    // thing P35 was about. So it is fed the average of what the cache is
+    // actually holding; on the first frame that is zero and the estimate is
+    // low once, which is what the render-and-measure loop is for.
+    // Never more of them than there are ground chunks in view: a baked chunk
+    // outside the frustum is culled like anything else, and charging all nine
+    // at a close zoom that only sees two put the estimate 28% over.
+    + streetCost(counts, plan)
     + counts.groundChunks * CHUNK_TRIANGLES;
 
   // Casters count ONCE, and this used to be twice.
@@ -309,6 +355,12 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
   // and 43% of the frame at the default span on a 64x64 (slice V2). The power
   // and water overlays still say where the network reaches.
   if (px < RESOLVE.networks) { plan.networks = false; plan.reason = "networks not resolvable"; }
+  // L3 is a ZOOM, not a tier setting. The cache was baking its tier's quota at
+  // every span, so a city-zoom frame paid for kerbs a third of a pixel wide and
+  // the ladder sold the trees to afford them (slice E3). Half the per-chunk
+  // threshold, because the frame's pixels are measured at the orbit target and
+  // the chunks under the eye are nearer than that.
+  if (px < RESOLVE.l3 / 2) { plan.streetChunks = 0; plan.reason = "street detail not resolvable"; }
   if (px < RESOLVE.shape) { plan.buildings = TIER.SHAPE; plan.treeDetail = TIER.SHAPE; plan.reason = "detail not resolvable"; }
   if (px < RESOLVE.shadows) { plan.shadows = false; plan.reason = "shadows not resolvable"; }
   if (px < RESOLVE.block) { plan.buildings = TIER.BLOCK; plan.reason = "silhouette only"; }
@@ -584,6 +636,8 @@ export function countScene(state, bounds) {
   return {
     buildings, trees, props, roads, poles, groundChunks,
     markArms, wireTiles, wireArms, pipeTiles, pipeArms, chunks,
+    // Filled in by the caller from what the street cache measured last frame.
+    streetPerChunk: 0,
     // Filled in by the caller from the traffic system's live count: the number
     // of cars is not a function of the tiles, it is a function of how long the
     // road has been busy.

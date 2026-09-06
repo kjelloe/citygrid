@@ -3254,3 +3254,78 @@ is a gate that passes on an empty city.
 - The placeholder is one slab per lot at `lot.seat`. E3 and E5 replace the
   content; the machinery and these numbers are what they will be measured
   against.
+
+---
+
+## 2026-09-06 — Slice E3: ribbons, and half a city that was culled
+
+The street at L3: a crowned carriageway, kerb faces, pavements, verges, junction boxes, connector
+curves, a dashed centre line and the wire runs above them, all draped on the height field and all
+baked into E2's per-chunk groups. `client/render/ribbon.js` is the primitive and it is pure —
+`ribbon`, `skirt`, `sagCurve`, `dashes`, `clip`, `trim` — with `client/render/streets-l3.js` as the
+only part that imports three.
+
+**Measured.** 9 chunks live holding 76,294 triangles, 9 groups / 9 meshes, build p95 7 ms against
+the item's 8 ms budget, 0 rebuilds over six frames of an unchanged city. `budget_gate` green on all
+32 rows plus the three opening-span rows. Suite green twice; `client_smoke`, `play_smoke`,
+`ui_smoke`, `reach_smoke`, `a11y_smoke`, `serve_smoke`, `lobby_smoke`, `save_smoke`,
+`mvp_acceptance`, `offline_smoke`, `update_smoke` all green. `surfaceAt` now returns a `y` —
+carriageway at `heightAt + 0.02`, pavement a 0.15 m kerb above it — which is what E4's `floorAt`
+steps up.
+
+**What failed on the way, in the order it failed.**
+
+*Half the streets in the city were invisible, with a green suite and a rising triangle count.*
+`ribbon` flipped a face's NORMAL when it came out pointing down and left the vertex order alone. A
+normal is what the shader lights with; the winding is what the rasteriser culls with. So the road
+was lit correctly and then thrown away, and which ribbons survived depended on which direction
+their corridor happened to run. Poles are boxes and drew fine, which is what made it look like a
+colour problem for an hour — I painted the carriageway magenta and floated it five metres in the
+air before believing it. `test/ribbon.test.js` now asserts winding against normals for a run in
+each direction, and the assertion was verified by planting the old code and watching it go red.
+
+*A one-frame screenshot of an L3 city shows a city with one chunk of street in it.* The cache bakes
+one chunk a frame by design, and `tools/shoot.html` drew exactly one frame. `frames=` now draws as
+many as asked; the L3 gate shots use 14.
+
+*The bake was 12 ms against an 8 ms budget.* Two causes, both measured. `corridorsIn` returned
+whole corridors that merely touched the chunk and built all of them, so most of the city was built
+into most of its chunks — `clip` cut that to 9 ms. The rest was `heightAt`, which is a search over
+nearby corridors: the cross-section asked it thirteen times per centre-line point. Sampling once
+per point and sharing it took the p95 to 7 ms.
+
+*The estimate under-counted the perspective frame by 35–41%.* The street term was inside
+`estimateOne`, which under perspective runs once per chunk with `groundChunks: 0` — so it was
+either multiplied by the chunk count or zeroed. Baked chunks are a count around the camera, not a
+property of a chunk being priced: the term now goes in once per frame on both paths, capped at the
+number of ground chunks in view (a baked chunk outside the frustum is culled like anything else).
+That is the fourth time in this project an estimate has failed to price what the renderer draws.
+
+*Then `ortho medium span 40` read 78,776 against an actual of 37,504.* Not a new fault: with the
+street cost added, the ladder ran all the way to dropping trees for the first time, and at the
+bottom the estimate's floor is twice the truth, because the ortho bounds are a square of the view's
+diagonal while three culls per chunk against the real rectangle. The fix was to stop the ladder
+needing to go there — **L3 is a zoom, not a tier setting**. The cache had been baking its tier's
+quota at every span, so a city-zoom frame paid for kerbs a third of a pixel wide. `choosePlan` now
+zeroes `streetChunks` below half the per-chunk `l3` threshold. A parallelogram footprint for the
+ortho camera was tried as the direct fix and reverted: `test/lod.test.js` asserts the conservative
+square covers every yaw, and it does. Recorded as **Q32**.
+
+*The camera was underground.* Looking at the first street-zoom shot: sky in the lower two thirds
+and the underside of the terrain across the top. `applyPose` put the eye `sin(pitch) × distance`
+above `y = 0` and aimed it at `(targetX, 0, targetZ)` — on a map with 50 m of relief, a low pitch
+is below the hill. The orbit is now around `cornerHeightAt(target)`. This is the P34 "closer to the
+ground" view, and it has never worked on a map with hills. **Q33.**
+
+**Looked at, and changed because of it** (the ruling-030 discipline: a green suite says nothing
+about what the game looks like). At street zoom the water pipes were a blue staircase painted down
+the middle of the road — a pipe is underground, and the baked chunk draws the real poles and wires,
+so the instanced pass now skips markings, poles and networks inside a chunk the cache has actually
+baked (asking the cache, not the plan: a chunk the plan wants at L3 is not baked until the frame
+that bakes it). The carriageway was invisible against a road tile painted asphalt for its whole
+20 m, so the chunk lays its own verge out to the tile edge. The pavement and centre line ran
+straight across the mouth of every side street, so everything kerbside is `trim`med back to the
+junction box while the carriageway runs through.
+
+Markings are dashed ribbons, not the canvas §5.3 specifies (**Q31**). `reports/smoke-E3-street.png`,
+`-junction.png`, `-slope.png`.

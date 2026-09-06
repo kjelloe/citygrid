@@ -17,6 +17,7 @@
 // Builds a real city with the real engine, then renders it with the real
 // renderer. No fixtures and no mock state: a screenshot of something the
 // simulation did not actually produce would be worth nothing.
+import * as THREE from "three";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
@@ -103,13 +104,22 @@ if (focusX >= 0 && focusY >= 0) {
 }
 const reduced = params.get("reduced") === "1";
 const budgetParam = Number(params.get("budget") ?? 0);
-const stats = view.draw({
+// `streetChunks` so the L3 gate can shoot the baked street without needing the
+// High tier's full budget (slice E3).
+const streetChunks = Number(params.get("streets") ?? -1);
+// The street cache bakes one chunk a frame, so a one-frame shot of an L3 city
+// shows a city with one chunk of street in it (slice E3).
+const frames = Number(params.get("frames") ?? 1);
+const drawOptions = {
+  streetChunks: streetChunks >= 0 ? streetChunks : undefined,
   props: !reduced, trees: !reduced,
   // `shadows=0` to tell a toon ramp's banding apart from a cast shadow.
   shadows: params.get("shadows") !== "0",
   budget: budgetParam > 0 ? budgetParam : undefined,
   overlay: overlay || undefined,
-});
+};
+let stats;
+for (let f = 0; f < frames; f += 1) stats = view.draw({ ...drawOptions, now: f * 16 });
 
 const firstChunk = view.terrain.chunks[0];
 const pos = firstChunk.mesh.geometry.getAttribute("position");
@@ -129,7 +139,28 @@ globalThis.SHOT_REPORT = {
   budget: stats.budget,
   chunkPlans: stats.chunkPlans,
   chunkTiers: stats.chunkTiers,
+  streets: stats.streets,
   mode,
+  // What the baked groups actually hold and where they actually are. Kept
+  // because the E3 ribbons were in the scene, in the right place, with the
+  // right triangle count, and invisible — and this is the probe that proved
+  // the first three of those and left only the fourth to explain.
+  streetBoxes: (() => {
+    const out = [];
+    for (const child of view.scene.children) {
+      if (child.type !== "Group" || child.children.length === 0) continue;
+      let tris = 0;
+      const box = new THREE.Box3();
+      for (const m of child.children) {
+        if (!m.geometry) continue;
+        tris += m.geometry.getAttribute("position").count / 3;
+        m.geometry.computeBoundingBox();
+        box.union(m.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld));
+      }
+      if (tris > 0) out.push({ tris, visible: child.visible, min: box.min.toArray().map((v) => +v.toFixed(2)), max: box.max.toArray().map((v) => +v.toFixed(2)) });
+    }
+    return out.slice(0, 3);
+  })(),
   estimate: stats.estimate,
   counted: stats.counted,
   shadows: stats.shadows,

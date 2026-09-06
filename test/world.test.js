@@ -134,6 +134,22 @@ test("nodeKind reads a mask the way the road renderer does", () => {
   assert.equal(nodeKind(7), "junction");
 });
 
+test("surfaceAt puts the pavement a kerb above the carriageway (slice E3)", () => {
+  const state = blank();
+  pave(state, row(3, 1, 6));
+  const model = createModel(state);
+  const cz = 3.5 * T;
+  const road = model.surfaceAt(3.5 * T, cz);
+  const walk = model.surfaceAt(3.5 * T, cz + DEFAULTS.road.width / 2 + 1);
+  assert.equal(road.kind, "road");
+  assert.equal(walk.kind, "sidewalk");
+  // The carriageway sits `lift` above the field and the pavement a kerb above
+  // that — the step E4's walker has to climb, and the reason a walker reading
+  // `heightAt` alone would stand inside the kerb it can see.
+  assert.ok(Math.abs(walk.y - road.y - DEFAULTS.road.kerb) < 1e-6, `${walk.y} vs ${road.y}`);
+  assert.ok(road.y > model.heightAt(3.5 * T, cz));
+});
+
 test("surfaceAt says road on a road tile's centre, sidewalk beside it, ground beyond", () => {
   const state = blank();
   pave(state, row(3, 1, 6));

@@ -59,6 +59,31 @@ their two exposed edges (Union Square `buildIntersection`), and a bezier connect
 curved ribbon. The walker's `floorAt` reads the sidewalk height, so a kerb is a step you walk
 up, exactly as in Union Square (`Streets.SIDEWALK_Y`).
 
+**Built (E3, 2026-09-06).** `client/render/ribbon.js` is the primitive and it is pure, so the
+things that go wrong in it are testable in node: `ribbon` (mitred offsets, per-vertex draping,
+a three-column crown when cambered), `skirt` (the kerb faces), `sagCurve`, `dashes` (a centre
+line that keeps a bend's vertex), `clip` (a corridor's part in one chunk) and `trim` (how far
+short of a junction the kerbside stops). `client/render/streets-l3.js` is the plumbing.
+
+Three things the table does not say, all found by looking at the render:
+
+- **Winding is not a property of the normal.** The first version flipped a face's normal when it
+  came out pointing down and left the vertex order alone, so the road was lit correctly and then
+  culled — and which streets survived depended on which way their corridor ran. Every face the
+  addon emits now agrees with itself, and `test/ribbon.test.js` asserts it for a run in each
+  direction.
+- **The verge is load-bearing.** At city zoom a road TILE is asphalt for its whole 20 m
+  (§5.1), which is right at eighteen pixels a tile and wrong at a hundred and eighty: it leaves
+  the 8 m carriageway floating in twelve metres of grey with nothing for the kerb to be a kerb
+  against. The baked chunk lays its own verge from the pavement edge out to the tile edge.
+- **The kerbside stops at the junction, the carriageway does not.** Pavement, verge and centre
+  line are built from the corridor `trim`med by `ROAD_W / 2 + SIDEWALK_W`; trimmed before the
+  chunk clip, or a corridor crossing a chunk boundary loses its pavement at the seam instead.
+
+The height field is sampled ONCE per centre-line point and shared across the cross-section:
+`heightAt` is a search over nearby corridors, and asking it per column made a chunk bake take
+9 ms against an 8 ms budget.
+
 ## 5.3 Markings
 
 Two mechanisms, chosen by level:
@@ -66,6 +91,13 @@ Two mechanisms, chosen by level:
 - **L1-L2, instanced quads from the mask** - exactly what `roadMarkings` in `instances.js` does
   now (dash on a straight, arms at a corner, arms stopping `JUNCTION_GAP` short at a T or an X).
   Cheap, counted, and correct at city zoom.
+**Built (E3): dashed ribbons, not a canvas.** The centre line is `dashes()` along the corridor —
+3 m of paint every 12 m, 15 cm wide, a centimetre above the crown — so it follows a bend instead
+of stepping round it, and it stops short of a junction with the rest of the kerbside. A canvas
+is still the right answer for crosswalk bars, stop bars and lane lines when E5 needs them; it was
+not needed to draw one line, and geometry the walker can be tested against was worth more than a
+texture. See **Q31**.
+
 - **L3, a marking canvas per chunk** - Union Square's `RoadMarkings` idea at chunk scale: lane
   lines, centre line, crosswalk bars and stop bars drawn once into a canvas covering the chunk
   and sampled in the road material by world x/z. No geometry, no z-fighting, follows any slope.
