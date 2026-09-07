@@ -414,7 +414,6 @@ by number from the code they create.
 | Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
 | Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | measurement lane D6, the `hilly` row |
 | Q66 | The water surface is one unculled mesh for the whole map | measurement lane D6, on a 256-tile map |
-| Q67 | Every junction on an ordinary city grid is signalled — visible now that the lights are drawn | **Kjell**: the reviewer recommends signals only where two real streets cross |
 | Q68 | A night frame at High spends 93% of its budget on eight baked chunks | measurement lane D3 and D2's phone card |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 

@@ -1,8 +1,8 @@
 # mainline — work items
 
 *Written 2026-09-06, brought current 2026-09-07: the cityviewer lane finished at `ed96699` and
-its last review left one short fix slice, **R4** (`workitems-cityviewer.md` §2f) — do that
-first, then this lane. The branch, the gates and the release: what has to happen before
+its last review left two short slices, **R4** and **T1** (`workitems-cityviewer.md` §2f) — do
+those first, then this lane. The branch, the gates and the release: what has to happen before
 `dev_night` is the game rather than a branch of it. Do this lane **first** after R4, because everything else — the measurements, the
 film, the worker — should land on `main`. Same rules as the cityviewer hand-off §0: slice
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
@@ -26,7 +26,7 @@ history is the project's memory and the dev-log cites SHAs.
 --oneline main | head -3` in the dev-log.
 
 **Review will check:** no squash, no rebase, `main`'s SHA for `slice-E0` is `04bc793`, and
-`slice-V8` (`2544c08`) and `slice-R4` are both in `main`'s history.
+`slice-V8` (`2544c08`), `slice-R4` and `slice-T1` are all in `main`'s history.
 
 ## M2 — A gate runner with a time budget (S)
 
@@ -93,5 +93,5 @@ when it is stale).
 
 ## Order
 
-R4 (cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice before anything merges; the runner first so the merge is gated by one command; the checklist after
+R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.

@@ -609,8 +609,9 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 
 **Twenty of twenty done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2, E3,
 then the post-E3 review, then E4, E5, E6, P2, V6, R1, R2, V7, E7, R3, E8, V8.
-**The cityviewer lane is finished**, with one review slice left — **R4** (§2f, three items,
-the first of which is a lane-height defect the gates cannot see). What follows it is `workitems-mainline.md`,
+**The cityviewer lane is finished**, with two short slices left — **R4** (§2f, three items,
+the first of which is a lane-height defect the gates cannot see) and **T1** (signals only where
+two real streets cross, A51). What follows it is `workitems-mainline.md`,
 then measurement, film and the worker — in that order, and the first thing any of
 them needs is the row under "Noted, no slice" that nobody has done: **every
 number in this lane is SwiftShader**, and the governor's whole reason is a phone.
@@ -895,7 +896,7 @@ find the assumption an item was built against without reading all of it.*
 | R3 | Q64 should a junction be allowed to move up or down — fixed node heights are what stop 15% being kept on steep ground |
 | E8 | Q65 should a river be CUT into the land rather than laid on it · Q66 the water surface is one unculled mesh for the whole map |
 | V8 | Q67 every junction on an ordinary city grid is signalled — true since E1, invisible until the lights were drawn · Q68 a night frame at High spends 93% of its budget on eight baked chunks |
-| Review after V8 (§2f) | Q59, Q62, Q63, Q65 closed by the reviewer (A47–A50); Q60 → worker W3, Q66/Q68/Q64 → measurement D6/D3, Q61 → Wave 5; **Q67 wants Kjell** — a recommendation is in the question |
+| Review after V8 (§2f) | Q59, Q62, Q63, Q65 closed by the reviewer (A47–A50); Q60 → worker W3, Q66/Q68/Q64 → measurement D6/D3, Q61 → Wave 5; Q67 answered by Kjell (**A51**) and built as **T1** |
 
 **Both of the two that wanted a decision are answered and built.** Q47 (should the render style
 be a setting) is A36 — a `style` row beside Quality, `painted` the default on High, done in R2;
@@ -904,9 +905,8 @@ derivation goes per chunk) is A37 — profile and cut first, which R2 did: **80.
 128×128. The live successor is **Q60**, because 53.7 ms is still four frames after every build
 action and what is left is the lane graph's own construction rather than anything the ground does.
 
-**Eight of this lane's questions are open after the last review** — Q32, Q39, Q60, Q61, Q64, Q66, Q67, Q68 — and **none of them blocks the
-next lane.** Q61 and Q67 are reachability and simulation questions belonging to Wave 5 and a
-traffic slice; Q60 is a slice of its own; Q32, Q39, Q64, Q65, Q66 and Q68 all say some version of
+**Seven of this lane's questions are open after the last review** — Q32, Q39, Q60, Q61, Q64, Q66, Q68 — and **none of them blocks the
+next lane.** Q67 is answered (A51) and is slice T1; Q61 is a reachability question belonging to Wave 5; Q60 is a slice of its own; Q32, Q39, Q64, Q65, Q66 and Q68 all say some version of
 "measure it on a real device or a bigger map first", which is `workitems-measurement.md`'s whole
 subject.
 
@@ -1136,7 +1136,8 @@ checks) and `a11y_smoke` (40) — all green, numbers matching §2a. R2, V7, E7, 
 `street-furniture.js`, `signals.js`, `foliage.js`, `atmosphere.js`, `overlay-texture.js`) are
 the right shape: derived, no `three`, one rule shared by the geometry and the collider. Reading
 found one defect the gates cannot see, and it is the largest number this lane has left in the
-code. It is **R4**, one short slice, and it goes before `workitems-mainline.md` M2.*
+code. It is **R4**, one short slice, and it goes before `workitems-mainline.md` M2 — followed by **T1**, the
+traffic slice Kjell's answer to Q67 unblocked on 2026-09-08.*
 
 ### R4 — Review fixes after V8 (S)
 
@@ -1183,6 +1184,41 @@ Commit as `slice-R4`. Each item names its test.
 **Done when** the three have their tests, `lanes_dump` carries the lane-to-ground numbers, and
 `budget_gate`'s tier rows print the right budget.
 
+### T1 — Signals only where two real streets cross (S) — A51
+
+`lanes.js` signals every node of kind `junction`, which since E1 has meant every node of degree
+three or more. A51 narrows it: a node is signalled when **two corridors of more than one tile
+each cross it** — four arms, real streets on both axes. Everything else is give-way.
+
+- `client/world/lanes.js`: the signal rule reads the node's corridors, not its degree. A helper in
+  `client/world/signals.js` (`isSignalled(node, corridors)`) so the heads (V8), the nav graph's
+  `cross` edges (E7) and the traffic all ask one function.
+- `client/life/traffic.js` `ahead()`: at an unsignalled node a car on the **minor** arm (the
+  corridor of one tile, or the stem of a T) treats the junction as a hard stop until no car on the
+  through road is within a gap of `road.speed × 2` seconds of the box; the through road never
+  stops. The IDM gap already does the following; this is one more `hard` case beside the person
+  and the red light.
+- V8's heads are placed only on signalled nodes; the crosswalk and stop bars stay. `nav.js`'s
+  `cross` edges at unsignalled nodes carry no axis, and the pedestrians there cross when the
+  nearest car is further than the same gap, otherwise wait.
+
+**Tests first.** `test/lanes.test.js` "only a junction gets a signal" becomes "only a crossing of
+two streets gets a signal": a `+` of two long streets is signalled, a `T` is not, a `+` where one
+axis is a one-tile stub is not. `test/cars.test.js`: a car on the stem of a T waits while a car on
+the through road is inside the gap and goes when it is not; the through-road car never slows for
+the stem. `test/nav.test.js`: a crossing at an unsignalled node has no axis.
+
+**Gate.** `lanes_dump` prints the signal count before and after on the 96×96 (**372** at E1's
+rule; record the new number). `traffic_gate 200 25` re-baselines and the dev-log carries both
+runs side by side — the flow numbers move and the entry says by how much. `budget_gate`'s night
+row should drop a little (fewer heads baked); record it. `reports/smoke-T1-{cross,tee}.png` from
+the pavement: a signalled crossroads and an unsignalled T on the same street.
+
+**Must not change:** any fixture hash (the lane graph is renderer-local), `engine/traffic.js`.
+
+**Done when** the three tests pass, `traffic_gate` is green on its new baseline, and a walk down
+a residential street at eye height passes T-junctions with no heads and one crossroads with four.
+
 ### The twelve open questions, dispositioned
 
 Four are closed by the reviewer (A47–A50 in `dev-questions.md`): **Q59** (still, not empty —
@@ -1193,10 +1229,8 @@ thins under the city camera — that is the rule, not a gap; the shared helper i
 Seven are handed to a lane and stay open there: **Q60** to the worker lane (W3, with the 53.7 ms
 split), **Q66** and **Q68** to the measurement lane (a new D6, a 256×256 row, and D3's
 `streetChunks` lever), **Q64** to the same D6 (the `hilly` table is the number), **Q61** to Wave
-5, **Q32** and **Q39** unchanged. One wants Kjell: **Q67** — every junction is signalled. The
-reviewer's recommendation is in the question: signal a junction only where two corridors of more
-than one tile each cross (a four-arm node with real streets on it) and let T-junctions and
-minor crossings be give-way, which is a traffic-flow change and re-baselines `traffic_gate`.
+5, **Q32** and **Q39** unchanged. **Q67** — every junction is signalled — went to Kjell and is
+answered (A51, 2026-09-08): signals only where two real streets cross. It is **T1** below.
 
 ### Also noted
 
@@ -1239,7 +1273,7 @@ What the next lane inherits:
 - **Two new rulings** — 040 (the quality tier changes rendering only) and 041 (overlays are a
   texture on the ground) — and one amended with a measurement, 038, which now carries the relief
   table R3 produced.
-- **Eight open questions** — Q32, Q39, Q60, Q61, Q64, Q66, Q67, Q68 — indexed in §2c, after the review in §2f closed four. Q67 is the one that wants Kjell. Every one has a stated
+- **Seven open questions** — Q32, Q39, Q60, Q61, Q64, Q66, Q68 — indexed in §2c, after the review in §2f closed four and Kjell answered Q67 (A51 → slice T1). Every one has a stated
   assumption it was built against and names the slice or lane that would revisit it. The two that
   wanted a decision rather than a note, Q47 and Q51, were answered (A36, A37) and built in R2.
 - **One thing nobody has done**, at the top of "Noted, no slice": every number in this lane is
