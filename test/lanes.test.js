@@ -18,6 +18,7 @@ import { adjacencyMask, tileAt } from "../shared/grid.js";
 import { NET_PRESENT } from "../client/constants-mirror.js";
 import { DEFAULTS, getConfig } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
+import { isSignalled } from "../client/world/signals.js";
 
 const T = DEFAULTS.tileM;
 const { stopLine, width: ROAD_W, lanes: LANES } = DEFAULTS.road;
@@ -188,13 +189,67 @@ test("a crossroads gives every approach three ways out and no U-turn", () => {
 
 // --- signals -----------------------------------------------------------------
 
-test("only a junction gets a signal", () => {
+// --- only a crossing of two streets gets a signal (slice T1, A51) -----------
+//
+// E1 signalled every node of kind `junction`, which is every node of degree
+// three or more. V8 drew the heads and showed what that means on an ordinary
+// city grid: a picket fence of traffic lights, four to a junction, every two to
+// four tiles (Q67). Kjell: *"signals only where two real streets cross."*
+//
+// A node is signalled when two corridors of MORE THAN ONE TILE each cross it.
+// Everything else — T-junctions, the crossings of one-tile stubs — is give-way.
+
+test("a crossroads of two real streets is signalled", () => {
+  const state = blank(12);
+  pave(state, row(4, 2, 9), column(5, 2, 9));
+  const model = createModel(state);
+  const cross = model.nodes.find((n) => n.kind === "junction");
+  assert.ok(cross, "the fixture has no crossroads");
+  assert.equal(model.lanes.signals.has(cross.id), true);
+});
+
+test("a T-junction is give-way, not a signal", () => {
+  // Three arms is not two streets crossing: the through road holds priority and
+  // the stem waits for a gap.
+  const state = blank(12);
+  pave(state, row(4, 2, 9), column(5, 4, 9));
+  const model = createModel(state);
+  const tee = model.nodes.find((n) => n.degree === 3);
+  assert.ok(tee, "the fixture has no T in it");
+  assert.equal(model.lanes.signals.has(tee.id), false);
+});
+
+test("a crossroads with a one-tile stub on one axis is give-way", () => {
+  // Four arms and only one real street: a driveway is not a street, and a light
+  // that stops an arterial for one is worse than no light.
+  const state = blank(14);
+  pave(state, row(6, 2, 11), [[6, 5], [6, 7]]);
+  const model = createModel(state);
+  const node = model.nodes.find((n) => n.degree === 4);
+  assert.ok(node, "the fixture has no four-arm node");
+  assert.equal(model.lanes.signals.has(node.id), false);
+});
+
+test("nothing with fewer than three arms is ever signalled", () => {
   const state = blank(12);
   pave(state, row(4, 2, 9), column(5, 2, 9));
   const model = createModel(state);
   for (const node of model.nodes) {
-    const signalled = model.lanes.signals.has(node.id);
-    assert.equal(signalled, node.kind === "junction", `${node.kind} node ${node.id}`);
+    if (node.degree >= 3) continue;
+    assert.equal(model.lanes.signals.has(node.id), false, `${node.kind} node ${node.id}`);
+  }
+});
+
+test("the signal rule is one function, asked by everything that draws or obeys one", () => {
+  // The heads (V8), the nav graph's crossings (E7) and the traffic all decide
+  // whether a junction is signalled. Three copies of the rule is a light that
+  // stands at a junction the cars drive straight through.
+  const state = blank(12);
+  pave(state, row(4, 2, 9), column(5, 2, 9));
+  const model = createModel(state);
+  for (const node of model.nodes) {
+    assert.equal(isSignalled(node, model.corridors), model.lanes.signals.has(node.id),
+      `node ${node.id} (${node.kind}, degree ${node.degree})`);
   }
 });
 

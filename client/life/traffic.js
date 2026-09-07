@@ -86,10 +86,16 @@ export function createTraffic(state, model, options = {}) {
    * every step — yields × ~6,000 links on a 128×128 — for a lookup the
    * derivation already knew the answer to. Two links a corridor, and
    * `nearestCorridor` has already said which corridor. */
+  /** Block links by the node they arrive at, and whether each gives way there
+   * — the give-way check asks both every step (T1). */
+  const arrivingAt = new Map();
   const blocksByCorridor = new Map();
   for (const link of blocks) {
     const list = blocksByCorridor.get(link.corridor);
     if (list) list.push(link); else blocksByCorridor.set(link.corridor, [link]);
+    link.givesWay = lanes.givesWay(link);
+    const at = arrivingAt.get(link.to);
+    if (at) at.push(link); else arrivingAt.set(link.to, [link]);
   }
 
   /** Where cars have to stop, per link: `s` along the link, ascending.
@@ -232,6 +238,15 @@ export function createTraffic(state, model, options = {}) {
     if (node >= 0 && lanes.signals.has(node) && lanes.phaseAt(node, clock) !== link.axis) {
       return { gap: link.len - car.s, leadV: 0, hard: true };
     }
+    // And so is a junction this arm gives way at (T1, A51). Since only a
+    // crossing of two real streets is signalled, most junctions on an ordinary
+    // grid are give-way, and something has to hold priority or the cars drive
+    // through each other at every one of them. The minor arm waits until
+    // nothing on the through road is within `GIVE_WAY_SECONDS` of the box; the
+    // through road never stops.
+    if (node >= 0 && lanes.givesWay(link) && !gapAt(node, link)) {
+      return { gap: link.len - car.s, leadV: 0, hard: true };
+    }
 
     // Otherwise look onto the link this car will join, so a queue does not stop
     // dead at every junction it crosses.
@@ -243,6 +258,27 @@ export function createTraffic(state, model, options = {}) {
       return { gap: (link.len - car.s) + lead.s - CAR_M, leadV: lead.v, hard: false };
     }
     return { gap: Infinity, leadV: 0, hard: false };
+  }
+
+  /** How long a gap the minor arm needs on the through road, in seconds. */
+  const GIVE_WAY_SECONDS = 2;
+
+  /**
+   * Is the through road clear enough to pull out at `node`?
+   *
+   * Every car on a link that ARRIVES at the node and does not give way, within
+   * `road.speed × GIVE_WAY_SECONDS` of the end of its own link. Cheap because
+   * the arriving links are indexed once: a node has three or four of them.
+   */
+  function gapAt(node, mine) {
+    const reach = VMAX * GIVE_WAY_SECONDS;
+    for (const link of arrivingAt.get(node) ?? []) {
+      if (link.id === mine.id || link.givesWay) continue;
+      for (const other of onLink.get(link.id) ?? []) {
+        if (link.len - other.s <= reach) return false;
+      }
+    }
+    return true;
   }
 
   /** The intelligent-driver model. Returns an acceleration. */
@@ -429,6 +465,24 @@ export function createTraffic(state, model, options = {}) {
         }
       }
       return posed;
+    },
+
+    /**
+     * Is a car about to come through this junction on that corridor? (T1.)
+     *
+     * What a pedestrian at an UNSIGNALLED crossing asks before stepping out —
+     * the same `GIVE_WAY_SECONDS` a car on a minor arm waits for, so the person
+     * and the car agree about what a gap is.
+     */
+    busyAt(corridor, node) {
+      const reach = VMAX * GIVE_WAY_SECONDS;
+      for (const link of blocksByCorridor.get(corridor) ?? []) {
+        for (const car of onLink.get(link.id) ?? []) {
+          if (link.len - car.s <= reach) return true;
+        }
+      }
+      void node;
+      return false;
     },
 
     /** How many cars are on screen. The same set `pose` writes, or the budget

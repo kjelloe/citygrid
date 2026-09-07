@@ -123,15 +123,17 @@ test("a crossing joins the two pavements of one corridor at a node", () => {
   }
 });
 
-test("a crossing knows which node and which axis it is on, so a signal reaches it", () => {
+test("a crossing knows which node it is on, so a signal can reach it", () => {
   // A crossing that does not know its node is a crossing nobody waits at, and
   // the light was the whole reason the nav graph is a graph rather than a line.
+  // The AXIS is carried only where there is a light to obey (T1) — see below.
   const state = blank();
   pave(state, [...row(8, 2, 13), ...col(8, 2, 13)]);
-  const { nav } = navOf(state);
+  const { model, nav } = navOf(state);
   for (const c of nav.edges.filter((e) => e.kind === "cross")) {
     assert.equal(typeof c.node, "number");
     assert.ok(c.node >= 0);
+    if (!model.lanes.signals.has(c.node)) continue;
     assert.ok(c.axis === "ns" || c.axis === "ew", `axis "${c.axis}"`);
   }
 });
@@ -253,4 +255,33 @@ test("the graph is a function of the state and nothing else", () => {
   assert.deepEqual(a.stats, b.stats);
   assert.deepEqual(a.doors.map((d) => [d.lot, d.edge, Math.round(d.s * 1e6)]),
     b.doors.map((d) => [d.lot, d.edge, Math.round(d.s * 1e6)]));
+});
+
+// --- a crossing without a light (slice T1, A51) ------------------------------
+
+test("a crossing at an unsignalled node has no axis to wait for", () => {
+  // Since T1 only a crossing of two real streets is signalled, so most nodes
+  // are give-way. A `cross` edge there cannot carry a signal axis: there is no
+  // signal, and a pedestrian holding for a phase that never changes waits for
+  // ever.
+  const state = blank(24);
+  pave(state, [...row(8, 2, 21), ...col(8, 8, 21)]);   // a T, not a crossroads
+  const { model, nav } = navOf(state);
+  const tee = model.nodes.find((n) => n.degree === 3);
+  assert.ok(tee, "no T in the fixture");
+  assert.equal(model.lanes.signals.has(tee.id), false);
+  const crossings = nav.edges.filter((e) => e.kind === "cross" && e.node === tee.id);
+  assert.ok(crossings.length > 0, "the T has no crossing at all");
+  for (const c of crossings) assert.equal(c.axis, undefined, `axis "${c.axis}"`);
+});
+
+test("a crossing at a signalled crossroads still carries its axis", () => {
+  const state = blank(24);
+  pave(state, [...row(8, 2, 21), ...col(12, 2, 21)]);
+  const { model, nav } = navOf(state);
+  const cross = model.nodes.find((n) => n.degree === 4);
+  assert.equal(model.lanes.signals.has(cross.id), true);
+  for (const c of nav.edges.filter((e) => e.kind === "cross" && e.node === cross.id)) {
+    assert.ok(c.axis === "ns" || c.axis === "ew", `axis "${c.axis}"`);
+  }
 });

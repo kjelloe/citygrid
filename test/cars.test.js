@@ -566,3 +566,88 @@ test("looking a yield up is not a walk over every link in the city", () => {
     "placeYield still scans every block link");
   assert.match(place, /blocksByCorridor\.get\(/, "placeYield does not use the corridor index");
 });
+
+// --- give way at an unsignalled junction (slice T1, A51) ---------------------
+//
+// Once only a crossing of two real streets is signalled, every T in the city is
+// give-way. Something has to hold priority or the cars drive through each other
+// at every one of them, which is most of the junctions on an ordinary grid.
+
+/** A T: a long through road east–west and a stem coming up to it. */
+function tee(size = 24) {
+  const state = blank(size);
+  pave(state, row(6, 2, size - 3), column(12, 6, size - 3));
+  load(state, 200);
+  const model = createModel(state);
+  return { state, model };
+}
+
+test("the stem of a T is give-way and the through road is not", () => {
+  const { state, model } = tee();
+  const node = model.nodes.find((n) => n.degree === 3);
+  assert.ok(node, "no T in the fixture");
+  assert.equal(model.lanes.signals.has(node.id), false, "the T is signalled");
+  // Which links arrive at it, and which of them are the minor arm.
+  const arriving = model.lanes.links.filter((l) => l.kind === "block" && l.to === node.id);
+  assert.equal(arriving.length, 3, `${arriving.length} arms arrive at the T`);
+  const minor = arriving.filter((l) => model.lanes.givesWay(l));
+  assert.equal(minor.length, 1, `${minor.length} of three arms give way`);
+  assert.equal(minor[0].corridor, model.corridors.find((c) => c.id === minor[0].corridor).id);
+});
+
+test("a car on the stem waits while the through road is busy", () => {
+  const { state, model } = tee();
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 60);
+  const node = model.nodes.find((n) => n.degree === 3);
+  const stem = model.lanes.links.find((l) => l.kind === "block" && l.to === node.id
+    && model.lanes.givesWay(l));
+  // Somebody at the stop line on the minor arm, with the through road full.
+  let waited = 0;
+  for (let step = 0; step < 30 * 30; step += 1) {
+    traffic.update(1 / 30);
+    for (const car of traffic.cars()) {
+      if (car.link !== stem.id) continue;
+      if (car.s > stem.len - 12 && car.v < 0.5) waited += 1;
+    }
+  }
+  assert.ok(waited > 0, "nobody on the stem ever gave way");
+});
+
+test("the through road never gives way to the stem", () => {
+  const { state, model } = tee();
+  const node = model.nodes.find((n) => n.degree === 3);
+  for (const link of model.lanes.links) {
+    if (link.kind !== "block" || link.to !== node.id) continue;
+    if (model.lanes.givesWay(link)) continue;
+    // The two through arms carry the same corridor pair as the road itself.
+    assert.ok(link.len > 20, `a through arm only ${link.len.toFixed(0)} m long`);
+  }
+  const through = model.lanes.links.filter((l) => l.kind === "block" && l.to === node.id
+    && !model.lanes.givesWay(l));
+  assert.equal(through.length, 2, `${through.length} through arms`);
+});
+
+test("a signalled crossroads gives way to nobody — the light does that", () => {
+  const state = blank(24);
+  pave(state, row(6, 2, 21), column(12, 2, 21));
+  load(state, 200);
+  const model = createModel(state);
+  const node = model.nodes.find((n) => n.degree === 4);
+  assert.equal(model.lanes.signals.has(node.id), true);
+  for (const link of model.lanes.links) {
+    if (link.kind !== "block" || link.to !== node.id) continue;
+    assert.equal(model.lanes.givesWay(link), false, "a signalled arm also gives way");
+  }
+});
+
+test("traffic still flows through a city of give-way junctions", () => {
+  // The failure mode of a priority rule is deadlock: everyone waiting for
+  // everyone. A city of T-junctions has to keep moving.
+  const { state, model } = tee();
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 90);
+  const moving = traffic.cars().filter((c) => c.v > 1).length;
+  assert.ok(moving > traffic.cars().length * 0.4,
+    `only ${moving} of ${traffic.cars().length} cars are moving`);
+});

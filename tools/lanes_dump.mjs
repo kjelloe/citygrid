@@ -11,6 +11,7 @@
 
 import { saturatedCity } from "./lib/saturated.mjs";
 import { createModel } from "../client/world/model.js";
+import { DEFAULTS } from "../client/world/config.js";
 
 const size = Number(process.argv[2] ?? 96);
 // The gates' shared city (`tools/lib/saturated.mjs`), without the seeded
@@ -130,6 +131,17 @@ if (shortest.len < CAR) {
   const cars = traffic.cars().length;
   console.log(`traffic step    ${bare.toFixed(2)} ms with no yields, `
     + `${loaded.toFixed(2)} ms with ${points.length} of them (${cars} cars)`);
+  // How the LOCAL traffic flows (T1). `traffic_gate` measures the engine's
+  // commuter pass, which T1 does not touch — the cars on screen are a separate
+  // simulation over the lane graph, and the give-way rule changes them and
+  // nothing else. This is the only number that can see it.
+  traffic.yieldTo([]);
+  for (let i = 0; i < 900; i += 1) traffic.update(1 / 30);
+  const all = traffic.cars();
+  const moving = all.filter((c) => c.v > 1).length;
+  const mean = all.reduce((a, c) => a + c.v, 0) / Math.max(1, all.length);
+  console.log(`traffic flow    ${all.length} cars, ${moving} moving (${(100 * moving / Math.max(1, all.length)).toFixed(0)}%), `
+    + `mean ${mean.toFixed(2)} m/s of a ${DEFAULTS.road.speed} m/s limit`);
   if (cars === 0) {
     console.error("\nFAIL  the step was timed on an empty road");
     process.exit(1);

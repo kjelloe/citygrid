@@ -155,10 +155,12 @@ test("the bars lie across the carriageway, not along it", () => {
   }
 });
 
-test("an unsignalled node has no crossing painted on it", () => {
+test("a node that is not a junction has no crossing painted on it", () => {
+  // An end or a bend is not a place anyone crosses. A give-way JUNCTION is, and
+  // it keeps its bars — see below (T1, A51).
   const model = crossroads();
   for (const node of model.nodes) {
-    if (model.lanes.signals.has(node.id)) continue;
+    if (node.kind === "junction") continue;
     assert.deepEqual(crossingBars(model, node), []);
   }
 });
@@ -170,4 +172,38 @@ test("heads and bars are a function of the model and nothing else", () => {
   const nodeB = b.nodes.find((n) => b.lanes.signals.has(n.id));
   assert.deepEqual(signalHeads(a, nodeA), signalHeads(b, nodeB));
   assert.deepEqual(crossingBars(a, nodeA), crossingBars(b, nodeB));
+});
+
+// --- what an unsignalled junction keeps (slice T1, A51) ----------------------
+
+test("an unsignalled junction keeps its crossing and loses its heads", () => {
+  // A51: "the unsignalled crossings keep their crosswalk bars and lose their
+  // heads." A zebra is where people cross; a head is what stops the traffic,
+  // and there is nothing there to stop.
+  const state = createState(defaultOptions({ width: 16, height: 16, seed: 7 }));
+  state.tiles.elevation.fill(40);
+  const road = state.tiles.road;
+  const tiles = [];
+  for (let x = 2; x < 14; x += 1) tiles.push([x, 8]);
+  for (let y = 8; y < 14; y += 1) tiles.push([8, y]);   // a T, not a crossroads
+  for (const [x, y] of tiles) road[tileAt(16, x, y)] = NET_PRESENT;
+  for (const [x, y] of tiles) {
+    road[tileAt(16, x, y)] = NET_PRESENT
+      | adjacencyMask(16, 16, x, y, (i) => (road[i] & NET_PRESENT) !== 0);
+  }
+  const model = createModel(state);
+  const tee = model.nodes.find((n) => n.degree === 3);
+  assert.ok(tee, "no T in the fixture");
+  assert.equal(model.lanes.signals.has(tee.id), false);
+  assert.deepEqual(signalHeads(model, tee), [], "a give-way junction has heads on it");
+  assert.ok(crossingBars(model, tee).length > 0, "a give-way junction lost its zebra");
+});
+
+test("a node that is not a junction at all gets neither", () => {
+  const model = crossroads();
+  for (const node of model.nodes) {
+    if (node.kind === "junction") continue;
+    assert.deepEqual(signalHeads(model, node), []);
+    assert.deepEqual(crossingBars(model, node), []);
+  }
 });

@@ -895,7 +895,9 @@ find the assumption an item was built against without reading all of it.*
 | E7 | Q62 pedestrians walk by hash rather than by plan · Q63 the crowd is a function of the camera and the traffic is not |
 | R3 | Q64 should a junction be allowed to move up or down — fixed node heights are what stop 15% being kept on steep ground |
 | E8 | Q65 should a river be CUT into the land rather than laid on it · Q66 the water surface is one unculled mesh for the whole map |
-| V8 | Q67 every junction on an ordinary city grid is signalled — true since E1, invisible until the lights were drawn · Q68 a night frame at High spends 93% of its budget on eight baked chunks |
+| V8 | Q67 every junction on an ordinary city grid is signalled — true since E1, invisible until the lights were drawn (**A51, built as T1**) · Q68 a night frame at High spends 93% of its budget on eight baked chunks |
+| R4 | none — three review fixes, all measured |
+| T1 | none — A51 built; `traffic_gate` cannot see a renderer-local change and says so |
 | Review after V8 (§2f) | Q59, Q62, Q63, Q65 closed by the reviewer (A47–A50); Q60 → worker W3, Q66/Q68/Q64 → measurement D6/D3, Q61 → Wave 5; Q67 answered by Kjell (**A51**) and built as **T1** |
 
 **Both of the two that wanted a decision are answered and built.** Q47 (should the render style
@@ -1192,7 +1194,16 @@ than its `heightAt`. Measured: `dir 1` **1.79 m mean / 2,540 over 0.5 m / 12.44 
 **Done when** the three have their tests, `lanes_dump` carries the lane-to-ground numbers, and
 `budget_gate`'s tier rows print the right budget. ✅ All three, 2026-09-08.
 
-### T1 — Signals only where two real streets cross (S) — A51
+### T1 — Signals only where two real streets cross (S) — A51 — **done 2026-09-08 as `slice-T1`**
+
+**Measured.** Signals on the saturated 96×96 **372 → 337** (it is genuinely a grid of long
+streets crossing long streets, so 91% keep them); on the deputy city — the one V8's picket-fence
+screenshot was of — **1,126 → 41**. `traffic_gate 200 25` is byte-identical before and after,
+because it measures `engine/traffic.js` and T1 is renderer-local (ruling 037); the local
+simulation is what moves, and `lanes_dump` measures it now: 291 → 304 of 400 cars moving, mean
+3.37 → 3.53 m/s. `budget_gate`'s night row is unchanged. The priority rule was backwards on the
+first try — a junction splits the road running through it and leaves the road that ends there
+whole, so the STEM is the longest corridor at the node.
 
 `lanes.js` signals every node of kind `junction`, which since E1 has meant every node of degree
 three or more. A51 narrows it: a node is signalled when **two corridors of more than one tile
@@ -1226,6 +1237,8 @@ the pavement: a signalled crossroads and an unsignalled T on the same street.
 
 **Done when** the three tests pass, `traffic_gate` is green on its new baseline, and a walk down
 a residential street at eye height passes T-junctions with no heads and one crossroads with four.
+✅ 2026-09-08. `traffic_gate`'s baseline did not move at all, which is the right answer and is
+written up in the dev-log rather than hidden.
 
 ### The twelve open questions, dispositioned
 

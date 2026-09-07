@@ -18,6 +18,7 @@
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
+import { isSignalled, givesWayAt } from "./signals.js";
 // Shared with the nav graph pedestrians walk on (E7): one copy of "offset a
 // centre line" and "stop short of a junction", not two.
 import { rightOf, offsetPolyline, trim, lengthOf } from "./polyline.js";
@@ -319,9 +320,30 @@ export function deriveLanes(state, network, ground) {
   // --- signals ----------------------------------------------------------------
   const signals = new Map();
   for (const node of network.nodes) {
-    if (node.kind !== "junction") continue;
+    // Only where two real streets cross (T1, A51). The rule is in
+    // `signals.js`, because the heads that stand at a junction and the nav
+    // graph's crossings have to agree with the cars about which junctions have
+    // one — three copies of it is a light the traffic drives straight through.
+    if (!isSignalled(node, network.corridors)) continue;
     const cycle = 60;
     signals.set(node.id, { node: node.id, cycle, offset: jitter(node.tile, 97) * cycle });
+  }
+
+  /**
+   * Does a block link have to give way where it arrives? (T1, A51.)
+   *
+   * Only at an UNSIGNALLED junction, and only off the priority AXIS — which at
+   * a T is the stem and at a street crossing a driveway is the driveway. The
+   * through road never stops: something has to hold priority or the cars drive
+   * through each other at every junction on the grid, which since T1 is most of
+   * them. The rule itself is in `signals.js` beside `isSignalled`, because the
+   * pedestrians have to agree with it (E7's crossings).
+   */
+  function givesWay(link) {
+    if (link.kind !== "block") return false;
+    const node = nodeById.get(link.to);
+    if (!node || node.kind !== "junction" || signals.has(node.id)) return false;
+    return givesWayAt(node, network.corridors[link.corridor], network.corridors);
   }
 
   /** Which axis has green at time `t` seconds, or `'amber'` in between.
@@ -367,6 +389,7 @@ export function deriveLanes(state, network, ground) {
     nodes: network.nodes,
     signals,
     phaseAt,
+    givesWay,
     sample,
     stats: {
       lanes: lanes.length,

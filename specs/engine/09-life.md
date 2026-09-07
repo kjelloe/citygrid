@@ -64,7 +64,11 @@ one city come out byte identical.
 ## 9.2 Signals
 
 Nodes with degree ≥ 3 on a corridor of `road` kind get a two-phase cycle (Union Square:
-60 s) with a hashed phase offset. At L2 nothing is drawn; at L3 a signal head per approach with
+60 s) with a hashed phase offset. **Narrowed by A51 in T1**: only where two real streets cross —
+four arms with a corridor of more than one tile on each axis. Everything else is give-way, and
+the through road (the axis with two arms) holds priority. `isSignalled` and `givesWayAt` in
+`client/world/signals.js` are the one place both rules live, because the lane graph, the heads
+and the pedestrians all have to agree with them. At L2 nothing is drawn; at L3 a signal head per approach with
 the lit lamp as an emissive bucket swap. Pedestrian walk phases feed the nav graph.
 
 **Built (V8, 2026-09-07.)** `client/world/signals.js` — pure — decides where a head stands (on
@@ -82,8 +86,11 @@ signal (§9.3), so the light, the queue and the person standing at the kerb are 
 Cost, measured on the saturated 96×96 at High: **1,920 triangles a chunk** — four heads and
 twelve bars at sixteen junctions — and the lens is an OCTAHEDRON rather than a sphere, because
 36 triangles for something two pixels across took the night frame's ladder a rung further down.
-Drawing them surfaced something nobody had seen: **every junction on an ordinary city grid is
-signalled**, which was true since E1 and invisible while nothing stood there (**Q67**).
+Drawing them surfaced something nobody had seen: **every junction on an ordinary city grid was
+signalled**, true since E1 and invisible while nothing stood there (Q67). A51 narrowed it in T1 —
+on the deputy 64×64 that is 1,126 signalled junctions down to 41 — and an unsignalled junction
+keeps its crossing bars and loses only its heads: a zebra is where people cross, a head is what
+stops the traffic, and at a give-way junction there is nothing there to stop.
 
 ## 9.3 Pedestrians
 

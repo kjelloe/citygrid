@@ -316,6 +316,10 @@ export function createRenderer(canvas, state, options = {}) {
   // the cars: derived, renderer-local, never state, frozen by `life: false`.
   let nav = deriveNav(state, model);
   let pedestrians = createPedestrians(state, model, nav, { cap: pedCap(), life: options.life });
+  // The crossings without a light ask the cars for a gap (T1, A51). Wired here
+  // because `life/pedestrians.js` may not reach into `life/traffic.js`: they are
+  // two independent simulations over one derived graph.
+  pedestrians.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
 
   // The baked street cache (slice E2). It draws nothing until a chunk is close
   // enough to be worth baking and the tier allows any.
@@ -421,6 +425,7 @@ export function createRenderer(canvas, state, options = {}) {
     scene.add(water.group);
     nav = deriveNav(state, model);
     pedestrians = createPedestrians(state, model, nav, { cap: pedCap(), life: options.life });
+    pedestrians.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
     collision = createCollision(model);
     // Where the walker stands is a fact about the OLD lots; a rebuild can put a
     // building on top of it, so it is settled onto the new ground.

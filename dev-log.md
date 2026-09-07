@@ -4135,3 +4135,76 @@ photograph a traffic change. `tools/shoot.html` takes `?traffic=N` now, and
 harness with the code change toggled — the R3 lesson, made reusable. Even so: **the number is the
 evidence here, not the picture.** 12.44 m of error is invisible from a hillside at a hundred
 metres and obvious in one line of `lanes_dump`.
+
+## slice-T1 — signals only where two real streets cross (2026-09-08)
+
+A51, answering Q67. V8 drew the signal heads and showed what E1's rule meant on an ordinary
+city grid: every node of degree three or more was signalled, so a residential street at eye
+height was a picket fence of traffic lights.
+
+**The rule.** `isSignalled(node, corridors)` in `client/world/signals.js`: four arms, and a
+corridor of more than one tile on each axis. One function, asked by the lane graph that owns the
+cycle, the heads that stand at it (V8) and the nav graph's crossings (E7) — three copies of it
+would be a light standing at a junction the cars drive straight through.
+
+| city | junctions | signalled before | after |
+|---|---|---|---|
+| saturated 96×96 (`lanes_dump`) | 372 | 372 | **337** |
+| deputy, rolling 64 | 1,126 | 1,126 | **41** |
+| deputy, hilly 64 | 1,181 | 1,181 | **39** |
+
+The saturated fixture keeps 91% of its signals because it genuinely is a grid of long streets
+crossing long streets; the deputy city — which is what V8's picket-fence screenshot was of —
+drops to 4%. `reports/smoke-T1-{cross,tee}.png`: a signalled crossroads, and a residential T at
+eye height with lamps, trees, cars and no heads at all.
+
+**Give way.** Everything else holds priority by axis: the through road is the axis with two arms
+(a junction splits the road running through it into two corridors and leaves the road that ends
+there whole, so "the longest street has priority" hands the right of way to the side road — that
+was the first version and it was backwards). A car on the minor arm treats the junction as a hard
+stop until nothing on the through road is within `road.speed × 2` seconds of the box. A tie is
+nobody: two equal streets crossing unsignalled is a place the rule cannot resolve, and stopping
+both is a deadlock. Pedestrians at an unsignalled crossing ask the cars for the same gap
+(`traffic.busyAt`), wired in `scene.js` because the two simulations may not reach into each other.
+
+**`traffic_gate 200 25`, both runs, side by side — and they are identical:**
+
+```
+before   923 buildings (629 homes), 8899 road tiles, pop 7048
+         traffic pass: median 0.59ms, worst 0.62ms
+         summary: {"commuters":1263,"congested":364,"stranded":161,"averageCommute":45}
+         congestion vs people-per-road r = 0.547, vs population r = 0.551, vs SEED r = -0.075
+         146 of 198 games with any congestion
+
+after    923 buildings (629 homes), 8899 road tiles, pop 7048
+         traffic pass: median 0.59ms, worst 0.65ms
+         summary: {"commuters":1263,"congested":364,"stranded":161,"averageCommute":45}
+         congestion vs people-per-road r = 0.547, vs population r = 0.551, vs SEED r = -0.075
+         146 of 198 games with any congestion
+```
+
+**Not a null result — the wrong gate for this change, and worth saying so.** `traffic_gate`
+measures `engine/traffic.js`, the commuter pass that fills `tiles.traffic`; T1 touches
+`client/world/lanes.js` and `client/life/traffic.js`, both renderer-local (ruling 037). The two
+cannot move each other, and "must not change: `engine/traffic.js`" is exactly that promise. What
+CAN see the change is the local simulation, so `lanes_dump` measures it now:
+
+```
+before   signals 372   400 cars, 291 moving (73%), mean 3.37 m/s of an 11 m/s limit
+after    signals 337   400 cars, 304 moving (76%), mean 3.53 m/s
+```
+
+Fewer lights is slightly freer flow on the fixture that keeps most of them; on the deputy city,
+where 1,126 junctions become 41, the change is the picture rather than the number.
+
+**`budget_gate`'s night row is unchanged** at 289,446 of 320,000 and the street chunks at 269,940
+— the review expected it to drop a little, and on the saturated fixture 337 of 372 junctions keep
+their heads, so it does not. No fixture hash moved. Suite green twice; all fifteen gates green.
+
+**What failed on the way.**
+
+*The priority rule was backwards on the first try.* "The minor arm is the shorter corridor" reads
+as obviously right and hands the right of way to the side road at every T in the city: a junction
+splits the road that runs THROUGH it into two corridors, one either side, while the road that
+ends there stays whole — so the stem is the longest corridor at the node. Two arms on an axis is
+what "runs through" means, and length only breaks a tie between two axes that both do.

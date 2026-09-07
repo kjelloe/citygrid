@@ -230,3 +230,41 @@ test("two runs of the same city are the same crowd", () => {
   const key = (peds) => peds.people().map((p) => `${p.id}:${p.edge}:${p.s.toFixed(6)}`).join("|");
   assert.equal(key(pa), key(pb));
 });
+
+// --- crossing where there is no light (slice T1, A51) ------------------------
+
+test("somebody at an unsignalled crossing waits for a gap rather than a phase", () => {
+  // Since T1 only a crossing of two real streets is signalled, so most nodes
+  // are give-way. A pedestrian holding for a phase that never changes waits for
+  // ever, and one who steps out without looking is run over by a car that never
+  // had to stop.
+  const { state, model, nav } = town({ crossroads: false });
+  const peds = createPedestrians(state, model, nav, { cap: 200 });
+  const unsignalled = nav.edges.filter((e) => e.kind === "cross" && e.axis === undefined);
+  assert.ok(unsignalled.length > 0, "the fixture has no unsignalled crossing");
+  // With a car sitting on the crossing's own corridor, nobody steps onto it.
+  const busy = new Set([unsignalled[0].corridor]);
+  peds.setTraffic((corridor) => busy.has(corridor));
+  run(peds, 60);
+  for (const person of peds.people()) {
+    assert.notEqual(person.edge, unsignalled[0].id,
+      "somebody walked into the road in front of a car");
+  }
+});
+
+test("and crosses once the road is clear", () => {
+  const { state, model, nav } = town({ crossroads: false });
+  const peds = createPedestrians(state, model, nav, { cap: 200 });
+  peds.setTraffic(() => false);
+  run(peds, 120);
+  assert.ok(peds.crossed > 0, "nobody ever got across an unsignalled road");
+});
+
+test("with nothing to ask, an unsignalled crossing is simply open", () => {
+  // `setTraffic` is optional: a caller that does not wire the cars up gets a
+  // crowd that crosses freely rather than one frozen on the kerb.
+  const { state, model, nav } = town({ crossroads: false });
+  const peds = createPedestrians(state, model, nav, { cap: 200 });
+  run(peds, 120);
+  assert.ok(peds.crossed > 0, "the crowd is stuck on the pavement");
+});

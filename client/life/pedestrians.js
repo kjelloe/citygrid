@@ -42,6 +42,11 @@ export function createPedestrians(state, model, nav, options = {}) {
   let nextId = 1;
   let waited = 0;
   let crossed = 0;
+  /** "Is a car about to come through this crossing?", answered by the caller.
+   * Optional: with nothing wired up an unsignalled crossing is simply open, so
+   * a gate that does not build traffic gets a crowd rather than a queue frozen
+   * on the kerb (T1). */
+  let busyOn;
 
   const walks = nav.edges.filter((e) => e.kind === "walk" && e.demand > 0);
   /** The pavements the camera can see, and the box they were chosen for.
@@ -148,6 +153,12 @@ export function createPedestrians(state, model, nav, options = {}) {
    * not be in front of them. Amber counts as against, both ways. */
   function open(edge) {
     if (edge.kind !== "cross" || edge.node === undefined) return true;
+    // No axis means no light (T1, A51): since only a crossing of two real
+    // streets is signalled, most crossings are give-way. A person there waits
+    // for a GAP — which the caller answers, because the cars are in
+    // `life/traffic.js` and this module may not reach into them — and one
+    // holding for a phase that never changes would wait for ever.
+    if (edge.axis === undefined) return !busyOn?.(edge.corridor, edge.node);
     return model.lanes.phaseAt(edge.node, clock) !== edge.axis;
   }
 
@@ -315,6 +326,9 @@ export function createPedestrians(state, model, nav, options = {}) {
   }
 
   return {
+    /** Wires the crossings to the cars (T1). */
+    setTraffic(isBusy) { busyOn = isBusy; },
+
     update(dt, bounds, focus) {
       // Remembered even when frozen: `?life=0` settles the crowd lazily, on the
       // first frame that says where the camera is.

@@ -123,9 +123,15 @@ export function deriveNav(state, model) {
       if (a === undefined || b === undefined) continue;
       const packed = packWithHeight([nodes[a], nodes[b]], surface);
       if (packed.len < 1e-6) continue;
+      // An axis only where there IS a signal (T1, A51): since only a crossing
+      // of two real streets is signalled, most nodes are give-way, and a
+      // pedestrian holding for a phase that never changes waits for ever.
+      const signalled = model.lanes.signals.has(node.id);
       addEdge({
         kind: "cross", corridor: corridorId, node: node.id,
-        axis: AXIS[armOf(node, (nodes[a].x + nodes[b].x) / 2, (nodes[a].z + nodes[b].z) / 2)],
+        axis: signalled
+          ? AXIS[armOf(node, (nodes[a].x + nodes[b].x) / 2, (nodes[a].z + nodes[b].z) / 2)]
+          : undefined,
         from: a, to: b, doors: [], demand: 0, ...packed,
       });
     }

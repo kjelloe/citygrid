@@ -22,6 +22,95 @@ const AXIS = ["ns", "ew", "ns", "ew"];   // DIR4 order: N, E, S, W
 /** How tall a signal post is, and how far its lens hangs above the kerb. */
 const POST_H = 3.2;
 
+/** How long a corridor has to be to count as a street rather than a stub. One
+ * tile: a driveway between two roads is not a street, and a light that stops an
+ * arterial for one is worse than no light. */
+const STREET_TILES = 1;
+
+/**
+ * Is this node a crossing of two real streets? (slice T1, A51.)
+ *
+ * E1 signalled every node of kind `junction`, which is every node of degree
+ * three or more. V8 drew the heads and showed what that means on an ordinary
+ * city grid: a picket fence of traffic lights, four to a junction, every two to
+ * four tiles (Q67). Kjell's answer: signals only where two real streets cross —
+ * two corridors of more than one tile each, meeting here. Everything else is
+ * give-way, and the through road holds priority.
+ *
+ * ONE function, asked by the lane graph (which owns the cycle), the heads that
+ * stand at it (V8) and the nav graph's crossings (E7). Three copies of the rule
+ * is a light standing at a junction the cars drive straight through.
+ */
+export function isSignalled(node, corridors, cfg = getConfig()) {
+  // FOUR arms, and a real street on each axis. Three is a T, and a T is
+  // give-way: the through road holds priority and the stem waits for a gap.
+  if (!node || node.kind !== "junction" || node.degree < 4) return false;
+  const streets = { ns: 0, ew: 0 };
+  for (const id of node.corridors) {
+    const corridor = corridors[id];
+    if (!corridor) continue;
+    // By LENGTH, not by tile count: a corridor's `tiles` include the junction
+    // tiles at either end, so a one-tile stub between two roads counts three.
+    if (corridor.length <= STREET_TILES * cfg.tileM + 1e-6) continue;
+    streets[axisOfArm(node, corridor)] += 1;
+  }
+  return streets.ns > 0 && streets.ew > 0;
+}
+
+/** Which axis an arm leaves a node on. */
+function axisOfArm(node, corridor) {
+  const a = corridor.points[0];
+  const b = corridor.points[corridor.points.length - 1];
+  const near = Math.hypot(a.x - node.x, a.z - node.z) < Math.hypot(b.x - node.x, b.z - node.z) ? a : b;
+  const next = near === a ? (corridor.points[1] ?? b) : (corridor.points[corridor.points.length - 2] ?? a);
+  return AXIS[armOf(node, next.x, next.z)];
+}
+
+/**
+ * Which axis holds priority at an unsignalled junction, or `undefined` when the
+ * rule cannot say (T1, A51).
+ *
+ * The THROUGH road, and the first test is the number of ARMS. A junction splits
+ * the road that runs through it into two corridors, one either side, while the
+ * road that ends there is one undivided corridor — so at a T the stem is the
+ * LONGEST corridor at the node and "the longest street has priority" hands the
+ * right of way to the side road. Two arms on an axis is what "runs through"
+ * means.
+ *
+ * Length only breaks a tie: at a four-arm node where both axes run through, the
+ * one with more street on it holds priority, which is how a road crossing a
+ * driveway comes out right.
+ *
+ * A tie is `undefined` and nobody gives way. Two equal streets crossing at an
+ * unsignalled junction is a place the rule cannot resolve, and stopping both is
+ * a deadlock — this is a priority rule, deliberately, not an all-way stop.
+ */
+export function priorityAxis(node, corridors) {
+  if (!node || node.kind !== "junction") return undefined;
+  const arms = { ns: 0, ew: 0 };
+  const total = { ns: 0, ew: 0 };
+  for (const id of node.corridors) {
+    const corridor = corridors[id];
+    if (!corridor) continue;
+    const axis = axisOfArm(node, corridor);
+    arms[axis] += 1;
+    total[axis] += corridor.length;
+  }
+  if (arms.ns >= 2 && arms.ew < 2) return "ns";
+  if (arms.ew >= 2 && arms.ns < 2) return "ew";
+  if (arms.ns < 2 && arms.ew < 2) return undefined;
+  if (total.ns > total.ew * 1.2) return "ns";
+  if (total.ew > total.ns * 1.2) return "ew";
+  return undefined;
+}
+
+/** Does a corridor arriving at this node have to give way? */
+export function givesWayAt(node, corridor, corridors) {
+  const priority = priorityAxis(node, corridors);
+  if (!priority || !corridor) return false;
+  return axisOfArm(node, corridor) !== priority;
+}
+
 /** Which arm of a node a point lies on, in DIR4 order. */
 function armOf(node, x, z) {
   let best = 0;
@@ -100,7 +189,11 @@ const BAR_W = 0.5;
  * with nothing to stop the traffic is a lie about who has right of way.
  */
 export function crossingBars(model, node, cfg = getConfig()) {
-  if (!node || !model.lanes.signals.has(node.id)) return [];
+  // Every JUNCTION, signalled or not (T1, A51): an unsignalled crossing keeps
+  // its bars and loses only its heads. A zebra is where people cross; a head is
+  // what stops the traffic, and at a give-way junction there is nothing there
+  // to stop.
+  if (!node || node.kind !== "junction") return [];
   const half = cfg.road.width / 2;
   const box = half + cfg.road.sidewalk;
   const out = [];
