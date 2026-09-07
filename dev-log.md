@@ -4224,6 +4224,7 @@ quick   375 s of an 8-minute budget   12 gates
         budget_gate 102s, ui_smoke 66s, a11y_smoke 45s, reach_smoke 43s, play_smoke 40s,
         lobby_smoke 33s, mvp_acceptance 18s, offline 10s, save 7s, update 5s, client 5s, serve 3s
 render    3 s of a 2-minute budget    walkthrough 2.3s, lanes_dump 0.5s, passability 0.2s
+sim     595 s of a 15-minute budget  sim_sweep 439s, traffic_gate 80s, disaster_soak 76s
 ```
 
 M2's own item guessed `quick ≤ 5 min` and `render ≤ 15`; the measurement says **6.25 and 0.05**,
@@ -4274,8 +4275,8 @@ commit.
 
 **Measured on the merged tree.** `./test.sh` green twice. `node tools/gates.mjs quick`: **380 s**
 of an eight-minute budget, twelve gates, no leaked browsers — budget_gate 104 s, ui_smoke 66,
-a11y_smoke 46. The `sim` set on the same tree: disaster_soak 76 s, traffic_gate 80 s, sim_sweep
-running long as expected.
+a11y_smoke 46. The `sim` set on the same tree: **595 s** — sim_sweep 439 s, traffic_gate 80 s,
+disaster_soak 76 s.
 
 **Not pushed.** The item's last line is "push both", and that publishes 55 commits to a shared
 remote; the item is marked "needs Kjell" and this is the half that does. The command is

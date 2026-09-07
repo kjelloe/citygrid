@@ -72,7 +72,7 @@ SETS.all = [...SETS.quick, ...SETS.render, ...SETS.sim];
  *
  *   quick   375 s — budget_gate 102, ui_smoke 66, a11y_smoke 45, reach 43, play 40
  *   render    3 s — walkthrough 2.3, lanes_dump 0.5, passability 0.2
- *   sim     see the dev-log; the three soaks are 200 games x 25 years each
+ *   sim     595 s — sim_sweep 439, traffic_gate 80, disaster_soak 76
  *
  * The budgets are the measurement plus room, not a wish. M2's own item guessed
  * "quick ≤ 5 min" and the measurement says 6.25, which is the point of
@@ -82,8 +82,8 @@ SETS.all = [...SETS.quick, ...SETS.render, ...SETS.sim];
 export const BUDGET_MS = {
   quick: 8 * 60 * 1000,
   render: 2 * 60 * 1000,
-  sim: 45 * 60 * 1000,
-  all: 55 * 60 * 1000,
+  sim: 15 * 60 * 1000,
+  all: 25 * 60 * 1000,
 };
 
 export function gatesIn(set) {

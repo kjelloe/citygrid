@@ -121,6 +121,20 @@ fixture had no pollution. A green wash over green grass is a green picture. **Ve
 instrument, then verify what the instrument is pointed at**: histogram the data the picture is
 supposed to be showing before concluding anything from the picture.
 
+**A derived index can be read backwards, and only half the city will show it.** R2 gave the lane
+graph the corridor's own profile instead of a height per point — a real 80 → 53.7 ms win — and
+mapped a lane's fraction of length onto a profile built in forward order. Every lane running the
+other way read it mirrored: 1.79 m mean error, worst 12.44 m, half the traffic in the city posed
+against the wrong end of its street, for four slices. When a derivation is shared by two
+directions, assert the SECOND one; `budget_gate` counts triangles and `walkthrough` never looks
+at a car.
+
+**The gate that was asked for is not always the gate that can see it.** T1 changed how traffic
+flows and the review asked for a `traffic_gate` re-baseline; the numbers came back byte-identical,
+because `traffic_gate` measures the engine's commuter pass and T1 is renderer-local (ruling 037).
+Record both runs and say why they match — a null result with a reason is a finding, and a null
+result presented as a re-baseline is a lie. Then find the instrument that can see it.
+
 **A number that never mattered starts mattering the moment its scale changes.** V8 scaled the sky
 dome from 1,800 tiles to 85 so street mode could see it, and it became a pale ball sitting in the
 middle of the map: the dome had always been centred on the world origin rather than on the eye,
