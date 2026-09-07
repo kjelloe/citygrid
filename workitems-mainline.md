@@ -1,8 +1,9 @@
 # mainline — work items
 
-*Written 2026-09-06. The branch, the gates and the release: what has to happen before
-`dev_night` is the game rather than a branch of it. Do this lane **first** after the cityviewer
-items (`workitems-cityviewer.md` through V8), because everything else — the measurements, the
+*Written 2026-09-06, brought current 2026-09-07: the cityviewer lane finished at `ed96699` and
+its last review left one short fix slice, **R4** (`workitems-cityviewer.md` §2f) — do that
+first, then this lane. The branch, the gates and the release: what has to happen before
+`dev_night` is the game rather than a branch of it. Do this lane **first** after R4, because everything else — the measurements, the
 film, the worker — should land on `main`. Same rules as the cityviewer hand-off §0: slice
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
@@ -24,20 +25,27 @@ history is the project's memory and the dev-log cites SHAs.
 **Gate.** `./test.sh` twice on `main`; `node tools/gates.mjs quick` (M2) green; `git log
 --oneline main | head -3` in the dev-log.
 
-**Review will check:** no squash, no rebase, `main`'s SHA for `slice-E0` is `04bc793`.
+**Review will check:** no squash, no rebase, `main`'s SHA for `slice-E0` is `04bc793`, and
+`slice-V8` (`2544c08`) and `slice-R4` are both in `main`'s history.
 
 ## M2 — A gate runner with a time budget (S)
 
 **Goal.** One command runs the gates a slice needs, and the full set has a known cost.
 
 **Do.**
-- `tools/gates.mjs [quick|render|sim|all]`: `quick` is the eleven browser smokes plus
-  `budget_gate`; `render` adds `walkthrough`, `passability`, `lanes_dump`, `style-sheet`;
+- `tools/gates.mjs [quick|render|sim|all]`: `quick` is the ten browser smokes (`a11y`, `client`,
+  `lobby`, `offline`, `play`, `reach`, `save`, `serve`, `ui`, `update`) plus `budget_gate`; `render`
+  adds `walkthrough`, `passability`, `lanes_dump`, `style-sheet`;
   `sim` is the soaks (`disaster_soak`, `traffic_gate`, `sim_sweep`); `all` is everything. Each
   gate's wall time is printed and written to `reports/gates-<date>.json`.
 - A budget per set in the file header, from the first measured run: `quick` ≤ 5 min, `render` ≤
   15 min. A gate that grows past its share is a finding, not a fact of life — `walkthrough`
-  walks 161 km today and `passability` samples 32,000 points; both can sample.
+  walks 161 km today and `passability` samples 32,000 points; both can sample. The reviewer's
+  serial run of the suite plus seven gates on 2026-09-07 took about six minutes on SwiftShader,
+  `play_smoke` the longest; that is the first era for the budget.
+- Every gate closes its browser in a `finally`: three headless-chromium trees from 2026-09-06
+  were still alive during the V8 review, which means some gate's failure path leaks one. The
+  runner reports leftover `chrome-headless-shell` processes after a set.
 - `README.md`'s gate list is replaced by the runner's sets, and names every gate that exists
   (it does not name `walkthrough`, `passability`, `lanes_dump` or the budget gate's flags
   today).
@@ -85,5 +93,5 @@ when it is stale).
 
 ## Order
 
-M2 → M1 → M3 → M4. The runner first so the merge is gated by one command; the checklist after
+R4 (cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.

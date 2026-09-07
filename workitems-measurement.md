@@ -56,6 +56,11 @@ guessed.
 - For each device: which tier `deviceClass()` chose, whether the p95 met the tier's `frameMs`
   at every sweep step, and what the governor gave up to get there. A tier that meets its
   target only after sacrifices is mis-set: the sacrifice is a safety net, not the plan.
+- Start from where V8 left High: a night frame is **289,446 of 320,000** with the ladder run to
+  "silhouettes only" because eight baked chunks at 33.7k each are 93% of the budget (Q68). The
+  lever is `streetChunks` (9 at High, 4 at Medium) — one chunk fewer buys 33.7k — not the detail
+  inside a chunk. If Medium's `carCap` of 200 binds on the phone, the cars want the crowd's
+  nearest-eye helper (A49).
 - Adjust `budget`, `streetChunks`, `carCap`, `pedCap`, `lamps`, `pixelRatio` and `post` per
   tier until the phone's Medium and the desktop's High meet `frameMs` at p95 with the governor
   idle on the daytime sweep and at most one sacrifice at night. Every change is a row in the
@@ -108,7 +113,28 @@ chosen by reasoning. The phone card says whether they were right.
 
 **Done when** the phone card shows the governor idle on the daytime sweep at Medium.
 
+## D6 — The big map and the steep map (S)
+
+**Goal.** Every cityviewer number was taken on a 96×96 `rolling` city and a few on a 128×128.
+Three open questions say "measure it on a bigger or steeper map first", so this item is that
+measurement and nothing else: no fix is started here.
+
+**Do.**
+- Add a 256×256 saturated row and a 128×128 `hilly` row to D1's sweep (`tools/lib/saturated.mjs`
+  takes `size`; the terrain style needs an option). Record per row: model derivation time and its
+  split (`lanes_dump`), `counts.waterTiles` and the water mesh's triangles (Q66: one unculled mesh
+  for the whole map — on a 256 river map, how much of the frame is it?), the night frame at High
+  and the ladder's reason (Q68), and `walkthrough`'s ungradeable-corridor count and steepest street
+  (Q64: 934 of 2,161 corridors on `hilly` cannot make 15% at `reliefM` 0.5).
+- Each number goes into the question it answers in `dev-questions.md`, with the fix it points at
+  named but not built: a water mesh per region of chunks (Q66); one chunk fewer at High or a
+  measured `streetChunks` per device (Q68); node heights allowed to move a few metres, or worldgen
+  refusing to zone ground that steep (Q64 — the second half is a worldgen decision for Kjell).
+
+**Done when** the three questions carry a number from a map bigger than the one they were asked
+on, and `reports/perf/` has the two extra rows.
+
 ## Order
 
-D1 → D2 → D4 (needs only D1's harness and the fixture) → D3 → D5. D2 and D3 wait on Kjell; D4
-does not and is the quickest visible result.
+D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
+D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.

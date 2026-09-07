@@ -26,7 +26,15 @@ PNG export.
   cost every frame for the one frame that needs it.
 - `client/world/orbit.js` learns the fourth mode: `eyeOf` returns the stored eye and forward.
   `tilePixels`, `visibleBounds`, `chunksNear` and picking go through it, as ruling 034 demands
-  of every mode; picking in photo mode is off (there is nothing to build).
+  of every mode; picking in photo mode is off (there is nothing to build). Since V8 three more
+  things branch on the mode and need the fourth branch: `render/atmosphere.js` (`fogFor` is
+  fixed metres in street mode and span-scaled otherwise — photo wants the street rule from the
+  pavement and the city rule from the air, so pick by eye height), `skyRadiusFor` (the dome is
+  scaled to sit inside the mode's far plane and follows the camera), and
+  `render/minimap-model.js` (`viewportShape` draws the frustum footprint under perspective and
+  `walkerMark` a dot in street mode; photo mode draws the footprint and no dot). The near and
+  far planes are set per mode in `camera.js`'s `applyZoom` — photo takes street's pair near the
+  ground and city's pair in the air.
 - Reduced motion, `?life=0` and the walker are untouched; the cars keep moving in photo mode
   unless the player pauses the game, which pauses them too.
 
@@ -62,6 +70,13 @@ the framing is decided by looking at a storyboard rather than by rendering the f
   crossroads with traffic, a walk along a high street at dusk, the same street at night with
   the shops lit, a pan across a suburb, an orbit of the civic block in `painted`, a pull-back
   to the aerial at sunset.
+
+- **Two pulls this lane owns** (A48, A50): if a shot wants a specific person to walk to a
+  specific door, F2 builds the route planner over `client/world/nav.js` (a role state machine
+  over a graph search — Q62's answer was "not until a shot needs it"); and if a shot wants a
+  river that reads as a channel rather than a trough, F2 points R3's `gradeProfile` at the
+  water layer (Q65). Neither is built unless a shot in the list asks for it, and the storyboard
+  is what decides.
 
 **Tests first.** The shot list schema is validated in node (`test/film.test.js`): every shot has
 a duration, a `walk` shot's endpoints are on a corridor of the fixture, styles and hours are

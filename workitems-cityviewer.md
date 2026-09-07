@@ -609,7 +609,8 @@ is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 
 **Twenty of twenty done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2, E3,
 then the post-E3 review, then E4, E5, E6, P2, V6, R1, R2, V7, E7, R3, E8, V8.
-**The cityviewer lane is finished.** What follows it is `workitems-mainline.md`,
+**The cityviewer lane is finished**, with one review slice left — **R4** (§2f, three items,
+the first of which is a lane-height defect the gates cannot see). What follows it is `workitems-mainline.md`,
 then measurement, film and the worker — in that order, and the first thing any of
 them needs is the row under "Noted, no slice" that nobody has done: **every
 number in this lane is SwiftShader**, and the governor's whole reason is a phone.
@@ -894,6 +895,7 @@ find the assumption an item was built against without reading all of it.*
 | R3 | Q64 should a junction be allowed to move up or down — fixed node heights are what stop 15% being kept on steep ground |
 | E8 | Q65 should a river be CUT into the land rather than laid on it · Q66 the water surface is one unculled mesh for the whole map |
 | V8 | Q67 every junction on an ordinary city grid is signalled — true since E1, invisible until the lights were drawn · Q68 a night frame at High spends 93% of its budget on eight baked chunks |
+| Review after V8 (§2f) | Q59, Q62, Q63, Q65 closed by the reviewer (A47–A50); Q60 → worker W3, Q66/Q68/Q64 → measurement D6/D3, Q61 → Wave 5; **Q67 wants Kjell** — a recommendation is in the question |
 
 **Both of the two that wanted a decision are answered and built.** Q47 (should the render style
 be a setting) is A36 — a `style` row beside Quality, `painted` the default on High, done in R2;
@@ -902,7 +904,7 @@ derivation goes per chunk) is A37 — profile and cut first, which R2 did: **80.
 128×128. The live successor is **Q60**, because 53.7 ms is still four frames after every build
 action and what is left is the lane graph's own construction rather than anything the ground does.
 
-**Twelve of this lane's questions are open** — Q32, Q39, Q59–Q68 — and **none of them blocks the
+**Eight of this lane's questions are open after the last review** — Q32, Q39, Q60, Q61, Q64, Q66, Q67, Q68 — and **none of them blocks the
 next lane.** Q61 and Q67 are reachability and simulation questions belonging to Wave 5 and a
 traffic slice; Q60 is a slice of its own; Q32, Q39, Q64, Q65, Q66 and Q68 all say some version of
 "measure it on a real device or a bigger map first", which is `workitems-measurement.md`'s whole
@@ -1125,6 +1127,84 @@ from a shore at street level; `budget_gate` with a river fixture.
   `tour_video.mjs`): out of scope until a demo film is wanted; the walker and the presets
   are the pieces it would be built from.
 
+## 2f. Review round after V8 (2026-09-07) — the lane closed
+
+*Read on `dev_night` at `ed96699`. Re-run by the reviewer: the suite twice, `client_smoke`,
+`budget_gate` (every row, both projections), `walkthrough`, `passability`, `play_smoke` (95
+checks) and `a11y_smoke` (40) — all green, numbers matching §2a. R2, V7, E7, R3, E8 and V8 are
+**accepted**; no fixture hash moved. The new pure modules (`grade.js`, `water.js`, `nav.js`,
+`street-furniture.js`, `signals.js`, `foliage.js`, `atmosphere.js`, `overlay-texture.js`) are
+the right shape: derived, no `three`, one rule shared by the geometry and the collider. Reading
+found one defect the gates cannot see, and it is the largest number this lane has left in the
+code. It is **R4**, one short slice, and it goes before `workitems-mainline.md` M2.*
+
+### R4 — Review fixes after V8 (S)
+
+Commit as `slice-R4`. Each item names its test.
+
+1. **Every lane that runs AGAINST its corridor reads the corridor's profile mirrored.** R2's
+   `packAlong` maps a trimmed lane's own fraction of length onto `profileOf(corridor)`, which is
+   built from `corridor.points` in FORWARD order — and for `dir === 1` the lane's points are the
+   reverse. The lane's start, at the corridor's far end, takes the near end's height. Measured by
+   the reviewer on the saturated 96×96 (`tools/lib/saturated.mjs`, buildings off), comparing every
+   packed lane point's `y` with `model.heightAt(x, z)` under it:
+
+   | links | points | mean error | over 0.5 m | worst |
+   |---|---|---|---|---|
+   | block, `dir 0` | 3,742 | **0.05 m** | 0 | 0.44 m |
+   | block, `dir 1` | 3,742 | **1.79 m** | **2,540** | **12.44 m** |
+   | turns (ends taken from the lanes) | 29,848 | — | — | 12.44 m |
+
+   Half of the traffic is posed against the wrong end of its street: on a street that climbs
+   twelve metres the cars going up it drive twelve metres underground, and their headlights with
+   them. Nothing saw it because `budget_gate` counts triangles, the fixture is mostly flat where
+   the screenshots were taken, and `walkthrough` never looks at a car. The `dir 0` residual (0.44
+   m) is the same mapping's second error: the trimmed lane's `0..1` is stretched over the whole
+   corridor rather than over `[clear(from), len − clear(to)]`, so a lane point a few metres into the
+   ramp reads the flat junction box. **Fix:** map by arc length onto the corridor — `want = s0 +
+   dirSign × (cum[i] × (len − clear(from) − clear(to)) / packedLen)` — using the `s0` and `dirSign`
+   the link already records for E7. (And drop the `i > -1 &&` in `packAlong`'s first loop.)
+   **Test** in `test/lanes.test.js`: on a corridor whose two ends differ by 10 m, both lanes' first
+   points are within 0.1 m of `heightAt` under them, and the whole graph on the saturated 96×96 has
+   no lane point more than 0.1 m off the ground (put the measurement above into the test as its
+   era). **Gate:** `lanes_dump` prints the mean and worst lane-to-ground error; a screenshot of the
+   steepest street on `hilly` with cars on it in both directions.
+2. **`budget_gate`'s "the tier is applied" rows report a stale budget.** The check reads
+   `stats.budget` straight after `setQuality` and before a draw, so the log says `low … 320000`,
+   `medium … 40000`, `high … 140000` — each the previous tier's number — and the assertion is
+   on the tier name only. Draw once before reading, and assert the budget against
+   `data/cityviewer.json`'s table, which is what the row is for.
+3. **`traffic.placeYield` scans every block link for every yield point, every step.** With
+   `rebuildYields` per step and a full crowd on a 128×128 that is yields × ~6,000 links a step for
+   a lookup the derivation already knows. Index `blocks` by corridor id once in `createTraffic`
+   (`Map<corridorId, link[]>`) and look up. Test: a corridor with two links yields on exactly the
+   link the point is on, and `lanes_dump` records the step time with 120 yield points.
+
+**Done when** the three have their tests, `lanes_dump` carries the lane-to-ground numbers, and
+`budget_gate`'s tier rows print the right budget.
+
+### The twelve open questions, dispositioned
+
+Four are closed by the reviewer (A47–A50 in `dev-questions.md`): **Q59** (still, not empty —
+correct as built), **Q62** (no planner until the film lane needs a person to go somewhere —
+`workitems-film.md` F2 now says so), **Q63** (the crowd follows the eye and the traffic never
+thins under the city camera — that is the rule, not a gap; the shared helper is written when
+`carCap` binds) and **Q65** (a trough is accepted; a cut is the film lane's if a shot wants one).
+Seven are handed to a lane and stay open there: **Q60** to the worker lane (W3, with the 53.7 ms
+split), **Q66** and **Q68** to the measurement lane (a new D6, a 256×256 row, and D3's
+`streetChunks` lever), **Q64** to the same D6 (the `hilly` table is the number), **Q61** to Wave
+5, **Q32** and **Q39** unchanged. One wants Kjell: **Q67** — every junction is signalled. The
+reviewer's recommendation is in the question: signal a junction only where two corridors of more
+than one tile each cross (a four-arm node with real streets on it) and let T-junctions and
+minor crossings be give-way, which is a traffic-flow change and re-baselines `traffic_gate`.
+
+### Also noted
+
+- Three chromium-headless processes from 2026-09-06 were still alive on the machine during this
+  review. Something in a gate run does not close its browser on a failure path; M2's runner
+  should `browser.close()` in a `finally` and report leftovers.
+- `main` is now **52 commits** behind `dev_night`. Unchanged advice: M1 is a fast-forward.
+
 ## 3. Review protocol
 
 For each item, leave in place for review:
@@ -1146,8 +1226,8 @@ back regardless of how it looks.
 
 ## 4. What the lane leaves behind (2026-09-07)
 
-Three review rounds happened (§2b, §2d, §2e) and produced three fix slices (R1, R2, R3) plus
-amendments to V7 and E7. **No fixture hash moved in any of the twenty items**, which is what
+Four review rounds happened (§2b, §2d, §2e, §2f) and produced four fix slices (R1, R2, R3, and
+R4 still to do) plus amendments to V7 and E7. **No fixture hash moved in any of the twenty items**, which is what
 "every one of these is cosmetic" was supposed to mean and is the one claim in §0 that was worth
 checking at the end.
 
@@ -1159,7 +1239,7 @@ What the next lane inherits:
 - **Two new rulings** — 040 (the quality tier changes rendering only) and 041 (overlays are a
   texture on the ground) — and one amended with a measurement, 038, which now carries the relief
   table R3 produced.
-- **Twelve open questions** — Q32, Q39, Q59–Q68 — indexed in §2c. Every one has a stated
+- **Eight open questions** — Q32, Q39, Q60, Q61, Q64, Q66, Q67, Q68 — indexed in §2c, after the review in §2f closed four. Q67 is the one that wants Kjell. Every one has a stated
   assumption it was built against and names the slice or lane that would revisit it. The two that
   wanted a decision rather than a note, Q47 and Q51, were answered (A36, A37) and built in R2.
 - **One thing nobody has done**, at the top of "Noted, no slice": every number in this lane is
