@@ -13,46 +13,18 @@
 // in the carriageway, and nothing standing where the walker has to get past.
 
 import { sink } from "./solid.js";
+// WHERE a lamp or a hedge is now lives in `client/world/` — the collision world
+// reads the same functions, and it cannot import a renderer module (E7, A43).
+import {
+  lampsAlong, lampOffset, hedgeSpans, POST_HALF, HEDGE_HALF,
+} from "../world/street-furniture.js";
 
-/** Lamps along one corridor, alternating sides.
- *
- * `heightAt` places the foot; `offset` is how far from the centre line, which
- * is the middle of the pavement — a lamp in the gutter is the version of this
- * that everyone notices.
- */
-export function lamps(points, offset, spacing, height, heightAt) {
-  const out = [];
-  if (!points || points.length < 2) return out;
-  const cum = [0];
-  for (let i = 1; i < points.length; i += 1) {
-    cum.push(cum[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z));
-  }
-  const total = cum[cum.length - 1];
-  let side = 1;
-  for (let d = spacing / 2; d < total; d += spacing) {
-    let i = 1;
-    while (i < cum.length - 1 && cum[i] < d) i += 1;
-    const a = points[i - 1];
-    const b = points[i];
-    const seg = cum[i] - cum[i - 1] || 1;
-    const t = (d - cum[i - 1]) / seg;
-    const px = a.x + (b.x - a.x) * t;
-    const pz = a.z + (b.z - a.z) * t;
-    const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-    const nx = (-(b.z - a.z) / len) * offset * side;
-    const nz = ((b.x - a.x) / len) * offset * side;
-    const x = px + nx;
-    const z = pz + nz;
-    out.push({ x, z, y: heightAt(x, z), h: height, arm: -side, along: { x: (b.x - a.x) / len, z: (b.z - a.z) / len } });
-    side = -side;
-  }
-  return out;
-}
+export { lampsAlong as lamps };
 
 /** One lamp: a post, a bracket over the road, and a head. */
 export function lampGeometry(s, lamp) {
   const { x, y, z, h } = lamp;
-  s.box(x - 0.07, y, z - 0.07, x + 0.07, y + h, z + 0.07);
+  s.box(x - POST_HALF, y, z - POST_HALF, x + POST_HALF, y + h, z + POST_HALF);
   const reach = 0.9 * lamp.arm;
   const nx = -lamp.along.z * reach;
   const nz = lamp.along.x * reach;
@@ -76,18 +48,16 @@ export function frontage(hedgeSink, pathSink, lot, out, cfg, heightAt) {
   const along = { x: lot.x1 - lot.x0, z: lot.z1 - lot.z0 };
   const len = Math.hypot(along.x, along.z) || 1;
   along.x /= len; along.z /= len;
-  const gap = pathW + 0.6;
   const mid = len / 2;
-  for (const [from, to] of [[0.2, mid - gap / 2], [mid + gap / 2, len - 0.2]]) {
-    if (to - from < 0.4) continue;
-    const ax = lot.x0 + along.x * from;
-    const az = lot.z0 + along.z * from;
-    const bx = lot.x0 + along.x * to;
-    const bz = lot.z0 + along.z * to;
+  // The SPANS come from `world/street-furniture.js`, which is also what the
+  // collision world turns into hedge boxes (E7, A43). Two copies of "where the
+  // gate is" is a hedge you can see through and not walk through.
+  for (const span of hedgeSpans(lot, cfg)) {
+    const { ax, az, bx, bz } = span;
     const y = heightAt((ax + bx) / 2, (az + bz) / 2);
     s.box(
-      Math.min(ax, bx) - 0.22, y, Math.min(az, bz) - 0.22,
-      Math.max(ax, bx) + 0.22, y + hedgeH, Math.max(az, bz) + 0.22,
+      Math.min(ax, bx) - HEDGE_HALF, y, Math.min(az, bz) - HEDGE_HALF,
+      Math.max(ax, bx) + HEDGE_HALF, y + hedgeH, Math.max(az, bz) + HEDGE_HALF,
     );
   }
   // The path: from the gap in the hedge out to the pavement. Its own sink,
@@ -121,12 +91,11 @@ export function buildProps({ corridors, lots, cfg, heightAt, palette, chunk = 0 
   const green = sink();
   const stone = sink();
   const all = [];
-  const half = cfg.road.width / 2;
-  const offset = half + cfg.road.sidewalk / 2;
+  const offset = lampOffset(cfg);
   const placed_ = [];
   let placed = 0;
   for (const points of corridors) {
-    for (const lamp of lamps(points, offset, cfg.props.lampSpacing, cfg.props.lampH, heightAt)) {
+    for (const lamp of lampsAlong(points, offset, cfg.props.lampSpacing, cfg.props.lampH, heightAt)) {
       lampGeometry(metal, lamp);
       // Where the light hangs: the head, on the end of the bracket.
       placed_.push({

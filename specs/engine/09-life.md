@@ -67,14 +67,47 @@ Nodes with degree ≥ 3 on a corridor of `road` kind get a two-phase cycle (Unio
 60 s) with a hashed phase offset. At L2 nothing is drawn; at L3 a signal head per approach with
 the lit lamp as an emissive bucket swap. Pedestrian walk phases feed the nav graph.
 
-## 9.3 Pedestrians (later)
+## 9.3 Pedestrians
 
 Union Square's `Pedestrians` is a role state machine over a nav graph with grid-hash separation
 and an instanced procedural rig. For a street mode in City Grid the useful subset is:
 commuters between a lot door and the map edge, shoppers between commercial doors, waiting at a
 signal, sitting on a bench. Density from the building's `occupancy` and level. L3 only, capped
-by tier, the rig simplified to a two-part body with a walk-cycle bob. A separate slice after
-street mode exists.
+by tier, the rig simplified to a two-part body with a walk-cycle bob.
+
+**Built (E7, 2026-09-07.)** Two modules and a kit piece, all pure and all in the shape the
+traffic already has (ruling 037): nothing is state, nothing is saved, and every choice a person
+makes is a hash of an integer that is already in state.
+
+`client/world/nav.js` derives the graph. A **walk** edge is one side of one corridor, offset
+`road.width / 2 + road.sidewalk / 2` and trimmed a junction box short at each end — the same
+`offsetPolyline`/`trim` the lane graph uses, now shared through `client/world/polyline.js`. A
+**cross** edge spans the carriageway at a node and carries that node's signal axis, so a person
+waits at a red the same light the cars are going through. A **corner** edge joins two corridors'
+pavements round a junction. A lot's **door** is a point ON a walk edge — the outer end of E5's
+path, projected — rather than a node, because a door node would split every pavement it sat on.
+
+`client/life/pedestrians.js` fills those pavements. **There is no route planner, deliberately**:
+a person picks a successor edge at each junction by a hash of their own id, exactly as a car
+picks its turn, and the doors decide where people enter and how many (`ped.perOccupant` of a
+building's occupancy). That gives crowds outside busy buildings, people waiting at red and
+nobody walking through a wall, for the cost of a hash. Roles, benches and real door-to-door
+journeys are **Q62**.
+
+Three things the summary above does not say, all of them found by looking at the render:
+
+- **The cap is spent nearest the eye.** It is a budget, and a budget spent off screen buys
+  nothing: filling pavements in derivation order put 39 of 120 people more than 250 m away with
+  two on the street underfoot. Pavements are sorted by their nearest DOORWAY to the eye — not by
+  where the pavement starts, because a corridor is 300 m long and its first point says nothing
+  about where its people will be — and each is filled to its own capacity before the next.
+- **A fractional demand is hashed, not rounded.** The cars' `here + 0.5 < target` copied over
+  meant a pavement outside an ordinary house asked for 0.24 people and got none, so a city of
+  houses had nobody on it at all.
+- **Cars yield, the walker goes anywhere** (A45). `traffic.yieldTo` takes world points — people
+  on crossings, plus the player's own walker in street mode — and `ahead()` treats one as a
+  harder wall than a red light. The collision world deliberately never keeps a person off a
+  carriageway.
 
 ## 9.4 Ambient motion
 

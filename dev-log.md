@@ -3815,3 +3815,78 @@ overlay reached the facades was a shot of the city without it — with a plausib
 It takes an `extra` object now. And removing a diagnostic probe from `shoot.html` left a dangling
 `}`, which surfaced as a 120-second timeout in `a11y_smoke` rather than as a syntax error, until
 the page's `pageerror` was listened for (the V6 lesson, paid for again).
+
+## slice-E7 — people on the pavement (2026-09-07)
+
+Spec §9.3, with both §2d amendments (A43 the furniture is solid, A45 cars yield).
+
+**What it is.** Four new pure modules, none of which imports three, so all of them are testable
+in node. `client/world/polyline.js` holds the four operations the lane graph and the nav graph
+share — offset a centre line, trim its ends, pack it with heights, sample it — extracted from
+`lanes.js` rather than copied. `client/world/nav.js` derives the graph: a **walk** edge per side
+of every corridor trimmed a junction box short, a **cross** edge over each carriageway carrying
+that node's signal axis, a **corner** edge round each junction, and a lot's **door** as a point
+on a walk edge. `client/life/pedestrians.js` fills the pavements; `client/world/street-furniture.js`
+holds where a lamp and a hedge are, for both the geometry and the collider.
+
+**There is no route planner, deliberately** (Q62). A person picks a successor edge by a hash of
+their own id, exactly as a car picks its turn; the doors decide where people enter and how many.
+That gives crowds outside busy buildings, people waiting at a red light and nobody walking
+through a wall, for the cost of a hash.
+
+**A43 — the furniture is solid.** Lamps and hedges are boxes in the collision world now, from the
+same functions that place the geometry. It moved a constant: a lamp stood at `half + sidewalk / 2`,
+the middle of the pavement, which is exactly the line `walkthrough` walks — so with the posts
+solid every pavement leg ground to a halt on one every 24 m. `props.lampInset` stands it 0.5 m
+out from the kerb instead.
+
+**A45 — cars yield.** `traffic.yieldTo(points, walker)` takes world points once a frame; people on
+crossings, plus the player's own walker in street mode. `ahead()` places them on a link through
+`nearestCorridor` and the link's own `s0`/`dirSign` — recorded by the derivation, which knew them
+— and treats one as a harder wall than a red light. The collision world deliberately never keeps a
+person off a carriageway.
+
+**Measured.** `budget_gate` — **42 triangles a person**, so the High cap of 120 is **5,040** of
+320,000 against the **53,462** the night frame leaves; 120 held and 63 on screen at street zoom;
+the night row is unchanged at 263,388. `walkthrough` with the furniture solid — 8,907 legs,
+**161.04 km, 0 unfinished, 0 refusals, 0 cliffs**, 399,901 blocked steps over **5,609 solids**
+where E4 had 1,129. `passability` — **0 too narrow**, narrowest **11.14 m** (E4: 26.00, which was
+the ceiling before the posts existed), 25,560 of 32,659 samples enclosed on both sides (E4: 8,461).
+Suite green twice; all fifteen gates green. `reports/smoke-E7-{street,person,city,night}.png`.
+
+**What failed on the way.**
+
+*A city of houses had nobody on it.* The spawn threshold was the cars' — `here + 0.5 < target` —
+copied over without thinking about the units. A pavement outside an ordinary house asks for 0.24
+people, and 0.5 is more than that, so it got none; `budget_gate` reported **0 people** while every
+unit test passed, because the test fixture used an occupancy of 120 and asked for 1.44. The
+fraction is resolved by a hash of the edge now, which is still a function of the state.
+
+*Then 39 of 120 people stood more than 250 m away.* Three separate causes, each found by looking
+at a screenshot and each hidden by a green count:
+
+1. The cap was filled in **derivation order**, so it went wherever the graph happened to start.
+   Ordering by the visible box fixed nothing on its own —
+2. because under perspective at a low pitch the box **stretches to the horizon** and its centre is
+   a hundred metres in front of the camera. It orders by the EYE now, which is A39's finding one
+   lane along.
+3. And "the nearest pavement" is not "the nearest doorway": a corridor is 300 m long, so sorting
+   by an edge's first point picked the street underfoot and then put somebody out of a door at the
+   far end of it. One person per pavement per step made it worse again — 120 people on the 120
+   nearest pavements is the whole city — so each pavement is filled to its own capacity before the
+   next.
+
+Every one of those was invisible to `stats.peds`, which counts what is in the visible box; the
+instrument that found them was a screenshot with the crowd painted magenta at three times size,
+and then a histogram of how far each person was from the eye.
+
+*The frozen crowd settled before the camera existed.* `?life=0` settles and then stops the clock,
+and at construction nothing knows where the camera will be — so a frozen city put its whole crowd
+wherever the derivation started. It settles once more, lazily, on the first frame that says where
+the camera is, and is frozen for good after that.
+
+*The shoot harness had no city to put a crowd in.* A deputy-built 48-tile city is 89 buildings with
+a median occupancy of 8; a slice about crowds cannot be looked at on one. `tools/shoot.html` takes
+`?dense=1` and builds the same saturated fixture every other gate measures on — 396 buildings on a
+64-tile map. It also gained `?pollute=` and `?sand=` in V7 and `?territory=`, and
+`tools/screenshot.mjs` passes anything through `extra` now rather than by a named parameter each.

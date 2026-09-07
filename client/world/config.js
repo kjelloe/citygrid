@@ -30,7 +30,22 @@ export const DEFAULTS = Object.freeze({
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },
   // The L3 prop pass (E5, spec §6.6). A lamp every 24 m alternating sides is
   // about what a residential street has; every 12 m is a runway.
-  props: { lampSpacing: 24, lampH: 4.5, hedgeH: 0.9, pathW: 1.2, binEvery: 60 },
+  // `lampInset` is how far a lamp stands OUT from the kerb, not how far it
+  // stands from the centre line. It was the middle of the pavement, which is
+  // where a walker walks: E7 made the furniture solid and the walkthrough gate
+  // ground to a halt on a post every 24 m (A43).
+  props: { lampSpacing: 24, lampInset: 0.5, lampH: 4.5, hedgeH: 0.9, pathW: 1.2, binEvery: 60 },
+  // Pedestrians (E7, spec §9.3). `perOccupant` is how many people a building's
+  // occupancy asks for on the pavement outside it — 5%, which on the 48-tile
+  // shoot fixture (712 residents in 89 buildings) is a street with somebody on
+  // it rather than a ghost town, and on anything larger the tier's cap binds
+  // long before it does; `spacing` is the gap one
+  // keeps behind another; `bob` and `stride` are the walk cycle, which is the
+  // whole difference between a person and a post that slides.
+  ped: {
+    pace: 1.35, paceVary: 0.35, perOccupant: 0.05,
+    bob: 0.055, stride: 0.85, spacing: 1.6, crossWait: 1,
+  },
   // Time of day (E6, spec §7.3). Presets, not a slider: each one is a
   // composition. `key`, `hemi` and `sunHeight` are FACTORS on whatever the
   // style's rig already says, so a preset changes the hour without changing

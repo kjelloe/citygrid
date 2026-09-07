@@ -9,7 +9,9 @@
 // facades, so what you can see is what you can bump into.
 
 import { getConfig } from "./config.js";
-import { storeys, zoneKey } from "./params.js";
+import { storeys, zoneKey, kindOf } from "./params.js";
+import { frontEdgeOf } from "./lots.js";
+import { lampsAlong, lampOffset, furnitureBoxes } from "./street-furniture.js";
 
 /** Hash cell, metres. Eight is half a carriageway and smaller than a lot, so a
  * query touches four cells and a 40 m frontage is not in twenty of them. */
@@ -33,7 +35,7 @@ function boxOf(lot, id) {
   const cfg = getConfig();
   const height = storeys(lot.building) * cfg.lot.floorH[zoneKey(lot.building.zone)];
   return {
-    id, lot: lot.id,
+    id, kind: "lot", lot: lot.id,
     x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z1,
     yBase: lot.seat, yTop: lot.seat + height,
   };
@@ -63,6 +65,28 @@ function pushOut(b, x, z, r) {
   return { x, z: b.z1 + r };
 }
 
+/** The street furniture, as boxes (slice E7, A43).
+ *
+ * From the same functions the geometry is built from, which is why they moved
+ * into `client/world/`: a lamp placed by one rule and collided by another is a
+ * lamp you walk through standing beside one you cannot. Bins are deliberately
+ * absent — A43 names lamps and hedges.
+ */
+function furnitureOf(model) {
+  const cfg = getConfig();
+  const offset = lampOffset(cfg);
+  const lamps = [];
+  for (const corridor of model.corridors) {
+    for (const lamp of lampsAlong(
+      corridor.points, offset, cfg.props.lampSpacing, cfg.props.lampH, model.heightAt,
+    )) lamps.push(lamp);
+  }
+  const fronts = model.lots
+    .filter((lot) => kindOf(lot.building.zone) === "residential")
+    .map(frontEdgeOf);
+  return furnitureBoxes(model, lamps, fronts);
+}
+
 /**
  * The collision world for one city model.
  *
@@ -70,7 +94,10 @@ function pushOut(b, x, z, r) {
  * two walls a known distance apart and ask whether a walker fits between them.
  */
 export function createCollision(model, boxes) {
-  const solids = boxes ?? model.lots.map((lot, i) => boxOf(lot, i));
+  const solids = boxes ?? [
+    ...model.lots.map((lot, i) => boxOf(lot, i)),
+    ...furnitureOf(model),
+  ];
   const grid = new Map();
   for (const b of solids) {
     const cx0 = Math.floor(b.x0 / CELL);

@@ -24,6 +24,9 @@ import { nearestLamps, lampsOf } from "./night-lights.js";
 import { CHUNK } from "../world/chunks.js";
 import { getConfig } from "../world/config.js";
 import { createWalker } from "../life/walker.js";
+import { deriveNav } from "../world/nav.js";
+import { eyeOf } from "../world/orbit.js";
+import { createPedestrians } from "../life/pedestrians.js";
 
 /** What the device would give us, capped by the tier (ruling 040). A cap, not a
  * replacement: a tier must never make a 1× screen render at 2×. */
@@ -107,6 +110,9 @@ export function createRenderer(canvas, state, options = {}) {
   const antialiasAtBuild = options.antialias ?? tier.antialias;
   /** 0 in the tier table means uncapped (ruling 040). */
   const carCap = () => (options.carCap ?? tier.carCap) || Infinity;
+  // Zero is a real answer here and not "no limit": the Low tier has no
+  // pedestrians at all (ruling 040).
+  const pedCap = () => options.pedCap ?? tier.pedCap ?? 0;
 
   /** Shadow map size and whether the pass runs at all. Re-applied when the
    * tier changes; the per-frame `castShadow` is decided in `draw`. */
@@ -298,6 +304,10 @@ export function createRenderer(canvas, state, options = {}) {
   // road is and this decides what busy looks like. `life: false` freezes them
   // where they settled, so a screenshot is the same picture twice.
   let traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
+  // The nav graph and the people on it (slice E7, spec §9.3). Same contract as
+  // the cars: derived, renderer-local, never state, frozen by `life: false`.
+  let nav = deriveNav(state, model);
+  let pedestrians = createPedestrians(state, model, nav, { cap: pedCap(), life: options.life });
 
   // The baked street cache (slice E2). It draws nothing until a chunk is close
   // enough to be worth baking and the tier allows any.
@@ -372,12 +382,25 @@ export function createRenderer(canvas, state, options = {}) {
     if (post) post.resize(width, height);
   }
 
+  /** Where the player's own walker is, when they are down in the street — the
+   * cars have to stop for them too (A45: cars yield, the walker goes
+   * anywhere). */
+  function walkerPoint() {
+    const pose = walker.pose;
+    return { x: pose.x, z: pose.z };
+  }
+
   function worldChanged() {
     model = createModel(state);
     // The lane graph is part of the model, so the cars have to start again on
     // the new one: a car holding a link id from a graph that no longer exists
     // is a car in a field.
     traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
+    // The nav graph is derived from the same corridors, so it goes the same
+    // way: a person holding an edge id from a graph that no longer exists is a
+    // person in a field (E7).
+    nav = deriveNav(state, model);
+    pedestrians = createPedestrians(state, model, nav, { cap: pedCap(), life: options.life });
     collision = createCollision(model);
     // Where the walker stands is a fact about the OLD lots; a rebuild can put a
     // building on top of it, so it is settled onto the new ground.
@@ -513,6 +536,9 @@ export function createRenderer(canvas, state, options = {}) {
 
   const ghostMarker = new THREE.Object3D();
 
+  /** Last frame's visible box, for the crowd's own budget (E7). */
+  let lastBounds;
+
   function draw(drawOptions = {}) {
     // The haze follows the zoom, so it is re-derived rather than remembered.
     if (view.mode === "city") applyAtmosphere();
@@ -521,7 +547,13 @@ export function createRenderer(canvas, state, options = {}) {
     // post pass, then shadows, then the supersample.
     // The cars move on wall-clock time, not on the game clock: a paused city
     // still has traffic on it, and a city at ×4 does not have cars at ×4.
-    traffic.update(drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000);
+    const dt = drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000;
+    // People before cars, because the cars have to see them: A45 gives a
+    // pedestrian on a crossing right of way, and a car that reads last frame's
+    // positions brakes for somebody who has already gone.
+    pedestrians.update(dt, lastBounds, eyeOf(view));
+    traffic.yieldTo(pedestrians.yields(), view.mode === "street" ? walkerPoint() : undefined);
+    traffic.update(dt);
     if (drawOptions.frameMs > 0) {
       const before = governor.disabled().length;
       governor.sample(drawOptions.frameMs);
@@ -539,9 +571,14 @@ export function createRenderer(canvas, state, options = {}) {
     stats.chunksRebuilt = updateTerrain(state, terrain, model);
     if (stats.chunksRebuilt > 0) terrain.refreshOverlay();
     const bounds = visibleBounds(view, canvas.width / canvas.height);
+    // Kept for the NEXT frame's pedestrian step, which runs before the frame's
+    // own bounds are known. One frame stale is a person on the edge of the
+    // view, which is invisible; deriving the bounds twice a frame is not.
+    lastBounds = bounds;
     counts = countScene(state, bounds);
     // Only the cars on screen, which is the same set `pose` writes (R1.1).
     counts.cars = traffic.count(bounds);
+    counts.peds = pedestrians.count(bounds);
     // What a baked street chunk actually cost, last frame (slice E3).
     const held = stats.streets;
     counts.streetPerChunk = held?.live > 0 ? held.triangles / held.live : 0;
@@ -603,6 +640,12 @@ export function createRenderer(canvas, state, options = {}) {
         result.instances = settled.instances;
         result.triangles = settled.triangles;
       }
+      if (plan.peds !== false && drawOptions.life !== false) {
+        pedestrians.pose(pools, pushInstance, CAR_COLOURS, bounds);
+        const settled = settlePools(pools);
+        result.instances = settled.instances;
+        result.triangles = settled.triangles;
+      }
       if (shadowLight) {
         shadowLight.castShadow = plan.shadows
           && (drawOptions.shadows ?? options.shadows ?? tier.shadows) !== false
@@ -651,6 +694,12 @@ export function createRenderer(canvas, state, options = {}) {
     stats.lots = model.stats.lots;
     stats.tier = tierName;
     stats.cars = traffic.count();
+    // On screen and in total, because the two answer different questions: the
+    // budget is charged for the first and the cap is a limit on the second.
+    stats.peds = pedestrians.count(bounds);
+    stats.pedsHeld = pedestrians.count();
+    stats.pedCap = pedCap();
+    stats.nav = nav.stats;
     stats.frameP95 = governor.p95();
     stats.given = governor.disabled();
     stats.frames += 1;
@@ -771,5 +820,5 @@ export function createRenderer(canvas, state, options = {}) {
 
   return { renderer, scene, view, terrain, pools, style, setTier, setProjection, setTime,
     get night() { return timeOfDay.current.night; },
-    enterStreet, leaveStreet, get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+    enterStreet, leaveStreet, get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get pedestrians() { return pedestrians; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

@@ -366,3 +366,83 @@ test("no bounds means the whole city, so nothing else has to know about this", (
   assert.equal(traffic.pose(pools, () => { posed += 1; }, [0xffffff]), traffic.count());
   assert.equal(posed, traffic.count());
 });
+
+// --- cars yield to people (slice E7, A45) -------------------------------------
+
+test("a car stops for somebody standing in the road", () => {
+  // A45, answered by Kjell: cars yield, the walker goes anywhere. The collision
+  // world never keeps a person off a carriageway, so the carriageway has to
+  // keep itself off them.
+  const { state, model } = highway();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 30);
+  const before = traffic.cars().filter((c) => c.v > 1).length;
+  assert.ok(before > 3, `only ${before} cars were moving before anybody stepped out`);
+
+  // Somebody steps into the middle of the road, at the middle of the map.
+  const mid = 12.5 * DEFAULTS.tileM;
+  const centre = 6.5 * DEFAULTS.tileM;
+  for (let step = 0; step < 30 * 20; step += 1) {
+    traffic.yieldTo([{ x: mid, z: centre }]);
+    traffic.update(1 / 30);
+  }
+  // Every car that has reached them is stopped short, and none has driven over
+  // the spot.
+  const stopped = traffic.cars().filter((c) => c.v < 0.2).length;
+  assert.ok(stopped > 0, "nothing stopped for a person in the road");
+});
+
+test("nobody is driven over", () => {
+  const { state, model } = highway();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 20);
+  const mid = 12.5 * DEFAULTS.tileM;
+  const centre = 6.5 * DEFAULTS.tileM;
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  let closest = Infinity;
+  for (let step = 0; step < 30 * 40; step += 1) {
+    traffic.yieldTo([{ x: mid, z: centre }]);
+    traffic.update(1 / 30);
+    for (const car of traffic.cars()) {
+      const link = model.lanes.links[car.link];
+      if (!link) continue;
+      model.lanes.sample(link, car.s, out);
+      closest = Math.min(closest, Math.hypot(out.x - mid, out.z - centre));
+    }
+  }
+  // A car's own length plus the gap it leaves; anything less and it is on top
+  // of somebody.
+  assert.ok(closest > 1, `a car came within ${closest.toFixed(2)} m of a pedestrian`);
+});
+
+test("the road clears again once they are off it", () => {
+  // A yield that is never withdrawn is a permanent roadblock, and it would look
+  // exactly like a jam.
+  const { state, model } = highway();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 20);
+  const mid = 12.5 * DEFAULTS.tileM;
+  const centre = 6.5 * DEFAULTS.tileM;
+  for (let step = 0; step < 30 * 20; step += 1) {
+    traffic.yieldTo([{ x: mid, z: centre }]);
+    traffic.update(1 / 30);
+  }
+  traffic.yieldTo([]);
+  run(traffic, 20);
+  const moving = traffic.cars().filter((c) => c.v > 1).length;
+  assert.ok(moving > 3, `only ${moving} cars moved again after the road cleared`);
+});
+
+test("an empty yield list costs nothing and changes nothing", () => {
+  const a = highway();
+  const b = highway();
+  const ta = createTraffic(a.state, a.model, { cap: 400 });
+  const tb = createTraffic(b.state, b.model, { cap: 400 });
+  for (let step = 0; step < 30 * 20; step += 1) {
+    ta.update(1 / 30);
+    tb.yieldTo([]);
+    tb.update(1 / 30);
+  }
+  const key = (t) => t.cars().map((c) => `${c.id}:${c.link}:${c.s.toFixed(6)}`).join("|");
+  assert.equal(key(ta), key(tb));
+});

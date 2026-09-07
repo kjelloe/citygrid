@@ -75,6 +75,51 @@ export function createTraffic(state, model, options = {}) {
 
   const blocks = links.filter((l) => l.kind === "block");
 
+  /** Where cars have to stop, per link: `s` along the link, ascending.
+   *
+   * Rebuilt from world points once a step rather than kept: the people move
+   * every frame, and a yield that outlives the person who caused it is a
+   * permanent roadblock that looks exactly like a jam (E7, A45). */
+  const yieldsOn = new Map();
+  /** The world points, as handed in. */
+  let yieldPoints = [];
+
+  /** Turns a world point into `(link, s)` on whatever carriageway it is
+   * standing in.
+   *
+   * Through `model.nearestCorridor`, which is already a spatial query, so the
+   * cost is a lookup and two projections rather than a scan of every link.
+   * A point that is not on a carriageway at all yields to nobody: somebody on
+   * the pavement is not in anyone's road. */
+  function placeYield(point) {
+    const near = model.nearestCorridor(point.x, point.z, cfg.road.width / 2);
+    if (!near || !near.corridor) return;
+    for (const link of blocks) {
+      if (link.corridor !== near.corridor.id) continue;
+      // `s0` and `dirSign` are the link's own frame on its corridor, recorded
+      // when the graph was derived — the alternative is a search back through
+      // the polyline for a number the derivation already knew.
+      const s = (near.s - link.s0) * link.dirSign;
+      if (s < 0 || s > link.len) continue;
+      const list = yieldsOn.get(link.id);
+      if (list) list.push(s); else yieldsOn.set(link.id, [s]);
+    }
+  }
+
+  function rebuildYields() {
+    yieldsOn.clear();
+    for (const point of yieldPoints) placeYield(point);
+    for (const list of yieldsOn.values()) list.sort((a, b) => a - b);
+  }
+
+  /** The nearest thing on this link a car at `s` has to stop for. */
+  function yieldAhead(linkId, s) {
+    const list = yieldsOn.get(linkId);
+    if (!list) return Infinity;
+    for (const at of list) if (at > s) return at;
+    return Infinity;
+  }
+
   /** The engine's commuter load on the tiles a link covers, 0..1. */
   function loadOf(link) {
     if (link.kind !== "block" || link.tiles.length === 0) return 0;
@@ -158,6 +203,14 @@ export function createTraffic(state, model, options = {}) {
       return { gap, leadV, hard: false };
     }
 
+    // Somebody in the road is a wall, and a harder one than a red light:
+    // A45 gives a person right of way and a car that merely slows for one has
+    // not yielded. Checked before the signal because it is nearer.
+    const person = yieldAhead(link.id, car.s);
+    if (Number.isFinite(person)) {
+      return { gap: Math.max(0, person - car.s - S0), leadV: 0, hard: true };
+    }
+
     // Nothing in front on this link. A signal at the end of it is a wall.
     const node = link.kind === "block" ? link.to : -1;
     if (node >= 0 && lanes.signals.has(node) && lanes.phaseAt(node, clock) !== link.axis) {
@@ -201,6 +254,7 @@ export function createTraffic(state, model, options = {}) {
 
   function step(dt) {
     bucket();
+    rebuildYields();
 
     // Density control, before anyone moves: one spawn or despawn per link per
     // step, so a road fills over a second or two rather than appearing.
@@ -274,6 +328,18 @@ export function createTraffic(state, model, options = {}) {
   const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
 
   return {
+    /**
+     * Who the cars have to stop for this frame, as world points (A45).
+     *
+     * People on crossings and, in street mode, the player's own walker. Cars
+     * yield and the walker goes anywhere: the collision world deliberately
+     * never keeps a person off a carriageway, so the carriageway keeps itself
+     * off them.
+     */
+    yieldTo(points, walker) {
+      yieldPoints = walker ? [...points, walker] : points;
+    },
+
     /** One frame. Nothing happens when life is off. */
     update(dt) {
       if (!live || !(dt > 0)) return;

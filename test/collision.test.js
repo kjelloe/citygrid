@@ -60,7 +60,9 @@ function street() {
 
 test("every lot is one solid, seated on its own ground and taller than a walker", () => {
   const { model, collision } = street();
-  assert.equal(collision.solids.length, model.lots.length);
+  // Every LOT, and now the street furniture beside them (E7, A43) — so the
+  // count is a lower bound rather than an equality.
+  assert.equal(collision.solids.filter((s) => s.kind === "lot").length, model.lots.length);
   for (const lot of model.lots) {
     const box = collision.solids.find((s) => s.lot === lot.id);
     assert.deepEqual(
@@ -177,4 +179,71 @@ test("the hash returns everything brute force does, on two hundred points", () =
   }
   assert.ok(touched > 0, "two hundred points that touch nothing prove nothing");
   assert.ok(CELL > R);
+});
+
+// --- street furniture is solid (slice E7, A43) -------------------------------
+
+test("a lamp post is something you bump into", () => {
+  // It was a picture of a lamp post for two slices: the geometry stood on the
+  // pavement and the walker went through it, which is the class of defect a
+  // screenshot cannot show because the render is exactly right.
+  const state = blank(12);
+  pave(state, row(6, 1, 11));
+  const model = createModel(state);
+  const collision = createCollision(model);
+  const posts = collision.solids.filter((b) => b.kind === "lamp");
+  assert.ok(posts.length > 0, "no lamp is solid on a 200 m street");
+  const post = posts[0];
+  const cx = (post.x0 + post.x1) / 2;
+  const cz = (post.z0 + post.z1) / 2;
+  const out = collision.resolve({ x: cx, z: cz, y: post.yBase + 0.2 }, R, 1.7);
+  assert.equal(out.hit, true, "a walker standing in a lamp post is not pushed out");
+  assert.ok(Math.hypot(out.x - cx, out.z - cz) >= R, "pushed out by less than its own radius");
+});
+
+test("a lamp post does not stand where the walker walks (A43)", () => {
+  // The finding: the posts were in the middle of the pavement, which is the
+  // line `walkthrough` walks, so every pavement leg stopped on one every 24 m.
+  const state = blank(12);
+  pave(state, row(6, 1, 11));
+  const collision = createCollision(createModel(state));
+  const walked = DEFAULTS.road.width / 2 + DEFAULTS.road.sidewalk / 2;
+  for (const post of collision.solids.filter((b) => b.kind === "lamp")) {
+    // The street runs east-west along tile row 6, so the pavement lines are at
+    // z = centre ± walked.
+    const centre = 6.5 * T;
+    const across = Math.abs((post.z0 + post.z1) / 2 - centre);
+    const edge = across + (post.z1 - post.z0) / 2;
+    assert.ok(Math.abs(walked - edge) > R,
+      `a post edge ${edge.toFixed(2)} m out against a walked line at ${walked} m`);
+  }
+});
+
+test("a bin is stepped over, not walked round", () => {
+  // A43 names lamps and hedges. A bin stands where people walk and stopping
+  // for one would be the thing every player noticed.
+  const state = blank(12);
+  pave(state, row(6, 1, 11));
+  const collision = createCollision(createModel(state));
+  assert.equal(collision.solids.filter((b) => b.kind === "bin").length, 0);
+});
+
+test("the furniture does not turn a street into a corridor of posts", () => {
+  // The gap either side of a post has to stay wide enough to walk through, or
+  // the pavement is passable in theory and unwalkable in practice.
+  const state = blank(12);
+  pave(state, row(6, 1, 11));
+  const collision = createCollision(createModel(state));
+  const posts = collision.solids.filter((b) => b.kind === "lamp");
+  const kerb = DEFAULTS.road.width / 2;
+  const lot = kerb + DEFAULTS.road.sidewalk;
+  for (const post of posts) {
+    const centre = 6.5 * T;
+    const near = Math.abs(post.z0 - centre) < Math.abs(post.z1 - centre) ? post.z0 : post.z1;
+    const far = near === post.z0 ? post.z1 : post.z0;
+    const inside = Math.abs(near) === 0 ? 0 : Math.abs(Math.abs(near - centre) - kerb);
+    const outside = lot - Math.abs(far - centre);
+    assert.ok(inside > 0.34 || outside > 0.34,
+      `a post with ${inside.toFixed(2)} m to the kerb and ${outside.toFixed(2)} m to the lot line`);
+  }
 });

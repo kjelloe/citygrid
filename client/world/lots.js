@@ -32,6 +32,23 @@ function sideTowards(dx, dz) {
   return dz > 0 ? 2 : 0;
 }
 
+/** The outward normal of each lot side, in the order this file numbers them. */
+export const OUTWARD = [{ x: 0, z: -1 }, { x: 1, z: 0 }, { x: 0, z: 1 }, { x: -1, z: 0 }];
+
+/** A lot's street edge as two endpoints, running the way the facade does.
+ *
+ * Here rather than in `render/streets-l3.js`, which is where it was written:
+ * the hedge that stands on this edge is a collider now, and the door a
+ * pedestrian comes out of is on it too (E7, A43). Both live in `client/world/`,
+ * and neither may import a renderer module.
+ */
+export function frontEdgeOf(lot) {
+  if (lot.frontage === 0) return { x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z0 };
+  if (lot.frontage === 1) return { x0: lot.x1, z0: lot.z0, x1: lot.x1, z1: lot.z1 };
+  if (lot.frontage === 2) return { x0: lot.x1, z0: lot.z1, x1: lot.x0, z1: lot.z1 };
+  return { x0: lot.x0, z0: lot.z1, x1: lot.x0, z1: lot.z0 };
+}
+
 export function deriveLots(state, network, ground) {
   const cfg = getConfig();
   const tileM = cfg.tileM;

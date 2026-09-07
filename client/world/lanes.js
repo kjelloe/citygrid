@@ -18,57 +18,9 @@
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
-
-/** Right of a forward vector, in a y-up world where +x is east and +z south.
- * Travelling north (0, −1) the right hand points east (1, 0). */
-function rightOf(fx, fz) {
-  return { x: -fz, z: fx };
-}
-
-/** Offsets a polyline sideways by `d` metres, mitring nothing: the corridors
- * these run along are straight between tile centres or already sampled curves,
- * so a per-point normal from the average of the two adjacent segments is
- * exact where it matters and never folds. */
-function offsetPolyline(points, d) {
-  const out = [];
-  for (let i = 0; i < points.length; i += 1) {
-    const a = points[Math.max(0, i - 1)];
-    const b = points[Math.min(points.length - 1, i + 1)];
-    let fx = b.x - a.x;
-    let fz = b.z - a.z;
-    const len = Math.hypot(fx, fz) || 1;
-    fx /= len; fz /= len;
-    const r = rightOf(fx, fz);
-    out.push({ x: points[i].x + r.x * d, z: points[i].z + r.z * d });
-  }
-  return out;
-}
-
-/** Walks `metres` in from one end of a polyline and returns the trimmed copy.
- * Used at both ends: a lane stops short of the junction it runs into, and
- * starts short of the one it comes out of, so the box in the middle belongs to
- * the connectors. */
-function trim(points, head, tail) {
-  const pts = points.map((p) => ({ ...p }));
-  const cut = (from) => {
-    let left = from === "head" ? head : tail;
-    while (left > 1e-9 && pts.length >= 2) {
-      const i = from === "head" ? 0 : pts.length - 1;
-      const j = from === "head" ? 1 : pts.length - 2;
-      const seg = Math.hypot(pts[j].x - pts[i].x, pts[j].z - pts[i].z);
-      if (seg > left + 1e-9) {
-        const t = left / seg;
-        pts[i] = { x: pts[i].x + (pts[j].x - pts[i].x) * t, z: pts[i].z + (pts[j].z - pts[i].z) * t };
-        return;
-      }
-      pts.splice(i, 1);
-      left -= seg;
-    }
-  };
-  cut("head");
-  cut("tail");
-  return pts;
-}
+// Shared with the nav graph pedestrians walk on (E7): one copy of "offset a
+// centre line" and "stop short of a junction", not two.
+import { rightOf, offsetPolyline, trim, lengthOf } from "./polyline.js";
 
 /** A quadratic through a junction: out of one lane's end, round the node, into
  * the next lane's start. The control point is the node itself, which is what
@@ -205,6 +157,7 @@ export function deriveLanes(state, network, heightAt) {
   for (const corridor of network.corridors) {
     // Once per corridor, shared by both directions.
     const profile = profileOf(corridor, heightAt);
+    const corridorLen = lengthOf(corridor.points);
     for (const dir of [0, 1]) {
       const along = dir === 0 ? corridor.points : [...corridor.points].reverse();
       if (along.length < 2) continue;
@@ -231,6 +184,13 @@ export function deriveLanes(state, network, heightAt) {
       links.push({
         id: links.length, kind: "block", lane: lane.id, corridor: corridor.id, dir,
         from, to, tiles: dir === 0 ? corridor.tiles : [...corridor.tiles].reverse(),
+        // Where this link starts on its CORRIDOR, and which way it runs along
+        // it. Recorded here because the derivation knows it and nothing else
+        // does: E7 has to turn "somebody is standing at this point" into "stop
+        // at this distance along this link", and the alternative is searching
+        // back through a polyline for a number that was in hand (A45).
+        s0: dir === 0 ? clear(from) : corridorLen - clear(from),
+        dirSign: dir === 0 ? 1 : -1,
         ...packed, next: [], preds: [], entry: false, exit: false, turn: "",
       });
     }

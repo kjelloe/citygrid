@@ -547,6 +547,35 @@ function car(variant, detail = 2) {
   return finish(parts);
 }
 
+/** A person: legs, a torso and a head, in tile units (slice E7, spec §9.3).
+ *
+ * Three boxes, and the spec's "two-part body with a walk-cycle bob" is exactly
+ * what that is — the bob is in `life/pedestrians.js`, because it is motion and
+ * not geometry. At 1.7 m tall on a 20 m tile a person is 0.085 units high and
+ * eleven pixels on screen at the zoom street mode uses, so anything more
+ * detailed than this is triangles nobody can see (ruling 019).
+ *
+ * The two variants are a different SHAPE and not a different colour: V6's
+ * lesson is that two variants which hash the same are a city of clones and a
+ * green suite.
+ */
+function person(variant, detail = 2) {
+  const parts = makeParts();
+  const tall = variant === 1;
+  const hip = tall ? 0.048 : 0.043;
+  const neck = tall ? 0.076 : 0.072;
+  const top = tall ? 0.088 : 0.083;
+  const halfW = tall ? 0.010 : 0.012;
+  // Legs: one box, because two at this size is two pixels of gap.
+  addBox(parts, -halfW * 0.7, 0, -0.006, halfW * 0.7, hip, 0.006, 0.55);
+  // Torso, which is the part that takes the instance colour.
+  addBox(parts, -halfW, hip, -0.007, halfW, neck, 0.007, 1);
+  addBox(parts, -halfW * 0.55, neck, -0.006, halfW * 0.55, top, 0.006, 0.8);
+  // A bag on one shoulder, on one variant only — the silhouette difference.
+  if (detail > 1 && tall) addBox(parts, halfW, hip + 0.008, -0.004, halfW + 0.007, neck - 0.004, 0.004, 0.45);
+  return finish(parts);
+}
+
 /** Grass tufts and flowers. The reference's fields are covered in them, and
  * they are most of why its ground does not look like a bedsheet. */
 function tuft(variant, detail = 2) {
@@ -572,6 +601,7 @@ function tuft(variant, detail = 2) {
 export { VARIANTS };
 export const TREE_VARIANTS = 3;
 export const CAR_VARIANTS = 2;
+export const PED_VARIANTS = 2;
 export const TUFT_VARIANTS = 2;
 
 export function buildingVariants(kind, detail = 2) {
@@ -593,6 +623,12 @@ export function treeVariants(detail = 2) {
 export function carVariants() {
   const list = [];
   for (let i = 0; i < CAR_VARIANTS; i += 1) list.push(car(i));
+  return list;
+}
+
+export function pedVariants() {
+  const list = [];
+  for (let i = 0; i < PED_VARIANTS; i += 1) list.push(person(i));
   return list;
 }
 

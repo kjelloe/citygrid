@@ -42,6 +42,7 @@ const DEFAULT_COSTS = {
   // while three drew 97,500 — with the whole sacrifice ladder already spent.
   road: 0,      // painted into the terrain mesh since N30; free
   car: 76,      // measured from the car pool by `createInstances`
+  ped: 36,      // measured from the pedestrian pool by `createInstances` (E7)
   marking: 2,
   pole: 12,     // a box; vertical, so it cannot be flattened
   wireHub: 2,
@@ -131,6 +132,10 @@ export function tilePixels(view, canvasHeight, chunk) {
  * frame plan and by every chunk plan, so the two can never disagree. */
 const RESOLVE = {
   props: 42, cars: 18, markings: 20, poles: 14, networks: 12,
+  // A person is 0.085 of a tile tall — a THIRD of a car's length. Below about
+  // fifty pixels a tile they are two pixels of a colour that is already on the
+  // pavement, and there may be a hundred of them (slice E7).
+  peds: 50,
   shape: 30, shadows: 16, block: 13, trees: 8,
   // Above this a chunk is worth BAKING rather than instancing (slice E2, spec
   // §8.2): 160 px a tile at TILE_M = 20 is a chunk within about 40–60 m of the
@@ -153,6 +158,7 @@ export function planForChunk(plan, px) {
   out.l3 = plan.streetChunks > 0 && px >= RESOLVE.l3;
   if (px < RESOLVE.props) out.props = false;
   if (px < RESOLVE.cars) out.cars = false;
+  if (px < RESOLVE.peds) out.peds = false;
   if (px < RESOLVE.markings) out.markings = false;
   if (px < RESOLVE.poles) out.poles = false;
   if (px < RESOLVE.networks) out.networks = false;
@@ -235,6 +241,7 @@ function estimateOne(counts, plan) {
   const loose = 1 - bakedShare(counts);
   const flat = counts.roads * costs.road
     + (plan.cars !== false ? counts.cars * costs.car : 0)
+    + (plan.peds !== false ? counts.peds * costs.ped : 0)
     + (plan.markings ? counts.markArms * costs.marking * loose : 0)
     // Every network the renderer draws has a term here. Wire and pipe had
     // none, and `counts.poles` was computed and then never read — a term
@@ -290,6 +297,11 @@ const LADDER = [
   // Cars go late, between props and markings: they are the thing that was
   // asked for, and a city with no traffic reads as a model rather than a place.
   (p) => (p.cars ? ((p.cars = false), "cars dropped") : ""),
+  // People go last of the three living things, and for the reason above turned
+  // up: a street with nobody on it reads as a model, and the whole crowd is
+  // 5,040 triangles of a 320,000 budget — 1.6%, measured, against the 24,000 a
+  // car pool can reach. Sacrificing them buys almost nothing (slice E7).
+  (p) => (p.peds ? ((p.peds = false), "people dropped") : ""),
   (p) => (p.markings ? ((p.markings = false), "markings dropped") : ""),
   (p) => (p.poles ? ((p.poles = false), "poles dropped") : ""),
   (p) => (p.networks ? ((p.networks = false), "networks dropped") : ""),
@@ -355,6 +367,7 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
     poles: true,
     networks: true,
     cars: true,
+    peds: true,
     // How many chunks of baked street the tier allows around the camera. Set
     // by the caller from the tier (ruling 040); 0 means none at all.
     streetChunks: options.streetChunks ?? 0,
@@ -369,6 +382,7 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
   // four pixels of a colour that is already on the road, and there may be
   // hundreds of them (slice V1).
   if (px < RESOLVE.cars) { plan.cars = false; plan.reason = "cars not resolvable"; }
+  if (px < RESOLVE.peds) { plan.peds = false; plan.reason = "people not resolvable"; }
   if (px < RESOLVE.markings) { plan.markings = false; plan.reason = "markings not resolvable"; }
   if (px < RESOLVE.poles) { plan.poles = false; plan.reason = "poles not resolvable"; }
   // A wire ribbon is 0.16 of a tile wide and a pipe main 0.28, so below about
@@ -549,7 +563,7 @@ export function countScene(state, bounds) {
   const CHUNK = 16;
   const blank = () => ({
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
-    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0,
+    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0, peds: 0,
   });
   const chunkAt = (x, y) => {
     const key = ((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0);
@@ -660,5 +674,7 @@ export function countScene(state, bounds) {
     // of cars is not a function of the tiles, it is a function of how long the
     // road has been busy.
     cars: 0,
+    // ...and neither is the number of people, for the same reason.
+    peds: 0,
   };
 }

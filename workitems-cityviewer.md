@@ -565,7 +565,8 @@ on a portrait screen) with it.*
 
 ### E7 — Pedestrians (M) — spec §9.3
 
-***Not started.*** `client/world/nav.js` (sidewalk edges, crossings at nodes, a door node per lot);
+***Done 2026-09-07 as `slice-E7`.*** What follows was the plan; §2d carries what it became, and
+`specs/engine/09-life.md` §9.3 is now the authority for what is built. `client/world/nav.js` (sidewalk edges, crossings at nodes, a door node per lot);
 `client/life/pedestrians.js` (commuters between a door and the map edge, shoppers between
 commercial doors, waiting at a red walk phase, a two-part instanced body with a bob), capped
 per tier, frozen by `?life=0`. Gate: `budget_gate` at High with the cap; `walkthrough` still
@@ -584,11 +585,13 @@ shapes to follow: pure, delta-driven, `?life=0` freezes them. (3) The nav graph 
 its tests are written or updated, its gate is green, its docs are synced and it
 is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 
-**Fifteen of seventeen done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2, E3,
-then the post-E3 review, then E4, E5, E6, P2, V6, R1. **V7 and E7 are what is
-left.** Every gate is green at `a4b8d26`: the suite twice, `budget_gate` (32 rows
-plus the opening spans, four street-chunk checks, three car rows, four night rows
-and three painted rows), `walkthrough`, `passability`, `lanes_dump` and the
+**Seventeen of seventeen done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2,
+E3, then the post-E3 review, then E4, E5, E6, P2, V6, R1, R2, V7, E7. **What is
+left is the three items §2d and §2e added:** R3 (streets graded along their
+length), E8 (water) and V8 (the street, finished). Every gate is green: the suite
+twice, `budget_gate` (32 rows plus the opening spans, four street-chunk checks,
+three car rows, a crowd row, an overlay row, a territory-toggle row, four night
+rows and three painted rows), `walkthrough`, `passability`, `lanes_dump` and the
 eleven browser smokes.
 
 | Item | Status | Commit | Gate | Left for review |
@@ -613,7 +616,7 @@ eleven browser smokes.
 | **R3** — streets graded along their length, then taller hills (A42) | not started | — | — | — |
 | **E8** — water | not started | — | — | — |
 | **V8** — the street, finished | not started | — | — | — |
-| **E7** — pedestrians | not started | — | — | — |
+| **E7** — pedestrians | **done** 2026-09-07 | *this slice* | `budget_gate` gains a crowd row: **120 people held, 63 on screen, 42 triangles each** — 5,040 of 320,000 at the cap, against **53,462 spare** in the night frame. `walkthrough` with the furniture solid: 8,907 legs, **161.04 km, 0 unfinished, 0 refusals, 0 cliffs**, 399,901 blocked steps over **5,609 solids** (E4: 1,129). `passability`: **0 too narrow**, narrowest 11.14 m, 25,560 of 32,659 samples enclosed (E4: 8,461). `reports/smoke-E7-{street,person,city,night}.png` | `test/nav.test.js` (15), `test/pedestrians.test.js` (13), `test/street-furniture.test.js` (8), `test/collision.test.js` (+4), `test/cars.test.js` (+4: A45), `test/lod.test.js` (fixtures). New pure modules: `world/polyline.js`, `world/nav.js`, `world/street-furniture.js`, `life/pedestrians.js`. Spec §9.3, §8.1b. **Q62**, **Q63** |
 
 **Deviations from this document, each with the measurement that forced it and a
 question so it can be reversed cheaply:**
@@ -832,6 +835,7 @@ find the assumption an item was built against without reading all of it.*
 | The R1 doc pass | Q52 the kerb and verge ignore the terrain under them (**done in V7**) · Q53 `chunksNear` orders by the target (**done in R2**) |
 | Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
 | Omissions pass | Q57 cars and the walker (answered, A45: cars yield) · Q58 a road over water |
+| E7 | Q62 pedestrians walk by hash rather than by plan · Q63 the crowd is a function of the camera and the traffic is not (Q55/A43 and A45 both **done**) |
 | V7 | Q61 nothing in the interface selects the territory overlay — it is a draw option a gate passes (A38 and A44 both **done**; Q52 and Q56 answered) |
 
 **Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
@@ -922,13 +926,19 @@ painted rows load their own page.
 
 ### E7 — amendments
 
-- **Street furniture is solid** (Q55): lamps and hedges become thin boxes in the collision
-  world, derived in `client/world/` from the same pure functions that place them (move
-  `lamps()` out of `props-l3.js`); bins are not. `passability` must stay above 0.88 m; the nav
-  graph routes round the same boxes.
-- **Price the pedestrians first.** A night frame at High is 266,538 of 320,000 before a single
-  pedestrian; 120 of them at a two-part body is what fits, and the budget gate row for night
-  must stay green with the cap.
+**Done 2026-09-07 as `slice-E7`, both.**
+
+- **Street furniture is solid** (Q55/A43): lamps and hedges are thin boxes in the collision
+  world, derived in `client/world/street-furniture.js` from the same functions
+  `render/props-l3.js` builds the geometry from; bins are not. It moved a constant — a lamp
+  stood at `half + sidewalk / 2`, which is the middle of the pavement and therefore the line
+  `walkthrough` walks, so with the posts solid every pavement leg stopped on one every 24 m.
+  `props.lampInset` puts it 0.5 m out from the kerb. `passability` **0 too narrow**, narrowest
+  11.14 m of a needed 0.88.
+- **Price the pedestrians first.** Measured: **42 triangles a person**, so the cap of 120 is
+  **5,040** against the **53,462** the night frame leaves (263,388 of 320,000). The night row is
+  unchanged. People are the last of the three living things on the sacrifice ladder for the same
+  reason — dropping the whole crowd buys 1.6% of the budget.
 
 ### R3 — Streets graded along their length (M) — waits for Q54
 

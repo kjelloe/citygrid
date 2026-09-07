@@ -14,6 +14,7 @@ import * as THREE from "three";
 import { ribbon, skirt, sagCurve, dashes, clip, trim } from "./ribbon.js";
 import { getConfig } from "../world/config.js";
 import { chunkOfLot } from "../world/chunks.js";
+import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
 import { buildProps } from "./props-l3.js";
@@ -252,17 +253,6 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
   // carry a texture. One mesh per distinct NAME, added to the same group, so a
   // high street of forty shops is eighteen draw calls at worst (spec §6.5).
   baker.extra(buildSigns(specs, styleName));
-}
-
-/** The outward normal of each lot side, in the order `lots.js` numbers them. */
-const OUTWARD = [{ x: 0, z: -1 }, { x: 1, z: 0 }, { x: 0, z: 1 }, { x: -1, z: 0 }];
-
-/** A lot's street edge as two endpoints, running the way the facade does. */
-function frontEdgeOf(lot) {
-  if (lot.frontage === 0) return { x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z0 };
-  if (lot.frontage === 1) return { x0: lot.x1, z0: lot.z0, x1: lot.x1, z1: lot.z1 };
-  if (lot.frontage === 2) return { x0: lot.x1, z0: lot.z1, x1: lot.x0, z1: lot.z1 };
-  return { x0: lot.x0, z0: lot.z1, x1: lot.x0, z1: lot.z0 };
 }
 
 /** Poles with a cross-arm and a sagging span between them (spec §5.4). */

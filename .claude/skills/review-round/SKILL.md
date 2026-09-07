@@ -121,6 +121,13 @@ fixture had no pollution. A green wash over green grass is a green picture. **Ve
 instrument, then verify what the instrument is pointed at**: histogram the data the picture is
 supposed to be showing before concluding anything from the picture.
 
+**A count is not a picture.** E7's `stats.peds` said 120 people were in the visible box while the
+street the camera stood in had two on it: the box under perspective at a low pitch stretches to the
+horizon, so "on screen" and "where you are looking" are different questions. Three separate
+placement defects hid behind that number. What found them was a screenshot with the subject painted
+magenta at three times size, and then a **histogram of distance from the eye** — when something is
+drawn and cannot be seen, measure where it actually is before changing the code that draws it.
+
 **Ask what the unit suite structurally cannot see.** In this repo that is every
 module importing `three`, because node cannot resolve it — three defects have
 lived there behind a green suite. The answer is not more browser gates; it is to
@@ -254,6 +261,11 @@ territory toggle by calling `renderer.draw({territory: true})` and read a cache 
 game's own loop drew without the flag on alternate frames, so every chunk rebaked forever. Wrap
 the real entry point for the duration of the measurement, or drive the control the player uses.
 The same shape as "a feature is not built until it is driven on the real page", one level down.
+
+**A constant copied between two systems brings its units with it.** E7's pedestrians took the
+cars' spawn rule, `here + 0.5 < target`, and a pavement outside an ordinary house asks for 0.24
+people — so a whole city of houses had nobody on it while every unit test passed, because the test
+fixture happened to ask for 1.44. When you copy a threshold, check what it is a threshold ON.
 
 **A setting is not built until a pixel changes.** High contrast set an attribute for two slices
 while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate checked only that the

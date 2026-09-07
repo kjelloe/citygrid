@@ -15,7 +15,7 @@ import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } f
 import { CHUNK, chunkKey, chunkOfLot } from "../world/chunks.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
-  buildingVariants, treeVariants, carVariants, tuftVariants, lampGeometry,
+  buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
 import { buildingParams } from "../world/params.js";
@@ -150,6 +150,12 @@ export function createInstances(scene, styleName = "plain") {
   // pools, and the High tier does not cap them. A pool that overflows drops
   // instances silently, which reads as cars vanishing at the edge of a jam.
   for (let v = 0; v < cars.length; v += 1) make(`car${v}`, cars[v], 0xffffff, 12000);
+  // People (E7). A quarter of the cars' capacity: the tier caps them at 120 at
+  // High and the pool is shared by nothing else, but a pool that overflows
+  // drops instances silently — which reads as pedestrians blinking out of a
+  // crowd, and is the artefact the cars' oversized pools were sized against.
+  const peds = pedVariants();
+  for (let v = 0; v < peds.length; v += 1) make(`ped${v}`, peds[v], 0xffffff, 3000);
   const tufts = tuftVariants();
   for (let v = 0; v < tufts.length; v += 1) make(`tuft${v}`, tufts[v], 0xffffff, 30000);
   make("lamp", lampGeometry(), 0xffffff, 8000);
@@ -168,6 +174,7 @@ export function createInstances(scene, styleName = "plain") {
   setCosts({
     ...measured,
     car: Math.round(propSample.slice(1, 1 + cars.length).reduce((a, b) => a + b, 0) / cars.length),
+    ped: Math.round(peds.map(triangleCount).reduce((a, b) => a + b, 0) / peds.length),
     prop: { 2: Math.round(propSample.reduce((a, b) => a + b, 0) / propSample.length), 1: 0, 0: 0 },
     road: 0,  // painted into the terrain mesh
     marking: triangleCount(pools.mark.geometry),

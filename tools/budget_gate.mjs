@@ -394,6 +394,48 @@ try {
   check("no pool is hidden after the cars went into it (R1.2)", cars.hidden === 0,
     `${cars.hidden} pool(s) hidden with cars in them`);
 
+  // --- the people, priced against the night frame (slice E7, spec §9.3) ------
+  //
+  // The item said price them BEFORE building them, and this is where the number
+  // comes from: a night frame at High was 266,538 of 320,000 before there was a
+  // single pedestrian, so what fits is whatever is left. The tier caps them at
+  // 120; the question this row answers is whether 120 of them at a three-box
+  // body is inside the gap, and whether they are cheap enough that the ladder
+  // never has to reach for them first.
+  const crowd = await page.evaluate(async () => {
+    const { renderer, state } = globalThis.CITY;
+    const { focusOn, zoomBy } = await import("/client/render/camera.js");
+    const { getCosts } = await import("/client/render/lod.js");
+    globalThis.CITY.setQuality("high");
+    // The buildings were planted straight into `state.buildings` by the street
+    // section above; the nav graph is derived from the model and has to be told
+    // (E7). Without it the doors are the ones the empty city had — none.
+    renderer.worldChanged();
+    focusOn(renderer.view, state.width / 2, state.height / 2);
+    zoomBy(renderer.view, 4 / renderer.view.span);
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // Long enough for the crowd to fill and for the street cache to bake.
+    for (let i = 0; i < 90; i += 1) { renderer.draw({ now: i * 16, dt: 1 / 30 }); await frame(); }
+    const s = renderer.stats;
+    return {
+      onScreen: s.peds, held: s.pedsHeld, cap: s.pedCap, nav: s.nav,
+      cost: getCosts().ped, triangles: s.triangles, budget: s.budget,
+      lod: s.lod, estimate: s.estimate,
+    };
+  });
+  console.log(`      people: ${crowd.held} on the city, ${crowd.onScreen} on screen of a cap of ${crowd.cap}, `
+    + `${crowd.cost} triangles each = ${crowd.onScreen * crowd.cost} of ${crowd.budget}`);
+  console.log(`      nav graph: ${JSON.stringify(crowd.nav)}`);
+  check("there are people on the pavement at street zoom", crowd.held > 0,
+    `${crowd.held} people, ladder at "${crowd.lod}"`);
+  check("the cap is a cap", crowd.held <= crowd.cap, `${crowd.held} of ${crowd.cap}`);
+  check("a person is cheap enough to be the last thing sacrificed", crowd.cost <= 60,
+    `${crowd.cost} triangles a person`);
+  check("the crowd fits in what the night frame leaves", crowd.cap * crowd.cost <= 320000 - 266538,
+    `${crowd.cap} people at ${crowd.cost} triangles is ${crowd.cap * crowd.cost} against 53,462 spare`);
+  check("the frame with a crowd in it is still inside its budget", crowd.triangles <= crowd.budget,
+    `${crowd.triangles} of ${crowd.budget}`);
+
   // --- night (slice E6, spec §7.3) -------------------------------------------
   //
   // Night is what pays for L3 — lit windows, lit shopfronts, lamp pools — and

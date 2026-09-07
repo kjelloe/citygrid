@@ -48,11 +48,21 @@ of itself it is on, so a walker a few centimetres inside a building came out fur
 `floorAt` is `surfaceAt(...).y` with a 0.6 m step-up limit, which is what makes E3's kerb a step
 you walk up and a garden wall something you do not.
 
-Measured on the saturated 96×96 (`tools/walkthrough.mjs`): 8,907 legs, 161 km walked down every
-carriageway and both pavements of every corridor, **0 unfinished, 0 refusals, 0 cliffs**, steepest
-ground 0.86 m over 2 m; 1,127 lots walked at head-on and **0 entered**; 395,230 steps pushed back
-by the collision world. `tools/passability.mjs`: 32,659 samples, 8,461 of them enclosed on both
-sides, narrowest street 26.00 m against a right of way of 20 m and a walker needing 0.88 m.
+**The street furniture is solid too** (E7, A43). Lamps and hedges become thin boxes from the same
+pure functions that place them — which is why the placement moved out of `render/props-l3.js` into
+`client/world/street-furniture.js`; a lamp placed by one rule and collided by another is a lamp you
+walk through standing next to one you cannot. Bins are stepped over. It moved a number:
+a lamp stood at `road.width / 2 + road.sidewalk / 2`, which is the middle of the pavement and
+therefore exactly the line a person walks down, so `walkthrough` ground to a halt on a post every
+24 m. `props.lampInset` puts it 0.5 m out from the kerb instead.
+
+Measured on the saturated 96×96 (`tools/walkthrough.mjs`), **after** the furniture became solid:
+8,907 legs, 161.04 km walked down every carriageway and both pavements of every corridor,
+**0 unfinished, 0 refusals, 0 cliffs**, steepest ground 0.86 m over 2 m; 1,127 lots walked at
+head-on and **0 entered**; 399,901 steps pushed back by the collision world, of 5,609 solids where
+E4 had 1,129. `tools/passability.mjs`: 32,659 samples, **25,560** of them enclosed on both sides
+(E4: 8,461 — the posts are what the disc now finds), narrowest street **11.14 m** against a right
+of way of 20 m and a walker needing 0.88 m, **0 too narrow**.
 
 ## 8.2 One LOD policy for two projections
 

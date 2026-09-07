@@ -413,6 +413,8 @@ by number from the code they create.
 | Q59 | Should reduced motion empty the street or still it? | R2, reversible |
 | Q60 | When does the model derivation go per chunk — the number, again? | its own slice, unchanged from Q51 |
 | Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
+| Q62 | When do pedestrians get roles? E7 walks them by hash rather than by plan | its own slice, after V8 |
+| Q63 | The crowd is a function of the camera and the traffic is not | whenever `carCap` binds |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

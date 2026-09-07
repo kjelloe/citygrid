@@ -34,6 +34,10 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+// The fixture every OTHER gate measures on. A deputy-built city is sparse —
+// 89 buildings on a 48-tile map — and a slice about crowds cannot be looked at
+// on a city with nobody in it (slice E7).
+import { saturatedCity } from "./lib/saturated.mjs";
 import { createRenderer } from "../client/render/scene.js";
 import { setYawStep, zoomBy, focusOn, pitchBy } from "../client/render/camera.js";
 
@@ -56,18 +60,26 @@ const seats = Number(params.get("seats") ?? 1);
 // overlay on (slice V4).
 const terrainStyle = params.get("terrain") ?? "rolling";
 const overlay = params.get("overlay") ?? "";
-const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats, waterStyle: "river", terrainStyle }));
-if (!world.ok) throw new Error("generation failed: " + world.reason);
-const state = world.state;
+// `dense=1` builds the saturated fixture instead: a grid every four tiles with
+// zoning between it and four hundred ticks of growth.
+const dense = params.get("dense") === "1";
+let state;
+if (dense) {
+  state = saturatedCity({ size, seed, ticks: years * TICKS_PER_YEAR }).state;
+} else {
+  const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats, waterStyle: "river", terrainStyle }));
+  if (!world.ok) throw new Error("generation failed: " + world.reason);
+  state = world.state;
 
-const deputies = [];
-for (let s2 = 1; s2 <= seats; s2 += 1) {
-  apply(state, { type: CMD_JOIN, actor: s2, seat: s2, name: `Deputy ${s2}` });
-  deputies.push(makeDeputy(s2, "expand"));
-}
-for (let tick = 1; tick <= years * TICKS_PER_YEAR; tick += 1) {
-  apply(state, { type: CMD_TICK });
-  if (tick % 6 === 0) for (const d of deputies) deputyTurn(state, d);
+  const deputies = [];
+  for (let s2 = 1; s2 <= seats; s2 += 1) {
+    apply(state, { type: CMD_JOIN, actor: s2, seat: s2, name: `Deputy ${s2}` });
+    deputies.push(makeDeputy(s2, "expand"));
+  }
+  for (let tick = 1; tick <= years * TICKS_PER_YEAR; tick += 1) {
+    apply(state, { type: CMD_TICK });
+    if (tick % 6 === 0) for (const d of deputies) deputyTurn(state, d);
+  }
 }
 
 // `pollute` fills the pollution layer with one value, which puts the WHOLE map
@@ -181,6 +193,9 @@ globalThis.SHOT_REPORT = {
   time: stats.time,
   night: stats.night,
   lamps: stats.lamps,
+  peds: stats.peds,
+  pedsHeld: stats.pedsHeld,
+  nav: stats.nav,
   lampsHeld: stats.lampsHeld,
   variants: VARIANTS,
   // How many of the garden pools were actually placed (slice V6). A pool that

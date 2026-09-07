@@ -102,10 +102,20 @@
   },
   "props": {
     "lampSpacing": 24,
+    "lampInset": 0.5,
     "lampH": 4.5,
     "hedgeH": 0.9,
     "pathW": 1.2,
     "binEvery": 60
+  },
+  "ped": {
+    "pace": 1.35,
+    "paceVary": 0.35,
+    "perOccupant": 0.05,
+    "bob": 0.055,
+    "stride": 0.85,
+    "spacing": 1.6,
+    "crossWait": 1
   },
   "presets": {
     "day": {
