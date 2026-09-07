@@ -72,6 +72,14 @@ Built in three layers, in the Higashiyama order:
 3. **Water.** `TERRAIN_WATER` and `TERRAIN_SHALLOW` tiles clamp to a water level so a shore is
    a shore and not a hole.
 
+   **Built (E8, 2026-09-07.)** The level is per TILE, not one number for the map — the old global
+   was the maximum land height of any water tile anywhere, which drew a descending river as a
+   plateau. And `heightAt` over water answers the BED, not the surface: `water.depth` below the
+   level, flooded out from the shore over `water.shelf` tiles so a beach is a beach. `surfaceAt`
+   still answers the water — what is AT a water tile is the water — with a `depth`, which is what
+   `collision.floorAt` refuses to stand in (Q58). A corridor crossing water beats both: a causeway
+   is a road at the water's surface, not tarmac on a riverbed. `client/world/water.js`.
+
 Buildings are seated on the **lowest** corner of their lot and a plinth makes up the difference
 (both worlds do this; a building seated on the mean floats at one corner). Picking stops
 intersecting `y = 0` and marches the ray against the height field (V4).

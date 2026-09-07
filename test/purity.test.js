@@ -211,6 +211,10 @@ test("the modules that node can load are the ones that carry decisions", async (
   // and the grade table are in `ink-shaders.js`, which node can read (P2).
   "post-ink.js",
     "style-assets.js", "styles.js", "terrain.js",
+  // The surface is a quad a water tile and a transparent material; WHERE the
+  // water is, how high and how deep is `client/world/water.js`, which node can
+  // load and which is where the tests are (E8).
+  "water.js",
   ]);
   const unloadable = [];
   for (const name of readdirSync(join(repoRoot, "client", "render")).sort()) {

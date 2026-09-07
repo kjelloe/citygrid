@@ -28,6 +28,16 @@ export const DEFAULTS = Object.freeze({
   },
   // Poles and their sagging spans at L3 (E3, spec §5.4).
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },
+  // Water (E8, spec §5.5). `depth` is how far the bed drops below the surface
+  // in open water; `shelf` how many tiles it takes to get there from the shore,
+  // so a beach is a beach and not a step. `wade` is how deep a walker may go
+  // before the water is a wall (Q58: the walker is kept out of the water).
+  // `lift` is how far the drawn surface sits above the water level. Six
+  // centimetres, and it is not cosmetic: at the shoreline the bed IS the
+  // surface, so a plane at exactly the level is coplanar with the sand and the
+  // two z-fight — which at night showed as a river glowing through a black
+  // city. The same reason `road.lift` exists.
+  water: { depth: 1.4, lift: 0.06, wade: 0.4, opacity: 0.7, shelf: 1 },
   // The L3 prop pass (E5, spec §6.6). A lamp every 24 m alternating sides is
   // about what a residential street has; every 12 m is a runway.
   // `lampInset` is how far a lamp stands OUT from the kerb, not how far it

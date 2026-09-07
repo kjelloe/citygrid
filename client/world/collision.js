@@ -139,7 +139,13 @@ export function createCollision(model, boxes) {
    * be a step. Down is always allowed: that is a drop, and gravity handles it.
    */
   function floorAt(x, z, footY) {
-    const y = model.surfaceAt(x, z).y;
+    const surface = model.surfaceAt(x, z);
+    // Water is a floor you can stand on only while it is shallow (E8, Q58). A
+    // lake was a flat blue field the walker strolled across, because the height
+    // field clamped a water tile to the water level and nothing asked how deep
+    // it was underneath. The edge is a paddle; open water is a wall.
+    if (surface.kind === "water" && (surface.depth ?? 0) > getConfig().water.wade) return undefined;
+    const y = surface.y;
     if (footY !== undefined && y - footY > STEP_UP) return undefined;
     return y;
   }

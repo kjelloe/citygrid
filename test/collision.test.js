@@ -247,3 +247,61 @@ test("the furniture does not turn a street into a corridor of posts", () => {
       `a post with ${inside.toFixed(2)} m to the kerb and ${outside.toFixed(2)} m to the lot line`);
   }
 });
+
+// --- the walker stays out of the water (slice E8, Q58) -----------------------
+
+test("a walker cannot walk into deep water", () => {
+  // A lake was a flat blue floor the walker strolled across, because `heightAt`
+  // clamped a water tile to the water level and `floorAt` asked no further
+  // question. The bed drops now, and `floorAt` refuses anything deeper than
+  // `water.wade`.
+  const state = blank(16);
+  state.tiles.elevation.fill(40);
+  for (let y = 5; y <= 10; y += 1) {
+    for (let x = 5; x <= 10; x += 1) {
+      state.tiles.terrain[tileAt(state.width, x, y)] = 3;
+      state.tiles.elevation[tileAt(state.width, x, y)] = 30;
+    }
+  }
+  const model = createModel(state);
+  const collision = createCollision(model);
+  const foot = model.heightAt(2.5 * T, 7.5 * T);
+  assert.equal(collision.floorAt(7.5 * T, 7.5 * T, foot), undefined, "the middle of the lake is walkable");
+  assert.notEqual(collision.floorAt(2.5 * T, 7.5 * T, foot), undefined, "dry land is not");
+});
+
+test("the very edge of the water can be waded", () => {
+  // Not a wall at the shoreline: a tile that touches land is at the surface, so
+  // it is ankle-deep and a walker may stand in it. The wall is where it gets
+  // deeper than `water.wade`.
+  const state = blank(16);
+  state.tiles.elevation.fill(40);
+  for (let y = 5; y <= 10; y += 1) {
+    for (let x = 5; x <= 10; x += 1) {
+      state.tiles.terrain[tileAt(state.width, x, y)] = 3;
+      state.tiles.elevation[tileAt(state.width, x, y)] = 30;
+    }
+  }
+  const collision = createCollision(createModel(state));
+  assert.notEqual(collision.floorAt(5.5 * T, 5.5 * T, 15), undefined,
+    "the shore tile is a wall rather than a paddle");
+});
+
+test("a causeway over water is walkable, and stepping off it is not", () => {
+  const state = blank(16);
+  state.tiles.elevation.fill(40);
+  for (let y = 5; y <= 10; y += 1) {
+    for (let x = 0; x < state.width; x += 1) {
+      state.tiles.terrain[tileAt(state.width, x, y)] = 3;
+      state.tiles.elevation[tileAt(state.width, x, y)] = 30;
+    }
+  }
+  pave(state, row(7, 0, 15));
+  const model = createModel(state);
+  const collision = createCollision(model);
+  const on = collision.floorAt(7.5 * T, 7.5 * T, 15);
+  assert.notEqual(on, undefined, "the causeway is under water");
+  // A tile in from the shore, so it is open water rather than the paddle at
+  // the edge — and outside the corridor's own frontage.
+  assert.equal(collision.floorAt(7.5 * T, 6.5 * T, on), undefined, "you can walk off a causeway");
+});

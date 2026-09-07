@@ -7,6 +7,7 @@
 import * as THREE from "three";
 import { createCamera, applyZoom, applyPose, clampToMap, setMode } from "./camera.js";
 import { createTerrain, updateTerrain, markAllDirty } from "./terrain.js";
+import { createWater } from "./water.js";
 import { createInstances, updateInstances, pushInstance, settlePools, CAR_COLOURS } from "./instances.js";
 import { UI } from "./palette.js";
 import { STYLES, createPost } from "./styles.js";
@@ -322,6 +323,11 @@ export function createRenderer(canvas, state, options = {}) {
   const terrain = createTerrain(state, styleName);
   for (const chunk of terrain.chunks) chunk.mesh.receiveShadow = true;
   scene.add(terrain.group);
+  // The water's surface (E8, spec §5.5). A quad a water tile at that tile's own
+  // level, after the terrain, so the shoreline is where the bed comes up
+  // through it.
+  let water = createWater(state, model, styleName);
+  scene.add(water.group);
   const pools = createInstances(scene, styleName);
   for (const [name, mesh] of Object.entries(pools)) {
     // Flat ground-level pieces receive shadows but do not cast them: a road
@@ -399,6 +405,13 @@ export function createRenderer(canvas, state, options = {}) {
     // The nav graph is derived from the same corridors, so it goes the same
     // way: a person holding an edge id from a graph that no longer exists is a
     // person in a field (E7).
+    // The bed moved with the model, so the surface over it has to be rebuilt —
+    // a lake drawn against a height field that no longer exists is a sheet of
+    // blue in mid-air (E8).
+    scene.remove(water.group);
+    water.dispose();
+    water = createWater(state, model, styleName);
+    scene.add(water.group);
     nav = deriveNav(state, model);
     pedestrians = createPedestrians(state, model, nav, { cap: pedCap(), life: options.life });
     collision = createCollision(model);
@@ -564,6 +577,7 @@ export function createRenderer(canvas, state, options = {}) {
     if (drawOptions.time !== undefined) timeOfDay.set(drawOptions.time);   // spec §7.3
     timeOfDay.update(drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000);
     applyHour();
+    water.applyHour(timeOfDay.current);
     followShadow();
     // The overlay is a byte plane on the terrain material (ruling 041): one
     // upload when it changes, nothing rebuilt.

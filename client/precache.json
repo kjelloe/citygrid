@@ -1,5 +1,5 @@
 {
- "version": "600396ee0a0f",
+ "version": "708887f0cb5c",
  "generated": "2026-09-07",
  "files": [
   "./client/audio/audio-model.js",
@@ -59,6 +59,7 @@
   "./client/render/styles.js",
   "./client/render/terrain.js",
   "./client/render/time-of-day.js",
+  "./client/render/water.js",
   "./client/storage/db.js",
   "./client/storage/saves.js",
   "./client/style.css",
@@ -97,6 +98,7 @@
   "./client/world/polyline.js",
   "./client/world/raymarch.js",
   "./client/world/street-furniture.js",
+  "./client/world/water.js",
   "./data/balance.json",
   "./data/buildings.json",
   "./data/cityviewer.json",

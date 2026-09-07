@@ -14,12 +14,16 @@
 //      the centre line, so a street went wherever the hill went and the
 //      steepest on the saturated 96x96 was 37.1%; a junction's height is fixed
 //      and the profile between two junctions obeys `road.maxGrade` (A42);
-//   3. water — a water tile never rises above the water level.
+//   3. water — a water tile's ground is its BED, which is its own surface less
+//      how deep the water is there (E8). It was a clamp to one global level for
+//      the whole map, which drew a descending river as a plateau and a lake as a
+//      blue floor with nothing under it.
 
 import { getConfig } from "./config.js";
 import { TERRAIN_WATER, TERRAIN_SHALLOW } from "../constants-mirror.js";
 import { closestOnPolyline } from "./corridors.js";
 import { gradeProfile, heightOnProfile } from "./grade.js";
+import { deriveWater } from "./water.js";
 
 function sstep(a, b, v) {
   const t = Math.max(0, Math.min(1, (v - a) / (b - a || 1e-6)));
@@ -42,11 +46,12 @@ export function createGround(state, network) {
   const cornerHeight = (x, y) => (tileHeight(x - 1, y - 1) + tileHeight(x, y - 1)
     + tileHeight(x - 1, y) + tileHeight(x, y)) / 4;
 
+  const water = deriveWater(state, cfg);
   let waterLevel = -Infinity;
   // The field's vertical extent, so a ray march can skip straight to the band
   // the ground is actually in rather than stepping down from the camera
   // (slice V4). Corridor blending only ever interpolates between land heights,
-  // so these bound the blended field too.
+  // so these bound the blended field too — and the bed goes below them (E8).
   let minHeight = Infinity;
   let maxHeight = -Infinity;
   for (let i = 0; i < terrain.length; i += 1) {
@@ -57,6 +62,7 @@ export function createGround(state, network) {
       waterLevel = Math.max(waterLevel, h);
     }
   }
+  minHeight -= cfg.water.depth;
 
   /** The bare land, metres. */
   function landAt(x, z) {
@@ -171,8 +177,15 @@ export function createGround(state, network) {
     const wBase = Math.exp(-6 * wsum);
     let h = (hsum + land * wBase) / (wsum + wBase);
     const tile = tileOf(x, z);
-    if (tile >= 0 && (terrain[tile] === TERRAIN_WATER || terrain[tile] === TERRAIN_SHALLOW)) {
-      h = Math.min(h, waterLevel);
+    if (tile >= 0 && water.isWater(tile)) {
+      // The SURFACE first, so a causeway stays a causeway: a road over water is
+      // the road's own profile clamped to the water it crosses, which is what
+      // Q58 accepted. Then the bed, but only where no corridor is holding the
+      // ground up — the road is not on the riverbed.
+      const level = water.levelOf(tile);
+      h = Math.min(h, level);
+      const loose = Math.exp(-6 * wsum);   // 1 in open water, ~0 under a road
+      h = Math.min(h, level - water.depthOf(tile) * loose);
     }
     return h;
   }
@@ -188,6 +201,9 @@ export function createGround(state, network) {
 
   return {
     landAt, heightAt, cornerHeightAt, normalAt, waterLevel, minHeight, maxHeight, tileOf,
+    water,
+    /** The surface of the water at a point, or `undefined` on dry land (E8). */
+    waterLevelAt: (x, z) => water.levelOf(tileOf(x, z)),
     /** A corridor's graded profile, for anything that wants the street's own
      * height without asking the blended field for it (R3). */
     profileOf: (id) => profiles.get(id),

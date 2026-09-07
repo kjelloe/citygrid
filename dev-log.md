@@ -3951,3 +3951,62 @@ produced the table above.
 *And `hilly` cannot be graded at any relief.* 43% of its streets are beyond 15% at today's 0.5,
 because the land between adjacent junctions is simply steeper than that and node heights are
 fixed. Nothing R3 can do; **Q64** asks whether a junction should be allowed to move.
+
+## slice-E8 — water, and a river that follows its valley (2026-09-07)
+
+Spec §5.5, Q58 (now A46).
+
+**What it is.** `client/world/water.js` — pure, node-loadable, and where the tests are — decides
+where the water is, how high its surface stands and how deep the bed is under it.
+`client/render/water.js` draws the surface and is plumbing. `collision.floorAt` refuses to stand
+in it; `surfaceAt` answers the water rather than the bed.
+
+**Three deviations from §5.5, every one of them measured.**
+
+*The level is per tile, not per map.* `waterLevel` was one number — the maximum land height of any
+water tile anywhere — so on the `rolling` fixture the surface was 47.5 m while the same river's
+lowest tile is at 14 m: a river running down a valley was drawn as a plateau at the height of its
+highest tile for half its length. Every water tile carries its own surface now, which makes a lake
+level by construction and lets a river step down its valley.
+
+*Not a plane per chunk but one mesh for the map.* A single plane is a single height, which is the
+same bug. Per chunk was sixteen draw calls on a 64×64, and `client_smoke` went red at **89 against
+its budget of 80** — the check that exists to notice instancing quietly stopping. One mesh is one
+call and gives up frustum culling, which costs nothing: **1,570 triangles** for a whole 64×64,
+against 512 for a single terrain chunk. The budget is charged the whole map's water rather than
+the part on screen, because the whole map's water is drawn.
+
+*Lit, not unlit.* Unlit is the obvious choice — water is a reflection, not a surface catching a
+lamp — and it gave a river glowing cyan through a black city at midnight. The colour arithmetic
+was right and the space was wrong: three multiplies colours in LINEAR space, so dimming by the
+night preset's hemisphere of 0.34 is about 0.6 to the eye, while the lit ground beside it had gone
+to almost nothing. A lit material dims by exactly what everything else dims by, without a second
+copy of the lighting rules.
+
+**The bed drops, so the shoreline is geometry.** `heightAt` over water answers the bed —
+`water.depth` below the surface, flooded outward from the shore over `water.shelf` tiles so a
+beach is a beach and not a step the height of the water. `reports/smoke-E8-shore.png` is a shore
+from the pavement: sand into the shallows, the surface across the middle, the far bank behind it.
+
+**A46 (Q58).** A causeway is a road at the water's surface, and it works: `surfaceAt` returns the
+road where a corridor crosses water, so the carriageway is not on the riverbed, and the water
+either side of it is still a wall.
+
+**Measured.** `client_smoke` 72 draws / 79,931 triangles at span 9 (was 70 / 77,271 — one draw
+call and 2,660 triangles for every drop of water on the map). `budget_gate`, `walkthrough`
+(161.04 km, 0 unfinished, 0 refusals) and the other thirteen gates unchanged. Suite green twice.
+`reports/smoke-E8-{shore,night,city,causeway}.png`.
+
+**What failed on the way.**
+
+*A night shot came back with a glowing river, and the material was innocent.* The probe said the
+water was `#175c6e` — a dark teal — while the picture showed something far brighter, and the
+answer was that the arithmetic dimming it was linear and the eye is not. Then the same shot with
+the surface painted magenta showed thin dark seams through it: at the waterline the bed IS the
+surface, so a plane at exactly the level is coplanar with the sand and the two z-fight.
+`water.lift` puts it six centimetres up, for the same reason `road.lift` exists.
+
+*And the first thing the slice did was find that water had never been level.* The item said "one
+transparent plane per chunk, at `waterLevel`" and the first measurement of `waterLevel` — 47.5 m
+against a river bed at 14 m — said the plane would flood half the map. **Q65** (should a river be
+CUT into the land) and **Q66** (one unculled mesh) are what is left.

@@ -121,6 +121,14 @@ fixture had no pollution. A green wash over green grass is a green picture. **Ve
 instrument, then verify what the instrument is pointed at**: histogram the data the picture is
 supposed to be showing before concluding anything from the picture.
 
+**Colour arithmetic happens in linear space, and your eye does not.** E8 dimmed an unlit water
+surface by the night preset's hemisphere — 0.34 — and got a river glowing cyan through a black
+city, because in three's working space that factor is about 0.6 to the eye while everything lit
+beside it had gone to almost nothing. The general fix is not a better constant: it is to let the
+LIGHTING do it, so the thing dims by exactly what everything else dims by and there is only one
+copy of the rules. A probe that reads back a hex value will confirm the material is "correct" the
+whole time.
+
 **Check what the "before" actually was.** R3 spent an hour concluding that grading streets had
 made them steeper, because the number it compared against was the bare land along a centre line —
 and the old code did not return that, it returned the land blended across every nearby corridor.

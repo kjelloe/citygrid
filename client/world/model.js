@@ -30,18 +30,24 @@ export function createModel(state) {
    * can see (spec §5.2, and what E4's `floorAt` steps up). */
   function surfaceAt(x, z) {
     const tile = ground.tileOf(x, z);
-    if (tile >= 0) {
-      const t = state.tiles.terrain[tile];
-      if (t === TERRAIN_WATER || t === TERRAIN_SHALLOW) return { kind: "water", y: ground.heightAt(x, z), dist: 0 };
+    const near = network.nearest(x, z);
+    const onWalk = near !== undefined && near.dist <= network.frontage;
+    const base = ground.heightAt(x, z);
+    // Water first, UNLESS a road crosses it: a causeway is a road at the
+    // water's surface, not a river with tarmac at the bottom of it (E8, Q58).
+    // The surface, not the bed — what is AT a water tile is the water, and the
+    // bed is what `heightAt` answers, a metre and a half below.
+    if (tile >= 0 && ground.water.isWater(tile) && !onWalk) {
+      return {
+        kind: "water", dist: 0,
+        y: ground.waterLevelAt(x, z) ?? base,
+        depth: ground.water.depthOf(tile),
+      };
     }
     const lot = lots.lotAt(x, z);
-    if (lot) return { kind: "lot", y: ground.heightAt(x, z), lot, dist: 0 };
-    const near = network.nearest(x, z);
-    const base = ground.heightAt(x, z);
+    if (lot) return { kind: "lot", y: base, lot, dist: 0 };
     if (near && near.dist <= network.half) return { ...near, kind: "road", y: base + cfg.road.lift };
-    if (near && near.dist <= network.frontage) {
-      return { ...near, kind: "sidewalk", y: base + cfg.road.lift + cfg.road.kerb };
-    }
+    if (onWalk) return { ...near, kind: "sidewalk", y: base + cfg.road.lift + cfg.road.kerb };
     return { kind: "ground", y: base, dist: near ? near.dist : Infinity };
   }
 
@@ -62,6 +68,8 @@ export function createModel(state) {
     landAt: ground.landAt,
     normalAt: ground.normalAt,
     waterLevel: ground.waterLevel,
+    waterLevelAt: ground.waterLevelAt,
+    water: ground.water,
     minHeight: ground.minHeight,
     maxHeight: ground.maxHeight,
     lots: lots.lots,

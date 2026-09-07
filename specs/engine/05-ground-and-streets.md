@@ -124,6 +124,44 @@ slightly transparent. The shoreline is where the land mesh dips under it; no bev
 the corner heights blend (5.1.2). Rivers as corridors with `kind: 'water'` cut into the height
 field (Higashiyama's `addCut`) are a later slice.
 
+**Built (E8, 2026-09-07), with three deviations from the paragraph above, each measured.**
+
+`client/world/water.js` is where the water IS — pure, node-loadable, and where the tests are;
+`client/render/water.js` is the surface, and is plumbing.
+
+1. **The level is per TILE, not per map.** `waterLevel` was one number, the maximum land height of
+   any water tile anywhere; on the `rolling` fixture that is 47.5 m while the same river's lowest
+   tile is at 14 m, so a river running down a valley was drawn as a plateau at the height of its
+   highest tile for half its length. Every water tile carries its own surface — its own land
+   height — which makes a lake level by construction (its tiles share an elevation) and lets a
+   river step down its valley, which is what a river does at twenty metres a tile.
+2. **Not a plane but a quad a tile**, and **not per chunk but one mesh.** A single plane is a
+   single height, which is (1) again. Per chunk it was sixteen draw calls on a 64×64 and
+   `client_smoke` went red at 89 against its budget of 80 — the check that exists to notice
+   instancing quietly stopping. One mesh is one call and forfeits frustum culling, which costs
+   nothing: 1,570 triangles for a whole 64×64, less than one building, against 512 for a single
+   terrain chunk. The budget is therefore charged the whole map's water rather than the part on
+   screen, because the whole map's water is drawn.
+3. **Lit, not unlit.** Unlit is the obvious choice — water is a reflection, not a surface catching
+   a lamp — and it produced a river glowing cyan through a black city at midnight. Not because the
+   colour was wrong: dimming it by the preset's hemisphere is arithmetic three does in LINEAR
+   space, so a factor of 0.34 is about 0.6 to the eye while the lit ground beside it had gone to
+   almost nothing. A lit material dims by exactly what everything else dims by, without a second
+   copy of the lighting rules; the hour still tints it toward the sky, which is what makes a
+   sunset land on it.
+
+**The bed drops.** A surface and a floor at the same height is not water, it is a blue field, so
+`heightAt` over water answers the BED — the surface less `water.depth` — and the shoreline is
+geometry: it is where the bed comes up through the surface. Depth is a flood outward from the
+shore over `water.shelf` tiles, so a beach is a beach and not a step the height of the water. The
+drawn surface sits `water.lift` (6 cm) above the level, because at the waterline the bed IS the
+surface and a plane at exactly the level z-fights with the sand under it.
+
+**The walker stays out** (Q58). `collision.floorAt` refuses a water tile deeper than `water.wade`,
+so the edge is a paddle and open water is a wall. A causeway is exempt: `surfaceAt` returns the
+road rather than the water where a corridor crosses it, and `heightAt` holds the carriageway at the
+water's surface instead of on the riverbed — which is the causeway Q58 accepted.
+
 ## 5.6 Slope rules the world model must keep
 
 - Nothing hard-codes a y. Every ribbon, kerb, prop and building samples `heightAt`.

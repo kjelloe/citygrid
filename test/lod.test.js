@@ -54,7 +54,7 @@ const CITY = {
   buildings: 900, trees: 1200, props: 4000, roads: 4400, poles: 600, groundChunks: 64,
   // A downtown grid: most road tiles are straight, a few hundred are junctions.
   markArms: 5200, wireTiles: 600, wireArms: 1100, pipeTiles: 600, pipeArms: 1100,
-  cars: 180, peds: 0,
+  cars: 180, peds: 0, waterTiles: 0,
 };
 
 function planAt(px, budget = 80000, counts = CITY) {
@@ -108,7 +108,7 @@ test("props are sacrificed before buildings", () => {
   // which is the only place the order is observable.
   const town = {
     buildings: 200, trees: 300, props: 800, roads: 900, poles: 100, groundChunks: 9,
-    markArms: 1000, wireTiles: 100, wireArms: 180, pipeTiles: 100, pipeArms: 180, cars: 40, peds: 0,
+    markArms: 1000, wireTiles: 100, wireArms: 180, pipeTiles: 100, pipeArms: 180, cars: 40, peds: 0, waterTiles: 0,
   };
   const plan = planAt(60, 200000, town);
   assert.equal(plan.props, false, "props go first");
@@ -162,7 +162,7 @@ test("the estimate does NOT charge twice for a shadowed caster (P35)", () => {
   // truth at close zoom, and the ladder dropped the props you zoomed in to see.
   const counts = {
     buildings: 100, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
-    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0, peds: 0,
+    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0, peds: 0, waterTiles: 0,
   };
   const base = { buildings: TIER.FULL, treeDetail: TIER.FULL, trees: false, props: false, markings: false, poles: false };
   const lit = estimate(counts, { ...base, shadows: false });
@@ -455,7 +455,7 @@ test("street chunks are a zoom, not a tier setting (slice E3)", () => {
   const counts = {
     buildings: 200, trees: 100, props: 50, roads: 400, poles: 60, groundChunks: 16,
     markArms: 200, wireTiles: 100, wireArms: 200, pipeTiles: 100, pipeArms: 200,
-    cars: 20, peds: 0, streetPerChunk: 4768,
+    cars: 20, peds: 0, waterTiles: 0, streetPerChunk: 4768,
   };
   const far = { mode: "ortho", span: 40, targetX: 32, targetZ: 32, yaw: 0 };
   const near = { mode: "ortho", span: 4, targetX: 32, targetZ: 32, yaw: 0 };
@@ -467,7 +467,7 @@ test("a baked chunk is charged once a frame, and only when it is on screen", () 
   const counts = {
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 9,
     markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0,
-    cars: 0, peds: 0, streetPerChunk: 1000, bakedChunks: 9, chunks: [],
+    cars: 0, peds: 0, waterTiles: 0, streetPerChunk: 1000, bakedChunks: 9, chunks: [],
   };
   const plan = { buildings: 0, treeDetail: 0, trees: false, props: false, streetChunks: 4 };
   // Four wanted, nine baked and visible: four are charged, once, plus ground.

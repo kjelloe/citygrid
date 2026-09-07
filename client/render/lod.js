@@ -262,7 +262,11 @@ function estimateOne(counts, plan) {
     // outside the frustum is culled like anything else, and charging all nine
     // at a close zoom that only sees two put the estimate 28% over.
     + streetCost(counts, plan)
-    + counts.groundChunks * CHUNK_TRIANGLES;
+    + counts.groundChunks * CHUNK_TRIANGLES
+    // The water's surface, at two triangles a tile (E8). Off the top like the
+    // terrain: it is the ground, and a term missing from the estimate is a term
+    // the budget cannot trade away (P35).
+    + counts.waterTiles * 2;
 
   // Casters count ONCE, and this used to be twice.
   //
@@ -564,6 +568,7 @@ export function countScene(state, bounds) {
   const blank = () => ({
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
     markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0, peds: 0,
+    waterTiles: 0,
   });
   const chunkAt = (x, y) => {
     const key = ((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0);
@@ -575,7 +580,18 @@ export function countScene(state, bounds) {
   const FOREST = 2;
   const GRASS = 0;
   const MARSH = 7;
+  const WATER = 3;
+  const SHALLOW = 4;
+  let waterTiles = 0;
   const width = state.width;
+  // The water's surface is ONE mesh for the whole map (E8) — three cannot cull
+  // half of it — so it is counted over the whole map rather than over what is
+  // on screen. The opposite of N30's "charged 49k for ground never drawn": here
+  // it really is all drawn, and pretending otherwise would under-charge.
+  for (let i = 0; i < state.tiles.terrain.length; i += 1) {
+    const t = state.tiles.terrain[i];
+    if (t === WATER || t === SHALLOW) waterTiles += 1;
+  }
   for (let i = 0; i < state.tiles.terrain.length; i += 1) {
     if (bounds && !inBounds(bounds, i % width, (i - (i % width)) / width)) continue;
     const x = i % width;
@@ -605,6 +621,7 @@ export function countScene(state, bounds) {
         if (state.tiles.pipe[i] & (1 << d)) { pipeArms += 1; part.pipeArms += 1; }
       }
     }
+    if (state.tiles.terrain[i] === WATER || state.tiles.terrain[i] === SHALLOW) part.waterTiles += 1;
     if (state.tiles.terrain[i] === FOREST && state.tiles.buildingId[i] === 0 && !paved) {
       trees += 1;
       part.trees += 1;
@@ -666,7 +683,7 @@ export function countScene(state, bounds) {
     }
   }
   return {
-    buildings, trees, props, roads, poles, groundChunks,
+    buildings, trees, props, roads, poles, groundChunks, waterTiles,
     markArms, wireTiles, wireArms, pipeTiles, pipeArms, chunks,
     // Filled in by the caller from what the street cache measured last frame.
     streetPerChunk: 0,

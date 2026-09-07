@@ -409,13 +409,14 @@ by number from the code they create.
 | Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
 | Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
-| Q58 | What does a road over water look like at street level? | E8 |
 | Q59 | Should reduced motion empty the street or still it? | R2, reversible |
 | Q60 | When does the model derivation go per chunk — the number, again? | its own slice, unchanged from Q51 |
 | Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
 | Q62 | When do pedestrians get roles? E7 walks them by hash rather than by plan | its own slice, after V8 |
 | Q63 | The crowd is a function of the camera and the traffic is not | whenever `carCap` binds |
 | Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | whenever `hilly` is meant to be playable |
+| Q65 | Should a river be cut into the land rather than laid on it? | the film lane, or whenever a canal is asked for |
+| Q66 | The water surface is one unculled mesh for the whole map | the measurement lane, on a 256-tile map |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

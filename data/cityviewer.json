@@ -101,6 +101,13 @@
     "sag": 1.2,
     "armWidth": 1.4
   },
+  "water": {
+    "depth": 1.4,
+    "lift": 0.06,
+    "wade": 0.4,
+    "opacity": 0.7,
+    "shelf": 1
+  },
   "props": {
     "lampSpacing": 24,
     "lampInset": 0.5,
