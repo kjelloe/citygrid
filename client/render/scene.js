@@ -17,11 +17,13 @@ import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { tierConfig } from "../world/config.js";
 import { createGovernor } from "./governor.js";
-import { createSky } from "./sky.js";
+import { createSky, SKY_RADIUS } from "./sky.js";
+import { fogFor, skyRadiusFor } from "./atmosphere.js";
 import { createStreetChunks } from "./street-chunks.js";
 import { createCollision } from "../world/collision.js";
 import { createTimeOfDay, phaseOf } from "./time-of-day.js";
 import { nearestLamps, lampsOf } from "./night-lights.js";
+import { lensColour } from "../world/signals.js";
 import { CHUNK } from "../world/chunks.js";
 import { getConfig } from "../world/config.js";
 import { createWalker } from "../life/walker.js";
@@ -94,18 +96,23 @@ export function createRenderer(canvas, state, options = {}) {
         Math.min(1, want.b / Math.max(base.b, 1e-3)),
       );
     }
-    // The dome is a 1,800-unit sphere and street mode's far plane is 100, so at
-    // eye height the sky is entirely BEHIND it: what the player sees there is
-    // the clear colour, and it has to know the hour too (slice E6).
+    // The clear colour has to know the hour too (E6) — it is what shows where
+    // neither the dome nor the map does.
     renderer.setClearColor(hour.sky);
-    if (!on) { scene.fog = null; return; }
-    const reach = Math.max(view.span, 12);
+    // The dome is SCALED to sit inside the far plane (V8). It was a fixed
+    // 1,800-tile sphere and street mode's far plane is 100, so at eye height
+    // the sky was entirely behind it: the player got a flat clear colour and
+    // the dome's whole gradient was thrown away, which is exactly what a low
+    // sun needs.
+    sky.scale.setScalar(skyRadiusFor(view) / SKY_RADIUS);
+    const haze = fogFor(view, hour);
+    if (!on || !haze) { scene.fog = null; return; }
     // Mutated, not replaced: a new `Fog` every frame is an allocation a frame
     // and a uniform rebind three has to notice (R1.7).
-    if (!scene.fog) scene.fog = new THREE.Fog(hour.sky, reach * hour.fogNear, reach * hour.fogFar);
+    if (!scene.fog) scene.fog = new THREE.Fog(hour.sky, haze.near, haze.far);
     scene.fog.color.setHex(hour.sky);
-    scene.fog.near = reach * hour.fogNear;
-    scene.fog.far = reach * hour.fogFar;
+    scene.fog.near = haze.near;
+    scene.fog.far = haze.far;
   }
 
   const antialiasAtBuild = options.antialias ?? tier.antialias;
@@ -660,11 +667,44 @@ export function createRenderer(canvas, state, options = {}) {
         result.instances = settled.instances;
         result.triangles = settled.triangles;
       }
+      // The signal lenses (V8). Their housings are baked into the chunks; the
+      // lens is what changes, so it is posed here from the SAME `phaseAt` the
+      // cars read — two answers to "which way is green" is a car driving
+      // through a red one.
+      if (pools.signalLens) {
+        const clock = traffic.clock();
+        for (const entry of streets.entries()) {
+          for (const head of entry.signals ?? []) {
+            const lens = lensColour(model.lanes.phaseAt(head.node, clock), head.axis);
+            pushInstance(pools.signalLens, head.x / model.tileM, head.y / model.tileM,
+              head.z / model.tileM, 1, 1, 1, lens.hex);
+          }
+        }
+        const settled = settlePools(pools);
+        result.instances = settled.instances;
+        result.triangles = settled.triangles;
+      }
+      // Headlights and tail lights, only when it is dark enough for them to
+      // mean anything (V8). Two quads a car, so a hundred cars is 400 triangles
+      // — and by day it is nothing at all.
+      if (plan.cars !== false && drawOptions.life !== false) {
+        const lit = traffic.poseLights(pools, pushInstance, timeOfDay.current.night, bounds);
+        if (lit > 0) {
+          const settled = settlePools(pools);
+          result.instances = settled.instances;
+          result.triangles = settled.triangles;
+        }
+      }
       if (shadowLight) {
         shadowLight.castShadow = plan.shadows
           && (drawOptions.shadows ?? options.shadows ?? tier.shadows) !== false
           && governor.allows("shadows");
       }
+      // The dome follows the eye. It never had to while it was 1,800 tiles
+      // across — the camera was always near enough to its centre — and the
+      // moment V8 scaled it to sit inside street mode's 100-tile far plane it
+      // became a pale ball sitting in the middle of the map.
+      sky.position.copy(view.camera.position);
       if (post) post.render(scene, view.camera);
       else renderer.render(scene, view.camera);
       // The SCENE's triangles, not the full-screen quad's. A post pass renders

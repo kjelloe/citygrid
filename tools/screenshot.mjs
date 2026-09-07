@@ -68,7 +68,13 @@ export async function shoot({
     const url = `http://127.0.0.1:${port}/tools/shoot.html`
       + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}&terrain=${terrain}&overlay=${overlay}&pitch=${pitch}&mode=${mode}&shadows=${shadows ? 1 : 0}&streets=${streets}&frames=${frames}&street=${street}&time=${time}&post=${post ? 1 : 0}`
       + Object.entries(extra).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("");
-    await page.goto(url, { waitUntil: "load" });
+    // `commit`, not `load`. A module script's `load` waits for the whole of
+    // `shoot.html` — generating a city, growing it twenty years and drawing
+    // forty-four frames — so a page that merely got slower failed on `goto`'s
+    // 30-second default with no page error attached, which looks exactly like a
+    // page that threw (V8). The readiness signal below is the real gate and it
+    // has two minutes.
+    await page.goto(url, { waitUntil: "commit", timeout: 120000 });
     try {
       await page.waitForFunction(() => globalThis.SHOT_READY === true, undefined, { timeout: 120000 });
     } catch (error) {

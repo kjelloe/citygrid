@@ -6,7 +6,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cuesFor, cueForResult, ambienceFor, knownCueKinds, voiceNames, VOICES_PER_TICK, BUS } from "../client/audio/audio-model.js";
+import {
+  cuesFor, cueForResult, ambienceFor, streetAmbienceFor,
+  knownCueKinds, voiceNames, VOICES_PER_TICK, BUS,
+} from "../client/audio/audio-model.js";
 import { createState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
@@ -115,4 +118,51 @@ test("every cue lands on a bus the mixer creates", () => {
     assert.ok(buses.has(cue.bus), `${kind} plays on '${cue.bus}'`);
   }
   assert.ok(buses.has(cueForResult("ok").bus));
+});
+
+// --- what the street sounds like (slice V8, spec §9.4) -----------------------
+
+/** A city with a given size and congestion, and nothing else. */
+function cityWith({ population, congested }) {
+  const state = createState(defaultOptions({ width: 16, height: 16, seed: 7 }));
+  state.population = population;
+  state.traffic.congested = congested;
+  return state;
+}
+
+
+test("street ambience follows the road under the walker, not the whole city", () => {
+  // `ambienceFor` is a property of the CITY — population and congestion — and
+  // it is the right answer from the city camera. At eye height it is the wrong
+  // question entirely: standing on a busy arterial and standing in a cul-de-sac
+  // two streets away are the same city and very different places.
+  const state = cityWith({ population: 4000, congested: 40 });
+  const busy = streetAmbienceFor(state, { x: 5, y: 5 }, 240);
+  const quiet = streetAmbienceFor(state, { x: 5, y: 5 }, 0);
+  assert.ok(busy > quiet, `${busy} against ${quiet}`);
+});
+
+test("a quiet street in a big city is still quiet", () => {
+  const big = cityWith({ population: 40000, congested: 200 });
+  assert.ok(streetAmbienceFor(big, { x: 5, y: 5 }, 0) < ambienceFor(big),
+    "the city's own level drowns out where you are standing");
+});
+
+test("a busy street in a small city is still busy", () => {
+  const small = cityWith({ population: 200, congested: 0 });
+  assert.ok(streetAmbienceFor(small, { x: 5, y: 5 }, 255) > ambienceFor(small));
+});
+
+test("the level is an integer between 0 and 100, like the city's", () => {
+  const state = cityWith({ population: 4000, congested: 40 });
+  for (const load of [0, 1, 60, 128, 255]) {
+    const level = streetAmbienceFor(state, { x: 5, y: 5 }, load);
+    assert.ok(Number.isInteger(level), `${level}`);
+    assert.ok(level >= 0 && level <= 100, `${level}`);
+  }
+});
+
+test("off the map is silence rather than a crash", () => {
+  const state = cityWith({ population: 4000, congested: 40 });
+  assert.equal(streetAmbienceFor(state, undefined, undefined), ambienceFor(state));
 });

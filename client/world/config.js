@@ -38,13 +38,26 @@ export const DEFAULTS = Object.freeze({
   // two z-fight — which at night showed as a river glowing through a black
   // city. The same reason `road.lift` exists.
   water: { depth: 1.4, lift: 0.06, wade: 0.4, opacity: 0.7, shelf: 1 },
+  // Haze and sky (V8, spec §7.3). The city camera's fog follows the zoom — the
+  // same numbers would be invisible on a 64-tile map and opaque on a 128-tile
+  // one — but a walker's eye does not zoom, so street fog is METRES and the
+  // dome is scaled to sit inside street mode's far plane rather than a thousand
+  // tiles behind it.
+  fog: { streetNear: 25, streetFar: 520, domeShare: 0.85 },
   // The L3 prop pass (E5, spec §6.6). A lamp every 24 m alternating sides is
   // about what a residential street has; every 12 m is a runway.
   // `lampInset` is how far a lamp stands OUT from the kerb, not how far it
   // stands from the centre line. It was the middle of the pavement, which is
   // where a walker walks: E7 made the furniture solid and the walkthrough gate
   // ground to a halt on a post every 24 m (A43).
-  props: { lampSpacing: 24, lampInset: 0.5, lampH: 4.5, hedgeH: 0.9, pathW: 1.2, binEvery: 60 },
+  props: {
+    lampSpacing: 24, lampInset: 0.5, lampH: 4.5, hedgeH: 0.9,
+    // A nine-metre tree with a three-metre crown (V8). The instanced kit's
+    // cone is 0.26 of a tile, which is 5.2 m — right at city zoom and small
+    // standing under it.
+    treeH: 9, treeR: 3.2,
+    pathW: 1.2, binEvery: 60,
+  },
   // Pedestrians (E7, spec §9.3). `perOccupant` is how many people a building's
   // occupancy asks for on the pavement outside it — 5%, which on the 48-tile
   // shoot fixture (712 residents in 89 buildings) is a street with somebody on

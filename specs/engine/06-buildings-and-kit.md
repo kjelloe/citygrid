@@ -149,6 +149,27 @@ saturated city, a High frame is ~316k and a Medium one ~130k, so the budgets are
 140k Medium**, Low unchanged at 40k because Low has no street chunks at all. The frame-time
 governor is still what protects a device; the triangle budget only decides what to sacrifice.
 
+## 6.6b Trees at eye height (V8, 2026-09-07)
+
+The instanced kit is a trunk and a four-sided cone, and at eighteen pixels a tile that is right.
+It was also what a walker was standing under, because the tree pass was the one thing in
+`updateInstances` never gated on whether its chunk had been baked — close up, a four-sided cone
+is a pyramid.
+
+`client/render/trees-l3.js` builds a trunk and a cluster of faceted blobs into the chunk baker
+(Higashiyama's rule: **never a billboard**), so a wood is part of the chunk's one draw call and
+follows the ground for free. Three species that differ in SHAPE and not in tint — a tapered
+conifer, one round crown on a bare trunk, and a fork with two — because V6's lesson is that two
+variants which hash the same are a city of clones.
+
+**Where** a tree stands is `client/world/foliage.js`, read by BOTH passes. Two copies of "a tree
+is at `jitter(index, 7)` across the tile" is a tree that jumps sideways the moment its chunk
+bakes and jumps back when the player walks away, and nothing goes red for it.
+
+A blob has **five** sides, and it had seven: seven put 21,336 triangles into the saturated
+fixture's eight baked chunks and took the night frame's ladder from "detail dropped" to
+"silhouettes only" — the trees were being paid for in buildings.
+
 ## 6.6a As built (V6, 2026-09-06)
 
 **Six silhouettes per category, not four**, and `VARIANTS` is now written down ONCE. It was in

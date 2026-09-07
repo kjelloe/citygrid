@@ -17,6 +17,11 @@ import * as THREE from "three";
  * horizon and a gradient that starts high looks like a painted ceiling. */
 const HORIZON = 0.12;
 
+/** The radius the dome is BUILT at. Scaled per mode by the caller
+ * (`atmosphere.js`), because street mode's far plane is a hundredth of the
+ * city's and a dome behind it is a dome nobody sees (V8). */
+export const SKY_RADIUS = 1800;
+
 function mix(a, b, t) {
   return new THREE.Color(
     a.r + (b.r - a.r) * t,
@@ -31,7 +36,7 @@ function mix(a, b, t) {
  * fights the ground it sits behind.
  */
 export function createSky(palette) {
-  const geometry = new THREE.SphereGeometry(1800, 24, 16);
+  const geometry = new THREE.SphereGeometry(SKY_RADIUS, 24, 16);
   const horizon = new THREE.Color(palette.sky);
   const zenith = mix(horizon, new THREE.Color(0x2f6ea8), 0.55);
   const ground = mix(horizon, new THREE.Color(0xffffff), 0.25);
@@ -40,7 +45,7 @@ export function createSky(palette) {
   const colours = new Float32Array(position.count * 3);
   for (let i = 0; i < position.count; i += 1) {
     // −1 at the nadir, +1 at the zenith.
-    const up = position.getY(i) / 1800;
+    const up = position.getY(i) / SKY_RADIUS;
     const colour = up >= 0
       ? mix(horizon, zenith, Math.min(1, Math.max(0, (up - HORIZON) / (1 - HORIZON))))
       // Below the horizon the dome is only ever seen where the map is not, so

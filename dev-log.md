@@ -4010,3 +4010,70 @@ surface, so a plane at exactly the level is coplanar with the sand and the two z
 transparent plane per chunk, at `waterLevel`" and the first measurement of `waterLevel` — 47.5 m
 against a river bed at 14 m — said the plane would flood half the map. **Q65** (should a river be
 CUT into the land) and **Q66** (one unculled mesh) are what is left.
+
+## slice-V8 — the street, finished (2026-09-07)
+
+The last item in the cityviewer lane: six things the spec promised and no slice owned.
+
+**Trees at eye height** (spec §6.6). `client/render/trees-l3.js` builds a trunk and a cluster of
+faceted blobs into the chunk baker — never a billboard — in three species that differ in shape
+rather than tint. WHERE a tree stands moved to `client/world/foliage.js` so both passes read one
+answer, and `updateInstances` stops drawing its cones inside a baked chunk: it was the one pass
+never gated on `drawn`, which is why a walker was standing under a four-sided pyramid.
+
+**Signal heads and crossings** (spec §9.2, A33). `client/world/signals.js` decides where a head
+stands, where the zebra's bars go and which lens is lit. The post and housing are baked; the LENS
+is posed per frame from **the same `phaseAt` the cars read**, because two answers to "which way is
+green" is a car driving through a red one. Cars have stopped at invisible lights since E1.
+
+**Headlights and tail lights** (spec §9.1). Two unlit quads a car, posed only when `night` is up
+— nothing at all by day. `traffic.lampsOf` is exposed as well as posed: "the headlights are on the
+front" is not something a screenshot argues about, and a car with them behind it reads as traffic
+going the wrong way down the street.
+
+**The minimap knows where you are.** Under perspective it draws the frustum FOOTPRINT rather than
+a box round it — a wedge at a low pitch holds several times the ground a box does, so the box was
+claiming you could see a great deal you cannot — and in street mode it draws the walker as a dot
+with a nose on it. Both from `visibleBounds`, so the minimap and the budget agree about what the
+camera can see.
+
+**Street ambience.** `streetAmbienceFor` adds `tiles.traffic` under the walker to a third of the
+city's own level: the city is a floor and the road under your feet is what changes. Both numbers
+are hashed state, so a muted client stays hash-identical to a loud one.
+
+**Fog and sky in the street.** `client/render/atmosphere.js` — pure — gives the city camera the
+zoom-following haze it always had and the street a fixed one in METRES, because a walker's eye does
+not zoom and street mode was inheriting whatever span the player had been standing at. And the
+dome is scaled to sit inside the far plane: it was a 1,800-tile sphere against street mode's 100,
+so at eye height the sky was entirely behind it and dusk was a flat clear colour.
+
+**Measured.** `budget_gate`: street chunks **269,940 triangles over 8** (E5 measured 25.7k a
+chunk; a chunk is 33.7k now), build p95 **7 ms** against 8; the night row **289,446 of 320,000**;
+the overlay, territory, car and crowd rows unchanged. `client_smoke` 72 draws / 79,931 triangles
+at span 9 — three new pools and no new draw call at that zoom. Suite green twice, all fifteen
+gates green. `reports/smoke-V8-{street,junction,night,dusk}.png`.
+
+**What failed on the way.**
+
+*The dome became a pale ball sitting in the middle of the map.* Scaling it from 1,800 tiles to 85
+was the fix for street mode, and it exposed something that had never mattered: the dome is centred
+on the world origin, not on the eye. At 1,800 tiles the camera is always near enough to the
+centre; at 85 it is not. It follows the camera now.
+
+*Three separate things were paid for in buildings.* The night frame's ladder is the instrument
+here, and it moved twice. Seven-sided tree blobs put 21,336 triangles into eight chunks and took
+it from "detail dropped" to "silhouettes only"; five sides put it back. Then the signal lenses —
+a 6×4 sphere is 36 triangles for something two pixels across, three hundred of them — took it down
+again; an octahedron is eight. The frame is 289,446 of 320,000 and the ladder is at "silhouettes
+only" for the DISTANT city at the hour it is least visible, which is the trade it exists to make
+(**Q68**).
+
+*A page that merely got slower looked exactly like a page that threw.* `screenshot.mjs` waited on
+`goto`'s `load`, which for a module script means the whole of `shoot.html` — generate a city, grow
+it twenty years, draw forty-four frames — against a 30-second default with no page error attached.
+It waits on `commit` now and lets the page's own readiness signal, which has two minutes, be the
+gate.
+
+*And drawing the lights found something that had been true since E1:* every junction on an
+ordinary city grid is signalled, so a street at eye level is a picket fence of traffic lights
+(**Q67**). The cars have always stopped at all of them.

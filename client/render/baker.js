@@ -22,6 +22,10 @@ export function createBaker(styleName = "plain") {
   /** Where this chunk's lamps hang. Geometry alone cannot answer "which eight
    * lamps are nearest the player", and the night rig has to (spec §7.3). */
   const lamps = [];
+  /** Where this chunk's signal heads are, and which node and axis each one
+   * belongs to. The housing is baked; the LENS changes three times a minute, so
+   * it is posed per frame from `lanes.phaseAt` (V8, spec §9.2). */
+  const signals = [];
   let triangles = 0;
 
   const IDENTITY = new THREE.Matrix4();
@@ -99,6 +103,7 @@ export function createBaker(styleName = "plain") {
     },
 
     lamps,
+    signals,
 
     get triangles() { return triangles; },
     get buckets() { return buckets.size; },

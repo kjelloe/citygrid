@@ -36,7 +36,7 @@ import { createMinimap } from "./render/minimap.js";
 import { openStatistics } from "./ui/statistics.js";
 import { openHelp } from "./ui/help.js";
 import { createMixer } from "./audio/mixer.js";
-import { cuesFor, cueForResult, ambienceFor } from "./audio/audio-model.js";
+import { cuesFor, cueForResult, streetAmbienceFor } from "./audio/audio-model.js";
 import { loadQuests } from "./content.js";
 import { questCatalogue, activeQuests } from "../engine/quests.js";
 import { CMD_QUEST_CHOICE, CMD_SET_TAX, CMD_SET_FUNDING } from "../engine/commands.js";
@@ -242,7 +242,12 @@ export async function startGame(root, given = {}) {
         const outcome = apply(state, { type: CMD_TICK });
         hud.tick(outcome.events);
         for (const cue of cuesFor(outcome.events)) audio.play(cue);
-        audio.setAmbience(ambienceFor(state));
+        // Where the WALKER is standing, when they are down there (V8): a busy
+        // arterial and a cul-de-sac two streets away are the same city and very
+        // different places. `tiles.traffic` under their feet is hashed state,
+        // so this is still a projection and a muted client stays hash-identical
+        // to a loud one.
+        audio.setAmbience(streetAmbienceFor(state, walkerTile(), trafficUnderWalker()));
         if (shouldAutosave(state.tick, lastAutosaveTick)) {
           lastAutosaveTick = state.tick;
           save(SLOTS.auto);
@@ -305,6 +310,23 @@ export async function startGame(root, given = {}) {
 
   let frame;
   let lastFrameAt = 0;
+  /** The tile the walker is standing on, or `undefined` above the street. */
+  function walkerTile() {
+    const view = renderer.view;
+    if (view.mode !== "street" || !view.eye) return undefined;
+    const x = Math.floor(view.eye.x);
+    const y = Math.floor(view.eye.z);
+    if (x < 0 || y < 0 || x >= state.width || y >= state.height) return undefined;
+    return { x, y };
+  }
+
+  /** The engine's commuter load on that tile. */
+  function trafficUnderWalker() {
+    const at = walkerTile();
+    if (!at) return undefined;
+    return state.tiles.traffic[at.y * state.width + at.x];
+  }
+
   const loop = () => {
     // The frame delta, for the governor (ruling 040). It is measured here
     // rather than inside `draw` because `draw` is also called by gates and by

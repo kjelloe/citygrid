@@ -65,6 +65,14 @@ function highway(value = 255, size = 24) {
   return { state, model };
 }
 
+/** The smallest thing `pose` will write into. */
+function fakePool() {
+  return { count: 0 };
+}
+function fakePush(pool) {
+  pool.count += 1;
+}
+
 /** Runs `seconds` of simulation in fixed steps. */
 function run(traffic, seconds, dt = 1 / 30) {
   for (let t = 0; t < seconds; t += dt) traffic.update(dt);
@@ -445,4 +453,64 @@ test("an empty yield list costs nothing and changes nothing", () => {
   }
   const key = (t) => t.cars().map((c) => `${c.id}:${c.link}:${c.s.toFixed(6)}`).join("|");
   assert.equal(key(ta), key(tb));
+});
+
+// --- headlights and tail lights (slice V8, spec §9.1) ------------------------
+
+test("a car carries a lamp at each end, and they are at each end", () => {
+  // Two emissive quads per car, dialled with `night`. What a screenshot cannot
+  // check is that they are the right way round: a car with its headlights
+  // behind it is a car driving backwards, and at a distance it reads as
+  // traffic going the wrong way down the street.
+  const { state, model } = highway();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 20);
+  const car = traffic.cars()[0];
+  assert.ok(car, "no car to light");
+  const lamps = traffic.lampsOf(car);
+  assert.equal(lamps.length, 2);
+  const [head, tail] = lamps;
+  assert.equal(head.kind, "head");
+  assert.equal(tail.kind, "tail");
+  // Along the direction of travel: the head is in front of the tail.
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  model.lanes.sample(model.lanes.links[car.link], car.s, out);
+  const ahead = (p) => (p.x - out.x) * out.tx + (p.z - out.z) * out.tz;
+  assert.ok(ahead(head) > ahead(tail), "the headlights are on the back of the car");
+  assert.ok(ahead(head) - ahead(tail) > 2, `the two lamps are ${(ahead(head) - ahead(tail)).toFixed(2)} m apart`);
+});
+
+test("the lamps sit at the car's own height, not on the road", () => {
+  const { state, model } = highway();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 20);
+  const car = traffic.cars()[0];
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  model.lanes.sample(model.lanes.links[car.link], car.s, out);
+  for (const lamp of traffic.lampsOf(car)) {
+    assert.ok(lamp.y > out.y, `a lamp ${(out.y - lamp.y).toFixed(2)} m under the carriageway`);
+    assert.ok(lamp.y - out.y < 1.5, "a lamp on the roof");
+  }
+});
+
+test("nobody's lights are on by day", () => {
+  // The pool is posed with `night`, and a city of cars with headlights at noon
+  // is the thing everybody notices.
+  const { state, model } = highway();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 20);
+  const pools = { headlight: fakePool(), taillight: fakePool() };
+  traffic.poseLights(pools, fakePush, 0);
+  assert.equal(pools.headlight.count, 0);
+  assert.equal(pools.taillight.count, 0);
+});
+
+test("at night every car on screen is lit, at both ends", () => {
+  const { state, model } = highway();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 20);
+  const pools = { headlight: fakePool(), taillight: fakePool() };
+  traffic.poseLights(pools, fakePush, 1);
+  assert.equal(pools.headlight.count, traffic.cars().length);
+  assert.equal(pools.taillight.count, traffic.cars().length);
 });

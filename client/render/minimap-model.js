@@ -10,6 +10,8 @@
 // axes. A non-square region would need two, which is why `scaleFor` returns a
 // number rather than being inlined.
 
+import { visibleBounds } from "./lod.js";
+
 export function scaleFor(size, width, height) {
   return size / Math.max(width, height);
 }
@@ -54,6 +56,65 @@ export function viewportRect(view, aspect, size, width, height) {
     width: wideTiles * scale,
     height: tallTiles * scale,
   };
+}
+
+/**
+ * What the camera can actually see, in minimap pixels.
+ *
+ * `viewportRect` is a rectangle centred on the target with the span for its
+ * height, which is exactly what an ORTHOGRAPHIC camera sees and nothing like
+ * what a perspective one does: a frustum at a low pitch is a wedge that opens
+ * out towards the horizon, and the box round it holds several times the ground
+ * the player can see. The wedge is `visibleBounds`'s own `footprint` — the four
+ * corner rays intersected with the ground — which the budget has been using
+ * since V5 and the minimap had never asked for.
+ *
+ * `{ kind: 'none' }` when the view covers the whole map: a border round the
+ * whole minimap is noise rather than information.
+ */
+export function viewportShape(view, aspect, size, width, height) {
+  const scale = scaleFor(size, width, height);
+  if (view.mode === "ortho" || !view.persp) {
+    const rect = viewportRect(view, aspect, size, width, height);
+    return rectIsInformative(rect, size) ? { kind: "rect", rect, points: cornersOf(rect) } : { kind: "none" };
+  }
+  // From `visibleBounds` itself, so the minimap and the budget agree about
+  // what the camera can see rather than each having their own idea.
+  const footprint = visibleBounds(view, aspect, 0).footprint;
+  if (!footprint || footprint.length < 3) {
+    const rect = viewportRect(view, aspect, size, width, height);
+    return rectIsInformative(rect, size) ? { kind: "rect", rect, points: cornersOf(rect) } : { kind: "none" };
+  }
+  // Always drawn, unlike the rectangle. A box that covers the whole minimap is
+  // noise — it says only "you can see everything" — but a WEDGE that covers it
+  // still says which way the camera is pointing, which is the one thing the
+  // minimap cannot otherwise tell you under perspective.
+  return { kind: "polygon", points: footprint.map((p) => ({ x: p.x * scale, y: p.z * scale })) };
+}
+
+function cornersOf(rect) {
+  return [
+    { x: rect.x, y: rect.y },
+    { x: rect.x + rect.width, y: rect.y },
+    { x: rect.x + rect.width, y: rect.y + rect.height },
+    { x: rect.x, y: rect.y + rect.height },
+  ];
+}
+
+/**
+ * Where the walker is, in minimap pixels, or `undefined` when they are not in
+ * the street.
+ *
+ * The minimap has never known the walker exists. In street mode the viewport
+ * box is drawn from `targetX/Z`, which IS the walker — but a forty-tile box
+ * round a person on a pavement says nothing, and a dot says the one thing that
+ * matters (V8).
+ */
+export function walkerMark(view, size, width, height) {
+  if (view.mode !== "street") return undefined;
+  const scale = scaleFor(size, width, height);
+  const at = view.eye ?? { x: view.targetX, z: view.targetZ };
+  return { x: at.x * scale, y: at.z * scale, yaw: view.yaw ?? 0 };
 }
 
 /** Whether a rectangle is worth drawing at all. Zoomed all the way out on a

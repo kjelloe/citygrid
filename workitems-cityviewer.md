@@ -585,10 +585,12 @@ shapes to follow: pure, delta-driven, `?life=0` freezes them. (3) The nav graph 
 its tests are written or updated, its gate is green, its docs are synced and it
 is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 
-**Nineteen of twenty done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2, E3,
-then the post-E3 review, then E4, E5, E6, P2, V6, R1, R2, V7, E7, R3, E8. **One
-item is left:** V8, the street finished — the polish the spec promised and no
-slice owned.
+**Twenty of twenty done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2, E3,
+then the post-E3 review, then E4, E5, E6, P2, V6, R1, R2, V7, E7, R3, E8, V8.
+**The cityviewer lane is finished.** What follows it is `workitems-mainline.md`,
+then measurement, film and the worker — in that order, and the first thing any of
+them needs is the row under "Noted, no slice" that nobody has done: **every
+number in this lane is SwiftShader**, and the governor's whole reason is a phone.
 Every gate is green: the suite twice, `budget_gate` (32 rows plus the opening
 spans, four street-chunk checks, three car rows, a crowd row, an overlay row, a
 territory-toggle row, four night rows and three painted rows), `walkthrough`
@@ -617,7 +619,7 @@ territory-toggle row, four night rows and three painted rows), `walkthrough`
 | **E7** — pedestrians | **done** 2026-09-07 | `f77c361` | `budget_gate` gains a crowd row: **120 people held, 63 on screen, 42 triangles each** — 5,040 of 320,000 at the cap, against **53,462 spare** in the night frame. `walkthrough` with the furniture solid: 8,907 legs, **161.04 km, 0 unfinished, 0 refusals, 0 cliffs**, 399,901 blocked steps over **5,609 solids** (E4: 1,129). `passability`: **0 too narrow**, narrowest 11.14 m, 25,560 of 32,659 samples enclosed (E4: 8,461). `reports/smoke-E7-{street,person,city,night}.png` | `test/nav.test.js` (15), `test/pedestrians.test.js` (13), `test/street-furniture.test.js` (8), `test/collision.test.js` (+4), `test/cars.test.js` (+4: A45), `test/lod.test.js` (fixtures). New pure modules: `world/polyline.js`, `world/nav.js`, `world/street-furniture.js`, `life/pedestrians.js`. Spec §9.3, §8.1b. **Q62**, **Q63** |
 | **R3** — streets graded along their length, then taller hills (A42) | **done** 2026-09-07 | *this slice* | `walkthrough` reports both numbers now: steepest street **37.1% → 18.8%** on the saturated 96×96, the walker's worst ground jump **0.86 m → 0.40 m** over 2 m, **8 of 773** corridors left over because their two junctions are further apart than 15% allows. `reports/smoke-R3-{ungraded,graded}.png` is the steepest street before and after (**28.7% → 15.7%**); `smoke-R3-relief{05,10}.png` is the frame that kept `reliefM` at 0.5. All fifteen gates green. | `test/grade.test.js` (19), `test/world.test.js` (+4). New pure module `world/grade.js`; ruling 038 amended with the relief table; spec §4.2. Levelling the junction box mattered as much as grading — 35.5 of the field's worst 37.1% was the blend dragging a climbing street up to meet the one crossing it. **Q64** |
 | **E8** — water | **done** 2026-09-07 | *this slice* | `client_smoke` **72 draws / 79,931 triangles** at span 9, against 70 / 77,271 before — one draw call and 2,660 triangles for every drop of water on the map. `walkthrough` and `passability` unchanged; all fifteen gates green. `reports/smoke-E8-{shore,night,city,causeway}.png` — a shore from the pavement, and the same shore at midnight | `test/water.test.js` (15), `test/collision.test.js` (+3: the walker stays out), `test/lod.test.js` (fixtures). New pure module `world/water.js`, plumbing `render/water.js`; spec §5.5, §4.2. Three deviations from §5.5, each measured: the level is per TILE (one global was 47.5 m against a riverbed at 14 m), one mesh not one per chunk (16 draw calls put `client_smoke` at 89 of 80), and LIT not unlit (three dims colours in linear space, so an unlit river glowed through a black city). **Q58 answered as A46**; **Q65**, **Q66** |
-| **V8** — the street, finished | not started | — | — | — |
+| **V8** — the street, finished | **done** 2026-09-07 | *this slice* | `budget_gate`: street chunks **269,940 triangles over 8** (a chunk is 33.7k against E5's 25.7k), build p95 **7 ms** of 8, night **289,446 of 320,000**; every other row unchanged. `client_smoke` 72 draws / 79,931 at span 9 — three new pools and no new draw call. All fifteen gates green. `reports/smoke-V8-{street,junction,night,dusk}.png` | `test/atmosphere.test.js` (10), `test/signals.test.js` (11), `test/foliage.test.js` (9), `test/minimap.test.js` (+6), `test/cars.test.js` (+4), `test/audio.test.js` (+5). New pure modules `render/atmosphere.js`, `render/trees-l3.js`, `world/foliage.js`, `world/signals.js`; spec §6.6b, §9.2, §9.4a. The dome had to learn to follow the eye; two things were paid for in buildings before the ladder was put back. **Q67**, **Q68** |
 
 **Deviations from this document, each with the measurement that forced it and a
 question so it can be reversed cheaply:**
@@ -837,6 +839,7 @@ find the assumption an item was built against without reading all of it.*
 | Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
 | Omissions pass | Q57 cars and the walker (answered, A45: cars yield) · Q58 a road over water |
 | E7 | Q62 pedestrians walk by hash rather than by plan · Q63 the crowd is a function of the camera and the traffic is not (Q55/A43 and A45 both **done**) |
+| V8 | Q67 every junction on an ordinary city grid is signalled — true since E1, invisible until the lights were drawn · Q68 a night frame at High spends 93% of its budget on eight baked chunks |
 | E8 | Q65 should a river be CUT into the land rather than laid on it · Q66 the water surface is one unculled mesh for the whole map (Q58 answered as **A46**: a causeway works) |
 | R3 | Q64 should a junction be allowed to move up or down — fixed node heights are what stop 15% being kept on steep ground (Q54/A42 **done**, both halves; `reliefM` stays 0.5 on the numbers) |
 | V7 | Q61 nothing in the interface selects the territory overlay — it is a draw option a gate passes (A38 and A44 both **done**; Q52 and Q56 answered) |
@@ -1029,7 +1032,7 @@ causeway at water level with its kerb meeting the plane (Q58). Test: `surfaceAt`
 returns `water` with `y = waterLevel`; the walker cannot enter it. Gate: `reports/smoke-E8-*`
 from a shore at street level; `budget_gate` with a river fixture.
 
-### V8 — The street, finished (L) — the polish the spec promised and no slice owned
+### V8 — The street, finished (L) — **done 2026-09-07 as `slice-V8`**, all six
 
 - **Trees at eye height.** The L2 cones and blobs stand at street level inside baked chunks.
   An L3 tree kit through the baker: a trunk and a cluster of faceted blobs (Higashiyama's

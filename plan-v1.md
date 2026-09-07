@@ -417,6 +417,8 @@ by number from the code they create.
 | Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | whenever `hilly` is meant to be playable |
 | Q65 | Should a river be cut into the land rather than laid on it? | the film lane, or whenever a canal is asked for |
 | Q66 | The water surface is one unculled mesh for the whole map | the measurement lane, on a 256-tile map |
+| Q67 | Every junction on an ordinary city grid is signalled — visible now that the lights are drawn | a traffic slice, or the measurement lane |
+| Q68 | A night frame at High spends 93% of its budget on eight baked chunks | the measurement lane, with a real device |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

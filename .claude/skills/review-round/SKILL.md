@@ -121,6 +121,17 @@ fixture had no pollution. A green wash over green grass is a green picture. **Ve
 instrument, then verify what the instrument is pointed at**: histogram the data the picture is
 supposed to be showing before concluding anything from the picture.
 
+**A number that never mattered starts mattering the moment its scale changes.** V8 scaled the sky
+dome from 1,800 tiles to 85 so street mode could see it, and it became a pale ball sitting in the
+middle of the map: the dome had always been centred on the world origin rather than on the eye,
+and at 1,800 tiles the camera was always near enough to the centre for that to be invisible. When
+you change a constant by an order of magnitude, ask what was true only because it was large.
+
+**The budget ladder is an instrument, and it moves.** Three separate additions in V8 were paid for
+in buildings — seven-sided tree blobs and 36-triangle signal lenses each took the night frame's
+ladder a rung further down. Watch the `lod` string in `budget_gate`, not only the triangle count:
+the count staying under budget is the ladder doing its job, and the rung is what it cost.
+
 **Colour arithmetic happens in linear space, and your eye does not.** E8 dimmed an unlit water
 surface by the night preset's hemisphere — 0.34 — and got a river glowing cyan through a black
 city, because in three's working space that factor is about 0.6 to the eye while everything lit

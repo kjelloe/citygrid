@@ -26,7 +26,7 @@
 
 import { PALETTES } from "./palettes.js";
 import { TERRAIN_WATER, TERRAIN_SHALLOW, NET_PRESENT } from "../constants-mirror.js";
-import { pixelToTile, viewportRect, rectIsInformative } from "./minimap-model.js";
+import { pixelToTile, viewportShape, walkerMark } from "./minimap-model.js";
 
 /** Big enough to make out a district, small enough to leave the city the
  * screen. A 128-region maps to a little over one pixel a tile. */
@@ -110,19 +110,60 @@ export function createMinimap(canvas, state, view, { style = "plain", onJump } =
     paintedTick = state.tick;
   }
 
+  /** Traces the viewport shape, whatever shape it is. */
+  function outline(points) {
+    context.beginPath();
+    context.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i += 1) context.lineTo(points[i].x, points[i].y);
+    context.closePath();
+  }
+
   function draw(aspect) {
     if (!painted || paintedTick !== state.tick) paintWorld();
     context.putImageData(world, 0, 0);
-    const rect = viewportRect(view, aspect, size, state.width, state.height);
-    if (!rectIsInformative(rect, size)) return;
-    // White under dark, dark over white: one of the two is always visible
-    // whatever the minimap looks like underneath.
-    context.lineWidth = 3;
-    context.strokeStyle = "rgba(255,255,255,0.85)";
-    context.strokeRect(rect.x, rect.y, rect.width, rect.height);
-    context.lineWidth = 1;
-    context.strokeStyle = "rgba(0,0,0,0.85)";
-    context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
+    // The FOOTPRINT under perspective, not a box round it (V8). A frustum at a
+    // low pitch is a wedge that opens out towards the horizon, and the box
+    // round it holds several times the ground the player can see — so the box
+    // said "you can see all of this" about a great deal you cannot.
+    const shape = viewportShape(view, aspect, size, state.width, state.height);
+    if (shape.kind !== "none") {
+      // White under dark, dark over white: one of the two is always visible
+      // whatever the minimap looks like underneath.
+      outline(shape.points);
+      context.lineWidth = 3;
+      context.strokeStyle = "rgba(255,255,255,0.85)";
+      context.stroke();
+      context.lineWidth = 1;
+      context.strokeStyle = "rgba(0,0,0,0.85)";
+      context.stroke();
+    }
+
+    // And where the walker is standing, which the minimap has never known
+    // (V8). A dot with a nose on it, so it says which way they are facing as
+    // well as where they are.
+    const mark = walkerMark(view, size, state.width, state.height);
+    if (mark) {
+      const nose = 6;
+      context.beginPath();
+      context.arc(mark.x, mark.y, 3.5, 0, Math.PI * 2);
+      context.fillStyle = "rgba(255,255,255,0.95)";
+      context.fill();
+      context.lineWidth = 1;
+      context.strokeStyle = "rgba(0,0,0,0.9)";
+      context.stroke();
+      // The walker's forward is `(-sin yaw, -cos yaw)`, the same convention
+      // `walker.js` uses — a nose pointing the wrong way is worse than none.
+      context.beginPath();
+      context.moveTo(mark.x, mark.y);
+      context.lineTo(mark.x - Math.sin(mark.yaw) * nose, mark.y - Math.cos(mark.yaw) * nose);
+      context.lineWidth = 2;
+      context.strokeStyle = "rgba(255,255,255,0.95)";
+      context.stroke();
+      context.lineWidth = 1;
+      context.strokeStyle = "rgba(0,0,0,0.9)";
+      context.stroke();
+    }
   }
 
   function jumpTo(event) {

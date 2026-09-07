@@ -135,7 +135,7 @@ export function createStreetChunks(scene, options = {}) {
           scene.add(group);
           live.set(chunk.key, {
             hash, group, cx: chunk.cx, cy: chunk.cy, seen: now,
-            triangles: baker.triangles, lamps: baker.lamps,
+            triangles: baker.triangles, lamps: baker.lamps, signals: baker.signals,
           });
           built += 1;
           didBuild = 1;

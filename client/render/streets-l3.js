@@ -18,6 +18,10 @@ import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
 import { buildProps } from "./props-l3.js";
+import { buildTrees } from "./trees-l3.js";
+import { treesIn } from "../world/foliage.js";
+import { signalHeads, crossingBars } from "../world/signals.js";
+import { sink } from "./solid.js";
 import { buildSigns } from "./signs.js";
 import { buildingParams } from "../world/params.js";
 import { familyColour } from "./palette.js";
@@ -200,6 +204,7 @@ export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
     addStrip(baker, ribbon(connector.points, half, height, { lift }), asphalt);
   }
 
+  bakeSignals(baker, model, cx, cy, chunkTiles, cfg, palette, state);
   bakeWires(baker, state, model, cx, cy, palette);
 }
 
@@ -247,12 +252,63 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
     chunk: cy * 4096 + cx,
   });
   for (const piece of props.pieces) baker.addPart(piece.part, piece.colour, piece.options);
+  // Trees, at eye height (V8). The instanced cone is right at city zoom and is
+  // a four-sided pyramid standing under it; `updateInstances` stops drawing
+  // them inside a baked chunk, so what a walker sees is this.
+  for (const piece of buildTrees({
+    trees: treesIn(state, box, cfg), heightAt: model.heightAt, palette, cfg,
+  })) baker.addPart(piece.part, piece.colour, piece.options);
   // Where the lamps are, for the night rig to hang point lights on (E6).
   baker.lamps.push(...props.lamps);
   // The fascias, which cannot go through the vertex-colour baker because they
   // carry a texture. One mesh per distinct NAME, added to the same group, so a
   // high street of forty shops is eighteen draw calls at worst (spec §6.5).
   baker.extra(buildSigns(specs, styleName));
+}
+
+/**
+ * Signal heads and crossings at every signalled junction in this chunk
+ * (V8, spec §9.2).
+ *
+ * The POST and the housing are baked; the LENS is not — it changes three times
+ * a minute, so `baker.signals` records where each head is and `scene.js` poses
+ * an instance there coloured by the same `phaseAt` the cars read.
+ */
+function bakeSignals(baker, model, cx, cy, chunkTiles, cfg, palette, state) {
+  const metal = sink();
+  const paint = [];
+  for (const node of model.nodes) {
+    const tx = node.tile % state.width;
+    const ty = (node.tile - tx) / state.width;
+    if (tx < cx * chunkTiles || tx >= (cx + 1) * chunkTiles) continue;
+    if (ty < cy * chunkTiles || ty >= (cy + 1) * chunkTiles) continue;
+    for (const head of signalHeads(model, node, cfg)) {
+      const y = model.heightAt(head.x, head.z) + cfg.road.lift + cfg.road.kerb;
+      metal.box(head.x - 0.07, y, head.z - 0.07, head.x + 0.07, y + head.h, head.z + 0.07);
+      // The housing: a small box facing back down the arm, with the lens hung
+      // on the front of it by the caller.
+      const fx = head.fx * 0.12;
+      const fz = head.fz * 0.12;
+      metal.box(
+        Math.min(head.x, head.x + fx) - 0.16, y + head.h - 0.62, Math.min(head.z, head.z + fz) - 0.16,
+        Math.max(head.x, head.x + fx) + 0.16, y + head.h - 0.06, Math.max(head.z, head.z + fz) + 0.16,
+      );
+      baker.signals.push({
+        node: head.node, axis: head.axis,
+        x: head.x + head.fx * 0.2, y: y + head.h - 0.34, z: head.z + head.fz * 0.2,
+      });
+    }
+    for (const bar of crossingBars(model, node, cfg)) paint.push(bar);
+  }
+  const part = metal.done();
+  if (part.triangles > 0) baker.addPart(part, palette.lamp ?? 0xb8bcc0);
+  // The zebra, as ribbons on the carriageway — a crossing with nothing painted
+  // on it is a light telling people to cross an empty road (A33).
+  for (const bar of paint) {
+    addStrip(baker, ribbon(bar.points, bar.width / 2, model.heightAt, {
+      lift: cfg.road.lift + MARK_LIFT,
+    }), palette.roadMark ?? 0xd8d4c8);
+  }
 }
 
 /** Poles with a cross-arm and a sagging span between them (spec §5.4). */

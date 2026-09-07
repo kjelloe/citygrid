@@ -67,6 +67,24 @@ Nodes with degree ≥ 3 on a corridor of `road` kind get a two-phase cycle (Unio
 60 s) with a hashed phase offset. At L2 nothing is drawn; at L3 a signal head per approach with
 the lit lamp as an emissive bucket swap. Pedestrian walk phases feed the nav graph.
 
+**Built (V8, 2026-09-07.)** `client/world/signals.js` — pure — decides where a head stands (on
+the kerb, on the near right of its arm, back at the junction box where a driver can see it),
+where the zebra's bars go, and which of the three lenses is lit. The head's POST and HOUSING are
+baked into the chunk with everything else; the LENS is not, because it changes three times a
+minute — `baker.signals` records where each one is and `scene.js` poses an instance there
+coloured from **the same `phaseAt` the cars read**. Two answers to "which way is green" would be
+a car driving through a red one, and it would be visible for exactly the second it took.
+
+The crossing bars are painted only where there is a light: a zebra with nothing to stop the
+traffic is a lie about who has right of way (A33). The pedestrians already wait at the same
+signal (§9.3), so the light, the queue and the person standing at the kerb are one fact.
+
+Cost, measured on the saturated 96×96 at High: **1,920 triangles a chunk** — four heads and
+twelve bars at sixteen junctions — and the lens is an OCTAHEDRON rather than a sphere, because
+36 triangles for something two pixels across took the night frame's ladder a rung further down.
+Drawing them surfaced something nobody had seen: **every junction on an ordinary city grid is
+signalled**, which was true since E1 and invisible while nothing stood there (**Q67**).
+
 ## 9.3 Pedestrians
 
 Union Square's `Pedestrians` is a role state machine over a nav graph with grid-hash separation
@@ -114,6 +132,15 @@ Three things the summary above does not say, all of them found by looking at the
 Higashiyama's rule: restrained. Trees sway a little, a flag moves, smoke from an industrial
 stack drifts, a crane on a construction site turns. Nothing bounces, nothing pulses. Each is a
 per-frame uniform on an instanced pool, not per-instance work.
+
+## 9.4a Sound, at eye height (V8, 2026-09-07)
+
+`ambienceFor` is a property of the CITY — population and congestion — and it is the right answer
+from the city camera. At street level it is the wrong question: a busy arterial and a cul-de-sac
+two streets away are the same city and very different places. `streetAmbienceFor` takes the
+engine's own `tiles.traffic` under the walker and adds it to a third of the city's level, so the
+city is a floor and the road under your feet is what changes. Both numbers are hashed state, so
+§9.5's rule holds: a muted client and a loud one stay hash-identical.
 
 ## 9.5 What life must never do
 

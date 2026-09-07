@@ -53,6 +53,12 @@ const LOAD_SLOWS = 0.65;
 /** Nobody crawls below this except behind something. */
 const MIN_SPEED = 2;
 
+/** Bumper height, metres, and the two colours (V8). Warm white forward, red
+ * back — the only pair of colours a driver behind you can read at a glance. */
+const LAMP_Y = 0.55;
+const HEAD_COLOUR = 0xfff2d0;
+const TAIL_COLOUR = 0xff4433;
+
 export function createTraffic(state, model, options = {}) {
   const cfg = getConfig();
   const { speed: VMAX, maxDensity, stopLine } = cfg.road;
@@ -367,6 +373,50 @@ export function createTraffic(state, model, options = {}) {
         push(pool, out.x / tileM, out.y / tileM, out.z / tileM, 1, 1, 1,
           colours[car.colour % colours.length], Math.atan2(-out.tz, out.tx));
         posed += 1;
+      }
+      return posed;
+    },
+
+    /**
+     * Where a car's two lamps are, in world metres (V8, spec §9.1).
+     *
+     * Half a car length either side of the middle, at bumper height. Exposed
+     * as well as posed, because "the headlights are on the front" is not
+     * something a screenshot argues about — a car with them behind it reads as
+     * traffic going the wrong way down the street, and only at a distance.
+     */
+    lampsOf(car) {
+      const link = links[car.link];
+      if (!link) return [];
+      lanes.sample(link, car.s, out);
+      const half = CAR_M / 2 - 0.3;
+      return [
+        { kind: "head", x: out.x + out.tx * half, y: out.y + LAMP_Y, z: out.z + out.tz * half },
+        { kind: "tail", x: out.x - out.tx * half, y: out.y + LAMP_Y, z: out.z - out.tz * half },
+      ];
+    },
+
+    /**
+     * Writes the lamps into their pools, dialled by `night`.
+     *
+     * Nothing at all by day: two extra instances a car is cheap and a city of
+     * cars with their headlights on at noon is the thing everybody notices.
+     */
+    poseLights(pools, push, night, bounds) {
+      if (!(night > 0.05)) return 0;
+      const tileM = model.tileM;
+      let posed = 0;
+      for (const car of cars) {
+        const link = links[car.link];
+        if (!link || !onScreen(link, bounds)) continue;
+        for (const lamp of this.lampsOf(car)) {
+          const pool = pools[lamp.kind === "head" ? "headlight" : "taillight"];
+          if (!pool) continue;
+          push(pool, lamp.x / tileM, lamp.y / tileM, lamp.z / tileM, 1, 1, 1,
+            lamp.kind === "head" ? HEAD_COLOUR : TAIL_COLOUR,
+            Math.atan2(-out.tz, out.tx));
+          posed += 1;
+        }
       }
       return posed;
     },

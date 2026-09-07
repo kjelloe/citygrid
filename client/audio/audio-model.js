@@ -94,6 +94,27 @@ export function ambienceFor(state) {
   return Math.max(0, Math.min(100, people + traffic));
 }
 
+/**
+ * The ambience level where the WALKER is standing, 0..100 (V8, spec §9.4).
+ *
+ * `ambienceFor` is a property of the city — population and congestion — and it
+ * is the right answer from the city camera. At eye height it is the wrong
+ * question entirely: a busy arterial and a cul-de-sac two streets away are the
+ * same city and very different places.
+ *
+ * `load` is `tiles.traffic` under the walker, which is hashed state, so this is
+ * still a projection of the world and a muted client stays hash-identical to a
+ * loud one. The city's own level is the FLOOR — a quiet street in a big city
+ * still has a city around it — and the road under your feet is what is added
+ * to it.
+ */
+export function streetAmbienceFor(state, at, load) {
+  const city = ambienceFor(state);
+  if (!at || load === undefined) return city;
+  const near = Math.round((Math.min(255, Math.max(0, load)) / 255) * 70);
+  return Math.max(0, Math.min(100, Math.round(city * 0.35) + near));
+}
+
 export function knownCueKinds() {
   return Object.keys(CUES).sort();
 }

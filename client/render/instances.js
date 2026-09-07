@@ -159,6 +159,39 @@ export function createInstances(scene, styleName = "plain") {
   const tufts = tuftVariants();
   for (let v = 0; v < tufts.length; v += 1) make(`tuft${v}`, tufts[v], 0xffffff, 30000);
   make("lamp", lampGeometry(), 0xffffff, 8000);
+  // A signal lens (V8, spec §9.2). Unlit for the same reason a headlight is:
+  // a green light that goes off at night is not a light.
+  {
+    // An OCTAHEDRON, not a sphere. A 6x4 sphere is 36 triangles for something
+    // two pixels across, and three hundred of them took the night frame's
+    // ladder from "detail dropped" to "silhouettes only" — the lights were
+    // being paid for in buildings (V8).
+    const lens = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.009),
+      new THREE.MeshBasicMaterial({ vertexColors: false }), 6000);
+    lens.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    lens.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(6000 * 3), 3);
+    lens.count = 0;
+    lens.frustumCulled = false;
+    scene.add(lens);
+    pools.signalLens = lens;
+  }
+  // Headlights and tail lights (V8, spec §9.1). UNLIT, and that is the point:
+  // a lamp lit by the sun is off at night, which is the one hour it exists for.
+  // Two quads a car, posed only when `night` is up.
+  const lampQuad = new THREE.PlaneGeometry(0.055, 0.02);
+  for (const name of ["headlight", "taillight"]) {
+    const mesh = new THREE.InstancedMesh(lampQuad, new THREE.MeshBasicMaterial({
+      vertexColors: false, transparent: true, opacity: 0.95, depthWrite: false,
+      side: THREE.DoubleSide,
+    }), 4000);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(4000 * 3), 3);
+    mesh.count = 0;
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 3;
+    scene.add(mesh);
+    pools[name] = mesh;
+  }
 
   // The budget is spent against MEASURED costs, not remembered ones — and the
   // GROUND and the PROPS are measured too now. They were remembered, and the
@@ -528,7 +561,11 @@ export function updateInstances(state, pools, options = {}) {
       // Forest is drawn as actual trees rather than as a green tile. Species,
       // size, offset and spin all come from the tile index, so a wood looks
       // planted rather than tiled — and none of it has to be remembered.
-      if (trees && state.tiles.terrain[index] === TERRAIN_FOREST
+      // `drawn`, like the markings, the networks and the props: inside a baked
+      // chunk the real trees are in the group and drawing the cones as well is
+      // two trees in one place (V8). It was the one pass that had never been
+      // gated on it.
+      if (trees && drawn && state.tiles.terrain[index] === TERRAIN_FOREST
         && state.tiles.buildingId[index] === 0 && !paved) {
         const v = Math.floor(jitter(index, 3) * TREE_VARIANTS) % TREE_VARIANTS;
         const scale = 0.72 + jitter(index, 5) * 0.6;
