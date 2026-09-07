@@ -3,9 +3,13 @@
 *Written 2026-09-05 after slice E0. This is the hand-off for whoever implements the rest of
 cityviewer in this repo. Each item is one slice: it has a gate, it ends with a `dev-log.md`
 entry with numbers, and it is committed as `slice-<id>`. The design is `specs/engine/`; the
-decisions are rulings 032–040; the order and sizes are `specs/engine/11-roadmap.md`. Do them
+decisions are rulings 032–041; the order and sizes are `specs/engine/11-roadmap.md`. Do them
 in the order below unless a dependency says otherwise. The review pass at the end of each item
 is what the author of this file will check.*
+
+**The lane is finished (2026-09-07).** Twenty items, all done, all on `dev_night`. §2a is the
+table of what each one measured; §2b, §2d and §2e are the three review rounds it went through;
+§2c indexes every question it raised. What follows it is `workitems-mainline.md`.
 
 ## 0. How to work
 
@@ -25,14 +29,20 @@ is what the author of this file will check.*
   or `test/pwa.test.js` fails.
 - Modules ≤ ~300 lines, one subsystem each, acyclic imports (`world/` never imports `render/`).
   Comments only where the *why* is non-obvious; cite the ruling.
-- Keep a screenshot pair per item in `reports/` named `<id>-before.png` / `<id>-after.png`
-  from `tools/screenshot.mjs` at the default span and `SPAN=12`. They are ignored by git
-  (`reports/smoke-*.png` pattern — name yours `smoke-<id>-…` to match) and are what the
-  review looks at first.
+- Keep screenshots per item in `reports/`, from `tools/screenshot.mjs`. They are ignored by git
+  (`reports/smoke-*.png`) and are what the review looks at first. **In practice this stopped
+  being a before/after PAIR after V3**: what an item changes is usually not visible at one zoom,
+  so the convention became `smoke-<id>-<what>.png` — a handful per item naming the thing each
+  one shows (`smoke-E8-shore`, `smoke-R3-relief05`/`-relief10`, `smoke-V7-verge-sand`/`-grass`).
+  A pair is still right when the item has a before and an after worth diffing; a pair of an
+  empty field is not.
 
 ## 1. What E0 left you
 
 `client/world/model.js` — `createModel(state)` returns:
+
+What E0 left, and what the lane added to it. The whole of it is derived from state and nothing
+in it is remembered (ruling 032).
 
 ```
 tileM, reliefM                       numbers from config
@@ -42,13 +52,25 @@ nodes[]       { id, tile, x, z, mask, degree, kind:'end'|'bend'|'junction'|'isol
                 corridors:[id] }
 connectors[]  { node, a, b, points:[{x,z}] }         a quadratic curve through each bend
 nearestCorridor(x, z, max?) → { corridor|node, dist, s, x, z } | undefined
-heightAt(x, z), landAt(x, z), normalAt(x, z), waterLevel          metres
+heightAt(x, z), landAt(x, z), normalAt(x, z)                     metres
+cornerHeightAt(cx, cz), minHeight, maxHeight, tileOf(x, z)
 lots[]        { id, building, x0, z0, x1, z1, cx, cz, frontage:0..3 (DIR4 N,E,S,W),
                 facing:boolean, frontageLen, bays, seat }
 lotOf(id), lotAt(x, z)
-surfaceAt(x, z) → { kind:'water'|'lot'|'road'|'sidewalk'|'ground', ... }
-stats         { corridors, nodes, connectors, lots }
+surfaceAt(x, z) → { kind:'water'|'lot'|'road'|'sidewalk'|'ground', y, depth?, ... }
+stats         { corridors, nodes, connectors, lots, links, turns, signals }
+
+added by the lane
+lanes         E1 — links, turns, signals, phaseAt(node, t), sample(link, s, out)
+profileOf(id) R3 — a corridor's graded profile; steepestStreet is the worst left
+water         E8 — isWater/levelOf/depthOf/bedOf per tile; waterLevelAt(x, z)
+waterLevel        the old single global, kept only because two tests read it
 ```
+
+And four modules that hang off it rather than living in it, all pure and all in
+`client/world/`: `chunks.js` (what a baked chunk is made of), `nav.js` (E7, where a person can
+walk), `foliage.js` and `signals.js` (V8, where a tree and a signal head stand — read by BOTH
+the instanced pass and the baked one, which is the whole reason they are not in `render/`).
 
 `client/world/params.js` — `buildingParams(building, palette, family, showOwner)` returns
 `{ kind, variant, colour, roof, height, storeys, floorH, groundH, spin, lawn }`. Every fidelity
@@ -603,8 +625,8 @@ territory-toggle row, four night rows and three painted rows), `walkthrough`
 | **E1** — the lane graph | **done** 2026-09-06 | `2a527d6` | `tools/lanes_dump.mjs`: 5,810 links, 372 signals, shortest link 8.32 m against a 4.5 m car | `test/lanes.test.js` (19); spec §4.6a. Right turns came out zero metres long until lanes were trimmed to the junction **box**; the model rebuild went 123 ms → 35.7 ms on the way |
 | **V1** — traffic you can see | **done** 2026-09-06 | `25adbc3` | `budget_gate` with cars; `reports/smoke-V1-a.png`; two `screenshot.mjs` runs byte identical under `?life=0` | `test/cars.test.js` (14) — **not** `test/traffic.test.js`, which is the engine's; spec §9.1a. Load sets the **speed** and density follows, which is the reverse of §9.1's order and the reason the first build looked the same at every load |
 | **V3** — ground that is not a checkerboard | **done** 2026-09-06 | `ec6ce50` | `reports/smoke-V3-{before,after}-span{default,24,12}.png`; rebuild 10.2 → 11.6 ms on a saturated 128×128 | `test/ground-colour.test.js` (11); spec §5.1a. **Q28**: the distance-to-street tone is a two-ring flood, not a corridor query per tile — the specified way measured 16.6 ms against a 15 ms budget |
-| **V4** — real relief | **done** 2026-09-06 | `f13b0dd` | `play_smoke` picks on a slope and the ghost stands on the ground; `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on an 84 m `hilly` map | `test/picking.test.js` (10); the flat-layer audit is spec §5.6. **Q29**: the overlay wash is the one layer still floating |
-| **V5** — the perspective play camera | **done** 2026-09-06 | `556fa0a` | `play_smoke` and `budget_gate` in **both** projections (4 viewport/projection combinations; 2 × 3 tiers × 4 spans); `style-sheet` in both; `reports/smoke-V5-*.png` at a 20° pitch | `test/lod.test.js` (+10), `test/input.test.js` (+4), `test/settings.test.js` (+2); spec §8.1a. Orthographic is **byte-identical to V4** at two zooms, checked against a worktree of `f13b0dd`. **Q30** |
+| **V4** — real relief | **done** 2026-09-06 | `f13b0dd` | `play_smoke` picks on a slope and the ghost stands on the ground; `reports/smoke-V4-cliff-span10{,-zoning}.png` at an 18° pitch on an 84 m `hilly` map | `test/picking.test.js` (10); the flat-layer audit is spec §5.6. **Q29** — the overlay wash was the one layer still floating — is closed by ruling 041, built in V7; `smoke-V4-*-zoning.png` and `-landValue.png` are superseded by `smoke-V7-slope-*.png` |
+| **V5** — the perspective play camera | **done** 2026-09-06 | `556fa0a` | `play_smoke` and `budget_gate` in **both** projections (4 viewport/projection combinations; 2 × 3 tiers × 4 spans); `style-sheet` in both; `reports/smoke-V5-*.png` at a 20° pitch | `test/lod.test.js` (+10), `test/input.test.js` (+4), `test/settings.test.js` (+2); spec §8.1a. Orthographic is **byte-identical to V4** at two zooms, checked against a worktree of `f13b0dd`. **Q30** (ortho `tilePixels` on a portrait screen) is closed by A32, built in V7 |
 | **P1** — toon shading and the anime rig | **done** 2026-09-06 | `044da85` | `style-sheet` in **both** projections — three styles that differ in shading, not tint; `client_smoke` painted; `budget_gate` (toon costs no triangles and no draw calls: painted and plain report identical counts) | `test/toon.test.js` (17); spec §7.1a. Two findings: the painted palette collapsed for a deuteranope at 0.042, and `shadowRadius`/`shadowIntensity` had been in the rig table since it was written with nothing reading them |
 | **E2** — the baker and the chunk cache | **done** 2026-09-06 | `7f8b595` | `budget_gate` gains four street-chunk checks on the saturated 96×96 at High: **9 chunks live, 9 draw calls, 5,184 triangles, build p95 1 ms** against an 8 ms budget, and **0 rebuilds** over six frames of an unchanged city | `test/merge.test.js` (9), `test/chunks.test.js` (11); spec §6.4a. The merge is pure typed-array arithmetic so it can be tested in node; `chunkHash` covers the buildings' RECORDS as well as their tiles |
 | **E3** — ribbons | **done** 2026-09-06 | `d4f19d3` | `budget_gate` green on all 32 rows plus the three opening spans; street chunks **9 live, 9 groups / 9 meshes, 76,294 triangles, build p95 7 ms** against an 8 ms budget, **0 rebuilds** over six frames. `reports/smoke-E3-{street,junction,slope}.png` | `test/ribbon.test.js` (18, incl. winding-against-normals in both directions, `dashes` over a bend, `clip`, `trim`), `test/lod.test.js` (+2: L3 is a zoom; a baked chunk is charged once a frame), `test/world.test.js` (+1: `surfaceAt` puts the pavement a kerb above the carriageway); spec §5.2–5.3 |
@@ -669,7 +691,7 @@ same shape and all fixed in place: `lobby_smoke` hashed after an await, and
 `play_smoke` and `mvp_acceptance` projected tile centres at `y = 0` to decide
 where to click, which with relief aims down the slope.
 
-**Six defects have now lived where the unit suite structurally cannot reach.**
+**Eleven defects have now lived where the unit suite structurally cannot reach.**
 `MARK_LIFT` was undefined on a branch only taken below 20 px a tile (V4);
 picking built an orthographic ray, exact at the centre of the frame (V5);
 `export { CHUNK } from "…"` re-exported without binding the name locally, so
@@ -681,17 +703,44 @@ the triangle count rising exactly as expected; E5's prop pass called
 came out `NaN` and the pass built nothing at all for a whole slice; and P2's ink
 shader named a local `step`, which shadows the builtin the same shader calls, so
 it did not compile for three runs and looked like the finish being too subtle.
-All six are in modules that import three, which node cannot resolve — the
-browser gates and a screenshot somebody opens are the only instruments that can
-see them.
 
-**And two of the six were found only because something downstream needed the
+Five more since: R2's blank page, a temporal-dead-zone `ReferenceError` behind an
+`await play()` with no catch, so an unhandled rejection printed nothing at all
+and `client_smoke` stayed green because it drives `tools/shoot.html` and never
+`index.html`; E7's crowd, where three separate placement defects hid behind a
+count that said 120 people were on screen while the street underfoot had two;
+E8's water, where an unlit surface dimmed by the night preset's hemisphere
+glowed through a black city because three multiplies colours in LINEAR space and
+0.34 there is about 0.6 to the eye; V8's sky dome, correct only because it was
+1,800 tiles away from a camera that was always near its centre, and a pale ball
+in the middle of the map the moment it was scaled to 85; and V8 again, where the
+night frame's budget LADDER — not its triangle count — was the instrument that
+caught seven-sided tree blobs and 36-triangle signal lenses being paid for in
+buildings.
+
+All eleven are in modules that import three, which node cannot resolve, or in
+numbers no assertion was watching. The browser gates, a screenshot somebody
+opens, and the `lod` string beside the triangle count are the only instruments
+that can see them.
+
+**And two of them were found only because something downstream needed the
 output for a second purpose.** E5's prop pass returned an empty list, which is
 indistinguishable from a chunk with no streets in it; what exposed it was E6
 asking where the lamps were and getting nought. E3's culled ribbons were
 exposed by painting the carriageway magenta and floating it five metres in the
 air, after an hour of reasoning about depth precision. When a pass can
 legitimately produce nothing, count what it produced.
+
+**A third pattern, which E7 and R3 both paid for: measure where the thing
+actually is, not whether it exists.** E7's `stats.peds` said 120 and the street
+was empty, because "in the visible box" and "where the player is looking" are
+different questions under perspective at a low pitch; what found it was a
+screenshot with the crowd painted magenta at three times size and then a
+histogram of distance from the eye. R3 spent an hour concluding that grading
+streets had made them steeper, because the "before" it compared against was the
+bare land along a centre line and the code that shipped had returned the land
+blended across every nearby corridor. Give the change an off switch (`?grade=0`)
+and measure both from one harness.
 
 **And two bugs were found only because a gate drives more than one
 configuration.** V5's picking built an orthographic ray — exact at the centre of
@@ -805,16 +854,18 @@ reads a pixel.
 
 ### Also noted — where they stand
 
-- `main` is at `491f9bf`, now **38 commits** behind `dev_night`, including N22–N30 and the whole
+- `main` is at `491f9bf`, now **49 commits** behind `dev_night`, including N22–N30 and the whole
   cityviewer lane. Merging is the owner's call; until then every gate and every doc test speaks
   for `dev_night` only.
-- **Still open.** The kerb is drawn in `palette.roadMark` and the verge in `palette.lawn`
-  regardless of the terrain under it — fine for grass, wrong on sand or rock. E5's prop pass did
-  not take the verge colour from `ground-colour.js` and neither did E3's ribbons (**Q52**).
-- **Half resolved.** `chunksNear` still orders by distance to the orbit target. In street mode
-  the target IS the eye (`poseFromWalker` writes it every frame), so what is left is a low-pitch
-  CITY view, where the chunks on screen are ahead of the target rather than around it
-  (**Q53**).
+- ✅ **Done in V7 (A38).** The kerb was drawn in `palette.roadMark` and the verge in
+  `palette.lawn` regardless of the terrain under it — fine for grass, wrong on sand or rock. The
+  verge asks `ground-colour.js` for the land it stands on now; the kerb stays `roadMark`
+  (**Q52**, closed).
+- ✅ **Done in R2 (A39).** `chunksNear` filters by the frustum footprint and then orders by
+  distance, so a chunk behind the camera is never baked before one on screen (**Q53**, closed).
+  E7 found the same shape one lane along and fixed it the same way: the crowd is spent nearest
+  the EYE, not nearest the middle of the visible box, because under perspective at a low pitch
+  those are a hundred metres apart.
 
 ## 2c. Questions this lane has raised
 
@@ -825,29 +876,37 @@ find the assumption an item was built against without reading all of it.*
 |---|---|
 | V2 | Q27 the Low tier's dropped utility ribbons |
 | V3 | Q28 the two-ring flood instead of a corridor query |
-| V4 | Q29 the overlay wash floats |
-| V5 | Q30 orthographic `tilePixels` on a portrait screen |
+| V4 | Q29 the overlay wash floats (**closed by ruling 041 in V7**) |
+| V5 | Q30 orthographic `tilePixels` on a portrait screen (**A32, done in V7**) |
 | E3 | Q31 dashed ribbons, not a marking canvas · Q32 the estimate's floor · Q33 the camera orbits the ground |
-| E4 | Q41 nothing grades a road along its length · Q42 the walker lives in `life/` · Q43 drag-look, no pointer lock |
+| E4 | Q41 nothing grades a road along its length (**A42, done in R3**) · Q42 the walker lives in `life/` · Q43 drag-look, no pointer lock |
 | E5 | Q37 the tier budgets moved · Q38 pure modules in `render/` · Q39 the two faces nobody sees |
-| E6 | Q44 a preset scales the rig · Q45 48 ticks a day · Q46 the lamp pool follows the eye |
-| P2 | Q47 should the render style be a setting (**needs a decision**) · Q48 two passes, not three |
+| E6 | Q44 a preset scales the rig · Q45 48 ticks a day (**A41, done in R2**) · Q46 the lamp pool follows the eye |
+| P2 | Q47 should the render style be a setting (**A36: yes — the row is in Settings and `painted` is the High default, done in R2**) · Q48 two passes, not three |
 | V6 | Q49 is a hedge worth drawing at L2 · Q50 the L2 box and the L3 facade do not share a footprint |
-| R1 | Q51 when the model derivation goes per chunk (**80.0 ms on a 128×128**) |
-| R2 | Q59 reduced motion stills the street rather than emptying it · Q60 the derivation after R2's cuts (**53.7 ms**) · Q53 answered |
+| R1 | Q51 when the model derivation goes per chunk (**A37: profile and cut first, done in R2 — 80.0 → 53.7 ms; the live question is Q60**) |
 | The R1 doc pass | Q52 the kerb and verge ignore the terrain under them (**done in V7**) · Q53 `chunksNear` orders by the target (**done in R2**) |
-| Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
-| Omissions pass | Q57 cars and the walker (answered, A45: cars yield) · Q58 a road over water |
-| E7 | Q62 pedestrians walk by hash rather than by plan · Q63 the crowd is a function of the camera and the traffic is not (Q55/A43 and A45 both **done**) |
+| Review after R1 | Q54, Q55, Q56 — all three answered by Kjell (A42–A44) and all three built; A35–A41 close Q34–Q38 and Q42–Q53 |
+| Omissions pass | Q57 cars and the walker (A45: cars yield, **done in E7**) · Q58 a road over water (**A46: a causeway works, done in E8**) |
+| R2 | Q59 reduced motion stills the street rather than emptying it · Q60 the derivation after R2's cuts (**53.7 ms**) |
+| V7 | Q61 nothing in the interface selects the territory overlay — it is a draw option a gate passes |
+| E7 | Q62 pedestrians walk by hash rather than by plan · Q63 the crowd is a function of the camera and the traffic is not |
+| R3 | Q64 should a junction be allowed to move up or down — fixed node heights are what stop 15% being kept on steep ground |
+| E8 | Q65 should a river be CUT into the land rather than laid on it · Q66 the water surface is one unculled mesh for the whole map |
 | V8 | Q67 every junction on an ordinary city grid is signalled — true since E1, invisible until the lights were drawn · Q68 a night frame at High spends 93% of its budget on eight baked chunks |
-| E8 | Q65 should a river be CUT into the land rather than laid on it · Q66 the water surface is one unculled mesh for the whole map (Q58 answered as **A46**: a causeway works) |
-| R3 | Q64 should a junction be allowed to move up or down — fixed node heights are what stop 15% being kept on steep ground (Q54/A42 **done**, both halves; `reliefM` stays 0.5 on the numbers) |
-| V7 | Q61 nothing in the interface selects the territory overlay — it is a draw option a gate passes (A38 and A44 both **done**; Q52 and Q56 answered) |
 
-**Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
-ruling 033 names `painted` as the target and nothing in the interface selects it, so by ruling
-026's standard two of the three styles are currently unreachable. Q51 is a slice: 80 ms per build
-action on a 128×128 is five frames, and the lane graph is two thirds of it.
+**Both of the two that wanted a decision are answered and built.** Q47 (should the render style
+be a setting) is A36 — a `style` row beside Quality, `painted` the default on High, done in R2;
+by ruling 026's standard two of the three styles were unreachable until then. Q51 (when the
+derivation goes per chunk) is A37 — profile and cut first, which R2 did: **80.0 → 53.7 ms** on a
+128×128. The live successor is **Q60**, because 53.7 ms is still four frames after every build
+action and what is left is the lane graph's own construction rather than anything the ground does.
+
+**Twelve of this lane's questions are open** — Q32, Q39, Q59–Q68 — and **none of them blocks the
+next lane.** Q61 and Q67 are reachability and simulation questions belonging to Wave 5 and a
+traffic slice; Q60 is a slice of its own; Q32, Q39, Q64, Q65, Q66 and Q68 all say some version of
+"measure it on a real device or a bigger map first", which is `workitems-measurement.md`'s whole
+subject.
 
 ## 2d. Review round after R1 (2026-09-06)
 
@@ -963,11 +1022,11 @@ fixtures. `reliefM` stays 0.5 (**ruling 038 amended**, with the table). **Q64**.
 
 ### Also noted
 
-- `main` is now 46 commits behind `dev_night`. Every gate speaks for `dev_night`.
-- The ink post's own 1.5× supersample is chosen at creation from the pixel ratio and is not
-  what the governor's `supersample` rung reduces; harmless, because ink is sacrificed before
-  supersample, but the two words should not mean two things. Fold it into `applyGovernor` when
-  P2 is next touched.
+- `main` is now **49 commits** behind `dev_night`. Every gate speaks for `dev_night`.
+- **Still open.** The ink post's own 1.5× supersample is chosen at creation from the pixel ratio
+  and is not what the governor's `supersample` rung reduces; harmless, because ink is sacrificed
+  before supersample, but the two words should not mean two things. Fold it into `applyGovernor`
+  when P2 is next touched — which nothing in this lane did, so it is still true.
 
 ## 2e. The omissions pass (2026-09-06)
 
@@ -1057,8 +1116,11 @@ from a shore at street level; `budget_gate` with a river fixture.
   SwiftShader; `specs/plan.md` §11 layer 11 is a native run, and the governor's whole reason
   is a phone. Needs a phone in Kjell's hand and `?debug=1`'s frame p95 written down.
 - **The simulation is on the render thread.** `specs/plan.md` §0 says "always a Web Worker";
-  `worker/` is empty. Not cityviewer's, but an 80 ms model rebuild after each build action
-  sits on the same thread as a 4 ms tick, and the worker is where the plan put the tick.
+  `worker/` is empty. Not cityviewer's, but a model rebuild after each build action sits on the
+  same thread as a 4 ms tick, and the worker is where the plan put the tick. R2 cut the rebuild
+  from **80.0 ms to 53.7 ms** on a 128×128 and it is still four frames (**Q51**, **Q60**); what
+  is left is the lane graph's own construction, so the next move is per-chunk derivation keyed
+  by `chunkHash`, not another micro-optimisation.
 - **Photo mode, tours, an animation lane** (fable51's `Tour`, `capture.mjs`,
   `tour_video.mjs`): out of scope until a demo film is wanted; the walker and the presets
   are the pieces it would be built from.
@@ -1067,8 +1129,9 @@ from a shore at street level; `budget_gate` with a river fixture.
 
 For each item, leave in place for review:
 
-1. the dev-log entry with the numbers the gate produced (not "passed");
-2. the before/after screenshot pair in `reports/`;
+1. the dev-log entry with the numbers the gate produced (not "passed"), **including what failed
+   on the way** — every entry in this lane has one and they are the most useful part of it;
+2. the screenshots in `reports/`, named `smoke-<id>-<what>.png` (see §0);
 3. the commit `slice-<id>` on `main` or a branch named `cityviewer/<id>` — say which;
    **so far: all of them on `dev_night`, one commit per item, with the SHA in §2a;**
 4. any question you had to guess at, written into the bottom of `dev-questions.md` as a new
@@ -1080,3 +1143,25 @@ For each item, leave in place for review:
 The review will re-run the item's gate, diff the screenshots, read the tests before the code,
 and check the four "must not change" lists above. An item that moved a fixture hash is sent
 back regardless of how it looks.
+
+## 4. What the lane leaves behind (2026-09-07)
+
+Three review rounds happened (§2b, §2d, §2e) and produced three fix slices (R1, R2, R3) plus
+amendments to V7 and E7. **No fixture hash moved in any of the twenty items**, which is what
+"every one of these is cosmetic" was supposed to mean and is the one claim in §0 that was worth
+checking at the end.
+
+What the next lane inherits:
+
+- **Fifteen gates**, all green: `./test.sh` twice, `budget_gate`, `walkthrough` (which reports
+  the steepest street as well as the walk), `passability`, `lanes_dump`, and eleven browser
+  smokes. `budget_gate` is where every number in `dev-log.md` comes from.
+- **Two new rulings** — 040 (the quality tier changes rendering only) and 041 (overlays are a
+  texture on the ground) — and one amended with a measurement, 038, which now carries the relief
+  table R3 produced.
+- **Twelve open questions** — Q32, Q39, Q59–Q68 — indexed in §2c. Every one has a stated
+  assumption it was built against and names the slice or lane that would revisit it. The two that
+  wanted a decision rather than a note, Q47 and Q51, were answered (A36, A37) and built in R2.
+- **One thing nobody has done**, at the top of "Noted, no slice": every number in this lane is
+  SwiftShader, and the frame-time governor — the thing that decides what a phone gives up — has
+  never run on a phone. `workitems-measurement.md` opens on it.
