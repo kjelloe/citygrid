@@ -4,6 +4,8 @@ node_modules/
 # A committed CSV outlives its balance era and gets cited after it is void.
 *.csv
 reports/*.csv
+# The gate runner writes one of these per day (M2): a timing log, not a document.
+reports/gates-*.json
 debugging/out/
 # Smoke output is regenerated on every run; the probe images are not.
 reports/smoke-*.png

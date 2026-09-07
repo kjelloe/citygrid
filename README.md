@@ -52,7 +52,23 @@ Build a road, zone beside it, place a power plant and a pump, and watch it grow.
 One finger paints when a tool is selected and pans when none is; two fingers are
 always the camera. Tap with no tool to inspect a tile.
 
-**Gates** (each drives the real page, not a mock):
+**Gates.** One runner, three sets, and a time budget each — a gate that grows past its share is
+a finding rather than a fact of life. Every gate that exists is in a set, and `test/gates.test.js`
+fails if one is not.
+
+```sh
+node tools/gates.mjs quick    # the ten browser smokes, the §24 acceptance script and budget_gate
+node tools/gates.mjs render   # walkthrough, passability, lanes_dump — after a renderer slice
+node tools/gates.mjs sim      # the soaks: disaster_soak, traffic_gate, sim_sweep
+node tools/gates.mjs all      # everything
+node tools/gates.mjs --list   # every gate, which sets run it, and what it checks
+```
+
+Each gate's wall time is printed and written to `reports/gates-<date>.json`, along with any
+headless browser a gate left behind. Every browser gate drives `index.html` by real pointer
+events, never a mock.
+
+What the individual gates are, if you want one on its own:
 
 ```sh
 node tools/client_smoke.mjs    # the renderer, all three styles
@@ -60,25 +76,24 @@ node tools/play_smoke.mjs      # input, on a mouse viewport and a phone one
 node tools/ui_smoke.mjs        # every button hit-tested, every overlay rendered
 node tools/save_smoke.mjs      # a city survives a closed tab, hash for hash
 node tools/mvp_acceptance.mjs  # all thirteen §24 criteria, desktop and phone
-node tools/play_shot.mjs       # screenshots of the real page
 node tools/a11y_smoke.mjs      # keyboard, contrast, reduced motion, the overlays at night
 node tools/lobby_smoke.mjs     # the start screen, and three cities in one page
 node tools/serve_smoke.mjs     # the REAL server, so a CSP that blocks the importmap goes red
+node tools/reach_smoke.mjs     # every control clickable, nothing invisible eating the map
 node tools/offline_smoke.mjs   # the game runs with the network off
 node tools/update_smoke.mjs    # a new build actually reaches a returning player
+node tools/budget_gate.mjs     # 3 tiers x 2 projections x 4 spans, and every row a slice added
+node tools/walkthrough.mjs     # the walker walks every corridor, and the steepest street
+node tools/passability.mjs     # a clear lane wide enough for a walker, everywhere
+node tools/lanes_dump.mjs      # the lane graph: counts, height error, traffic step and flow
 ```
 
-**The renderer's own gates** (cityviewer). The first is the one every number in
-`dev-log.md` comes from:
+Pictures, which are not gates and are run by hand:
 
 ```sh
-node tools/budget_gate.mjs     # 3 tiers x 2 projections x 4 spans, plus street chunks,
-                               # cars, night and the painted finish
-node tools/walkthrough.mjs     # the walker walks every corridor and into every building
-node tools/passability.mjs     # a clear lane wide enough for a walker, everywhere
-node tools/lanes_dump.mjs      # link, node and signal counts for the saturated fixture
+node tools/play_shot.mjs       # screenshots of the real page
 node tools/style-sheet.mjs     # the three styles from one city — STREET=x,y for eye height
-node tools/screenshot.mjs      # one shot; ?style= ?time= ?street= ?streets= ?frames=
+node tools/screenshot.mjs      # one shot; ?style= ?time= ?street= ?streets= ?frames= ?traffic=
 ```
 
 **Soaks** (slow, and the only honest way to talk about balance):

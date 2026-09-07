@@ -8,7 +8,7 @@ film, the worker — should land on `main`. Same rules as the cityviewer hand-of
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
 
-## M1 — Merge `dev_night` into `main` (S, needs Kjell)
+## M1 — Merge `dev_night` into `main` (S, needs Kjell) — **ready; the merge itself is Kjell's to run**
 
 **Goal.** `main` is `dev_night`. Nothing is rewritten, nothing is squashed: the per-slice
 history is the project's memory and the dev-log cites SHAs.
@@ -28,7 +28,14 @@ history is the project's memory and the dev-log cites SHAs.
 **Review will check:** no squash, no rebase, `main`'s SHA for `slice-E0` is `04bc793`, and
 `slice-V8` (`2544c08`), `slice-R4` and `slice-T1` are all in `main`'s history.
 
-## M2 — A gate runner with a time budget (S)
+## M2 — A gate runner with a time budget (S) — **done 2026-09-08 as `slice-M2`**
+
+**Measured.** `quick` **375 s** over 12 gates (budget_gate 102, ui_smoke 66, a11y_smoke 45),
+`render` **3 s** over 3. The item guessed `quick ≤ 5 min` and `render ≤ 15`; the budgets in the
+file are the measurement plus room. `test/gates.test.js` fails if a gate file is in no set, if a
+set names a gate that does not exist, if `all` is not the union, if a set has no budget, or if
+the README stops naming the runner. The `quick` set leaked no browsers, which narrows the V8
+review's three stray chromium trees to a FAILURE path.
 
 **Goal.** One command runs the gates a slice needs, and the full set has a known cost.
 

@@ -98,6 +98,18 @@ Obey the non-negotiables in `CLAUDE.md`. The ones most often forgotten:
 The gate is whatever the slice's "done when" column names. Run it, and record the *numbers* it
 produced — not "passed".
 
+**And the set that matches the slice**, through the runner (M2), which prints each gate's wall
+time and writes it to `reports/gates-<date>.json`:
+
+```sh
+node tools/gates.mjs quick     # after ANY change — 12 gates, ~6 min on SwiftShader
+node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump
+node tools/gates.mjs sim       # a gameplay slice as well: the three soaks
+```
+
+Every set has a time budget and the runner says when one is exceeded. A gate that grows past its
+share is a finding, not a fact of life. It also reports any headless browser a gate left running.
+
 If a hash moved unexpectedly, that is the highest-value alarm in the project. Do not re-pin to make
 it green; find out why. Deliberate schema changes re-pin through `/fixture-repin`.
 

@@ -4208,3 +4208,50 @@ as obviously right and hands the right of way to the side road at every T in the
 splits the road that runs THROUGH it into two corridors, one either side, while the road that
 ends there stays whole — so the stem is the longest corridor at the node. Two arms on an axis is
 what "runs through" means, and length only breaks a tie between two axes that both do.
+
+## slice-M2 — a gate runner with a time budget (2026-09-08)
+
+`workitems-mainline.md` M2, the first item of the lane after cityviewer.
+
+**What it is.** `node tools/gates.mjs [quick|render|sim|all] [--list]`. Each gate's wall time is
+printed and written to `reports/gates-<date>.json`, with the tail of its own output when it
+fails — "FAIL" alone sends the reader back to run it by hand, which is what the runner is for.
+
+**Measured, first run, era `476c69c` on SwiftShader:**
+
+```
+quick   375 s of an 8-minute budget   12 gates
+        budget_gate 102s, ui_smoke 66s, a11y_smoke 45s, reach_smoke 43s, play_smoke 40s,
+        lobby_smoke 33s, mvp_acceptance 18s, offline 10s, save 7s, update 5s, client 5s, serve 3s
+render    3 s of a 2-minute budget    walkthrough 2.3s, lanes_dump 0.5s, passability 0.2s
+```
+
+M2's own item guessed `quick ≤ 5 min` and `render ≤ 15`; the measurement says **6.25 and 0.05**,
+which is the point of measuring. The budgets in the file are those numbers plus room, and a set
+that grows past one prints a warning naming the gate that grew.
+
+**`test/gates.test.js` is the part that keeps it honest.** It walks `tools/` and fails if a file
+ending in `_smoke.mjs`, `_gate.mjs` or `_soak.mjs` is in no set — a gate nobody runs is worse
+than no gate, because it looks like coverage from outside. It checks the other direction too (a
+set naming a gate that no longer exists would be skipped silently), that `all` is exactly the
+union, that every set has a budget, and that asking for a set that does not exist is refused
+rather than reported as "0 gates, all green".
+
+**`README.md`'s gate list is the runner's sets now.** The old list had not named `walkthrough`,
+`passability`, `lanes_dump` or `budget_gate`'s flags for the whole of the cityviewer lane, and
+`test/gates.test.js` fails if the README stops naming the runner. The slice-workflow skill's step
+5 says which set a slice runs.
+
+**Leaked browsers.** Three headless-chromium trees from 2026-09-06 were alive during the V8
+review, so some gate's failure path does not close its own. The runner counts them before and
+after a set and reports the difference; the count is the finding, and narrowing it to one gate
+needs the count to exist first. **The `quick` set leaked none on this run** — which means the
+leak is on a FAILURE path, and every gate passed.
+
+**What failed on the way.**
+
+*Importing the runner ran it.* `test/gates.test.js` imports `SETS` and `GATES` to check the sets
+are complete, and `tools/gates.mjs` is a script: the import executed the whole `quick` set inside
+`node --test`, and the unit suite hung. Everything below the tables is behind
+`import.meta.url === \`file://${process.argv[1]}\`` now — the same guard `screenshot.mjs` already
+had, which is why it was safe to import and this was not.
