@@ -80,6 +80,17 @@ export function createTraffic(state, model, options = {}) {
   let nextId = 1;
 
   const blocks = links.filter((l) => l.kind === "block");
+  /** The block links of each corridor, indexed once (R4).
+   *
+   * `placeYield` walked every block link in the city for every yield point,
+   * every step — yields × ~6,000 links on a 128×128 — for a lookup the
+   * derivation already knew the answer to. Two links a corridor, and
+   * `nearestCorridor` has already said which corridor. */
+  const blocksByCorridor = new Map();
+  for (const link of blocks) {
+    const list = blocksByCorridor.get(link.corridor);
+    if (list) list.push(link); else blocksByCorridor.set(link.corridor, [link]);
+  }
 
   /** Where cars have to stop, per link: `s` along the link, ascending.
    *
@@ -100,8 +111,7 @@ export function createTraffic(state, model, options = {}) {
   function placeYield(point) {
     const near = model.nearestCorridor(point.x, point.z, cfg.road.width / 2);
     if (!near || !near.corridor) return;
-    for (const link of blocks) {
-      if (link.corridor !== near.corridor.id) continue;
+    for (const link of blocksByCorridor.get(near.corridor.id) ?? []) {
       // `s0` and `dirSign` are the link's own frame on its corridor, recorded
       // when the graph was derived — the alternative is a search back through
       // the polyline for a number the derivation already knew.

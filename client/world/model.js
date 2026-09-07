@@ -20,7 +20,11 @@ export function createModel(state) {
   const lots = deriveLots(state, network, ground);
   // The board traffic is played on (E1, ruling 037). Derived like everything
   // else here — a discarded lane graph and a rebuilt one are the same graph.
-  const lanes = deriveLanes(state, network, ground.heightAt);
+  // The whole GROUND, not just `heightAt`: the lane graph reads each corridor's
+  // graded profile directly (R4), because re-sampling the height field at the
+  // corridor's own twenty-metre points interpolates straight across the level
+  // junction box R3 put at each end.
+  const lanes = deriveLanes(state, network, ground);
 
   /** What is underfoot: `{ kind, y, corridor?, node?, lot?, dist }`.
    *

@@ -71,32 +71,62 @@ function pack(points, heightAt) {
  * point asked the ground 14,780 times while deriving the lane graph of a
  * 128×128 — 23 ms of the 52 that took (R2).
  */
-function profileOf(corridor, heightAt) {
+function profileOf(corridor, ground) {
+  // The GRADED profile itself when the ground has one (R3), rather than
+  // `heightAt` re-sampled at the corridor's own twenty-metre points. R3 put
+  // structure between those points — the junction box at each end is level for
+  // `road.width / 2 + road.sidewalk`, capped at a sixth of the street — and
+  // re-sampling at 20 m interpolates straight across it, which left a lane 0.7 m
+  // off the ground near every junction after R4 fixed the mirror (R4).
+  const graded = ground.profileOf?.(corridor.id);
+  if (graded && graded.cum.length > 1) return { ys: graded.ys, cum: graded.cum, len: graded.len || 1 };
   const points = corridor.points;
   const ys = new Float64Array(points.length);
   const cum = new Float64Array(points.length);
   let run = 0;
   for (let i = 0; i < points.length; i += 1) {
-    ys[i] = heightAt(points[i].x, points[i].z);
+    ys[i] = ground.heightAt(points[i].x, points[i].z);
     if (i > 0) run += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
     cum[i] = run;
   }
   return { ys, cum, len: run || 1 };
 }
 
-/** `pack`, reading the corridor's profile by fraction of length instead of
- * asking the ground. */
-function packAlong(points, profile) {
+/**
+ * `pack`, reading the corridor's profile instead of asking the ground.
+ *
+ * By ARC LENGTH along the corridor, not by fraction of the lane's own length.
+ * The fraction version had two errors, and R4 measured both on the saturated
+ * 96×96 (era `ed96699`, buildings off, every packed point against `heightAt`
+ * under it):
+ *
+ *   - a lane with `dir === 1` runs the corridor BACKWARDS, and its fraction was
+ *     mapped onto a profile built in forward order — so the lane's start, at the
+ *     corridor's far end, took the near end's height. **1.79 m mean error over
+ *     3,742 points, 2,540 of them worse than half a metre, worst 12.44 m.** Half
+ *     the traffic in the city was posed against the wrong end of its street: on
+ *     a street that climbs twelve metres the cars going up it drove twelve
+ *     metres underground, headlights and all.
+ *   - and the trimmed lane's `0..1` was stretched over the WHOLE corridor
+ *     rather than over the piece between the two stop lines, so a point a few
+ *     metres into a ramp read the flat junction box at the end of it (0.44 m).
+ *
+ * `s0` is where this lane starts on its corridor and `dirSign` which way it runs
+ * — the two numbers the link already records for E7's yields — and `run` is the
+ * corridor length the lane actually covers.
+ */
+function packAlong(points, profile, { s0 = 0, dirSign = 1, run: covers } = {}) {
   const pts = new Float32Array(points.length * 3);
   const cum = new Float32Array(points.length);
   let run = 0;
-  for (let i = 0; i > -1 && i < points.length; i += 1) {
-    if (i > 0) run += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+  for (let i = 1; i < points.length; i += 1) {
+    run += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
     cum[i] = run;
   }
   const total = run || 1;
+  const covered = covers === undefined ? profile.len : covers;
   for (let i = 0; i < points.length; i += 1) {
-    const want = (cum[i] / total) * profile.len;
+    const want = s0 + dirSign * (cum[i] / total) * covered;
     let k = 1;
     while (k < profile.cum.length - 1 && profile.cum[k] < want) k += 1;
     const span = profile.cum[k] - profile.cum[k - 1] || 1;
@@ -144,7 +174,7 @@ const AXIS = ["ns", "ew", "ns", "ew"];   // DIR4 order: N, E, S, W
  * junction is broken. */
 const AMBER = 3;
 
-export function deriveLanes(state, network, heightAt) {
+export function deriveLanes(state, network, ground) {
   const cfg = getConfig();
   const { lanes: perDir, stopLine } = cfg.road;
   const laneW = cfg.road.width / (2 * perDir);
@@ -156,7 +186,7 @@ export function deriveLanes(state, network, heightAt) {
   // --- one lane each way along every corridor --------------------------------
   for (const corridor of network.corridors) {
     // Once per corridor, shared by both directions.
-    const profile = profileOf(corridor, heightAt);
+    const profile = profileOf(corridor, ground);
     const corridorLen = lengthOf(corridor.points);
     for (const dir of [0, 1]) {
       const along = dir === 0 ? corridor.points : [...corridor.points].reverse();
@@ -177,7 +207,15 @@ export function deriveLanes(state, network, heightAt) {
       };
       const cut = trim(centre, clear(from), clear(to));
       if (cut.length < 2) continue;
-      const packed = packAlong(cut, profile);
+      // Where this lane starts on its corridor, and how much of it the lane
+      // covers between the two stop lines (R4). Computed here rather than in
+      // the link literal below, because `packAlong` needs them too — and a
+      // second copy of "where does this lane start" is exactly the arithmetic
+      // that went wrong.
+      const s0 = dir === 0 ? clear(from) : corridorLen - clear(from);
+      const dirSign = dir === 0 ? 1 : -1;
+      const covers = Math.max(0, corridorLen - clear(from) - clear(to));
+      const packed = packAlong(cut, profile, { s0, dirSign, run: covers });
       if (packed.len < 1e-6) continue;
       const lane = { id: lanes.length, corridor: corridor.id, dir, from, to };
       lanes.push(lane);
@@ -189,8 +227,7 @@ export function deriveLanes(state, network, heightAt) {
         // does: E7 has to turn "somebody is standing at this point" into "stop
         // at this distance along this link", and the alternative is searching
         // back through a polyline for a number that was in hand (A45).
-        s0: dir === 0 ? clear(from) : corridorLen - clear(from),
-        dirSign: dir === 0 ? 1 : -1,
+        s0, dirSign,
         ...packed, next: [], preds: [], entry: false, exit: false, turn: "",
       });
     }

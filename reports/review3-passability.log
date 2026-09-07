@@ -1,0 +1,9 @@
+city            96×96, seed 1003, 1129 buildings
+corridors       773, 32659 samples every 2 m
+needed          0.88 m (a 0.68 m walker and a 0.2 m shoulder)
+narrowest       11.14 m at 898, 410  (the right of way is 20 m)
+enclosed        25560 of 32659 samples had a solid within 20 m on BOTH sides
+too narrow      0
+
+passability ok
+exit 0

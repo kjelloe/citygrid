@@ -1,0 +1,11 @@
+ok    plain @ span default       71 draws, 26012 tris, 236 buildings
+        residential  6 distinct silhouettes of 6
+        commercial   6 distinct silhouettes of 6
+        industrial   6 distinct silhouettes of 6
+        civic        6 distinct silhouettes of 6
+ok    plain @ span 9             72 draws, 79931 tris, 236 buildings
+ok    pixel @ span 9             72 draws, 79931 tris, 236 buildings
+ok    painted @ span 9           72 draws, 79931 tris, 236 buildings
+
+client smoke ok
+exit 0

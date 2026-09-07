@@ -514,3 +514,55 @@ test("at night every car on screen is lit, at both ends", () => {
   assert.equal(pools.headlight.count, traffic.cars().length);
   assert.equal(pools.taillight.count, traffic.cars().length);
 });
+
+// --- a yield lands on the link it is on (slice R4) ---------------------------
+
+test("a yield point goes on the link it is standing on, not on every link", () => {
+  // `placeYield` walked every block link in the city for every yield point,
+  // every step: yields x ~6,000 links on a 128x128, for a lookup the derivation
+  // already knew the answer to. Indexed by corridor now. The behaviour must not
+  // change, which is what this asserts — the point stops the traffic on its own
+  // corridor and nothing else.
+  const state = blank(24);
+  pave(state, row(6, 2, 21), row(16, 2, 21));
+  load(state, 255);
+  const model = createModel(state);
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 25);
+
+  const on = 6.5 * DEFAULTS.tileM;
+  const off = 16.5 * DEFAULTS.tileM;
+  for (let step = 0; step < 30 * 25; step += 1) {
+    traffic.yieldTo([{ x: 12.5 * DEFAULTS.tileM, z: on }]);
+    traffic.update(1 / 30);
+  }
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  const onStreet = (z) => traffic.cars().filter((car) => {
+    const link = model.lanes.links[car.link];
+    if (!link) return false;
+    model.lanes.sample(link, car.s, out);
+    return Math.abs(out.z - z) <= DEFAULTS.road.width;
+  });
+  const closest = Math.min(...onStreet(on).map((car) => {
+    model.lanes.sample(model.lanes.links[car.link], car.s, out);
+    return Math.abs(out.x - 12.5 * DEFAULTS.tileM);
+  }));
+  assert.ok(closest > 1, `a car came within ${closest.toFixed(2)} m of the person`);
+  // And the other street, ten tiles away, never noticed: a yield that landed on
+  // every link would have stopped the whole city.
+  const elsewhere = onStreet(off);
+  assert.ok(elsewhere.length > 3, `only ${elsewhere.length} cars on the other street to check`);
+  assert.ok(elsewhere.filter((car) => car.v > 1).length > elsewhere.length / 2,
+    `${elsewhere.filter((car) => car.v > 1).length} of ${elsewhere.length} cars still moving elsewhere`);
+});
+
+test("looking a yield up is not a walk over every link in the city", () => {
+  // A source assertion, because the cost is invisible to any behavioural test:
+  // the fix is an index, and an index that quietly stops being used reads
+  // exactly like one that is.
+  const source = readFileSync(join(repoRoot, "client", "life", "traffic.js"), "utf8");
+  const place = source.slice(source.indexOf("function placeYield"), source.indexOf("function rebuildYields"));
+  assert.equal(/for \(const link of blocks\)/.test(place), false,
+    "placeYield still scans every block link");
+  assert.match(place, /blocksByCorridor\.get\(/, "placeYield does not use the corridor index");
+});

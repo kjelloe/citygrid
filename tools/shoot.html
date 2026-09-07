@@ -113,6 +113,18 @@ if (gradeParam !== null) {
   setConfig({ ...cfg0, road: { ...cfg0.road, maxGrade: Number(gradeParam) } });
 }
 
+// `traffic=N` sets the engine's commuter load on every paved tile. The
+// saturated fixture pushes its buildings in directly and never runs a commuter
+// pass, so it has no cars at all — and a shot of a traffic change with no
+// traffic in it is the shape of instrument failure this project keeps finding
+// (slice R4).
+const trafficLoad = Number(params.get("traffic") ?? -1);
+if (trafficLoad >= 0) {
+  for (let i = 0; i < state.tiles.road.length; i += 1) {
+    if (state.tiles.road[i] & 16) state.tiles.traffic[i] = trafficLoad;
+  }
+}
+
 const style = params.get("style") ?? "plain";
 // `tier` so the harness can shoot what each quality setting actually draws
 // (slice V2). `pixelRatio` stays pinned at 1 whatever the tier says, or two
@@ -211,6 +223,7 @@ globalThis.SHOT_REPORT = {
   pedsHeld: stats.pedsHeld,
   nav: stats.nav,
   lampsHeld: stats.lampsHeld,
+  cars: stats.cars,
   variants: VARIANTS,
   // How many of the garden pools were actually placed (slice V6). A pool that
   // is silently empty looks exactly like a pool whose conditions were not met,

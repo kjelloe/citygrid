@@ -1139,9 +1139,17 @@ found one defect the gates cannot see, and it is the largest number this lane ha
 code. It is **R4**, one short slice, and it goes before `workitems-mainline.md` M2 — followed by **T1**, the
 traffic slice Kjell's answer to Q67 unblocked on 2026-09-08.*
 
-### R4 — Review fixes after V8 (S)
+### R4 — Review fixes after V8 (S) — **done 2026-09-08 as `slice-R4`**, all three
 
 Commit as `slice-R4`. Each item names its test.
+
+**As built.** Item 1 was two fixes, not one: mapping by arc length with the link's own `s0` and
+`dirSign` took the mirror out, and left 0.7 m near every junction — `profileOf` was re-sampling
+`heightAt` at the corridor's twenty-metre points and R3 had put a level junction box between
+them. `deriveLanes` reads R3's graded profile directly now and takes the whole `ground` rather
+than its `heightAt`. Measured: `dir 1` **1.79 m mean / 2,540 over 0.5 m / 12.44 m worst → 0.00 /
+0 / 0.11**; turns 12.44 → 0.25. `lanes_dump` prints it every run and fails over 0.3 m. Item 3:
+**0.44 ms a step → 0.22 ms** with 400 cars and 120 yield points.
 
 1. **Every lane that runs AGAINST its corridor reads the corridor's profile mirrored.** R2's
    `packAlong` maps a trimmed lane's own fraction of length onto `profileOf(corridor)`, which is
@@ -1182,7 +1190,7 @@ Commit as `slice-R4`. Each item names its test.
    link the point is on, and `lanes_dump` records the step time with 120 yield points.
 
 **Done when** the three have their tests, `lanes_dump` carries the lane-to-ground numbers, and
-`budget_gate`'s tier rows print the right budget.
+`budget_gate`'s tier rows print the right budget. ✅ All three, 2026-09-08.
 
 ### T1 — Signals only where two real streets cross (S) — A51
 

@@ -4077,3 +4077,61 @@ gate.
 *And drawing the lights found something that had been true since E1:* every junction on an
 ordinary city grid is signalled, so a street at eye level is a picket fence of traffic lights
 (**Q67**). The cars have always stopped at all of them.
+
+## slice-R4 — the lane that read its street backwards (2026-09-08)
+
+The review after V8 (§2f). Three items; the first is the largest number the lane left in the
+code.
+
+**1. Every lane running against its corridor read the corridor's profile mirrored.** R2 gave the
+lane graph the corridor's own centreline profile instead of a `heightAt` per lane point — the
+change that took the model rebuild from 80.0 ms to 53.7 — and mapped a lane's own fraction of
+length onto a profile built in FORWARD order. A lane with `dir === 1` runs the corridor
+backwards, so its start, at the corridor's far end, took the near end's height. Measured on the
+saturated 96×96 with buildings off, every packed lane point against `heightAt` under it:
+
+| links | points | mean error | over 0.5 m | worst | after R4 (mean / over / worst) |
+|---|---|---|---|---|---|
+| block, `dir 0` | 3,742 | 0.05 m | 0 | 0.44 m | **0.00 / 0 / 0.11 m** |
+| block, `dir 1` | 3,742 | **1.79 m** | **2,540** | **12.44 m** | **0.00 / 0 / 0.11 m** |
+| turns | 29,848 | — | — | 12.44 m | **0.00 / 0 / 0.25 m** |
+
+Half the traffic in the city was posed against the wrong end of its street: on a street that
+climbs twelve metres the cars going up it drove twelve metres underground, headlights and all.
+
+**Two fixes, not one.** The mirror is the mapping by ARC LENGTH along the corridor, using the
+`s0` and `dirSign` the link already recorded for E7's yields. That left 0.7 m near every junction
+— because `profileOf` was re-sampling `heightAt` at the corridor's own twenty-metre points, and
+R3 put structure between them: the junction box at each end is level, and interpolating across
+20 m walks straight over it. It reads R3's graded profile itself now, which is also one
+derivation fewer: `deriveLanes` takes the whole `ground` rather than just its `heightAt`.
+
+`tools/lanes_dump.mjs` prints the lane-to-ground error every run and fails over 0.3 m, so this
+cannot come back quietly.
+
+**2. `budget_gate`'s tier rows reported the previous tier's budget.** The check read
+`stats.budget` straight after `setQuality` and before any draw — `stats` is filled by `draw` — so
+the log said `low … 320000`, `medium … 40000`, `high … 140000`, each one the tier before it, and
+the assertion was on the tier NAME only. It draws once first and asserts the budget against
+`data/cityviewer.json`'s own table now: 40,000 / 140,000 / 320,000.
+
+**3. `traffic.placeYield` scanned every block link for every yield point, every step.** Indexed
+by corridor id once at construction. Measured by `lanes_dump` on the saturated 96×96 with 400
+cars and 120 yield points: **0.44 ms a step → 0.22 ms**. With no yields it is 0.11 ms either way.
+
+**Measured.** Suite green twice; `lanes_dump`, `walkthrough`, `passability`, `budget_gate` and
+the eleven browser smokes green. No fixture hash moved. `reports/smoke-R4-{before,after}.png` is
+the same steep street on `hilly` with the mapping off and on.
+
+**What failed on the way.**
+
+*The screenshot pair is the weakest evidence in this slice, and it took three attempts to get one
+at all.* The first frame had no cars in it; the second had 8,831 in the city and none on screen,
+because 8,831 × 76 triangles is over any budget and the ladder had dropped them; the third needed
+the engine's commuter load set by hand, because the saturated fixture pushes its buildings in
+directly and never runs a commuter pass — a fixture with no traffic on it is the wrong place to
+photograph a traffic change. `tools/shoot.html` takes `?traffic=N` now, and
+`tools/screenshot.mjs` takes an `__init` script so a before and an after can be shot from one
+harness with the code change toggled — the R3 lesson, made reusable. Even so: **the number is the
+evidence here, not the picture.** 12.44 m of error is invisible from a hillside at a hundred
+metres and obvious in one line of `lanes_dump`.

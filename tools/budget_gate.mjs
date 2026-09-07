@@ -124,11 +124,29 @@ try {
   for (const mode of ["ortho", "city"]) {
   await page.evaluate((m) => globalThis.CITY.setProjection(m), mode);
   for (const tier of TIERS) {
-  const applied = await page.evaluate((name) => {
+  // A DRAW between setting the tier and reading the budget (R4). `stats` is
+  // filled by `draw`, so reading it straight after `setQuality` reported the
+  // PREVIOUS tier's number — the log said `low … 320000`, `medium … 40000`,
+  // `high … 140000`, each one the tier before it, for as long as this row has
+  // existed. And the assertion was on the tier NAME only, so the wrong number
+  // went past a green check every run.
+  const applied = await page.evaluate(async (name) => {
     globalThis.CITY.setQuality(name);
-    return { tier: globalThis.CITY.renderer.tier, budget: globalThis.CITY.renderer.stats.budget };
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    globalThis.CITY.renderer.draw({});
+    await frame();
+    const { tiers } = await import("/client/world/config.js").then((m) => ({ tiers: m.getConfig().tiers }));
+    return {
+      tier: globalThis.CITY.renderer.tier,
+      budget: globalThis.CITY.renderer.stats.budget,
+      wanted: tiers[name].budget,
+    };
   }, tier);
   check(`${tier}: the tier is applied`, applied.tier === tier, JSON.stringify(applied));
+  // And the budget the tier's row in `data/cityviewer.json` asks for, which is
+  // what this check was for.
+  check(`${tier}: the budget is the tier's own`, applied.budget === applied.wanted,
+    `${applied.budget} against ${applied.wanted}`);
   for (const span of [10, 20, 40, 80]) {
     const row = await page.evaluate(async (target) => {
       const { renderer } = globalThis.CITY;

@@ -302,3 +302,132 @@ test("the road's lane numbers are in data, not in the code", () => {
   }
   assert.ok(road.stopLine * 2 < DEFAULTS.tileM, "the stop lines meet in the middle of a tile");
 });
+
+// --- the lane sits on the road it is drawn on (slice R4) ---------------------
+//
+// R2 gave the lane graph the corridor's own centreline profile instead of a
+// `heightAt` per lane point, which took the model rebuild from 80 ms to 53.7 ms.
+// It mapped a lane's own fraction of length onto the profile — and a lane with
+// `dir === 1` runs the corridor BACKWARDS, so it read the profile mirrored: the
+// lane's start, at the corridor's far end, took the near end's height.
+//
+// Measured by the reviewer on the saturated 96×96 with buildings off, comparing
+// every packed lane point's `y` against `model.heightAt(x, z)` under it
+// (era: `ed96699`):
+//
+//   | links            | points | mean error | over 0.5 m | worst   |
+//   | block, dir 0     |  3,742 | 0.05 m     |      0     |  0.44 m |
+//   | block, dir 1     |  3,742 | 1.79 m     |  2,540     | 12.44 m |
+//   | turns            | 29,848 | —          | —          | 12.44 m |
+//
+// Half the traffic in the city was posed against the wrong end of its street.
+// Nothing saw it: `budget_gate` counts triangles, `walkthrough` never looks at
+// a car, and the streets the screenshots were taken on are nearly flat.
+//
+// After R4 (`tools/lanes_dump.mjs` prints these every run):
+//
+//   | block, dir 0     |  3,742 | 0.00 m     |      0     |  0.11 m |
+//   | block, dir 1     |  3,742 | 0.00 m     |      0     |  0.11 m |
+//   | turns            | 29,848 | 0.00 m     |      0     |  0.25 m |
+//
+// Two fixes, not one. The mirror is the mapping by ARC LENGTH along the
+// corridor, using the `s0` and `dirSign` the link already recorded for E7. The
+// residual — 0.7 m near every junction once the mirror was gone — is that
+// `profileOf` was re-sampling `heightAt` at the corridor's own twenty-metre
+// points, which interpolates straight across the level junction box R3 put at
+// each end. It reads R3's graded profile itself now.
+
+/** A road that climbs: elevation rises `step` per tile eastward. */
+function ramp(size = 10, step = 8) {
+  const state = blank(size);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) state.tiles.elevation[tileAt(size, x, y)] = x * step;
+  }
+  return state;
+}
+
+/** How far every packed point of every block link is from the ground under it. */
+function laneErrors(model) {
+  const out = [];
+  for (const link of model.lanes.links) {
+    if (link.kind !== "block") continue;
+    for (let i = 0; i < link.cum.length; i += 1) {
+      const x = link.pts[i * 3];
+      const y = link.pts[i * 3 + 1];
+      const z = link.pts[i * 3 + 2];
+      out.push({ link, i, error: Math.abs(y - model.heightAt(x, z)) });
+    }
+  }
+  return out;
+}
+
+test("a lane running against its corridor is not the corridor read backwards", () => {
+  // The whole of R4 item 1. A street whose two ends differ by ten metres: the
+  // lane going up it and the lane going down it must both start on the ground.
+  const state = ramp();
+  pave(state, row(4, 2, 7));
+  const model = createModel(state);
+  const links = model.lanes.links.filter((l) => l.kind === "block");
+  assert.equal(links.length, 2, `${links.length} block links on one street`);
+  const rise = Math.abs(model.heightAt(7.5 * T, 4.5 * T) - model.heightAt(2.5 * T, 4.5 * T));
+  assert.ok(rise > 9, `the fixture only climbs ${rise.toFixed(1)} m`);
+  for (const link of links) {
+    const y = link.pts[1];
+    const ground = model.heightAt(link.pts[0], link.pts[2]);
+    assert.ok(Math.abs(y - ground) < 0.1,
+      `dir ${link.dir} starts ${(y - ground).toFixed(2)} m off the ground`);
+  }
+});
+
+test("no lane point anywhere is off the ground it is drawn on", () => {
+  const state = ramp(12, 6);
+  pave(state, row(4, 1, 10), column(6, 1, 10));
+  const model = createModel(state);
+  const errors = laneErrors(model);
+  assert.ok(errors.length > 20, `only ${errors.length} lane points to check`);
+  const worst = errors.reduce((a, b) => (b.error > a.error ? b : a));
+  assert.ok(worst.error < 0.1,
+    `a dir ${worst.link.dir} lane point is ${worst.error.toFixed(2)} m off the ground`);
+});
+
+test("both directions of one street agree about its height", () => {
+  // The two lanes are the same tarmac seen twice. Sampling one at `s` and the
+  // other at `len - s` has to give the same height, or the street has two
+  // surfaces and half the cars drive on the wrong one.
+  const state = ramp();
+  pave(state, row(4, 2, 7));
+  const model = createModel(state);
+  const [a, b] = model.lanes.links.filter((l) => l.kind === "block");
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  for (let f = 0.1; f <= 0.9; f += 0.1) {
+    model.lanes.sample(a, a.len * f, out);
+    const up = out.y;
+    model.lanes.sample(b, b.len * (1 - f), out);
+    assert.ok(Math.abs(up - out.y) < 0.15,
+      `at ${(f * 100).toFixed(0)}% the two lanes are ${Math.abs(up - out.y).toFixed(2)} m apart`);
+  }
+});
+
+test("a lane still climbs its street rather than being flattened onto one end", () => {
+  const state = ramp();
+  pave(state, row(4, 2, 7));
+  const model = createModel(state);
+  for (const link of model.lanes.links.filter((l) => l.kind === "block")) {
+    const first = link.pts[1];
+    const last = link.pts[(link.cum.length - 1) * 3 + 1];
+    assert.ok(Math.abs(last - first) > 5, `a lane that climbs ${Math.abs(last - first).toFixed(1)} m`);
+  }
+});
+
+test("the trimmed lane maps onto the part of the corridor it actually covers", () => {
+  // The `dir 0` residual the review also measured (0.44 m worst): the lane's
+  // `0..1` was stretched over the WHOLE corridor rather than over the piece
+  // between the two stop lines, so a point a few metres into the ramp read the
+  // flat junction box at the end of it.
+  const state = ramp(12, 6);
+  pave(state, row(4, 1, 10), column(6, 1, 10));
+  const model = createModel(state);
+  const errors = laneErrors(model).filter((e) => e.link.dir === 0);
+  const worst = errors.reduce((a, b) => (b.error > a.error ? b : a));
+  assert.ok(worst.error < 0.1, `dir 0 is still ${worst.error.toFixed(2)} m out`);
+});
