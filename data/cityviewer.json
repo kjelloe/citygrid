@@ -9,6 +9,7 @@
     "blend": 4,
     "lanes": 1,
     "stopLine": 2,
+    "maxGrade": 0.15,
     "speed": 11,
     "maxDensity": 12,
     "dip": 0.16,

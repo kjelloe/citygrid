@@ -55,14 +55,47 @@ enough that the flat layers can be re-checked one by one (V4's definition of don
 ## Enforced by
 
 - `specs/engine/04-city-model.md` §4.2, `05-ground-and-streets.md` — the height function and its rules
-- `data/cityviewer.json` — `RELIEF_M` (after V4)
+- `data/cityviewer.json` — `reliefM`, and `road.maxGrade` (after R3)
+- `test/grade.test.js` — the profile obeys the limit, keeps the climb, pins the junctions and levels their boxes
+- `tools/walkthrough.mjs` — reports the steepest street and how many corridors are beyond grading
 - `test/world.test.js` — a corridor is level across its width; a building's seat is the minimum of its corners (after E0/V4)
 - `tools/play_shot.mjs` — the overlay-on-a-slope viewpoint in the capture list
 
-## Amendment pending (A42, 2026-09-06)
+## Amendment (A42, ruled by measurement in R3, 2026-09-07)
 
-Kjell: "hills can be taller, but streets to max 15%". Slice R3 grades every corridor along
-its length to `road.maxGrade = 0.15` (node heights fixed, profiles smoothed between them with
-cut and fill), which removes the reason relief was capped at half a metre a step. R3 then
-tries `RELIEF_M = 1.0` on the `hilly` fixture and this ruling is amended with the number that
-reads best and the screenshots that decided it.
+Kjell: *"Hills can be taller, but streets to max 15%."* Both halves were done; the two turn out
+to be in tension, and the measurement settles it.
+
+**Streets are graded.** `client/world/grade.js` smooths every corridor's profile between its two
+junctions to `road.maxGrade = 0.15` with cut and fill, and `heightAt` inside a corridor reads that
+profile rather than the land under it. A junction's height is fixed — it is the land there, shared
+by every corridor meeting it, because two streets that disagree about it is a step in the road —
+and the junction box itself is level, capped at a sixth of the street at each end. On the saturated
+96×96 the steepest street went **37.1% → 18.8%**, the walker's worst ground jump 0.86 m → 0.40 m
+over 2 m, and 8 of 773 corridors are left over.
+
+**`RELIEF_M` stays 0.5.** Measured on one seed grown for twenty years, three terrain styles, and
+the streets graded:
+
+| terrain | relief | tallest ground | streets that cannot make 15% | steepest street |
+|---|---|---|---|---|
+| flat | 0.5 | 25 m | 0 of 2,054 | 5% |
+| flat | 1.0 | 50 m | 0 of 2,054 | 9% |
+| rolling | 0.5 | 61 m | **8 of 2,095 (0%)** | **16%** |
+| rolling | 0.75 | 91 m | 82 of 2,095 (4%) | 24% |
+| rolling | 1.0 | 121 m | **256 of 2,095 (12%)** | **32%** |
+| hilly | 0.5 | 104 m | 934 of 2,161 (43%) | 71% |
+| hilly | 1.0 | 207 m | 1,455 of 2,161 (67%) | 141% |
+
+At a metre a step, one street in eight on an ordinary rolling map is steeper than the limit Kjell
+had just set, and the steepest doubles. `reports/smoke-R3-relief05.png` and `-relief10.png` are the
+same frame at both: 1.0 is unquestionably more dramatic at city zoom — the town climbs a hillside
+and the far shore has hills on it — and at street level the same city is a road falling off a cliff
+with the baked chunks tearing across it. **A place you can stand in beats a place you can only look
+at**, so the taller hills are refused for now, on the numbers rather than on taste, and the one
+number that reverses this is `reliefM`.
+
+Note what the table also says: **`hilly` is beyond grading at any relief** — 43% of its streets
+cannot make 15% at 0.5 — because the land between adjacent junctions is simply steeper than that
+and node heights are fixed. That is a worldgen or a node-height decision, not a renderer one
+(**Q64**).

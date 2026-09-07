@@ -211,6 +211,77 @@ test("a corridor is level across its width on a cross-slope, and blends back out
   }
 });
 
+// --- streets graded along their length (slice R3, A42) -----------------------
+
+test("heightAt inside a road follows the STREET, not the hill under it", () => {
+  // The whole of R3 in one assertion. `heightAt` used to return the land at the
+  // nearest point on the centre line, so a road went wherever the hill went;
+  // it reads the corridor's graded profile now.
+  const state = blank();
+  // A cliff halfway along a north-south street: four flat tiles, then a step.
+  for (let y = 0; y < state.height; y += 1) {
+    for (let x = 0; x < state.width; x += 1) {
+      state.tiles.elevation[tileAt(state.width, x, y)] = y < 4 ? 0 : 40;
+    }
+  }
+  pave(state, column(4, 0, 7));
+  const m = createModel(state);
+  const cx = 4.5 * T;
+  let worst = 0;
+  for (let z = 0.5 * T; z + 2 <= 7.5 * T; z += 2) {
+    worst = Math.max(worst, Math.abs(m.heightAt(cx, z + 2) - m.heightAt(cx, z)) / 2);
+  }
+  // The land itself steps 20 m in one tile — 100% — and the graded street has
+  // to be a great deal less than that. It cannot be the limit exactly: the two
+  // junctions at the ends are fixed at the land's height (A42), and this
+  // fixture's are 20 m apart vertically over 140 m.
+  assert.ok(worst < 0.25, `the street still climbs at ${(worst * 100).toFixed(0)}%`);
+  assert.ok(worst > 0.05, "the street was flattened rather than graded");
+});
+
+test("a graded street still climbs the hill", () => {
+  const state = blank();
+  slope(state);
+  pave(state, row(4, 0, 7));   // an east-west road up an east-rising slope
+  const m = createModel(state);
+  const cz = 4.5 * T;
+  assert.ok(m.heightAt(7.5 * T, cz) - m.heightAt(0.5 * T, cz) > 5,
+    "the street was levelled into a terrace");
+});
+
+test("the junction box at each end of a street is level", () => {
+  // Node heights being fixed is only half of it: a street still climbing where
+  // it enters a junction gets dragged up by the blend to meet the street
+  // crossing it, and that drag was 35.5 of the field's worst 37.1% (R3).
+  const state = blank();
+  slope(state);
+  pave(state, row(4, 0, 7));
+  const m = createModel(state);
+  const cz = 4.5 * T;
+  const box = DEFAULTS.road.width / 2 + DEFAULTS.road.sidewalk;
+  const [west, east] = [...m.nodes].sort((a, b) => a.x - b.x);
+  // Into the street from each end, not out of the map.
+  for (const [node, into] of [[west, 1], [east, -1]]) {
+    const near = m.heightAt(node.x + into * 0.25, cz);
+    const edge = m.heightAt(node.x + into * box, cz);
+    assert.ok(Math.abs(near - edge) < 0.05,
+      `the junction box at ${node.x} tilts by ${(near - edge).toFixed(2)} m over ${box} m`);
+  }
+});
+
+test("every corridor reports the grade it ended up with", () => {
+  const state = blank();
+  slope(state);
+  pave(state, row(4, 0, 7));
+  const m = createModel(state);
+  for (const c of m.corridors) {
+    const p = m.profileOf(c.id);
+    assert.ok(p, `corridor ${c.id} has no profile`);
+    assert.ok(Number.isFinite(p.steepest), `${p.steepest}`);
+  }
+  assert.ok(Number.isFinite(m.steepestStreet));
+});
+
 test("a water tile never rises above the water level", () => {
   const state = blank();
   slope(state);

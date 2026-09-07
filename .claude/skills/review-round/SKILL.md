@@ -121,6 +121,13 @@ fixture had no pollution. A green wash over green grass is a green picture. **Ve
 instrument, then verify what the instrument is pointed at**: histogram the data the picture is
 supposed to be showing before concluding anything from the picture.
 
+**Check what the "before" actually was.** R3 spent an hour concluding that grading streets had
+made them steeper, because the number it compared against was the bare land along a centre line —
+and the old code did not return that, it returned the land blended across every nearby corridor.
+The blend was most of the steepness in both. A before/after is only a before/after if the "before"
+is the code that shipped: give the change an off switch (`?grade=0`) and measure both from one
+harness, rather than measuring the new thing against a quantity that merely sounds like the old one.
+
 **A count is not a picture.** E7's `stats.peds` said 120 people were in the visible box while the
 street the camera stood in had two on it: the box under perspective at a low pitch stretches to the
 horizon, so "on screen" and "where you are looking" are different questions. Three separate

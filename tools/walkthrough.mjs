@@ -144,6 +144,52 @@ for (const lot of model.lots) {
   }
 }
 
+// How steep the streets are, along their length (slice R3, A42).
+//
+// Not the same question as the walker's `worstJump`, which is what the GROUND
+// does under a walker who may be on a pavement or in a garden. This is the
+// carriageway's own profile: sample `heightAt` down each corridor's centre line
+// and take the worst rise over run. A road at 30% is a road nothing can drive
+// up, and no test can see it — the ribbon drapes onto whatever it is given.
+//
+// Two numbers, because they answer different things. The FIELD grade is what
+// anything standing on the street actually sits on, blending included; the
+// count of corridors that cannot be graded is what is left over when the land
+// between two junctions is steeper than the limit allows over the run between
+// them. Node heights are fixed (A42), so those cannot be fixed by grading —
+// only by moving a junction, which is a different decision.
+const GRADE_STEP = 2;
+let ungradeable = 0;
+for (const corridor of model.corridors) {
+  const profile = model.profileOf?.(corridor.id);
+  if (profile && profile.steepest > DEFAULTS.road.maxGrade + 1e-6) ungradeable += 1;
+}
+let steepest = 0;
+let steepestAt;
+let over = 0;
+let samples = 0;
+for (const corridor of model.corridors) {
+  for (let i = 1; i < corridor.points.length; i += 1) {
+    const a = corridor.points[i - 1];
+    const b = corridor.points[i];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    if (len < GRADE_STEP) continue;
+    const ux = (b.x - a.x) / len;
+    const uz = (b.z - a.z) / len;
+    let prev = model.heightAt(a.x, a.z);
+    for (let d = GRADE_STEP; d <= len; d += GRADE_STEP) {
+      const x = a.x + ux * d;
+      const z = a.z + uz * d;
+      const h = model.heightAt(x, z);
+      const grade = Math.abs(h - prev) / GRADE_STEP;
+      samples += 1;
+      if (grade > DEFAULTS.road.maxGrade + 1e-6) over += 1;
+      if (grade > steepest) { steepest = grade; steepestAt = { x, z }; }
+      prev = h;
+    }
+  }
+}
+
 console.log(`city            ${size}×${size}, seed 1003, ${state.buildings.length} buildings`);
 console.log(`model+collision ${buildMs} ms, ${collision.solids.length} solids`);
 console.log(`legs            ${legs}, ${(metres / 1000).toFixed(2)} km walked`);
@@ -153,6 +199,11 @@ console.log(`unfinished      ${unfinished}`);
 console.log(`blocked steps   ${walker.blocked}`);
 console.log(`refusals        ${refusals}`);
 console.log(`lots walked at  ${probed}, walked into ${entered}`);
+console.log(`steepest street ${(steepest * 100).toFixed(1)}%`
+  + `${steepestAt ? ` at ${steepestAt.x.toFixed(0)}, ${steepestAt.z.toFixed(0)}` : ""}`
+  + `  (${over} of ${samples} samples over ${(DEFAULTS.road.maxGrade * 100).toFixed(0)}%)`);
+console.log(`ungradeable    ${ungradeable} of ${model.corridors.length} corridors`
+  + `  — their two junctions are further apart than ${(DEFAULTS.road.maxGrade * 100).toFixed(0)}% allows`);
 console.log(`cliffs          ${cliffs} (steepest ${worstJump.toFixed(2)} m over ${SAMPLE} m, cliff at ${CLIFF})`);
 for (const line of failures) console.log(line);
 

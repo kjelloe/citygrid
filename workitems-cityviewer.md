@@ -585,14 +585,14 @@ shapes to follow: pure, delta-driven, `?life=0` freezes them. (3) The nav graph 
 its tests are written or updated, its gate is green, its docs are synced and it
 is committed as `slice-<id>`. Everything below is on branch **`dev_night`**.*
 
-**Seventeen of seventeen done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2,
-E3, then the post-E3 review, then E4, E5, E6, P2, V6, R1, R2, V7, E7. **What is
-left is the three items §2d and §2e added:** R3 (streets graded along their
-length), E8 (water) and V8 (the street, finished). Every gate is green: the suite
-twice, `budget_gate` (32 rows plus the opening spans, four street-chunk checks,
-three car rows, a crowd row, an overlay row, a territory-toggle row, four night
-rows and three painted rows), `walkthrough`, `passability`, `lanes_dump` and the
-eleven browser smokes.
+**Eighteen of twenty done, in this order:** V2, E1, V1, V3, V4, V5, P1, E2, E3,
+then the post-E3 review, then E4, E5, E6, P2, V6, R1, R2, V7, E7, R3. **What is
+left is two items, both added by §2e:** E8 (water) and V8 (the street, finished).
+Every gate is green: the suite twice, `budget_gate` (32 rows plus the opening
+spans, four street-chunk checks, three car rows, a crowd row, an overlay row, a
+territory-toggle row, four night rows and three painted rows), `walkthrough`
+(which reports the steepest street as well as the walk), `passability`,
+`lanes_dump` and the eleven browser smokes.
 
 | Item | Status | Commit | Gate | Left for review |
 |---|---|---|---|---|
@@ -612,11 +612,11 @@ eleven browser smokes.
 | **P2** — ink and grade | **done** 2026-09-06 | `0111c95` | `budget_gate` gains three painted rows on a High page loaded with `?style=painted`, and the check that the counted triangles are the CITY's rather than the quad's. `style-sheet` shoots all three styles from the pavement with the post passes on and off (`reports/style-sheet-street{,-nopost}.png`); `reports/smoke-P2-{ink,noink}.png` is a road at a grazing angle with no ink on it | `test/post-ink.test.js` (11), `test/render.test.js` (+3); spec §7.4a |
 | **V6** — lots with something on them | **done** 2026-09-06 | `b3f16bb` | `client_smoke` hashes every variant's vertices: **6 distinct silhouettes of 6** in all four categories, where before it was 4 of 4 with two categories carrying a clone. `budget_gate`, `walkthrough`, `passability` and the other ten gates green. `reports/smoke-V6-{city,suburb}.png`, `reports/style-sheet.png` re-baselined | `test/kit.test.js` (8); spec §6.6a, art-direction §3.1. `VARIANTS` was declared in two files and is now declared in one |
 | **R2** — review fixes after R1 (§2d) | **done** 2026-09-06 | `06102b0` | All fourteen findings plus a fifteenth found doing them; `budget_gate` pins `?style=plain`, `a11y_smoke` gains a reduced-motion baseline that is not zero | The blank page was a temporal-dead-zone `ReferenceError` behind an uncaught `play()`; **Q59**, **Q60** |
-| **V7** — overlays as a texture on the ground (ruling 041), amended in §2d | **done** 2026-09-07 | *this slice* | `budget_gate`: overlay on **70,016 triangles against 70,016 off** (0 extra) at 38 draws, and the territory toggle **rebakes 8 of 8 live chunks on, 0 while it stays on, 8 coming back off**. `a11y_smoke`: three shots of one `hilly` city at a 16° pitch differing only in the wash — bands **102/37** and **77/32** apart (median / darkest twentieth) against a floor of 30. `play_smoke`: the overlay button pressed on all four viewport/projection pairs, **6,042 of 7,540** sampled pixels move with it on and **0** keep it after. `reports/smoke-V7-{slope,verge,territory}-*.png` | `test/overlay-texture.test.js` (7), `test/chunks.test.js` (+1: the territory salt), `test/ground-colour.test.js` (+3: `natural()`), `test/facade-spec.test.js` (+2 source), `test/lod.test.js` (+1: A32). The wash mixes over `outgoingLight`, not into `diffuseColor` — before the light it failed the contrast floor at 25. **Q61** |
-| **R3** — streets graded along their length, then taller hills (A42) | not started | — | — | — |
+| **V7** — overlays as a texture on the ground (ruling 041), amended in §2d | **done** 2026-09-07 | `7080bd5` | `budget_gate`: overlay on **70,016 triangles against 70,016 off** (0 extra) at 38 draws, and the territory toggle **rebakes 8 of 8 live chunks on, 0 while it stays on, 8 coming back off**. `a11y_smoke`: three shots of one `hilly` city at a 16° pitch differing only in the wash — bands **102/37** and **77/32** apart (median / darkest twentieth) against a floor of 30. `play_smoke`: the overlay button pressed on all four viewport/projection pairs, **6,042 of 7,540** sampled pixels move with it on and **0** keep it after. `reports/smoke-V7-{slope,verge,territory}-*.png` | `test/overlay-texture.test.js` (7), `test/chunks.test.js` (+1: the territory salt), `test/ground-colour.test.js` (+3: `natural()`), `test/facade-spec.test.js` (+2 source), `test/lod.test.js` (+1: A32). The wash mixes over `outgoingLight`, not into `diffuseColor` — before the light it failed the contrast floor at 25. **Q61** |
+| **E7** — pedestrians | **done** 2026-09-07 | `f77c361` | `budget_gate` gains a crowd row: **120 people held, 63 on screen, 42 triangles each** — 5,040 of 320,000 at the cap, against **53,462 spare** in the night frame. `walkthrough` with the furniture solid: 8,907 legs, **161.04 km, 0 unfinished, 0 refusals, 0 cliffs**, 399,901 blocked steps over **5,609 solids** (E4: 1,129). `passability`: **0 too narrow**, narrowest 11.14 m, 25,560 of 32,659 samples enclosed (E4: 8,461). `reports/smoke-E7-{street,person,city,night}.png` | `test/nav.test.js` (15), `test/pedestrians.test.js` (13), `test/street-furniture.test.js` (8), `test/collision.test.js` (+4), `test/cars.test.js` (+4: A45), `test/lod.test.js` (fixtures). New pure modules: `world/polyline.js`, `world/nav.js`, `world/street-furniture.js`, `life/pedestrians.js`. Spec §9.3, §8.1b. **Q62**, **Q63** |
+| **R3** — streets graded along their length, then taller hills (A42) | **done** 2026-09-07 | *this slice* | `walkthrough` reports both numbers now: steepest street **37.1% → 18.8%** on the saturated 96×96, the walker's worst ground jump **0.86 m → 0.40 m** over 2 m, **8 of 773** corridors left over because their two junctions are further apart than 15% allows. `reports/smoke-R3-{ungraded,graded}.png` is the steepest street before and after (**28.7% → 15.7%**); `smoke-R3-relief{05,10}.png` is the frame that kept `reliefM` at 0.5. All fifteen gates green. | `test/grade.test.js` (19), `test/world.test.js` (+4). New pure module `world/grade.js`; ruling 038 amended with the relief table; spec §4.2. Levelling the junction box mattered as much as grading — 35.5 of the field's worst 37.1% was the blend dragging a climbing street up to meet the one crossing it. **Q64** |
 | **E8** — water | not started | — | — | — |
 | **V8** — the street, finished | not started | — | — | — |
-| **E7** — pedestrians | **done** 2026-09-07 | *this slice* | `budget_gate` gains a crowd row: **120 people held, 63 on screen, 42 triangles each** — 5,040 of 320,000 at the cap, against **53,462 spare** in the night frame. `walkthrough` with the furniture solid: 8,907 legs, **161.04 km, 0 unfinished, 0 refusals, 0 cliffs**, 399,901 blocked steps over **5,609 solids** (E4: 1,129). `passability`: **0 too narrow**, narrowest 11.14 m, 25,560 of 32,659 samples enclosed (E4: 8,461). `reports/smoke-E7-{street,person,city,night}.png` | `test/nav.test.js` (15), `test/pedestrians.test.js` (13), `test/street-furniture.test.js` (8), `test/collision.test.js` (+4), `test/cars.test.js` (+4: A45), `test/lod.test.js` (fixtures). New pure modules: `world/polyline.js`, `world/nav.js`, `world/street-furniture.js`, `life/pedestrians.js`. Spec §9.3, §8.1b. **Q62**, **Q63** |
 
 **Deviations from this document, each with the measurement that forced it and a
 question so it can be reversed cheaply:**
@@ -836,6 +836,7 @@ find the assumption an item was built against without reading all of it.*
 | Review after R1 | Q54 streets graded along their length · Q55 street furniture is solid · Q56 the territory overlay reaches the facades — all three answered by Kjell (A42–A44); A35–A41 close Q34–Q38, Q42–Q53 |
 | Omissions pass | Q57 cars and the walker (answered, A45: cars yield) · Q58 a road over water |
 | E7 | Q62 pedestrians walk by hash rather than by plan · Q63 the crowd is a function of the camera and the traffic is not (Q55/A43 and A45 both **done**) |
+| R3 | Q64 should a junction be allowed to move up or down — fixed node heights are what stop 15% being kept on steep ground (Q54/A42 **done**, both halves; `reliefM` stays 0.5 on the numbers) |
 | V7 | Q61 nothing in the interface selects the territory overlay — it is a draw option a gate passes (A38 and A44 both **done**; Q52 and Q56 answered) |
 
 **Q47 and Q51 are the two that want an answer rather than a note.** Q47 is a product decision —
@@ -940,13 +941,20 @@ painted rows load their own page.
   unchanged. People are the last of the three living things on the sacrifice ladder for the same
   reason — dropping the whole crowd buys 1.6% of the budget.
 
-### R3 — Streets graded along their length (M) — waits for Q54
+### R3 — Streets graded along their length (M) — **done 2026-09-07 as `slice-R3`**
 
 Node heights are fixed (the land at each junction), each corridor's profile is smoothed between
 its two nodes to a maximum grade (data: `road.maxGrade`, 0.15) with cut and fill, and
 `heightAt` inside the corridor reads the profile. Everything that stands on a street re-seats
 automatically. Gate: `walkthrough` reports the steepest grade before and after; `budget_gate`
 unchanged; screenshots of the steepest street on the `hilly` fixture before and after.
+
+**As built.** Two things the item did not say and the measurement did. The junction BOX has to
+be level as well — pinning the node alone left the blend dragging a still-climbing street up to
+meet the one crossing it, which was 35.5 of the field's worst 37.1%. And the box has to be
+capped at a sixth of the street: a fixed 6.5 m each end leaves a 20 m block seven metres to make
+its whole height change in, which turned a 17% hill into a 29% street on two of the three
+fixtures. `reliefM` stays 0.5 (**ruling 038 amended**, with the table). **Q64**.
 
 ### Also noted
 
@@ -996,12 +1004,17 @@ noted for the record.*
 fourth copy of the number E2 put in `data/cityviewer.json` precisely because three things had
 three copies. It imports it now.
 
-### R3 — unblocked (A42)
+### R3 — unblocked (A42) — **done 2026-09-07**
 
 Grade to `road.maxGrade = 0.15`; then try `RELIEF_M = 1.0` on the `hilly` fixture, screenshot
 both at spans 40 and 12 and from the pavement, keep whichever reads as a place, and amend
 ruling 038 with the number. `walkthrough` reports the steepest grade before and after;
 `play_smoke` picks on the new slope; `budget_gate` unchanged.
+
+**Kept 0.5, on the numbers.** At a metre a step, 256 of 2,095 corridors on an ordinary *rolling*
+map cannot make the 15% Kjell had just set (8 at 0.5) and the steepest street doubles, 16% → 32%.
+1.0 is the better picture at city zoom and a road falling off a cliff at street level. The full
+table is in ruling 038; the frames are `reports/smoke-R3-relief{05,10}.png`.
 
 ### E8 — Water (M) — spec §5.5, Q58
 

@@ -38,6 +38,7 @@ import "../engine/history.js";
 // 89 buildings on a 48-tile map — and a slice about crowds cannot be looked at
 // on a city with nobody in it (slice E7).
 import { saturatedCity } from "./lib/saturated.mjs";
+import { getConfig, setConfig } from "../client/world/config.js";
 import { createRenderer } from "../client/render/scene.js";
 import { setYawStep, zoomBy, focusOn, pitchBy } from "../client/render/camera.js";
 
@@ -97,6 +98,19 @@ if (params.get("sand") === "1") {
     const t = state.tiles.terrain[i];
     if (t !== 3 && t !== 4) state.tiles.terrain[i] = 6;
   }
+}
+
+// `relief=` overrides `reliefM` (ruling 038), so the two halves of a decision
+// about how tall a hill should be can be shot from one harness (slice R3, A42).
+const reliefParam = Number(params.get("relief") ?? 0);
+if (reliefParam > 0) setConfig({ ...getConfig(), reliefM: reliefParam });
+// `grade=0` is the street as it was before R3: the land under it. Anything else
+// overrides `road.maxGrade`, so a decision about how steep a street may be can
+// be shot rather than argued (A42).
+const gradeParam = params.get("grade");
+if (gradeParam !== null) {
+  const cfg0 = getConfig();
+  setConfig({ ...cfg0, road: { ...cfg0.road, maxGrade: Number(gradeParam) } });
 }
 
 const style = params.get("style") ?? "plain";
@@ -203,6 +217,11 @@ globalThis.SHOT_REPORT = {
   // which is the lesson E6 paid for.
   garden: { lawn: view.pools.lawn?.count ?? -1, hedge: view.pools.hedge?.count ?? -1, path: view.pools.path?.count ?? -1 },
   mode,
+  relief: getConfig().reliefM,
+  maxGrade: getConfig().road.maxGrade,
+  spanUsed: view.view.span,
+  maxH: view.model.maxHeight,
+  steepestStreet: view.model.steepestStreet,
   // Every category's variants, as triangle counts (slice V6). A variant the kit
   // does not build comes out identical to another, which is a city of clones
   // and a green suite; node cannot see this because `building-kit.js` imports

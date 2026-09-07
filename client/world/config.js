@@ -21,7 +21,7 @@ export const DEFAULTS = Object.freeze({
   // signals, which is where a player can see the reason for them.
   road: {
     width: 8, sidewalk: 2.5, blend: 4,
-    lanes: 1, stopLine: 2, speed: 11, maxDensity: 12, dip: 0.16,
+    lanes: 1, stopLine: 2, maxGrade: 0.15, speed: 11, maxDensity: 12, dip: 0.16,
     // L3 only (E3): how far the kerb steps up from the carriageway, how much
     // the road is crowned, and how far the carriageway sits above the ground.
     kerb: 0.15, camber: 0.035, lift: 0.02,

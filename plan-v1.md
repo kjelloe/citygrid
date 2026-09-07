@@ -415,6 +415,7 @@ by number from the code they create.
 | Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
 | Q62 | When do pedestrians get roles? E7 walks them by hash rather than by plan | its own slice, after V8 |
 | Q63 | The crowd is a function of the camera and the traffic is not | whenever `carCap` binds |
+| Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | whenever `hilly` is meant to be playable |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

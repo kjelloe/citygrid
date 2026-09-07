@@ -3890,3 +3890,64 @@ a median occupancy of 8; a slice about crowds cannot be looked at on one. `tools
 `?dense=1` and builds the same saturated fixture every other gate measures on — 396 buildings on a
 64-tile map. It also gained `?pollute=` and `?sand=` in V7 and `?territory=`, and
 `tools/screenshot.mjs` passes anything through `extra` now rather than by a named parameter each.
+
+## slice-R3 — streets graded along their length, and hills that stay half a metre (2026-09-07)
+
+A42, both halves; ruling 038 amended with the numbers.
+
+**What it is.** `client/world/grade.js` — pure, 180 lines — smooths a corridor's profile between
+its two junctions until no span exceeds `road.maxGrade` (0.15), by cut and fill: a projection
+that walks the profile and moves the two ends of any span that is too steep towards each other by
+half the excess, leaving junctions where they are. `ground.js` computes one per corridor at
+derivation, from `landAt`, and `heightAt` inside a corridor reads it instead of the land. Nothing
+else changed: everything that stands on a street re-seats through the one height function.
+
+**Measured, on the saturated 96×96.** Steepest street **37.1% → 18.8%**; the walker's worst
+ground jump **0.86 m → 0.40 m** over 2 m; 8 of 773 corridors left over, because their two
+junctions are further apart in height than 15% allows over the run between them and node heights
+are fixed (A42). `walkthrough` reports both numbers every run now. `passability`, `budget_gate`
+and the other thirteen gates unchanged.
+
+**`RELIEF_M` stays 0.5**, and the reason is a table rather than a taste. One seed, twenty years,
+three terrain styles, streets graded:
+
+| terrain | relief | tallest ground | cannot make 15% | steepest street |
+|---|---|---|---|---|
+| flat | 0.5 → 1.0 | 25 → 50 m | 0 → 0 of 2,054 | 5% → 9% |
+| rolling | 0.5 → 1.0 | 61 → 121 m | **8 → 256** of 2,095 | **16% → 32%** |
+| hilly | 0.5 → 1.0 | 104 → 207 m | 934 → 1,455 of 2,161 | 71% → 141% |
+
+At a metre a step one street in eight on an ordinary rolling map is steeper than the limit Kjell
+had just set. `reports/smoke-R3-relief05.png` and `-relief10.png` are the same frame at both, and
+1.0 is unmistakably the better picture at city zoom — the town climbs a hillside, the far shore
+has hills on it. At street level the same city is a road falling off a cliff with the baked
+chunks tearing across each other. A place you can stand in beats a place you can only look at.
+`reports/smoke-R3-{ungraded,graded}.png` are the steepest street on the fixture, before and
+after: 28.7% → 15.7% at that spot.
+
+**What failed on the way.**
+
+*Grading alone moved the number by 1.6 points.* 37.1% → 35.5%, with every corridor's own profile
+at 15.5% or below. The gate was measuring the blended FIELD and the profiles were fine: near a
+junction `heightAt` mixes the crossing street, which is pinned to the node height, so a street
+still climbing as it arrived was dragged up to meet it over the last six metres. **The profile
+obeying the limit says nothing about what anything standing on the street sits on.** Levelling
+the junction box — the same box the kerbside already stops short of — took it to 24.1%.
+
+*And then the junction box made two of the three fixtures worse.* A fixed 6.5 m at each end of a
+20 m block leaves seven metres to make the whole height change in, so a level junction turned a
+17% hill into a 29% street: on a generated rolling city the graded field went 27% → 29% and on
+`hilly` 111% → 134%. Capping the box at a sixth of the street fixed it — 37% → 19% saturated,
+27% → 23% rolling — and the cap's exact value turns out not to matter (a quarter, a sixth and a
+tenth all give the same peak); what mattered was that it existed.
+
+*The before-and-after was measured against the wrong "before" for an hour.* `landAt` along a
+centre line is not what `heightAt` used to return: the old `heightAt` blended several corridors,
+and the blend is most of the steepness. Comparing the graded field against the bare land said
+grading had made everything worse. `?grade=0` in the shoot harness turns the whole thing off,
+junction boxes included, so the two can be shot and measured from one page — which is what
+produced the table above.
+
+*And `hilly` cannot be graded at any relief.* 43% of its streets are beyond 15% at today's 0.5,
+because the land between adjacent junctions is simply steeper than that and node heights are
+fixed. Nothing R3 can do; **Q64** asks whether a junction should be allowed to move.

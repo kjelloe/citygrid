@@ -43,11 +43,32 @@ Built in three layers, in the Higashiyama order:
    `RELIEF_M = 0.5` the u8 range spans 128 m, and a worldgen map with about eight levels of
    spread gives hills four metres tall - a slope you can see and a road can climb; at 0.02
    tile-units × 20 m it is what it is today, 0.4 m across the map.
-2. **Corridor flattening.** Inside a road corridor's half-width the ground is the corridor's own
-   centreline height, blended out over `CORRIDOR_BLEND` metres; junctions average. This is what
-   stops a road tilting sideways across a slope and what lets a kerb be a constant 0.15 m. It is
-   also what V4 warns about ("every remaining flat layer re-checked for the seam class of bug"):
-   markings, zone tint, lawns and overlays all sample `heightAt` and follow.
+2. **Corridor grading.** Inside a road corridor's half-width the ground is the corridor's own
+   profile, blended out over `CORRIDOR_BLEND` metres; junctions average. This is what stops a road
+   tilting sideways across a slope and what lets a kerb be a constant 0.15 m. It is also what V4
+   warns about ("every remaining flat layer re-checked for the seam class of bug"): markings, zone
+   tint, lawns and overlays all sample `heightAt` and follow.
+
+   **Built (R3, 2026-09-07; A42, ruling 038.)** The profile is the land SMOOTHED along the
+   corridor's length, not the land itself: `client/world/grade.js` cuts and fills between the two
+   junctions until no span exceeds `road.maxGrade` (0.15). Three rules, each of which a screenshot
+   cannot see and an assertion can:
+   - **A junction's height is fixed.** It is the land at the node, and it is shared by every
+     corridor meeting there — two streets that disagree about the height of the junction between
+     them is a step in the road.
+   - **The junction box is level**, capped at a sixth of the street at each end. Pinning the node
+     alone was not enough: a street still climbing where it entered a junction was dragged up by
+     the blend to meet the street crossing it, and 35.5 of the field's worst 37.1% was that drag
+     rather than any street. The cap matters as much as the box — a fixed 6.5 m each end left a
+     20 m block seven metres to make its whole height change in, which turned a 17% hill into a
+     29% street.
+   - **Where the ends are further apart than the limit allows, the answer is the straight line**,
+     which is the least bad profile there is rather than a gentle street with a cliff at one end.
+     On the saturated 96×96 that is 8 corridors of 773; on a `hilly` map it is 43% of them, which
+     is **Q64** and not a renderer question.
+
+   Measured on the saturated 96×96: steepest street **37.1% → 18.8%**, the walker's worst ground
+   jump 0.86 m → 0.40 m over 2 m. `tools/walkthrough.mjs` reports both numbers every run.
 3. **Water.** `TERRAIN_WATER` and `TERRAIN_SHALLOW` tiles clamp to a water level so a shore is
    a shore and not a hole.
 

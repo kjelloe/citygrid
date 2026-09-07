@@ -53,6 +53,11 @@ export function createModel(state) {
     connectors: network.connectors,
     nearestCorridor: network.nearest,
     heightAt: ground.heightAt,
+    // A street's own graded profile (R3, A42), for anything that wants what the
+    // carriageway does along its length rather than what the blended field does
+    // at a point.
+    profileOf: ground.profileOf,
+    steepestStreet: ground.steepestStreet,
     cornerHeightAt: ground.cornerHeightAt,
     landAt: ground.landAt,
     normalAt: ground.normalAt,
