@@ -8,7 +8,13 @@ film, the worker — should land on `main`. Same rules as the cityviewer hand-of
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
 
-## M1 — Merge `dev_night` into `main` (S, needs Kjell) — **ready; the merge itself is Kjell's to run**
+## M1 — Merge `dev_night` into `main` (S, needs Kjell) — **merged locally 2026-09-08; not pushed**
+
+`main` fast-forwarded from `491f9bf` to `9339ba4`: 55 commits, no squash, no rebase, no merge
+commit. `slice-E0` is `04bc793` and `slice-V8`, `slice-R4` and `slice-T1` are all in the history.
+`./test.sh` green twice on the merged tree and `gates.mjs quick` **380 s of 480**, no leaked
+browsers. **The push is the half that needs Kjell** — `git push origin main` publishes 55 commits
+to a shared remote — and is the one step left.
 
 **Goal.** `main` is `dev_night`. Nothing is rewritten, nothing is squashed: the per-slice
 history is the project's memory and the dev-log cites SHAs.

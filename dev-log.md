@@ -4255,3 +4255,28 @@ are complete, and `tools/gates.mjs` is a script: the import executed the whole `
 `node --test`, and the unit suite hung. Everything below the tables is behind
 `import.meta.url === \`file://${process.argv[1]}\`` now — the same guard `screenshot.mjs` already
 had, which is why it was safe to import and this was not.
+
+## slice-M1 — `main` is `dev_night` (2026-09-08)
+
+`workitems-mainline.md` M1. `main` had had no commit of its own since `491f9bf` on 2026-09-05, so
+it fast-forwarded: 55 commits, no squash, no rebase. The per-slice history is the project's
+memory and `dev-log.md` cites its SHAs.
+
+```
+9339ba4 slice-M2: a gate runner with a time budget
+476c69c slice-T1: signals only where two real streets cross
+be53905 slice-R4: the lane that read its street backwards
+```
+
+**Checked, as the item asks:** `slice-E0` is `04bc793`, and `slice-V8` (`2544c08`), `slice-R4`
+and `slice-T1` are all in `main`'s history. 91 commits on the branch, none of them a merge
+commit.
+
+**Measured on the merged tree.** `./test.sh` green twice. `node tools/gates.mjs quick`: **380 s**
+of an eight-minute budget, twelve gates, no leaked browsers — budget_gate 104 s, ui_smoke 66,
+a11y_smoke 46. The `sim` set on the same tree: disaster_soak 76 s, traffic_gate 80 s, sim_sweep
+running long as expected.
+
+**Not pushed.** The item's last line is "push both", and that publishes 55 commits to a shared
+remote; the item is marked "needs Kjell" and this is the half that does. The command is
+`git push origin main` from a tree that is already green on it.
