@@ -9,6 +9,10 @@ reports/gates-*.json
 debugging/out/
 # Smoke output is regenerated on every run; the probe images are not.
 reports/smoke-*.png
+# Per-view captures the compare sheet stitches. The sheet is the artefact; these
+# are its working files, and three of them are 4 MB.
+reports/.compare-*.png
+reports/.sheet-*.png
 
 # Build-step bakes: generated on the dev machine, never committed, guarded by a
 # hash pin so a stale bake degrades gracefully instead of corrupting anything.

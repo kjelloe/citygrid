@@ -113,7 +113,9 @@ SwiftShader, so quote them as such; the triangles, draw calls and ladder decisio
 are true anywhere.
 
 Every set has a time budget and the runner says when one is exceeded. A gate that grows past its
-share is a finding, not a fact of life. It also reports any headless browser a gate left running.
+share is a finding, not a fact of life. It also reports any headless browser a gate left running —
+**one set at a time**, because that check counts every `chrome-headless-shell` on the machine and
+two sets at once makes the runner accuse itself of a leak.
 
 If a hash moved unexpectedly, that is the highest-value alarm in the project. Do not re-pin to make
 it green; find out why. Deliberate schema changes re-pin through `/fixture-repin`.

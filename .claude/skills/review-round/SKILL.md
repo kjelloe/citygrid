@@ -297,6 +297,13 @@ chunk a frame on purpose; the shot tool drew once, so an L3 city photographed wi
 street in it and the gate believed it. If the thing under test converges over frames, the harness
 has to run frames.
 
+**A flag that is read but never used is off.** `?life=1` reached `tools/shoot.html`, was passed
+into the renderer, and did nothing for the life of the project, because the frame loop never gave
+`client/life/` the delta it takes its time from (ruling 037) — so `life=1` and `life=0` drew the
+same empty roads and every screenshot in `reports/` has no moving car in it. Found in D4, by
+putting the picture next to one that had cars. The check is the same one as everywhere else in
+this file: **assert the effect, not the setting**.
+
 **A green suite says nothing about which build the player is running.** The service worker served
 cache-first and re-installed only when its own bytes changed, which they never did — so two P33
 playtest items were reports about code that had shipped three days earlier and could not arrive

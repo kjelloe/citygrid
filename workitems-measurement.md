@@ -95,7 +95,21 @@ guessed.
 **Done when** the report shows every device inside its tier's target at p95 and the dev-log
 names the numbers before and after.
 
-## D4 — The reference compare sheet (S)
+## D4 — The reference compare sheet (S) — **done 2026-09-08 as `slice-D4`**
+
+`node tools/compare_sheet.mjs` writes `reports/compare-transport-worlds.png`: each of the three
+references beside a City Grid capture at the same aspect, with camera and counts in the caption.
+Read by eye, and what it says is in the dev-log — ground colour is the largest difference, our
+town has no edge, roofs are low-chroma, streets are wide for the houses, and the water is the one
+row where the two halves are close.
+
+**Two defects it found on the way.** `?life=1` did nothing in every screenshot this project has
+ever taken: `tools/shoot.html` passed no `dt` and no `frameMs`, so `client/life/` never advanced
+and there was never a moving car in a shot. And the saturated fixture turns out to be 1,129 copies
+of one `res` definition (**Q72**), so the sheet shoots a played city — forty deputy years on
+64×64, 294 buildings across five kinds — and says why in the file. Looking at the result then
+found a third thing no test can (**Q73**): three-quarters of a played city's zoned ground is
+empty, and empty zoning reads as a slab of asphalt.
 
 **Goal.** The gate the lane started from: City Grid beside the Transport Worlds shots, from the
 same kind of view, in one image.
@@ -158,7 +172,9 @@ on, and `reports/perf/` has the two extra rows.
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.
 
-**Where this lane stands, 2026-09-08.** **D1 done** (`slice-D1`) — the card, the tool and the
-SwiftShader baseline are in. **D2 is Kjell's**: `?perf=1` on the 4090 desktop and on a phone, the
-cards into `reports/perf/<device>.json`. Everything after D2 either wants those cards (D3, D5) or
-wants only D1's harness (D4, D6), so **D4 is what to do next** if the cards have not arrived.
+**Where this lane stands, 2026-09-08.** **D1 and D4 done** (`slice-D1`, `slice-D4`) — the card,
+the tool, the SwiftShader baseline and the compare sheet are in. **D2 is Kjell's**: `?perf=1` on
+the 4090 desktop and on a phone, the cards into `reports/perf/<device>.json`. D3 and D5 want those
+cards and cannot start without them. **D6 is what to do next** — it needs only D1's harness, and
+it carries the numbers Q64, Q66 and Q68 are waiting for from a map bigger than the one they were
+asked on.

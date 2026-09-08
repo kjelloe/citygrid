@@ -396,6 +396,8 @@ by number from the code they create.
 | Q69 | Traffic only ever grows: a link filled while on screen is never emptied when it leaves | measurement lane D3, before any real-device card is believed |
 | Q70 | The saturated fixture generates no commutes, so its roads were empty until D1 seeded them | measurement lane D3/D6 |
 | Q71 | A street chunk bakes in 13 ms against an 8 ms budget | D2's phone card, measurement lane D3 |
+| Q72 | The saturated fixture is 1,129 copies of one building — right for cost, wrong for looks | measurement lane D6, or the first slice needing a realistic city cheaply |
+| Q73 | Three-quarters of a played city's zoned ground is empty, and empty zoning reads as asphalt | the film lane's photo mode, or a balance pass |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

@@ -79,7 +79,7 @@ than that (Q64).
 
 ## What is missing, and known to be
 
-**13 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**15 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 
@@ -117,6 +117,14 @@ about:
 | `specs/rulings/` | why a decision was made — 41 of them, one per file |
 | `dev-log.md` | what actually happened, slice by slice, including the dead ends |
 | `CLAUDE.md` | the working rules, and they are not suggestions |
+
+## How it looks against the target
+
+`reports/compare-transport-worlds.png` puts three City Grid captures beside the reference shots
+they are aimed at — a lakeside, a town from above, a residential street — with the camera and the
+triangle count on each. It is judged by eye, and the reading is in `dev-log.md` under `slice-D4`:
+ground colour is the largest difference, the town has no edge against the countryside, and the
+water is the one row where the two halves are close. `node tools/compare_sheet.mjs` rebuilds it.
 
 `dev-log.md` is the most useful of these to a new developer: every entry carries the numbers its
 gate produced and a "what failed on the way" section, and the failures are the part worth reading.

@@ -100,6 +100,7 @@ node tools/screenshot.mjs      # one shot; ?style= ?time= ?street= ?streets= ?fr
 
 ```sh
 node tools/perf_card.mjs       # the frame sweep -> reports/perf/swiftshader.json (70 s)
+node tools/compare_sheet.mjs   # City Grid beside the references -> reports/compare-transport-worlds.png
 node tools/i18n_review.mjs     # every string, its slice and its Norwegian -> reports/i18n-review.md
 ```
 

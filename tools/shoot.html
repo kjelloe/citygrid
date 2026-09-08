@@ -192,7 +192,17 @@ const drawOptions = {
   territory: params.get("territory") === "1",
 };
 let stats;
-for (let f = 0; f < frames; f += 1) stats = view.draw({ ...drawOptions, now: f * 16 });
+// **`life=1` needs a delta or it is `life=0` with extra steps.** `client/life/`
+// takes its time from the caller (ruling 037), and this loop passed neither
+// `dt` nor `frameMs` — so every screenshot this harness has ever taken had no
+// moving car and nobody on the pavement, `life=1` included. Found in D4, when
+// the compare sheet came back empty beside a reference full of vehicles.
+//
+// `frameMs` is 16 whatever the clock really says: the governor must stay idle
+// for a shot, or a slow software rasteriser degrades the picture we are trying
+// to look at, and the picture would be of the governor.
+const step = life ? { dt: 1 / 60, frameMs: 16 } : {};
+for (let f = 0; f < frames; f += 1) stats = view.draw({ ...drawOptions, ...step, now: f * 16 });
 
 const firstChunk = view.terrain.chunks[0];
 const pos = firstChunk.mesh.geometry.getAttribute("position");

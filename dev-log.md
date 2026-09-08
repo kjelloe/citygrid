@@ -4442,3 +4442,67 @@ measurements of nine different cities.
 
 **Not done.** Real hardware is D2 and it needs Kjell. Q69–Q71 record what this slice found and
 did not fix.
+
+## slice-D4 — the reference compare sheet (2026-09-08)
+
+The gate the measurement lane started from and never built: **how far is the picture from the
+target?** `node tools/compare_sheet.mjs` writes `reports/compare-transport-worlds.png` — each of
+Kjell's three reference shots beside a City Grid capture aimed at the same kind of thing, at the
+reference's own aspect, with the camera and the counts in the caption. Judged by eye on purpose: a
+number cannot say "the roofs read as one grey mass at this zoom", which is the only kind of finding
+this sheet exists for.
+
+**Matched to the references as they actually are.** The item describes "a road with cars, a
+lakeside, a hill with a road up it"; the three files in `debugging/` are a lake with a queue of
+cars round it, a town from above with a river through it, and a close low view down a residential
+street. Checking what the "before" actually was is a lesson this project has now paid for three
+times.
+
+**What the sheet says**, at `e0c977f`, 3 rows, ~9 min:
+
+1. **Ground colour is the largest single difference.** The reference's unbuilt land is a bright
+   saturated green; ours is a muted olive-tan, and where it is zoned and unbuilt it is flat grey.
+2. **Our town has no edge.** The reference's town sits in a field and reads as a place; the paved
+   grid here runs to the map edge, so there is no silhouette to recognise.
+3. **Roofs are low-chroma.** Reference roofs are red, orange, cream and slate; ours are tan, olive
+   and dark, and at the town zoom they average into one colour.
+4. **Streets are wide relative to the buildings.** The reference's carriageway is about a house
+   wide with gardens either side; ours is wider and the gardens are thinner.
+5. **The water reads well.** The shore, the shallows and the gradient at the waterline are the one
+   row where the two halves are close.
+
+**Two defects the sheet found, and neither is a picture.**
+
+**`?life=1` did nothing, in every screenshot this project has ever taken.** `client/life/` takes
+its time as a delta from the caller (ruling 037), and `tools/shoot.html`'s frame loop passed
+neither `dt` nor `frameMs` — so `life=1` and `life=0` drew exactly the same empty roads, and every
+shot in `reports/` has no moving car and nobody on the pavement. The compare sheet came back empty
+beside a reference full of vehicles, which is how it surfaced. Fixed: the loop passes `dt = 1/60`
+when life is on, and `frameMs = 16` whatever the clock says, so a slow software rasteriser cannot
+drive the governor and make the shot a picture of the governor. Nobody else passes `life=1` through
+this harness, so nothing re-baselines.
+
+**The saturated fixture is 1,129 copies of one building (Q72).** `saturatedCity` paints roads and
+zones, runs 400 ticks, grows nothing — development wants power, water and demand the recipe never
+supplies — and a fallback pushes 1,129 `res` definitions straight into the array. Four gates
+measure "a mature city" on a monoculture with no shops, no industry and no residents. It is right
+for what a frame *costs* and wrong for what the game *looks like*, so the sheet shoots a played
+city instead: forty years of the deputy on 64×64, **294 buildings across five kinds, 2,873
+residents, a real commuter load**.
+
+And one more, from looking at it (Q73): **three-quarters of a played city's zoned ground is
+empty** — 1,424 of 1,934 tiles — and empty zoning painted flat, at a grazing angle, is a grey slab
+the size of the town beside it. Two candidate causes worth telling apart before anything is drawn
+differently: the deputy over-zones, or empty zoning is too dark. Nothing red will ever find this
+one.
+
+**Measured.** `gates.mjs quick` **401 s of 480**, 12 of 12; `render` 3 s of 120.
+`test/compare-sheet.test.js` — 9 checks on the camera specs as data, including that
+**every reference in `debugging/` is matched by exactly one view**: a reference Kjell adds and
+nothing aims at is the reachability failure in a new costume. Suite green twice. The sheet's
+working captures are gitignored; the sheet itself is 2,260 × 2,006 and is the artefact.
+
+One false alarm worth writing down: `render` reported **"LEAKED 1 headless browser"** while
+`quick` was still running in another shell. The leak detector counts every `chrome-headless-shell`
+on the machine, because it has no way to know which set started which — so two gate sets at once
+makes the runner accuse itself. Run alone, it reports none.
