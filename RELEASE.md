@@ -4,8 +4,8 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `2f26532` on `dev_night`, the end of `workitems-measurement.md`'s buildable half.
-  `main` fast-forwards to it and was **pushed on 2026-09-08**.
+- **Commit:** `782e759` on `dev_night`, the end of `workitems-measurement.md`'s buildable half.
+  `main` fast-forwards to it and was **pushed on 2026-09-08** (at `2f26532`, one slice behind).
 - **Date:** 2026-09-08
 - **Balance era:** era 1, tuned 2026-08-29 over 200 games per configuration
   (`reports/balance-era1.md`). Numbers from era 0 are void, not roughly comparable.
