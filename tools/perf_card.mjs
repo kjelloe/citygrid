@@ -47,7 +47,12 @@ const arg = (name, fallback) => {
   return at > 0 && process.argv[at + 1] ? process.argv[at + 1] : fallback;
 };
 const hold = Number(arg("--hold", "0")) || 0;
-const out = join(root, arg("--out", "reports/perf/swiftshader.json"));
+// `--map big|steep` runs the sweep on the bigger or the steeper city (D6). The
+// default output is named after the map, so three runs do not overwrite one
+// another and `reports/perf/` reads as a table.
+const map = arg("--map", "base");
+const out = join(root, arg("--out",
+  map === "base" ? "reports/perf/swiftshader.json" : `reports/perf/swiftshader-${map}.json`));
 
 const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -64,11 +69,12 @@ try {
     if (message.type() === "error") problems.push(`console error — ${message.text()}`);
   });
 
-  const query = `perf=1${hold > 0 ? `&perfHold=${hold}` : ""}`;
+  const query = `perf=1&perfMap=${map}${hold > 0 ? `&perfHold=${hold}` : ""}`;
   await page.goto(`http://127.0.0.1:${port}/index.html?${query}`, { waitUntil: "commit" });
-  // The sweep is 55 s of holding plus a second of warm-up per step plus the
-  // fixture's 400 ticks, and SwiftShader is slow at all of it.
-  await page.waitForFunction(() => globalThis.PERF_CARD !== undefined, undefined, { timeout: 600000 });
+  // The sweep is 55 s of holding plus a warm-up per step plus the fixture's 400
+  // ticks, and SwiftShader is slow at all of it. A 256-tile map spends minutes
+  // in worldgen and the model derivation alone.
+  await page.waitForFunction(() => globalThis.PERF_CARD !== undefined, undefined, { timeout: 1800000 });
   card = await page.evaluate(() => globalThis.PERF_CARD);
   await context.close();
 } finally {
@@ -97,10 +103,11 @@ await mkdir(dirname(out), { recursive: true });
 await writeFile(out, `${JSON.stringify(card, undefined, 1)}\n`);
 
 const pad = (text, width) => String(text).padEnd(width);
-console.log(`${pad("step", 26)}${pad("p50", 8)}${pad("p95", 8)}${pad("tris", 9)}${pad("calls", 7)}lod`);
+console.log(card.fixture);
+console.log(`${pad("step", 26)}${pad("p50", 8)}${pad("p95", 8)}${pad("tris", 9)}${pad("calls", 7)}${pad("water", 8)}lod`);
 for (const row of card.steps) {
   console.log(`${pad(row.step, 26)}${pad(row.p50, 8)}${pad(row.p95, 8)}`
-    + `${pad(row.triangles, 9)}${pad(row.drawCalls, 7)}${row.lod}`);
+    + `${pad(row.triangles, 9)}${pad(row.drawCalls, 7)}${pad(row.waterTriangles, 8)}${row.lod}`);
 }
 console.log(`\n${card.machine.deviceClass}, tier ${card.machine.tier} — wrote ${out}`);
 

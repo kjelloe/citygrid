@@ -79,7 +79,7 @@ the file to open first.
 | Lane | What it is | Where it stands |
 |---|---|---|
 | `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | M1 merged (not pushed), M2 and M3 done; **M4's table is ready and the pass itself needs Kjell** |
-| `workitems-measurement.md` | real-device numbers and the reference compare | **D1 done** — `?perf=1` and `tools/perf_card.mjs`; **D2 needs Kjell to press it on real hardware**, D4 is the next one that does not |
+| `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4 and D6 done**; **D2, D3 and D5 all need Kjell's hardware** — the lane is otherwise finished |
 | `workitems-film.md` | photo mode, tours, a demo film | not started |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
 
@@ -398,6 +398,7 @@ by number from the code they create.
 | Q71 | A street chunk bakes in 13 ms against an 8 ms budget | D2's phone card, measurement lane D3 |
 | Q72 | The saturated fixture is 1,129 copies of one building — right for cost, wrong for looks | measurement lane D6, or the first slice needing a realistic city cheaply |
 | Q73 | Three-quarters of a played city's zoned ground is empty, and empty zoning reads as asphalt | the film lane's photo mode, or a balance pass |
+| Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | whenever `hilly` stops being decorative |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

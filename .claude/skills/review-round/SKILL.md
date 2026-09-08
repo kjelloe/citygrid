@@ -304,6 +304,14 @@ same empty roads and every screenshot in `reports/` has no moving car in it. Fou
 putting the picture next to one that had cars. The check is the same one as everywhere else in
 this file: **assert the effect, not the setting**.
 
+**A gate that has only ever been run on one input has only ever tested one input.**
+`walkthrough` had run on `rolling` terrain for its whole life because the fixture could not make
+anything else. Given the option in D6, it failed on `hilly` immediately: 80 places where the
+ground rises over a metre in two, a cliff no walker can climb, on a map the lobby offers (Q74).
+The same sweep found ungradeable corridors going from 1% to 33% — and size changed nothing, so
+every "measure it on a bigger map" instinct was aimed at the wrong axis. **Ask what a gate's
+fixture cannot express**, and give it the option before believing the green.
+
 **A green suite says nothing about which build the player is running.** The service worker served
 cache-first and re-installed only when its own bytes changed, which they never did — so two P33
 playtest items were reports about code that had shipped three days earlier and could not arrive

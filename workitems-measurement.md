@@ -146,7 +146,25 @@ chosen by reasoning. The phone card says whether they were right.
 
 **Done when** the phone card shows the governor idle on the daytime sweep at Medium.
 
-## D6 — The big map and the steep map (S)
+## D6 — The big map and the steep map (S) — **done 2026-09-08 as `slice-D6`**
+
+Three cards (`reports/perf/swiftshader{,-steep,-big}.json`) and the three gates re-run on each.
+`saturatedCity` takes a `terrain` now, `walkthrough`/`passability`/`lanes_dump` take `<size>
+<terrain>`, and the card takes `?perfMap=big|steep`. The numbers are in the dev-log; the short
+version:
+
+- **Q66 is answered.** The unculled water mesh is **3,556 triangles on 256×256 — 1.11% of the High
+  budget**. It never becomes a problem at a size a player can start. (Caveat: a `river` fixture; a
+  `coastal` map is mostly water.)
+- **Q68 has a shape.** A bigger map makes the night frame *smaller* (224,466 against 96's 268,276)
+  because the ladder drops trees earlier. The 256 run is the first measurement in which the
+  governor has ever acted — it gave up `pixel`, on SwiftShader.
+- **Q64 is answered, and terrain is the only variable.** Ungradeable corridors: 1.0% on 96
+  `rolling`, 1.3% on 128, 0.8% on 256 — and **33% on a 128 `hilly`**, steepest street 59.3%.
+- **New: Q74.** `walkthrough` **fails** on `hilly` — 80 cliffs where the ground rises over a metre
+  in two. The gate had only ever run on `rolling`.
+- **For the worker lane:** the model rebuild is **184.7 ms on 256×256**, 108.7 of it the lane
+  graph. Q60 called 53.7 ms the number to beat.
 
 **Goal.** Every cityviewer number was taken on a 96×96 `rolling` city and a few on a 128×128.
 Three open questions say "measure it on a bigger or steeper map first", so this item is that
@@ -172,9 +190,10 @@ on, and `reports/perf/` has the two extra rows.
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.
 
-**Where this lane stands, 2026-09-08.** **D1 and D4 done** (`slice-D1`, `slice-D4`) — the card,
-the tool, the SwiftShader baseline and the compare sheet are in. **D2 is Kjell's**: `?perf=1` on
-the 4090 desktop and on a phone, the cards into `reports/perf/<device>.json`. D3 and D5 want those
-cards and cannot start without them. **D6 is what to do next** — it needs only D1's harness, and
-it carries the numbers Q64, Q66 and Q68 are waiting for from a map bigger than the one they were
-asked on.
+**Where this lane stands, 2026-09-08.** **D1, D4 and D6 are done** (`slice-D1`, `slice-D4`,
+`slice-D6`): the card, the compare sheet, the SwiftShader baseline and the big/steep rows are all
+in, and Q64, Q66 and Q68 now carry numbers from maps bigger and steeper than the ones they were
+asked on. **What is left in this lane needs Kjell.** D2 is `?perf=1` on the 4090 desktop and on a
+phone, with the cards saved into `reports/perf/<device>.json`; D3 (re-tune the tiers) and D5
+(validate the governor) both read those cards and cannot start without them. Nothing here is
+blocked on the coding ally.

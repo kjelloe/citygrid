@@ -12,7 +12,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SWEEP, sweepSeconds, stepLabel } from "../client/debug/perf-sweep.js";
+import { SWEEP, MAPS, sweepSeconds, stepLabel } from "../client/debug/perf-sweep.js";
 
 const modes = () => new Set(SWEEP.map((s) => s.mode));
 const styles = () => new Set(SWEEP.map((s) => s.style ?? "plain"));
@@ -88,6 +88,47 @@ test("the sweep is data — no functions, no state, nothing to remember", () => 
     for (const [key, value] of Object.entries(step)) {
       assert.ok(["string", "number", "boolean"].includes(typeof value),
         `${stepLabel(step)}.${key} is a ${typeof value}`);
+    }
+  }
+});
+
+// --- the maps the sweep can be run on (slice D6) ----------------------------
+//
+// Every cityviewer number was taken on a 96-tile `rolling` city, and three open
+// questions say "measure it on a bigger or steeper map first". The map is a
+// property of the RUN, not of a step — nine views of one city — so it is a
+// separate list, and the card records which one it was on.
+
+test("the maps cover more than one size and more than one terrain", () => {
+  assert.ok(new Set(MAPS.map((m) => m.size)).size >= 3, "one size is one map");
+  assert.ok(new Set(MAPS.map((m) => m.terrain)).size >= 2, "one terrain is one map");
+});
+
+test("a map bigger than the one the questions were asked on", () => {
+  // Q66 (one unculled water mesh) and Q68 (a night frame at High) were both
+  // asked on 96 and both say "ask again on something larger".
+  assert.ok(MAPS.some((m) => m.size >= 256), `largest is ${Math.max(...MAPS.map((m) => m.size))}`);
+});
+
+test("a steep map, because Q64 is a question about one", () => {
+  assert.ok(MAPS.some((m) => m.terrain === "hilly"), "no hilly map");
+});
+
+test("every map is one the engine will actually generate", () => {
+  for (const map of MAPS) {
+    assert.ok(["flat", "rolling", "hilly"].includes(map.terrain), `${map.id}: ${map.terrain}`);
+    assert.ok(map.size >= 48 && map.size <= 256 && map.size % 16 === 0,
+      `${map.id}: ${map.size} tiles`);
+  }
+});
+
+test("the maps are named, distinctly, and are data", () => {
+  const ids = MAPS.map((m) => m.id);
+  assert.equal(new Set(ids).size, ids.length, ids.join(", "));
+  for (const map of MAPS) {
+    for (const [key, value] of Object.entries(map)) {
+      assert.ok(["string", "number", "boolean"].includes(typeof value),
+        `${map.id}.${key} is a ${typeof value}`);
     }
   }
 });

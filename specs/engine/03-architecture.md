@@ -103,8 +103,19 @@ saturated fixture, median of three full rebuilds:
 | 96×96 | **38.7 ms** | — | — | — | — |
 | 128×128 | **80.0 ms** | 7.7 | 0.3 | **53.0** | 25.0 |
 
-A build action rebuilds the whole model, so on the largest map that is five frames of hitch —
+R2 cut the 128×128 figure to **53.7 ms** (`deriveLots` widens rings instead of searching every
+corridor; `deriveLanes` reads the corridor's own profile instead of asking the ground per point).
+
+**D6, 2026-09-08, on the maps a player can actually start** (`lanes_dump <size> <terrain>`):
+
+| Map | Whole model | of which the lane graph | corridors |
+|---|---|---|---|
+| 96×96 `rolling` | **53.3 ms** | 16.3 | 773 |
+| 128×128 `hilly` | **68.3 ms** | 43.3 | 1,392 |
+| 256×256 `rolling` | **184.7 ms** | 108.7 | 7,018 |
+
+A build action rebuilds the whole model, so on the largest map that is **eleven frames** of hitch —
 once per action, not per tile, because a drag-paint is coalesced into one command. It is over one
 frame, which is the threshold E0 named, so the deferral is now due: the corridor and lane
-derivation goes per chunk keyed by `chunkHash`. The lane graph is two thirds of the cost and is
-where that work starts (**Q51**).
+derivation goes per chunk keyed by `chunkHash`. The lane graph is around two thirds of the cost at
+every size and is where that work starts (**Q51**, **Q60**).

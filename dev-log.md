@@ -4506,3 +4506,69 @@ One false alarm worth writing down: `render` reported **"LEAKED 1 headless brows
 `quick` was still running in another shell. The leak detector counts every `chrome-headless-shell`
 on the machine, because it has no way to know which set started which — so two gate sets at once
 makes the runner accuse itself. Run alone, it reports none.
+
+## slice-D6 — the big map and the steep map (2026-09-08)
+
+Every cityviewer number was taken on a 96×96 `rolling` city. Three open questions said "ask again
+on something bigger or steeper", and the recipe those questions are measured through could not
+make a steeper map at all — `saturatedCity` hard-coded the terrain style. So: `terrain` on the
+fixture, `<size> <terrain>` on `walkthrough`, `passability` and `lanes_dump`, and `?perfMap=big`
+/ `?perfMap=steep` on the performance card, which now records the map it ran on and the water
+tiles it drew. **No fix is started here.** This item is the measurement.
+
+**Three cards**, `reports/perf/swiftshader{,-steep,-big}.json`, build `9efa0c0e4cc6`:
+
+| | 96 `rolling` | 128 `hilly` | 256 `rolling` |
+|---|---|---|---|
+| night frame at High | 268,276 tris | 182,444 | 224,466 |
+| the ladder, at night | detail not resolvable | cars dropped for budget | trees dropped for budget |
+| the governor, at night | idle | idle | **gave up `pixel`** |
+| water tiles / triangles | 594 / 1,188 | 610 / 1,220 | 1,778 / 3,556 |
+| water as % of the High budget | 0.37% | 0.38% | **1.11%** |
+| model rebuild (`lanes_dump`) | 53.3 ms | 68.3 ms | **184.7 ms** |
+| …of which the lane graph | 16.3 ms | 43.3 ms | 108.7 ms |
+| corridors | 773 | 1,392 | 7,018 |
+| steepest street | 18.8% | **59.3%** | 20.7% |
+| ungradeable corridors | 8 of 773 (1.0%) | **459 of 1,392 (33%)** | 53 of 7,018 (0.8%) |
+| `walkthrough` | ok | **FAILED** | ok |
+| `passability` | ok | ok | ok |
+
+**Q66 is answered and closed in practice.** The water surface is one unculled mesh for the whole
+map, and on the largest map the lobby offers it is **3,556 triangles — 1.11% of the High budget**.
+A terrain chunk alone is 512. It does not become a problem at any size a player can start. One
+caveat worth keeping: the fixture is a `river` map, and a `coastal` one is mostly water.
+
+**Q68 has a shape now.** A bigger map makes the night frame *smaller* — 224,466 against 96's
+268,276 — because the ladder drops trees before it runs out of budget rather than after. The 256
+run is also the first measurement in this project where **the governor did anything at all**: it
+gave up `pixel`. On SwiftShader that is the rasteriser talking rather than the renderer, which is
+exactly why D2 exists.
+
+**Q64 is answered, and terrain is the only variable that matters.** Ungradeable corridors are
+1.0% on 96 `rolling`, 1.3% on 128 `rolling` and 0.8% on 256 `rolling` — size does not move it.
+`hilly` moves it by a factor of thirty: **459 of 1,392, and a steepest street of 59.3%.**
+
+**And a new one nobody had ever looked for (Q74): `walkthrough` FAILS on `hilly`.** Eighty places
+where the ground rises more than a metre over two metres — steepest 1.15 m — which is a cliff a
+walker cannot climb and a vehicle cannot take. Every `rolling` map is clean (steepest 0.40 to
+0.48 m). The gate has only ever been run on `rolling`, so nothing had ever seen it. It is Q64 from
+the walker's side, it costs nothing today because `hilly` is decorative, and it is precisely what
+stops `hilly` from being playable.
+
+**One number for the worker lane.** The model rebuild is **184.7 ms on 256×256**, 108.7 ms of it
+the lane graph. Eleven frames. Q60's answer said 53.7 ms was "the number to beat"; on the largest
+map a player can start it is three and a half times that, on the render thread.
+
+**What failed on the way.** Only the obvious: `saturatedCity` had no terrain option, so the first
+attempt to run `walkthrough` on `hilly` measured `rolling` twice under two names. `test/saturated.test.js`
+is new and checks the options rather than the recipe — that `hilly` is actually steeper than
+`flat`, that a seeded commuter load lands on road tiles and nowhere else, and that **no traffic is
+seeded unless it is asked for**, because every gate written before D1 calls this with no `traffic`
+and a fixture that quietly grew one would re-baseline all of them in silence. Nothing had ever
+tested this file, which is how it reached D1 with empty roads and D4 with 1,129 copies of one
+building.
+
+**Measured.** Suite green twice, 1,105 tests. `gates.mjs quick` **397 s of 480**, 12 of 12, 0
+leaked; `render` 3 s of 120 — both on the default `rolling` 96, unchanged, because the default is
+unchanged. `specs/engine/03-architecture.md` §3.4a now carries the three rebuild times instead of
+one.

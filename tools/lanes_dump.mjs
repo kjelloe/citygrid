@@ -14,10 +14,13 @@ import { createModel } from "../client/world/model.js";
 import { DEFAULTS } from "../client/world/config.js";
 
 const size = Number(process.argv[2] ?? 96);
+// `node tools/<gate>.mjs <size> <terrain>` — Q64 is a question about a `hilly`
+// map and there was no way to run this on one (D6).
+const terrain = process.argv[3] ?? "rolling";
 // The gates' shared city (`tools/lib/saturated.mjs`), without the seeded
 // buildings: a lane graph is derived from roads, and E1's numbers were
 // recorded on a city that had none.
-const { state } = saturatedCity({ size, buildings: false });
+const { state } = saturatedCity({ size, terrain, buildings: false });
 
 // Two timings, because the model is rebuilt on every build action and E1 adds
 // to it: the lane graph is the difference between them.
@@ -49,7 +52,7 @@ const lengths = blocks.map((l) => l.len).sort((a, b) => a - b);
 const shortest = lanes.links.reduce((a, b) => (a.len < b.len ? a : b));
 const p = (q) => lengths[Math.min(lengths.length - 1, Math.floor(lengths.length * q))];
 
-console.log(`city            ${size}×${size}, seed 1003, 400 ticks`);
+console.log(`city            ${size}×${size} ${terrain}, seed 1003, 400 ticks`);
 console.log(`model built in  ${ms.toFixed(1)} ms  (lane graph ${lanesMs.toFixed(1)} ms of it)`);
 console.log(`corridors       ${model.stats.corridors}`);
 console.log(`nodes           ${model.stats.nodes}  (${Object.entries(kinds).map(([k, v]) => `${k} ${v}`).join(", ")})`);

@@ -749,6 +749,10 @@ export function createRenderer(canvas, state, options = {}) {
     stats.budget = plan.budget;
     stats.estimate = plan.estimate;
     stats.triangles = plan.actual;
+    // The water surface is ONE mesh for the whole map and is never culled
+    // (E8, Q66). The count is what says how much of a frame that is, and it
+    // was inside the estimate where nothing could read it (D6).
+    stats.waterTiles = counts.waterTiles;
     stats.corridors = model.stats.corridors;
     stats.lots = model.stats.lots;
     stats.tier = tierName;

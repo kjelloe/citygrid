@@ -30,6 +30,9 @@ export const config = Object.freeze({
   // can press the Copy button without paying for a real measurement.
   perf: params.get("perf") === "1",
   perfHold: Number(params.get("perfHold") ?? 0) || 0,
+  // `?perfMap=big|steep` picks one of `MAPS` in `client/debug/perf-sweep.js`:
+  // the bigger and the steeper city three open questions asked for (D6).
+  perfMap: params.get("perfMap") ?? "",
   // `?life=0` freezes the traffic where it settled, so a gate that measures a
   // frame or compares two screenshots is looking at the same city twice.
   life: params.get("life") !== "0",
@@ -189,7 +192,7 @@ async function boot() {
 
   if (config.perf) {
     const { runPerfCard } = await import("./debug/perf-card.js");
-    await runPerfCard({ play, hold: config.perfHold }).catch(failed);
+    await runPerfCard({ play, hold: config.perfHold, map: config.perfMap }).catch(failed);
     return;
   }
 

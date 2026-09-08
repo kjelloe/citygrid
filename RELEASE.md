@@ -79,7 +79,7 @@ than that (Q64).
 
 ## What is missing, and known to be
 
-**15 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**16 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 

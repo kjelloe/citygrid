@@ -86,6 +86,7 @@ node tools/budget_gate.mjs     # 3 tiers x 2 projections x 4 spans, and every ro
 node tools/walkthrough.mjs     # the walker walks every corridor, and the steepest street
 node tools/passability.mjs     # a clear lane wide enough for a walker, everywhere
 node tools/lanes_dump.mjs      # the lane graph: counts, height error, traffic step and flow
+#   ...all three take <size> <terrain>, e.g. `node tools/walkthrough.mjs 128 hilly` (D6)
 ```
 
 Pictures, which are not gates and are run by hand:
@@ -100,6 +101,7 @@ node tools/screenshot.mjs      # one shot; ?style= ?time= ?street= ?streets= ?fr
 
 ```sh
 node tools/perf_card.mjs       # the frame sweep -> reports/perf/swiftshader.json (70 s)
+node tools/perf_card.mjs --map big     # ...on 256x256, or `--map steep` for 128 hilly
 node tools/compare_sheet.mjs   # City Grid beside the references -> reports/compare-transport-worlds.png
 node tools/i18n_review.mjs     # every string, its slice and its Norwegian -> reports/i18n-review.md
 ```

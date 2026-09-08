@@ -30,7 +30,10 @@ import { createWalker } from "../client/life/walker.js";
 import { DEFAULTS } from "../client/world/config.js";
 
 const size = Number(process.argv[2] ?? 96);
-const { state } = saturatedCity({ size });
+// `node tools/<gate>.mjs <size> <terrain>` — Q64 is a question about a `hilly`
+// map and there was no way to run this on one (D6).
+const terrain = process.argv[3] ?? "rolling";
+const { state } = saturatedCity({ size, terrain });
 
 const t0 = Date.now();
 const model = createModel(state);
@@ -190,7 +193,7 @@ for (const corridor of model.corridors) {
   }
 }
 
-console.log(`city            ${size}×${size}, seed 1003, ${state.buildings.length} buildings`);
+console.log(`city            ${size}×${size} ${terrain}, seed 1003, ${state.buildings.length} buildings`);
 console.log(`model+collision ${buildMs} ms, ${collision.solids.length} solids`);
 console.log(`legs            ${legs}, ${(metres / 1000).toFixed(2)} km walked`);
 console.log(`unfinished      ${unfinished}`);

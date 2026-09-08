@@ -27,7 +27,7 @@
 // table. What that comparison is FOR is naming the machine, not comparing the
 // two numbers: they are different measurements of different hardware.
 
-import { SWEEP, stepLabel } from "./perf-sweep.js";
+import { SWEEP, MAPS, stepLabel } from "./perf-sweep.js";
 import { deviceClass } from "../capabilities.js";
 import { applyPose, applyZoom } from "../render/camera.js";
 
@@ -240,6 +240,11 @@ async function measure(step, session, play, hold) {
       lod: s.lod,
       given: (s.given ?? []).join(",") || "none",
       streets: s.streets,
+      // Q66: one unculled mesh for the whole map, two triangles a tile. On a
+      // 96-tile river map that is 2% of the High budget; the question is what it
+      // is on 256.
+      waterTiles: s.waterTiles,
+      waterTriangles: (s.waterTiles ?? 0) * 2,
       bakedChunks: bake.chunks,
       worstBakeMs: Math.round(bake.worstMs * 10) / 10,
       settleS: bake.settleS,
@@ -307,7 +312,8 @@ function panel() {
   return box;
 }
 
-export async function runPerfCard({ play, hold }) {
+export async function runPerfCard({ play, hold, map: wanted }) {
+  const map = MAPS.find((m) => m.id === wanted) ?? MAPS[0];
   const { saturatedCity } = await import("../../tools/lib/saturated.mjs");
   const box = panel();
   const note = box.querySelector("#perf-note");
@@ -322,7 +328,10 @@ export async function runPerfCard({ play, hold }) {
     // one the card claims (`tools/lib/saturated.mjs`).
     // Opened in the first step's style, or step 1 would immediately throw the
     // renderer away and build another.
-    session = await begin(saturatedCity({ size: 96, traffic: TRAFFIC }).state, SWEEP[0].style, play);
+    session = await begin(
+      saturatedCity({ size: map.size, terrain: map.terrain, traffic: TRAFFIC }).state,
+      SWEEP[0].style, play,
+    );
 
     for (const step of SWEEP) {
       note.textContent = `Measuring ${stepLabel(step)} — ${rows.length + 1} of ${SWEEP.length}. `
@@ -347,7 +356,9 @@ export async function runPerfCard({ play, hold }) {
     kind: "citygrid-perf-card",
     version: 1,
     date: new Date().toISOString(),
-    fixture: `saturated 96x96, seed 1003, 400 ticks, commuter load ${TRAFFIC}`,
+    map: map.id,
+    fixture: `saturated ${map.size}x${map.size} ${map.terrain}, seed 1003, 400 ticks, `
+      + `commuter load ${TRAFFIC}`,
     simulation: "paused for the sweep",
     build: await buildId(),
     machine: machine(session),

@@ -54,6 +54,24 @@ export const SWEEP = [
   { id: "street-walk", mode: "street", span: 30, pitch: DEFAULT_PITCH, time: "day", style: "plain", walkM: 60, seconds: 15 },
 ];
 
+/**
+ * The cities the sweep can be run on (D6).
+ *
+ * A map is a property of the RUN, not of a step: nine views of one city. Every
+ * cityviewer number was taken on `base`, and three open questions say "ask again
+ * on something bigger or steeper" — Q66 (the water surface is one unculled mesh
+ * for the whole map), Q68 (a night frame at High is 93% baked chunks) and Q64
+ * (934 of 2,161 corridors on a `hilly` map cannot make a 15% grade).
+ *
+ * 256 is the largest the lobby offers; `hilly` at 128 is the steepest map a
+ * player can start.
+ */
+export const MAPS = [
+  { id: "base", size: 96, terrain: "rolling", note: "what every cityviewer number was measured on" },
+  { id: "big", size: 256, terrain: "rolling", note: "Q66 and Q68, on the largest map the lobby offers" },
+  { id: "steep", size: 128, terrain: "hilly", note: "Q64, on the steepest map a player can start" },
+];
+
 /** What the card calls the row, and what a person reads in a pasted table. */
 export function stepLabel(step) {
   const parts = [step.mode];

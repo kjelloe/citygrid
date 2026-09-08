@@ -16,8 +16,14 @@ import { CMD_TICK, CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_JOIN } from "../../engine
 import "../../engine/build-commands.js";
 import "../../engine/development.js";
 
-export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings = true, traffic = -1 } = {}) {
-  const world = generateWorld(defaultOptions({ seed, width: size, height: size, waterStyle: "river" }));
+export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings = true,
+  traffic = -1, terrain = "rolling" } = {}) {
+  // `terrain` because Q64 is a question about a `hilly` map and there was no way
+  // to ask this recipe for one (D6). The default is what every gate before D6
+  // measured on, so nothing re-baselines.
+  const world = generateWorld(defaultOptions({
+    seed, width: size, height: size, waterStyle: "river", terrainStyle: terrain,
+  }));
   if (!world.ok) throw new Error(`generation failed: ${world.reason}`);
   const state = world.state;
   apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Surveyor" });
