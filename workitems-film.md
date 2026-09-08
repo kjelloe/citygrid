@@ -5,8 +5,14 @@ cut from the world itself, and every shot in those films was framed from a story
 capture tool rendered in seconds. City Grid has the pieces — a walker, three cameras, three
 hours of light, three styles, a screenshot harness — and no shot list, no camera language and
 no film. This lane builds the photo mode `specs/plan.md` §10 promised and the tour on top of it.
-Same rules as `workitems-cityviewer.md` §0. Do it after `workitems-measurement.md`: a film
-made before the tiers are measured is a film of the wrong frame rate.*
+Same rules as `workitems-cityviewer.md` §0. Written to follow `workitems-measurement.md`; as of
+2026-09-09 that lane's buildable half is done and the rest waits on a phone card, so **F1 starts
+after measurement D8**. The film itself (F3) still waits for the tiers to be measured on a phone —
+a film made before that is a film of the wrong frame rate — but the photo mode and the shot list
+do not. Two things the measurement lane left for this one: `tools/shoot.html` advances
+`client/life/` now (D4 found `?life=1` had never moved a car in any screenshot), so a storyboard
+frame has traffic in it; and **Q73** — three-quarters of a played city's zoned ground is empty
+and reads as a grey slab — is a picture problem that the photo mode is the first instrument for.*
 
 ## F1 — Photo mode (M) — plan.md §10 bonus 4
 

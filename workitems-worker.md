@@ -3,8 +3,8 @@
 *Written 2026-09-06. `specs/plan.md` §0 and §3.1 put the simulation in a Web Worker from the
 first draft — "always a Web Worker on the client, never on the render thread" — and `worker/`
 has been an empty directory for the life of the project. Every `apply()` runs on the render
-thread today, beside a renderer whose model rebuild costs **53.7 ms** per build action on a 128×128
-(Q60, after R2 cut it from 80.0) and a month tick of a few milliseconds. This lane builds the session seam the plan
+thread today, beside a renderer whose model rebuild costs **53.3 ms** per build action on a 96×96, **68.3 ms** on a
+128 `hilly` and **184.7 ms on a 256×256** — eleven frames (Q60, D6) — and a month tick of a few milliseconds. This lane builds the session seam the plan
 describes, moves the reducer behind it, and measures what it bought. It is the largest of the
 four lanes and the one with the most ways to break determinism, so it goes **last**, on
 `main`, after the measurement lane has real frame times to compare against. Same rules as
@@ -107,10 +107,11 @@ fallback and the worker in turn and compares the hash after 200 ticks and 50 com
 
 **Do.**
 - With the tick off the render thread, the remaining stall per build action is cityviewer's
-  model rebuild — **Q60**: 53.7 ms on the saturated 128×128 after R2 (corridors 7.3, ground 0.0,
-  lanes 41.3 of which about 28 is the graph's own construction, lots 15.0), plus E7's `deriveNav`
-  and E8's `deriveWater`, which R2 did not time. Measure all of it from `lanes_dump`. It is over
-  a frame, so the pure model (`client/world/`) is exactly the kind of code a second
+  model rebuild — **Q60**, measured by D6 on the maps a player can start: **53.3 ms** on 96×96
+  (lane graph 16.3), **68.3 ms** on 128 `hilly` (43.3), **184.7 ms on 256×256** (108.7 — the lane
+  graph is two thirds at every size), plus E7's `deriveNav` and E8's `deriveWater`, which nobody
+  has timed. `lanes_dump <size> <terrain>` prints the split. It is over a frame everywhere and
+  eleven frames on the largest map, so the pure model (`client/world/`) is exactly the kind of code a second
   worker can run: derive corridors, lanes and lots in a worker from the patched layers and
   transfer the typed arrays back; `heightAt` and `surfaceAt` are rebuilt on the main thread
   from the transferred corridor list, which is what they read anyway. Two shapes to choose

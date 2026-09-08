@@ -122,13 +122,36 @@ stays, because the next string a slice adds is a draft again — regenerate and 
 **Done when** Kjell has returned the table once and A21's "drafted, not reviewed" note in
 `dev-questions.md` is closed.
 
+## M5 — Review fixes after the measurement lane (S) — 2026-09-09
+
+Small, and each names its test. Commit as `slice-M5`.
+
+1. **`traffic.busyAt` answers for the corridor, not the node.** `client/life/traffic.js` walks
+   both block links of the corridor and ignores `node`, so a car within the gap of the FAR end —
+   already past this crossing — holds the pedestrians at it. Filter on `link.to === node`. Test in
+   `test/cars.test.js`: a car near the far end of a corridor leaves the near crossing open, and one
+   near the near end closes it. `test/pedestrians.test.js`: the same through `setTraffic`.
+2. **Untrack the reviewer's scratch and the tmp captures.** `git rm --cached reports/review3-*.log
+   reports/tmp/`, and `.gitignore` gains `reports/review*.log` and `reports/tmp/`. `test/docs.test.js`
+   "the local documents stay out of git" gains both patterns.
+3. **`RELEASE.md` brought to D5's era**: the frame-at-High sentence names its view (`budget_gate`'s
+   street-zoom night row, 289,446) beside D5's `city 40t` night (130,936, the same as day); the
+   model rebuild line carries D6's three maps (53.3 / 68.3 / 184.7 ms); the commit line says how
+   far `main` is behind and stops saying "one slice". The docs test's drift note is the reminder.
+4. **`main` is two docs commits behind `dev_night`.** Kjell's push, or a note in `RELEASE.md` that
+   `main` is the release and `dev_night` carries the docs since — say which.
+
+**Done when** the busy-crossing test discriminates (plant the `void node` back and watch it fail),
+`git ls-files reports/` lists no log and no `tmp/`, and the docs test is green.
+
 ## Order
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.
 
-**This lane is finished, 2026-09-08.** R4, T1, M2, M3, M4 done, and M1 merged **and pushed**
-(P57). A21 is closed: the Norwegian was read and passed. Nothing here is outstanding.
+**This lane was finished on 2026-09-08** — R4, T1, M2, M3, M4 done, and M1 merged **and pushed**
+(P57); A21 is closed. **The review of 2026-09-09 added M5**, four small fixes, which is the one
+thing outstanding here and goes before `workitems-measurement.md` D7.
 
 What came next was `workitems-measurement.md`, and its first item found what this lane could not:
 the frame-time governor, running on a real device for the first time, was giving up its entire

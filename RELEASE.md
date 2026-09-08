@@ -83,7 +83,7 @@ than that (Q64).
 
 ## What is missing, and known to be
 
-**19 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**17 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 
@@ -110,8 +110,8 @@ about:
   the two attempts to fix it with upkeep both bankrupted weak cities without touching rich ones.
 - Smaller ones, each with a note: the estimate's floor at the bottom of the LOD ladder (Q32), the
   two hidden faces of a building (Q39), whether a junction may move to keep a 15% grade (Q64),
-  the water surface being one unculled mesh (Q66), and a night frame spending 93% of its budget
-  on eight baked chunks (Q68).
+  and a night frame spending 93% of its budget on eight baked chunks at the close zoom (Q68).
+  The water surface (Q66) and the chunk bake time (Q71) were closed by measurement on 2026-09-09.
 
 ## Where everything is
 

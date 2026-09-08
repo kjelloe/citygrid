@@ -245,10 +245,95 @@ measurement and nothing else: no fix is started here.
 **Done when** the three questions carry a number from a map bigger than the one they were asked
 on, and `reports/perf/` has the two extra rows.
 
+## Review after D5 (2026-09-09)
+
+*Read on `dev_night` at `3dc1a22` (`main` is two commits behind it, both docs). Re-run by the
+reviewer: the suite twice (green), `gates.mjs quick` **411 s of 480, 12 of 12** (budget_gate 102 s,
+ui_smoke 101, a11y_smoke 45) and `gates.mjs render` **3 s of 120, 3 of 3** — all green. R4, T1, M1–M4, D1, D4, D6 and the desktop halves of D2 and D5 are **accepted**. R4's
+fix is the right one (the lane reads R3's graded profile by arc length and `lanes_dump` fails over
+0.3 m); T1's rule lives in one function and its null `traffic_gate` result is written up as what it
+is; D5's governor finding is the best thing a measurement has produced in this project and the
+frame target is now guarded in three places. Reading found one small defect and some housekeeping,
+which are **M5** in `workitems-mainline.md`; the two real defects D1 and D5 found in the traffic
+sim (Q69, Q76) and the missing `budget_gate` viewport (Q77) are **D7** and **D8** below, and
+neither needs a phone.*
+
+- **`traffic.busyAt(corridor, node)` ignores the node** (`void node`). It reports a crossing busy
+  when any car on EITHER of the corridor's two block links is within the gap of the end of its
+  link — and one of those links arrives at the far node, so a car that has already passed this
+  crossing and is approaching the next one holds the pedestrians here. Over-cautious, not unsafe:
+  crowds stand at give-way kerbs longer than the cars justify. Filter on `link.to === node`. → M5.
+- **Review logs and a `reports/tmp/` directory are tracked.** `reports/review3-*.log` (the
+  reviewer's own scratch, never meant for git) and `reports/tmp/r4-*.png` were committed in R4.
+  → M5.
+- **`RELEASE.md` is one measurement behind on three lines**: the frame at High quotes V8's
+  289,446 (still `budget_gate`'s street-zoom night row, but D5's re-measured `city 40t` night is
+  130,936 and the sentence should say which view it means); the model rebuild quotes 53.7 ms on a
+  128 `rolling` where D6 has 68.3 on a 128 `hilly` and 184.7 on 256; and "`main` … one slice
+  behind" is two. → M5, and the next release note.
+- **Q66 and Q71 are closed** (A52, A53): both were answered by numbers and neither wants a slice.
+  **Q64 and Q74 want Kjell**: is `hilly` a playable map or scenery? The recommendation is in Q64.
+
+## D7 — Traffic that is a function of the roads (S) — Q69, Q76
+
+**Goal.** The renderer-local traffic sim gives the same city on every machine and does not remember
+where the camera has been. Two defects, one rule.
+
+**Do.**
+- **Density by time, not by frame.** `client/life/traffic.js` fills a link at one car per link per
+  step; a 4090 at 60 fps reaches 4,590 cars on the fixture where SwiftShader reaches 1,546 in the
+  same warm-up (Q76). Spawn and despawn become a rate per second scaled by `dt` (the delta the
+  module already takes and ignores for density), so the equilibrium is a property of the load and
+  the cap, not of the frame rate.
+- **A link that leaves the view empties.** Cars are spawned only on screen (`onScreen`) and never
+  removed when the link leaves it, so a session that pans across a city carries every car it has
+  ever looked at: 1,546 → 9,222 across one sweep (Q69). Despawn off-screen links toward their
+  load-derived density with a grace of a few seconds, the same shape as the street cache's
+  `GRACE_MS`; on screen, nothing changes.
+- The cap stays a cap; `?life=0` still freezes; A45's yields are untouched.
+
+**Tests first.** `test/cars.test.js`: two runs of the same city at `dt = 1/60` and `dt = 1/10` for
+the same simulated seconds land within 10% of the same car count; a link that was on screen and is
+not for five seconds falls to its off-screen density; the total never exceeds the cap.
+
+**Gate.** `lanes_dump` prints the settled count at two step sizes. `tools/perf_card.mjs` re-run on
+SwiftShader: the `settled` column is true on more than three rows and the car count is within 10%
+of the 4090 card's on every row — that is the whole point. Every gate that counts cars
+re-baselines (`budget_gate`'s three car rows, the crowd row, the night row) and the dev-log carries
+before and after.
+
+**Must not change:** `engine/traffic.js`, any fixture hash, the IDM constants.
+
+## D8 — The desktop viewport in `budget_gate` (S) — Q77
+
+**Goal.** The most expensive thing the renderer builds appears in a city-zoom measurement on
+SwiftShader, so a regression in it goes red before a person sees it.
+
+**Do.**
+- `budget_gate` gains a second viewport for the city-mode rows: 2560×1440 at DPR 1.5 (the 4090's
+  configuration, where `tilePixels` makes the street chunks resolvable at span 20) beside the
+  existing 1280×720 at DPR 1. Only the High tier at spans 10 and 20 need the big viewport — four
+  rows, not thirty-two — because that is where the chunks live.
+- The expected numbers are already known from the card: eight live chunks, about 258k of 289k
+  triangles at `city 20t`. The row asserts chunks > 0 and the frame inside budget, and prints the
+  chunk share.
+- `client_smoke`'s draw-call cap (80) is checked at the big viewport too, once.
+
+**Tests.** `test/gates.test.js` unchanged; `test/lod.test.js`: `tilePixels` at 1440 px of canvas
+height and span 20 is above `RESOLVE.l3`, and at 720 px it is not — the two sides of the threshold
+Q77 names, as one assertion each.
+
+**Gate.** `budget_gate` green with the new rows; the `quick` set's time recorded (the big viewport
+on SwiftShader will be slow — if it adds more than a minute, the rows go to the `render` set).
+
 ## Order
 
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.
+
+**After the review of 2026-09-09:** M5 (`workitems-mainline.md`) → **D7 → D8** → then
+`workitems-film.md` F1 while the phone card is awaited. D3 and the rest of D5 start the day a phone
+card lands, and D7 must land before that card is compared with the desktop one.
 
 **Where this lane stands, 2026-09-08 (evening).** **D1, D4, D6 and the desktop half of D2 and D5
 are done.** The first real-device card found that the frame-time governor was giving up its entire

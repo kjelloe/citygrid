@@ -79,8 +79,8 @@ the file to open first.
 | Lane | What it is | Where it stands |
 |---|---|---|
 | `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **finished 2026-09-08** — merged and pushed, the runner and the checklist built, the Norwegian read and passed |
-| `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6 done and the desktop half of D2 and D5**; the first real card found the governor giving up its whole ladder at 60 fps. **The rest needs a phone card** — D3 and the last of D5 are blocked on it |
-| `workitems-film.md` | photo mode, tours, a demo film | not started |
+| `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6 done and the desktop half of D2 and D5**; the first real card found the governor giving up its whole ladder at 60 fps. D3 and the last of D5 wait on a phone card; **D7 and D8** (the review after D5) do not, and go first |
+| `workitems-film.md` | photo mode, tours, a demo film | not started; unblocked — the measurement lane's buildable half is done, so F1 follows D8 |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
@@ -390,18 +390,16 @@ by number from the code they create.
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
 | Q60 | When does the model derivation go per chunk — the number, again? | worker lane W3, with the 53.7 ms split |
 | Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
-| Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | measurement lane D6, the `hilly` row |
-| Q66 | The water surface is one unculled mesh for the whole map | measurement lane D6, on a 256-tile map |
+| Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | **Kjell**: is `hilly` playable? |
 | Q68 | A night frame at High spends 93% of its budget on eight baked chunks | measurement lane D3 and D2's phone card |
-| Q69 | Traffic only ever grows: a link filled while on screen is never emptied when it leaves | measurement lane D3, before any real-device card is believed |
+| Q69 | Traffic only ever grows: a link filled while on screen is never emptied when it leaves | measurement lane D7 |
 | Q70 | The saturated fixture generates no commutes, so its roads were empty until D1 seeded them | measurement lane D3/D6 |
-| Q71 | A street chunk bakes in 13 ms against an 8 ms budget | D2's phone card, measurement lane D3 |
 | Q72 | The saturated fixture is 1,129 copies of one building — right for cost, wrong for looks | measurement lane D6, or the first slice needing a realistic city cheaply |
 | Q73 | Three-quarters of a played city's zoned ground is empty, and empty zoning reads as asphalt | the film lane's photo mode, or a balance pass |
-| Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | whenever `hilly` stops being decorative |
+| Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | **Kjell**, with Q64 |
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
-| Q76 | Traffic fills per frame, so two machines measure two different cities | measurement lane D3, or the first slice needing two devices to agree |
-| Q77 | No SwiftShader measurement has ever drawn a street chunk at city zoom — the headless viewport is too small | measurement lane D3, plus a budget_gate row |
+| Q76 | Traffic fills per frame, so two machines measure two different cities | measurement lane D7 |
+| Q77 | No SwiftShader measurement has ever drawn a street chunk at city zoom — the headless viewport is too small | measurement lane D8 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan
