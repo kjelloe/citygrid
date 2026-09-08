@@ -530,9 +530,15 @@ multiplayer it is one room-wide setting; per-player handicaps are explicitly out
 
 ## 6. Rendering (three.js)
 
-*Superseded 2026-09-05 by `specs/engine/` (cityviewer, rulings 032–040): perspective play
+*Superseded 2026-09-05 by `specs/engine/` (cityviewer, rulings 032–041): perspective play
 camera, a derived city model, four fidelity levels, the painted style. The bullets below
 describe the renderer as built through N30 and stay as its record.*
+
+***Built and measured, 2026-09-08.*** The cityviewer lane is twenty of twenty done
+(`workitems-cityviewer.md`). The budgets this section predicted were replaced by measured ones in
+E5 and are in `data/cityviewer.json` — **40,000 / 140,000 / 320,000** triangles for Low, Medium
+and High (ruling 040). `RELEASE.md` carries the frame numbers; every one of them is SwiftShader,
+and nothing here has run on a phone.
 
 - **Camera**: orthographic, low-isometric, 4 snapped yaw angles with eased rotation, clamped
   pitch, zoom-to-cursor. `focusOn(x, y)` with interpolation — notifications, incidents and
@@ -709,6 +715,12 @@ screenshot diffing.
 
 **`plan-v1.md` is the authority for execution order, slice contents and definitions of done.**
 The table below is the summary view kept with the architecture.
+
+***Where this stands, 2026-09-08.*** Waves 0–4 and the cityviewer renderer lane are complete and
+merged into `main` (93 commits, one per slice). Wave 5 is deliberately not started: ruling 003
+holds it behind the singleplayer MVP being *accepted*, which is a playtest. What follows is
+`workitems-mainline.md`, then measurement, film and the worker — see `plan-v1.md`'s Progress
+section and `RELEASE.md`.
 
 Two lanes. The engine lane must land **ownership before the second command exists** — retrofitting
 an owner check into a reducer is how permission bugs get born.

@@ -71,7 +71,14 @@ no set names.
 
 **Done when** `node tools/gates.mjs quick` is green on `main` and its time is in the dev-log.
 
-## M3 — The release checklist (S)
+## M3 — The release checklist (S) — **done 2026-09-08 as `slice-M3`**
+
+`RELEASE.md` at `36aeefb`: era 1, the tier table, the three gate sets and their measured times,
+a frame at High, and what is known to be missing. `test/docs.test.js` gains five checks — the
+SHA is a real commit, the drift from `HEAD` is a printed NOTE rather than a failure (as the item
+asked), the tier budgets come from `data/cityviewer.json`, and the open-question count has to
+equal `dev-questions.md`'s. `plan-v1.md`'s Progress rewritten; `specs/plan.md` §6 and §9 pointed
+at it.
 
 **Goal.** A page that says what the game is at this commit, for a player and for the next
 developer.
@@ -108,3 +115,9 @@ when it is stale).
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.
+
+**Where this lane stands, 2026-09-08.** R4, T1, M2, M3 done; M1 merged locally and **not pushed**
+(`git push origin main` is the one step left, and it is the half the item marks "needs Kjell").
+**M4 is next and cannot be finished without Kjell** — its "done when" is him returning the table.
+The tool and the test can be built ahead of that, and the lane after this one is
+`workitems-measurement.md`, whose first item is the largest gap in the project.

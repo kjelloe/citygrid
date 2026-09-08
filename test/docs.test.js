@@ -263,3 +263,64 @@ test("the README names every gate a slice has to run", () => {
     assert.match(readme, new RegExp(`tools/${gate}`), `the README does not name ${gate}`);
   }
 });
+
+// --- the release page (slice M3) ---------------------------------------------
+//
+// A page that says what the game IS at this commit, for a player and for the
+// next developer. The rest of the documents say what it is meant to be; this one
+// says what was true when somebody last looked, which is a different claim and
+// the only one a reader can check.
+
+test("RELEASE.md exists and names the commit it describes", () => {
+  assert.ok(docExists("RELEASE.md"), "there is no release page");
+  const release = readDoc("RELEASE.md");
+  assert.match(release, /^- \*\*Commit:\*\* `[0-9a-f]{7,40}`/m,
+    "the release page does not name a commit");
+});
+
+test("the release page's commit is a commit that exists", () => {
+  // Not "is HEAD": the page is written at the release commit and every commit
+  // after it makes the page one older, which is normal and not a failure. What
+  // would be a lie is a SHA that is not in the history at all.
+  const sha = /^- \*\*Commit:\*\* `([0-9a-f]{7,40})`/m.exec(readDoc("RELEASE.md"))[1];
+  const known = execFileSync("git", ["cat-file", "-t", sha], { cwd: repoRoot, encoding: "utf8" }).trim();
+  assert.equal(known, "commit", `${sha} is a ${known}, not a commit`);
+});
+
+test("the release page says how far behind HEAD it is, or warns", () => {
+  // A WARNING, not a failure, exactly as M3 asks. A stale release page is a
+  // normal state — it is stale the moment the next slice lands — and a test
+  // that goes red for it would be re-dated rather than read.
+  const sha = /^- \*\*Commit:\*\* `([0-9a-f]{7,40})`/m.exec(readDoc("RELEASE.md"))[1];
+  const behind = Number(execFileSync("git", ["rev-list", "--count", `${sha}..HEAD`],
+    { cwd: repoRoot, encoding: "utf8" }).trim());
+  if (behind > 0) {
+    console.log(`      note: RELEASE.md describes ${sha}, ${behind} commit(s) behind HEAD`);
+  }
+  assert.ok(Number.isFinite(behind));
+});
+
+test("the release page carries the numbers a reader would otherwise have to run", () => {
+  const release = readDoc("RELEASE.md");
+  for (const wanted of ["./run.sh", "./test.sh", "gates.mjs", "era 1", "dev-log.md"]) {
+    assert.ok(release.includes(wanted) || release.includes(wanted.replace("./", "")),
+      `the release page never mentions ${wanted}`);
+  }
+  // The tier budgets, which are the numbers every other measurement is against.
+  const tiers = JSON.parse(readFileSync(join(repoRoot, "data", "cityviewer.json"), "utf8")).tiers;
+  for (const [name, tier] of Object.entries(tiers)) {
+    assert.ok(release.includes(tier.budget.toLocaleString("en-GB")) || release.includes(String(tier.budget)),
+      `the release page does not carry the ${name} tier's budget of ${tier.budget}`);
+  }
+});
+
+test("the release page's open-question count matches dev-questions.md", () => {
+  // The one number on the page that rots silently: "what is known to be
+  // missing" is a count of the open list, and the open list grows every slice.
+  const open = readDoc("dev-questions.md").split("# OPEN QUESTIONS")[1]
+    .match(/^\| \*\*Q\d+\*\*/gm).length;
+  const claimed = /(\d+)\s+open questions/i.exec(readDoc("RELEASE.md"));
+  assert.ok(claimed, "the release page does not say how many questions are open");
+  assert.equal(Number(claimed[1]), open,
+    `the page says ${claimed[1]} open questions and dev-questions.md has ${open}`);
+});

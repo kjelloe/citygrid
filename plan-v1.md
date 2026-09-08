@@ -56,67 +56,43 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 
 ## Progress
 
-*Updated 2026-08-29 after the P18 audit. Slice numbers below are the N-series in
-"The next ten slices"; the wave tables are what they map onto.*
+*Rewritten 2026-09-08 at `36aeefb`, the release commit (`RELEASE.md`).*
 
-**Waves 0–3 are complete.** 0.1–0.4, 1.1–1.5, 2.1–2.6, 3.1–3.4, plus the
-renderer and the style decision (N1, N2 / ruling 022). Era 1 is pinned
-(`reports/balance-era1.md`, 200 games × 4 configurations).
+**`main` is the game.** `dev_night` fast-forwarded into it on 2026-09-08: 93 commits, one per
+slice, no squash and no merge commits. `RELEASE.md` says what is true at that commit and carries
+the measured numbers; this file stays the plan.
 
-**Wave 4 is complete.** 4.1 (HUD, overlays, minimap), 4.2 (advisor and quest
-engine), 4.3 (**20 quests** and the acceptance script), 4.4 (audio), 4.5
-(accessibility **and** the PWA half), 4.6 (statistics). **Wave 0 is finally
-complete too** — 0.4's fixture half was built in N17, having been marked done
-with an empty `test/fixtures/` for the life of the project.
+**Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
+(`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
+is pinned (`reports/balance-era1.md`, 200 games × 4 configurations).
 
-**The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as
-an automated script on desktop and on a 390×844 phone.
+**The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as an automated
+script on desktop and on a 390×844 phone.
 
-**Wave 5 has NOT been started, deliberately.** Ruling 003 holds it behind the
-singleplayer MVP being *accepted*, and acceptance is Kjell's playtest, not a
-green suite. `playtest-notes.md` is the file to open first.
+**Wave 5 has NOT been started, deliberately.** Ruling 003 holds it behind the singleplayer MVP
+being *accepted*, and acceptance is Kjell's playtest, not a green suite. `playtest-notes.md` is
+the file to open first.
 
-**The §24 release gate passes 13 of 13** (`tools/mvp_acceptance.mjs`), driving
-the real page by pointer on desktop and a 390×844 phone.
+**What follows, in order** — the mainline lane first, because everything else should land on
+`main`:
 
-**What the audit found is missing from a *playable* game**, none of which the
-§24 criteria ask about:
+| Lane | What it is | Where it stands |
+|---|---|---|
+| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | M1 merged (not pushed), M2 and M3 done; **M4 next, and it needs Kjell** |
+| `workitems-measurement.md` | real-device numbers and the reference compare | not started — and its first item is the largest gap in the project |
+| `workitems-film.md` | photo mode, tours, a demo film | not started |
+| `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
 
-- ~~No new-game screen~~ — **built in N12.** Size, difficulty, terrain, water,
-  disasters and seed are chosen by pointer; a URL naming a seed still opens that
-  exact city.
-- ~~Quest text is not localised~~ — **done in N12.** 310 keys per catalogue.
-  Norwegian is drafted, not reviewed (A21).
-- ~~No settings screen~~ — **built in N13**: language, high contrast, reduced
-  motion. Sound and visual style are deliberately not offered — there is no
-  audio, and ruling 022 settled the style, so both would be controls that change
-  nothing.
-- ~~No city or mayor name~~ — **built in N21.**
-- ~~Department funding (§9.4) does not exist~~ — **built in N20.**
-- `client/capabilities.js`'s `deviceClass` and `isCoarsePointer` are still
-  unused; `recommendedMapSize` and `sizeAdvice` were revived by N12.
-- **Exports with no importer**, swept 2026-09-05. Most are used inside their own
-  module and merely need not be exported; three are worth naming. `deleteSave`
-  (`client/storage/db.js`) has no control — deliberate, since the three save
-  slots are fixed and always overwritable, and N5's comment says the slice's job
-  is "not that it has a file manager". `markDirty` (`client/render/terrain.js`)
-  is dead because `worldChanged()` marks every chunk; that is now load-bearing
-  rather than wasteful, since N30 paints roads into the mesh, but a build action
-  still costs a full terrain rebuild (~12 ms measured on 128×128). `compatible`
-  (`shared/protocol.js`) is the multiplayer version handshake and belongs to
-  slice 5.1.
-- **`test/reachability.test.js`'s `NOT_YET` is the live inventory** of strings
-  the catalogue promises and no screen keeps — 24 keys, each naming its slice.
-  Ruling 027 makes an unlisted one a red suite.
-- ~~The fixtures do not exist~~ — **built in N17.** Three fixtures, a runner
-  that checks every step, a repin tool that demands a reason, and the second
-  copy of the hashed-field list in `test/fixture.test.js`.
-- **Tree density** is a worldgen option with no row on the new-game screen —
-  one entry in `ROWS` when it is wanted.
+**The largest gap, stated plainly:** every performance number in this project is SwiftShader.
+The frame-time governor exists to decide what a phone gives up and has never run on a phone.
 
-**Settled balance debts:** pollution averaging fixed; industrial demand settled
-by measurement; **runaway treasuries accepted with numbers**, not tuned away
-(median 1.9M by year 25). See the N8 row and `playtest-notes.md`.
+**What the P18 audit found missing from a *playable* game** was closed over N11–N21: the new-game
+screen, quest localisation, the settings screen, city and mayor names, and department funding all
+exist. What is left of that list is small and each item names its slice in `dev-questions.md`.
+
+**Settled balance debts:** pollution averaging fixed; industrial demand settled by measurement;
+**runaway treasuries accepted with numbers**, not tuned away (median 1.9M by year 25). See the N8
+row and `playtest-notes.md`.
 
 ## The slice ritual
 

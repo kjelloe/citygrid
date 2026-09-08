@@ -4281,3 +4281,40 @@ disaster_soak 76 s.
 **Not pushed.** The item's last line is "push both", and that publishes 55 commits to a shared
 remote; the item is marked "needs Kjell" and this is the half that does. The command is
 `git push origin main` from a tree that is already green on it.
+
+## slice-M3 — the release checklist (2026-09-08)
+
+`workitems-mainline.md` M3. A page that says what the game IS at this commit, for a player and
+for the next developer — every other document says what it is meant to be.
+
+**`RELEASE.md`** carries the commit (`36aeefb`), era 1, the tier table, the three gate sets with
+their measured times (quick 380 s, render 3 s, sim 595 s), a frame at High (289,446 of 320,000 at
+night), what is known to be missing, and how to run it. The "missing" section is the honest half:
+nothing has been measured on a real device, the simulation is on the render thread, multiplayer
+is not started, Norwegian is drafted and not reviewed, and treasuries run away by design.
+
+**`test/docs.test.js` gains five checks**, and the shape of them is the point:
+
+- the page names a commit, and that SHA is a commit that exists in the history;
+- how far behind `HEAD` it is is **printed as a note, not failed** — M3 asked for a warning, and
+  it is right: a release page is stale the moment the next slice lands, and a test that goes red
+  for that gets re-dated rather than read;
+- it carries the tier budgets from `data/cityviewer.json`, so the one table a reader is most
+  likely to trust cannot drift from the data;
+- and its open-question count equals `dev-questions.md`'s — the one number on the page that would
+  otherwise rot in silence, because the open list grows every slice.
+
+**`plan-v1.md`'s Progress section** rewritten for the merged state: `main` is the game, Waves 0–4
+and cityviewer complete, Wave 5 gated on a playtest by ruling 003, and a table of the four lanes
+that follow with where each stands. **`specs/plan.md` §6 and §9** get a pointer each rather than a
+rewrite — §6 now says the predicted budgets were replaced by measured ones (40k/140k/320k) and §9
+says where the waves stand.
+
+**Measured.** Suite green twice; `gates.mjs quick` **375 s** of 480, twelve gates, no leaked
+browsers.
+
+**What failed on the way.** Two of the five checks were written to assert something no reader
+would want: the first wanted the page to mention the word "RELEASE" (it *is* RELEASE.md), and the
+second wanted an open-question count the page had written out in words — "Ten questions are open"
+— which is exactly the form that rots without anything noticing. The page says **10** now, in
+digits, because the test is what keeps the number true.
