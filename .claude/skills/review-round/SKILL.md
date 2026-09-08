@@ -60,7 +60,14 @@ you changed — or state plainly that nothing needed changing, which is a valid 
 - **Is the CONTENT at the volume the slice asked for?** A shortfall is invisible in a green suite —
   content that has not been written looks exactly like content whose conditions have not been met.
   Count it (`test/quests.test.js` counts quests per category against slice 4.3).
-- **Does a data file carry prose where it should carry an i18n key?** `t()` returns its own
+- **Key parity is not translation.** Every English string having a Norwegian one has been true
+since slice 4.2 and says nothing about whether the Norwegian is any good: `t()` returns its own
+argument on a miss, so a complete catalogue can still be English. The check that can see it is
+"no value is byte-identical to its English", with an allow-list carrying a REASON per entry — and
+the same question applies to any data file outside the catalogue (`data/names.json`'s shop names
+were outside it and nothing had ever looked at them). M4.
+
+**Does a data file carry prose where it should carry an i18n key?** `t()` returns its own
   argument on a miss, so English ships as its own translation and nothing goes red. The check is a
   test that refuses the raw field, not a test that the key resolves.
 - Do the doc-consistency tests still pass? `test/docs.test.js` is what keeps this checklist honest.

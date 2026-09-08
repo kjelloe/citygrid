@@ -96,7 +96,18 @@ developer.
 HEAD` at the time of the release commit (a test that reads the file's SHA and warns, not fails,
 when it is stale).
 
-## M4 — The Norwegian pass (S, Kjell reviews)
+## M4 — The Norwegian pass (S, Kjell reviews) — **the table is ready; the pass is Kjell's**
+
+`node tools/i18n_review.mjs` writes `reports/i18n-review.md` — 414 strings with the English, the
+Norwegian and the slice that added them (280 from the initial commit, 67 from 0.1, 21 from N21,
+the rest across ten more). Kjell edits the Norsk column; `--apply` writes it back and refuses the
+whole file rather than applying the rows it could parse. `test/i18n.test.js` holds the other
+half: no Norwegian value may equal its English except on an allow-list with a reason each (10
+entries, all genuine), and two more checks keep that list from rotting. It also found something
+nothing was watching — `data/names.json`'s shop names, which are outside the catalogue entirely.
+
+**Still open**, and it stays open until Kjell has returned the table. That is A21's own
+definition.
 
 **Goal.** Every string a Norwegian player reads has been read by a Norwegian.
 
@@ -118,6 +129,7 @@ the merge because it names the SHA; the Norwegian pass whenever Kjell has an hou
 
 **Where this lane stands, 2026-09-08.** R4, T1, M2, M3 done; M1 merged locally and **not pushed**
 (`git push origin main` is the one step left, and it is the half the item marks "needs Kjell").
-**M4 is next and cannot be finished without Kjell** — its "done when" is him returning the table.
-The tool and the test can be built ahead of that, and the lane after this one is
-`workitems-measurement.md`, whose first item is the largest gap in the project.
+**M4's tool, test and table are built** (2026-09-08) and the pass itself waits on Kjell: A21 is
+open until he has returned `reports/i18n-review.md`. **The lane is otherwise done.** What comes
+next is `workitems-measurement.md`, whose first item — a real device, and the frame-time governor
+running on one — is the largest gap in the project.

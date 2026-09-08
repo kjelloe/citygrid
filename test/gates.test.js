@@ -98,3 +98,18 @@ test("README names the runner rather than a list that drifts", () => {
     assert.match(readme, new RegExp(`gates\\.mjs ${set}`), `the README does not name the "${set}" set`);
   }
 });
+
+// --- tools that are not gates (slice M4) -------------------------------------
+
+test("a tool that is not a gate is not expected to be in a set", () => {
+  // `i18n_review.mjs` writes a table for a person to read and writes their
+  // edits back; `screenshot.mjs`, `serve.mjs` and `repin.mjs` are the same
+  // shape. None of them passes or fails, so none belongs in a set — and the
+  // naming convention above (`_smoke`, `_gate`, `_soak`) is what keeps that
+  // distinction from being a matter of memory.
+  for (const tool of ["i18n_review", "screenshot", "serve", "repin", "make_precache", "play_shot"]) {
+    assert.equal(SETS.all.includes(tool), false, `${tool} is in a gate set`);
+    assert.equal(/_(smoke|gate|soak)$/.test(tool), false,
+      `${tool} is named like a gate but is not one`);
+  }
+});

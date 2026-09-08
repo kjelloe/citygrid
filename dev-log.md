@@ -4318,3 +4318,41 @@ would want: the first wanted the page to mention the word "RELEASE" (it *is* REL
 second wanted an open-question count the page had written out in words — "Ten questions are open"
 — which is exactly the form that rots without anything noticing. The page says **10** now, in
 digits, because the test is what keeps the number true.
+
+## slice-M4 — the Norwegian table, ready to review (2026-09-08)
+
+`workitems-mainline.md` M4. **Half of it: the half that is mine.** Its "done when" is Kjell
+returning the table, so this is the tool, the test and the table — not the pass itself.
+
+**The check that was missing.** Key parity has been enforced since slice 4.2 and it is the wrong
+question on its own: `t()` returns its own argument on a miss, so a catalogue can be complete and
+still be English. `test/i18n.test.js` now refuses any Norwegian value byte-identical to its
+English unless it is on `SAME_IN_BOTH` with a reason. **Ten are**, and every one is real —
+*Standard*, *Region*, *Park*, *Storm*, *Auto* (twice), *Retro*, the game's own name, and a string
+that is nothing but an interpolation token. Two more checks keep the list honest in the other
+direction: an entry for a string since translated, or for a key that is gone, is red.
+
+**And one nothing was watching at all.** `data/names.json`'s shop names are not in the i18n
+catalogue — R2 gave them `{en, no}` (A40) and no test has ever looked at them. 2 of 18 are the
+same in both (*Deli*, *Pizzeria*, which are the same word in Norwegian); the check fails if a
+third of them ever are.
+
+**`tools/i18n_review.mjs`** writes `reports/i18n-review.md`: 414 strings, each with the English,
+the Norwegian, and **the slice that added it** — 280 came in the initial commit, 67 in slice 0.1,
+21 in N21, and the rest in ones and twos across thirteen slices. A batch from one slice shares a
+voice and usually a mistake, so they are worth reading together. `--apply` reads the edited table
+back.
+
+**The round trip is the part worth being careful about**, and it was tested by doing it: editing
+one cell applies one change and names it; a row with a column missing and a row with an empty
+Norwegian are both refused, and **the whole file is refused, not the rows it understood** — a
+tool that applies what it could parse and drops the rest leaves a catalogue nobody can reason
+about and a reviewer with no way to tell.
+
+**Measured.** Suite green twice. `test/gates.test.js` gains a check that a tool which is not a
+gate is not expected to be in a set: `i18n_review.mjs` produces a document for a person, not a
+pass or a fail, and the `_smoke`/`_gate`/`_soak` naming is what keeps that distinction from being
+a matter of memory.
+
+**Not done.** A21 stays open until Kjell has read the table. That is the item's own definition
+and no amount of tooling closes it.
