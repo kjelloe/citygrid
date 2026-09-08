@@ -94,6 +94,18 @@ for (const row of card.steps) {
   if (row.frames < 2) problems.push(`${row.step}: ${row.frames} frame(s) sampled`);
   if (!(row.triangles > 0)) problems.push(`${row.step}: ${row.triangles} triangles`);
   if (row.entered === false) problems.push(`${row.step}: never reached street mode`);
+  // Not a failure — a slow machine legitimately cannot reach the same city
+  // inside the warm-up — but it has to be said out loud, or two cards get put
+  // in one table and compared as though they were of the same place (D2).
+  if (row.thinSample) {
+    console.warn(`  note  ${row.step}: only ${row.frames} frames in the hold — the governor's `
+      + `window is 60 and its floor is 10, so this row did not test it, and its p95 is `
+      + `a percentile over ${row.frames} numbers`);
+  }
+  if (row.settled === false) {
+    console.warn(`  note  ${row.step}: the city was still filling after `
+      + `${row.settleFrames} frames (${row.settleS}s) — ${row.cars} cars is not an equilibrium`);
+  }
 }
 
 card.renderer = "swiftshader (headless chromium)";

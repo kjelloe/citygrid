@@ -102,14 +102,19 @@ node tools/screenshot.mjs      # one shot; ?style= ?time= ?street= ?streets= ?fr
 ```sh
 node tools/perf_card.mjs       # the frame sweep -> reports/perf/swiftshader.json (70 s)
 node tools/perf_card.mjs --map big     # ...on 256x256, or `--map steep` for 128 hilly
+node tools/perf_report.mjs     # every card in reports/perf/*.json -> reports/perf/README.md
 node tools/compare_sheet.mjs   # City Grid beside the references -> reports/compare-transport-worlds.png
 node tools/i18n_review.mjs     # every string, its slice and its Norwegian -> reports/i18n-review.md
 ```
 
 `?perf=1` on the real page runs the same sweep on the device you are holding and ends with a
 **Copy** button. Nothing is sent anywhere — the numbers leave the device only if you paste them.
+Paste the card into `reports/perf/<device>.json` and `perf_report.mjs` picks it up.
+
 Frame times from `perf_card.mjs` are SwiftShader and mean nothing about a phone; the triangles,
-draw calls and the LOD ladder's decisions are true everywhere.
+draw calls and the LOD ladder's decisions are true everywhere. **This is not a formality** — the
+first card from real hardware found that the frame-time governor had been giving up its entire
+quality ladder on any machine locked to its refresh rate, silently, since V2.
 
 **Soaks** (slow, and the only honest way to talk about balance):
 

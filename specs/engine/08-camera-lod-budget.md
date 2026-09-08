@@ -102,7 +102,9 @@ The render-measure-step-down loop in `scene.js` stays the promise. Three costs s
 
 - **Post passes** - fill rate, invisible to a triangle counter. V2's frame-time governor: a
   rolling p95 frame time; if it exceeds the tier's target for a second, disable the most
-  expensive optional pass (ink, then shadows, then supersample) and remember the choice.
+  expensive optional pass (pixel, then ink, then shadows, then supersample) and remember the
+  choice. **The target is a threshold above the refresh interval, never the interval itself** —
+  see the tier table below and ruling 040's 2026-09-08 amendment.
 - **Chunk builds** - CPU, one-off. Bounded by "one chunk per frame, nearest first" and by the
   L3 radius the tier allows (Low: none, Medium: 4 chunks, High: 9).
 - **Shadow pass** - counted once by three's counter (N30 measured it), still GPU work; already a
@@ -110,17 +112,26 @@ The render-measure-step-down loop in `scene.js` stays the promise. Three costs s
 
 Tiers (V2), defaulted from `deviceClass()`:
 
-| Tier | Budget | L3 | Cars | Shadows | Post |
-|---|---|---|---|---|---|
-| Low (phone-weak) | 40k | none | capped 60 | off | none |
-| Medium (phone / weak desktop) | 140k | 4 chunks, day only | capped 200 | soft | pixel only |
-| High (desktop) | 320k | 9 chunks | uncapped | soft, following frustum | any |
+| Tier | Budget | Frame target | L3 | Cars | Shadows | Post |
+|---|---|---|---|---|---|---|
+| Low (phone-weak) | 40k | 40 ms | none | capped 60 | off | none |
+| Medium (phone / weak desktop) | 140k | 40 ms | 4 chunks, day only | capped 200 | soft | pixel only |
+| High (desktop) | 320k | 20 ms | 9 chunks | uncapped | soft, following frustum | any |
 
 The Medium and High numbers were 80k and 200k until E5. They were set in V2, before L3 existed,
 and a chunk of real facades is 25.7k triangles — nine of them is 200k on its own. Measured on a
 saturated city at street level: a High frame is ~316k, a Medium one ~130k. Low is unchanged
 because Low has no street chunks at all. The frame-time governor is still what protects a device;
 the triangle budget only decides what gets sacrificed first.
+
+The frame targets were 33, 33 and **16** ms until D5 (2026-09-08) — the refresh intervals
+themselves, so `p95 <= target` was false forever on any machine locked to its rate and the
+governor spent its entire ladder on an RTX 4090 holding a flat 16.7 ms. They now carry a fifth of
+a frame of headroom over the rate each aims at.
+
+**None of these budgets has been measured on a device that struggles.** One real card exists
+(`reports/perf/desktop-4090.json`) and it never worked hard; the phone the Low and Medium rows were
+designed for has still never drawn a frame (`workitems-measurement.md` D2, D3).
 
 The budget gate runs at all three and at both projections; a saturated fixture at street level
 is the case that has never been measured.

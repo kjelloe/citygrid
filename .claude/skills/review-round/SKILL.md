@@ -304,6 +304,23 @@ same empty roads and every screenshot in `reports/` has no moving car in it. Fou
 putting the picture next to one that had cars. The check is the same one as everywhere else in
 this file: **assert the effect, not the setting**.
 
+**The gate's viewport is a configuration too.** Every headless gate in this project runs
+1280×720 at DPR 1. Street chunks are gated on resolvability and `tilePixels` is a function of
+canvas height, so at that size the ladder drops them — and the most expensive thing the renderer
+builds (258,536 of 289,086 triangles, 90% of the High budget) had **never once appeared in a
+city-zoom measurement** until a real 2560×1305 screen at DPR 1.5 drew it (Q77). When a subsystem
+is gated on a threshold, ask which side of that threshold the gate's own window sits on.
+
+**An instrument that never gets enough input never speaks, and silence reads as "fine".** The
+frame-time governor was giving up its entire quality ladder on an RTX 4090 at a locked 60 fps —
+because every tier's target was the *refresh interval* (16 ms against a 16.666 ms frame) rather
+than a threshold above it, so a machine hitting its target exactly was judged to be missing it,
+forever. It was invisible for eight months because the only machine ever measured was SwiftShader,
+which drew **5 to 26 frames in a five-second hold** while the governor ignores its first 10 samples
+and averages over 60. Not an instrument pointed at nothing — an instrument that was never handed
+enough to say anything. Ask of any threshold: **what value does the real hardware actually
+produce, and is my threshold on the wrong side of it by a fraction?**
+
 **A gate that has only ever been run on one input has only ever tested one input.**
 `walkthrough` had run on `rolling` terrain for its whole life because the fixture could not make
 anything else. Given the option in D6, it failed on `hilly` immediately: 80 places where the

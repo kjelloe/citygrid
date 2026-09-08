@@ -4,8 +4,8 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `d112382` on `dev_night`, the end of the mainline lane. `main` is at `36aeefb`
-  and fast-forwards to it; **neither has been pushed** — that is Kjell's to do.
+- **Commit:** `2f26532` on `dev_night`, the end of `workitems-measurement.md`'s buildable half.
+  `main` fast-forwards to it and was **pushed on 2026-09-08**.
 - **Date:** 2026-09-08
 - **Balance era:** era 1, tuned 2026-08-29 over 200 games per configuration
   (`reports/balance-era1.md`). Numbers from era 0 are void, not roughly comparable.
@@ -48,11 +48,15 @@ here has run on a phone, and the frame-time governor exists for phones — see "
 **The triangle budget** (`data/cityviewer.json`, ruling 040 — the tier changes rendering only,
 never the simulation):
 
-| Tier | Triangles | Street chunks | Cars | People | Lamps | Post |
-|---|---|---|---|---|---|---|
-| Low | 40,000 | none | 60 | 0 | 0 | — |
-| Medium | 140,000 | 4 | 200 | 40 | 5 | pixel |
-| High | 320,000 | 9 | uncapped | 120 | 8 | pixel, ink |
+| Tier | Triangles | Frame target | Street chunks | Cars | People | Lamps | Post |
+|---|---|---|---|---|---|---|---|
+| Low | 40,000 | 40 ms | none | 60 | 0 | 0 | — |
+| Medium | 140,000 | 40 ms | 4 | 200 | 40 | 5 | pixel |
+| High | 320,000 | 20 ms | 9 | uncapped | 120 | 8 | pixel, ink |
+
+The frame targets are thresholds with headroom, not refresh intervals: 20 ms is 60 fps with a fifth
+of a frame of room, 40 ms is 30 fps with the same. They were the intervals themselves until D5,
+which is what made the governor spend its whole ladder on a machine hitting 60 fps exactly.
 
 **The gates**, all green, through the runner (`node tools/gates.mjs <set>`):
 
@@ -79,27 +83,29 @@ than that (Q64).
 
 ## What is missing, and known to be
 
-**16 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**19 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 
-- **Nothing has been measured on a real device.** Every number above is SwiftShader. The
-  governor — the thing that decides what a phone gives up — has never run on one. This is still
-  the largest gap in the project, but it now has an instrument: `?perf=1` runs a nine-step frame
-  sweep on whatever device the page is open on and ends with a **Copy** button, and
-  `node tools/perf_card.mjs` runs the same sweep here (70 s, `reports/perf/swiftshader.json`).
-  The SwiftShader baseline is 83 to 350 ms p50 — 3 to 12 fps of software rendering. What is
-  missing is somebody pressing the button on real hardware (`workitems-measurement.md` D2).
+- **One real device has been measured, and no phone has.** `?perf=1` runs a nine-step frame sweep
+  on whatever device the page is open on and ends with a **Copy** button; every card in
+  `reports/perf/` is folded into `reports/perf/README.md`. The RTX 4090 card holds a flat 16.7 ms
+  p50 across the whole sweep, and **finding that took four minutes to expose a defect eight months
+  of software rendering could not**: the frame-time governor was giving up its entire quality
+  ladder on any machine locked to its refresh rate, because each tier's target was the refresh
+  interval rather than a threshold above it. Fixed. What is still missing is a phone — the tier
+  budgets and the governor's trigger are both tuned against a machine that has never struggled
+  (`workitems-measurement.md` D2, D3, D5).
 - **The simulation is on the render thread.** `specs/plan.md` §0 says "always a Web Worker" and
   `worker/` is empty. A 53.7 ms model rebuild sits beside a 4 ms tick (Q60).
 - **Multiplayer is not started.** Ruling 003 holds Wave 5 behind the singleplayer MVP being
   *accepted*, and acceptance is a playtest, not a green suite. The seam is built in — commands
   cross the wire, not state — and nothing has crossed it yet. The territory overlay has no
   control because it is a multiplayer view (Q61).
-- **Norwegian is drafted, not reviewed** (A21). Key parity is enforced by test and so is the
-  harder question — no Norwegian string may be byte-identical to its English without a reason on
-  a list — but the words have not been read by a Norwegian. The table is ready:
-  `reports/i18n-review.md`, 414 strings with the slice that added each one.
+- **Norwegian is reviewed** (A21, closed 2026-09-08). Key parity is enforced by test and so is the
+  harder question — no Norwegian string may be byte-identical to its English without a reason on a
+  list — and the 414 strings have now been read by a Norwegian and passed with no corrections.
+  `node tools/i18n_review.mjs` regenerates the table whenever a slice adds more.
 - **Treasuries run away** — median 1.9M by year 25. Accepted with numbers rather than tuned away;
   the two attempts to fix it with upkeep both bankrupted weak cities without touching rich ones.
 - Smaller ones, each with a note: the estimate's floor at the bottom of the LOD ladder (Q32), the

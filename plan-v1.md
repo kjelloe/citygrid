@@ -58,9 +58,9 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 
 *Rewritten 2026-09-08 at `36aeefb`, the release commit (`RELEASE.md`).*
 
-**`main` is the game.** `dev_night` fast-forwarded into it on 2026-09-08: 93 commits, one per
-slice, no squash and no merge commits. `RELEASE.md` says what is true at that commit and carries
-the measured numbers; this file stays the plan.
+**`main` is the game, and it is pushed.** `dev_night` fast-forwarded into it on 2026-09-08 and
+Kjell published it: one commit per slice, no squash and no merge commits. `RELEASE.md` says what is
+true at that commit and carries the measured numbers; this file stays the plan.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
@@ -78,8 +78,8 @@ the file to open first.
 
 | Lane | What it is | Where it stands |
 |---|---|---|
-| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | M1 merged (not pushed), M2 and M3 done; **M4's table is ready and the pass itself needs Kjell** |
-| `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4 and D6 done**; **D2, D3 and D5 all need Kjell's hardware** — the lane is otherwise finished |
+| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **finished 2026-09-08** — merged and pushed, the runner and the checklist built, the Norwegian read and passed |
+| `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6 done and the desktop half of D2 and D5**; the first real card found the governor giving up its whole ladder at 60 fps. **The rest needs a phone card** — D3 and the last of D5 are blocked on it |
 | `workitems-film.md` | photo mode, tours, a demo film | not started |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
 
@@ -399,6 +399,9 @@ by number from the code they create.
 | Q72 | The saturated fixture is 1,129 copies of one building — right for cost, wrong for looks | measurement lane D6, or the first slice needing a realistic city cheaply |
 | Q73 | Three-quarters of a played city's zoned ground is empty, and empty zoning reads as asphalt | the film lane's photo mode, or a balance pass |
 | Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | whenever `hilly` stops being decorative |
+| Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
+| Q76 | Traffic fills per frame, so two machines measure two different cities | measurement lane D3, or the first slice needing two devices to agree |
+| Q77 | No SwiftShader measurement has ever drawn a street chunk at city zoom — the headless viewport is too small | measurement lane D3, plus a budget_gate row |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

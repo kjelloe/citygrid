@@ -4516,7 +4516,16 @@ fixture, `<size> <terrain>` on `walkthrough`, `passability` and `lanes_dump`, an
 / `?perfMap=steep` on the performance card, which now records the map it ran on and the water
 tiles it drew. **No fix is started here.** This item is the measurement.
 
-**Three cards**, `reports/perf/swiftshader{,-steep,-big}.json`, build `9efa0c0e4cc6`:
+**Three cards**, `reports/perf/swiftshader{,-steep,-big}.json`, build `9efa0c0e4cc6`.
+
+> **Era note, added the same evening (D5).** The rows below that depend on how full the city was —
+> the night frame's triangles, the ladder's reason, the governor column — were measured with a
+> warm-up that settled on *seconds*, and D5 found that this reached a different city on a fast
+> machine than on a slow one. They were re-measured after the fix and the corrected numbers are in
+> the D5 entry. **The rows that do not depend on traffic are unaffected and stand as written**:
+> the water tiles and triangles, the corridor counts, the steepest street, the ungradeable
+> corridors, `walkthrough`'s cliffs and the model rebuild times. Those are the four findings this
+> slice was for.
 
 | | 96 `rolling` | 128 `hilly` | 256 `rolling` |
 |---|---|---|---|
@@ -4572,3 +4581,152 @@ building.
 leaked; `render` 3 s of 120 — both on the default `rolling` 96, unchanged, because the default is
 unchanged. `specs/engine/03-architecture.md` §3.4a now carries the three rebuild times instead of
 one.
+
+## slice-D5 — the governor, on the first real device (2026-09-08)
+
+Kjell pushed `main`, passed the Norwegian table, and ran `?perf=1` on the RTX 4090 (P57). The card
+is `reports/perf/desktop-4090.json`, collected at build `cbbd27806158` — the same tree as the
+SwiftShader baseline, so the two are directly comparable.
+
+**It took four minutes to find a defect that eight months of software rendering could not.**
+
+The card is a flat **p50 of 16.7 ms on all nine sweep steps**. A locked 60 fps. A machine with
+nothing whatever to complain about. And every one of those nine rows reports
+`pixel,ink,shadows,supersample` — the **entire** sacrifice ladder, given up, four seconds after the
+city loaded, permanently, on an RTX 4090.
+
+The cause is arithmetic and it is one number. `high.frameMs` was **16**, and a display locked to
+60 Hz delivers 16.666 ms. `p95() <= targetMs` is then false forever: the patience window fills, a
+rung goes, and a second later another, until the ladder runs out. `low` and `medium` had the same
+bug one refresh rate up — 33 ms against a 33.33 ms interval at 30 Hz. **Every tier's target was
+its refresh interval rather than a threshold above it**, so any machine hitting its target exactly
+was judged to be missing it, always.
+
+It is silent by construction. The picture degrades, and the frame time stays perfect — because
+there was never anything wrong with the frame time, so the sacrifices changed nothing that could
+be noticed. A player on a 4090 has been playing without the ink pass, without shadows and without
+the supersample since slice V2, and the instrument built to catch that was the thing doing it.
+
+**Fixed:** 20 ms at High, 40 ms at Low and Medium — 60 fps and 30 fps, each with a fifth of a frame
+of room. One interval late (33.3 at High, 66.7 at Low) still costs a pass, which
+`test/governor.test.js` now asserts in both directions: a machine locked to its refresh rate gives
+up nothing, and a machine at half that gives up something. A third check fails if any tier's target
+is ever set to the interval it aims at.
+
+**Why nothing caught it.** The SwiftShader baseline drew **5 to 26 frames in a five-second hold**.
+The governor ignores its first 10 samples and its window is 60 frames — so no measurement this
+project has ever taken exercised it at all. It is the "verify the instrument" lesson wearing the
+one costume it had not yet worn: not an instrument pointed at nothing, but an instrument that never
+got enough input to speak. The card now marks a row that drew fewer than 60 frames, and
+`tools/perf_card.mjs` says so out loud.
+
+**A second thing the comparison found: the two cards are not of the same city.** The 4090 put
+**4,590 cars** on the saturated fixture where SwiftShader managed **1,546**, and the triangle
+counts moved with them — 289,086 against 239,274 at the same zoom. The traffic sim fills a road at
+one car per link per *frame*, so the warm-up's "hold until the count stops moving" reached a
+different equilibrium at 60 fps than at 5. The warm-up settles on **frames** now (60 minimum,
+steady for 30) and reports `settleFrames` and `settled: false` when a machine cannot get there
+inside 15 s. That makes the *card* honest; it does not make the *sim* frame-rate independent, which
+is **Q76**.
+
+**What the card says about everything else:**
+
+| | RTX 4090 | SwiftShader, same build |
+|---|---|---|
+| p50, every step | **16.7 ms** | 83–350 ms |
+| p95, seven of nine steps | 16.8 ms | 83–367 ms |
+| p95, `city 80t` and `city 120t` | **33.4 ms** | — |
+| worst frame | 33.3 to **74.8 ms** | up to 466 ms |
+| street chunk bake, worst | **9 ms** (7 in the street step) | 13 ms |
+| cars on the fixture | 4,590 | 1,546 |
+
+- **Q71 is answered.** A street chunk bakes in **9 ms on a 4090** against an 8 ms budget: over by a
+  tenth, not by two thirds. That is a rounding error away from correct, and it stays as it is.
+- **The High tier has headroom it is not using** (D3). Nothing on this machine comes near 320,000
+  triangles or 20 ms, and the LOD ladder still reports "trees dropped for budget" and "cars dropped
+  for budget" on a card that never worked hard. Re-tuning wants the phone card as the other end of
+  the range, so it waits.
+- **The 4090 drops one frame in twenty on two steps** (p95 33.4). Against the new 20 ms target that
+  still costs a rung after a second, and a machine dropping one frame in twenty is not a machine in
+  trouble — **Q75**, and tuning the percentile on the one machine that has no difficulty is exactly
+  how the target came to be 16 ms.
+
+**Also closed today, all of it Kjell's:** `main` is pushed (M1); the Norwegian table came back with
+no corrections, so **A21 is closed** after standing open since N12 and M4 is done; and D2 has its
+first card. `tools/perf_report.mjs` is new — it folds every card in `reports/perf/` into one
+`README.md`, **one table per map**, with a column for what the governor gave up and a column for
+whether the row drew enough frames to have tested it. A `big` card and a `base` card are never put
+in one table: they answer the same nine questions about two different cities.
+
+**The frame-based settle, checked.** The SwiftShader baseline re-run with it reaches **4,585 cars**
+on `city 20t` against the 4090's **4,590** — the same city, from two machines two orders of
+magnitude apart in speed. It also now says out loud what it could not reach: six of the nine rows
+report `settled: false` after fifteen seconds, and seven report a thin sample. Those notes are the
+point. The rows themselves moved as expected once the city was full: `city 20t` went 216.6 → 299.9
+ms p50 and its ladder reason from "street detail not resolvable" to "cars dropped for budget",
+because it is now drawing three times the traffic.
+
+**Where the number now lives, and what watches it.** `data/cityviewer.json` is still the source
+and `client/world/config.js` still mirrors it, but the frame target had been in those two files and
+in **no document at all** — which is how it stayed at the refresh interval for the life of the
+governor. Ruling 040's tier table gains a *Frame target* column and a second amendment; `RELEASE.md`
+gains the same column; and `test/docs.test.js` now fails if either stops matching the data file, or
+if any tier's target is ever set to the interval of 30, 60, 120 or 144 Hz. The rule is guarded
+where the number lives, not only where the governor reads it.
+
+`test/gates.test.js`'s "a tool that is not a gate" list gains `perf_card`, `perf_report` and
+`compare_sheet`: a measurement is not a pass, and a gate set that ran them would take twenty
+minutes to tell you nothing.
+
+**Still missing: a phone.** D3 and the rest of D5 both read a Medium card from a device that
+struggles, and every tier number in this project is still set against machines that do not.
+
+### slice-D5, continued — the three maps re-measured, and what the 4090 drew that nothing else has
+
+The frame-based warm-up changed what the SwiftShader cards are cards *of*, so `base`, `steep` and
+`big` were all re-run. The traffic-independent findings of D6 stand unchanged — water, corridors,
+grades, cliffs, rebuild times. What moved is everything downstream of how full the city is:
+
+| night frame at High | 96 `rolling` | 128 `hilly` | 256 `rolling` |
+|---|---|---|---|
+| triangles, D6 (seconds-settled) | 268,276 | 182,444 | 224,466 |
+| triangles, now | **130,936** | 182,444 | 224,466 |
+| the ladder | cars dropped for budget | cars dropped for budget | trees dropped for budget |
+| cars actually on the map | 3,071 | 2,784 | **28,023** |
+
+**Night now costs exactly what day costs** — 130,936 triangles and the same ladder reason on
+every map, and the same on the 4090's card (158,436 for both). Not a surprise once looked at: at
+span 40 the ladder has already dropped the street chunks, and the night's lamps and lit windows
+live *inside* those chunks. Q68's "93% of the budget in eight baked chunks" is a statement about
+the close zoom and the street camera, not about the whole night.
+
+**And the one thing only the real device has ever drawn (Q77).** At `city 20t` — the closest city
+zoom — the 4090 draws **eight live street chunks, 258,536 of its 289,086 triangles, 90% of the
+High budget**. SwiftShader draws **zero** live chunks in the same view, on any of the three maps,
+and reports 140,306 triangles. The chunks are gated on resolvability, `tilePixels` is a function of
+canvas height, and the headless viewport is 1280×720 at DPR 1 where Kjell's is 2560×1305 at DPR
+1.5. So the most expensive thing this renderer builds has never once appeared in a city-zoom
+measurement — the closest any gate came was the street camera, which is a different frame.
+
+That is "a gate that drives one configuration proves one configuration" costing the project its
+single largest cost centre, and it is also the strongest argument yet for D3: the one view that a
+real machine actually draws in full sits at 90% of a budget that was set by prediction.
+
+**D3 is marked blocked, on purpose.** One card is not a range. Everything the item would do to
+High is "raise it" with nothing to say how far, and everything it would do to Medium and Low is
+guesswork about a device that has never run the game. Tuning the tiers on the machine with the
+headroom is precisely how `high.frameMs` came to be 16 ms.
+
+**Documents brought in step with the number.** The frame target lived in `data/cityviewer.json` and
+`client/world/config.js` and in **no document at all**, which is how it stayed at the refresh
+interval for the life of the governor. Ruling 040's tier table gains a *Frame target* column and a
+second amendment; `specs/engine/08-camera-lod-budget.md` §8.3 gains the same column, the corrected
+sacrifice order (`pixel` first, since R1.4) and a note that no tier budget has been measured on a
+device that struggles; `RELEASE.md` carries the column too. `test/docs.test.js` fails if either
+table stops matching the data file, and a new check fails if any tier's target is ever set to the
+interval of 30, 60, 120 or 144 Hz — the rule guarded where the number lives, not only where the
+governor reads it.
+
+**Measured.** Suite green twice. `gates.mjs quick` **411 s of 480**, 12 of 12, no leaked browsers
+(`ui_smoke` 100 s, up from 92: the perf-card check now waits out a frame-based warm-up). `render`
+3 s of 120.

@@ -1,0 +1,106 @@
+{
+ "kind": "citygrid-perf-card",
+ "version": 1,
+ "date": "2026-09-08T19:52:27.601Z",
+ "map": "base",
+ "fixture": "saturated 96x96 rolling, seed 1003, 400 ticks, commuter load 200",
+ "simulation": "paused for the sweep",
+ "build": "cbbd27806158",
+ "device": "Kjell's desktop, RTX 4090, Windows 10, Chrome 152",
+ "note": "The first card from real hardware (D2). Collected at commit 2f26532, before the governor fix in D5 — every `given` row below is the defect this card found, not a decision the renderer made.",
+ "machine": {
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+  "devicePixelRatio": 1.5,
+  "deviceClass": "desktop",
+  "hardwareConcurrency": 24,
+  "deviceMemory": 32,
+  "screen": "2560x1440",
+  "viewport": "2560x1305",
+  "tier": "high",
+  "style": "plain",
+  "reducedMotion": false
+ },
+ "steps": [
+  {
+   "step": "city 20t", "frames": 290, "p50": 16.7, "p95": 16.8, "worst": 33.4,
+   "triangles": 289086, "estimate": 300836, "budget": 320000, "drawCalls": 57,
+   "overBudget": false, "lod": "trees dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 8, "triangles": 258536, "buildMs": 3, "total": 8 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 8, "worstBakeMs": 9,
+   "settleS": 1, "cars": 4590, "peds": 120
+  },
+  {
+   "step": "city 40t", "frames": 298, "p50": 16.7, "p95": 16.8, "worst": 33.3,
+   "triangles": 158436, "estimate": 190178, "budget": 320000, "drawCalls": 49,
+   "overBudget": false, "lod": "detail dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 0, "triangles": 0, "buildMs": 0 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 0, "worstBakeMs": 0,
+   "settleS": 1, "cars": 4578, "peds": 120
+  },
+  {
+   "step": "city 80t", "frames": 253, "p50": 16.7, "p95": 33.4, "worst": 50,
+   "triangles": 171632, "estimate": 203794, "budget": 320000, "drawCalls": 58,
+   "overBudget": false, "lod": "cars dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 0, "triangles": 0, "buildMs": 0 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 0, "worstBakeMs": 0,
+   "settleS": 1, "cars": 4578, "peds": 120
+  },
+  {
+   "step": "city 120t", "frames": 249, "p50": 16.7, "p95": 33.4, "worst": 66.6,
+   "triangles": 158512, "estimate": 189414, "budget": 320000, "drawCalls": 69,
+   "overBudget": false, "lod": "detail not resolvable",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 0, "triangles": 0, "buildMs": 0 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 0, "worstBakeMs": 0,
+   "settleS": 1, "cars": 4578, "peds": 120
+  },
+  {
+   "step": "city 40t 14°", "frames": 292, "p50": 16.7, "p95": 16.8, "worst": 50.1,
+   "triangles": 162540, "estimate": 193078, "budget": 320000, "drawCalls": 51,
+   "overBudget": false, "lod": "detail dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 0, "triangles": 0, "buildMs": 0 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 0, "worstBakeMs": 0,
+   "settleS": 1, "cars": 4590, "peds": 120
+  },
+  {
+   "step": "ortho 96t", "frames": 296, "p50": 16.7, "p95": 16.8, "worst": 50,
+   "triangles": 173050, "estimate": 205932, "budget": 320000, "drawCalls": 57,
+   "overBudget": false, "lod": "cars dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 0, "triangles": 0, "buildMs": 0 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 0, "worstBakeMs": 0,
+   "settleS": 1, "cars": 4590, "peds": 120
+  },
+  {
+   "step": "city 40t night", "frames": 288, "p50": 16.7, "p95": 16.8, "worst": 74.8,
+   "triangles": 158436, "estimate": 190178, "budget": 320000, "drawCalls": 49,
+   "overBudget": false, "lod": "detail dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 0, "triangles": 0, "buildMs": 0 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 0, "worstBakeMs": 0,
+   "settleS": 1, "cars": 4590, "peds": 120
+  },
+  {
+   "step": "city 40t painted", "frames": 299, "p50": 16.7, "p95": 16.8, "worst": 33.4,
+   "triangles": 158436, "estimate": 190178, "budget": 320000, "drawCalls": 49,
+   "overBudget": false, "lod": "detail dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 0, "triangles": 0, "buildMs": 0 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 0, "worstBakeMs": 0,
+   "settleS": 1, "cars": 4578, "peds": 120
+  },
+  {
+   "step": "street walk 60m", "frames": 895, "p50": 16.7, "p95": 16.8, "worst": 33.3,
+   "triangles": 262948, "estimate": 310964, "budget": 320000, "drawCalls": 50,
+   "overBudget": false, "lod": "detail dropped for budget",
+   "given": "pixel,ink,shadows,supersample",
+   "streets": { "built": 0, "live": 8, "triangles": 218882, "buildMs": 2, "total": 9 },
+   "waterTiles": 594, "waterTriangles": 1188, "bakedChunks": 9, "worstBakeMs": 7,
+   "settleS": 1, "cars": 8920, "peds": 120, "walkedM": 60, "wantedM": 60
+  }
+ ]
+}

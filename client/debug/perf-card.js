@@ -35,7 +35,22 @@ import { applyPose, applyZoom } from "../render/camera.js";
  * governor's 60-frame ring all need a moment after the camera moves, and a
  * percentile taken across that moment is a percentile of the move. */
 const WARMUP_MIN = 1;
-const WARMUP_MAX = 8;
+const WARMUP_MAX = 15;
+
+/**
+ * How the warm-up decides the city has stopped filling, in FRAMES.
+ *
+ * The traffic sim spawns one car per link per *frame*, so a road reaches
+ * equilibrium after a number of frames, not after a length of time. Judging it
+ * in seconds made the two cards measure two different cities: SwiftShader ran
+ * the warm-up at about 5 fps, saw a "steady" count after two frames and reported
+ * 1,546 cars, while Kjell's 4090 ran the same second at 60 fps and reported
+ * **4,590** — and the triangle counts differed with them (239,274 against
+ * 289,086 at the same zoom). A card that is not of the same city is not a
+ * comparison (D2).
+ */
+const STEADY_FRAMES = 30;
+const MIN_FRAMES = 60;
 
 /** The commuter load seeded onto every road tile, the same 200 `lanes_dump` has
  * used since E4. Cars are uncapped at High and are 76 triangles each, so a
@@ -62,7 +77,8 @@ function settle(renderer, minS, maxS) {
     let chunks = 0;
     let worstMs = 0;
     let lastCars = -1;
-    let steadyFrom = 0;
+    let frames = 0;
+    let steadySince = 0;
     const start = performance.now();
     const tick = (now) => {
       const streets = renderer.stats.streets;
@@ -70,13 +86,22 @@ function settle(renderer, minS, maxS) {
         chunks += streets.built ?? 0;
         worstMs = Math.max(worstMs, streets.buildMs ?? 0);
       }
+      frames += 1;
       const cars = renderer.stats.cars ?? 0;
-      if (Math.abs(cars - lastCars) > Math.max(2, lastCars * 0.02)) steadyFrom = now;
+      if (Math.abs(cars - lastCars) > Math.max(2, lastCars * 0.02)) steadySince = frames;
       lastCars = cars;
       const elapsed = (now - start) / 1000;
-      const steady = (now - steadyFrom) / 1000 >= 0.5;
+      // Frames for the city, seconds only as the escape hatch. A machine too
+      // slow to reach `MIN_FRAMES` inside `maxS` says so in the row rather than
+      // reporting a settled city it never got to.
+      const steady = frames >= MIN_FRAMES && frames - steadySince >= STEADY_FRAMES;
       if (elapsed < minS || (!steady && elapsed < maxS)) requestAnimationFrame(tick);
-      else resolve({ chunks, worstMs, settleS: Math.round(elapsed * 10) / 10, settled: steady });
+      else {
+        resolve({
+          chunks, worstMs, settled: steady, settleFrames: frames,
+          settleS: Math.round(elapsed * 10) / 10,
+        });
+      }
     };
     requestAnimationFrame(tick);
   });
@@ -216,6 +241,7 @@ async function measure(step, session, play, hold) {
   // settling per step would have saved nothing.
   const bake = await settle(renderer, WARMUP_MIN, hold > 0 ? 2 : WARMUP_MAX);
 
+
   let walkedM = 0;
   const frames = step.walkM > 0
     ? await Promise.all([sampleFrames(step.seconds), walkFor(renderer, step.seconds, step.walkM)])
@@ -224,11 +250,19 @@ async function measure(step, session, play, hold) {
 
   const sorted = frames.slice().sort((a, b) => a - b);
   const s = renderer.stats;
+  // The governor's window is 60 frames and it does nothing at all below its
+  // first 10 samples. A step that drew fewer than that did not test the
+  // governor, and its p95 is a percentile over a handful of numbers — which is
+  // a value with no error bar and every appearance of one. The SwiftShader
+  // baseline drew **5 to 26 frames** in a five-second hold and nobody noticed
+  // until a 4090 drew 290 in the same hold and gave up the entire ladder (D2).
+  const thin = frames.length < 60;
   return {
     session,
     row: {
       step: stepLabel(step),
       frames: frames.length,
+      ...(thin ? { thinSample: true } : {}),
       p50: percentile(sorted, 0.5),
       p95: percentile(sorted, 0.95),
       worst: percentile(sorted, 1),
@@ -248,6 +282,7 @@ async function measure(step, session, play, hold) {
       bakedChunks: bake.chunks,
       worstBakeMs: Math.round(bake.worstMs * 10) / 10,
       settleS: bake.settleS,
+      settleFrames: bake.settleFrames,
       ...(bake.settled ? {} : { settled: false }),
       cars: s.cars,
       peds: s.peds,

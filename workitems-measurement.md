@@ -50,7 +50,29 @@ once. `ui_smoke` presses Copy and reads the clipboard text as JSON.
 **Done when** `reports/perf/swiftshader.json` exists from the tool, and the card renders on the
 real page.
 
-## D2 — Real devices (S, needs Kjell's hardware)
+## D2 — Real devices (S, needs Kjell's hardware) — **the desktop card is in, 2026-09-08; the phone is not**
+
+`reports/perf/desktop-4090.json` — RTX 4090, Windows, Chrome 152, 2560×1440 at DPR 1.5, tier
+`high`, build `cbbd27806158` (commit `2f26532`, the same tree as the SwiftShader baseline).
+`node tools/perf_report.mjs` folds every card into `reports/perf/README.md`, one table per map,
+with a column for what the governor gave up and a column for whether the row drew enough frames to
+have tested it.
+
+**The first real device found a defect in four minutes that eight months of SwiftShader could
+not.** The card is a flat **p50 of 16.7 ms on all nine steps** — a locked 60 fps, a machine with
+nothing to complain about — and it reports `pixel,ink,shadows,supersample` given up on every one
+of them. The whole ladder, four seconds after the city loaded, permanently. `high.frameMs` was
+**16** and a 60 Hz display delivers 16.666, so `p95 <= target` was false forever. Fixed in the same
+slice (D5); the card is kept as collected, with a note, because it is the evidence.
+
+**And a second finding that only a real screen could produce (Q77).** At the closest city zoom the
+4090 draws **eight live street chunks — 258,536 of 289,086 triangles, 90% of the High budget**.
+Every headless gate runs 1280×720 at DPR 1, where the ladder finds them unresolvable and draws
+none, on any of the three maps. The most expensive thing this renderer builds has never appeared
+in a city-zoom measurement.
+
+**Still open:** the phone. D3 and D5 both want it, and a laptop without a discrete GPU would make
+`deviceClass()`'s three-way split checkable.
 
 **Goal.** One card each from the RTX 4090 desktop, a mid-range phone, and (if there is one) a
 laptop without a discrete GPU.
@@ -66,7 +88,19 @@ laptop without a discrete GPU.
 **Done when** three cards are in the repo and the report exists. This item cannot be finished
 by the coding ally alone.
 
-## D3 — The tiers, re-tuned from the cards (M)
+## D3 — The tiers, re-tuned from the cards (M) — **blocked on the phone card (D2)**
+
+One card is not a range. The 4090 sits at a flat 16.7 ms with the frame never near 20 and the
+triangle count never near 320,000 except in the one view no headless gate has ever drawn — so
+everything this item would do to High is "raise it", with nothing to say how far, and everything
+it would do to Medium and Low is guesswork about a device that has never run the game. **Do not
+start this until a phone card exists.** Tuning the tiers on the machine with headroom is exactly
+how `high.frameMs` came to be 16 ms in the first place (D5).
+
+Two things are ready for it when it does start: `reports/perf/README.md` folds every card into one
+table per map, and **Q77** names the `budget_gate` row that has to exist first — a viewport at a
+real desktop's pixel count, where the street chunks become resolvable at city zoom.
+
 
 **Goal.** The tier table in `data/cityviewer.json` says what the devices measured, not what V2
 guessed.
@@ -75,7 +109,11 @@ guessed.
 - For each device: which tier `deviceClass()` chose, whether the p95 met the tier's `frameMs`
   at every sweep step, and what the governor gave up to get there. A tier that meets its
   target only after sacrifices is mis-set: the sacrifice is a safety net, not the plan.
-- Start from where V8 left High: a night frame is **289,446 of 320,000** with the ladder run to
+- **Start from Kjell's card, not from V8's prediction.** The one view a real machine draws in full
+  — `city 20t`, eight live street chunks — is **289,086 of 320,000, 90% of the budget**, and it is
+  a view no headless gate has ever produced (Q77). Everything else on that card sits between
+  158k and 173k with the frame at a flat 16.7 ms, so High has headroom it is not using. The older
+  framing, still worth reading: a night frame is **289,446 of 320,000** with the ladder run to
   "silhouettes only" because eight baked chunks at 33.7k each are 93% of the budget (Q68). The
   lever is `streetChunks` (9 at High, 4 at Medium) — one chunk fewer buys 33.7k — not the detail
   inside a chunk. If Medium's `carCap` of 200 binds on the phone, the cars want the crowd's
@@ -131,7 +169,23 @@ range, span in range). Nothing else is testable, and the item says so.
 
 **Done when** `reports/compare-transport-worlds.png` exists and is linked from the release page.
 
-## D5 — The governor, validated on the real thing (S, after D2)
+## D5 — The governor, validated on the real thing (S, after D2) — **the desktop half is done, 2026-09-08 as `slice-D5`; the phone half is not**
+
+**It was not acting within its patience window — it was acting on a machine with nothing wrong.**
+`frameMs` was the refresh *interval* rather than a threshold above it: 16 ms at High against a
+16.666 ms frame, 33 at Low and Medium against 33.33. Any machine locked to its refresh rate failed
+the test forever and spent the entire ladder in four seconds, silently, because the frame time
+stayed perfect the whole time — the sacrifice made no difference, so nothing complained. Now 20 ms
+and 40 ms: 60 fps and 30 fps, each with a fifth of a frame of room, and one interval late still
+costs a pass. `test/governor.test.js` fails if a tier's target ever drops back to its interval.
+
+**And the reason nothing caught it:** the SwiftShader baseline drew **5 to 26 frames in a
+five-second hold**. The governor ignores its first 10 samples and its window is 60, so no
+measurement this project ever made exercised it at all. The card marks a thin row now.
+
+**Still open, and it needs the phone:** whether p95 over 60 frames is the right trigger at all
+(**Q75** — the 4090 drops one frame in twenty on two of the nine steps, which against a 20 ms
+target still costs a rung).
 
 **Goal.** The governor's one-second patience, its p95 window and its sacrifice order were
 chosen by reasoning. The phone card says whether they were right.
@@ -144,7 +198,8 @@ chosen by reasoning. The phone card says whether they were right.
 - If a bake does trip it: the bake phases (E5 split them in two) split again, or the tier's
   `streetChunks` drops on the phone.
 
-**Done when** the phone card shows the governor idle on the daytime sweep at Medium.
+**Done when** the phone card shows the governor idle on the daytime sweep at Medium. The desktop
+card shows it idle at High as of 2026-09-08; the phone is what is left.
 
 ## D6 — The big map and the steep map (S) — **done 2026-09-08 as `slice-D6`**
 
@@ -156,15 +211,20 @@ version:
 - **Q66 is answered.** The unculled water mesh is **3,556 triangles on 256×256 — 1.11% of the High
   budget**. It never becomes a problem at a size a player can start. (Caveat: a `river` fixture; a
   `coastal` map is mostly water.)
-- **Q68 has a shape.** A bigger map makes the night frame *smaller* (224,466 against 96's 268,276)
-  because the ladder drops trees earlier. The 256 run is the first measurement in which the
-  governor has ever acted — it gave up `pixel`, on SwiftShader.
+- **Q68 has a shape** — corrected the same evening under D5's era, because D6's first pass settled
+  the city in seconds and reached a different city on a fast machine than a slow one. Re-measured:
+  the night frame is **exactly what the day frame costs**, on all three maps, with the same ladder
+  reason. At span 40 the chunks are already dropped and the night lives inside them. Where the
+  night does bite is the close zoom on real hardware — **Q77**.
 - **Q64 is answered, and terrain is the only variable.** Ungradeable corridors: 1.0% on 96
   `rolling`, 1.3% on 128, 0.8% on 256 — and **33% on a 128 `hilly`**, steepest street 59.3%.
 - **New: Q74.** `walkthrough` **fails** on `hilly` — 80 cliffs where the ground rises over a metre
   in two. The gate had only ever run on `rolling`.
 - **For the worker lane:** the model rebuild is **184.7 ms on 256×256**, 108.7 of it the lane
   graph. Q60 called 53.7 ms the number to beat.
+
+*The traffic-independent findings above — water, corridors, grades, cliffs, rebuild times — are
+unaffected by D5's re-measurement and stand as first written.*
 
 **Goal.** Every cityviewer number was taken on a 96×96 `rolling` city and a few on a 128×128.
 Three open questions say "measure it on a bigger or steeper map first", so this item is that
@@ -190,7 +250,16 @@ on, and `reports/perf/` has the two extra rows.
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.
 
-**Where this lane stands, 2026-09-08.** **D1, D4 and D6 are done** (`slice-D1`, `slice-D4`,
+**Where this lane stands, 2026-09-08 (evening).** **D1, D4, D6 and the desktop half of D2 and D5
+are done.** The first real-device card found that the frame-time governor was giving up its entire
+ladder on an RTX 4090 at a locked 60 fps, because every tier's target was its refresh interval
+rather than a threshold above it — fixed, tested, and the reason no earlier measurement saw it is
+that SwiftShader never drew enough frames to exercise the governor at all. **What is left wants a
+phone**: D3 (re-tune the tiers) and the rest of D5 (Q75, the percentile) both read a Medium card
+from a device that struggles, and there is no such card. `tools/perf_report.mjs` puts every card
+that arrives into `reports/perf/README.md`.
+
+*The earlier note, kept because its ordering advice still holds:* **D1, D4 and D6 are done** (`slice-D1`, `slice-D4`,
 `slice-D6`): the card, the compare sheet, the SwiftShader baseline and the big/steep rows are all
 in, and Q64, Q66 and Q68 now carry numbers from maps bigger and steeper than the ones they were
 asked on. **What is left in this lane needs Kjell.** D2 is `?perf=1` on the 4090 desktop and on a

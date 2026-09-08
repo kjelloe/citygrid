@@ -126,21 +126,30 @@ export const DEFAULTS = Object.freeze({
   // `pixelRatio` is a CAP on the device's own ratio, not a replacement for it.
   // `carCap: 0` means uncapped. `post` lists the passes a tier may run; the
   // frame-time governor may still take one away (`frameMs` is its target).
+  //
+  // **`frameMs` is a threshold with headroom, not the refresh interval.** It was
+  // the interval — 16 at High, 33 at Low and Medium — and a display locked to
+  // 60 Hz delivers 16.666 ms, so `p95 <= target` was false forever and the
+  // governor spent the entire ladder on a machine hitting its target exactly.
+  // Kjell's RTX 4090 card (D2, 2026-09-08) reported `pixel,ink,shadows,
+  // supersample` given up on all nine sweep steps at a flat p50 of 16.7 ms.
+  // 20 ms is 60 fps with a fifth of a frame of room; 40 ms is 30 fps with the
+  // same. One interval late — 33.3 at High, 66.7 at Low — still costs a pass.
   tiers: {
     low: {
       budget: 40000, pixelRatio: 1, antialias: false, shadowMap: 0, lamps: 0,
       shadows: false, streetChunks: 0, carCap: 60, pedCap: 0,
-      post: [], frameMs: 33,
+      post: [], frameMs: 40,
     },
     medium: {
       budget: 140000, pixelRatio: 1.5, antialias: true, shadowMap: 2048, lamps: 5,
       shadows: true, streetChunks: 4, carCap: 200, pedCap: 40,
-      post: ["pixel"], frameMs: 33,
+      post: ["pixel"], frameMs: 40,
     },
     high: {
       budget: 320000, pixelRatio: 2, antialias: true, shadowMap: 4096, lamps: 8,
       shadows: true, streetChunks: 9, carCap: 0, pedCap: 120,
-      post: ["pixel", "ink"], frameMs: 16,
+      post: ["pixel", "ink"], frameMs: 20,
     },
   },
 });

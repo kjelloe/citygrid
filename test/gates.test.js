@@ -107,7 +107,13 @@ test("a tool that is not a gate is not expected to be in a set", () => {
   // shape. None of them passes or fails, so none belongs in a set — and the
   // naming convention above (`_smoke`, `_gate`, `_soak`) is what keeps that
   // distinction from being a matter of memory.
-  for (const tool of ["i18n_review", "screenshot", "serve", "repin", "make_precache", "play_shot"]) {
+  //
+  // The measurement lane added three more of the same shape: `perf_card.mjs`
+  // produces numbers, `perf_report.mjs` a table of them, and `compare_sheet.mjs`
+  // a picture judged by eye. A measurement is not a pass, and a gate set that
+  // ran them would take twenty minutes to tell you nothing (D1, D2, D4).
+  for (const tool of ["i18n_review", "screenshot", "serve", "repin", "make_precache", "play_shot",
+    "perf_card", "perf_report", "compare_sheet"]) {
     assert.equal(SETS.all.includes(tool), false, `${tool} is in a gate set`);
     assert.equal(/_(smoke|gate|soak)$/.test(tool), false,
       `${tool} is named like a gate but is not one`);

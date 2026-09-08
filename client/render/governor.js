@@ -32,6 +32,16 @@
  */
 export const SACRIFICE = ["pixel", "ink", "shadows", "supersample"];
 
+// **The target is a threshold, not a refresh interval.** `p95() <= targetMs` is
+// the whole test, and a display locked to 60 Hz delivers 16.666 ms — so a
+// target of 16 was false forever and this governor spent its entire ladder on
+// an RTX 4090 that was hitting 60 fps exactly, four seconds after the city
+// loaded, permanently, with the frame time reporting a flat 16.7 ms throughout
+// (D2's first real-device card, D5). The targets in `data/cityviewer.json` now
+// carry a fifth of a frame of headroom over the rate they aim at, and
+// `test/governor.test.js` fails if a tier's target ever drops back to its
+// interval. The rest of this file was correct.
+
 /** How long the frame time has to stay bad before anything is given up.
  *
  * A second, because everything shorter is something else: a garbage

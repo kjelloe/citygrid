@@ -14,6 +14,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { createGovernor, SACRIFICE } from "../client/render/governor.js";
+import { getConfig } from "../client/world/config.js";
+
+const TIERS = getConfig().tiers;
 
 /** Feeds `count` frames of `ms` each. */
 function run(governor, ms, count) {
@@ -132,5 +135,54 @@ test("every rung the ladder names is read by the renderer", () => {
     // style's own pass name; the other two are named directly.
     const read = scene.includes(`allows("${rung}")`) || scene.includes("governor.allows(pass)");
     assert.ok(read, `nothing in the renderer reads the ${rung} rung`);
+  }
+});
+
+// --- what the first real device said (slice D5) -----------------------------
+//
+// Kjell's desktop card, 2026-09-08, build `cbbd27806158`: an RTX 4090 at a
+// locked 60 fps — p50 16.7 ms and p95 16.8 ms on every one of the nine sweep
+// steps — reporting `pixel,ink,shadows,supersample` given up on every one of
+// them. The whole ladder, on the fastest machine anyone has run this on, four
+// seconds after the city loaded, permanently. The frame time never complained
+// because there was nothing wrong with it.
+//
+// The cause is arithmetic. `high.frameMs` was **16**, and a display locked to
+// 60 Hz delivers 16.666… ms. `p95() <= targetMs` is then false forever, the
+// patience window fills four times over, and the governor spends the ladder on
+// a machine that is hitting its target exactly. `low` and `medium` had the same
+// bug one refresh rate up: 33 ms against a 33.33 ms interval at 30 Hz.
+
+/** The interval a display locked to `hz` actually delivers. */
+const vsync = (hz) => 1000 / hz;
+
+test("a machine locked to its refresh rate is not a machine in trouble", () => {
+  // The whole finding, as one assertion. 16.7 is not "over 16" in any sense a
+  // player would recognise.
+  for (const [hz, targetMs] of [[60, TIERS.high.frameMs], [30, TIERS.low.frameMs]]) {
+    const governor = createGovernor({ targetMs });
+    run(governor, vsync(hz), 600);
+    assert.deepEqual(governor.disabled(), [],
+      `at a locked ${hz} Hz (${vsync(hz).toFixed(1)} ms) the ${targetMs} ms target gave up passes`);
+  }
+});
+
+test("every tier's target leaves room above the refresh rate it aims at", () => {
+  // A target equal to the interval is unmeetable by construction, and the
+  // failure is silent: the picture degrades and the frame time stays perfect.
+  // The rule is a threshold with headroom, not the period itself.
+  assert.ok(TIERS.high.frameMs > vsync(60), `high aims at ${TIERS.high.frameMs} ms of a 16.7 ms frame`);
+  assert.ok(TIERS.low.frameMs > vsync(30), `low aims at ${TIERS.low.frameMs} ms of a 33.3 ms frame`);
+  assert.ok(TIERS.medium.frameMs > vsync(30), `medium aims at ${TIERS.medium.frameMs} ms of a 33.3 ms frame`);
+});
+
+test("a target with headroom still catches the frame rate below it", () => {
+  // Headroom is not indifference. One refresh interval late — 60 Hz dropping to
+  // 30, or 30 to 15 — has to still cost a pass, or the governor is decoration.
+  for (const [hz, targetMs] of [[60, TIERS.high.frameMs], [30, TIERS.low.frameMs]]) {
+    const governor = createGovernor({ targetMs });
+    run(governor, vsync(hz) * 2, 600);
+    assert.ok(governor.disabled().length > 0,
+      `at half of ${hz} Hz the ${targetMs} ms target gave nothing up`);
   }
 });

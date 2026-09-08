@@ -60,7 +60,7 @@
       "carCap": 60,
       "pedCap": 0,
       "post": [],
-      "frameMs": 33,
+      "frameMs": 40,
       "lamps": 0
     },
     "medium": {
@@ -75,7 +75,7 @@
       "post": [
         "pixel"
       ],
-      "frameMs": 33,
+      "frameMs": 40,
       "lamps": 5
     },
     "high": {
@@ -91,7 +91,7 @@
         "pixel",
         "ink"
       ],
-      "frameMs": 16,
+      "frameMs": 20,
       "lamps": 8
     }
   },

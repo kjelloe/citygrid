@@ -8,13 +8,12 @@ film, the worker — should land on `main`. Same rules as the cityviewer hand-of
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
 
-## M1 — Merge `dev_night` into `main` (S, needs Kjell) — **merged locally 2026-09-08; not pushed**
+## M1 — Merge `dev_night` into `main` (S, needs Kjell) — **done 2026-09-08; pushed**
 
 `main` fast-forwarded from `491f9bf` to `9339ba4`: 55 commits, no squash, no rebase, no merge
 commit. `slice-E0` is `04bc793` and `slice-V8`, `slice-R4` and `slice-T1` are all in the history.
 `./test.sh` green twice on the merged tree and `gates.mjs quick` **380 s of 480**, no leaked
-browsers. **The push is the half that needs Kjell** — `git push origin main` publishes 55 commits
-to a shared remote — and is the one step left.
+browsers. **Kjell pushed it on 2026-09-08 (P57).** The item is closed.
 
 **Goal.** `main` is `dev_night`. Nothing is rewritten, nothing is squashed: the per-slice
 history is the project's memory and the dev-log cites SHAs.
@@ -96,7 +95,7 @@ developer.
 HEAD` at the time of the release commit (a test that reads the file's SHA and warns, not fails,
 when it is stale).
 
-## M4 — The Norwegian pass (S, Kjell reviews) — **the table is ready; the pass is Kjell's**
+## M4 — The Norwegian pass (S, Kjell reviews) — **done 2026-09-08; Kjell passed the table**
 
 `node tools/i18n_review.mjs` writes `reports/i18n-review.md` — 414 strings with the English, the
 Norwegian and the slice that added them (280 from the initial commit, 67 from 0.1, 21 from N21,
@@ -106,8 +105,9 @@ half: no Norwegian value may equal its English except on an allow-list with a re
 entries, all genuine), and two more checks keep that list from rotting. It also found something
 nothing was watching — `data/names.json`'s shop names, which are outside the catalogue entirely.
 
-**Still open**, and it stays open until Kjell has returned the table. That is A21's own
-definition.
+**Closed 2026-09-08 (P57).** Kjell read the 414 strings and passed them with no corrections, so
+A21's "drafted, not reviewed" note is closed and the catalogue is a reviewed translation. The tool
+stays, because the next string a slice adds is a draft again — regenerate and re-read the diff.
 
 **Goal.** Every string a Norwegian player reads has been read by a Norwegian.
 
@@ -127,9 +127,9 @@ definition.
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.
 
-**Where this lane stands, 2026-09-08.** R4, T1, M2, M3 done; M1 merged locally and **not pushed**
-(`git push origin main` is the one step left, and it is the half the item marks "needs Kjell").
-**M4's tool, test and table are built** (2026-09-08) and the pass itself waits on Kjell: A21 is
-open until he has returned `reports/i18n-review.md`. **The lane is otherwise done.** What comes
-next is `workitems-measurement.md`, whose first item — a real device, and the frame-time governor
-running on one — is the largest gap in the project.
+**This lane is finished, 2026-09-08.** R4, T1, M2, M3, M4 done, and M1 merged **and pushed**
+(P57). A21 is closed: the Norwegian was read and passed. Nothing here is outstanding.
+
+What came next was `workitems-measurement.md`, and its first item found what this lane could not:
+the frame-time governor, running on a real device for the first time, was giving up its entire
+ladder on an RTX 4090 at a locked 60 fps (D2/D5).

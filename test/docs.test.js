@@ -251,6 +251,27 @@ test("ruling 040's tier table is the one in the data (R2)", () => {
     const chunks = tier.streetChunks === 0 ? "none" : String(tier.streetChunks);
     assert.ok(row.includes(chunks),
       `ruling 040's ${name} row does not say ${chunks} street chunks: ${row.trim()}`);
+    // The frame target, added to the table in D5. It was in the data file and
+    // in no document at all, which is how it stayed at the refresh interval —
+    // 16 ms against a 16.666 ms frame — for the life of the governor, giving up
+    // the whole ladder on a machine at a locked 60 fps.
+    assert.ok(row.includes(`${tier.frameMs} ms`),
+      `ruling 040's ${name} row does not say its ${tier.frameMs} ms frame target: ${row.trim()}`);
+  }
+});
+
+test("no tier aims at the refresh interval it is trying to hit", () => {
+  // The defect D5 fixed, guarded where the number lives rather than only where
+  // the governor reads it. `p95 <= target` is the whole test and a 60 Hz
+  // display delivers 16.666 ms, so a target of 16 is unmeetable — and silent,
+  // because the picture degrades while the frame time stays perfect.
+  const tiers = JSON.parse(readFileSync(join(repoRoot, "data", "cityviewer.json"), "utf8")).tiers;
+  for (const [name, tier] of Object.entries(tiers)) {
+    for (const hz of [30, 60, 120, 144]) {
+      const interval = 1000 / hz;
+      assert.ok(Math.abs(tier.frameMs - interval) > 0.5,
+        `the ${name} tier's ${tier.frameMs} ms target is the ${hz} Hz interval (${interval.toFixed(2)} ms)`);
+    }
   }
 });
 
@@ -311,6 +332,8 @@ test("the release page carries the numbers a reader would otherwise have to run"
   for (const [name, tier] of Object.entries(tiers)) {
     assert.ok(release.includes(tier.budget.toLocaleString("en-GB")) || release.includes(String(tier.budget)),
       `the release page does not carry the ${name} tier's budget of ${tier.budget}`);
+    assert.ok(release.includes(`${tier.frameMs} ms`),
+      `the release page does not carry the ${name} tier's ${tier.frameMs} ms frame target`);
   }
 });
 
