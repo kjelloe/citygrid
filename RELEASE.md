@@ -4,11 +4,12 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `36aeefb` on `main` and `dev_night` (the two are level)
+- **Commit:** `d112382` on `dev_night`, the end of the mainline lane. `main` is at `36aeefb`
+  and fast-forwards to it; **neither has been pushed** — that is Kjell's to do.
 - **Date:** 2026-09-08
 - **Balance era:** era 1, tuned 2026-08-29 over 200 games per configuration
   (`reports/balance-era1.md`). Numbers from era 0 are void, not roughly comparable.
-- **93 commits**, one per slice, no squash and no merge commits.
+- **95 commits**, one per slice, no squash and no merge commits.
 
 ## Running it
 
@@ -88,8 +89,10 @@ about:
   *accepted*, and acceptance is a playtest, not a green suite. The seam is built in — commands
   cross the wire, not state — and nothing has crossed it yet. The territory overlay has no
   control because it is a multiplayer view (Q61).
-- **Norwegian is drafted, not reviewed** (A21). Key parity is enforced by test; the words have
-  not been read by a Norwegian. That is `workitems-mainline.md` M4.
+- **Norwegian is drafted, not reviewed** (A21). Key parity is enforced by test and so is the
+  harder question — no Norwegian string may be byte-identical to its English without a reason on
+  a list — but the words have not been read by a Norwegian. The table is ready:
+  `reports/i18n-review.md`, 414 strings with the slice that added each one.
 - **Treasuries run away** — median 1.9M by year 25. Accepted with numbers rather than tuned away;
   the two attempts to fix it with upkeep both bankrupted weak cities without touching rich ones.
 - Smaller ones, each with a note: the estimate's floor at the bottom of the LOD ladder (Q32), the
