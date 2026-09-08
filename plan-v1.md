@@ -78,13 +78,15 @@ the file to open first.
 
 | Lane | What it is | Where it stands |
 |---|---|---|
-| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | M1 merged (not pushed), M2 and M3 done; **M4 next, and it needs Kjell** |
-| `workitems-measurement.md` | real-device numbers and the reference compare | not started — and its first item is the largest gap in the project |
+| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | M1 merged (not pushed), M2 and M3 done; **M4's table is ready and the pass itself needs Kjell** |
+| `workitems-measurement.md` | real-device numbers and the reference compare | **D1 done** — `?perf=1` and `tools/perf_card.mjs`; **D2 needs Kjell to press it on real hardware**, D4 is the next one that does not |
 | `workitems-film.md` | photo mode, tours, a demo film | not started |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
-The frame-time governor exists to decide what a phone gives up and has never run on a phone.
+The frame-time governor exists to decide what a phone gives up and has never run on a phone. D1
+built the instrument — `?perf=1` on any device, one Copy button, nothing sent anywhere — and the
+gap stays open until somebody presses it on real hardware (D2).
 
 **What the P18 audit found missing from a *playable* game** was closed over N11–N21: the new-game
 screen, quest localisation, the settings screen, city and mayor names, and department funding all
@@ -391,6 +393,9 @@ by number from the code they create.
 | Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | measurement lane D6, the `hilly` row |
 | Q66 | The water surface is one unculled mesh for the whole map | measurement lane D6, on a 256-tile map |
 | Q68 | A night frame at High spends 93% of its budget on eight baked chunks | measurement lane D3 and D2's phone card |
+| Q69 | Traffic only ever grows: a link filled while on screen is never emptied when it leaves | measurement lane D3, before any real-device card is believed |
+| Q70 | The saturated fixture generates no commutes, so its roads were empty until D1 seeded them | measurement lane D3/D6 |
+| Q71 | A street chunk bakes in 13 ms against an 8 ms budget | D2's phone card, measurement lane D3 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

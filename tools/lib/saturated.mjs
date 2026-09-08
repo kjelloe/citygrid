@@ -16,7 +16,7 @@ import { CMD_TICK, CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_JOIN } from "../../engine
 import "../../engine/build-commands.js";
 import "../../engine/development.js";
 
-export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings = true } = {}) {
+export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings = true, traffic = -1 } = {}) {
   const world = generateWorld(defaultOptions({ seed, width: size, height: size, waterStyle: "river" }));
   if (!world.ok) throw new Error(`generation failed: ${world.reason}`);
   const state = world.state;
@@ -74,6 +74,18 @@ export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings =
       }
     }
     state.nextId = id;
+  }
+
+  // The commuter load, seeded rather than simulated. The buildings above are
+  // pushed straight into the array with no zoning demand behind them, so the
+  // reducer never routes a commute and `state.tiles.traffic` stays zero — which
+  // is how the first perf-card run measured a saturated city with no moving car
+  // in it (D1). `lanes_dump` has seeded 200 on every road tile since E4; this is
+  // the same load through the same recipe.
+  if (traffic >= 0) {
+    for (let i = 0; i < state.tiles.road.length; i += 1) {
+      if (state.tiles.road[i] & 16) state.tiles.traffic[i] = traffic;
+    }
   }
 
   let paved = 0;

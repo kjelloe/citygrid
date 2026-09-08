@@ -1,7 +1,7 @@
 // Boot. Deliberately thin: capability probe, locale, then hand off.
 //
 // The URL is the config surface (?seed, ?size, ?difficulty, ?terrain, ?water,
-// ?disasters, ?join, ?debug). Params are read at module evaluation, BEFORE the
+// ?disasters, ?join, ?debug, ?perf). Params are read at module evaluation, BEFORE the
 // boot canonicalizes the URL — a module that reads them later finds them
 // already stripped.
 //
@@ -24,6 +24,12 @@ export const config = Object.freeze({
   join: params.get("join") ?? "",
   locale: params.get("lang") ?? "",
   debug: params.get("debug") === "1",
+  // `?perf=1` — the performance card (D1). It replaces the boot: the sweep
+  // needs the saturated fixture and a camera nobody is touching, which is not
+  // a game. `?perfHold=<seconds>` overrides every step's hold, so `ui_smoke`
+  // can press the Copy button without paying for a real measurement.
+  perf: params.get("perf") === "1",
+  perfHold: Number(params.get("perfHold") ?? 0) || 0,
   // `?life=0` freezes the traffic where it settled, so a gate that measures a
   // frame or compares two screenshots is looking at the same city twice.
   life: params.get("life") !== "0",
@@ -131,7 +137,9 @@ async function boot() {
       onNewCity: newGame,
       onSettings: showSettings,
       audioSettings: mixerSettings(preferences),
-      style: config.style || preferences.style,
+      // `given.style` is the perf card asking for a specific one: a style is a
+      // renderer rebuild, so the sweep restarts the session per style (R2).
+      style: given.style || config.style || preferences.style,
       // Reduced motion reaches the CITY, not only the interface (R2). Slice 4.5
       // set `data-motion` and nothing in the renderer read it, so a player who
       // asked for stillness got streaming traffic and a cycling sun.
@@ -177,6 +185,12 @@ async function boot() {
         play({ world, options, mayorName });
       },
     });
+  }
+
+  if (config.perf) {
+    const { runPerfCard } = await import("./debug/perf-card.js");
+    await runPerfCard({ play, hold: config.perfHold }).catch(failed);
+    return;
   }
 
   if (config.seed) {

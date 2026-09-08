@@ -21,6 +21,7 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import { SWEEP } from "../client/debug/perf-sweep.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = {
@@ -516,6 +517,36 @@ try {
     fits.panel < fits.viewport * 0.45, `panel ${Math.round(fits.panel)}px of ${fits.viewport}px`);
   await phonePage.screenshot({ path: join(root, "reports", "hud-phone.png") });
   await phone.close();
+
+  // --- the performance card (D1) -------------------------------------------
+  // `?perf=1` is a button the player is asked to press and paste the result of,
+  // so the thing that has to work is the paste. `?perfHold=1` shortens every
+  // step to a second: this gate is checking the card, not measuring anything —
+  // `tools/perf_card.mjs` is what measures.
+  const cardContext = await browser.newContext({
+    viewport: { width: 900, height: 600 },
+    permissions: ["clipboard-read", "clipboard-write"],
+  });
+  const cardPage = await cardContext.newPage();
+  cardPage.on("pageerror", (error) => problems.push(`perf card page error — ${error.message}`));
+  await cardPage.goto(`http://127.0.0.1:${port}/index.html?perf=1&perfHold=1`);
+  await cardPage.waitForFunction(() => globalThis.PERF_CARD !== undefined, undefined, { timeout: 300000 });
+  await cardPage.click("#perf-copy");
+  const pasted = await cardPage.evaluate(() => navigator.clipboard.readText());
+  let parsed;
+  try { parsed = JSON.parse(pasted); } catch (error) { parsed = { error: error.message }; }
+  check("the Copy button puts the card on the clipboard as JSON",
+    parsed?.kind === "citygrid-perf-card", String(parsed?.error ?? parsed?.kind));
+  check("the card carries a row per sweep step",
+    Array.isArray(parsed?.steps) && parsed.steps.length === SWEEP.length,
+    `${parsed?.steps?.length} of ${SWEEP.length}`);
+  check("the card names the machine, not only the numbers",
+    Boolean(parsed?.machine?.userAgent && parsed?.machine?.deviceClass && parsed?.machine?.tier),
+    JSON.stringify(parsed?.machine ?? {}).slice(0, 60));
+  check("every step drew something",
+    parsed?.steps?.every((row) => row.triangles > 0 && row.frames > 1) === true,
+    (parsed?.steps ?? []).filter((r) => !(r.triangles > 0 && r.frames > 1)).map((r) => r.step).join(", "));
+  await cardContext.close();
 } finally {
   await browser.close();
   server.close();

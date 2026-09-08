@@ -96,6 +96,18 @@ node tools/style-sheet.mjs     # the three styles from one city — STREET=x,y f
 node tools/screenshot.mjs      # one shot; ?style= ?time= ?street= ?streets= ?frames= ?traffic=
 ```
 
+**Measurements**, which are not gates either — they produce a number for a person to read:
+
+```sh
+node tools/perf_card.mjs       # the frame sweep -> reports/perf/swiftshader.json (70 s)
+node tools/i18n_review.mjs     # every string, its slice and its Norwegian -> reports/i18n-review.md
+```
+
+`?perf=1` on the real page runs the same sweep on the device you are holding and ends with a
+**Copy** button. Nothing is sent anywhere — the numbers leave the device only if you paste them.
+Frame times from `perf_card.mjs` are SwiftShader and mean nothing about a phone; the triangles,
+draw calls and the LOD ladder's decisions are true everywhere.
+
 **Soaks** (slow, and the only honest way to talk about balance):
 
 ```sh

@@ -62,6 +62,9 @@ never the simulation):
 | `render` | 3 | **3 s** | `walkthrough`, `passability`, `lanes_dump` |
 | `sim` | 3 | **595 s** | `disaster_soak`, `traffic_gate`, `sim_sweep` |
 
+`ui_smoke` grew to 92 s in D1 (it now presses the performance card's Copy button and parses the
+clipboard), so `quick` is about 400 s of its 480 s budget.
+
 The slowest single gate is `budget_gate` at 104 s, then `ui_smoke` at 66 and `a11y_smoke` at 46.
 Each run writes `reports/gates-<date>.json`.
 
@@ -76,13 +79,17 @@ than that (Q64).
 
 ## What is missing, and known to be
 
-**10 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**13 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 
 - **Nothing has been measured on a real device.** Every number above is SwiftShader. The
-  governor — the thing that decides what a phone gives up — has never run on one. This is the
-  first item of `workitems-measurement.md` and the largest gap in the project.
+  governor — the thing that decides what a phone gives up — has never run on one. This is still
+  the largest gap in the project, but it now has an instrument: `?perf=1` runs a nine-step frame
+  sweep on whatever device the page is open on and ends with a **Copy** button, and
+  `node tools/perf_card.mjs` runs the same sweep here (70 s, `reports/perf/swiftshader.json`).
+  The SwiftShader baseline is 83 to 350 ms p50 — 3 to 12 fps of software rendering. What is
+  missing is somebody pressing the button on real hardware (`workitems-measurement.md` D2).
 - **The simulation is on the render thread.** `specs/plan.md` §0 says "always a Web Worker" and
   `worker/` is empty. A 53.7 ms model rebuild sits beside a 4 ms tick (Q60).
 - **Multiplayer is not started.** Ruling 003 holds Wave 5 behind the singleplayer MVP being

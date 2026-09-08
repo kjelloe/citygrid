@@ -107,6 +107,11 @@ node tools/gates.mjs render    # a renderer slice as well: walkthrough, passabil
 node tools/gates.mjs sim       # a gameplay slice as well: the three soaks
 ```
 
+A slice that changes what a frame costs also runs `node tools/perf_card.mjs` (70 s) and puts the
+table in the dev-log. It is not a gate — it produces numbers, not a pass — and its frame times are
+SwiftShader, so quote them as such; the triangles, draw calls and ladder decisions in the same file
+are true anywhere.
+
 Every set has a time budget and the runner says when one is exceeded. A gate that grows past its
 share is a finding, not a fact of life. It also reports any headless browser a gate left running.
 

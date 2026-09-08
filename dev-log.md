@@ -4356,3 +4356,89 @@ a matter of memory.
 
 **Not done.** A21 stays open until Kjell has read the table. That is the item's own definition
 and no amount of tooling closes it.
+
+## slice-D1 — the performance card (2026-09-08)
+
+The first item of `workitems-measurement.md`, and the lane's whole premise: every frame time this
+project has ever produced came from SwiftShader, and the three tiers, the governor and the
+40k/140k/320k budgets were designed for a phone and an RTX 4090 that have never drawn a frame.
+
+**`?perf=1`** boots the real page into a scripted sweep on the saturated 96×96 fixture and ends
+with a JSON card and a **Copy** button. Nothing is sent anywhere — there is no endpoint, no fetch
+and no consent question to get wrong; the measurement leaves the device only if the person copies
+it. `client/debug/perf-sweep.js` is the sweep as pure data, so `test/perf-sweep.test.js` can argue
+about the *shape* of the measurement in node: every mode, both styles, four zooms, a low pitch, a
+night frame and somebody walking. `tools/perf_card.mjs` drives the same list under Playwright.
+
+**Measured**, `reports/perf/swiftshader.json`, build `9efa0c0e4cc6`, 70 s for the whole tool.
+Three runs of it agree to within one 16 ms frame on every row, which is what a fresh session per
+step bought:
+
+| step | p50 | p95 | triangles | calls | cars | the ladder |
+|---|---|---|---|---|---|---|
+| city 20t | 216.6 | 216.8 | 239,274 | 71 | 1,546 | street detail not resolvable |
+| city 40t | 233.3 | 250 | 256,068 | 63 | 1,546 | detail not resolvable |
+| city 80t | 83.4 | 100 | 68,960 | 57 | 3,071 | silhouette only |
+| city 120t | 83.2 | 83.4 | 49,400 | 54 | 3,075 | buildings only |
+| city 40t 14° | 233.3 | 250 | 261,800 | 65 | 1,546 | detail not resolvable |
+| ortho 96t | 83.2 | 83.4 | 48,680 | 53 | 3,075 | buildings only |
+| city 40t night | 350.1 | 366.7 | 268,276 | 67 | 1,546 | detail not resolvable |
+| city 40t painted | 216.7 | 249.9 | 256,068 | 63 | 1,546 | detail not resolvable |
+| street walk 60 m | 100 | 100.1 | 262,948 | 50 | 6,028 | detail dropped for budget |
+
+**Read it for what it is.** Triangles, draw calls, the ladder's reason and the governor's
+sacrifices are counted by the renderer and are true on any machine. The frame times are a
+software rasteriser in a container — 3 to 12 fps — and say nothing whatever about a phone. That
+is the row's job: to be the honest name for what every previous performance claim here was
+actually about.
+
+`ui_smoke` presses Copy and parses the clipboard (`?perfHold=1` shortens every hold, so the gate
+checks the card rather than paying for a measurement): **122 checks, 92 s**, up from 66. That is
+the whole cost of the slice to the gates — `quick` is **401 s of its 480 s budget**, 12 of 12
+green, no leaked browsers. Suite green twice, 1,087 tests.
+
+**What failed on the way — seven things, and five of them were the instrument.**
+
+1. **`saturatedCity` returns `{ state, paved }`**, and the card handed the wrapper to `play()`.
+   `startGame` threw on `state.players.some`, `main.js`'s catch drew "Something went wrong"
+   *behind* the card, and the card sat on "Measuring — do not touch the screen" for a hundred
+   seconds. Both halves fixed: the call, and a card that now writes the failure and the stack onto
+   itself. A card that has stopped looks exactly like a card that is still working.
+2. **`walker.foot` is the height of the ground under the walker — one number.** Differencing it
+   for a distance gave NaN, `NaN < 60` is false, so the street step released the walk keys on its
+   first frame and reported a leg of `null`. It is `walker.pose` that has an x and a z.
+3. **Two of the four zooms were one measurement printed twice.** On a 96-tile fixture everything
+   is already inside the frustum at span 120, so 120 and 240 both read 49,400 triangles and
+   83.3 ms. The ladder is now 20 / 40 / 80 / 120.
+4. **The saturated city had no cars in it.** The fixture pushes its buildings straight into the
+   array with no zoning demand behind them, so the reducer never routes a commute and
+   `state.tiles.traffic` stays zero — a sweep of a city with 11,000 residents and no moving
+   vehicle. `saturatedCity` gained a `traffic` option seeding the same load of 200 `lanes_dump`
+   has used since E4; the span-40 row promptly changed its mind from "detail not resolvable" to
+   **"cars dropped for budget"**.
+5. **`session.pause()` was called, was called on the right object, and did nothing** — for four
+   runs. The stored default style is `painted` and the sweep opens on `plain`, so step 1 rebuilt
+   the renderer (a style is a new renderer over the same state, R2) and the *replacement* session
+   ran at speed 1. `CITY.pause()` from outside the page failed the same way and for the same
+   reason. The tick climbed 402 → 445 across a sweep while the seeded load decayed 531,200 →
+   124,832. Every session is now born paused, in one helper, because pausing one of them was
+   indistinguishable from pausing all of them.
+6. **Then the cars accumulated across the sweep.** The local traffic sim fills a link while it is
+   on screen and never empties it again, so the run went 1,546 → 3,071 → 5,454 → 7,455 → 8,927 →
+   9,052 → 9,222 — and then fell back to 1,546 the moment a style change happened to rebuild the
+   renderer. The night row read **700 ms** and it was not the night: it was six times the cars of
+   the day row. Nine views of one city have to start from one place, so every step now gets a
+   fresh session and a warm-up that ends when the car count stops moving. Night is 350 ms against
+   233 ms of day at the same 1,546 cars, which is a number about the night.
+7. **A 60 m leg does not exercise the chunk baker.** A street chunk is 16 tiles — 320 m — and the
+   walker never leaves the one it started in. What costs is *arriving*, so the bake is measured in
+   the warm-up and reported beside the frame rather than mixed into it: **one chunk, 13 ms**,
+   against an 8 ms budget. That number is new and it is over.
+
+The reason five of seven were the instrument is that this slice is nothing but an instrument. The
+lesson is the one the V lane kept teaching in a different costume: **verify the instrument, then
+verify what it is pointed at** — and a measurement whose steps inherit each other's state is nine
+measurements of nine different cities.
+
+**Not done.** Real hardware is D2 and it needs Kjell. Q69–Q71 record what this slice found and
+did not fix.

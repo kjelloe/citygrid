@@ -319,6 +319,19 @@ while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate c
 attribute landed. For anything that themes the interface, assert a **computed colour** before and
 after — the same "measure the whole, not the part" as everywhere else in this file.
 
+**A measurement whose steps inherit each other's state is not one measurement.** D1's perf sweep
+held nine views of one city in one session, and the local traffic sim fills a link when it comes
+on screen and never empties it — so the car count went 1,546 → 9,222 across the run and the
+"night" row read 700 ms because it had six times the cars of the day row. Every step of a sweep
+must start from the same place, and the way to check is to put the state it depends on *in the
+row*: the defect was invisible until `cars` was printed beside `p50`. The same question applies to
+any harness that reuses a session — **what has this step inherited from the last one?**
+
+**And the pause you called may not be the pause that is running.** `session.pause()` was called,
+on the right object, and the clock kept ticking for four runs: the sweep's first step rebuilt the
+renderer (a style change is a new session, R2) and the replacement was born at speed 1. When a
+control visibly does nothing, ask whether the thing it controls is still the thing that is there.
+
 **When several things move at once, check what they now sit on top of.** N24 moved four panels and
 left the advisor under the rail, the drawer over the rail, and the build popover under both. Each
 was found by a gate rather than by looking, which is the system working — but a five-minute pass

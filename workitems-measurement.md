@@ -7,7 +7,25 @@ and neither has drawn a frame. This lane puts real numbers under those decisions
 one gate the lane started from and never built: the picture beside the reference shots. Same
 rules as `workitems-cityviewer.md` §0. Do it after `workitems-mainline.md`.*
 
-## D1 — The performance card (S)
+## D1 — The performance card (S) — **done 2026-09-08 as `slice-D1`**
+
+`?perf=1` boots the real page into the sweep and ends with a JSON card and a Copy button;
+`tools/perf_card.mjs` drives the same list under Playwright in **70 s** and writes
+`reports/perf/swiftshader.json` (build `9efa0c0e4cc6`). The sweep is nine steps —
+20/40/80/120-tile spans, a 14° pitch, ortho, night, `painted`, and a 60 m run in street mode —
+and the SwiftShader row is **83.2 to 350.1 ms p50**, which is 3 to 12 fps and is the honest name
+for what every earlier performance claim in this repository was about. `ui_smoke` presses Copy
+and parses the clipboard (122 checks, 92 s, up from 66); `test/perf-sweep.test.js` argues about
+the shape of the measurement in node.
+
+**Two changes the sweep forced, both of them findings.** The fixture had no cars in it —
+`saturatedCity` seeds buildings with no zoning demand behind them, so `tiles.traffic` was zero
+and three gates have been measuring an empty road network (**Q70**); it takes a `traffic` option
+now. And each step needs its own session, because the traffic sim never empties a link it has
+filled and the steps were inheriting each other's cars — the night row read 700 ms because it
+had six times the day row's traffic (**Q69**). The bake is measured on *arrival* in street mode,
+not over the walk, because a chunk is 320 m and the leg is 60: **one chunk, 13 ms, against an
+8 ms budget** (**Q71**).
 
 **Goal.** A player, or Kjell, opens the game on a device, presses one thing, and gets a block
 of numbers to paste.
@@ -39,7 +57,8 @@ laptop without a discrete GPU.
 
 **Do.**
 - Kjell runs `?perf=1` on each; the cards go in `reports/perf/<device>.json` with the commit
-  SHA in the filename or the file.
+  SHA in the filename or the file. The card already carries `build` — `client/precache.json`'s
+  version, which is the hash of every file the game is made of, and needs no build step.
 - `tools/perf_report.mjs` folds every card into `reports/perf/README.md`: one table per device,
   one row per sweep step, the governor's sacrifices in a column of their own. The table is the
   era for every tier number from then on (CLAUDE.md, measurement discipline).
@@ -138,3 +157,8 @@ on, and `reports/perf/` has the two extra rows.
 
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.
+
+**Where this lane stands, 2026-09-08.** **D1 done** (`slice-D1`) — the card, the tool and the
+SwiftShader baseline are in. **D2 is Kjell's**: `?perf=1` on the 4090 desktop and on a phone, the
+cards into `reports/perf/<device>.json`. Everything after D2 either wants those cards (D3, D5) or
+wants only D1's harness (D4, D6), so **D4 is what to do next** if the cards have not arrived.

@@ -1,5 +1,5 @@
 {
- "version": "346d8689a127",
+ "version": "9efa0c0e4cc6",
  "generated": "2026-09-08",
  "files": [
   "./client/audio/audio-model.js",
@@ -8,6 +8,8 @@
   "./client/constants-mirror.js",
   "./client/content.js",
   "./client/debug.js",
+  "./client/debug/perf-card.js",
+  "./client/debug/perf-sweep.js",
   "./client/game.js",
   "./client/i18n.js",
   "./client/icon-maskable.svg",
