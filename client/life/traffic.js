@@ -477,11 +477,17 @@ export function createTraffic(state, model, options = {}) {
     busyAt(corridor, node) {
       const reach = VMAX * GIVE_WAY_SECONDS;
       for (const link of blocksByCorridor.get(corridor) ?? []) {
+        // **The end the question is about.** A corridor has a block link in
+        // each direction and a crossing at each end, and `link.len - car.s` is
+        // the distance to the end THIS link runs to. Without the filter a car
+        // arriving at the far junction — one that has already gone through this
+        // crossing and is leaving — held the person on this kerb, which on a
+        // grid is every crossing in the city answering for its twin (M5).
+        if (link.to !== node) continue;
         for (const car of onLink.get(link.id) ?? []) {
           if (link.len - car.s <= reach) return true;
         }
       }
-      void node;
       return false;
     },
 

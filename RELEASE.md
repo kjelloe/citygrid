@@ -4,8 +4,11 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `782e759` on `dev_night`, the end of `workitems-measurement.md`'s buildable half.
-  `main` fast-forwards to it and was **pushed on 2026-09-08** (at `2f26532`, one slice behind).
+- **Commit:** `782e759` on `dev_night`, the end of `workitems-measurement.md`'s buildable half —
+  which is what the numbers below were measured at. **`main` is the release and `dev_night` carries
+  what has landed since**: `main` was pushed on 2026-09-08 at `2f26532`, and every commit between
+  is a document. Nothing on `dev_night` changes what this page claims until the next slice does,
+  and the docs test prints the drift as a note rather than a failure for exactly that reason.
 - **Date:** 2026-09-08
 - **Balance era:** era 1, tuned 2026-08-29 over 200 games per configuration
   (`reports/balance-era1.md`). Numbers from era 0 are void, not roughly comparable.
@@ -72,14 +75,18 @@ clipboard), so `quick` is about 400 s of its 480 s budget.
 The slowest single gate is `budget_gate` at 104 s, then `ui_smoke` at 66 and `a11y_smoke` at 46.
 Each run writes `reports/gates-<date>.json`.
 
-**A frame at High**, on the saturated 96×96 fixture: 289,446 triangles of 320,000 at night with
-eight baked street chunks; a chunk is 33.7k triangles and takes 7 ms of an 8 ms budget to bake.
-A person is 42 triangles and a car 76.
+**A frame at High** — and *which* frame is the whole of it, because two views of the same city
+differ by a factor of two. `budget_gate`'s street-zoom night row is **289,446 triangles of
+320,000** with eight baked street chunks; D5's `city 40t` night is **130,936**, which is exactly
+what its day frame costs, because at that span the ladder has already dropped the chunks and the
+night's lamps and lit windows live inside them. A chunk is 33.7k triangles and bakes in 9 ms on
+the 4090 (13 on SwiftShader) against an 8 ms budget. A person is 42 triangles and a car 76.
 
-**The city under it**: the model rebuild after a build action is 53.7 ms on a 128×128 (Q60 — it
-is four frames, and it is on the render thread). The steepest street is 18.8% against a 15% limit,
-with 8 corridors of 773 that no grading can fix because their two junctions are further apart
-than that (Q64).
+**The city under it**: the model rebuild after a build action is **53.3 ms on 96×96, 68.3 on a
+128 `hilly`, and 184.7 ms on 256×256** — eleven frames on the largest map the lobby offers, on the
+render thread (Q60, D6). The steepest street is 18.8% against a 15% limit on `rolling`, with 8
+corridors of 773 that no grading can fix because their two junctions are further apart than that;
+on a 128 `hilly` it is 59.3% and 459 of 1,392 (Q64, Q74).
 
 ## What is missing, and known to be
 
@@ -97,7 +104,8 @@ about:
   budgets and the governor's trigger are both tuned against a machine that has never struggled
   (`workitems-measurement.md` D2, D3, D5).
 - **The simulation is on the render thread.** `specs/plan.md` §0 says "always a Web Worker" and
-  `worker/` is empty. A 53.7 ms model rebuild sits beside a 4 ms tick (Q60).
+  `worker/` is empty. A model rebuild of 53.3 ms on 96×96 — 184.7 ms on 256×256 — sits beside a
+  4 ms tick (Q60, D6).
 - **Multiplayer is not started.** Ruling 003 holds Wave 5 behind the singleplayer MVP being
   *accepted*, and acceptance is a playtest, not a green suite. The seam is built in — commands
   cross the wire, not state — and nothing has crossed it yet. The territory overlay has no

@@ -66,6 +66,34 @@ test("the local documents stay out of git", () => {
   }
 });
 
+/** Working files under `reports/` that a reviewer or a probe produced and
+ * nobody meant to keep: gate transcripts and the scratch captures a slice takes
+ * while it is looking at something. The artefacts a slice DELIVERS — the perf
+ * cards, the compare sheet, the overlay shots, `i18n-review.md` — stay. */
+const SCRATCH = ["reports/review*.log", "reports/tmp/"];
+
+test("the reviewer's scratch stays out of git", () => {
+  // Same argument as the local documents above and a different shape of leak:
+  // `reports/review3-*.log` is seven gate transcripts and `reports/tmp/` four
+  // PNGs a probe wrote while somebody was looking at a bug, all committed by a
+  // `git add -A` at the end of a long session (M5). Patterns rather than names,
+  // because the next review round writes `review4-` and would slip through a
+  // list.
+  if (!existsSync(join(repoRoot, ".git"))) return;   // a tarball, not a checkout
+  const tracked = execFileSync("git", ["ls-files", "--", ...SCRATCH], {
+    cwd: repoRoot, encoding: "utf8",
+  }).split("\n").filter(Boolean);
+  assert.deepEqual(tracked, [],
+    `scratch is tracked and must not be: ${tracked.join(", ")}. `
+    + "Untrack with: git rm --cached <path>  (the file stays on disk)");
+
+  const ignored = readFileSync(join(repoRoot, ".gitignore"), "utf8").split("\n").map((l) => l.trim());
+  for (const pattern of SCRATCH) {
+    assert.ok(ignored.includes(pattern),
+      `${pattern} is not in .gitignore, so the next 'git add -A' takes it`);
+  }
+});
+
 test("every required document exists", () => {
   const missing = REQUIRED_DOCS.filter((doc) => !docExists(doc));
   assert.deepEqual(missing, [], `missing documents: ${missing.join(", ")}`);

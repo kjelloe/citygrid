@@ -122,7 +122,7 @@ stays, because the next string a slice adds is a draft again — regenerate and 
 **Done when** Kjell has returned the table once and A21's "drafted, not reviewed" note in
 `dev-questions.md` is closed.
 
-## M5 — Review fixes after the measurement lane (S) — 2026-09-09
+## M5 — Review fixes after the measurement lane (S) — **done 2026-09-09 as `slice-M5`**
 
 Small, and each names its test. Commit as `slice-M5`.
 
@@ -144,14 +144,23 @@ Small, and each names its test. Commit as `slice-M5`.
 **Done when** the busy-crossing test discriminates (plant the `void node` back and watch it fail),
 `git ls-files reports/` lists no log and no `tmp/`, and the docs test is green.
 
+**Done, all four.** `busyAt` filters on `link.to === node`; the discriminating test is the one that
+parks every car midway and then brings one to a single stop line — put `void node` back and only
+the far-end assertion fails. The scratch is untracked and `.gitignore` and `test/docs.test.js`
+guard it **by pattern**, because the next round writes `review4-`. `RELEASE.md` now names which
+view each frame number belongs to (`budget_gate`'s street-zoom night 289,446 beside D5's `city 40t`
+night 130,936, equal to its own day frame) and carries D6's three rebuild times. `main` is three
+commits behind and all three are documents, which the page says rather than the push fixing.
+`lanes_dump` unchanged at 400 cars, 76% moving — `busyAt` has one reader and it is the crowd.
+
 ## Order
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.
 
-**This lane was finished on 2026-09-08** — R4, T1, M2, M3, M4 done, and M1 merged **and pushed**
-(P57); A21 is closed. **The review of 2026-09-09 added M5**, four small fixes, which is the one
-thing outstanding here and goes before `workitems-measurement.md` D7.
+**This lane is finished.** R4, T1, M2, M3, M4 done on 2026-09-08, M1 merged **and pushed** (P57),
+A21 closed, and **M5 done on 2026-09-09** — the four fixes the review after D5 asked for. Nothing
+is outstanding here. What follows is `workitems-measurement.md` D7.
 
 What came next was `workitems-measurement.md`, and its first item found what this lane could not:
 the frame-time governor, running on a real device for the first time, was giving up its entire

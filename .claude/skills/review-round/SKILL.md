@@ -304,6 +304,18 @@ same empty roads and every screenshot in `reports/` has no moving car in it. Fou
 putting the picture next to one that had cars. The check is the same one as everywhere else in
 this file: **assert the effect, not the setting**.
 
+**`git add -A` at the end of a long session is how scratch reaches a public repository.** Seven
+gate transcripts and four probe captures were committed and pushed that way (M5). The guard is a
+test that matches **patterns** — `reports/review*.log`, `reports/tmp/` — not a list of names, since
+the next round writes `review4-`. Before committing a slice, look at what `git status` is actually
+offering you, not only at what you meant to change.
+
+**A number in a document has to say which measurement it is.** `RELEASE.md` said "a frame at High
+is 289,446 triangles"; two views of the same city at the same tier differ by a factor of two
+(`budget_gate`'s street zoom against D5's `city 40t`, 289,446 against 130,936), and the page named
+neither. A measured number without its view, its map and its era is not checkable, which is the
+only thing the page is for.
+
 **The gate's viewport is a configuration too.** Every headless gate in this project runs
 1280×720 at DPR 1. Street chunks are gated on resolvability and `tilePixels` is a function of
 canvas height, so at that size the ladder drops them — and the most expensive thing the renderer

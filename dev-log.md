@@ -4730,3 +4730,50 @@ governor reads it.
 **Measured.** Suite green twice. `gates.mjs quick` **411 s of 480**, 12 of 12, no leaked browsers
 (`ui_smoke` 100 s, up from 92: the perf-card check now waits out a frame-based warm-up). `render`
 3 s of 120.
+
+## slice-M5 — the review fixes after the measurement lane (2026-09-09)
+
+Four small things the review of 2026-09-09 found. Each named its own test, which is the only
+reason they are worth a slice rather than a note.
+
+**1. A busy crossing was busy at both ends.** `traffic.busyAt(corridor, node)` is what a person at
+an unsignalled crossing asks before stepping out, and it walked both block links of the corridor
+and dropped the node on the floor — the function ended `void node`. A corridor has a link in each
+direction and a crossing at each end, and `link.len - car.s` is the distance to the end *that link
+runs to*: so a car arriving at the far junction, one that had already gone through this crossing
+and was leaving it, held the person standing on this kerb. On a grid that is every crossing in the
+city answering for its twin.
+
+One line — `if (link.to !== node) continue;` — and two tests that discriminate. `test/cars.test.js`
+parks every car on a through corridor at the middle of its own link, checks both ends are open,
+then brings one car up to one stop line and checks that end is busy **and the other is not**. Put
+`void node` back and only the last assertion fails, which is what a test for this defect has to
+do. A second test says a car on one arm of a T does not make another arm's corridor busy.
+`test/pedestrians.test.js` closes the loop from the crowd's side: given an answer that is busy at
+one node, the twin crossing is still asked about and the crowd still crosses it.
+
+Nothing in the cars moved: `lanes_dump` is 400 cars, 304 moving (76%), mean 3.53 m/s — T1's
+numbers to the digit, because `busyAt` has exactly one reader and it is the pedestrians.
+
+**2. The reviewer's scratch was in git.** Seven `reports/review3-*.log` gate transcripts and four
+`reports/tmp/*.png` probe captures, committed by a `git add -A` at the end of a long session and
+pushed to a public repository. Untracked (the files stay on disk), and `.gitignore` gains
+`reports/review*.log` and `reports/tmp/`. `test/docs.test.js` gains a check in the same shape as
+the one that guards `dev-prompts.md` — **by pattern, not by name**, because the next review round
+writes `review4-` and a list of names would let it straight through. The artefacts a slice
+*delivers* — the perf cards, the compare sheet, the overlay shots, `i18n-review.md` — are not
+scratch and stay.
+
+**3. `RELEASE.md` said one number for a frame and there are two.** "289,446 of 320,000 at night"
+is `budget_gate`'s street-zoom row; D5's `city 40t` night is **130,936**, and the page did not say
+which view either belonged to. Both are named now, with the reason they differ — at span 40 the
+ladder has already dropped the street chunks and the night's lamps live inside them, so night
+costs exactly what day costs. The model-rebuild line carries D6's three maps (53.3 / 68.3 /
+184.7 ms) instead of one, the bake carries the 4090's 9 ms beside SwiftShader's 13, and the
+steepest-street line carries `hilly` beside `rolling`.
+
+**4. `main` is three commits behind, and all three are documents.** Said so on the page rather
+than pushed: `main` is the release, `dev_night` carries what has landed since, and nothing between
+them changes what the page claims. The docs test's drift note exists for this.
+
+**Measured.** Suite green twice, 1,113 tests. `render` 3 s of 120. `lanes_dump` unchanged.

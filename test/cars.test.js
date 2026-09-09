@@ -651,3 +651,91 @@ test("traffic still flows through a city of give-way junctions", () => {
   assert.ok(moving > traffic.cars().length * 0.4,
     `only ${moving} of ${traffic.cars().length} cars are moving`);
 });
+
+// --- a busy crossing is busy at ONE end (slice M5, review after D5) -----------
+//
+// `busyAt(corridor, node)` is what a pedestrian at an unsignalled crossing asks
+// before stepping out. It walked both block links of the corridor and dropped
+// the node on the floor (`void node`), so a car within its gap of the FAR end —
+// a car that has already gone through this crossing and is leaving — held the
+// person standing on the kerb. On a grid every corridor has a crossing at both
+// ends, so this was every crossing in the city answering for its twin.
+
+/** A corridor with a junction at each end, and the two nodes it runs between. */
+function throughCorridor(model) {
+  for (const corridor of model.corridors) {
+    const arms = model.lanes.links.filter((l) => l.kind === "block" && l.corridor === corridor.id);
+    const ends = new Set(arms.map((l) => l.to));
+    if (arms.length === 2 && ends.size === 2) return { corridor, arms, ends: [...ends] };
+  }
+  return undefined;
+}
+
+/** Parks every car on the corridor in the middle of its own link, so the only
+ * car near an end is the one the test puts there. */
+function parkMidway(traffic, arms) {
+  const ids = new Set(arms.map((l) => l.id));
+  const parked = [];
+  for (const car of traffic.cars()) {
+    if (!ids.has(car.link)) continue;
+    const link = arms.find((l) => l.id === car.link);
+    car.s = link.len / 2;
+    car.v = 0;
+    parked.push(car);
+  }
+  return parked;
+}
+
+test("a car leaving a crossing does not hold the crossing it has left", () => {
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 120);
+  const through = throughCorridor(model);
+  assert.ok(through, "no corridor with a junction at each end in the fixture");
+  const { corridor, arms, ends } = through;
+
+  const parked = parkMidway(traffic, arms);
+  assert.ok(parked.length > 0, "no cars on the through corridor to move");
+  assert.equal(traffic.busyAt(corridor.id, ends[0]), false, "midway cars make a crossing busy");
+  assert.equal(traffic.busyAt(corridor.id, ends[1]), false, "midway cars make a crossing busy");
+
+  // One car brought up to the stop line of ONE end. That end is busy; the other
+  // is a hundred metres away and is not.
+  const near = arms.find((l) => l.to === ends[0]);
+  const mover = parked.find((car) => car.link === near.id);
+  assert.ok(mover, "no car heading for the near end");
+  mover.s = near.len - 1;
+
+  assert.equal(traffic.busyAt(corridor.id, ends[0]), true,
+    "a car at the stop line left its own crossing open");
+  assert.equal(traffic.busyAt(corridor.id, ends[1]), false,
+    "a car at the far end of the corridor held this crossing — busyAt ignores its node");
+});
+
+test("busyAt asks about the corridor it was given, and no other", () => {
+  // The other half of the same argument: a corridor with a car on it must not
+  // make a different corridor's crossing busy, even where they meet.
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 120);
+  const node = model.nodes.find((n) => n.degree === 3);
+  const arriving = model.lanes.links.filter((l) => l.kind === "block" && l.to === node.id);
+  const corridors = new Set(arriving.map((l) => l.corridor));
+  assert.ok(corridors.size >= 2, "the T's arms are all one corridor");
+
+  for (const car of traffic.cars()) {
+    const link = model.lanes.links[car.link];
+    if (link?.kind === "block") { car.s = Math.min(car.s, link.len / 2); car.v = 0; }
+  }
+  const arm = arriving[0];
+  const mover = traffic.cars().find((c) => c.link === arm.id);
+  if (mover) {
+    mover.s = arm.len - 1;
+    assert.equal(traffic.busyAt(arm.corridor, node.id), true);
+    for (const other of corridors) {
+      if (other === arm.corridor) continue;
+      assert.equal(traffic.busyAt(other, node.id), false,
+        "a car on one arm made another arm's corridor busy");
+    }
+  }
+});

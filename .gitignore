@@ -11,6 +11,11 @@ debugging/out/
 reports/smoke-*.png
 # Per-view captures the compare sheet stitches. The sheet is the artefact; these
 # are its working files, and three of them are 4 MB.
+# Gate transcripts a review round writes, and the scratch captures a probe takes
+# while somebody is looking at a bug. Seven logs and four PNGs reached `main`
+# through one `git add -A` (M5). The artefacts a slice DELIVERS are not here.
+reports/review*.log
+reports/tmp/
 reports/.compare-*.png
 reports/.sheet-*.png
 

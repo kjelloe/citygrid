@@ -268,3 +268,34 @@ test("with nothing to ask, an unsignalled crossing is simply open", () => {
   run(peds, 120);
   assert.ok(peds.crossed > 0, "the crowd is stuck on the pavement");
 });
+
+test("the node reaches the cars, so one busy crossing is not all of them", () => {
+  // M5, after the D5 review. A corridor runs between two crossings and the
+  // question a person asks is about the one they are standing at. `busyAt` was
+  // dropping the node, so a car leaving the far end held this kerb — and the
+  // wiring here is what makes that visible from the crowd's side: given an
+  // answer that is busy at ONE node, only that crossing may hold.
+  const { state, model, nav } = town({ crossroads: false });
+  const peds = createPedestrians(state, model, nav, { cap: 200 });
+  const unsignalled = nav.edges.filter((e) => e.kind === "cross" && e.axis === undefined);
+  const shared = unsignalled.find((e) => unsignalled.some(
+    (o) => o.corridor === e.corridor && o.node !== e.node));
+  assert.ok(shared, "no corridor in the fixture has an unsignalled crossing at both ends");
+  const twin = unsignalled.find((e) => e.corridor === shared.corridor && e.node !== shared.node);
+
+  const asked = [];
+  peds.setTraffic((corridor, node) => {
+    asked.push([corridor, node]);
+    return corridor === shared.corridor && node === shared.node;
+  });
+  run(peds, 120);
+
+  assert.ok(asked.some(([, node]) => node !== undefined),
+    "the crowd asks about a corridor without saying which end of it");
+  assert.ok(asked.some(([c, n]) => c === twin.corridor && n === twin.node),
+    "the twin crossing was never asked about");
+  for (const person of peds.people()) {
+    assert.notEqual(person.edge, shared.id, "somebody crossed where a car was coming");
+  }
+  assert.ok(peds.crossed > 0, "the whole crowd stopped because one crossing was busy");
+});
