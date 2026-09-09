@@ -4943,3 +4943,70 @@ coverage with about 75 seconds — D1's perf-card check in `ui_smoke` and D8's r
 next gate that grows trips the warning. The budget is deliberately **not** raised. M2's rule is
 that a gate which grows past its share is a finding rather than a fact of life, and raising the
 number to fit is exactly what that rule forbids.
+
+## slice-D9 — the card after the fixes (2026-09-10)
+
+Kjell ran `?perf=1` on the RTX 4090 at build `167b733c86ca` — D8's tree, so the same code both
+fixes landed in. It closes two open things and opens one small one.
+
+**D5 is confirmed on real hardware, and the two cards side by side are the proof.**
+`reports/perf/README.md` now carries the pre-fix card as its own column, kept deliberately as
+`desktop-4090-before-d5.json`, because a fix with no before is a claim:
+
+| what the governor gave up | before D5 | after D5 |
+|---|---|---|
+| `city 20t`, `40t`, `80t`, `ortho 96t`, `night`, `painted`, `street walk` | pixel, ink, shadows, supersample | **none** |
+| `city 40t 14°` | pixel, ink, shadows, supersample | pixel |
+| `city 120t` | pixel, ink, shadows, supersample | pixel, ink, shadows, supersample |
+
+**Idle on seven of nine rows**, where before it spent the whole ladder on all nine at a locked
+60 fps. And the two rows where it still acts have something to act on: `city 120t` genuinely runs
+at **42 fps** on a 4090 (212 frames in a five-second hold) with a p95 of 33.4 ms, and `city 40t 14°`
+has a worst frame of 66.7. That is the instrument doing its job rather than eating the picture.
+
+**D7's card gate is met, and the number is 0%.** Both machines carry `simulatedS` now, and the rows
+that lived comparable amounts of city agree exactly:
+
+| step | 4090 | its city seconds | SwiftShader | its city seconds | cars apart |
+|---|---|---|---|---|---|
+| `city 20t` | 4,578 | 6.1 | 4,590 | 5.7 | **0%** |
+| `city 40t` | 4,578 | 6.1 | 4,585 | 5.5 | **0%** |
+| `city 80t` | 4,578 | 6.1 | 4,583 | 7.9 | **0%** |
+| `street walk 60 m` | 8,914 | 16.2 | 8,927 | 14.8 | **0%** |
+| `city 120t` | 4,578 | 6.2 | 6,088 | 8.9 | 25% |
+| `ortho 96t` | 4,578 | 6.1 | 6,077 | 9.2 | 25% |
+| `city 40t night` | 4,578 | 6.1 | 3,071 | 4.0 | 33% |
+
+A software rasteriser and an RTX 4090 reporting the same city to the car. Every row that disagrees
+disagrees in the direction its clock predicts — more city seconds, more cars — which is what a
+fill by time means and what a fill by frame could never have produced. Note the 4090's own column:
+**6.1 seconds and 4,578 cars on every single city row**, which is the property D7 was for.
+
+**The one it opened: the street step walked 18 m of 60.** SwiftShader walks the whole leg; the
+4090 covered 18. The card could not say which of three things happened, so the first move was to
+rule out the arithmetic — `client/life/walker.js` driven in node over twelve starting points on the
+saturated fixture covers **60.0 m at 60 fps and 60.4 m at 10**, running, and 24.0/24.2 walking. The
+walker's model is frame-rate independent. So the answer is in the session, and the card now carries
+what names it: `walkSpeed` (4 m/s is a run, 1.6 a walk), `walkBlocked` and `walkFrames`.
+`tools/perf_card.mjs` prints the reading — against something, or the run key never took, or it
+simply ran out of time. **Nothing is guessed here**; the next card says which.
+
+Worth noting that the step's *purpose* was served either way: `bakedChunks: 9` and a worst bake of
+8 ms, which is what the leg is there to exercise.
+
+**And a guard for a class of defect this file has now caused three times.** `tools/` is scripts
+nothing imports, so a syntax error in one is invisible to the suite until somebody runs it — at the
+end of a slice, as the last step before a commit. `tools/perf_report.mjs` builds a Markdown page in
+a template literal and three separate edits quoted an `identifier` in the prose and closed the
+template early. `test/tools.test.js` runs `node --check` over the directory: half a second, and the
+fourth one goes red in the suite instead.
+
+**Q75 has its answer's first half.** The governor is no longer firing at a machine that is fine.
+What is left is narrower and still wants a phone: is spending four rungs in four seconds right for
+a *hitch* — p50 perfect, one frame in twenty doubled — where the sacrifices do not touch the cause?
+The cheapest untried lever is requiring the p95 to stay over for two patience windows before the
+second rung.
+
+**Measured.** Suite green twice, 1,124 tests. `gates.mjs quick` **459 s of 480**, 12 of 12, no
+leaked browsers; `render` 17 s of 120. The set has crept another 5 s — **Q79 is 96% now**, and the
+creep is `budget_gate` at 152 s rather than anything this slice added.

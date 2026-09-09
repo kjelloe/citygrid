@@ -50,7 +50,7 @@ once. `ui_smoke` presses Copy and reads the clipboard text as JSON.
 **Done when** `reports/perf/swiftshader.json` exists from the tool, and the card renders on the
 real page.
 
-## D2 — Real devices (S, needs Kjell's hardware) — **the desktop card is in, 2026-09-08; the phone is not**
+## D2 — Real devices (S, needs Kjell's hardware) — **two desktop cards are in; the phone is not**
 
 `reports/perf/desktop-4090.json` — RTX 4090, Windows, Chrome 152, 2560×1440 at DPR 1.5, tier
 `high`, build `cbbd27806158` (commit `2f26532`, the same tree as the SwiftShader baseline).
@@ -274,6 +274,33 @@ neither needs a phone.*
 - **Q66 and Q71 are closed** (A52, A53): both were answered by numbers and neither wants a slice.
   **Q64 and Q74 want Kjell**: is `hilly` a playable map or scenery? The recommendation is in Q64.
 
+## D9 — The card after the fixes (S) — **done 2026-09-10 as `slice-D9`**
+
+Kjell ran `?perf=1` on the 4090 at build `167b733c86ca` (D8's tree). It closes two things and opens
+one.
+
+**D5 is confirmed on real hardware.** The governor is **idle on seven of nine rows** where the
+pre-fix card gave up all four rungs on all nine. `reports/perf/README.md` shows the two cards side
+by side — the before column is `pixel,ink,shadows,supersample` the whole way down, the after column
+is `none`. The pre-fix card is kept as `desktop-4090-before-d5.json`, because a fix with no before
+is a claim.
+
+**D7's card gate is met.** With both machines carrying `simulatedS`, the rows that lived comparable
+amounts of city agree to **0%**: 4,578 cars against 4,590, 4,585, 4,583, and 8,914 against 8,927 in
+the street step. The rows that disagree are all in the direction their clocks predict. That is a
+software rasteriser and an RTX 4090 reporting the same city.
+
+**And it opened a small one.** The street step walked **18 m of 60** where SwiftShader walks the
+whole leg, and the card could not say why. The walker's model is not the cause — measured in node
+over twelve starts on the saturated fixture it covers 60.0 m at 60 fps and 60.4 at 10 — so the card
+now records `walkSpeed`, `walkBlocked` and `walkFrames`, which tell the three candidates apart:
+never got the keys (0 m), walked rather than ran (1.6 m/s, 24 m), or spent the leg against
+something. `tools/perf_card.mjs` prints which. The next card answers it; nothing is guessed here.
+
+**Also:** `test/tools.test.js` runs `node --check` over `tools/`. Nothing imports a gate, so a
+syntax error in one is invisible to the suite until somebody runs it — `perf_report.mjs` was the
+third edit to close its template literal early on a backtick in the prose.
+
 ## D7 — Traffic that is a function of the roads (S) — Q69, Q76 — **done 2026-09-09 as `slice-D7`**
 
 **One of the two defects was real.** Q76 is fixed: the density control spends a credit of cars per
@@ -400,9 +427,8 @@ and tuning the tiers on the machine with the headroom is how `frameMs` came to b
 of D5 (Q75, the percentile) reads the same missing card. D2 wants a phone and, if there is one, a
 laptop without a discrete GPU.
 
-**Two one-line asks for Kjell, whenever it suits:** a fresh `?perf=1` card from the 4090 at this
-build would close D7's card gate properly (its current card predates the fix, so the comparison
-spans two eras); and the phone card unblocks D3 and D5.
+**The 4090 card arrived on 2026-09-10 (D9) and closed D7's card gate.** What is left is **the phone
+card**, and it unblocks D3 and the rest of D5. One ask, not three.
 
 *The earlier note, kept for its ordering advice:* **2026-09-08 (evening).** **D1, D4, D6 and the desktop half of D2 and D5
 are done.** The first real-device card found that the frame-time governor was giving up its entire

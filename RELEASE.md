@@ -65,15 +65,15 @@ which is what made the governor spend its whole ladder on a machine hitting 60 f
 
 | Set | Gates | Time | What it is |
 |---|---|---|---|
-| `quick` | 12 | **454 s** | the ten browser smokes, the §24 acceptance script, `budget_gate` |
+| `quick` | 12 | **459 s** | the ten browser smokes, the §24 acceptance script, `budget_gate` |
 | `render` | 3 | **3 s** | `walkthrough`, `passability`, `lanes_dump` |
 | `sim` | 3 | **595 s** | `disaster_soak`, `traffic_gate`, `sim_sweep` |
 
-The slowest single gate is `budget_gate` at **149 s**, then `ui_smoke` at 99 and `a11y_smoke` at 44.
+The slowest single gate is `budget_gate` at **152 s**, then `ui_smoke` at 100 and `a11y_smoke` at 45.
 Each run writes `reports/gates-<date>.json`.
 
 `quick` was 375 s when M2 measured it and set the budget as "the measurement plus room". It is now
-**454 s of 480 — 95%** — and the growth is the measurement lane buying coverage: D1's perf-card
+**459 s of 480 — 96%** — and the growth is the measurement lane buying coverage: D1's perf-card
 check added 26 s to `ui_smoke`, D8's desktop-viewport rows 49 s to `budget_gate`, and both catch
 things no other gate can see. The budget is deliberately not raised (**Q79**): M2's rule is that a
 gate which grows past its share is a finding, not a fact of life.
@@ -103,8 +103,10 @@ about:
   p50 across the whole sweep, and **finding that took four minutes to expose a defect eight months
   of software rendering could not**: the frame-time governor was giving up its entire quality
   ladder on any machine locked to its refresh rate, because each tier's target was the refresh
-  interval rather than a threshold above it. Fixed. What is still missing is a phone — the tier
-  budgets and the governor's trigger are both tuned against a machine that has never struggled
+  interval rather than a threshold above it. Fixed, and the card taken after the fix has the
+  governor **idle on seven of nine rows** — the before and after sit side by side in
+  `reports/perf/README.md`. What is still missing is a phone: the tier budgets and the governor's
+  trigger are both set against a machine that has never struggled
   (`workitems-measurement.md` D2, D3, D5).
 - **The simulation is on the render thread.** `specs/plan.md` §0 says "always a Web Worker" and
   `worker/` is empty. A model rebuild of 53.3 ms on 96×96 — 184.7 ms on 256×256 — sits beside a

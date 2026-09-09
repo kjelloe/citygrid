@@ -14,6 +14,12 @@
 // different city inside the same warm-up — which is why `settled` is a column
 // and not a footnote.
 
+// **Prose in the template below must escape its backticks.** Three separate
+// edits to this file have been syntax errors because a sentence quoted a
+// `identifier` inside the template literal that builds the page. `node --check`
+// over `tools/` is a test now (`test/tools.test.js`), so the next one goes red
+// in the suite rather than at the moment somebody runs the report.
+
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,10 +133,6 @@ ${stepTable(entries, "drawCalls")}
 
 ${stepTable(entries, "lod")}
 
-## What the governor gave up
-
-${stepTable(entries, "given")}
-
 ## Frames in the hold — did the row test the governor at all?
 
 *Its window is 60 frames and it ignores its first 10 samples. A row below 60 did not exercise it,
@@ -152,6 +154,14 @@ ${stepTable(entries, "cars", (v, row) => `${v?.toLocaleString("en-GB")}${row.set
 below 15 fps advances its world more slowly than the clock on the wall (Q78).*
 
 ${stepTable(entries, "simulatedS", (v) => (v === undefined ? "—" : `${v} s`))}
+
+## What the governor gave up, and what the frame actually was
+
+*Since D5 the target is a threshold with headroom rather than the refresh interval. A row that
+gives something up now means it: \`city 120t\` on the 4090 has a p95 of 33.4 ms, which is a genuine
+one-frame-in-twenty drop (Q75).*
+
+${stepTable(entries, "given")}
 
 ## The street chunk bake — chunks built on arrival, and the worst one (ms)
 

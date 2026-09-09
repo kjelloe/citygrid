@@ -132,3 +132,35 @@ test("the maps are named, distinctly, and are data", () => {
     }
   }
 });
+
+// --- the street step's leg (slice D9) ---------------------------------------
+//
+// The 4090's card came back with 18 m of a 60 m leg where SwiftShader walked
+// the whole thing, and the card could not say which of three things happened:
+// the walker never got the keys, it walked rather than ran, or it spent the leg
+// against a wall. The walker's own model is not the culprit — measured in node
+// over twelve starting points on the saturated fixture it covers 60.0 m at
+// 60 fps and 60.4 at 10, running — so the difference is in the session and the
+// card has to carry enough to name it.
+
+test("the street step asks for a leg a runner can finish in the time", () => {
+  // 4 m/s is `RUN` in `client/life/walker.js`. A step that asks for more than
+  // the walker can cover is a step that reports a shortfall every time and
+  // teaches the reader to ignore it.
+  const RUN_MS = 4;
+  for (const step of SWEEP.filter((s) => s.walkM > 0)) {
+    assert.ok(step.walkM <= RUN_MS * step.seconds,
+      `${stepLabel(step)} wants ${step.walkM} m in ${step.seconds}s, which is ${step.walkM / step.seconds} m/s`);
+  }
+});
+
+test("and leaves no room to mistake a slow leg for a blocked one", () => {
+  // Walking is 1.6 m/s and running is 4. If the leg were short enough that a
+  // walk could finish it, a card showing the full distance would prove nothing
+  // about whether the run key reached the page.
+  const WALK_MS = 1.6;
+  for (const step of SWEEP.filter((s) => s.walkM > 0)) {
+    assert.ok(step.walkM > WALK_MS * step.seconds,
+      `${stepLabel(step)}'s ${step.walkM} m is within walking distance, so a full leg says nothing`);
+  }
+});

@@ -313,6 +313,13 @@ getting fuller. **Re-read the code before building the fix a question asks for**
 question's remedy would break a ruling (here, a camera-dependent population against ruling 037's
 locally-derived traffic), that is the strongest possible sign to check the diagnosis first.
 
+**Rule out the arithmetic before blaming the machine.** A card came back with 18 m of a 60 m leg
+where a machine twenty times slower walked all of it. The tempting story — "the fast machine is
+different somehow" — was checked instead: the walker driven in node over twelve starting points
+covers 60.0 m at 60 fps and 60.4 at 10, so the model is not frame-rate dependent and the cause is
+in the session. Where the pure half can be run in node, run it, and let the instrument carry
+whatever tells the remaining candidates apart rather than reasoning about which is likeliest.
+
 **Two numbers are the same measurement only if they cover the same amount of time.** The perf card
 compared a row that had lived 12 simulated seconds with one that had lived 3 and read the
 difference as a frame-rate defect. The delta clamp means a machine below 15 fps advances its world

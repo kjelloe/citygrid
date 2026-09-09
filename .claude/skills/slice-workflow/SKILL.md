@@ -112,6 +112,11 @@ table in the dev-log. It is not a gate — it produces numbers, not a pass — a
 SwiftShader, so quote them as such; the triangles, draw calls and ladder decisions in the same file
 are true anywhere.
 
+**A tool nothing imports is a tool the suite cannot see.** `tools/` is scripts that are run, not
+required, so a syntax error in one surfaces the moment somebody runs it — usually as the last step
+before a commit. `test/tools.test.js` runs `node --check` over the directory; keep it green and
+keep new tools in `tools/`, not hidden behind a dot.
+
 **Do not touch the working tree while a browser gate is running against it.**
 `tools/make_precache.mjs` rewrites the service worker's version, `client/main.js` reloads the page
 once on `controllerchange`, and Playwright's next `evaluate` dies with "Execution context was

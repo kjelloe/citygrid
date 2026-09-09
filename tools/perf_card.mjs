@@ -97,6 +97,16 @@ for (const row of card.steps) {
   // Not a failure — a slow machine legitimately cannot reach the same city
   // inside the warm-up — but it has to be said out loud, or two cards get put
   // in one table and compared as though they were of the same place (D2).
+  // A short leg is not a failure — the step's job is to bake chunks on arrival,
+  // and `bakedChunks` says whether it did — but it has to be explained rather
+  // than left as a number that does not match the one beside it (D9).
+  if (row.wantedM !== undefined && row.walkedM < row.wantedM) {
+    const why = row.walkBlocked > row.walkFrames * 0.1 ? "against something"
+      : row.walkSpeed > 0 && row.walkSpeed < 2.5 ? "walking rather than running — the run key did not take"
+        : "neither blocked nor slow, so the leg simply ran out of time";
+    console.warn(`  note  ${row.step}: walked ${row.walkedM} m of ${row.wantedM} at `
+      + `${row.walkSpeed} m/s, blocked on ${row.walkBlocked} of ${row.walkFrames} frames — ${why}`);
+  }
   if (row.thinSample) {
     console.warn(`  note  ${row.step}: only ${row.frames} frames in the hold — the governor's `
       + `window is 60 and its floor is 10, so this row did not test it, and its p95 is `

@@ -166,13 +166,31 @@ function holdWalkKeys(down) {
 async function walkFor(renderer, seconds, wantedM) {
   const leg = legWatcher(renderer);
   holdWalkKeys(true);
-  const until = performance.now() + seconds * 1000;
+  const started = performance.now();
+  const until = started + seconds * 1000;
+  let frames = 0;
+  let blocked = 0;
   while (performance.now() < until && leg.metres < wantedM) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     leg.step();
+    frames += 1;
+    if (renderer.walker?.blocked) blocked += 1;
   }
   holdWalkKeys(false);
-  return leg.metres;
+  // **Why the leg was short, if it was.** The 4090's card came back with 18 m
+  // of a 60 m leg while SwiftShader walked the whole thing, and the card could
+  // not say which of the three possible reasons it was: the walker never got
+  // the keys (it would have covered 0), it walked rather than ran (1.6 m/s
+  // against 4, so 24 m in fifteen seconds), or it spent the leg against a wall.
+  // The walker's own model is frame-rate independent — 60.0 m at 60 fps and
+  // 60.4 at 10, measured in node over twelve starting points — so the answer is
+  // in the session, not in the arithmetic, and these three numbers name it.
+  return {
+    metres: leg.metres,
+    seconds: Math.round((performance.now() - started) / 100) / 10,
+    frames,
+    blocked,
+  };
 }
 
 /**
@@ -242,10 +260,10 @@ async function measure(step, session, play, hold) {
   const bake = await settle(renderer, WARMUP_MIN, hold > 0 ? 2 : WARMUP_MAX);
 
 
-  let walkedM = 0;
+  let walk;
   const frames = step.walkM > 0
     ? await Promise.all([sampleFrames(step.seconds), walkFor(renderer, step.seconds, step.walkM)])
-      .then(([deltas, metres]) => { walkedM = metres; return deltas; })
+      .then(([deltas, leg]) => { walk = leg; return deltas; })
     : await sampleFrames(step.seconds);
 
   const sorted = frames.slice().sort((a, b) => a - b);
@@ -290,7 +308,16 @@ async function measure(step, session, play, hold) {
       simulatedS: s.trafficS,
       peds: s.peds,
       ...(posed.entered ? {} : { entered: false }),
-      ...(step.walkM > 0 ? { walkedM, wantedM: step.walkM } : {}),
+      ...(step.walkM > 0 ? {
+        walkedM: walk.metres,
+        wantedM: step.walkM,
+        // Metres a second over the leg. Four means the walker ran, 1.6 that it
+        // only walked, and anything under that with `walkBlocked` frames means
+        // it was against something.
+        walkSpeed: walk.seconds > 0 ? Math.round((walk.metres / walk.seconds) * 10) / 10 : 0,
+        walkBlocked: walk.blocked,
+        walkFrames: walk.frames,
+      } : {}),
     },
   };
 }
