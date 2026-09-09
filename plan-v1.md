@@ -79,7 +79,7 @@ the file to open first.
 | Lane | What it is | Where it stands |
 |---|---|---|
 | `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **finished 2026-09-08** — merged and pushed, the runner and the checklist built, the Norwegian read and passed |
-| `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6 done and the desktop half of D2 and D5**; the first real card found the governor giving up its whole ladder at 60 fps. D3 and the last of D5 wait on a phone card; **D7 and D8** (the review after D5) do not, and go first |
+| `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6, D7, D8 done**, plus the desktop halves of D2 and D5. The first real card found the governor giving up its whole ladder at 60 fps. **What is left needs a phone**: D3 and the last of D5 are blocked on that card |
 | `workitems-film.md` | photo mode, tours, a demo film | not started; unblocked — the measurement lane's buildable half is done, so F1 follows D8 |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
 
@@ -371,7 +371,7 @@ land first. Nothing here is scheduled.*
 | Lane | File | What it is for |
 |---|---|---|
 | mainline | `workitems-mainline.md` | M1 merge `dev_night` into `main`; M2 a gate runner with a time budget; M3 the release page; M4 the Norwegian pass |
-| measurement | `workitems-measurement.md` | D1 a performance card (`?perf=1`); D2 real devices; D3 the tiers re-tuned from them; D4 the reference-compare sheet against the Transport Worlds shots; D5 the governor validated |
+| measurement | `workitems-measurement.md` | D1 a performance card (`?perf=1`); D2 real devices; D3 the tiers re-tuned from them; D4 the reference-compare sheet against the Transport Worlds shots; D5 the governor validated; D6 the big and steep maps; D7 traffic per second; D8 a viewport that can see a street chunk |
 | film | `workitems-film.md` | F1 photo mode (plan.md §10 bonus 4); F2 a shot list and storyboard tool; F3 encode and lead the README with it |
 | worker | `workitems-worker.md` | W1 the session seam on one thread; W2 the reducer in a Web Worker behind a mirror; W3 the model off the tick; W4 the seam proven against an echo transport, the door to Wave 5 |
 
