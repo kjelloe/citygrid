@@ -391,7 +391,20 @@ D4 does not and is the quickest visible result; D6 is a morning with the harness
 `workitems-film.md` F1 while the phone card is awaited. D3 and the rest of D5 start the day a phone
 card lands, and D7 must land before that card is compared with the desktop one.
 
-**Where this lane stands, 2026-09-08 (evening).** **D1, D4, D6 and the desktop half of D2 and D5
+**Where this lane stands, 2026-09-10.** **D1, D4, D6, D7 and D8 are done**, along with the desktop
+halves of D2 and D5. The review's three items are closed: the traffic fills per second (D7), the
+gate has a viewport that can see a street chunk (D8), and M5's four fixes landed before them.
+
+**Everything still open in this lane needs a phone.** D3 cannot start — one card is not a range,
+and tuning the tiers on the machine with the headroom is how `frameMs` came to be 16 ms. The rest
+of D5 (Q75, the percentile) reads the same missing card. D2 wants a phone and, if there is one, a
+laptop without a discrete GPU.
+
+**Two one-line asks for Kjell, whenever it suits:** a fresh `?perf=1` card from the 4090 at this
+build would close D7's card gate properly (its current card predates the fix, so the comparison
+spans two eras); and the phone card unblocks D3 and D5.
+
+*The earlier note, kept for its ordering advice:* **2026-09-08 (evening).** **D1, D4, D6 and the desktop half of D2 and D5
 are done.** The first real-device card found that the frame-time governor was giving up its entire
 ladder on an RTX 4090 at a locked 60 fps, because every tier's target was its refresh interval
 rather than a threshold above it — fixed, tested, and the reason no earlier measurement saw it is
