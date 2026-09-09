@@ -114,7 +114,7 @@ try {
       apply(state, { type: C.CMD_PLACE_WIRE, actor: 1, runs });
       apply(state, { type: C.CMD_PLACE_PIPE, actor: 1, runs });
     }
-    for (let i = 0; i < 400; i += 1) apply(state, { type: C.CMD_TICK });
+    for (let i = 0; i < 240; i += 1) apply(state, { type: C.CMD_TICK });
     globalThis.CITY.renderer.worldChanged();
     const { focusOn } = await import("/client/render/camera.js");
     focusOn(globalThis.CITY.renderer.view, W / 2, W / 2);
@@ -527,6 +527,109 @@ try {
   check("and the budget is measuring the CITY, not the full-screen quad",
     painted.actual > 1000 && painted.quadOnly <= 6,
     `${painted.actual} counted, ${painted.quadOnly} in three's counter after the pass`);
+
+  // --- the desktop viewport (slice D8, Q77) ----------------------------------
+  //
+  // Street chunks bake only where a tile covers `RESOLVE.l3` pixels, and
+  // `tilePixels` is a function of the canvas HEIGHT. Every row above draws at
+  // 1280×800 at a device pixel ratio of 1, where the nearest chunk at span 20
+  // gets 62 pixels a tile — so **no row in this gate's history has ever baked a
+  // street chunk at a city zoom**. Kjell's card draws 2560×1305 at 1.5, which is
+  // 168 px a tile: eight live chunks and 258,536 of 289,086 triangles, the most
+  // expensive thing this renderer builds, measured for the first time by a
+  // person rather than by a gate.
+  //
+  // Two spans at High, not thirty-two rows: this is where the chunks live, and
+  // SwiftShader at four times the pixels is slow.
+  //
+  // **The height is the card's; the width is the least that keeps the aspect at
+  // one.** `tilePixels` depends on the canvas HEIGHT and, above an aspect of 1,
+  // on nothing else — `test/lod.test.js` asserts that the small and large
+  // viewports resolve in exactly the ratio of their canvases. So matching the
+  // 4090's 1,305 CSS pixels at a ratio of 1.5 (1,957 device pixels) reproduces
+  // the threshold exactly, and narrowing 2,560 to 1,440 halves the fill rate
+  // this has to pay for on a software rasteriser. A first attempt at 1706×960
+  // gave a 1,440 px canvas and found no chunk at span 20 at all — the finding
+  // lives in the last 25% of that height.
+  const bigContext = await browser.newContext({
+    viewport: { width: 1440, height: 1305 }, deviceScaleFactor: 1.5,
+  });
+  const bigPage = await bigContext.newPage();
+  bigPage.on("pageerror", (error) => errors.push(`desktop viewport: ${error.message}`));
+  bigPage.on("console", (m) => { if (m.type() === "error") errors.push(`desktop viewport: ${m.text()}`); });
+  // 64 rather than 96: the finding is a threshold on the canvas height and does
+  // not care how big the map is, and four times the pixels on a software
+  // rasteriser is expensive enough without four times the city as well. At 96
+  // this section cost 100 s, over the minute D8 allows itself.
+  await bigPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=plain`);
+  await bigPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  const big = await bigPage.evaluate(async () => {
+    const { apply } = await import("/engine/reducer.js");
+    const C = await import("/engine/commands.js");
+    await import("/engine/build-commands.js");
+    await import("/engine/development.js");
+    const city = globalThis.CITY;
+    const { state } = city;
+    city.pause();
+    state.players[0].treasury = 90000000;
+    const W = state.width;
+    for (let y = 8; y < W - 8; y += 4) apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [y * W + 8, W - 16] });
+    for (let x = 8; x < W - 8; x += 4) {
+      for (let y = 8; y < W - 8; y += 1) apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [y * W + x, 1] });
+    }
+    for (let y = 9; y < W - 9; y += 1) {
+      apply(state, { type: C.CMD_PAINT_ZONE, actor: 1, zone: 1, runs: [y * W + 9, W - 18] });
+    }
+    for (let i = 0; i < 400; i += 1) apply(state, { type: C.CMD_TICK });
+    city.renderer.worldChanged();
+
+    const { focusOn, zoomBy } = await import("/client/render/camera.js");
+    const renderer = city.renderer;
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    city.setQuality("high");
+    const rows = [];
+    for (const span of [10, 20]) {
+      focusOn(renderer.view, W / 2, W / 2);
+      zoomBy(renderer.view, span / renderer.view.span);
+      // Long enough for the baker to reach the chunks it can resolve: one per
+      // frame, nearest first, and the tier allows nine.
+      for (let i = 0; i < 30; i += 1) await frame();
+      const s = renderer.stats;
+      rows.push({
+        span,
+        canvasH: renderer.renderer.domElement.height,
+        live: s.streets?.live ?? 0,
+        chunkTris: s.streets?.triangles ?? 0,
+        triangles: s.triangles,
+        budget: s.budget,
+        calls: s.drawCalls,
+        lod: s.lod,
+      });
+    }
+    return rows;
+  });
+  await bigPage.close();
+  await bigContext.close();
+
+  for (const row of big) {
+    const share = row.triangles > 0 ? (100 * row.chunkTris / row.triangles).toFixed(0) : "0";
+    console.log(`      desktop viewport, span ${row.span}: ${row.live} live chunks, `
+      + `${row.chunkTris} of ${row.triangles} triangles (${share}%), ${row.calls} draw calls, `
+      + `ladder at "${row.lod}", canvas ${row.canvasH}px tall`);
+    // Span 20 is a knife edge on purpose: 168 px a tile against a threshold of
+    // 160. That 5% is the whole of Q77 — it is the margin by which every
+    // headless gate in this project's history missed the most expensive thing
+    // the renderer builds — so a change that flips it is exactly what this row
+    // is here to notice.
+    check(`a street chunk is resolvable at span ${row.span} on a desktop screen`,
+      row.live > 0, JSON.stringify(row));
+    check(`and the frame is inside its budget at span ${row.span}`,
+      row.triangles > 0 && row.triangles <= row.budget, `${row.triangles} of ${row.budget}`);
+  }
+  // The same cap `client_smoke` holds the small viewport to, checked once where
+  // the chunks are actually being drawn.
+  check("the desktop viewport keeps the draw calls under eighty",
+    big.every((r) => r.calls <= 80), big.map((r) => `span ${r.span}: ${r.calls}`).join(", "));
 
   check("no page errors", errors.length === 0, errors.join(" | "));
   await context.close();

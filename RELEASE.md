@@ -65,15 +65,18 @@ which is what made the governor spend its whole ladder on a machine hitting 60 f
 
 | Set | Gates | Time | What it is |
 |---|---|---|---|
-| `quick` | 12 | **380 s** | the ten browser smokes, the §24 acceptance script, `budget_gate` |
+| `quick` | 12 | **454 s** | the ten browser smokes, the §24 acceptance script, `budget_gate` |
 | `render` | 3 | **3 s** | `walkthrough`, `passability`, `lanes_dump` |
 | `sim` | 3 | **595 s** | `disaster_soak`, `traffic_gate`, `sim_sweep` |
 
-`ui_smoke` grew to 92 s in D1 (it now presses the performance card's Copy button and parses the
-clipboard), so `quick` is about 400 s of its 480 s budget.
-
-The slowest single gate is `budget_gate` at 104 s, then `ui_smoke` at 66 and `a11y_smoke` at 46.
+The slowest single gate is `budget_gate` at **149 s**, then `ui_smoke` at 99 and `a11y_smoke` at 44.
 Each run writes `reports/gates-<date>.json`.
+
+`quick` was 375 s when M2 measured it and set the budget as "the measurement plus room". It is now
+**454 s of 480 — 95%** — and the growth is the measurement lane buying coverage: D1's perf-card
+check added 26 s to `ui_smoke`, D8's desktop-viewport rows 49 s to `budget_gate`, and both catch
+things no other gate can see. The budget is deliberately not raised (**Q79**): M2's rule is that a
+gate which grows past its share is a finding, not a fact of life.
 
 **A frame at High** — and *which* frame is the whole of it, because two views of the same city
 differ by a factor of two. `budget_gate`'s street-zoom night row is **289,446 triangles of

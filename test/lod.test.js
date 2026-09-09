@@ -13,7 +13,7 @@ import { repoRoot } from "./helpers/sources.js";
 import {
   TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels,
   visibleBounds, inBounds, setBudget, getBudget, setCosts, getCosts,
-  countScene, markingInstances, planForChunk, inFootprint,
+  countScene, markingInstances, planForChunk, inFootprint, RESOLVE,
 } from "../client/render/lod.js";
 
 /** A blank state of `n × n` tiles, enough for `countScene` to walk. */
@@ -532,4 +532,65 @@ test("orthographic tile pixels read the VERTICAL extent, on a portrait screen to
   // A view with no aspect at all is landscape by default, so a bare `{ span }`
   // in a test keeps meaning what it meant.
   assert.equal(tilePixels({ mode: "ortho", span: 20 }, 720), 36);
+});
+
+// --- the viewport is a configuration too (slice D8, Q77) ---------------------
+//
+// Street chunks are baked only where a tile covers `RESOLVE.l3` pixels, and
+// `tilePixels` is a function of the canvas HEIGHT. Every headless gate draws
+// 1280×720 at a device pixel ratio of 1; Kjell's desktop draws 2560×1305 at
+// 1.5, which is 1,957 device pixels of height. The threshold falls between the
+// two — so the most expensive thing this renderer builds, eight live chunks and
+// 258,536 of 289,086 triangles, had never once appeared in a city-zoom
+// measurement until a real screen drew it.
+//
+// One assertion per side of that threshold, on the nearest chunk rather than on
+// the camera's target: the ground in front of the eye is what bakes first.
+
+const HEADLESS_H = 720;          // 1280×720 at DPR 1 — every gate in tools/
+const DESKTOP_H = Math.round(1305 * 1.5);   // the 4090's card, 2560×1305 at DPR 1.5
+
+/** The best pixels-per-tile any chunk near the camera gets, which is what
+ * decides whether anything bakes at all. */
+function nearestChunkPixels(span, canvasHeight) {
+  const view = {
+    mode: "city", span, aspect: 16 / 9, fov: 50,
+    targetX: 48, targetZ: 48, yaw: 0, pitch: Math.atan(1 / Math.SQRT2), groundY: 0,
+  };
+  let best = 0;
+  for (let dz = -48; dz <= 48; dz += 8) {
+    for (let dx = -48; dx <= 48; dx += 8) {
+      best = Math.max(best, tilePixels(view, canvasHeight, { x: 48 + dx, z: 48 + dz }));
+    }
+  }
+  return best;
+}
+
+test("at the gate's viewport a city zoom can never bake a street chunk", () => {
+  // Both of the spans D8 measures at, on the configuration every gate in
+  // `tools/` uses. This is the finding, as an assertion.
+  for (const span of [10, 20]) {
+    const px = nearestChunkPixels(span, HEADLESS_H);
+    assert.ok(px < RESOLVE.l3,
+      `span ${span} at ${HEADLESS_H}px resolves ${px.toFixed(0)} px a tile, over the ${RESOLVE.l3} threshold`);
+  }
+});
+
+test("at a real desktop's viewport the same zoom does", () => {
+  const px = nearestChunkPixels(20, DESKTOP_H);
+  assert.ok(px >= RESOLVE.l3,
+    `span 20 at ${DESKTOP_H}px resolves only ${px.toFixed(0)} px a tile, under the ${RESOLVE.l3} threshold`);
+  const closer = nearestChunkPixels(10, DESKTOP_H);
+  assert.ok(closer > px, "a closer zoom resolved less than a wider one");
+});
+
+test("the difference is the canvas height and nothing else", () => {
+  // The same view, twice, differing only in how many pixels tall the drawing
+  // buffer is — so nobody can read the pair above as a claim about the camera.
+  const span = 20;
+  const small = nearestChunkPixels(span, HEADLESS_H);
+  const big = nearestChunkPixels(span, DESKTOP_H);
+  const ratio = big / small;
+  assert.ok(Math.abs(ratio - DESKTOP_H / HEADLESS_H) < 1e-9,
+    `${small.toFixed(1)} and ${big.toFixed(1)} px are not in the ratio of their canvases`);
 });

@@ -338,7 +338,29 @@ line for Kjell whenever it suits.
 
 **Must not change:** `engine/traffic.js`, any fixture hash, the IDM constants.
 
-## D8 — The desktop viewport in `budget_gate` (S) — Q77
+## D8 — The desktop viewport in `budget_gate` (S) — Q77 — **done 2026-09-09 as `slice-D8`**
+
+`budget_gate` measures two city-mode spans at the 4090's own canvas height (1,305 CSS at a ratio of
+1.5 = 1,957 device pixels): **8 live chunks at span 10** (69,444 of 106,059 triangles, 65%) and
+**9 at span 20** (76,228 of 132,379, 58%), both with the ladder at "full" and 29 and 32 draw calls
+of a cap of 80. Between half and two thirds of the frame is street chunks in the one view a real
+machine draws in full, and no gate could see any of it before.
+
+`test/lod.test.js` carries the threshold as three assertions: at 720 px of canvas the nearest chunk
+resolves 124 px a tile at span 10 and 62 at span 20, both under `RESOLVE.l3`; at 1,957 px it is 336
+and **168, over by 5%**; and the two are in exactly the ratio of their canvases, so the pair cannot
+be read as a claim about the camera. `RESOLVE` is exported rather than the number copied.
+
+**Two departures from the item, both stated rather than quiet.** The width is 1,440 rather than
+2,560 — `tilePixels` depends on the canvas height alone above an aspect of one, so this reproduces
+the threshold at half the fill rate. And the draw-call cap is checked in `budget_gate` rather than
+`client_smoke`, because the big-viewport page already exists there and standing up a second one on
+SwiftShader costs a minute to assert the same number.
+
+**Cost:** the rows added 100 s at a 96-tile map, over the minute the item allows itself, so they
+were trimmed (64 tiles, 240 ticks, 30 settle frames) rather than moved to `render`. `budget_gate`
+goes 101 s → 150 s.
+
 
 **Goal.** The most expensive thing the renderer builds appears in a city-zoom measurement on
 SwiftShader, so a regression in it goes red before a person sees it.

@@ -4731,7 +4731,7 @@ governor reads it.
 (`ui_smoke` 100 s, up from 92: the perf-card check now waits out a frame-based warm-up). `render`
 3 s of 120.
 
-## slice-M5 — the review fixes after the measurement lane (2026-09-09)
+## slice-M5 — the review fixes after the measurement lane (2026-09-10)
 
 Four small things the review of 2026-09-09 found. Each named its own test, which is the only
 reason they are worth a slice rather than a note.
@@ -4778,7 +4778,7 @@ them changes what the page claims. The docs test's drift note exists for this.
 
 **Measured.** Suite green twice, 1,113 tests. `render` 3 s of 120. `lanes_dump` unchanged.
 
-## slice-D7 — traffic that is a function of the roads (2026-09-09)
+## slice-D7 — traffic that is a function of the roads (2026-09-10)
 
 Two defects in the item, and **only one of them was there**.
 
@@ -4870,3 +4870,76 @@ why it is the gate that answers.
 
 **What did not move.** `lanes_dump`'s flow row is 400 cars, 302 moving (76%), mean 3.51 m/s —
 unchanged from T1. The traffic step is 0.19 ms bare and 0.36 ms with 120 yields.
+
+## slice-D8 — the desktop viewport in `budget_gate` (2026-09-10)
+
+Q77: street chunks bake only where a tile covers `RESOLVE.l3` pixels, `tilePixels` is a function of
+the canvas **height**, and every headless gate in this project draws 1280×800 at a device pixel
+ratio of 1. So the most expensive thing this renderer builds had never once appeared in a city-zoom
+measurement — the closest any gate came was the street camera, which is a different frame — and the
+first sight of it was Kjell's card reporting eight live chunks and 258,536 of 289,086 triangles.
+
+**The two sides of the threshold, as one assertion each** (`test/lod.test.js`), on the nearest chunk
+rather than the camera's target, because the ground in front of the eye is what bakes first:
+
+| | span 10 | span 20 | bakes? |
+|---|---|---|---|
+| the gate's canvas, 720 px | 124 px a tile | **62** | no, and never has |
+| the 4090's canvas, 1,957 px | 336 px a tile | **168** | yes, by 5% |
+
+`RESOLVE` is exported for this. A test that hard-codes 160 to describe a table in another file is
+the stale-model defect this project keeps finding, and the third assertion is the one that makes
+the pair mean something: the two numbers are in **exactly** the ratio of their canvases, so nobody
+can read the finding as a claim about the camera.
+
+**`budget_gate` gains the rows**, at the card's own canvas height:
+
+| span | live chunks | chunk triangles | frame | draw calls | ladder |
+|---|---|---|---|---|---|
+| 10 | **8** | 69,444 | 106,059 of 320,000 | 29 | full |
+| 20 | **9** | 76,228 | 132,379 of 320,000 | 32 | full |
+
+**Between half and two thirds of the frame is street chunks** in the one view a real machine draws
+in full, and no gate could see any of it before today.
+
+**What the intermediate attempt taught, and it is the reason the viewport is what it is.** The
+first try used 1706×960 at a ratio of 1.5 — a 1,440 px canvas — and span 20 resolved **zero**
+chunks while span 10 resolved nine. The finding lives in the last quarter of the 4090's height. So
+the gate matches that height exactly (1,305 CSS at 1.5 = 1,957) and narrows the width to 1,440:
+above an aspect of one `tilePixels` depends on the height and nothing else, which the third lod
+test asserts, so this reproduces the threshold at a little over half the fill rate.
+
+**Span 20 is a knife edge on purpose** — 168 px against 160. That 5% is the margin by which every
+headless gate has been missing the renderer's largest cost centre, so a change that flips it is
+exactly what the row is there to notice. The comment says so, in the hope that the next person to
+see it go red fixes the cause rather than the tolerance.
+
+**Cost, and the item's own rule about it.** D8 said that if the rows add more than a minute they
+go to the `render` set. At a 96-tile map with 400 ticks and 60 settle frames they added **100 s** —
+so they were trimmed rather than moved: 64 tiles, 240 ticks, 30 frames, which is enough for a baker
+that builds one chunk a frame and a tier that allows nine. `budget_gate` goes 101 s → **150 s**, an
+addition of **49 s**, and the rows stay in `quick` where a regression in them goes red in the set
+everybody runs.
+
+**One deviation from the item.** It asked for `client_smoke`'s draw-call cap to be checked at the
+big viewport; the check lives in `budget_gate` instead, where the big-viewport page already exists
+— standing a second one up on a software rasteriser costs another minute to assert the same number.
+Both spans are well inside it: 29 and 32 calls of 80.
+
+**One flake, entirely self-inflicted, and worth the note.** A run died with *"Execution context was
+destroyed, most likely because of a navigation"* in the cars section, nowhere near the change. The
+cause was me: `make_precache.mjs` ran while the gate was running, which rewrote the service
+worker's version, and `client/main.js` reloads once on `controllerchange`. **A gate reads the
+repository as it runs.** In the slice-workflow skill now.
+
+**Measured.** Suite green twice, 1,120 tests. `gates.mjs quick` **454 s of 480**, 12 of 12, no
+leaked browsers — `budget_gate` 149 s, `ui_smoke` 99, `a11y_smoke` 44. `render` is **17 s of 120**,
+up from 3: D7's two 140-second settles took `lanes_dump` from 0.5 s to 14. Cheap where it sits, and
+worth knowing it is now the slowest thing in that set by an order of magnitude.
+
+**And that is a finding in itself (Q79).** The set is at **95% of its budget**, and the budget was
+set in M2 as "the measurement plus room". The room is gone: the measurement lane bought its
+coverage with about 75 seconds — D1's perf-card check in `ui_smoke` and D8's rows here — and the
+next gate that grows trips the warning. The budget is deliberately **not** raised. M2's rule is
+that a gate which grows past its share is a finding rather than a fact of life, and raising the
+number to fit is exactly what that rule forbids.

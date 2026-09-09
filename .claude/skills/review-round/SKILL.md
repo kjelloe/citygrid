@@ -332,11 +332,17 @@ neither. A measured number without its view, its map and its era is not checkabl
 only thing the page is for.
 
 **The gate's viewport is a configuration too.** Every headless gate in this project runs
-1280×720 at DPR 1. Street chunks are gated on resolvability and `tilePixels` is a function of
+1280×800 at DPR 1. Street chunks are gated on resolvability and `tilePixels` is a function of
 canvas height, so at that size the ladder drops them — and the most expensive thing the renderer
 builds (258,536 of 289,086 triangles, 90% of the High budget) had **never once appeared in a
 city-zoom measurement** until a real 2560×1305 screen at DPR 1.5 drew it (Q77). When a subsystem
 is gated on a threshold, ask which side of that threshold the gate's own window sits on.
+
+D8 closed it, and the closing had a lesson of its own: the fix's *first* viewport (1440 px of
+canvas) still resolved nothing at span 20. **A threshold has a margin, and reproducing a finding
+means matching the number that crosses it**, not merely moving in its direction — the gate now
+matches the card's canvas height exactly, and asserts the two viewports resolve in exactly the
+ratio of their heights so the claim cannot drift into being about the camera.
 
 **An instrument that never gets enough input never speaks, and silence reads as "fine".** The
 frame-time governor was giving up its entire quality ladder on an RTX 4090 at a locked 60 fps —

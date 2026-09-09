@@ -129,8 +129,12 @@ export function tilePixels(view, canvasHeight, chunk) {
 }
 
 /** The resolvability thresholds, in pixels per tile. One table, read by the
- * frame plan and by every chunk plan, so the two can never disagree. */
-const RESOLVE = {
+ * frame plan and by every chunk plan, so the two can never disagree.
+ *
+ * Exported since D8: `l3` is a threshold the GATE's own viewport sits on the
+ * wrong side of, and a test that hard-codes 160 to say so is the stale-model
+ * defect this project keeps finding. */
+export const RESOLVE = {
   props: 42, cars: 18, markings: 20, poles: 14, networks: 12,
   // A person is 0.085 of a tile tall — a THIRD of a car's length. Below about
   // fifty pixels a tile they are two pixels of a colour that is already on the

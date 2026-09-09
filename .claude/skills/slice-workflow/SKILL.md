@@ -112,6 +112,12 @@ table in the dev-log. It is not a gate — it produces numbers, not a pass — a
 SwiftShader, so quote them as such; the triangles, draw calls and ladder decisions in the same file
 are true anywhere.
 
+**Do not touch the working tree while a browser gate is running against it.**
+`tools/make_precache.mjs` rewrites the service worker's version, `client/main.js` reloads the page
+once on `controllerchange`, and Playwright's next `evaluate` dies with "Execution context was
+destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
+changed. A gate reads the repository as it runs; edit it and you are testing two trees.
+
 Every set has a time budget and the runner says when one is exceeded. A gate that grows past its
 share is a finding, not a fact of life. It also reports any headless browser a gate left running —
 **one set at a time**, because that check counts every `chrome-headless-shell` on the machine and
