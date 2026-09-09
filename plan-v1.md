@@ -392,14 +392,13 @@ by number from the code they create.
 | Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
 | Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | **Kjell**: is `hilly` playable? |
 | Q68 | A night frame at High spends 93% of its budget on eight baked chunks | measurement lane D3 and D2's phone card |
-| Q69 | Traffic only ever grows: a link filled while on screen is never emptied when it leaves | measurement lane D7 |
 | Q70 | The saturated fixture generates no commutes, so its roads were empty until D1 seeded them | measurement lane D3/D6 |
 | Q72 | The saturated fixture is 1,129 copies of one building — right for cost, wrong for looks | measurement lane D6, or the first slice needing a realistic city cheaply |
 | Q73 | Three-quarters of a played city's zoned ground is empty, and empty zoning reads as asphalt | the film lane's photo mode, or a balance pass |
 | Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | **Kjell**, with Q64 |
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
-| Q76 | Traffic fills per frame, so two machines measure two different cities | measurement lane D7 |
 | Q77 | No SwiftShader measurement has ever drawn a street chunk at city zoom — the headless viewport is too small | measurement lane D8 |
+| Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

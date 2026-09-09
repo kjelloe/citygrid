@@ -18,20 +18,20 @@ to an equilibrium at all.
 | `desktop-4090` | Kjell's desktop, RTX 4090, Windows 10, Chrome 152 | desktop | high | 2560x1440 | 1.5 | `cbbd27806158` | base |
 | `swiftshader-big` | swiftshader-big (desktop) | desktop | high | 1280x720 | 1 | `63d8d469f157` | big |
 | `swiftshader-steep` | swiftshader-steep (desktop) | desktop | high | 1280x720 | 1 | `63d8d469f157` | steep |
-| `swiftshader` | swiftshader (desktop) | desktop | high | 1280x720 | 1 | `63d8d469f157` | base |
+| `swiftshader` | swiftshader (desktop) | desktop | high | 1280x720 | 1 | `e053c6b245cc` | base |
 
 ## Frame time, p50 (ms)
 
 | step | Kjell's desktop, RTX 4090, Windows 10, Chrome 152 | swiftshader (desktop) |
 |---|---|---|
-| city 20t | 16.7 | 299.9 |
-| city 40t | 16.7 | 300.1 |
+| city 20t | 16.7 | 283.3 |
+| city 40t | 16.7 | 283.4 |
 | city 80t | 16.7 | 100 |
-| city 120t | 16.7 | 83.4 |
-| city 40t 14° | 16.7 | 300 |
-| ortho 96t | 16.7 | 83.3 |
-| city 40t night | 16.7 | 483.3 |
-| city 40t painted | 16.7 | 316.5 |
+| city 120t | 16.7 | 83.3 |
+| city 40t 14° | 16.7 | 283.4 |
+| ortho 96t | 16.7 | 66.8 |
+| city 40t night | 16.7 | 450 |
+| city 40t painted | 16.7 | 299.9 |
 | street walk 60m | 16.7 | 100 |
 
 ## Frame time, p95 (ms)
@@ -39,28 +39,28 @@ to an equilibrium at all.
 | step | Kjell's desktop, RTX 4090, Windows 10, Chrome 152 | swiftshader (desktop) |
 |---|---|---|
 | city 20t | 16.8 | 316.6 |
-| city 40t | 16.8 | 433.4 |
-| city 80t | 33.4 | 100 |
-| city 120t | 33.4 | 133.3 |
-| city 40t 14° | 16.8 | 316.7 |
+| city 40t | 16.8 | 316.7 |
+| city 80t | 33.4 | 150 |
+| city 120t | 33.4 | 83.4 |
+| city 40t 14° | 16.8 | 316.6 |
 | ortho 96t | 16.8 | 83.4 |
-| city 40t night | 16.8 | 483.4 |
-| city 40t painted | 16.8 | 316.7 |
-| street walk 60m | 16.8 | 116.7 |
+| city 40t night | 16.8 | 466.7 |
+| city 40t painted | 16.8 | 300 |
+| street walk 60m | 16.8 | 116.6 |
 
 ## Worst frame (ms)
 
 | step | Kjell's desktop, RTX 4090, Windows 10, Chrome 152 | swiftshader (desktop) |
 |---|---|---|
-| city 20t | 33.4 | 333.3 |
-| city 40t | 33.3 | 483.2 |
-| city 80t | 50 | 100.1 |
-| city 120t | 66.6 | 183.3 |
+| city 20t | 33.4 | 316.7 |
+| city 40t | 33.3 | 316.7 |
+| city 80t | 50 | 216.7 |
+| city 120t | 66.6 | 83.4 |
 | city 40t 14° | 50.1 | 316.7 |
-| ortho 96t | 50 | 100 |
-| city 40t night | 74.8 | 499.9 |
-| city 40t painted | 33.4 | 316.8 |
-| street walk 60m | 33.3 | 233.3 |
+| ortho 96t | 50 | 83.5 |
+| city 40t night | 74.8 | 483.3 |
+| city 40t painted | 33.4 | 316.7 |
+| street walk 60m | 33.3 | 133.3 |
 
 ## Triangles
 
@@ -125,29 +125,50 @@ and its p95 above is a percentile over that many numbers.*
 
 | step | Kjell's desktop, RTX 4090, Windows 10, Chrome 152 | swiftshader (desktop) |
 |---|---|---|
-| city 20t | 290 | 16 — too few |
-| city 40t | 298 | 15 — too few |
-| city 80t | 253 | 51 — too few |
-| city 120t | 249 | 53 — too few |
-| city 40t 14° | 292 | 16 — too few |
-| ortho 96t | 296 | 62 |
-| city 40t night | 288 | 10 — too few |
-| city 40t painted | 299 | 16 — too few |
-| street walk 60m | 895 | 141 |
+| city 20t | 290 | 17 — too few |
+| city 40t | 298 | 17 — too few |
+| city 80t | 253 | 48 — too few |
+| city 120t | 249 | 63 |
+| city 40t 14° | 292 | 17 — too few |
+| ortho 96t | 296 | 67 |
+| city 40t night | 288 | 11 — too few |
+| city 40t painted | 299 | 17 — too few |
+| street walk 60m | 895 | 151 |
 
 ## The city each row actually measured — cars, and whether it settled
 
+*The population is a function of simulated seconds and of nothing else (D7). Two rows are the same
+city only where they have lived comparable amounts of time, which below 15 fps is **not** the same
+as comparable wall-clock time — see the table under this one.*
+
 | step | Kjell's desktop, RTX 4090, Windows 10, Chrome 152 | swiftshader (desktop) |
 |---|---|---|
-| city 20t | 4,590 | 4,585 (still filling) |
-| city 40t | 4,578 | 3,075 (still filling) |
+| city 20t | 4,590 | 4,590 (still filling) |
+| city 40t | 4,578 | 4,585 (still filling) |
 | city 80t | 4,578 | 4,583 |
-| city 120t | 4,578 | 5,280 |
-| city 40t 14° | 4,590 | 3,075 (still filling) |
-| ortho 96t | 4,590 | 6,089 |
+| city 120t | 4,578 | 6,088 |
+| city 40t 14° | 4,590 | 3,866 (still filling) |
+| ortho 96t | 4,590 | 6,077 |
 | city 40t night | 4,590 | 3,071 (still filling) |
-| city 40t painted | 4,578 | 3,075 (still filling) |
-| street walk 60m | 8,920 | 7,478 |
+| city 40t painted | 4,578 | 3,866 (still filling) |
+| street walk 60m | 8,920 | 8,927 |
+
+## Seconds of city each row actually lived through
+
+*`update` clamps its delta to 1/15 s so a backgrounded tab cannot teleport anybody, so a machine
+below 15 fps advances its world more slowly than the clock on the wall (Q78).*
+
+| step | Kjell's desktop, RTX 4090, Windows 10, Chrome 152 | swiftshader (desktop) |
+|---|---|---|
+| city 20t | — | 5.7 s |
+| city 40t | — | 5.5 s |
+| city 80t | — | 7.9 s |
+| city 120t | — | 8.9 s |
+| city 40t 14° | — | 5.4 s |
+| ortho 96t | — | 9.2 s |
+| city 40t night | — | 4 s |
+| city 40t painted | — | 5.4 s |
+| street walk 60m | — | 14.8 s |
 
 ## The street chunk bake — chunks built on arrival, and the worst one (ms)
 
@@ -161,7 +182,7 @@ and its p95 above is a percentile over that many numbers.*
 | ortho 96t | — | — |
 | city 40t night | — | — |
 | city 40t painted | — | — |
-| street walk 60m | 9 @ 7 ms | 8 @ 12 ms |
+| street walk 60m | 9 @ 7 ms | 8 @ 15 ms |
 
 ## The `big` map — a different city, and not comparable to the tables above
 

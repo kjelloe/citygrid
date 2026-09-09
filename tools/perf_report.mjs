@@ -140,7 +140,18 @@ ${stepTable(entries, "frames", (v, row) => `${v}${row.thinSample ? " — too few
 
 ## The city each row actually measured — cars, and whether it settled
 
+*The population is a function of simulated seconds and of nothing else (D7). Two rows are the same
+city only where they have lived comparable amounts of time, which below 15 fps is **not** the same
+as comparable wall-clock time — see the table under this one.*
+
 ${stepTable(entries, "cars", (v, row) => `${v?.toLocaleString("en-GB")}${row.settled === false ? " (still filling)" : ""}`)}
+
+## Seconds of city each row actually lived through
+
+*\`update\` clamps its delta to 1/15 s so a backgrounded tab cannot teleport anybody, so a machine
+below 15 fps advances its world more slowly than the clock on the wall (Q78).*
+
+${stepTable(entries, "simulatedS", (v) => (v === undefined ? "—" : `${v} s`))}
 
 ## The street chunk bake — chunks built on arrival, and the worst one (ms)
 

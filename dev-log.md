@@ -4777,3 +4777,96 @@ than pushed: `main` is the release, `dev_night` carries what has landed since, a
 them changes what the page claims. The docs test's drift note exists for this.
 
 **Measured.** Suite green twice, 1,113 tests. `render` 3 s of 120. `lanes_dump` unchanged.
+
+## slice-D7 — traffic that is a function of the roads (2026-09-09)
+
+Two defects in the item, and **only one of them was there**.
+
+**Q76 was real and is fixed.** The density control spent one car per link per *frame*, so how full
+a city is was a function of how many frames had gone by rather than of how long. Kjell's 4090
+reached 4,590 cars on the saturated fixture in the same warm-up where SwiftShader reached 1,546,
+and the triangle counts moved with them — 289,086 against 239,274 at the same zoom, which is two
+machines measuring two different cities.
+
+The fix is a per-link credit in cars, accumulated at `FILL_PER_SECOND` (ten) and spent as it passes
+one. The equilibrium was never set by that rate anyway: `targetFor` sets it and `spawn` refuses
+without a proper following gap, so the rate only decides how quickly a road fills. Ten is what the
+old per-frame rule came to at 10 fps, and `update` clamps its delta to 1/15 s, so this never spends
+more than one car in a step — the behaviour at any playable frame rate is the behaviour that was
+there before.
+
+**Measured**, `lanes_dump` on the saturated 96×96, uncapped so the roads set the equilibrium rather
+than the cap hiding it:
+
+| | 60 fps | 15 fps | apart |
+|---|---|---|---|
+| settled cars, 140 s simulated | **9,436** | **9,462** | **0.3%** |
+
+The gate fails over 10%. Before the fix the same fixture at 60 and 15 fps was 27% apart and still
+climbing after twice the time — 82 cars at 40 s and 116 at 80.
+
+**Q69 was diagnosed wrongly, and this slice closes it as such (A54).** The question said cars are
+spawned only on screen and never removed when the link leaves it, so a session carries every car it
+has ever looked at. They are not. `update(dt)` takes no bounds at all, and `onScreen` is read by
+`pose`, `poseLights` and `count` and by nothing else — the density control has always run over
+every block link in the city, camera or no camera.
+
+The evidence that raised it, 1,546 cars in step 1 of a sweep and 9,222 in step 7, was **one session
+filling toward its own equilibrium over time**. Those steps shared a session; the fresh-session-per-
+step change came later in the same slice. And the number it was climbing toward is the 9,436
+`lanes_dump` now reports with no camera in the process at all — the two agree to 2%, which is the
+whole story.
+
+So the second bullet was not built, on purpose. It would have made the population a function of the
+camera, and ruling 037 makes the traffic local and derived from state precisely so that two clients
+showing one city show one city. A camera-dependent population breaks that silently. `test/cars.test.js`
+asserts the invariant instead: two sims posed with different bounds hold the same number of cars,
+and the bounds still filter what is drawn.
+
+**And one thing the fix does not reach — Q78, new.** `update` clamps its delta to `MAX_STEP`
+(1/15 s) so a backgrounded tab does not advance a car four hundred metres in one step. The
+consequence nobody had written down is that **a machine below 15 fps runs its whole renderer-local
+world in slow motion**: at 3 fps the traffic, the crowd and the walker advance at a fifth of real
+time, so five wall-clock seconds of standing still are one second of city. It is why the
+SwiftShader card still cannot reach the 4090's car counts in a fifteen-second warm-up even with
+this fix. The equilibrium is now the same on every machine; the time to reach it is not.
+
+**Tests.** Four in `test/cars.test.js`, and the shape of them is the finding. Comparing frame rates
+means comparing **simulated** seconds, not calls — `update` clamps, so a caller handing it 1/10 s
+advances the city by 1/15, and counting calls would compare two runs that had lived different
+lengths of time and blame the difference on the frame rate. That is why the test steps at 1/60,
+1/30 and 1/15 rather than the 1/10 the work item asked for, and why there is a fourth test showing
+a one-second delta does exactly what a clamped one does.
+
+**The card gate, and what it could and could not say.** D7 asked for the SwiftShader card to come
+back within 10% of the 4090's on every row. It does not, and the reason is worth more than the gate
+was: **the 4090's card was collected before this fix**, so the comparison is across two eras, and
+**neither card's warm-up reaches equilibrium** — `lanes_dump` needs about 120 simulated seconds and
+a fifteen-second warm-up buys a fraction of that. What the card does show is the part that matters:
+wherever SwiftShader got comparable simulated time, the two land on the same number.
+
+| step | 4090 (pre-D7) | SwiftShader (post-D7) | city seconds lived |
+|---|---|---|---|
+| `city 20t` | 4,590 | **4,590** | 5.7 |
+| `city 40t` | 4,578 | **4,585** | 5.5 |
+| `city 80t` | 4,578 | **4,583** | 7.9 |
+| `street walk 60 m` | 8,920 | **8,927** | 14.8 |
+| `city 40t night` | 4,590 | 3,071 | 4.0 |
+| `city 120t` | 4,578 | 6,088 | 8.9 |
+| `ortho 96t` | 4,590 | 6,077 | 9.2 |
+
+**Four rows agree to within two tenths of a per cent** between a software rasteriser and an RTX
+4090. The rows that disagree disagree by how much city each lived through — and that is now printed
+rather than inferred: `traffic.simulatedS()` is the traffic's own clamped clock, `stats.trafficS`
+carries it onto every card row, and `reports/perf/README.md` tabulates it beside the car counts.
+This card's rows live between **4.0 and 14.8 seconds of city**, a spread of nearly four to one
+inside one sweep.
+
+At those durations a road is still on the steep part of its curve — about three cars per link of an
+eventual six or seven — so one extra spawn round is several hundred cars across 1,546 links, and
+two rows a tenth of a second apart can differ by a fifth. **The comparable quantity is the settled
+city, and no fifteen-second warm-up reaches it**; that is what `lanes_dump` measures instead, and
+why it is the gate that answers.
+
+**What did not move.** `lanes_dump`'s flow row is 400 cars, 302 moving (76%), mean 3.51 m/s —
+unchanged from T1. The traffic step is 0.19 ms bare and 0.36 ms with 120 yields.

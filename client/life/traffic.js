@@ -20,6 +20,13 @@ import { getConfig } from "../world/config.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 
 /** A car, in metres. The mesh is 0.22 tiles long and a tile is 20 m. */
+/** The longest step the simulation will take, whatever delta it is handed.
+ *
+ * Exported because it is the difference between simulated time and wall-clock
+ * time, and a test comparing two frame rates has to know which one it is
+ * measuring (D7). */
+export const MAX_STEP = 1 / 15;
+
 export const CAR_M = 4.4;
 
 // The intelligent-driver model, which is four constants and one equation.
@@ -80,6 +87,31 @@ export function createTraffic(state, model, options = {}) {
   let nextId = 1;
 
   const blocks = links.filter((l) => l.kind === "block");
+
+  /** How fast a road fills or empties, in cars per second per link (D7).
+   *
+   * Ten, which is what the old per-frame rule came to at 10 fps — and `update`
+   * clamps its delta to 1/15 s, so this never spends more than one car in a
+   * step and the behaviour at any playable frame rate is the behaviour that was
+   * there before. What actually governs the fill is `spawn`'s following gap:
+   * at the speed limit a link admits about one car every two seconds however
+   * often it is asked. */
+  const FILL_PER_SECOND = 10;
+
+  /** Fractional cars owed to each link, so a rate per second survives being
+   * asked in sixtieths. Renderer-local memory, which is what `client/life/` is
+   * for (ruling 037). */
+  const fillCredit = new Map();
+
+  /** How much time this simulation has actually lived through, in seconds.
+   *
+   * Not wall-clock: `update` clamps its delta, so a machine below 15 fps
+   * advances the city more slowly than the clock on the wall (Q78). Two
+   * measurements of "the same city" are only the same city if they have lived
+   * the same length of time, and until this was reported there was no way to
+   * tell — the perf card compared a row that had lived 12 seconds with one that
+   * had lived 3 and called the difference a frame-rate defect (D7). */
+  let elapsed = 0;
   /** The block links of each corridor, indexed once (R4).
    *
    * `placeYield` walked every block link in the city for every yield point,
@@ -305,24 +337,43 @@ export function createTraffic(state, model, options = {}) {
   }
 
   function step(dt) {
+    elapsed += dt;
     bucket();
     rebuildYields();
 
-    // Density control, before anyone moves: one spawn or despawn per link per
-    // step, so a road fills over a second or two rather than appearing.
+    // Density control, before anyone moves. **Per second, not per step.**
+    //
+    // This was one spawn or despawn per link per FRAME, so how full a city is
+    // was a function of how many frames had elapsed rather than of how long:
+    // Kjell's 4090 reached 4,590 cars on the saturated fixture in the same
+    // warm-up where SwiftShader reached 1,546, and the triangle counts moved
+    // with them — two machines measuring two different cities (Q76, D7).
+    //
+    // A per-link credit in cars, spent as it accumulates. The equilibrium was
+    // never set by this rate anyway: `targetFor` sets it, and `spawn` refuses
+    // without a proper following gap, so the rate only decides how quickly a
+    // road fills. It is capped at one so a link that cannot admit anybody —
+    // the cap is spent, or the tail is blocked — does not bank credit and then
+    // empty a queue of cars onto the road the moment it can.
     for (const link of blocks) {
       const list = onLink.get(link.id) ?? [];
       const load = loadOf(link);
       desired.set(link.id, speedFor(load));
       const target = targetFor(link, load);
-      if (list.length + 0.5 < target) spawn(link, desired.get(link.id));
-      else if (list.length - 0.5 > target && list.length > 0) {
-        // The car nearest the end goes, so nothing vanishes under the eye in
-        // the middle of a street.
-        const going = list[list.length - 1];
-        cars.splice(cars.indexOf(going), 1);
-        list.pop();
+      let credit = (fillCredit.get(link.id) ?? 0) + FILL_PER_SECOND * dt;
+      while (credit >= 1) {
+        credit -= 1;
+        if (list.length + 0.5 < target) {
+          if (!spawn(link, desired.get(link.id))) break;
+        } else if (list.length - 0.5 > target && list.length > 0) {
+          // The car nearest the end goes, so nothing vanishes under the eye in
+          // the middle of a street.
+          const going = list[list.length - 1];
+          cars.splice(cars.indexOf(going), 1);
+          list.pop();
+        } else break;
       }
+      fillCredit.set(link.id, Math.min(credit, 1));
     }
 
     // Follow, then advance. Two passes so every car sees the same instant.
@@ -399,7 +450,7 @@ export function createTraffic(state, model, options = {}) {
       // and a car that advances four hundred metres in one step drives through
       // everything in front of it. Clamp rather than sub-step: the picture
       // catching up gradually is better than a frame that costs a second.
-      step(Math.min(dt, 1 / 15));
+      step(Math.min(dt, MAX_STEP));
     },
 
     /** Writes every car into the instanced pools, in TILE units — the pools are
@@ -506,6 +557,9 @@ export function createTraffic(state, model, options = {}) {
     },
     clock: () => clock,
     cars: () => cars.slice(),
+
+    /** Seconds of simulated time, which is what a car count is a function of. */
+    simulatedS: () => elapsed,
 
     /** Every pair of cars that share a link, in order — the following model's
      * own invariant, exposed so a test can hold it to it. */

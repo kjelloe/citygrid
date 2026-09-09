@@ -145,6 +145,33 @@ if (shortest.len < CAR) {
   const mean = all.reduce((a, c) => a + c.v, 0) / Math.max(1, all.length);
   console.log(`traffic flow    ${all.length} cars, ${moving} moving (${(100 * moving / Math.max(1, all.length)).toFixed(0)}%), `
     + `mean ${mean.toFixed(2)} m/s of a ${DEFAULTS.road.speed} m/s limit`);
+
+  // **The same city at two step sizes** (D7, Q76). The density control fills a
+  // road at a rate per SECOND now, so the settled population is a property of
+  // the load and the cap rather than of how many frames have gone by — which is
+  // what makes a card from a phone comparable to a card from a 4090. Simulated
+  // seconds, not calls: `update` clamps its delta, so a slower caller lives
+  // through less time per call and would otherwise look like a defect.
+  {
+    const { createTraffic, MAX_STEP } = await import("../client/life/traffic.js");
+    const settled = (dt) => {
+      // Uncapped in effect, so what settles is what the ROADS want — a cap
+      // that binds would hide the thing being measured behind itself.
+      const t = createTraffic(state, model, { cap: 100000 });
+      const per = Math.min(dt, MAX_STEP);
+      for (let elapsed = 0; elapsed < 140; elapsed += per) t.update(dt);
+      return t.cars().length;
+    };
+    const fast = settled(1 / 60);
+    const slow = settled(MAX_STEP);
+    const spread = Math.abs(fast - slow) / Math.max(1, Math.max(fast, slow));
+    console.log(`settled cars    ${fast} at 60 fps, ${slow} at 15 fps `
+      + `(${(spread * 100).toFixed(0)}% apart, 140 s simulated)`);
+    if (spread > 0.1) {
+      console.error(`\nFAIL  the settled traffic depends on the frame rate (${(spread * 100).toFixed(0)}%)`);
+      process.exit(1);
+    }
+  }
   if (cars === 0) {
     console.error("\nFAIL  the step was timed on an empty road");
     process.exit(1);

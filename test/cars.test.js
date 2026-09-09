@@ -28,7 +28,7 @@ import { createModel } from "../client/world/model.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
-import { createTraffic, CAR_M } from "../client/life/traffic.js";
+import { createTraffic, CAR_M, MAX_STEP } from "../client/life/traffic.js";
 
 const { stopLine, speed: VMAX, maxDensity } = DEFAULTS.road;
 
@@ -738,4 +738,111 @@ test("busyAt asks about the corridor it was given, and no other", () => {
         "a car on one arm made another arm's corridor busy");
     }
   }
+});
+
+// --- the city is a function of the roads, not of the frame rate (slice D7) ---
+//
+// Q76. The density control filled a link at one car per link per STEP, so how
+// full the city is was a function of how many frames had elapsed rather than of
+// how long. Kjell's 4090 reached 4,590 cars on the saturated fixture in the same
+// warm-up where SwiftShader reached 1,546, and the triangle counts moved with
+// them — 289,086 against 239,274 at the same zoom. Two machines measuring two
+// different cities, which is not a comparison.
+
+/** The population after `seconds` of SIMULATED time at a given step.
+ *
+ * Simulated, not wall-clock, and the difference is the point: `update` clamps
+ * its delta to `MAX_STEP` so a backgrounded tab does not teleport anybody, so a
+ * caller handing it 1/10 s advances the city by 1/15. Counting calls would
+ * compare two runs that had lived different lengths of time and call the
+ * difference a frame-rate defect. */
+function settledAt(dt, seconds) {
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 2000 });
+  const per = Math.min(dt, MAX_STEP);
+  for (let t = 0; t < seconds; t += per) traffic.update(dt);
+  return traffic.cars().length;
+}
+
+/** Long enough for this fixture to stop filling: it converges by about 120 s of
+ * simulated time, against a sum of link targets of about 154. */
+const SETTLED_S = 140;
+
+test("the same city settles to the same traffic at any frame rate", () => {
+  // The whole of Q76 as one assertion. 60 fps against 15 is the range between a
+  // desktop and a phone having a bad time, and the clamp is why 15 rather than
+  // the 10 the work item asked for — see `settledAt`.
+  const counts = [1 / 60, 1 / 30, MAX_STEP].map((dt) => settledAt(dt, SETTLED_S));
+  assert.ok(counts[0] > 40, `only ${counts[0]} cars at 60 fps — the fixture is not loaded`);
+  const spread = (Math.max(...counts) - Math.min(...counts)) / Math.max(...counts);
+  assert.ok(spread <= 0.1,
+    `${counts.join(", ")} cars at 60, 30 and 15 fps — ${(spread * 100).toFixed(0)}% apart`);
+});
+
+test("a slow machine gets there later, not to somewhere else", () => {
+  // The same assertion from the other side: half again as much time must not
+  // buy half again as many cars, or "settled" means nothing.
+  const short = settledAt(1 / 30, SETTLED_S);
+  const long = settledAt(1 / 30, SETTLED_S * 1.5);
+  const spread = Math.abs(long - short) / Math.max(long, short);
+  assert.ok(spread <= 0.1, `${short} cars after ${SETTLED_S} s and ${long} after ${SETTLED_S * 1.5} s`);
+});
+
+test("the simulation says how long it has lived, in its own clamped seconds", () => {
+  // What makes two measurements comparable: the population is a function of
+  // simulated time, and simulated time is not wall-clock time below 15 fps.
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 200 });
+  assert.equal(traffic.simulatedS(), 0);
+  for (let i = 0; i < 30; i += 1) traffic.update(1 / 30);
+  assert.ok(Math.abs(traffic.simulatedS() - 1) < 1e-9, `${traffic.simulatedS()} s after one second`);
+  for (let i = 0; i < 30; i += 1) traffic.update(1);      // clamped
+  assert.ok(Math.abs(traffic.simulatedS() - (1 + 30 * MAX_STEP)) < 1e-9,
+    `a one-second delta advanced the city by more than the clamp`);
+});
+
+test("a delta beyond the clamp advances the city by the clamp", () => {
+  // Why the test above stops at 1/15 rather than the 1/10 D7 asked for. The
+  // clamp is deliberate (a backgrounded tab hands back several seconds) and it
+  // means no caller can ask for a longer step than this.
+  const { state, model } = tee(28);
+  const a = createTraffic(state, model, { cap: 2000 });
+  const b = createTraffic(state, model, { cap: 2000 });
+  for (let i = 0; i < 300; i += 1) { a.update(MAX_STEP); b.update(1); }
+  assert.equal(a.cars().length, b.cars().length,
+    "a one-second delta did something a clamped one did not");
+});
+
+test("the cap is a cap at every step size", () => {
+  for (const dt of [1 / 60, 1 / 30, MAX_STEP]) {
+    const { state, model } = tee(28);
+    const traffic = createTraffic(state, model, { cap: 40 });
+    run(traffic, 30, dt);
+    assert.ok(traffic.cars().length <= 40,
+      `${traffic.cars().length} cars of a 40 cap at dt ${dt.toFixed(3)}`);
+  }
+});
+
+test("the traffic is the same city whatever the camera is doing", () => {
+  // Q69 said a session carries every car it has ever looked at, and that a link
+  // leaving the view is never emptied. It does not: `update(dt)` takes no
+  // bounds, and `onScreen` is read only by `pose`, `poseLights` and `count`.
+  // The population has never been a function of the camera and must not become
+  // one — ruling 037 makes traffic local, and two clients on one city with
+  // their cameras in different places would then show different streets.
+  const { state, model } = tee(28);
+  const a = createTraffic(state, model, { cap: 600 });
+  const b = createTraffic(state, model, { cap: 600 });
+  const pools = { car0: fakePool(), car1: fakePool() };
+  const tiny = { x0: 0, y0: 0, x1: 1, y1: 1 };
+  const whole = { x0: 0, y0: 0, x1: 27, y1: 27 };
+  for (let step = 0; step < 30 * 30; step += 1) {
+    a.update(1 / 30);
+    b.update(1 / 30);
+    a.pose(pools, fakePush, ["#fff"], tiny);
+    b.pose(pools, fakePush, ["#fff"], whole);
+  }
+  assert.equal(a.cars().length, b.cars().length,
+    "where the camera was changed how many cars exist");
+  assert.ok(a.count(tiny) < a.count(whole), "the bounds do not filter the count at all");
 });

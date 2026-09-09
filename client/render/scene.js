@@ -757,6 +757,11 @@ export function createRenderer(canvas, state, options = {}) {
     stats.lots = model.stats.lots;
     stats.tier = tierName;
     stats.cars = traffic.count();
+    // How long the traffic has lived, which is what its population is a
+    // function of (D7). Two cards can only be compared row for row where their
+    // rows have lived comparable amounts of time — the delta clamp means a slow
+    // machine lives more slowly than the clock (Q78).
+    stats.trafficS = Math.round(traffic.simulatedS() * 10) / 10;
     // On screen and in total, because the two answer different questions: the
     // budget is charged for the first and the cap is a limit on the second.
     stats.peds = pedestrians.count(bounds);

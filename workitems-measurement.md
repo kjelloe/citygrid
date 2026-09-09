@@ -274,7 +274,29 @@ neither needs a phone.*
 - **Q66 and Q71 are closed** (A52, A53): both were answered by numbers and neither wants a slice.
   **Q64 and Q74 want Kjell**: is `hilly` a playable map or scenery? The recommendation is in Q64.
 
-## D7 — Traffic that is a function of the roads (S) — Q69, Q76
+## D7 — Traffic that is a function of the roads (S) — Q69, Q76 — **done 2026-09-09 as `slice-D7`**
+
+**One of the two defects was real.** Q76 is fixed: the density control spends a credit of cars per
+*second* now, and `lanes_dump` settles the saturated 96×96 at **9,436 cars at 60 fps and 9,462 at
+15 — 0.3% apart** over 140 simulated seconds, with a hard fail over 10%.
+
+**Q69 was diagnosed wrongly and this slice closes it as such (A54).** The item below says cars are
+spawned only on screen and never removed when the link leaves it. They are not: `update(dt)` takes
+no bounds at all, and `onScreen` is read by `pose`, `poseLights` and `count` and by nothing else —
+the density control has always run over every block link in the city. The 1,546 → 9,222 evidence
+was one session filling toward its own equilibrium over time, which is the same 9,436 `lanes_dump`
+now reports **with no camera in the process at all**.
+
+So the second bullet was not built, deliberately: it would have made the population a function of
+the camera, and ruling 037 says the traffic is local and derived from state, so two clients on one
+city must show one city. `test/cars.test.js` asserts the invariant instead — two sims posed with
+different bounds hold the same number of cars.
+
+**And one thing the fix does not reach (Q78, new):** `update` clamps its delta to 1/15 s, so a
+machine below 15 fps lives through less simulated time per second than a fast one. SwiftShader at
+3 fps experiences time five times slower and still cannot reach the 4090's city inside a
+fifteen-second warm-up. The equilibrium is the same on every machine now; the time to reach it is
+not.
 
 **Goal.** The renderer-local traffic sim gives the same city on every machine and does not remember
 where the camera has been. Two defects, one rule.
@@ -301,6 +323,18 @@ SwiftShader: the `settled` column is true on more than three rows and the car co
 of the 4090 card's on every row — that is the whole point. Every gate that counts cars
 re-baselines (`budget_gate`'s three car rows, the crowd row, the night row) and the dev-log carries
 before and after.
+
+**What the gate actually said.** `lanes_dump` is the one that answers: **0.3% apart** at 60 and 15
+fps over 140 simulated seconds, and it fails over 10%. The card half of the gate **cannot be met as
+written**, for two reasons that are both findings rather than failures: the 4090's card was
+collected before this fix, so the comparison spans two eras; and neither card's warm-up reaches
+equilibrium, which needs about 120 simulated seconds where a warm-up buys fifteen at best. Where
+SwiftShader did get comparable simulated time the two agree to a tenth of a per cent — `city 20t`
+4,590 against 4,590, `street walk` 8,922 against 8,920. **The card now carries `simulatedS`** (the
+traffic's own clamped clock) on every row and `reports/perf/README.md` tabulates it, so "did these
+two rows live through the same amount of city?" is a question the table answers instead of one a
+reader has to infer. **A card from the 4090 at this build would close the gate properly** — one
+line for Kjell whenever it suits.
 
 **Must not change:** `engine/traffic.js`, any fixture hash, the IDM constants.
 

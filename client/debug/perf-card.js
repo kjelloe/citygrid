@@ -285,6 +285,9 @@ async function measure(step, session, play, hold) {
       settleFrames: bake.settleFrames,
       ...(bake.settled ? {} : { settled: false }),
       cars: s.cars,
+      // The car count is a function of this and of nothing else, so a row
+      // without it cannot be compared with a row from another machine (D7).
+      simulatedS: s.trafficS,
       peds: s.peds,
       ...(posed.entered ? {} : { entered: false }),
       ...(step.walkM > 0 ? { walkedM, wantedM: step.walkM } : {}),

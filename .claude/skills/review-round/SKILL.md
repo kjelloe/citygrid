@@ -304,6 +304,21 @@ same empty roads and every screenshot in `reports/` has no moving car in it. Fou
 putting the picture next to one that had cars. The check is the same one as everywhere else in
 this file: **assert the effect, not the setting**.
 
+**A question in the open list is a hypothesis, and hypotheses are wrong sometimes.** Q69 said the
+traffic sim spawns only on screen and never empties a link that leaves the view — a story that
+explained the evidence (1,546 cars growing to 9,222 across a sweep) and was false in both halves.
+`update(dt)` takes no bounds at all. The truth was simpler and was already written down beside it
+as Q76: the fill was per frame, and the sweep's steps shared a session, so the city was just
+getting fuller. **Re-read the code before building the fix a question asks for** — and when a
+question's remedy would break a ruling (here, a camera-dependent population against ruling 037's
+locally-derived traffic), that is the strongest possible sign to check the diagnosis first.
+
+**Two numbers are the same measurement only if they cover the same amount of time.** The perf card
+compared a row that had lived 12 simulated seconds with one that had lived 3 and read the
+difference as a frame-rate defect. The delta clamp means a machine below 15 fps advances its world
+more slowly than the clock (Q78), so wall-clock seconds are not city seconds. Whatever a
+measurement is a function of, **print that thing next to it**.
+
 **`git add -A` at the end of a long session is how scratch reaches a public repository.** Seven
 gate transcripts and four probe captures were committed and pushed that way (M5). The guard is a
 test that matches **patterns** — `reports/review*.log`, `reports/tmp/` — not a list of names, since
