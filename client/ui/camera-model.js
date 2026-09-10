@@ -95,6 +95,15 @@ export const CAMERA_BUTTONS = [
     modes: ["city", "ortho", "photo"],
   },
   {
+    // **`h`, not the `Space` the work item asked for.** Space toggles the game
+    // speed, is on the help card, and is the most-used key in the game; taking
+    // it to disambiguate a rarely-used pan would degrade the common control to
+    // serve the rare one. `collisions()` is what made the clash visible before
+    // it was written rather than after (K3).
+    id: "hand", intent: "hand", labelKey: "camera.hand", hintKey: "camera.hand.hint",
+    keys: ["h"], scope: "any", repeats: false, modes: ["city", "ortho"],
+  },
+  {
     id: "home", intent: "home", labelKey: "camera.home", hintKey: "camera.home.hint",
     keys: ["Home"], scope: "any", repeats: false,
     modes: ["city", "ortho", "street", "photo"],

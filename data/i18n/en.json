@@ -309,6 +309,8 @@
   "camera.zoom.hint": "Closer or further away (+ and −, or the wheel).",
   "camera.home": "Fit the city",
   "camera.home.hint": "Bring the whole city into view (Home).",
+  "camera.hand": "Hand",
+  "camera.hand.hint": "Hold H, or press this, to drag the map with a tool in hand.",
   "camera.cluster": "Camera",
   "camera.open": "Camera controls",
   "photo.bar": "Photo mode controls",

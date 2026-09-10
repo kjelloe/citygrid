@@ -94,7 +94,23 @@ the rate, at `dt = 1/60` and `1/15` within 1%; Q held past the threshold turns f
 snapped on release; keys inside a toolbar are untouched (ruling 028). `play_smoke` holds an arrow
 for 500 ms on the desktop viewport and asserts the target moved.
 
-## K3 — The two mouse buttons (M) — ruling 042
+## K3 — The two mouse buttons (M) — ruling 042 — **part done 2026-09-11 as `slice-K3`**
+
+**In:** `client/input/buttons.js`, a pure `buttonsToIntent(mode, buttons, { hasTool, hand })` with
+every combination planted in `test/buttons.test.js`; left/right/both walking and running in the
+free-look modes; **both buttons dolly**, anchored on the ground under the cursor; the wheel
+anchored the same way; and the **hand** on `H`.
+
+**Three things this turned up.** A second button pressed while one is down arrives as a
+`pointermove`, not a `pointerdown` (the spec for a chorded press) — so the dolly could not work
+where it was first wired, and the chord *breaking* is a move too. The item's "the wheel keeps the
+ground point fixed today — assert it" was **not true**, so it was built rather than asserted. And
+the hand is `H` rather than `Space`, because Space pauses.
+
+**Still to do:** Pointer Lock with the drag-look fallback and the first-run overlay (A58); edge
+scrolling with the touch border-pull (A59); the cluster's hand button.
+
+
 
 **Kjell answered Q81 and Q82 on 2026-09-10 (P60), and both change this item.**
 

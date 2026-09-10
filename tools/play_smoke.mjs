@@ -406,6 +406,117 @@ async function run(page, label, { touch, mode }) {
       `entered from "${mode}" and came back to "${left}"`);
   }
 
+  const cameraWas = await page.evaluate(() => {
+    const v = globalThis.CITY.renderer.view;
+    return { mode: v.mode, targetX: v.targetX, targetZ: v.targetZ, span: v.span, pitch: v.pitch, yaw: v.yaw };
+  });
+  const restoreCamera = () => page.evaluate(async (was) => {
+    const city = globalThis.CITY;
+    const view = city.renderer.view;
+    const { setMode, focusOn, applyZoom, pitchBy } = await import("/client/render/camera.js");
+    if (view.mode === "photo") city.renderer.leavePhoto();
+    if (view.mode === "street") city.renderer.leaveStreet();
+    setMode(view, was.mode === "street" ? "city" : was.mode);
+    view.span = was.span;
+    view.yaw = was.yaw;
+    applyZoom(view, view.aspect);
+    pitchBy(view, was.pitch - (view.pitch ?? 0));
+    focusOn(view, was.targetX, was.targetZ);
+  }, cameraWas);
+
+  // --- the two mouse buttons (slice K3, ruling 042 §2) -----------------------
+  //
+  // Kjell asked for this by name. Real pointer events on the real canvas: the
+  // pure table is tested in node, and what this adds is that the table is
+  // actually WIRED — a table nothing consults is a table.
+  if (!touch) {
+    const canvasBox = await page.locator("#city").boundingBox();
+    const cx = canvasBox.x + canvasBox.width / 2;
+    const cy = canvasBox.y + canvasBox.height / 2;
+    const view = () => page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      return { x: v.targetX, z: v.targetZ, yaw: v.yaw, span: v.span, mode: v.mode };
+    });
+
+    // Both buttons dolly. The zoom a wheel-less trackpad never had.
+    await page.evaluate(async () => {
+      const { setMode } = await import("/client/render/camera.js");
+      const v = globalThis.CITY.renderer.view;
+      if (v.mode === "street" || v.mode === "photo") globalThis.CITY.controller.leaveStreet?.();
+      setMode(v, "city");
+      v.span = 40;
+    });
+    const beforeDolly = await view();
+    await page.mouse.move(cx, cy);
+    await page.mouse.down({ button: "left" });
+    await page.mouse.down({ button: "right" });
+    await page.mouse.move(cx, cy - 120, { steps: 8 });
+    await page.mouse.up({ button: "right" });
+    await page.mouse.up({ button: "left" });
+    const afterDolly = await view();
+    check(`${label}: both buttons dolly the camera`,
+      Math.abs(afterDolly.span - beforeDolly.span) > 1,
+      `span ${beforeDolly.span} -> ${afterDolly.span}`);
+    // Compared as an ANGLE. `yawBy` wraps into [0, 2π), so a camera that did not
+    // turn at all reads as -1.5708 before and 4.7124 after — the same direction,
+    // a different number, and a check on the raw values calls it a defect.
+    const turned = Math.abs(Math.atan2(
+      Math.sin(afterDolly.yaw - beforeDolly.yaw), Math.cos(afterDolly.yaw - beforeDolly.yaw),
+    ));
+    check(`${label}: and dollying does not turn the camera`, turned < 1e-6,
+      `yaw ${beforeDolly.yaw} -> ${afterDolly.yaw} (${turned.toFixed(6)} rad apart)`);
+
+    // The wheel keeps the ground under the pointer where it is. Asked off
+    // CENTRE, because at the centre every implementation passes.
+    const offX = cx + Math.round(canvasBox.width * 0.25);
+    const offY = cy + Math.round(canvasBox.height * 0.2);
+    const groundAt = (px, py) => page.evaluate(async ([x, y, bx, by]) => {
+      const { groundPoint } = await import("/client/render/picking.js");
+      const c = document.querySelector("#city");
+      const r = globalThis.CITY.renderer;
+      const st = globalThis.CITY.state;
+      return groundPoint(r.view, x - bx, y - by, c.clientWidth, c.clientHeight,
+        r.model, st.width, st.height);
+    }, [px, py, canvasBox.x, canvasBox.y]);
+    await page.mouse.move(offX, offY);
+    const groundBefore = await groundAt(offX, offY);
+    await page.mouse.wheel(0, -240);
+    await page.waitForTimeout(80);
+    const groundAfter = await groundAt(offX, offY);
+    if (groundBefore && groundAfter) {
+      const drift = Math.hypot(groundAfter.x - groundBefore.x, groundAfter.z - groundBefore.z);
+      check(`${label}: the wheel keeps the ground under the pointer`, drift < 1.5,
+        `drifted ${drift.toFixed(2)} tiles`);
+    } else {
+      check(`${label}: the wheel keeps the ground under the pointer`, false, "no ground under the pointer");
+    }
+
+    // The hand pans with a tool in hand, and builds nothing while it does.
+    await page.evaluate(() => globalThis.CITY.controller.setTool("road"));
+    const roadBefore = await page.evaluate(() =>
+      [...globalThis.CITY.state.tiles.road].reduce((a, v) => a + (v & 16 ? 1 : 0), 0));
+    const panBefore = await view();
+    await page.keyboard.down("h");
+    await page.mouse.move(cx, cy);
+    await page.mouse.down({ button: "left" });
+    await page.mouse.move(cx - 150, cy, { steps: 8 });
+    await page.mouse.up({ button: "left" });
+    await page.keyboard.up("h");
+    const panAfter = await view();
+    const roadAfter = await page.evaluate(() =>
+      [...globalThis.CITY.state.tiles.road].reduce((a, v) => a + (v & 16 ? 1 : 0), 0));
+    check(`${label}: the hand pans with a tool selected`,
+      Math.hypot(panAfter.x - panBefore.x, panAfter.z - panBefore.z) > 1,
+      `${JSON.stringify(panBefore)} -> ${JSON.stringify(panAfter)}`);
+    check(`${label}: and the tool builds nothing while the hand is down`,
+      roadAfter === roadBefore, `${roadBefore} -> ${roadAfter} road tiles`);
+    await page.evaluate(() => globalThis.CITY.controller.setTool(undefined));
+    // Put the camera back. These rows pan and zoom, and the wheel-into-street
+    // check further down needs the view over a road to find one — the same
+    // lesson the photo rows learnt, in the same file, one slice later.
+    await restoreCamera();
+  }
+
   // --- the cluster's share of a phone (slice K1, ruling 042 §5) ---------------
   //
   // "The chrome does not grow." The playtest measured 41% of a 390x844 screen
@@ -448,23 +559,6 @@ async function run(page, label, { touch, mode }) {
   // check below could find no corridor to drop into, and it failed for a reason
   // that had nothing to do with the wheel. A gate step that moves shared state
   // restores it (the lesson `measurement-steps-must-not-inherit` records).
-  const cameraWas = await page.evaluate(() => {
-    const v = globalThis.CITY.renderer.view;
-    return { mode: v.mode, targetX: v.targetX, targetZ: v.targetZ, span: v.span, pitch: v.pitch, yaw: v.yaw };
-  });
-  const restoreCamera = () => page.evaluate(async (was) => {
-    const city = globalThis.CITY;
-    const view = city.renderer.view;
-    const { setMode, focusOn, applyZoom, pitchBy } = await import("/client/render/camera.js");
-    if (view.mode === "photo") city.renderer.leavePhoto();
-    if (view.mode === "street") city.renderer.leaveStreet();
-    setMode(view, was.mode === "street" ? "city" : was.mode);
-    view.span = was.span;
-    view.yaw = was.yaw;
-    applyZoom(view, view.aspect);
-    pitchBy(view, was.pitch - (view.pitch ?? 0));
-    focusOn(view, was.targetX, was.targetZ);
-  }, cameraWas);
 
   for (const from of ["city", "street"]) {
     await restoreCamera();

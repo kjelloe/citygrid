@@ -313,6 +313,19 @@ getting fuller. **Re-read the code before building the fix a question asks for**
 question's remedy would break a ruling (here, a camera-dependent population against ruling 037's
 locally-derived traffic), that is the strongest possible sign to check the diagnosis first.
 
+**An item's stated premise is a claim, not a fact.** K3 said "the wheel keeps the ground point
+under the cursor fixed — it does today under perspective, assert it". It did not: zooming re-orbits
+an unchanged target, so the point drifts toward the centre. Writing the assertion as instructed and
+running it at the middle of the canvas would have produced a green test protecting nothing. **Check
+the premise before writing the test that depends on it**, and when a behaviour is only correct at
+one point of the screen, test it somewhere else.
+
+**When a browser gesture misbehaves, log the event stream before re-reading the code.** K3's dolly
+did nothing, with no error and no obviously wrong line. One instrumented run showed why: a second
+mouse button pressed while one is held fires `pointermove`, not `pointerdown`, so the branch that
+started the gesture was in a handler the browser never called. Inspection had not found it and
+would not have.
+
 **Deriving one thing from another drops whatever the source does not carry.** K1 made the help
 card derive its camera rows from the camera table, which is right — and silently lost the `Space`
 row, because pausing is not a camera movement and so has no entry in a table of camera movements.

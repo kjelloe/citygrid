@@ -40,6 +40,15 @@ test("no two live bindings claim the same key", () => {
   assert.deepEqual(clashes, [], clashes.join("; "));
 });
 
+test("the hand did not take the key that pauses the game", () => {
+  // The work item asked for `Space`. Space toggles the speed, is on the help
+  // card and is the most-used key there is — so the hand is `h`, and this test
+  // is the record of that being a decision rather than an oversight.
+  assert.equal(cameraKeys().some((k) => k.key === " "), false,
+    "the camera has taken the pause key");
+  assert.ok(cameraKeys().some((k) => k.id === "hand" && k.key === "h"));
+});
+
 test("and the pipe tool still has its key", () => {
   // Named, because it is the one that was taken. A regression here is a key
   // that silently stops working, which is the quietest defect there is.
@@ -131,7 +140,7 @@ test("the cluster covers every movement the camera has", () => {
   // street, photo. If the camera grows a movement, it grows a button.
   const intents = new Set(CAMERA_BUTTONS.map((b) => b.intent));
   assert.deepEqual([...intents].sort(),
-    ["home", "pan", "photo", "rotate", "street", "tilt", "zoom"]);
+    ["hand", "home", "pan", "photo", "rotate", "street", "tilt", "zoom"]);
 });
 
 test("the table is data — no functions, nothing to remember", () => {

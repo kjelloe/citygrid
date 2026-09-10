@@ -1,5 +1,5 @@
 {
- "version": "b8d62f2b0a2b",
+ "version": "4a6cb63ec8da",
  "generated": "2026-09-10",
  "files": [
   "./client/audio/audio-model.js",
@@ -14,6 +14,7 @@
   "./client/i18n.js",
   "./client/icon-maskable.svg",
   "./client/icon.svg",
+  "./client/input/buttons.js",
   "./client/input/controller.js",
   "./client/input/gestures.js",
   "./client/input/runs.js",

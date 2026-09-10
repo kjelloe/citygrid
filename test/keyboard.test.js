@@ -9,6 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { nextIndex } from "../client/ui/roving.js";
 import { TOOLS, toolForKey } from "../client/input/tools.js";
+import { buttonsToIntent, INTENT, RIGHT, MIDDLE } from "../client/input/buttons.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
@@ -91,9 +92,16 @@ test("the zone shortcuts are digits, not R, C and I", () => {
 test("right and middle drag are handled, not dropped", () => {
   // They returned early: the comment said they panned and the code did nothing
   // at all, so right-drag had never worked (P32).
-  assert.match(controller, /event\.button === 1 \|\| event\.button === 2/);
-  assert.equal(/event\.button === 1 \|\| event\.button === 2\) return;/.test(controller), false,
-    "right and middle button events are still dropped");
+  //
+  // Asserted through the TABLE since K3, not against a condition string. This
+  // test used to match `event.button === 1 || event.button === 2` in the
+  // source, which pinned an implementation rather than a behaviour — and went
+  // red the moment the buttons moved into `client/input/buttons.js` while every
+  // one of them still did exactly what it had before.
+  assert.equal(buttonsToIntent("city", RIGHT).intent, INTENT.orbit);
+  assert.equal(buttonsToIntent("city", MIDDLE).intent, INTENT.pan);
+  assert.notEqual(buttonsToIntent("city", RIGHT).intent, INTENT.none, "right is dropped again");
+  assert.notEqual(buttonsToIntent("city", MIDDLE).intent, INTENT.none, "middle is dropped again");
   assert.match(controller, /drag\.button/, "there is no drag state for the extra buttons");
 });
 
@@ -102,6 +110,7 @@ test("right drag ORBITS: sideways turns, up and down tilts", () => {
   // dead and got pan (N28); P34 reported it as doing what the left button
   // already did and asked for rotation AND a changeable view angle. The right
   // button is the orbit, and it is the only control that can tilt the camera.
+  assert.equal(buttonsToIntent("city", RIGHT).intent, INTENT.orbit, "the right button is not the orbit");
   const move = controller.slice(controller.indexOf("const onPointerMove"), controller.indexOf("const onPointerUp"));
   const right = move.slice(move.indexOf("if (drag.button === 2)"), move.indexOf("} else"));
   assert.ok(move.includes("if (drag.button === 2)"), "the right button has no branch of its own");

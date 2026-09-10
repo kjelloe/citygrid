@@ -19,6 +19,7 @@ import { RESULT } from "../../shared/protocol.js";
 import { pickTile, groundPoint } from "../render/picking.js";
 import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap, applyPose, focusOn } from "../render/camera.js";
 import { CAMERA_BUTTONS, PAN_SECONDS, TURN_PER_SECOND, ZOOM_PER_SECOND } from "../ui/camera-model.js";
+import { buttonsToIntent, INTENT } from "./buttons.js";
 import { createGestures, down, move, up, cancel } from "./gestures.js";
 import { lineTiles, rectTiles, toRuns, tileIndex, runsLength } from "./runs.js";
 import { TOOLS, DRAG, buildCommand, toolForKey } from "./tools.js";
@@ -327,34 +328,75 @@ export function createController(canvas, state, renderer, options = {}) {
    *
    * All of it works with a tool in hand, which is the whole point: these are
    * the desktop equivalent of the second finger. */
-  const drag = { button: -1, x: 0, y: 0 };
+  const drag = { button: -1, buttons: 0, x: 0, y: 0 };
+
+  /** The hand: while it is down, the left button pans even with a tool
+   * selected, and the tool does not fire (ruling 042 §2). `Space` held is its
+   * key and the cluster has a toggle; the ghost hides while it is on, because a
+   * ghost that follows a pan reads as a build about to happen. */
+  let hand = false;
+
+  /** What the mouse buttons are asking for in the free-look modes, kept between
+   * events the way the held keys are: `get move()` reads both. */
+  let pointerWalk = { forward: 0, run: false };
   /** Radians per pixel dragged. A quarter turn across ~315px sideways, and the
    * whole tilt range across ~470px, which is most of a canvas either way: the
    * camera has to be steerable without the pointer leaving the window. */
   const YAW_PER_PIXEL = 0.005;
   const PITCH_PER_PIXEL = 0.0026;
+  /** Doublings of span per pixel dragged with both buttons. The whole zoom
+   * range across about 300px, which is the same hand movement the orbit uses. */
+  const DOLLY_PER_PIXEL = 0.006;
+
+  /** What the buttons currently held mean here. One table, asked by every
+   * pointer handler, rather than a nest of conditions in each (K3). */
+  const intentNow = (buttons) => buttonsToIntent(renderer.view.mode, buttons, {
+    hasTool: ui.tool !== undefined, hand,
+  });
 
   const onPointerDown = (event) => {
     canvas.setPointerCapture?.(event.pointerId);
+    drag.buttons = event.buttons;
+    const asked = intentNow(event.buttons);
     if (freeLook()) {
       // Every button looks, and the gesture recogniser still runs so a TAP on
-      // a touch screen comes through as one.
+      // a touch screen comes through as one (A34).
       drag.button = event.button;
       drag.x = event.offsetX;
       drag.y = event.offsetY;
+      // Left walks forward, right back, both run — the thing Kjell asked for by
+      // name, and the reason a mouse-only player can now move down there at all.
+      pointerWalk = { forward: asked.forward, run: asked.run };
       handle(down(gestures, point(event)));
       return;
     }
-    if (event.button === 1 || event.button === 2) {
+    if (asked.intent === INTENT.dolly || asked.intent === INTENT.orbit
+      || (asked.intent === INTENT.pan && event.button !== 0)) {
       drag.button = event.button;
       drag.x = event.offsetX;
       drag.y = event.offsetY;
+      return;
+    }
+    // The hand turns the left button into a pan without the tool firing, so it
+    // takes the drag path rather than the gesture one.
+    if (hand && event.button === 0) {
+      drag.button = 0;
+      drag.x = event.offsetX;
+      drag.y = event.offsetY;
+      hideGhost();
       return;
     }
     handle(down(gestures, point(event)));
   };
   const onPointerMove = (event) => {
+    drag.buttons = event.buttons;
     if (freeLook()) {
+      // The walk follows whatever is held right now: pressing the second button
+      // mid-drag has to become a run without a fresh `pointerdown`.
+      if (event.buttons !== 0) {
+        const asked = intentNow(event.buttons);
+        pointerWalk = { forward: asked.forward, run: asked.run };
+      }
       if (drag.button < 0) return;
       const dx = event.offsetX - drag.x;
       const dy = event.offsetY - drag.y;
@@ -369,11 +411,45 @@ export function createController(canvas, state, renderer, options = {}) {
       onChange();
       return;
     }
+    // **A second button pressed while one is already down arrives as a
+    // `pointermove`, not a `pointerdown`.** That is the Pointer Events spec for
+    // a chorded mouse press, and it is why the dolly did nothing when it was
+    // first wired: the branch that started it lived in `onPointerDown`, which
+    // the browser never calls for the second button. Measured, not guessed —
+    // the event list for a left-then-right press is
+    // `pointerdown(0,1)`, `pointermove(2,3)`, `pointermove(-1,3)`…
+    const chord = intentNow(event.buttons);
+    // The chord BREAKING is also a move, not an up: releasing the right button
+    // while the left is still down leaves `drag.button` at 2, and the next
+    // move would orbit with it. A gesture that changes shape ends here and the
+    // remaining button starts whatever it means on its own.
+    if (drag.button === 2 && event.buttons !== 0 && chord.intent !== INTENT.dolly
+      && chord.intent !== INTENT.orbit && chord.intent !== INTENT.pan) {
+      drag.button = -1;
+      return;
+    }
+    if (chord.intent === INTENT.dolly && drag.button < 0) {
+      // Adopt the drag here and take this move as the baseline, or the first
+      // frame of the dolly jumps by however far the pointer had already come.
+      drag.button = 2;
+      drag.x = event.offsetX;
+      drag.y = event.offsetY;
+      return;
+    }
     if (drag.button >= 0) {
       const dx = event.offsetX - drag.x;
       const dy = event.offsetY - drag.y;
       drag.x = event.offsetX;
       drag.y = event.offsetY;
+      const asked = intentNow(event.buttons);
+      if (asked.intent === INTENT.dolly) {
+        // Both buttons: up flies toward the ground under the cursor, down away
+        // from it — span-scaled, so it means the same thing at every zoom, and
+        // anchored the same way the wheel is, so the two gestures agree. The
+        // zoom a wheel-less trackpad never had (ruling 042 §2).
+        zoomAt(Math.pow(2, dy * DOLLY_PER_PIXEL), event.offsetX, event.offsetY);
+        return;
+      }
       if (drag.button === 2) {
         // Dragging right turns the city to the right, which means turning the
         // camera the other way — the same inversion the pan needs, and for the
@@ -397,19 +473,42 @@ export function createController(canvas, state, renderer, options = {}) {
   const onPointerUp = (event) => {
     canvas.releasePointerCapture?.(event.pointerId);
     grabbed = undefined;
+    drag.buttons = event.buttons;
+    // Releasing one of two buttons keeps walking on the other, rather than
+    // stopping dead until the hand presses again.
+    pointerWalk = event.buttons === 0
+      ? { forward: 0, run: false }
+      : { forward: intentNow(event.buttons).forward, run: intentNow(event.buttons).run };
     // In street mode the drag IS the gesture, so the recogniser still has to
     // see the release — otherwise a tap never completes and touch cannot walk.
     if (drag.button >= 0 && !freeLook()) { drag.button = -1; return; }
     drag.button = -1;
     handle(up(gestures, point(event)));
   };
-  const onPointerCancel = () => { drag.button = -1; grabbed = undefined; handle(cancel(gestures)); };
+  const onPointerCancel = () => {
+    drag.button = -1;
+    drag.buttons = 0;
+    pointerWalk = { forward: 0, run: false };
+    grabbed = undefined;
+    handle(cancel(gestures));
+  };
   /** The minimum span, and the pitch below which zooming past it steps out of
    * the car and onto the pavement (spec §8.1). Both match `camera.js`: the
    * zoom stops at 8 tiles, so "past the minimum" is a zoom-in that would not
    * move. */
   const MIN_SPAN = 8;
   const STREET_PITCH = 25 * (Math.PI / 180);
+
+  /** The hand, on or off, from the key or the cluster's toggle. The ghost goes
+   * while it is on: a ghost that follows a pan reads as a build about to
+   * happen, and the whole point of the hand is that nothing is built. */
+  function setHand(on) {
+    if (hand === on) return;
+    hand = on;
+    if (on) hideGhost();
+    options.onHand?.(on);
+    onChange();
+  }
 
   /** Camera buttons (or keys, from K2) held down right now, by button id.
    *
@@ -491,9 +590,38 @@ export function createController(canvas, state, renderer, options = {}) {
     zoomBy(view, factor);
   }
 
+  /**
+   * Zooms while keeping the ground under the pointer where it is (K3).
+   *
+   * The work item says the wheel does this today "under perspective — assert
+   * it". It does not: `zoomBy` changes the span and `applyPose` re-orbits
+   * around an unchanged target, so the point under the cursor drifts toward the
+   * middle of the screen and only a cursor at the centre stays put. Checked
+   * rather than asserted, which is the difference between a test that protects
+   * a behaviour and a test that invents one.
+   *
+   * So it is built: grab the ground point, zoom, and pan the target by however
+   * far that point moved. The same `groundAtPixel` the drag-pan uses, so the
+   * two cannot disagree about where the ground is.
+   */
+  function zoomAt(factor, px, py) {
+    const view = renderer.view;
+    const before = px === undefined ? undefined : groundAtPixel(px, py);
+    zoomStep(factor);
+    // `zoomStep` can change the MODE — one notch past the minimum steps into
+    // the street — and a mode change has no ground point to preserve.
+    if (!before || view.mode !== "city") return;
+    const after = groundAtPixel(px, py);
+    if (!after) return;
+    view.targetX += before.x - after.x;
+    view.targetZ += before.z - after.z;
+    clampToMap(view, state.width, state.height);
+    onChange();
+  }
+
   const onWheel = (event) => {
     event.preventDefault();
-    zoomStep(event.deltaY > 0 ? 1.12 : 1 / 1.12);
+    zoomAt(event.deltaY > 0 ? 1.12 : 1 / 1.12, event.offsetX, event.offsetY);
   };
   const onContextMenu = (event) => event.preventDefault();
 
@@ -575,6 +703,16 @@ export function createController(canvas, state, renderer, options = {}) {
       return;
     }
 
+    // The hand, held (K3, ruling 042 §2). `h` rather than the `Space` the item
+    // asked for: Space toggles the game speed and is the most-used key there
+    // is. Held rather than toggled, because it is a modifier on the drag the
+    // player is about to make, and a mode they can forget they are in is a mode
+    // that eats their next click.
+    if (!modified && (event.key === "h" || event.key === "H")) {
+      event.preventDefault();
+      setHand(true);
+      return;
+    }
     // Tilt and fit, which the cluster has buttons for — so the keys do the same
     // thing (ruling 042 §1: a button that does something a key cannot, or the
     // reverse, is a defect). `PageUp`/`PageDown` were in ruling 042's list and
@@ -639,10 +777,13 @@ export function createController(canvas, state, renderer, options = {}) {
     const walk = walkKey(event.key);
     if (walk) held.delete(walk);
     if (event.key === "Shift") held.delete("run");
+    if (event.key === "h" || event.key === "H") setHand(false);
   };
   // A key held while the window loses focus is a key that never comes up, and
   // the walker walks into a wall for as long as the tab is in the background.
-  const onBlur = () => held.clear();
+  // The hand goes with them, for the same reason and a worse consequence: a
+  // hand left down is a build tool that has stopped building.
+  const onBlur = () => { held.clear(); setHand(false); pointerWalk = { forward: 0, run: false }; };
 
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
@@ -683,6 +824,8 @@ export function createController(canvas, state, renderer, options = {}) {
     fitCity,
     holdCamera,
     stepCamera,
+    setHand,
+    get hand() { return hand; },
     /** What a camera button does when it is pressed rather than held.
      *
      * `home` only. The cluster's Street and Photo buttons go through the HUD's
@@ -697,11 +840,19 @@ export function createController(canvas, state, renderer, options = {}) {
      * frame loop; empty in every mode but the two free-look ones. */
     get move() {
       if (!freeLook()) return undefined;
-      const forward = (held.has("forward") ? 1 : 0) - (held.has("back") ? 1 : 0);
+      // The keys and the mouse buttons add: a player holding W and the left
+      // button is asking for one thing, not two, and a mouse-only player moves
+      // on the buttons alone (K3, ruling 042 §2).
+      const keyForward = (held.has("forward") ? 1 : 0) - (held.has("back") ? 1 : 0);
+      const forward = Math.max(-1, Math.min(1, keyForward + pointerWalk.forward));
       const strafe = (held.has("right") ? 1 : 0) - (held.has("left") ? 1 : 0);
       // `run` for the walker and `fast` for the photo camera: the same key, and
       // the two modules name it for what it means to each of them.
-      return { forward, strafe, run: held.has("run"), fast: held.has("run") };
+      const running = held.has("run") || pointerWalk.run;
+      // Two buttons together mean a run FORWARD: on the forward axis they
+      // cancel, so the run is what carries the meaning (K3).
+      const both = pointerWalk.run && forward === 0 ? 1 : forward;
+      return { forward: both, strafe, run: running, fast: running };
     },
     canUndo: () => lastUndoFor(actor) !== undefined,
     get tool() { return ui.tool; },

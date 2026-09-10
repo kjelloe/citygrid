@@ -309,6 +309,8 @@
   "camera.zoom.hint": "Nærmere eller lenger unna (+ og −, eller hjulet).",
   "camera.home": "Vis hele byen",
   "camera.home.hint": "Vis hele byen i visningen (Home).",
+  "camera.hand": "Hånd",
+  "camera.hand.hint": "Hold H, eller trykk her, for å dra kartet med et verktøy i hånden.",
   "camera.cluster": "Kamera",
   "camera.open": "Kamerakontroller",
   "photo.bar": "Kontroller for fotomodus",

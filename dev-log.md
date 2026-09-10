@@ -5178,3 +5178,70 @@ for free — which is ruling 028's whole point, since a hand-rolled toolbar role
 keyboard pattern that did nothing for nine slices. `play_smoke`: the phone's chrome is **36% of
 390×844 against the playtest's 41% ceiling**, the cluster contributing `44×44` because it collapses
 to one button (ruling 042 §5).
+
+## slice-K3 (part) — the two mouse buttons (2026-09-11)
+
+Ruling 042 §2, and the thing Kjell asked for by name in P59. A mouse-only player could not move in
+the street at all — the mouse looked and the keyboard walked — and in the city the only pan with a
+tool in hand was the middle button, which a trackpad may not have.
+
+**`client/input/buttons.js` is a pure table**, `buttonsToIntent(mode, buttons, { hasTool, hand })`,
+and the tests plant every combination: three buttons is eight states, times four modes, times a
+tool in hand or not. That grid is more than anybody checks by clicking, and the combination nobody
+tried is reliably the one that does something odd. Two of the thirteen assertions are decisions
+rather than transcriptions — **no city combination ever builds by accident** (the tool fires on the
+left button alone with no hand, so a stray second button mid-drag cannot paint a district), and
+**left+right is a run FORWARD** (on the forward axis the two cancel, so `run` carries the meaning;
+a caller reading `forward` alone would get a standstill).
+
+**The finding worth the slice: a second mouse button pressed while one is already down arrives as a
+`pointermove`, not a `pointerdown`.** That is the Pointer Events spec for a chorded press. The
+dolly branch was in `onPointerDown`, which the browser never calls for the second button, so the
+code was correct-looking and could not work — span 40 → 40 with no error anywhere. Instrumenting
+the real page gave it in one run:
+
+    pointerdown  button 0  buttons 1     ← left
+    pointermove  button 2  buttons 3     ← the RIGHT press, as a move
+    pointermove  button -1 buttons 3     ← the drag
+    pointermove  button 2  buttons 1     ← the right RELEASE, also a move
+    pointerup    button 0  buttons 0
+
+Both ends of that mattered. The dolly now adopts the drag on that move and takes it as the
+baseline, or its first frame jumps by however far the pointer had already come. And the chord
+*breaking* is a move too: releasing the right button while the left is down left `drag.button` at
+2, so the next move would have orbited. It ends the gesture instead. It also explains why the
+street walk worked by accident — the walk intent is recomputed on every move, so the second button
+became a run without needing a `pointerdown`. Right for a reason I did not know at the time.
+
+**The item asked me to assert something that was not true.** "Wheel keeps the ground point under
+the cursor fixed (it does today under perspective — assert it)." It did not: `zoomBy` changes the
+span and `applyPose` re-orbits an unchanged target, so the point under the cursor drifts toward the
+middle and only a cursor at the centre stays put. Checked rather than asserted — and had I written
+the test as instructed and run it at the centre of the canvas, it would have passed and protected
+nothing. So the anchoring is built, reusing the drag-pan's own `groundAtPixel` so the two cannot
+disagree about where the ground is, and the dolly is anchored the same way so the two gestures
+agree. `play_smoke` asks **off-centre**, at a quarter-width across, because at the centre every
+implementation passes: **0.08 tiles of drift** on desktop, 0.15 under perspective.
+
+**The hand is `H`, not the `Space` the item asked for.** Space toggles the game speed, is on the
+help card and is the most-used key in the game; taking it to disambiguate a rarely-used pan would
+degrade the common control to serve the rare one. K1's `collisions()` made the clash visible before
+the binding was written rather than after — the first time this session a guard has caught
+something in advance. Held rather than toggled, because it is a modifier on the drag about to
+happen and a mode you can forget you are in is a mode that eats your next click; released on keyup
+and on blur, since a hand left down is a build tool that has stopped building.
+
+**And a test that pinned syntax rather than behaviour.** `test/keyboard.test.js` matched the literal
+`event.button === 1 || event.button === 2` in the controller source and went red the moment the
+buttons moved into a table — while every button still did exactly what it had before. It asserts
+through `buttonsToIntent` now: right orbits, middle pans.
+
+**Measured.** Suite green twice. `play_smoke`: the dolly moves the span 40 → 24.3 with **0.000000
+rad** of unwanted turn (compared as an angle — `yawBy` wraps into [0, 2π), so a camera that did not
+move at all reads as −1.5708 before and 4.7124 after, and a check on the raw numbers calls that a
+defect); the wheel holds the ground to 0.08 and 0.15 tiles; the hand pans with a tool selected and
+**61 → 61 road tiles**, so nothing was built while it was down.
+
+**Not done in this part**, and named rather than left implied: Pointer Lock with the drag-look
+fallback and the first-run overlay (A58), edge scrolling with the touch border-pull (A59), and the
+cluster's hand button. The table, the buttons, the dolly, the anchoring and the hand key are in.
