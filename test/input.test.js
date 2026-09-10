@@ -331,3 +331,99 @@ test("a pan keeps the ground under the pointer where the pointer is", () => {
   assert.match(controller, /mode === "ortho"|mode !== "city"/,
     "the pan does not distinguish the projections");
 });
+
+// --- photo mode (slice F1) ---------------------------------------------------
+//
+// The fourth mode. Source-read for the same reason as the rest of this section:
+// `controller.js` is driven by a browser and `tools/play_smoke.mjs` presses the
+// real keys on the real page. What is checked here is the shape of the rules —
+// a build tool reachable from a camera mode is the defect, and it is one a
+// screenshot cannot see.
+
+test("photo mode is a mode everywhere, not a name in one file", () => {
+  // Ruling 034: every mode goes through `client/world/orbit.js`, and a mode
+  // half the arithmetic has never heard of is priced one way and drawn another.
+  assert.match(camera, /MODES = \[[^\]]*"photo"/, "the camera does not know the mode exists");
+  const orbit = readFileSync(join(repoRoot, "client", "world", "orbit.js"), "utf8");
+  assert.match(orbit, /"photo"/, "eyeOf has no answer for the photo camera");
+  const lod = readFileSync(join(repoRoot, "client", "render", "lod.js"), "utf8");
+  assert.match(lod, /"photo"/, "the budget has no answer for the photo camera");
+  const atmosphere = readFileSync(join(repoRoot, "client", "render", "atmosphere.js"), "utf8");
+  assert.match(atmosphere, /"photo"/, "the fog has no answer for the photo camera");
+});
+
+test("photo mode owns the keyboard, so no tool can be reached from it", () => {
+  // The same rule street mode has and for a stronger reason: a zoning drag from
+  // a camera hanging over a roof is a district painted from an angle the player
+  // cannot check. The branch returns before any tool key is read.
+  const branch = controller.slice(controller.indexOf("if (photo() && !modified)"));
+  const body = branch.slice(0, branch.indexOf("\n    }"));
+  assert.ok(body.length > 0, "there is no photo branch in the keyboard handler");
+  assert.match(body, /Escape/, "there is no way out with the keyboard");
+  assert.match(body, /leavePhoto\(\)/, "Escape does not leave");
+  assert.match(body, /walkKey\(/, "WASD does not fly the camera");
+  assert.match(body, /return;\s*$/m, "the branch falls through to the build keys");
+});
+
+test("entering photo mode drops whatever was in hand", () => {
+  const entry = controller.slice(controller.indexOf("function enterPhoto("));
+  const body = entry.slice(0, entry.indexOf("\n  }"));
+  assert.match(body, /setTool\(undefined\)/, "a tool survives into the camera mode");
+  assert.match(body, /held\.clear\(\)/, "a held walk key survives into the camera mode");
+});
+
+test("the P key and the button do the same thing", () => {
+  // Ruling 027: a key without a screen is a feature only the manual has. The
+  // button is in `client/ui/hud.js` and both call the controller.
+  assert.match(controller, /event\.key === "p" \|\| event\.key === "P"/, "there is no P key");
+  const hud = readFileSync(join(repoRoot, "client", "ui", "hud.js"), "utf8");
+  assert.match(hud, /onPhoto\?\.\(\)/, "there is no button");
+  assert.match(hud, /onLeavePhoto\?\.\(\)/, "there is no way back on the screen");
+  // And the way back has to STAY on the screen. Street mode's rule — the one
+  // control left is the one that gets you out — and `reach_smoke` is why it is
+  // a rule rather than a preference: an opener that hides itself cannot be the
+  // toggle that closes it, and a player who cannot find Escape is stuck.
+  const css = readFileSync(join(repoRoot, "client", "style.css"), "utf8");
+  assert.match(css, /\[data-camera="photo"\] \.hud-top > \*:not\(\.hud-photo\)/,
+    "photo mode hides the button that leaves it");
+});
+
+test("the four snapped yaws still snap after a mode change", () => {
+  // Photo mode leaves a free yaw behind it, the way the mouse does. Q and E
+  // have to land back on the four comfortable angles from wherever that is,
+  // which is `rotate`'s rounding — asserted above, and asserted here to be
+  // reachable from the way photo mode gives the view back.
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  const leave = scene.slice(scene.indexOf("function leavePhoto("));
+  const body = leave.slice(0, leave.indexOf("\n  }"));
+  assert.match(body, /setProjection\(/, "leaving photo mode does not restore a projection");
+  assert.equal(/setProjection\("street"\)/.test(body), false,
+    "leaving photo mode can drop the player into the street they never entered");
+});
+
+test("the near plane follows the eye, not the path the eye took", () => {
+  // `budget_gate`'s photo row put the eye down at street level directly rather
+  // than flying it there, and got the CITY's near plane — half a tile, which
+  // clips the pavement the camera is standing on. The planes were being chosen
+  // when the zoom changed and when a flight crossed the threshold, so any other
+  // way of setting the eye left them stale: a jump, a shot list, a gate. They
+  // are chosen in `applyPose` now, which every path goes through.
+  const pose = camera.slice(camera.indexOf("export function applyPose("));
+  assert.match(pose.slice(0, pose.indexOf("\n}")), /applyPlanes\(view\)/,
+    "posing the camera does not choose its planes");
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  const fly = scene.slice(scene.indexOf("function flyPhoto("));
+  assert.equal(/applyZoom/.test(fly.slice(0, fly.indexOf("\n  }"))), false,
+    "flying still rebuilds the frustum by hand, so another path can forget to");
+});
+
+test("the photo camera is a rate, like everything else that is held", () => {
+  // Ruling 042 §3, and D7's lesson applied before it could be made again: a
+  // camera that moves per FRAME travels twice as far on a machine twice as
+  // fast.
+  const photo = readFileSync(join(repoRoot, "client", "world", "photo.js"), "utf8");
+  const step = photo.slice(photo.indexOf("export function photoStep("));
+  assert.match(step.slice(0, step.indexOf("\n}")), /\* dt/, "the step is not scaled by the delta");
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.match(scene, /flyPhoto\(drawOptions\.move, dt\)/, "the frame loop does not fly the camera");
+});

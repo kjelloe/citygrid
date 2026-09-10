@@ -188,6 +188,10 @@ export function createController(canvas, state, renderer, options = {}) {
   };
   const walkKey = (key) => WALK_KEYS[key] ?? WALK_KEYS[key?.toLowerCase?.()];
   const street = () => renderer.view.mode === "street";
+  const photo = () => renderer.view.mode === "photo";
+  /** The two modes where the eye is its own and WASD moves it. One predicate,
+   * so a branch that means "free look" cannot come to mean "street" (F1). */
+  const freeLook = () => street() || photo();
 
   /** Enters street mode over a tile, or over the middle of the view. */
   function enterStreet(tile) {
@@ -208,6 +212,30 @@ export function createController(canvas, state, renderer, options = {}) {
     held.clear();
     renderer.leaveStreet?.();
     options.onMode?.("city");
+    onChange();
+    return true;
+  }
+
+  /** Into photo mode, from anywhere (F1, ruling 027: the P key has a button).
+   *
+   * Unlike the street there is nowhere it can refuse: a photo camera needs no
+   * pavement, so this always succeeds and the caller never has to explain why
+   * it did not. */
+  function enterPhoto() {
+    if (photo()) return false;
+    renderer.enterPhoto?.();
+    setTool(undefined);
+    held.clear();
+    options.onMode?.("photo");
+    onChange();
+    return true;
+  }
+
+  function leavePhoto() {
+    if (!photo()) return false;
+    held.clear();
+    renderer.leavePhoto?.();
+    options.onMode?.(renderer.view.mode);
     onChange();
     return true;
   }
@@ -307,7 +335,7 @@ export function createController(canvas, state, renderer, options = {}) {
 
   const onPointerDown = (event) => {
     canvas.setPointerCapture?.(event.pointerId);
-    if (street()) {
+    if (freeLook()) {
       // Every button looks, and the gesture recogniser still runs so a TAP on
       // a touch screen comes through as one.
       drag.button = event.button;
@@ -325,7 +353,7 @@ export function createController(canvas, state, renderer, options = {}) {
     handle(down(gestures, point(event)));
   };
   const onPointerMove = (event) => {
-    if (street()) {
+    if (freeLook()) {
       if (drag.button < 0) return;
       const dx = event.offsetX - drag.x;
       const dy = event.offsetY - drag.y;
@@ -333,7 +361,10 @@ export function createController(canvas, state, renderer, options = {}) {
       drag.y = event.offsetY;
       // Drag-look, the way the city camera's orbit reads: the hand is on the
       // world. Dragging right turns you left, so the street swings right.
-      renderer.walker?.look(-dx * YAW_PER_PIXEL, -dy * PITCH_PER_PIXEL);
+      // Photo mode looks through the renderer because there is no walker to
+      // ask — the same gesture, a different thing being turned (F1).
+      if (photo()) renderer.lookPhoto?.(-dx * YAW_PER_PIXEL, -dy * PITCH_PER_PIXEL);
+      else renderer.walker?.look(-dx * YAW_PER_PIXEL, -dy * PITCH_PER_PIXEL);
       onChange();
       return;
     }
@@ -367,7 +398,7 @@ export function createController(canvas, state, renderer, options = {}) {
     grabbed = undefined;
     // In street mode the drag IS the gesture, so the recogniser still has to
     // see the release — otherwise a tap never completes and touch cannot walk.
-    if (drag.button >= 0 && !street()) { drag.button = -1; return; }
+    if (drag.button >= 0 && !freeLook()) { drag.button = -1; return; }
     drag.button = -1;
     handle(up(gestures, point(event)));
   };
@@ -388,6 +419,10 @@ export function createController(canvas, state, renderer, options = {}) {
       if (factor > 1) leaveStreet();
       return;
     }
+    // In photo mode the zoom is the flight speed, not the way out: the span
+    // scales how fast the camera crosses what it can see (`photoSpeed`), so a
+    // wheel notch is "move about the city faster" and Escape is the way back.
+    if (photo()) { zoomBy(view, factor); return; }
     const wouldStick = view.span <= MIN_SPAN + 1e-9 && factor < 1;
     if (wouldStick && view.mode === "city" && (view.pitch ?? 1) <= STREET_PITCH) {
       if (enterStreet(ui.hover)) return;
@@ -439,6 +474,24 @@ export function createController(canvas, state, renderer, options = {}) {
       if (walk) { event.preventDefault(); held.add(walk); return; }
       if (event.key === "Shift") { held.add("run"); return; }
       if (event.key === "f" || event.key === "F") { event.preventDefault(); leaveStreet(); return; }
+      if (event.key === "p" || event.key === "P") { event.preventDefault(); enterPhoto(); return; }
+      return;
+    }
+    // Photo mode owns the keyboard for the same reason street mode does, and
+    // more so: it is a camera, and a build tool reached from it would paint a
+    // district from an angle no player could check (F1).
+    if (photo() && !modified) {
+      if (event.key === "Escape") { event.preventDefault(); leavePhoto(); return; }
+      if (event.key === "p" || event.key === "P") { event.preventDefault(); leavePhoto(); return; }
+      const fly = walkKey(event.key);
+      if (fly) { event.preventDefault(); held.add(fly); return; }
+      if (event.key === "Shift") { held.add("run"); return; }
+      return;
+    }
+    // The key that gets you there. It has a button too (ruling 027).
+    if (!modified && (event.key === "p" || event.key === "P")) {
+      event.preventDefault();
+      enterPhoto();
       return;
     }
     // The key that gets you there. It has a button too (ruling 027).
@@ -537,13 +590,17 @@ export function createController(canvas, state, renderer, options = {}) {
     undo,
     enterStreet,
     leaveStreet,
-    /** What the walker should do this frame. Read by the frame loop; empty in
-     * every mode but street. */
+    enterPhoto,
+    leavePhoto,
+    /** What the walker or the photo camera should do this frame. Read by the
+     * frame loop; empty in every mode but the two free-look ones. */
     get move() {
-      if (!street()) return undefined;
+      if (!freeLook()) return undefined;
       const forward = (held.has("forward") ? 1 : 0) - (held.has("back") ? 1 : 0);
       const strafe = (held.has("right") ? 1 : 0) - (held.has("left") ? 1 : 0);
-      return { forward, strafe, run: held.has("run") };
+      // `run` for the walker and `fast` for the photo camera: the same key, and
+      // the two modules name it for what it means to each of them.
+      return { forward, strafe, run: held.has("run"), fast: held.has("run") };
     },
     canUndo: () => lastUndoFor(actor) !== undefined,
     get tool() { return ui.tool; },

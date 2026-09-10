@@ -16,6 +16,7 @@ reports/smoke-*.png
 # through one `git add -A` (M5). The artefacts a slice DELIVERS are not here.
 reports/review*.log
 reports/tmp/
+reports/.photo-smoke.png
 reports/.compare-*.png
 reports/.sheet-*.png
 

@@ -21,6 +21,11 @@ import { getConfig } from "../world/config.js";
  * camera is a city in a jar. */
 const MIN_SPAN = 12;
 
+/** Where the photo camera stops being in the street and starts being over the
+ * city, in TILES of eye height. One tile is 20 m: higher than any roof the
+ * walker walks past, lower than anything that reads as a view. */
+const AIR_ABOVE = 1;
+
 /**
  * The haze, in TILE units — the whole scene is — or `undefined` when there
  * should not be any.
@@ -31,7 +36,12 @@ const MIN_SPAN = 12;
 export function fogFor(view, hour, cfg = getConfig()) {
   // Orthographic has no horizon to fade into (V5).
   if (view.mode === "ortho") return undefined;
-  if (view.mode === "street") {
+  // The photo camera is in both places, so it is asked where it is rather than
+  // what it is called: down among the buildings it wants the street's fixed
+  // reach in metres, and from the air the city's multiple of the span. The
+  // threshold is a tile — 20 m — which is above every roof the walker passes
+  // and below anything that reads as "over the city" (F1).
+  if (view.mode === "street" || (view.mode === "photo" && (view.eye?.y ?? 0) <= AIR_ABOVE)) {
     const tileM = cfg.tileM;
     // Metres, and the hour is a factor on them rather than the whole answer:
     // the preset's numbers are ratios of a reach, and down here the reach is a

@@ -106,6 +106,11 @@ try {
     "hud-drawer": "#rail-overlays",
     "build-menu": "#build",
     "hud-toolbar hud-build": "#build",
+    // Photo mode's slim bar (F1). Its opener is the photo button, which stays
+    // on screen IN photo mode — the same rule street mode follows, and this
+    // gate is why: an opener that hides itself cannot be a toggle, and a player
+    // who cannot find Escape would have no way out they can see.
+    photobar: "#photo",
   };
   const containers = [...new Set(inventory.map((c) => c.hidden).filter(Boolean))];
   const unknown = containers.filter((c) => !OPENERS[c]);

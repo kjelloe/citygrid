@@ -283,6 +283,16 @@
   "street.leave.hint": "Tilbake til byvisningen (Escape).",
   "street.noStreet": "Det er ingen gate å stå i her.",
 
+  "photo.enter": "Fotomodus",
+  "photo.leave": "Avslutt fotomodus",
+  "photo.enter.hint": "Fri kamera for å komponere et bilde (P). WASD flyr, Shift er raskere, dra for å se deg om.",
+  "photo.leave.hint": "Tilbake til visningen du kom fra (Escape).",
+  "photo.save": "Lagre PNG",
+  "photo.save.hint": "Lagre dette bildet som en fil på enheten din.",
+  "photo.saved": "Bildet er lagret.",
+  "photo.saveFailed": "Bildet kunne ikke lagres.",
+  "photo.bar": "Kontroller for fotomodus",
+
   "funding.fire": "Brann",
   "funding.police": "Politi",
   "funding.health": "Helse",

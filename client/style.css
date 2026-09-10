@@ -1192,3 +1192,36 @@ button, [role="button"] {
 #hud[data-camera="street"] .hud-minimap,
 #hud[data-camera="street"] .hud-preview { display: none; }
 #hud[data-camera="street"] .hud-street { outline: 2px solid var(--accent, currentColor); }
+
+/* Photo mode (F1). The HUD gets out of the way of the picture entirely — even
+   the top bar, which street mode keeps — because the whole point of the mode is
+   the frame. What is left is the slim bar, which carries the two things a
+   player cannot do without: take the picture, and leave. */
+#hud[data-camera="photo"] .hud-build,
+#hud[data-camera="photo"] .hud-rail,
+#hud[data-camera="photo"] .hud-tools,
+#hud[data-camera="photo"] .hud-minimap,
+#hud[data-camera="photo"] .hud-preview,
+#hud[data-camera="photo"] .hud-bottom { display: none; }
+/* The top bar empties out but does not go away, and the photo button stays.
+   Street mode's rule, and `tools/reach_smoke.mjs` is why it is a rule: a way
+   out that hides itself is not a way out, and an opener that hides itself
+   cannot be the toggle that closes it either. */
+#hud[data-camera="photo"] .hud-top > *:not(.hud-photo) { display: none; }
+#hud[data-camera="photo"] .hud-top { background: none; box-shadow: none; }
+#hud[data-camera="photo"] .hud-photo { outline: 2px solid var(--accent, currentColor); }
+
+.hud-photobar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--panel, rgba(20, 22, 26, 0.85));
+  pointer-events: auto;
+  z-index: 5;
+}
+.hud-photobar button { min-height: 44px; min-width: 44px; }

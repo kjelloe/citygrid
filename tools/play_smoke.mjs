@@ -406,6 +406,80 @@ async function run(page, label, { touch, mode }) {
       `entered from "${mode}" and came back to "${left}"`);
   }
 
+  // --- photo mode (slice F1) -------------------------------------------------
+  //
+  // From the city and from the street, on both viewports. The mode has no
+  // pavement to need, so unlike the street it can never refuse — which is
+  // exactly why it is worth checking that it also always gives the view BACK.
+  //
+  // **And the camera is put back where this section found it.** A photo camera
+  // flies, and the checks after this one need the view over a street: the first
+  // run of these rows left the camera 69 tiles out over open ground, the wheel
+  // check below could find no corridor to drop into, and it failed for a reason
+  // that had nothing to do with the wheel. A gate step that moves shared state
+  // restores it (the lesson `measurement-steps-must-not-inherit` records).
+  const cameraWas = await page.evaluate(() => {
+    const v = globalThis.CITY.renderer.view;
+    return { mode: v.mode, targetX: v.targetX, targetZ: v.targetZ, span: v.span, pitch: v.pitch, yaw: v.yaw };
+  });
+  const restoreCamera = () => page.evaluate(async (was) => {
+    const city = globalThis.CITY;
+    const view = city.renderer.view;
+    const { setMode, focusOn, applyZoom, pitchBy } = await import("/client/render/camera.js");
+    if (view.mode === "photo") city.renderer.leavePhoto();
+    if (view.mode === "street") city.renderer.leaveStreet();
+    setMode(view, was.mode === "street" ? "city" : was.mode);
+    view.span = was.span;
+    view.yaw = was.yaw;
+    applyZoom(view, view.aspect);
+    pitchBy(view, was.pitch - (view.pitch ?? 0));
+    focusOn(view, was.targetX, was.targetZ);
+  }, cameraWas);
+
+  for (const from of ["city", "street"]) {
+    await restoreCamera();
+    const entered = await page.evaluate(async (origin) => {
+      const city = globalThis.CITY;
+      const view = city.renderer.view;
+      const { setMode } = await import("/client/render/camera.js");
+      if (origin === "street") {
+        if (view.mode !== "street") city.renderer.enterStreet();
+      } else {
+        if (view.mode === "street") city.renderer.leaveStreet();
+        setMode(view, "city");
+      }
+      const before = view.mode;
+      city.controller.enterPhoto();
+      const eye = view.eye ? { ...view.eye } : undefined;
+      return { before, mode: view.mode, eye, tool: city.controller.tool };
+    }, from);
+    check(`${label}: photo mode opens from ${from}`, entered.mode === "photo",
+      JSON.stringify(entered));
+    check(`${label}: and the eye is where the camera was, not at the origin`,
+      entered.eye !== undefined && (entered.eye.x !== 0 || entered.eye.z !== 0),
+      JSON.stringify(entered.eye));
+    check(`${label}: and nothing is left in hand`, !entered.tool, String(entered.tool));
+
+    // WASD flies, and it flies at a RATE — the frame loop scales by its delta,
+    // so this asserts movement rather than a distance a slow machine would miss.
+    const flew = await page.evaluate(() => ({ ...globalThis.CITY.renderer.view.eye }));
+    await page.keyboard.down("w");
+    await page.waitForTimeout(400);
+    await page.keyboard.up("w");
+    const now = await page.evaluate(() => ({ ...globalThis.CITY.renderer.view.eye }));
+    const moved = Math.hypot(now.x - flew.x, now.y - flew.y, now.z - flew.z);
+    check(`${label}: W flies the photo camera from ${from}`, moved > 0.01,
+      `moved ${moved.toFixed(3)} tiles in 0.4 s`);
+
+    await page.keyboard.press("Escape");
+    const out = await page.evaluate(() => globalThis.CITY.renderer.view.mode);
+    check(`${label}: Escape leaves photo mode from ${from}`, out !== "photo", `still "${out}"`);
+    // Never into a street the player did not walk into: leaving is a camera
+    // change, not a mode they have to escape twice.
+    check(`${label}: and does not strand the player in the street`, out !== "street", out);
+  }
+  await restoreCamera();
+
   // And in by the wheel: zoomed to the minimum span with the camera tilted
   // down towards the horizon, one more notch steps out of the car.
   const byWheel = await page.evaluate(async () => {

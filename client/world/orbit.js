@@ -38,17 +38,23 @@ export const PITCH = Math.atan(1 / Math.SQRT2);
 /**
  * Where the eye is and which way it looks.
  *
- * Three modes, one answer. In `city` the eye is on the orbit at `eyeDistance`
+ * Four modes, one answer. In `city` the eye is on the orbit at `eyeDistance`
  * from the target, raised by the ground under it. In `ortho` the eye direction
  * is the same and the distance does not matter — an orthographic camera cares
  * only which way it looks — so it is placed far enough out to keep the map
  * inside its planes. In `street` the WALKER is the eye and the direction comes
- * from its own yaw and pitch.
+ * from its own yaw and pitch, and `photo` is the same arithmetic with a player
+ * holding the camera instead of a walker carrying it (F1).
  */
 export function eyeOf(view) {
   const pitch = view.pitch ?? PITCH;
   const ground = view.groundY ?? 0;
-  if (view.mode === "street") {
+  // The two free-look modes, which are the same arithmetic: the eye is where it
+  // was put and the direction comes from its own yaw and pitch. `street` is a
+  // walker and `photo` is a player holding a camera (F1); neither is on an
+  // orbit, and giving them separate answers is how R1.6's two copies of this
+  // disagreed in the first place.
+  if (view.mode === "street" || view.mode === "photo") {
     const e = view.eye ?? { x: view.targetX, y: ground, z: view.targetZ };
     const cp = Math.cos(pitch);
     return {

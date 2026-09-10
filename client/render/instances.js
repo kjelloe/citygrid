@@ -22,7 +22,7 @@ import { buildingParams } from "../world/params.js";
 import { jitter } from "../world/hash.js";
 import { setFaceContrast } from "./detail-kit.js";
 import { DIR4 } from "../../shared/grid.js";
-import { TIER, setCosts, inBounds, planForChunk, tilePixels } from "./lod.js";
+import { TIER, setCosts, inBounds, planForChunk, tilePixels, usesChunkPlans } from "./lod.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
   TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, FLAG_RUINED, NET_PRESENT,
@@ -424,7 +424,10 @@ export function updateInstances(state, pools, options = {}) {
 
   const chunkPlans = new Map();
   const planAt = (x, y) => {
-    if (options.canvasHeight === undefined || plan.mode !== "city") return plan;
+    // `usesChunkPlans` rather than a comparison here: `lod.js`'s estimate asks
+    // the same question and the two must give the same answer, or the ladder is
+    // pricing a frame nobody draws (F1).
+    if (options.canvasHeight === undefined || !usesChunkPlans(plan.mode)) return plan;
     const key = ((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0);
     let found = chunkPlans.get(key);
     if (found) return found;

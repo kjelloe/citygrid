@@ -14,7 +14,31 @@ do not. Two things the measurement lane left for this one: `tools/shoot.html` ad
 frame has traffic in it; and **Q73** — three-quarters of a played city's zoned ground is empty
 and reads as a grey slab — is a picture problem that the photo mode is the first instrument for.*
 
-## F1 — Photo mode (M) — plan.md §10 bonus 4
+## F1 — Photo mode (M) — plan.md §10 bonus 4 — **done 2026-09-10 as `slice-F1`**
+
+`P` or the button; WASD flies, Shift is faster, drag looks, Escape leaves. The HUD gets out of the
+way of the picture and leaves one slim bar with **Save PNG** on it — which draws the scene once
+more into a render target at 2× on High rather than turning `preserveDrawingBuffer` on and paying
+for every frame to keep one.
+
+`client/world/photo.js` is the arithmetic, pure and node-tested: forward follows the look including
+pitch, strafe stays horizontal, a diagonal is not faster than a straight line, and the speed
+follows the zoom — six seconds to cross whatever you can see. The fourth mode is taught to `eyeOf`,
+`tilePixels`, `visibleBounds`, the near/far planes and `fogFor`, the last of which asks the camera
+where it **is** rather than what it is called: the street's fixed reach in metres below a tile of
+eye height, the city's multiple of the span above it.
+
+**Gates:** `ui_smoke` 130 checks (the button, the way out staying on screen, the download event and
+the PNG's bytes); `play_smoke` 24 photo rows across four viewport configurations, entering and
+leaving from city and from street; `reach_smoke` green; `budget_gate` gains a photo row at eye
+height, whose near plane is the tell — an orthographic fall-through would clip the pavement.
+
+**Three defects, each found by something refusing the change**, and all three are in the dev-log:
+the estimate and the renderer disagreeing about which modes plan per chunk (which emptied the
+street frame), a way out that hid itself, and a gate step that flew the camera 69 tiles away and
+did not put it back.
+
+
 
 **Goal.** A player frames a shot and saves it. Free camera, hidden HUD, chosen hour and style,
 PNG export.

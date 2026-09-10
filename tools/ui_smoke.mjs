@@ -518,6 +518,62 @@ try {
   await phonePage.screenshot({ path: join(root, "reports", "hud-phone.png") });
   await phone.close();
 
+  // --- photo mode saves a picture (slice F1) --------------------------------
+  //
+  // The one export the game has. `preserveDrawingBuffer` is off in play, so the
+  // frame is drawn once more into a render target and read back — which is a
+  // path that either works or silently hands back a blank, and a blank PNG is
+  // the same size on disk as a real one. So the check is the DOWNLOAD event and
+  // the bytes: a PNG header, and a file big enough to be a picture of a city.
+  const photoContext = await browser.newContext({
+    viewport: { width: 1280, height: 800 }, acceptDownloads: true,
+  });
+  const photoPage = await photoContext.newPage();
+  photoPage.on("pageerror", (error) => problems.push(`photo: ${error.message}`));
+  await photoPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await photoPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await photoPage.click("#photo");
+  const inPhoto = await photoPage.evaluate(() => ({
+    mode: globalThis.CITY.renderer.view.mode,
+    // The way out has to be on screen, or Escape is the only exit and a player
+    // who does not know it is stuck (the same rule street mode follows).
+    exitVisible: (() => {
+      const r = document.querySelector("#photo")?.getBoundingClientRect();
+      return Boolean(r && r.width > 0 && r.height > 0);
+    })(),
+    barVisible: !document.querySelector("#photobar").hidden,
+    hudHidden: getComputedStyle(document.querySelector(".hud-bottom")).display === "none",
+  }));
+  check("the photo button enters photo mode", inPhoto.mode === "photo", JSON.stringify(inPhoto));
+  check("and the way out stays on screen", inPhoto.exitVisible === true, JSON.stringify(inPhoto));
+  check("and the HUD gets out of the way of the picture",
+    inPhoto.barVisible && inPhoto.hudHidden, JSON.stringify(inPhoto));
+
+  const download = await Promise.all([
+    photoPage.waitForEvent("download", { timeout: 60000 }),
+    photoPage.click("#photo-save"),
+  ]).then(([d]) => d).catch(() => undefined);
+  check("Save PNG hands the player a file", download !== undefined,
+    download ? download.suggestedFilename() : "no download event");
+  if (download) {
+    const saved = join(root, "reports", ".photo-smoke.png");
+    await download.saveAs(saved);
+    const bytes = await readFile(saved);
+    check("and it is a PNG", bytes.length > 8
+      && bytes[0] === 0x89 && bytes.toString("latin1", 1, 4) === "PNG",
+      bytes.toString("hex", 0, 8));
+    // A blank frame compresses to almost nothing. A city does not.
+    check("and it is a picture of something", bytes.length > 20000, `${bytes.length} bytes`);
+    check("and it is named after the city", /\.png$/.test(download.suggestedFilename()),
+      download.suggestedFilename());
+  }
+
+  // Escape leaves, and the mode it returns to is the one it came from.
+  await photoPage.keyboard.press("Escape");
+  const left = await photoPage.evaluate(() => globalThis.CITY.renderer.view.mode);
+  check("Escape leaves photo mode", left !== "photo", left);
+  await photoContext.close();
+
   // --- the performance card (D1) -------------------------------------------
   // `?perf=1` is a button the player is asked to press and paste the result of,
   // so the thing that has to work is the paste. `?perfHold=1` shortens every

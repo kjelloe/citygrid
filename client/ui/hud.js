@@ -62,7 +62,7 @@ export function createHud(root, {
   state, seat, controller, onOverlay, onSpeed, onUndo,
   onSave, onLoad, onExport, onImport, slots,
   onQuestChoice, quests, onTax, onFunding, onNewCity, onSettings, onStatistics, onHelp, minimap,
-  onStreet, onLeaveStreet,
+  onStreet, onLeaveStreet, onPhoto, onLeavePhoto, onSavePhoto,
 }) {
   root.innerHTML = "";
   const alerts = createAlerts();
@@ -98,7 +98,38 @@ export function createHud(root, {
     if (root.dataset.camera === "street") onLeaveStreet?.();
     else onStreet?.();
   });
-  top.append(cityName, money, trend, pop, date, speedButton, streetButton);
+  // Photo mode (slice F1, ruling 027: the P key must have a screen). The same
+  // shape as the street button and for the same reason — one button, two
+  // labels, and in photo mode it is the way back out of a HUD that has hidden
+  // itself.
+  const photoButton = el("button", "hud-photo", t("photo.enter"));
+  photoButton.type = "button";
+  photoButton.id = "photo";
+  photoButton.title = t("photo.enter.hint");
+  photoButton.addEventListener("click", () => {
+    if (root.dataset.camera === "photo") onLeavePhoto?.();
+    else onPhoto?.();
+  });
+  top.append(cityName, money, trend, pop, date, speedButton, streetButton, photoButton);
+
+  /** The slim bar photo mode leaves behind.
+   *
+   * One button, because the way OUT is the same button that brought the player
+   * in and it stays on screen — street mode's rule, and ruling 042 §5's "the
+   * chrome does not grow". Two exits would be two things to read while framing
+   * a shot. */
+  const photoBar = el("div", "hud-photobar");
+  photoBar.id = "photobar";
+  photoBar.setAttribute("role", "toolbar");
+  photoBar.setAttribute("aria-label", t("photo.bar"));
+  photoBar.hidden = true;
+  const photoSave = el("button", "hud-photosave", t("photo.save"));
+  photoSave.type = "button";
+  photoSave.id = "photo-save";
+  photoSave.title = t("photo.save.hint");
+  photoSave.addEventListener("click", () => onSavePhoto?.());
+  photoBar.append(photoSave);
+  root.append(photoBar);
   // Leaving a city is how you start another one. Without it the only way to
   // play a second region was to edit the address bar (P18 audit).
   if (onNewCity) {
@@ -760,6 +791,13 @@ export function createHud(root, {
       const inStreet = mode === "street";
       streetButton.textContent = t(inStreet ? "street.leave" : "street.enter");
       streetButton.title = t(inStreet ? "street.leave.hint" : "street.enter.hint");
+      const inPhoto = mode === "photo";
+      photoButton.textContent = t(inPhoto ? "photo.leave" : "photo.enter");
+      photoButton.title = t(inPhoto ? "photo.leave.hint" : "photo.enter.hint");
+      // Hidden rather than merely styled away: the bar carries a toolbar role
+      // and two buttons, and a toolbar nobody can see but a screen reader can
+      // reach is worse than no toolbar (ruling 028).
+      photoBar.hidden = !inPhoto;
     },
     /** What is actually drawn — Auto resolved against the tool in hand. */
     get overlay() { return activeOverlay(); },

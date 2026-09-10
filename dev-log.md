@@ -5010,3 +5010,71 @@ second rung.
 **Measured.** Suite green twice, 1,124 tests. `gates.mjs quick` **459 s of 480**, 12 of 12, no
 leaked browsers; `render` 17 s of 120. The set has crept another 5 s — **Q79 is 96% now**, and the
 creep is `budget_gate` at 152 s rather than anything this slice added.
+
+## slice-F1 — photo mode (2026-09-10)
+
+The film lane's first item, and the fourth camera mode ruling 034 has to answer for. A free
+camera: the eye goes where the player puts it, looks where they point it, and obeys neither the
+orbit nor the ground. `P` or the button; WASD flies, Shift is faster, drag looks, Escape leaves;
+one slim bar with **Save PNG** on it and a HUD that gets out of the way of the picture.
+
+**The arithmetic is pure and the mode is taught to everything that shares it.** `client/world/photo.js`
+is eleven node assertions of the things a free camera gets wrong: forward follows the look
+*including pitch* (there is no other way up or down), strafe stays horizontal so sidestepping at
+the ground does not fly into it, a diagonal is not faster than a straight line, and the speed
+follows the zoom — **six seconds to cross whatever you can see**, so the control means the same
+thing from the air and from the pavement. Distance is a rate, asserted a hundred hundredth-steps
+against one whole one, which is D7's lesson applied before it could be made again.
+
+Then the part that is the actual work: `eyeOf` (deep-equal to the street branch, so the two
+free-look modes cannot drift), `tilePixels`, `visibleBounds`, the near and far planes, and
+`fogFor` — which asks the photo camera **where it is** rather than what it is called. Below a tile
+of eye height it takes the street's fixed reach in metres; above it, the city's multiple of the
+span. Both asserted by deep-equality against the modes they should match, because "similar" is not
+a test.
+
+**Saving a picture** draws the scene once more into a render target at 2× on High and reads it
+back, rather than turning `preserveDrawingBuffer` on and paying for every frame to keep one. The
+rows come back bottom-up, so they are flipped a row at a time rather than by drawing the image
+transformed, which would resample it. The renderer hands back a blob and `game.js` makes the
+anchor: a renderer that reaches for `document` is a renderer no test can drive.
+
+**Three defects, and each was found by something refusing to accept the change.**
+
+**1. The estimate and the renderer stopped agreeing about modes.** Teaching `lod.js` to plan per
+chunk in every perspective mode was one word wider than the truth: `instances.js` does it only in
+`city`. In street mode the estimate then priced distant chunks cheaply, the ladder stopped stepping
+down, and **the street frame came back empty** — `ui_smoke` failing three files from the change,
+which is how the architect's review found it before I did. Both now read one exported
+`usesChunkPlans`, with a test that fails if `instances.js` grows its own list again.
+
+**2. The way out hid itself.** The first design hid the whole top bar and put the exit inside the
+bar photo mode reveals. `reach_smoke` failed twice: no known opener for a hidden container, and
+then a click timeout on an opener that had **made itself invisible**, so it could never be the
+toggle that closed it. I briefly taught the gate a "modal openers have closers" concept and then
+deleted it, because street mode had settled this three slices ago and its own comment says why —
+*the one control left is the one that gets you out*. The top bar now empties out but the photo
+button stays, and the bar is a single Save PNG (ruling 042 §5: the chrome does not grow).
+`test/input.test.js` asserts the CSS keeps that button visible. **Teaching a gate to accept a
+design it correctly refused is the wrong repair.**
+
+**3. A gate step that moved shared state and did not put it back.** The new `play_smoke` rows fly
+the camera — and left it **69 tiles out over open ground**, so the wheel-into-street check below
+could find no corridor and failed for a reason that had nothing to do with the wheel. It also made
+the "from street" rows enter from `city` instead. The section snapshots the view and restores it
+now. `measurement-steps-must-not-inherit`, in a gate rather than in a sweep.
+
+**4. And one the budget row found before the mode ever shipped.** The near and far planes were
+chosen in `applyZoom`, plus a crossing check inside `flyPhoto` — so they were right if the eye was
+*flown* to a height and stale if it was set any other way. `budget_gate` put the camera down at
+street level directly and got the **city's** near plane, half a tile, which clips the pavement the
+camera is standing on. Nothing in the game does that today; F2's shot list sets camera positions
+from data and K4's "go there" jumps the view, and both would have inherited it. The planes are
+chosen in `applyPose` now — every path goes through it — and `test/input.test.js` asserts both
+halves: that posing chooses them, and that flying does **not** do it by hand, so the next path
+cannot forget.
+
+**Measured.** Suite green twice, 1,143 tests. `ui_smoke` **130 checks** (up from 122);
+`play_smoke` **24 photo rows** across desktop, desktop-perspective, phone and phone-perspective,
+W flying about 1.9 tiles in 0.4 s on every one; `reach_smoke` green; `budget_gate` green with the
+photo row at **292,968 triangles of 320,000**, 49 draw calls, near 0.02 far 100.

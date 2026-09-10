@@ -111,7 +111,12 @@ export function tilePixels(view, canvasHeight, chunk) {
   // `canvasHeight / (span / aspect)` pixels — fewer than `canvasHeight / span`.
   // Reporting the larger number kept more detail on the device least able to
   // afford it, which is the wrong direction to be wrong in.
-  if (view.mode !== "city" && view.mode !== "street") return canvasHeight / verticalSpan(view);
+  // Every PERSPECTIVE mode prices a tile from where the eye actually is. Only
+  // the orthographic camera can use the span alone, because only it has no
+  // distance. A mode that falls through to this by omission is priced as though
+  // it were on the orbit — which for a photo camera two metres off the ground
+  // is out by a factor of twenty (F1).
+  if (!PERSPECTIVE.has(view.mode)) return canvasHeight / verticalSpan(view);
 
   const focalPx = canvasHeight / (2 * Math.tan(((view.fov ?? 50) * Math.PI) / 360));
   const eye = eyeOf(view);   // one arithmetic, shared with `camera.js` (R1.6)
@@ -126,6 +131,26 @@ export function tilePixels(view, canvasHeight, chunk) {
   // detail in the frame.
   const range = Math.max(0.5, Math.hypot(px - eyeX, eyeY - eye.ground, pz - eyeZ));
   return focalPx / range;
+}
+
+/** The modes with a perspective camera, which is every mode but one.
+ *
+ * Named rather than listed at each branch: three separate places ask "is this
+ * a wedge or a box?", and a fourth mode added to two of them is a mode that is
+ * priced one way and culled another (ruling 034, F1). */
+const PERSPECTIVE = new Set(["city", "street", "photo"]);
+
+/** Whether the renderer draws each CHUNK at its own plan in this mode.
+ *
+ * A different question from `PERSPECTIVE`, and the distinction cost a gate:
+ * `instances.js` applies a per-chunk plan only in `city`, and F1 first taught
+ * the estimate to do it in every perspective mode — so in street mode the
+ * estimate priced distant chunks cheaply while the renderer drew them in full,
+ * the ladder stopped stepping down, and the street frame came back empty. The
+ * estimate has to price the frame the way the renderer draws it (P35), so the
+ * two read this and neither carries a list of its own. */
+export function usesChunkPlans(mode) {
+  return mode === "city" || mode === "photo";
 }
 
 /** The resolvability thresholds, in pixels per tile. One table, read by the
@@ -359,7 +384,7 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
   // Under perspective the renderer draws each chunk at its own plan, so the
   // estimate has to price them the same way or it over-charges (P35).
   const CHUNK = 16;
-  const planFor = view?.mode === "city" && canvasHeight
+  const planFor = usesChunkPlans(view?.mode) && canvasHeight
     ? (base) => (cx, cz) => planForChunk(
       base, tilePixels(view, canvasHeight, { x: (cx + 0.5) * CHUNK, z: (cz + 0.5) * CHUNK }),
     )
@@ -430,7 +455,7 @@ export function visibleBounds(view, aspect, margin = 3) {
   const halfX = halfY * Math.max(1, aspect);
   const pitch = view.pitch ?? Math.atan(1 / Math.SQRT2);
 
-  if (view.mode === "city" || view.mode === "street") {
+  if (PERSPECTIVE.has(view.mode)) {
     // A perspective frustum is a WEDGE, not a box: it opens out toward the
     // horizon, so a symmetric reach either cuts the distance off or pays for a
     // huge area behind the eye. The four corner rays are intersected with the

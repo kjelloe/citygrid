@@ -313,6 +313,21 @@ getting fuller. **Re-read the code before building the fix a question asks for**
 question's remedy would break a ruling (here, a camera-dependent population against ruling 037's
 locally-derived traffic), that is the strongest possible sign to check the diagnosis first.
 
+**A value that depends on state must be recomputed where the state is READ, not where you happen
+to change it.** Photo mode's near and far planes were chosen in `applyZoom` and re-chosen when a
+flight crossed the height they change at — correct for a camera that is flown, stale for one that
+is jumped, placed by a shot list, or put down by a gate. `budget_gate` set the eye at street level
+directly and got the city's half-tile near plane, which clips the pavement. Moving the choice into
+`applyPose` — which every path goes through — fixes it for paths that do not exist yet. Ask of any
+derived value: **what are all the ways the thing it derives from can change?**
+
+**An estimate has to price the frame the way the renderer draws it — and "the same modes" is part
+of that.** F1 taught `lod.js`'s estimate to plan per chunk in every perspective mode; `instances.js`
+does it only in `city`. In street mode the estimate then priced distant chunks cheaply, the ladder
+stopped stepping down, and the street frame came back **empty** — a gate failure three files away
+from the change. Two places asking one question now read one exported predicate. When you widen a
+mode test, grep for every other place that asks about modes and decide each one deliberately.
+
 **Rule out the arithmetic before blaming the machine.** A card came back with 18 m of a 60 m leg
 where a machine twenty times slower walked all of it. The tempting story — "the fast machine is
 different somehow" — was checked instead: the walker driven in node over twelve starting points

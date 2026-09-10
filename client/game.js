@@ -195,6 +195,9 @@ export async function startGame(root, given = {}) {
     // The way into street mode and the way back (slice E4, ruling 027).
     onStreet: () => { if (!controller.enterStreet()) hud.setStatus(t("street.noStreet")); },
     onLeaveStreet: () => controller.leaveStreet(),
+    onPhoto: () => controller.enterPhoto(),
+    onLeavePhoto: () => controller.leavePhoto(),
+    onSavePhoto: () => savePhoto(),
     onNewCity: onNewCity && (() => { session.stop(); onNewCity(); }),
     onQuestChoice(id, option) {
       apply(state, { type: CMD_QUEST_CHOICE, actor: SEAT, id, option });
@@ -306,6 +309,32 @@ export async function startGame(root, given = {}) {
     const parsed = unpackImport(text);
     if (!parsed.ok) { hud.setStatus(t("status.importFailed", { reason: parsed.reason })); return false; }
     return adopt(parsed.data, t("status.imported"));
+  }
+
+  /**
+   * The photo mode's one export: this frame, as a file the player keeps (F1).
+   *
+   * The renderer hands back a blob; the anchor is here, because a renderer that
+   * reaches for `document` to make one is a renderer no test can drive. Named
+   * after the city and the in-game date, so a folder of these is a record of a
+   * city rather than a folder of `image (3).png`.
+   */
+  async function savePhoto() {
+    const blob = await renderer.capture?.();
+    if (!blob) { hud.setStatus(t("photo.saveFailed")); return false; }
+    const stamp = `${state.cityName || "city"}-${state.tick}`.replace(/[^\w-]+/g, "-").toLowerCase();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${stamp}.png`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    // Revoked on the next turn of the loop: revoking synchronously races the
+    // download in some browsers and the file arrives empty.
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    hud.setStatus(t("photo.saved"));
+    return true;
   }
 
   let frame;

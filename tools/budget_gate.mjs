@@ -528,6 +528,53 @@ try {
     painted.actual > 1000 && painted.quadOnly <= 6,
     `${painted.actual} counted, ${painted.quadOnly} in three's counter after the pass`);
 
+  // --- photo mode (slice F1) -------------------------------------------------
+  //
+  // The fourth mode has to be inside the same budget as the other three, and it
+  // is the only one that can put the eye anywhere — so the case worth measuring
+  // is the one an orbit camera cannot reach: low over the rooftops, looking
+  // along the city. Ruling 034 says every mode goes through the same arithmetic;
+  // this is the row that would notice if the photo camera were being priced as
+  // an orthographic one, which is what it fell through to before F1.
+  const photo = await page.evaluate(async () => {
+    const city = globalThis.CITY;
+    const renderer = city.renderer;
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    city.setQuality("high");
+    renderer.enterPhoto();
+    const view = renderer.view;
+    // Twenty metres up, looking along the street at a shallow angle down — the
+    // shot the mode exists for and the worst frustum there is.
+    view.eye = { x: view.eye.x, y: 1, z: view.eye.z };
+    view.pitch = -0.2;
+    for (let i = 0; i < 30; i += 1) await frame();
+    const s = renderer.stats;
+    const row = {
+      mode: view.mode,
+      eyeY: view.eye.y,
+      triangles: s.triangles,
+      estimate: s.estimate,
+      budget: s.budget,
+      calls: s.drawCalls,
+      lod: s.lod,
+      near: renderer.view.persp.near,
+      far: renderer.view.persp.far,
+    };
+    renderer.leavePhoto();
+    return { ...row, leftTo: view.mode };
+  });
+  console.log(`      photo: ${photo.triangles} triangles of ${photo.budget}, `
+    + `${photo.calls} draw calls, ladder at "${photo.lod}", near ${photo.near} far ${photo.far}`);
+  check("photo mode draws the city", photo.mode === "photo" && photo.triangles > 1000,
+    JSON.stringify(photo));
+  check("and is inside the same budget as every other mode",
+    photo.triangles > 0 && photo.triangles <= photo.budget, `${photo.triangles} of ${photo.budget}`);
+  // The near plane is the tell: an orthographic fall-through would leave the
+  // city camera's half-tile near plane at eye height and clip the pavement.
+  check("and takes the street's planes at eye height",
+    photo.near < 0.5 && photo.far <= 100, `near ${photo.near}, far ${photo.far}`);
+  check("and gives the view back", photo.leftTo !== "photo", photo.leftTo);
+
   // --- the desktop viewport (slice D8, Q77) ----------------------------------
   //
   // Street chunks bake only where a tile covers `RESOLVE.l3` pixels, and

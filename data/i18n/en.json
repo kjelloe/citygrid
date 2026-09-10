@@ -283,6 +283,16 @@
   "street.leave.hint": "Back to the city view (Escape).",
   "street.noStreet": "There is no street here to stand on.",
 
+  "photo.enter": "Photo mode",
+  "photo.leave": "Leave photo mode",
+  "photo.enter.hint": "Free camera for framing a shot (P). WASD flies, Shift is faster, drag looks.",
+  "photo.leave.hint": "Back to the view you came from (Escape).",
+  "photo.save": "Save PNG",
+  "photo.save.hint": "Save this frame as a picture on your device.",
+  "photo.saved": "Picture saved.",
+  "photo.saveFailed": "The picture could not be saved.",
+  "photo.bar": "Photo mode controls",
+
   "funding.fire": "Fire",
   "funding.police": "Police",
   "funding.health": "Health",

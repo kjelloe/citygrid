@@ -5,7 +5,7 @@
 // server, with the renderer as one of several possible readers.
 
 import * as THREE from "three";
-import { createCamera, applyZoom, applyPose, clampToMap, setMode } from "./camera.js";
+import { createCamera, applyZoom, applyPose, clampToMap, setMode, pitchBy } from "./camera.js";
 import { createTerrain, updateTerrain, markAllDirty } from "./terrain.js";
 import { createWater } from "./water.js";
 import { createInstances, updateInstances, pushInstance, settlePools, CAR_COLOURS } from "./instances.js";
@@ -16,6 +16,7 @@ import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { tierConfig } from "../world/config.js";
+import { photoStep, photoLook } from "../world/photo.js";
 import { createGovernor } from "./governor.js";
 import { createSky, SKY_RADIUS } from "./sky.js";
 import { fogFor, skyRadiusFor } from "./atmosphere.js";
@@ -28,7 +29,7 @@ import { CHUNK } from "../world/chunks.js";
 import { getConfig } from "../world/config.js";
 import { createWalker } from "../life/walker.js";
 import { deriveNav } from "../world/nav.js";
-import { eyeOf } from "../world/orbit.js";
+import { eyeOf, PITCH } from "../world/orbit.js";
 import { createPedestrians } from "../life/pedestrians.js";
 
 /** What the device would give us, capped by the tier (ruling 040). A cap, not a
@@ -481,6 +482,110 @@ export function createRenderer(canvas, state, options = {}) {
     return true;
   }
 
+  /**
+   * Into photo mode, from wherever the camera is (F1).
+   *
+   * The eye starts where the player was already looking — the orbit's own eye
+   * in city and ortho, the walker's in street — so the mode opens on the shot
+   * they had rather than somewhere they have to fly back from. That is the
+   * whole of the entry: there is no ground to stand on and nothing to collide
+   * with, which is what makes it a photo camera rather than a second walker.
+   */
+  function enterPhoto() {
+    if (view.mode === "photo") return true;
+    const eye = eyeOf(view);
+    cameFrom = view.mode;
+    if (view.mode !== "street") {
+      // Coming off the orbit: the eye is above and behind the target, and the
+      // look is the orbit's own, so `pitch` has to change sign — on the orbit a
+      // positive pitch is an elevation ABOVE the target and looks down; in a
+      // free-look mode it is the direction the eye points.
+      view.pitch = -(view.pitch ?? PITCH);
+    }
+    view.eye = { x: eye.x, y: eye.y, z: eye.z };
+    view.targetX = eye.x;
+    view.targetZ = eye.z;
+    setProjection("photo");
+    return true;
+  }
+
+  /** Back where the player came from, over the ground under the camera. */
+  function leavePhoto(mode) {
+    if (view.mode !== "photo") return view.mode;
+    view.targetX = view.eye?.x ?? view.targetX;
+    view.targetZ = view.eye?.z ?? view.targetZ;
+    // Back onto the orbit, where a positive pitch means an elevation. The
+    // camera's own clamp takes it into the orbit's range.
+    view.pitch = Math.abs(view.pitch ?? PITCH);
+    pitchBy(view, 0);
+    view.eye = undefined;
+    const wanted = mode && mode !== "photo" ? mode : cameFrom;
+    return setProjection(wanted === "street" ? "city" : wanted);
+  }
+
+  /** One frame of flight. The caller supplies the delta, so the camera is a
+   * rate rather than a function of the frame rate (ruling 042 §3, D7). */
+  function flyPhoto(move, dt) {
+    if (view.mode !== "photo" || !view.eye) return;
+    view.eye = photoStep(view.eye, view.yaw, view.pitch ?? 0, move, dt, view.span);
+    view.targetX = view.eye.x;
+    view.targetZ = view.eye.z;
+    // `applyPose` picks the near and far planes for wherever the eye now is,
+    // so flying through the height where they change needs nothing special —
+    // and neither does any other way of moving the eye (F1).
+    applyPose(view);
+  }
+
+  /**
+   * This frame, as a PNG, at the canvas's own size or twice it on High (F1).
+   *
+   * `preserveDrawingBuffer` is off in play, and turning it on would cost every
+   * frame for the sake of the one frame a player asks to keep. So the scene is
+   * drawn once more into a render target and read back — which also buys the
+   * supersample: a photo at twice the canvas is what makes the export worth
+   * having rather than a screenshot the player could have taken themselves.
+   *
+   * Returns a `Blob`, or `undefined` if the context is gone. The caller does
+   * the downloading, because a module that reaches for `document` to make an
+   * anchor is a renderer that cannot be tested.
+   */
+  async function capture({ scale = tierName === "high" ? 2 : 1 } = {}) {
+    const width = Math.round(canvas.width * scale);
+    const height = Math.round(canvas.height * scale);
+    const target = new THREE.WebGLRenderTarget(width, height, {
+      colorSpace: THREE.SRGBColorSpace,
+    });
+    const pixels = new Uint8Array(width * height * 4);
+    try {
+      renderer.setRenderTarget(target);
+      renderer.render(scene, view.camera);
+      renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
+    } finally {
+      renderer.setRenderTarget(null);
+      target.dispose();
+    }
+    // WebGL's origin is the bottom left and a canvas's is the top left, so the
+    // rows come back upside down. Flipped a row at a time rather than by
+    // drawing the image transformed, which would resample it.
+    const image = new ImageData(width, height);
+    const stride = width * 4;
+    for (let y = 0; y < height; y += 1) {
+      image.data.set(pixels.subarray((height - 1 - y) * stride, (height - y) * stride), y * stride);
+    }
+    const surface = new OffscreenCanvas(width, height);
+    surface.getContext("2d").putImageData(image, 0, 0);
+    return surface.convertToBlob({ type: "image/png" });
+  }
+
+  /** Mouse look, in radians. */
+  function lookPhoto(dYaw, dPitch) {
+    if (view.mode !== "photo") return;
+    const next = photoLook(view.yaw, view.pitch ?? 0, dYaw, dPitch);
+    view.yaw = next.yaw;
+    view.pitch = next.pitch;
+    applyPose(view);
+  }
+
   /** Which way the street runs where `near` landed on it. */
   function tangentAt(near) {
     const points = near.corridor?.points;
@@ -566,7 +671,9 @@ export function createRenderer(canvas, state, options = {}) {
 
   function draw(drawOptions = {}) {
     // The haze follows the zoom, so it is re-derived rather than remembered.
-    if (view.mode === "city") applyAtmosphere();
+    // Photo mode too: its fog and near plane depend on the eye's HEIGHT, which
+    // the player is flying up and down (F1).
+    if (view.mode === "city" || view.mode === "photo") applyAtmosphere();
     // The frame time the caller measured. The budget cannot see fill rate, so
     // this is the second instrument (ruling 040): a rolling p95 that gives up a
     // post pass, then shadows, then the supersample.
@@ -576,6 +683,10 @@ export function createRenderer(canvas, state, options = {}) {
     // People before cars, because the cars have to see them: A45 gives a
     // pedestrian on a crossing right of way, and a car that reads last frame's
     // positions brakes for somebody who has already gone.
+    // The photo camera flies before anything is measured, so the frame is drawn
+    // from where the player has moved to rather than from where they were last
+    // frame. A rate, scaled by the delta the caller measured (ruling 042 §3).
+    if (view.mode === "photo") flyPhoto(drawOptions.move, dt);
     pedestrians.update(dt, lastBounds, eyeOf(view));
     traffic.yieldTo(pedestrians.yields(), view.mode === "street" ? walkerPoint() : undefined);
     traffic.update(dt);
@@ -888,5 +999,6 @@ export function createRenderer(canvas, state, options = {}) {
 
   return { renderer, scene, view, terrain, pools, style, setTier, setProjection, setTime,
     get night() { return timeOfDay.current.night; },
-    enterStreet, leaveStreet, get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get pedestrians() { return pedestrians; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+    enterStreet, leaveStreet, enterPhoto, leavePhoto, flyPhoto, lookPhoto, capture,
+    get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get pedestrians() { return pedestrians; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

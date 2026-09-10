@@ -17,8 +17,22 @@ import { eyeOf, verticalSpan, eyeDistance, PITCH, ORTHO_DISTANCE } from "../worl
 
 export const YAW_STEPS = 4;
 
-/** Modes, as ruling 034 names them. */
-export const MODES = ["city", "ortho", "street"];
+/** Modes, as ruling 034 names them, plus the photo camera F1 adds.
+ *
+ * `photo` is `street` without a walker: the eye is where the player put it and
+ * the look is its own, so `orbit.js` gives the two the same answer and only the
+ * limits differ — no collision, no gravity, and a pitch that reaches 88° so a
+ * camera can hang over a roof and look at it. */
+export const MODES = ["city", "ortho", "street", "photo"];
+
+/** The modes whose eye is its own rather than a point on the orbit. */
+const FREE_LOOK = new Set(["street", "photo"]);
+
+/** Where the photo camera stops taking the street's near and far planes and
+ * starts taking the city's, in TILES of eye height. The same threshold the fog
+ * uses (`atmosphere.js`), and for the same reason: down among the buildings a
+ * near plane of half a tile clips the kerb the camera is standing on. */
+const PHOTO_AIR_ABOVE = 1;
 
 /** Vertical field of view for the perspective camera, degrees. Wide enough to
  * feel like a place, narrow enough that the edges do not smear. */
@@ -101,9 +115,7 @@ export function applyZoom(view, aspect) {
     // building the walker is standing next to. And a far plane of 4,000 tiles
     // is eighty kilometres of depth range spent on a city that ends at the fog
     // (slice E4).
-    view.persp.near = view.mode === "street" ? 0.02 : 0.5;
-    view.persp.far = view.mode === "street" ? 100 : 4000;
-    view.persp.updateProjectionMatrix();
+    applyPlanes(view);
   }
   // Under perspective the eye distance follows the span, so a zoom is a move.
   if (view.mode !== "ortho") applyPose(view);
@@ -112,14 +124,42 @@ export function applyZoom(view, aspect) {
 /** Places the camera on its orbit. Distance is fixed and large: an orthographic
  * camera does not care, and a far camera keeps the whole map inside the near
  * and far planes at every zoom. */
+/**
+ * The near and far planes for where the eye actually is.
+ *
+ * The photo camera takes the street's pair near the ground and the city's in
+ * the air (F1): at eye height a near plane of half a tile clips the pavement
+ * the camera is standing on, and from above the city a far plane of a hundred
+ * tiles ends the world halfway to the horizon.
+ *
+ * Called from `applyPose` rather than only from `applyZoom`, and that is the
+ * point: a photo camera's eye can be set by anything — flown, jumped to, or
+ * placed by a shot list — and planes that were only recomputed on the way
+ * through one of those paths are stale on every other. `budget_gate`'s photo
+ * row put the eye down at street level directly and got the city's planes,
+ * which is the whole argument in one measurement.
+ */
+function applyPlanes(view) {
+  if (!view.persp) return;
+  const nearGround = view.mode === "street"
+    || (view.mode === "photo" && (view.eye?.y ?? Infinity) <= PHOTO_AIR_ABOVE);
+  const near = nearGround ? 0.02 : 0.5;
+  const far = nearGround ? 100 : 4000;
+  if (view.persp.near === near && view.persp.far === far) return;
+  view.persp.near = near;
+  view.persp.far = far;
+  view.persp.updateProjectionMatrix();
+}
+
 export function applyPose(view) {
+  applyPlanes(view);
   const eye = eyeOf(view);
   const camera = view.camera;
   camera.position.set(eye.x, eye.y, eye.z);
   camera.up.set(0, 1, 0);
-  if (view.mode === "street") {
-    // The walker IS the camera, so it looks along its own heading rather than
-    // at an orbit target.
+  if (FREE_LOOK.has(view.mode)) {
+    // The eye IS the camera, so it looks along its own heading rather than at
+    // an orbit target — the walker in street mode, the player in photo.
     camera.lookAt(eye.x + eye.fx, eye.y + eye.fy, eye.z + eye.fz);
     camera.updateMatrixWorld();
     return;

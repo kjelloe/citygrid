@@ -1,6 +1,6 @@
 {
- "version": "c3169d54f9d8",
- "generated": "2026-09-09",
+ "version": "81cfa009d4dc",
+ "generated": "2026-09-10",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -100,6 +100,7 @@
   "./client/world/nav.js",
   "./client/world/orbit.js",
   "./client/world/params.js",
+  "./client/world/photo.js",
   "./client/world/polyline.js",
   "./client/world/raymarch.js",
   "./client/world/signals.js",
