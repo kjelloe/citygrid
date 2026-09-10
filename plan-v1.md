@@ -82,6 +82,9 @@ the file to open first.
 | `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6, D7, D8 done**, plus the desktop halves of D2 and D5. The first real card found the governor giving up its whole ladder at 60 fps. **What is left needs a phone**: D3 and the last of D5 are blocked on that card |
 | `workitems-film.md` | photo mode, tours, a demo film | not started; unblocked — the measurement lane's buildable half is done, so F1 follows D8 |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
+| `workitems-navigation.md` | the camera on the screen and on both mouse buttons (P59, ruling 042) | written 2026-09-10; **after F1**, first of the three P59 lanes |
+| `workitems-world.md` | the 3D world made detailed — civic kits, ground, streets, water, trees, motion, windows, the compare sheet as gate (P59) | written 2026-09-10; after navigation, interleaved with behaviour |
+| `workitems-behaviour.md` | the simulation made visible and life made realistic — damage, ageing, service vehicles, rush hour, roles, weather (P59) | written 2026-09-10; interleaved with world |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
 The frame-time governor exists to decide what a phone gives up and has never run on a phone. D1
@@ -374,6 +377,9 @@ land first. Nothing here is scheduled.*
 | measurement | `workitems-measurement.md` | D1 a performance card (`?perf=1`); D2 real devices; D3 the tiers re-tuned from them; D4 the reference-compare sheet against the Transport Worlds shots; D5 the governor validated; D6 the big and steep maps; D7 traffic per second; D8 a viewport that can see a street chunk |
 | film | `workitems-film.md` | F1 photo mode (plan.md §10 bonus 4); F2 a shot list and storyboard tool; F3 encode and lead the README with it |
 | worker | `workitems-worker.md` | W1 the session seam on one thread; W2 the reducer in a Web Worker behind a mirror; W3 the model off the tick; W4 the seam proven against an echo transport, the door to Wave 5 |
+| navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
+| world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row |
+| behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather |
 
 ## Open questions
 
@@ -399,6 +405,13 @@ by number from the code they create.
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q79 | The `quick` gate set is at 96% of its time budget — 459 s of 480 | whenever a slice needs to add anything to `quick` |
+| Q80 | Is `hilly` a playable map or scenery? (Q64 and Q74 as one decision) | **Kjell** |
+| Q81 | In the street, should looking need a button held? | K3, reversible |
+| Q82 | Edge scrolling? | K3, off by default |
+| Q83 | A second road kind — an avenue — which moves the hash | **Kjell**, whenever |
+| Q84 | Weather: renderer only, or coupled to the simulation? | B6; **Kjell** for the coupling |
+| Q85 | How restrained is fire? | B1, by screenshot |
+| Q86 | Traffic scaled by the player's own hour — how does ruling 037 read? | B4 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

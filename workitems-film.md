@@ -77,7 +77,9 @@ the framing is decided by looking at a storyboard rather than by rendering the f
   the shops lit, a pan across a suburb, an orbit of the civic block in `painted`, a pull-back
   to the aerial at sunset.
 
-- **Two pulls this lane owns** (A48, A50): if a shot wants a specific person to walk to a
+- **Two pulls this lane owned** (A48, A50) moved on 2026-09-10 to `workitems-behaviour.md` B5
+  (people with roles) and `workitems-world.md` S4 (the river cut); F2 takes them from there. The
+  earlier text: if a shot wants a specific person to walk to a
   specific door, F2 builds the route planner over `client/world/nav.js` (a role state machine
   over a graph search — Q62's answer was "not until a shot needs it"); and if a shot wants a
   river that reads as a channel rather than a trough, F2 points R3's `gradeProfile` at the

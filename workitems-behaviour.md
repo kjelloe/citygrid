@@ -1,0 +1,146 @@
+# behaviour — work items
+
+*Written 2026-09-10 from Kjell's P59: "realistic in simulation behaviour." The engine simulates
+more than the world shows: buildings have a `level`, a `condition`, an `occupancy` and a
+`builtTick`; tiles burn, are ruined, flood and lose their wires; fire stations, police and
+hospitals cover the map; the commuter pass loads every road. Of all that, the renderer draws a
+ruin as a grey slab at city zoom and nothing at all at street level, and the cars know only the
+road's load. This lane makes the simulation visible in the world and gives the renderer-local
+life — cars, people — behaviour that reads as a city rather than a screensaver. Everything here
+is derived from `state` and renderer-local (ruling 037): **nothing in this lane touches
+`engine/`, and no fixture hash moves.** Engine-side realism that would (road hierarchy, transit,
+parking as state) is listed at the end as questions, not items. Same rules as
+`workitems-cityviewer.md` §0.*
+
+**Two invariants from D7, kept by test:** life fills and moves at a rate per second scaled by
+`dt`, never per frame; and the population of cars and people is never a function of the camera.
+
+## B1 — Damage you can see (M)
+
+**Goal.** Every disaster and every fire leaves a mark in the world for as long as the state says
+it is there.
+
+**Do.**
+- **Burning** (`FLAG_BURNING`): the building's windows go orange-lit whatever the hour, a smoke
+  column rises from it (S6's machinery), and the ink pass gets a warm tint on that lot. No
+  particle fire — restrained (§9.4), and a flame that flickers is a thing that pulses.
+- **Ruined** (`FLAG_RUINED`): at L2 the slab becomes a low blackened shell; at L3 the baker draws
+  roofless walls to one storey, charred, with rubble on the plot, from the same footprint. It
+  lasts until `clearRuin`.
+- **Wrecked** (earthquake, storm, explosion events): the building kit's "damaged" state — a
+  collapsed corner, a tilted roof — chosen by the building's hash so a street of wrecks is not
+  one wreck repeated. Storm: the wire run it took down is drawn fallen (poles leaning, wire on the
+  ground) until the tile's `NET_PRESENT` returns. Flood: the water surface rises over the flooded
+  tiles by the shelf depth for the disaster's duration, and the walker cannot enter.
+- The minimap and the overlay already know; this is the world catching up.
+
+**Tests first.** `test/params.test.js`: `buildingParams` reads the flags and returns the damage
+state; a burning building's `emissive` is set at noon. **Gate.** `disaster_soak` already fires
+every kind; a new `tools/disaster_shot.mjs` fires each kind on the deputy city and shoots it
+from the pavement — `reports/smoke-B1-<kind>.png`, six of them, looked at.
+
+## B2 — Buildings that age (S)
+
+**Goal.** A building shows its level, its condition, its occupancy and its age.
+
+**Do.** All from fields the record already carries. **Level** already sets storeys; add the
+facade grade (a level-1 house is clapboard, a level-3 one has the bay window and the second
+chimney). **Condition** (0–100) tints the walls toward grime and boards a window or two below 40;
+below 20 the lawn is overgrown and the fence leans. **Occupancy** sets the lit-window ratio at
+night (S7) and the crowd demand at the door (E7 already). **Age** (`builtTick`): a building
+younger than N ticks is a **construction site** — scaffold and a crane (S6) over a half-height
+shell, then the finished kit. **Abandoned** (a decay event, zone NONE with a building) is boarded
+and dark. Monotone and pure in `params.js`.
+
+**Tests first.** `test/params.test.js`: the visual state is a pure function of the record; the
+construction state ends at the tick the data names. **Gate.** `budget_gate` unchanged (states, not
+new geometry, except the scaffold — count it); `reports/smoke-B2-{new,worn,abandoned}.png`.
+
+## B3 — Service vehicles (M)
+
+**Goal.** A fire is fought, a beat is walked, a factory ships.
+
+**Do.** Three vehicle kinds in `client/life/`, each renderer-local and derived:
+- **Fire engines**: from each fire station's door to the nearest burning tile, along the lane
+  graph — the one place this lane builds a planner (Dijkstra on `lanes.js`, a handful of vehicles,
+  once per new fire), lights on, and back when the tile stops burning. Cars yield to it (A45's
+  yield mechanism, one more kind of point).
+- **Police cars**: one per station, patrolling the highest-crime tiles in its coverage (`tiles.crime`,
+  hashed state) as a loop, at the road's speed.
+- **Trucks**: a third car variant, spawned in proportion to the industrial share of a link's
+  tiles, slower, longer, and counted in the car cap.
+- Ambulances are B3b if hospitals want them; nothing here without a station on the map.
+
+**Tests first.** `test/services.test.js`: a burning tile with one station gets exactly one engine
+and its route is on the lane graph; two burning tiles share the nearest; no engine without a fire;
+the population invariant (D7) still holds with vehicles included. **Gate.** `lanes_dump` gains a
+row (engines, patrols, trucks) on the deputy city with a fire lit; `budget_gate` car rows
+re-baselined with the truck variant's triangles; `reports/smoke-B3-{engine,patrol,trucks}.png`.
+
+## B4 — Traffic that reads as traffic (M)
+
+**Goal.** Cars come from somewhere and go somewhere, and the city has a rush hour.
+
+**Do.**
+- **Doors**: a car appears out of a driveway (E5's path) or a bay and leaves into one, rather
+  than materialising mid-link. The density control keeps the equilibrium (D7); this changes only
+  where the spawn and despawn happen. Residential doors emit in the morning, commercial doors
+  receive, and the reverse in the evening — the **hour** is the light cycle's phase (`phaseOf`),
+  which is the player's own clock, so a night client and a day client show the same city at
+  different hours (Q86 records the reading of ruling 037).
+- **Rush hour**: the per-link target density is scaled by the hour — 0.4 at night, 1.0 by day,
+  1.3 at the two rushes — on top of the engine's load. `lanes_dump` prints the settled count at
+  each of the three presets.
+- **Turn signals and brake lights**: two more emissive quads per car, from the car's own next
+  link and acceleration — no state, a hash of nothing.
+- **Give way and signals** (T1) unchanged.
+
+**Tests first.** `test/cars.test.js`: the settled count at night is the day's × 0.4 within 5%;
+a spawn is at a door or a bay, never mid-link; the D7 invariants hold. **Gate.** `budget_gate`'s
+car rows re-baselined (two quads a car); `reports/smoke-B4-{morning,night}.png` of one street.
+
+## B5 — People with somewhere to go (M) — Q62 (A48)
+
+**Goal.** The crowd has commuters, shoppers and sitters, not a hash walk.
+
+**Do.** The role state machine A48 deferred: a person is a **commuter** (door → map edge or
+another door, morning and evening by the hour), a **shopper** (between commercial doors, midday),
+a **sitter** (a bench in a park or on a street, S5/S3) or a **crosser**; a search on `nav.js`
+per person per journey, not per junction. The cap and the nearest-eye fill (E7) are unchanged.
+The film lane's F2 keeps its pull — a specific person to a specific door for a shot — and gets it
+from this.
+
+**Tests first.** `test/pedestrians.test.js`: every role has a journey with a start and an end on
+the graph; a shopper never enters a residential door; the population invariant holds. **Gate.**
+`budget_gate`'s crowd row unchanged (same cap, same triangles); a histogram of role by hour in
+`lanes_dump`; `reports/smoke-B5-{morning,noon}.png`.
+
+## B6 — Weather (M) — plan.md §10 bonus 5, Q84
+
+**Goal.** A fourth hour: overcast and rain, in the renderer only, until the simulation wants it.
+
+**Do.** A `rain` preset beside day, sunset and night: a lower key, a grey dome, wet roads (a
+specular term on the ribbon, darker tone), rain streaks as an instanced pool near the eye that
+falls at a rate per second and is culled beyond twenty metres, puddles as flat discs at the kerb
+by hash, and the wind that S6's sway reads. Reduced motion stills the rain. The setting's Time row
+gains it; `auto` visits it a tenth of the day. Coupling to the engine (solar output, fire risk,
+floods) is Q84 and not here.
+
+**Tests first.** `test/time-of-day.test.js`: the preset exists in both catalogues and the
+governor's ladder can drop the rain pool (a rung). **Gate.** `budget_gate` gains a rain row;
+`a11y_smoke` measures overlay contrast under rain; `reports/smoke-B6-{street,city}.png`.
+
+## Noted, not items — engine-side realism (each a question, each moves the hash)
+
+- **Road hierarchy** (Q83): one road kind, one width, one capacity. A second kind (avenue: two
+  lanes each way, higher capacity, a median) is a command, a layer bit, a catalogue entry and a
+  fixture re-pin. The renderer half is easy once the data exists.
+- **Transit**: no buses or rail in the engine; a bus is a route, a stop and a capacity, all state.
+- **Parking as state**: the renderer can pretend (B4); a parking lot that takes land is state.
+- **One-way streets and turn restrictions**: lane-graph flags that the engine would have to own.
+
+## Order
+
+B2 → B1 → B3 → B4 → B5 → B6, interleaved with `workitems-world.md`: B2 with S1 (the same kit
+files), B1 with S6 (the smoke), B5 after S5 (the benches). Weather last because it is the only
+item that adds a whole preset to every gate.
