@@ -5341,3 +5341,55 @@ honours a stored **low** tier and **ortho** projection. `gates.mjs quick` green,
 of a 480 s budget** (ui_smoke 113 s, play_smoke 64 s, reach_smoke 45 s).
 
 **Next:** K2 — held keys move at a rate — then K4 and K5.
+
+## slice-K2 — held keys move, and move at a rate (2026-09-11)
+
+Ruling 042 §3, from the keyboard's side. The cluster's buttons had been a rate since K1; an arrow
+key was still one nudge per `keydown`, which means the camera moved in whatever steps the operating
+system's key repeat happened to produce — a stutter on a slow repeat, a bolt on a fast one, and a
+different distance on every machine.
+
+**`client/input/held.js` is a pure table and four rate functions.** The keyboard now reaches the
+same intents the cluster holds, through the same `holdCamera` / `stepCamera` path, so a key and a
+button cannot mean different things or move at different speeds — the construction ruling 042 §1
+asks for rather than the vigilance it would otherwise need. `Shift` doubles the rate;
+`PageUp`/`PageDown` tilt in the street and in photo mode as well, which they had never done from
+the keyboard because the mode branches returned before reaching them; the button's own `modes` list
+is what decides where each key applies, so a zoom key is still nothing in the street for the same
+reason a wheel is.
+
+**Q and E keep the snap, and gained the free turn.** A tap snaps one step, as ruling 006 has always
+promised. Held past `FREE_TURN_SECONDS`, the same key turns freely and releasing lands on the
+nearest of the four — so a player who wants to look behind a building does not have to know they
+asked for a different control. The threshold is counted in accumulated `dt`, not from a clock: the
+controller still reads no time of its own.
+
+### Three findings
+
+**A rate applied to a tap is zero.** The gap between `keydown` and `keyup` is shorter than a frame,
+so the first version of this made a single arrow press do nothing at all — a dead key, not a
+precise one. `TAP_SECONDS` (0.12 s of holding, applied on the press) is the floor, and the hold
+continues from there. `a11y_smoke` presses the arrows exactly once and would have caught it; it is
+better that the design did.
+
+**Two more tests were transcriptions of the lines they guarded.**
+`test/keyboard.test.js` matched `event.key === "q".*rotate(renderer.view, -1)` and
+`test/help.test.js` matched the source text of seven more bindings. Both went red the moment the
+keys moved into a table while every key still did exactly what it had before — the same shape as
+K3's `options.life`, and the third time in two days. They assert the route now: that the release
+asks `turnMode` which kind of press it was, that a free turn lands through `nearestYawStep`, that a
+tap goes through the snapping `rotate`, and that the held table answers for every key the card
+claims.
+
+**`Shift` had no screen.** It modifies whatever is already held, so it cannot have a button on the
+cluster — and a control with no button still needs somewhere to be read (ruling 027). It is on the
+help card beside `Space`, which is there for exactly the same reason.
+
+**Measured.** Suite green twice, 1,201 tests. `test/input.test.js` integrates the pan rate at
+**1/60, 1/15 and 1/144** and gets the same distance within 1%. `play_smoke`, both desktop rows: a
+held arrow pans **4.54 tiles in 0.5 s** against a wanted 3.50 (the tap floor and the frames the
+press falls in account for the difference), **drifts 0.000 tiles** after the release, and Shift
+takes the same half second to **8.98 tiles**; a tap on Q snaps one step; a held E sits **0.244 of a
+quarter turn off** a snapped angle mid-hold and lands **exactly** on one when released.
+
+**Next:** K4 — where am I, and go there.

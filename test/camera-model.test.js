@@ -21,6 +21,7 @@ import {
   PAN_SECONDS, TURN_PER_SECOND, ZOOM_PER_SECOND,
 } from "../client/ui/camera-model.js";
 import { TOOLS } from "../client/input/tools.js";
+import { heldFor } from "../client/input/held.js";
 
 const en = JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "en.json"), "utf8"));
 const no = JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "no.json"), "utf8"));
@@ -126,6 +127,10 @@ test("every key the table claims is one the controller actually binds", () => {
   // is a defect", from the key's side. `controller.js` is driven by a browser,
   // so this reads the source — the same way the rest of the input tests do.
   const bound = (key) => {
+    // Held keys live in `client/input/held.js` since K2 — a table the controller
+    // asks, the way the mouse buttons are a table it asks. That IS the binding,
+    // and `test/input.test.js` checks the two tables agree about every one.
+    if (heldFor(key)) return true;
     // Named keys reach the source either quoted (`event.key === "Home"`) or as
     // an object key in a lookup (`ArrowLeft: [-1, 0]`), and both are bindings.
     if (key.length === 1) return new RegExp(`"\\${key}"|"${key}"`, "i").test(controller);

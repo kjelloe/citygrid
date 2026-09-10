@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { helpSections, toolKeys, CAMERA_KEYS, ACTION_KEYS } from "../client/ui/help-model.js";
 import { TOOLS, toolForKey } from "../client/input/tools.js";
+import { heldFor } from "../client/input/held.js";
 
 const controller = readFileSync(join(repoRoot, "client", "input", "controller.js"), "utf8");
 
@@ -36,15 +37,18 @@ test("every fixed binding the card claims is in the controller", () => {
   // Asserted against the source rather than by simulating a browser: this is
   // about the card and the code agreeing, and `a11y_smoke` already presses the
   // keys for real.
+  // The camera keys are a table the controller asks (`client/input/held.js`,
+  // K2), so for those the binding IS the table — matching the source text for
+  // them would only pin how the controller happens to be written this week.
+  for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "q", "e", "+", "-", "PageUp"]) {
+    assert.ok(heldFor(key), `the card claims ${key} and no held key answers for it`);
+  }
   const claims = [
-    ["ArrowLeft", /ArrowLeft/],
-    ["Q", /event\.key === "q"/],
-    ["E", /event\.key === "e"/],
     ["Escape", /event\.key === "Escape"/],
     ["Ctrl-Z", /event\.key === "z"/],
     ["Space", /event\.key === " "/],
-    ["+", /event\.key === "\+"/],
     ["?", /event\.key === "\?"/],
+    ["H", /event\.key === "h"/],
   ];
   for (const [name, pattern] of claims) {
     assert.match(controller, pattern, `the card claims ${name} and the controller does not bind it`);

@@ -17,10 +17,11 @@ import { buildingCost } from "../../engine/utilities.js";
 import { footprintAt } from "../ui/build-model.js";
 import { RESULT } from "../../shared/protocol.js";
 import { pickTile, groundPoint } from "../render/picking.js";
-import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap, applyPose, focusOn } from "../render/camera.js";
-import { CAMERA_BUTTONS, PAN_SECONDS, TURN_PER_SECOND, ZOOM_PER_SECOND } from "../ui/camera-model.js";
+import { panBy, zoomBy, rotate, setYawStep, yawBy, pitchBy, clampToMap, applyPose, focusOn } from "../render/camera.js";
+import { CAMERA_BUTTONS } from "../ui/camera-model.js";
 import { buttonsToIntent, looksNow, INTENT } from "./buttons.js";
 import { edgeScroll, isBorderPull, EDGE_SECONDS } from "./edge.js";
+import { heldFor, panStep, turnStep, zoomFactor, turnMode, nearestYawStep, TAP_SECONDS } from "./held.js";
 import { createGestures, down, move, up, cancel } from "./gestures.js";
 import { lineTiles, rectTiles, toRuns, tileIndex, runsLength } from "./runs.js";
 import { TOOLS, DRAG, buildCommand, toolForKey } from "./tools.js";
@@ -638,29 +639,76 @@ export function createController(canvas, state, renderer, options = {}) {
     if (button) cameraHold.set(id, { button, axis });
   }
 
-  /** One frame of whatever is held. */
+  /** One frame of whatever is held.
+   *
+   * `fast` is `Shift`, which is a hurry-up rather than a second speed (K2). It
+   * multiplies the rate, never the number of frames — the whole point of a rate
+   * is that the distance is the same at 15 fps and 144. */
   function stepCamera(dt) {
-    if (cameraHold.size === 0 || !(dt > 0)) return false;
+    if (!(dt > 0)) return false;
+    const turning = stepFreeTurn(dt);
+    if (cameraHold.size === 0) return turning;
+    for (const { button, axis } of cameraHold.values()) applyCamera(button, axis, dt);
+    return true;
+  }
+
+  /** `dt` seconds of one camera intent. Shared by the frame loop and by the tap
+   * floor, so a press and a hold cannot come to mean different things. */
+  function applyCamera(button, axis, dt) {
     const view = renderer.view;
-    for (const { button, axis } of cameraHold.values()) {
-      if (button.intent === "pan") {
-        const step = (view.span / PAN_SECONDS) * dt;
-        if (freeLook()) continue;   // the pad walks or flies there, through `move`
-        panBy(view, (axis?.x ?? 0) * step, (axis?.y ?? 0) * step);
-        clampToMap(view, state.width, state.height);
-      } else if (button.intent === "rotate") {
-        yawBy(view, button.direction * TURN_PER_SECOND * dt);
-      } else if (button.intent === "tilt") {
-        const by = button.direction * TURN_PER_SECOND * dt;
-        if (photo()) renderer.lookPhoto?.(0, by);
-        else if (street()) renderer.walker?.look(0, by);
-        else pitchBy(view, by);
-      } else if (button.intent === "zoom") {
-        zoomBy(view, Math.pow(2, button.direction * ZOOM_PER_SECOND * dt));
-      }
+    if (button.intent === "pan") {
+      if (freeLook()) return;   // the pad walks or flies there, through `move`
+      const step = panStep(view.span, dt, fast);
+      panBy(view, (axis?.x ?? 0) * step, (axis?.y ?? 0) * step);
+      clampToMap(view, state.width, state.height);
+    } else if (button.intent === "rotate") {
+      yawBy(view, button.direction * turnStep(dt, fast));
+    } else if (button.intent === "tilt") {
+      const by = button.direction * turnStep(dt, fast);
+      if (photo()) renderer.lookPhoto?.(0, by);
+      else if (street()) renderer.walker?.look(0, by);
+      else pitchBy(view, by);
+    } else if (button.intent === "zoom") {
+      zoomBy(view, zoomFactor(button.direction, dt, fast));
     }
     onChange();
+  }
+
+  /** `Shift`, held. Tracked here rather than read off an event, because the key
+   * that started a hold is not the event that moves it. */
+  let fast = false;
+
+  /** `Q` or `E` held: how long, and which way (K2, ruling 006 as amended).
+   *
+   * A tap snaps one step, which is what the ruling has always promised. Past
+   * `FREE_TURN_SECONDS` the same key turns freely and releasing lands on the
+   * nearest of the four — so the player who wants to look behind a building
+   * does not have to know they asked for a different control. */
+  let turn = undefined;
+
+  function startTurn(direction) {
+    if (turn) return;
+    turn = { direction, elapsed: 0 };
+  }
+
+  /** One frame of a held `Q`/`E`, if it has become a free turn. */
+  function stepFreeTurn(dt) {
+    if (!turn) return false;
+    turn.elapsed += dt;
+    if (turnMode(turn.elapsed) !== "free") return false;
+    yawBy(renderer.view, turn.direction * turnStep(dt, fast));
+    onChange();
     return true;
+  }
+
+  /** The key came up: a tap snaps a step, a free turn lands on the nearest. */
+  function endTurn() {
+    if (!turn) return;
+    const { direction, elapsed } = turn;
+    turn = undefined;
+    if (turnMode(elapsed) === "free") setYawStep(renderer.view, nearestYawStep(renderer.view.yaw));
+    else rotate(renderer.view, direction);
+    onChange();
   }
 
   /**
@@ -746,16 +794,44 @@ export function createController(canvas, state, renderer, options = {}) {
     onChange();
   };
 
-  /** How far one arrow press moves the camera, in tiles. A fraction of what is
-   * on screen rather than a fixed number, so a press does the same thing to the
-   * view at every zoom. */
-  const PAN_FRACTION = 8;
-
   /** Typing somewhere that wants the key. There are no text fields yet, but the
    * tax slider is a range input and the arrows belong to it. */
   function editing(target) {
     if (!target || !target.tagName) return false;
     return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable;
+  }
+
+  /** A camera key going down (K2, ruling 042 §3).
+   *
+   * The keyboard reaches the SAME intents the cluster's buttons hold, so a key
+   * and a button cannot mean different things or move at different speeds. The
+   * mode list on the button decides where each key applies: `zoom` is not a
+   * street control, which is why a wheel does nothing down there either, and
+   * the arrows are the walk keys in the two free-look modes.
+   *
+   * Returns true when the key was taken, so `onKey` can stop. */
+  function startHeldCamera(event) {
+    const spec = heldFor(event.key);
+    if (!spec) return false;
+    if (freeLook() && walkKey(event.key)) return false;
+    const button = CAMERA_BUTTONS.find((b) => b.id === spec.id);
+    if (!button?.modes.includes(renderer.view.mode)) return false;
+    // The pad and the tilt come from the MAP. Inside a toolbar the arrows move
+    // between controls and `PageUp` pages a list, and stealing either would
+    // break what `role="toolbar"` promises (ruling 028).
+    if ((spec.axis || button.intent === "tilt") && event.target !== canvas) return false;
+    // The operating system's key repeat is not a second press: the rate is
+    // ours, and honouring the repeat would add a second one on top of it.
+    if (event.repeat) return true;
+    if (button.intent === "rotate") startTurn(button.direction);
+    else {
+      holdCamera(spec.id, true, spec.axis);
+      // A press is worth a moment of holding, or a tap moves by nothing at all
+      // and reads as a dead key: the gap between `keydown` and `keyup` is
+      // shorter than a frame.
+      applyCamera(button, spec.axis, TAP_SECONDS);
+    }
+    return true;
   }
 
   const onKey = (event) => {
@@ -764,6 +840,11 @@ export function createController(canvas, state, renderer, options = {}) {
     if (document.querySelector?.("dialog[open]")) return;
 
     const modified = event.ctrlKey || event.metaKey || event.altKey;
+    // Shift is a hurry-up for every held camera key (K2). Tracked before the
+    // mode branches, because the street's `run` and the city's fast pan are the
+    // same finger on the same key.
+    if (event.key === "Shift") fast = true;
+    if (!modified && startHeldCamera(event)) { event.preventDefault(); return; }
 
     // Street mode owns the keyboard: WASD walks, Shift runs, Escape leaves. The
     // build tools are not merely ignored, they are gone — a street is for
@@ -829,34 +910,10 @@ export function createController(canvas, state, renderer, options = {}) {
     // thing (ruling 042 §1: a button that does something a key cannot, or the
     // reverse, is a defect). `PageUp`/`PageDown` were in ruling 042's list and
     // bound nowhere; `Home` fits the city, which K4 builds "go there" on top of.
-    if (!modified && (event.key === "PageUp" || event.key === "PageDown")) {
-      if (event.target !== canvas) return;
-      event.preventDefault();
-      const by = TURN_PER_SECOND * 0.25 * (event.key === "PageUp" ? 1 : -1);
-      if (photo()) renderer.lookPhoto?.(0, by);
-      else if (street()) renderer.walker?.look(0, by);
-      else pitchBy(renderer.view, by);
-      onChange();
-      return;
-    }
     if (!modified && event.key === "Home") {
       if (event.target !== canvas) return;
       event.preventDefault();
       fitCity();
-      return;
-    }
-
-    // Arrows PAN, but only from the map. Inside a toolbar they move between
-    // controls (`ui/roving.js`), and stealing them here would break the very
-    // thing `role="toolbar"` promises.
-    const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
-    if (arrow && !modified) {
-      if (event.target !== canvas) return;
-      event.preventDefault();
-      const step = renderer.view.span / PAN_FRACTION;
-      panBy(renderer.view, arrow[0] * step, arrow[1] * step);
-      clampToMap(renderer.view, state.width, state.height);
-      onChange();
       return;
     }
 
@@ -866,11 +923,9 @@ export function createController(canvas, state, renderer, options = {}) {
       return;
     }
 
-    if (!modified && (event.key === "q" || event.key === "Q")) rotate(renderer.view, -1);
-    else if (!modified && (event.key === "e" || event.key === "E")) rotate(renderer.view, 1);
-    else if (event.key === "Escape") { setTool(undefined); handle(cancel(gestures)); }
-    else if (!modified && (event.key === "+" || event.key === "=")) zoomStep(1 / 1.2);
-    else if (!modified && event.key === "-") zoomStep(1.2);
+    // Q, E, the arrows, the tilt and the zoom keys are all HELD now, and were
+    // taken by `startHeldCamera` above (K2).
+    if (event.key === "Escape") { setTool(undefined); handle(cancel(gestures)); }
     else if (!modified && event.key === " ") {
       event.preventDefault();
       options.onSpeedToggle?.();
@@ -888,14 +943,31 @@ export function createController(canvas, state, renderer, options = {}) {
   const onKeyUp = (event) => {
     const walk = walkKey(event.key);
     if (walk) held.delete(walk);
-    if (event.key === "Shift") held.delete("run");
+    if (event.key === "Shift") { held.delete("run"); fast = false; }
     if (event.key === "h" || event.key === "H") setHand(false);
+    // The camera keys stop where they were released (K2). `Q` and `E` decide
+    // here whether they were a tap or a turn.
+    const spec = heldFor(event.key);
+    if (!spec) return;
+    if (spec.id === "rotate-left" || spec.id === "rotate-right") endTurn();
+    else holdCamera(spec.id, false);
   };
   // A key held while the window loses focus is a key that never comes up, and
   // the walker walks into a wall for as long as the tab is in the background.
   // The hand goes with them, for the same reason and a worse consequence: a
   // hand left down is a build tool that has stopped building.
-  const onBlur = () => { held.clear(); setHand(false); pointerWalk = { forward: 0, run: false }; };
+  // Every held camera key goes too: a key held while the window loses focus is
+  // a key that never comes up, and a camera that pans forever is worse than a
+  // walker that walks into a wall, because there is nothing on screen to say
+  // why (K2).
+  const onBlur = () => {
+    held.clear();
+    setHand(false);
+    pointerWalk = { forward: 0, run: false };
+    cameraHold.clear();
+    turn = undefined;
+    fast = false;
+  };
 
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);

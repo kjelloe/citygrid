@@ -43,6 +43,11 @@ export const ACTION_KEYS = [
   // this row fell off the card entirely — `test/reachability.test.js` caught it
   // as a catalogue string nothing could show, which is what that test is for.
   { keys: ["Space"], labelKey: "help.pause" },
+  // Shift hurries every held camera key (K2). Not a camera movement of its own
+  // — it has no button on the cluster and cannot have one, because it modifies
+  // whatever is already held — so it belongs here, beside Space, for the same
+  // reason: a control with no button still needs a screen (ruling 027).
+  { keys: ["Shift"], labelKey: "help.hurry" },
   { keys: ["Esc"], labelKey: "help.clearTool" },
   { keys: ["Ctrl", "Z"], labelKey: "help.undo" },
   { keys: ["?"], labelKey: "help.help" },

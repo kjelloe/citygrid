@@ -131,10 +131,23 @@ test("middle drag pans", () => {
 
 test("the keys still snap to the four comfortable angles", () => {
   // Ruling 006 as amended: free rotation on the mouse, the four angles on Q and
-  // E. The controller does not do the snapping — `rotate` does — so what is
-  // checked here is that the keys go through it and not through `yawBy`.
-  assert.match(controller, /event\.key === "q".*rotate\(renderer\.view, -1\)/s);
-  assert.match(controller, /event\.key === "e".*rotate\(renderer\.view, 1\)/s);
+  // E — and since K2, a HELD Q or E turns freely and lands on the nearest of
+  // the four when it comes up. The controller does not do the snapping and does
+  // not decide the threshold; `rotate`, `nearestYawStep` and `turnMode` do.
+  // Asserted as the route through them rather than as the text of a line: a
+  // test that transcribes a line cannot tell whether the line is right, which
+  // is how `?life=0` stayed broken for two months (K3).
+  const release = controller.slice(controller.indexOf("function endTurn"),
+    controller.indexOf("function endTurn") + 500);
+  assert.match(release, /turnMode\(/, "the release does not ask which kind of press it was");
+  assert.match(release, /setYawStep\(renderer\.view, nearestYawStep\(/,
+    "a free turn does not land on one of the four");
+  assert.match(release, /rotate\(renderer\.view, direction\)/,
+    "a tap does not go through the snapping rotate");
+  // And the free turn itself must be free — `yawBy`, not a second snap.
+  const during = controller.slice(controller.indexOf("function stepFreeTurn"),
+    controller.indexOf("function stepFreeTurn") + 400);
+  assert.match(during, /yawBy\(renderer\.view/, "a held turn snaps instead of turning");
 });
 
 test("a button drag works with a tool in hand", () => {

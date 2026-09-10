@@ -510,3 +510,9 @@ and DOM-side modules it is the only linter the project has.
 fifteen minutes, in a section of the gate nowhere near the change. Keep the lock out of the rows
 that click, give the locked path a pass of its own, and read geometry with
 `page.evaluate(() => el.getBoundingClientRect())` when in doubt. K3/A58.
+
+**Turning a per-press control into a per-second one kills the single press.** A rate multiplied by
+the milliseconds between `keydown` and `keyup` is zero, so the key that used to nudge now moves
+nothing and reads as broken. Give the press a floor in seconds and let the hold continue from it
+(`TAP_SECONDS`, K2), and keep a gate that presses the key exactly once — `a11y_smoke` does, and it
+is the only check that would have noticed.

@@ -30,6 +30,10 @@ cannot move. Where does the camera live?
    the one place that decides which, and `?lock=0` refuses the lock so both can be gated.
 3. **Held is a rate, per second, scaled by `dt`** — a key, a button or a mouse button held for a
    second moves the same distance at any frame rate (D7's rule applied to input).
+   **Built for the keyboard in K2 (2026-09-11):** `client/input/held.js` is the table, the keys go
+   through the same `holdCamera`/`stepCamera` path the cluster uses, and `Shift` doubles the rate.
+   A TAP is worth `TAP_SECONDS` of holding, because a rate applied for the gap between `keydown`
+   and `keyup` is zero and a key that moves nothing reads as broken.
 4. **The four snapped yaws are where Q, E and the compass land**, not where the camera is
    allowed to be — the amendment to ruling 006 that N28 made in code is now written.
 5. **The chrome does not grow.** The cluster on a phone is one button until opened, and the
@@ -47,7 +51,8 @@ the card from `TOOLS`.
 
 - `test/camera-model.test.js` — every button has both catalogue keys, a mode list and a rate
 - `test/help.test.js` — the card lists every key and button combination the controller binds
-- `test/input.test.js` — button state → intent per mode, and held input is a rate at two `dt`s
+- `test/input.test.js` — button state → intent per mode, and held input is a rate at three `dt`s;
+  every held key is one the camera table claims, and every repeating button has a key that holds it
 - `tools/ui_smoke.mjs`, `tools/play_smoke.mjs` — every button pressed on both viewports and the
   camera or the walker read afterwards; the phone's chrome share measured
 - `tools/reach_smoke.mjs` — the cluster is clickable and, closed, eats nothing (029), and the

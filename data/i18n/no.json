@@ -455,5 +455,6 @@
   "controls.mouse.walk": "Venstre / høyre knapp",
   "controls.walk": "Gå eller fly, i gata og i fotomodus",
   "controls.mouse.move": "Beveg musa",
-  "controls.look": "Se deg omkring — ingenting å holde"
+  "controls.look": "Se deg omkring — ingenting å holde",
+  "help.hurry": "Hold sammen med pil, Q, E eller +/− for dobbel fart"
 }

@@ -164,6 +164,83 @@ async function run(page, label, { touch, mode }) {
   check(`${label}: dragging with no tool pans the camera`, distance > 1,
     `moved ${distance.toFixed(2)} tiles from (${before.targetX}, ${before.targetZ})`);
 
+  // --- a held key is a rate (K2, ruling 042 §3) ------------------------------
+  //
+  // An arrow was one nudge per `keydown` until this slice, so the camera moved
+  // in whatever steps the operating system's key repeat produced — a different
+  // distance on every machine. Held for half a second it must cover about half
+  // a second's worth of `PAN_SECONDS`, and Shift must make that meaningfully
+  // further. Desktop only: a phone has no keyboard to hold.
+  if (!touch) {
+    const target = () => page.evaluate(() => ({
+      x: globalThis.CITY.renderer.view.targetX,
+      z: globalThis.CITY.renderer.view.targetZ,
+      span: globalThis.CITY.renderer.view.span,
+    }));
+    await page.evaluate(() => document.getElementById("city").focus());
+    const before = await target();
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(500);
+    await page.keyboard.up("ArrowRight");
+    const after = await target();
+    const held = Math.hypot(after.x - before.x, after.z - before.z);
+    // Half of `span / PAN_SECONDS`, give or take the frames the press and
+    // release themselves fall in. Loose on purpose: this is a gate against
+    // "nothing moved" and "it moved a whole map", not a unit test of the rate,
+    // which `test/input.test.js` integrates twice at two frame rates.
+    const want = before.span / 4 / 2;
+    check(`${label}: a held arrow pans at a rate`, held > want * 0.4 && held < want * 2.5,
+      `moved ${held.toFixed(2)} tiles in 0.5 s, wanted about ${want.toFixed(2)}`);
+
+    // And it STOPS. A held key that outlives its release is the worst version
+    // of this control: the camera drifts and nothing on screen says why.
+    await page.waitForTimeout(250);
+    const settled = await target();
+    check(`${label}: and stops when the key comes up`,
+      Math.hypot(settled.x - after.x, settled.z - after.z) < 0.01,
+      `drifted ${Math.hypot(settled.x - after.x, settled.z - after.z).toFixed(3)} tiles after the release`);
+
+    // Shift hurries. Same half second, meaningfully further.
+    const beforeFast = await target();
+    await page.keyboard.down("Shift");
+    await page.keyboard.down("ArrowLeft");
+    await page.waitForTimeout(500);
+    await page.keyboard.up("ArrowLeft");
+    await page.keyboard.up("Shift");
+    const afterFast = await target();
+    const hurried = Math.hypot(afterFast.x - beforeFast.x, afterFast.z - beforeFast.z);
+    check(`${label}: and Shift hurries it`, hurried > held * 1.4,
+      `${held.toFixed(2)} tiles held, ${hurried.toFixed(2)} with Shift`);
+
+    // Q tapped snaps a quarter turn; Q held turns freely and lands back on one
+    // of the four (ruling 006 as amended).
+    const yawStep = () => page.evaluate(() => globalThis.CITY.renderer.view.yawStep);
+    const stepBefore = await yawStep();
+    await page.keyboard.press("q");
+    const stepAfter = await yawStep();
+    check(`${label}: a tap on Q snaps one step`, ((stepBefore - stepAfter) % 4 + 4) % 4 === 1,
+      `yaw step ${stepBefore} -> ${stepAfter}`);
+    await page.keyboard.down("e");
+    await page.waitForTimeout(600);
+    // Sampled WHILE held: without this the check below passes for a camera that
+    // never turned at all, since standing still also ends on a snapped angle.
+    const midTurn = await page.evaluate(() => {
+      const quarter = Math.PI / 2;
+      const yaw = globalThis.CITY.renderer.view.yaw;
+      return Math.abs(yaw / quarter - Math.round(yaw / quarter));
+    });
+    check(`${label}: a held E turns freely while it is down`, midTurn > 0.02,
+      `${midTurn.toFixed(3)} of a quarter turn off a snapped angle mid-hold`);
+    await page.keyboard.up("e");
+    const landed = await page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      const quarter = Math.PI / 2;
+      return { yaw: v.yaw, off: Math.abs(v.yaw / quarter - Math.round(v.yaw / quarter)) };
+    });
+    check(`${label}: a held E lands back on one of the four`, landed.off < 1e-6,
+      `yaw ${landed.yaw.toFixed(4)} is ${landed.off.toFixed(4)} of a quarter turn off`);
+  }
+
   // --- a finger pulling from the border pans (K3, A59) -----------------------
   //
   // Kjell: "on touch devices, pull and drag from the border to move". With a

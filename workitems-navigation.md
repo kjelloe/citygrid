@@ -76,7 +76,7 @@ the playtest's 41%.
 **Gate.** `gates.mjs quick` green; `reports/smoke-K1-{desktop,phone,street}.png`. Q79 applies:
 the new `ui_smoke` checks are counted and if the set trips its budget the row says so.
 
-## K2 — Held keys move, and move at a rate (S)
+## K2 — Held keys move, and move at a rate (S) — **done 2026-09-11 as `slice-K2`**
 
 **Goal.** Holding an arrow pans smoothly; the keyboard drives the camera the way the pad does.
 
@@ -93,6 +93,26 @@ the new `ui_smoke` checks are counted and if the set trips its budget the row sa
 the rate, at `dt = 1/60` and `1/15` within 1%; Q held past the threshold turns freely and lands
 snapped on release; keys inside a toolbar are untouched (ruling 028). `play_smoke` holds an arrow
 for 500 ms on the desktop viewport and asserts the target moved.
+
+**In:** `client/input/held.js`, a pure table and four rate functions — the keyboard now reaches the
+same intents the cluster holds, through the same `holdCamera`/`stepCamera` path, so a key and a
+button cannot move at different speeds. `Shift` doubles the rate. `PageUp`/`PageDown` tilt in the
+street and in photo mode too, which they had never done from the keyboard. Q and E keep the snap
+on a tap and turn freely past 300 ms, landing on the nearest of the four when released.
+
+**Three things this turned up.**
+
+- **A rate applied to a tap is zero.** The gap between `keydown` and `keyup` is shorter than a
+  frame, so making the arrows a rate made a single press do nothing at all — a dead key, not a
+  precise one. `TAP_SECONDS` is what a press is worth up front, and the hold continues from there.
+  `a11y_smoke` presses the arrows exactly once, and would have said so.
+- **Two more tests were transcriptions.** `test/keyboard.test.js` matched
+  `event.key === "q".*rotate(renderer.view, -1)` and `test/help.test.js` matched the text of seven
+  more bindings; both went red the moment the keys moved into a table, while every key still did
+  what it had before. They assert the route now — through `turnMode`, `nearestYawStep` and the
+  held table — not the characters.
+- **`Shift` had no screen.** It modifies whatever is already held, so it cannot have a button on
+  the cluster; it is on the help card beside `Space`, for the reason Space is there (ruling 027).
 
 ## K3 — The two mouse buttons (M) — ruling 042 — **done 2026-09-11 as `slice-K3`**
 
@@ -241,7 +261,7 @@ assert the view moved, close it, assert the map is fully tappable again (`reach_
 
 ## Order
 
-**K1 is done (2026-09-10). K3 is done (2026-09-11).** K2 is next.
+**K1 is done (2026-09-10). K3 and K2 are done (2026-09-11).** K4 is next.
 
 K1 → K3 → K2 → K4 → K5. The cluster first because every other item puts a button on it; the
 mouse second because it is what Kjell asked for by name; the phone last because it is the

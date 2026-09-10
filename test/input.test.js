@@ -10,6 +10,11 @@ import assert from "node:assert/strict";
 import { tileIndex, lineTiles, rectTiles, toRuns, runsLength } from "../client/input/runs.js";
 import { createGestures, down, move, up, cancel } from "../client/input/gestures.js";
 import { TOOLS, toolCommand, isAreaTool } from "../client/input/tools.js";
+import {
+  HELD_KEYS, heldFor, panStep, turnStep, zoomFactor, turnMode, nearestYawStep,
+  FAST_MULTIPLIER, FREE_TURN_SECONDS,
+} from "../client/input/held.js";
+import { CAMERA_BUTTONS, PAN_SECONDS, TURN_PER_SECOND } from "../client/ui/camera-model.js";
 import { AREA_COMMANDS, isAreaCommand } from "../engine/commands.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -439,4 +444,93 @@ test("the photo camera is a rate, like everything else that is held", () => {
   assert.match(step.slice(0, step.indexOf("\n}")), /\* dt/, "the step is not scaled by the delta");
   const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
   assert.match(scene, /flyPhoto\(drawOptions\.move, dt\)/, "the frame loop does not fly the camera");
+});
+
+// --- held keys are a rate (slice K2, ruling 042 §3) --------------------------
+
+test("a held arrow covers the same ground at any frame rate", () => {
+  // The defect this slice is about: one nudge per `keydown` moves the camera by
+  // whatever the operating system's key repeat happens to be, which is a
+  // different distance on every machine and a stutter on all of them. A second
+  // of holding has to be a second of holding.
+  const span = 40;
+  for (const dt of [1 / 60, 1 / 15, 1 / 144]) {
+    let moved = 0;
+    for (let t = 0; t < 1 - 1e-9; t += dt) moved += panStep(span, dt);
+    const want = span / PAN_SECONDS;
+    assert.ok(Math.abs(moved - want) / want < 0.01,
+      `at dt=${dt.toFixed(4)} a second of holding moved ${moved.toFixed(4)}, wanted ${want}`);
+  }
+});
+
+test("Shift hurries, and hurries by the same factor everywhere", () => {
+  assert.equal(panStep(40, 1 / 60, true), panStep(40, 1 / 60) * FAST_MULTIPLIER);
+  assert.equal(turnStep(1 / 60, true), turnStep(1 / 60) * FAST_MULTIPLIER);
+  // Zoom is exponential, so "twice as fast" is the exponent doubling, not the
+  // factor: two seconds of normal zoom must equal one second of fast zoom.
+  const fast = zoomFactor(1, 1, true);
+  const twice = zoomFactor(1, 1) ** 2;
+  assert.ok(Math.abs(fast - twice) < 1e-9, `${fast} against ${twice}`);
+});
+
+test("a held pan is span-scaled, so it feels the same at any zoom", () => {
+  assert.equal(panStep(80, 1 / 60) / panStep(40, 1 / 60), 2);
+});
+
+test("a tap on Q snaps and a hold turns freely", () => {
+  assert.equal(turnMode(0), "snap");
+  assert.equal(turnMode(FREE_TURN_SECONDS - 0.001), "snap");
+  assert.equal(turnMode(FREE_TURN_SECONDS), "free");
+  assert.equal(turnMode(2), "free");
+});
+
+test("a free turn lands on the nearest comfortable angle", () => {
+  const quarter = Math.PI / 2;
+  // Just past a step and just short of the next both land on the one they are
+  // nearest, which is what "releasing lands you back on the four" means.
+  assert.equal(nearestYawStep(quarter * 1.1), 1);
+  assert.equal(nearestYawStep(quarter * 1.9), 2);
+  assert.equal(nearestYawStep(0), 0);
+  assert.equal(nearestYawStep(quarter * 3.4), 3);
+});
+
+test("every held key is a key the camera table already claims", () => {
+  // The card, the cluster and the keyboard all read one table (ruling 042 §1).
+  // A key that is held here and absent there is a control with no button and no
+  // row on the help card — which is how the camera became folklore in the first
+  // place.
+  const byId = new Map(CAMERA_BUTTONS.map((b) => [b.id, b]));
+  for (const [key, spec] of Object.entries(HELD_KEYS)) {
+    const button = byId.get(spec.id);
+    assert.ok(button, `${key} holds "${spec.id}", which is not a camera button`);
+    const claimed = button.keys.map((k) => k.toLowerCase());
+    assert.ok(claimed.includes(key.toLowerCase()),
+      `${key} is held for ${spec.id}, whose keys are ${button.keys.join(", ")}`);
+    assert.ok(button.repeats, `${spec.id} is held by ${key} but does not repeat`);
+  }
+});
+
+test("every repeating camera button has a key that holds it", () => {
+  // The other direction: a button that repeats and cannot be held from the
+  // keyboard is ruling 042 §1's defect in reverse.
+  for (const button of CAMERA_BUTTONS) {
+    if (!button.repeats || button.keys.length === 0) continue;
+    const held = button.keys.some((k) => heldFor(k)?.id === button.id);
+    assert.ok(held, `${button.id} repeats and no key holds it`);
+  }
+});
+
+test("the pad's four keys are four directions, not one", () => {
+  const axes = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].map((k) => heldFor(k).axis);
+  assert.equal(new Set(axes.map((a) => `${a.x},${a.y}`)).size, 4);
+  // Opposites cancel, or one of them is pointing the wrong way.
+  assert.equal(heldFor("ArrowLeft").axis.x + heldFor("ArrowRight").axis.x, 0);
+  assert.equal(heldFor("ArrowUp").axis.y + heldFor("ArrowDown").axis.y, 0);
+});
+
+test("case does not decide whether a key works", () => {
+  assert.equal(heldFor("Q").id, "rotate-left");
+  assert.equal(heldFor("q").id, "rotate-left");
+  assert.equal(heldFor("E").id, "rotate-right");
+  assert.equal(heldFor("k"), undefined);
 });

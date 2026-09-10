@@ -1097,6 +1097,14 @@ The camera should snap to comfortable angles and avoid disorienting free rotatio
 > binary, on by default for a mouse and off for a finger — and on touch a drag
 > that *starts* at the border pans instead, which is the same intent through a
 > different hand.
+>
+> **As built (slice K2, 2026-09-11).** "Keyboard: pan and rotate shortcuts"
+> above is now a RATE rather than a nudge per press: an arrow, `PageUp`,
+> `PageDown`, `+` and `-` held move at the same speed the cluster's buttons do,
+> `Shift` doubles it, and a tap is worth an eighth of a second of holding so a
+> single press still moves. `Q` and `E` snap on a tap, as ruling 006 requires,
+> and turn freely when held past 300 ms — releasing lands on the nearest of the
+> four, so the snap is where a turn ENDS rather than a fence around the camera.
 
 ### 14. Tool Interaction Design
 
