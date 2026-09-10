@@ -154,6 +154,18 @@ lands here as a palette amendment with §3.1 updated in the same slice.
 **Done when** every row of the sheet has moved toward the reference by Kjell's eye, and the
 budgets in ruling 040 carry the re-measured numbers.
 
+## Q80 answered: `hilly` is playable (A57, 2026-09-10) — a slice for this lane
+
+Kjell: *"whichever is easiest, allow steep ground."* So `hilly` stops being scenery and the cheap
+route is the renderer's: **a junction's height may move within the grade limit**, iterated in
+`client/world/ground.js` before the profiles are built. No hashed state — node heights are derived
+— which is what makes it the easy half. Worldgen refusing to zone steep ground stays unbuilt.
+
+It settles **Q74** in the same move: the 80 cliffs `walkthrough` finds on a 128 `hilly` map are the
+walker's side of the same number. **Done when `walkthrough 128 hilly` is green and joins the
+`render` set** — the measurement is what says whether moving junctions was enough, rather than the
+claim that it was. Today it is 459 of 1,392 corridors ungradeable and a steepest street of 59.3%.
+
 ## Order
 
 S1 → S2 → S6 → S5 → S3 → S4 → S7 → S8, interleaved with `workitems-behaviour.md` where it says so

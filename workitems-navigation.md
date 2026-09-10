@@ -70,6 +70,24 @@ for 500 ms on the desktop viewport and asserts the target moved.
 
 ## K3 — The two mouse buttons (M) — ruling 042
 
+**Kjell answered Q81 and Q82 on 2026-09-10 (P60), and both change this item.**
+
+**Looking does not need a button held (A58).** Pointer Lock in street and photo mode, which is what
+every first-person control does — *where the browser grants it*. It needs a user gesture and is
+refused in a cross-origin frame, which is why Q43 chose drag-look; so drag-look is the fallback and
+is not a lesser mode, and the gate asserts both paths. With free look, holding left to walk is a
+convenience rather than the only way a mouse-only player can move.
+
+**And a first-run overlay comes with it**, naming the controls, with "don't show this again" and a
+settings row to bring it back. A control scheme with no buttons in it needs a discovery surface, or
+it is ruling 027's defect wearing a new hat. New i18n keys; the overlay's "seen" flag is a
+preference, not state.
+
+**Edge scrolling is on for a mouse (A59)**, not an opt-in row — and touch gets its own gesture: a
+drag that *starts* at the border pans. The settings row stays as an **off** switch, because a
+trackpad is what made this a question.
+
+
 **Goal.** Left and right, alone and together, move the player through the world in every mode,
 and the help card says so in one line.
 

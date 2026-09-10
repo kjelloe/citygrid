@@ -15,6 +15,23 @@ parking as state) is listed at the end as questions, not items. Same rules as
 **Two invariants from D7, kept by test:** life fills and moves at a rate per second scaled by
 `dt`, never per frame; and the population of cars and people is never a function of the camera.
 
+## B1 — Damage you can see (M) — **Q85 answered 2026-09-10 (A62), and it is bigger than a picture**
+
+Kjell: *"add fire that expands if not addressed by firedepartement, i.e not available or none
+within range."* Q85 asked how restrained the fire should LOOK; the answer is about what it should
+DO, so this item gains a sibling in the engine.
+
+The mechanism exists — `engine/fire.js` spreads to four neighbours on a fuel roll and extinguishes
+on odds derived from `fireRisk`, which already has station coverage subtracted. The behaviour does
+not: measured on a played 64×64, a single ignition **peaked at four tiles alight and was out in
+twenty-five ticks**. So it is a balance change, it moves no schema but it does move outcomes, and
+**`disaster_soak` over 200 games is the instrument** — one ignition is an anecdote.
+
+A warning from the measuring: the probe written for that number was wrong twice first, once by
+assuming `FLAG_BURNING` rather than reading it (it is 4; 1 is `FLAG_POWERED`, so the first run
+counted powered tiles and reported a third of the map alight) and once by comparing two cities that
+were not the same city. Read the constant, and print the city beside the number.
+
 ## B1 — Damage you can see (M)
 
 **Goal.** Every disaster and every fire leaves a mark in the world for as long as the state says
@@ -77,6 +94,15 @@ the population invariant (D7) still holds with vehicles included. **Gate.** `lan
 row (engines, patrols, trucks) on the deputy city with a fire lit; `budget_gate` car rows
 re-baselined with the truck variant's triangles; `reports/smoke-B3-{engine,patrol,trucks}.png`.
 
+## B4 — Traffic that reads as traffic (M) — **Q86 answered 2026-09-10 (A63)**
+
+The hour is **shared within a game hour** once a room has more than one seat, rather than a free
+per-client choice: *"same hour approx so not exact but within a game time hour."* Two players
+describing the same street must not be describing different times of day. It stays a per-client
+setting in singleplayer; in a room the clock is the server's, and "within an hour" is the tolerance
+that keeps it from being one more thing to synchronise every frame. The hour scale on car density
+stays — it is now scaling something both clients agree about.
+
 ## B4 — Traffic that reads as traffic (M)
 
 **Goal.** Cars come from somewhere and go somewhere, and the city has a rush hour.
@@ -115,6 +141,14 @@ the graph; a shopper never enters a residential door; the population invariant h
 `budget_gate`'s crowd row unchanged (same cap, same triangles); a histogram of role by hour in
 `lanes_dump`; `reports/smoke-B5-{morning,noon}.png`.
 
+## B6 — Weather (M) — plan.md §10 bonus 5, Q84 — **Kjell ruled 2026-09-10 (A61)**
+
+**Renderer only, as this item already assumed** — and the coupling is now named rather than open:
+*"may add a lightning storm starting a fire or a big downpour causing flood of sewer system. random
+disasters."* That is a smaller thing than §10 bonus 5's continuous modifiers on solar output and
+heating, and it reuses machinery that exists: weather **causes a disaster**, and `engine/disasters.js`
+already knows how to fire one. Not this item; noted so the shape is not reinvented.
+
 ## B6 — Weather (M) — plan.md §10 bonus 5, Q84
 
 **Goal.** A fourth hour: overcast and rain, in the renderer only, until the simulation wants it.
@@ -131,6 +165,12 @@ governor's ladder can drop the rain pool (a rung). **Gate.** `budget_gate` gains
 `a11y_smoke` measures overlay contrast under rain; `reports/smoke-B6-{street,city}.png`.
 
 ## Noted, not items — engine-side realism (each a question, each moves the hash)
+
+**The avenue is now a yes (Q83 → A60, 2026-09-10).** Kjell: *"yes add second road kind."* It stays
+out of this lane and becomes **its own lane after this one**: a command, a layer bit, a catalogue
+entry, a fixture re-pin through `/fixture-repin` and a re-baseline of every gate that counts
+capacity. The renderer half — ribbon width, lane count, markings — is about a day of it.
+
 
 - **Road hierarchy** (Q83): one road kind, one width, one capacity. A second kind (avenue: two
   lanes each way, higher capacity, a median) is a command, a layer bit, a catalogue entry and a

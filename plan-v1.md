@@ -405,13 +405,6 @@ by number from the code they create.
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q79 | The `quick` gate set is at 96% of its time budget — 459 s of 480 | whenever a slice needs to add anything to `quick` |
-| Q80 | Is `hilly` a playable map or scenery? (Q64 and Q74 as one decision) | **Kjell** |
-| Q81 | In the street, should looking need a button held? | K3, reversible |
-| Q82 | Edge scrolling? | K3, off by default |
-| Q83 | A second road kind — an avenue — which moves the hash | **Kjell**, whenever |
-| Q84 | Weather: renderer only, or coupled to the simulation? | B6; **Kjell** for the coupling |
-| Q85 | How restrained is fire? | B1, by screenshot |
-| Q86 | Traffic scaled by the player's own hour — how does ruling 037 read? | B4 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan
