@@ -89,6 +89,7 @@ const SAME_IN_BOTH = {
   "hud.slot.auto": "Auto again",
   "skin.retro": "Retro is the same word in Norwegian",
   "alert.disasterStruck.named": "the whole string is one interpolation token",
+  "camera.pad.fly": "Fly is the same word in Norwegian",
 };
 
 // --- the Norwegian pass (slice M4) -------------------------------------------

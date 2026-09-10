@@ -16,7 +16,33 @@ the cluster is built for four modes rather than retrofitted for the fourth.*
 share (playtest §2: 41% at 390×844 — this lane may not raise it). **Assert the effect, not the
 setting**: every gate row that presses a control reads the camera or the walker afterwards.
 
-## K1 — The camera cluster on screen (M)
+## K1 — The camera cluster on screen (M) — **done 2026-09-10 as `slice-K1`**
+
+`client/ui/camera-model.js` is the table: buttons as pure data, with the i18n key, the keyboard
+equivalent, the intent, the repeat rate, the modes each appears in, and the label and hint it
+carries per mode. `camera-cluster.js` builds the DOM, the controller binds the same keys, and
+**`help-model.js` derives the card from it** rather than the hand-written list it had.
+
+Held is a rate: `holdCamera` / `stepCamera(dt)` live in the controller and the cluster never touches
+the view, so ruling 042 §1 is true by construction. `PageUp`/`PageDown` and `Home` are bound
+because the cluster promises them; **Home fits the whole city**, which had no answer before.
+
+**It caught F1 taking `P` from the pipe tool** — the pipe had silently stopped being selectable by
+keyboard with the suite green, because the only key test compared `TOOLS` with itself. Photo is `C`
+now and `collisions()` is scope-aware, so `W` meaning wire in the city and forward in the street is
+allowed while a global key shadowing a tool is not.
+
+**Five defects found by the gates and the screenshots**, all in the dev-log: two glyphs rendering as
+empty boxes (`ui_smoke` asserted the zoom button worked while it was a blank rectangle), the mode
+buttons duplicated instead of moved, a hint that did not follow its label, a cluster sitting on top
+of four build buttons, and a phone-only opener that was unreachable on the desktop.
+
+**Gates:** `ui_smoke` 137 checks (seven new: press each button, read the view, and one that lets go
+mid-press); `reach_smoke` ok; `a11y_smoke` ok with no new gate code, because the cluster is a
+`role="toolbar"` on the shared `makeRoving`; `play_smoke` the phone chrome at **36% against the 41%
+ceiling**, the cluster contributing 44×44. Screenshots in `reports/smoke-K1-{desktop,phone,street}.png`.
+
+
 
 **Goal.** Every camera movement has a button, in one place, that works by mouse, touch and
 keyboard, in every mode.
@@ -160,6 +186,8 @@ assert the view moved, close it, assert the map is fully tappable again (`reach_
 "nothing invisible eats the map", ruling 029).
 
 ## Order
+
+**K1 is done (2026-09-10).** K3 is next.
 
 K1 → K3 → K2 → K4 → K5. The cluster first because every other item puts a button on it; the
 mouse second because it is what Kjell asked for by name; the phone last because it is the

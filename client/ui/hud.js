@@ -26,6 +26,7 @@ import { TOOLS } from "../input/tools.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { t } from "../i18n.js";
 import { makeRoving } from "./roving.js";
+import { createCameraCluster } from "./camera-cluster.js";
 import { AUTO, resolveOverlay, autoTarget } from "./auto-overlay.js";
 import { RESULT } from "../../shared/protocol.js";
 
@@ -90,27 +91,17 @@ export function createHud(root, {
   // button, two labels: it is the way in and the way back, and in street mode
   // it is the ONLY interface control left — the build rail is hidden, so a
   // player who cannot find Escape still has a way out that they can see.
-  const streetButton = el("button", "hud-street", t("street.enter"));
-  streetButton.type = "button";
-  streetButton.id = "street";
-  streetButton.title = t("street.enter.hint");
-  streetButton.addEventListener("click", () => {
-    if (root.dataset.camera === "street") onLeaveStreet?.();
-    else onStreet?.();
-  });
+
   // Photo mode (slice F1, ruling 027: the P key must have a screen). The same
   // shape as the street button and for the same reason — one button, two
   // labels, and in photo mode it is the way back out of a HUD that has hidden
   // itself.
-  const photoButton = el("button", "hud-photo", t("photo.enter"));
-  photoButton.type = "button";
-  photoButton.id = "photo";
-  photoButton.title = t("photo.enter.hint");
-  photoButton.addEventListener("click", () => {
-    if (root.dataset.camera === "photo") onLeavePhoto?.();
-    else onPhoto?.();
-  });
-  top.append(cityName, money, trend, pop, date, speedButton, streetButton, photoButton);
+  // Street and Photo are NOT here. They are camera movements and they live on
+  // the camera cluster with the rest of them (K1, ruling 042: "the mode buttons
+  // moved in from the top bar so the camera has one home"). Leaving a copy in
+  // the top bar would be two controls for one thing — and on a phone the bar
+  // was wrapping to three rows to hold them.
+  top.append(cityName, money, trend, pop, date, speedButton);
 
   /** The slim bar photo mode leaves behind.
    *
@@ -129,6 +120,25 @@ export function createHud(root, {
   photoSave.title = t("photo.save.hint");
   photoSave.addEventListener("click", () => onSavePhoto?.());
   photoBar.append(photoSave);
+
+  // The camera cluster (K1, ruling 042): every camera movement on the screen,
+  // in one place, in every mode. Built here so it lives and dies with the HUD
+  // and is relocalised with it.
+  const cluster = createCameraCluster(root, {
+    controller,
+    // The cluster's Street and Photo buttons are the only ones now, so they
+    // come back through the HUD's own callbacks rather than straight to the
+    // controller: the HUD is what says "there is no street here to stand on".
+    onMode: (id) => {
+      if (id === "street") {
+        if (root.dataset.camera === "street") onLeaveStreet?.();
+        else onStreet?.();
+      } else if (id === "photo") {
+        if (root.dataset.camera === "photo") onLeavePhoto?.();
+        else onPhoto?.();
+      }
+    },
+  });
   root.append(photoBar);
   // Leaving a city is how you start another one. Without it the only way to
   // play a second region was to edit the address bar (P18 audit).
@@ -776,7 +786,7 @@ export function createHud(root, {
   refresh();
   return {
     refresh, tick, showInspection, setPreview, setResult, setStatus, setSlots,
-    dispose() { for (const r of roving) r.dispose(); panelWatch?.disconnect(); },
+    dispose() { for (const r of roving) r.dispose(); panelWatch?.disconnect(); cluster.dispose(); },
     get minimapCanvas() { return minimapCanvas; },
     /** The draw loop skips a hidden minimap rather than drawing under a
      * `hidden` attribute; the toggle is the HUD's, the drawing is the
@@ -788,16 +798,12 @@ export function createHud(root, {
      * left says what it now does. */
     setCameraMode(mode) {
       root.dataset.camera = mode;
-      const inStreet = mode === "street";
-      streetButton.textContent = t(inStreet ? "street.leave" : "street.enter");
-      streetButton.title = t(inStreet ? "street.leave.hint" : "street.enter.hint");
       const inPhoto = mode === "photo";
-      photoButton.textContent = t(inPhoto ? "photo.leave" : "photo.enter");
-      photoButton.title = t(inPhoto ? "photo.leave.hint" : "photo.enter.hint");
       // Hidden rather than merely styled away: the bar carries a toolbar role
       // and two buttons, and a toolbar nobody can see but a screen reader can
       // reach is worse than no toolbar (ruling 028).
       photoBar.hidden = !inPhoto;
+      cluster.setMode(mode);
     },
     /** What is actually drawn — Auto resolved against the tool in hand. */
     get overlay() { return activeOverlay(); },

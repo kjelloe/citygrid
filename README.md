@@ -57,8 +57,8 @@ a finding rather than a fact of life. Every gate that exists is in a set, and `t
 fails if one is not.
 
 ```sh
-node tools/gates.mjs quick    # the ten browser smokes, the §24 acceptance script and budget_gate
-node tools/gates.mjs render   # walkthrough, passability, lanes_dump — after a renderer slice
+node tools/gates.mjs quick    # the ten browser smokes and the §24 acceptance script
+node tools/gates.mjs render   # walkthrough, passability, lanes_dump, budget_gate — after a renderer slice
 node tools/gates.mjs sim      # the soaks: disaster_soak, traffic_gate, sim_sweep
 node tools/gates.mjs all      # everything
 node tools/gates.mjs --list   # every gate, which sets run it, and what it checks

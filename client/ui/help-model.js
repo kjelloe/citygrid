@@ -11,23 +11,38 @@
 // roles.
 
 import { TOOLS } from "../input/tools.js";
+import { CAMERA_BUTTONS } from "./camera-model.js";
 
 /** Fixed bindings, each one asserted against the controller by
  * `test/help.test.js` so the card cannot drift from the code. */
-export const CAMERA_KEYS = [
-  { keys: ["↑", "↓", "←", "→"], labelKey: "help.pan" },
-  { keys: ["Q", "E"], labelKey: "help.rotate" },
-  { keys: ["+", "−"], labelKey: "help.zoom" },
-  { keys: ["Space"], labelKey: "help.pause" },
-  // Street mode (slice E4). Listed because ruling 027 is the rule that a key a
-  // player cannot find is a key that does not exist — but as ONE row, because
-  // WASD only walks once you are down there and W is the wire tool up here.
-  // The help table has no notion of a mode, and a duplicate in it is a real
-  // hazard everywhere else, so the mode-scoped keys go in the label.
-  { keys: ["F"], labelKey: "help.street" },
-];
+export const CAMERA_KEYS = deriveCameraKeys();
+
+/** The camera's rows, derived from the cluster's own table (K1, ruling 042).
+ *
+ * Hand-written until now, which is how `PageUp`, `PageDown`, `Home` and the
+ * photo key came to be bound or promised with nothing on the card saying so —
+ * and how `P` could be taken from the pipe tool without a word changing here.
+ * The table is the single source; `test/help.test.js` checks the controller
+ * binds what this claims. */
+function deriveCameraKeys() {
+  const GLYPH = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→" };
+  const rows = [];
+  for (const button of CAMERA_BUTTONS) {
+    const keys = button.keys.map((k) => GLYPH[k] ?? (k.length === 1 ? k.toUpperCase() : k));
+    // One row per movement, not one per key: the card is read by a person, and
+    // "↑ ↓ ← →  Move" is a row where four rows would be a list.
+    rows.push({ keys, labelKey: button.labelKey });
+  }
+  return rows;
+}
+
 
 export const ACTION_KEYS = [
+  // Space PAUSES, and it is here rather than with the camera because it is not
+  // a camera movement. K1 derived the camera rows from `CAMERA_BUTTONS` and
+  // this row fell off the card entirely — `test/reachability.test.js` caught it
+  // as a catalogue string nothing could show, which is what that test is for.
+  { keys: ["Space"], labelKey: "help.pause" },
   { keys: ["Esc"], labelKey: "help.clearTool" },
   { keys: ["Ctrl", "Z"], labelKey: "help.undo" },
   { keys: ["?"], labelKey: "help.help" },

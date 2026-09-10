@@ -313,6 +313,19 @@ getting fuller. **Re-read the code before building the fix a question asks for**
 question's remedy would break a ruling (here, a camera-dependent population against ruling 037's
 locally-derived traffic), that is the strongest possible sign to check the diagnosis first.
 
+**Deriving one thing from another drops whatever the source does not carry.** K1 made the help
+card derive its camera rows from the camera table, which is right — and silently lost the `Space`
+row, because pausing is not a camera movement and so has no entry in a table of camera movements.
+When you replace a hand-written list with a derived one, **diff the two before deleting the old**:
+what the list had and the source does not is either a bug in the source or a row that belongs
+somewhere else.
+
+**Run the omissions sweep AFTER a slice, on the slice.** The usual four directions look outward at
+the project; the cheapest findings are the ones the slice just made — a table left behind when its
+reader changed, CSS for an element that moved, a handler branch nothing can reach any more. And
+make the sweep see same-file use: a first pass here reported a constant as unused that was read ten
+lines below its own definition, and a sweep nobody trusts is worse than none.
+
 **A value that depends on state must be recomputed where the state is READ, not where you happen
 to change it.** Photo mode's near and far planes were chosen in `applyZoom` and re-chosen when a
 flight crossed the height they change at — correct for a camera that is flown, stale for one that

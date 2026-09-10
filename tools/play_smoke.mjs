@@ -406,6 +406,36 @@ async function run(page, label, { touch, mode }) {
       `entered from "${mode}" and came back to "${left}"`);
   }
 
+  // --- the cluster's share of a phone (slice K1, ruling 042 §5) ---------------
+  //
+  // "The chrome does not grow." The playtest measured 41% of a 390x844 screen
+  // and that is the ceiling this lane may not raise — so the cluster is one
+  // button until it is opened, and this is the row that says whether that held.
+  // The viewport is read from the page rather than passed in: `run` takes the
+  // label and the pointer kind, and threading a fourth argument through for one
+  // row is how a signature becomes a list.
+  const narrow = await page.evaluate(() => window.innerWidth <= 520);
+  if (narrow) {
+    const share = await page.evaluate(() => {
+      const seen = [];
+      const area = (el) => {
+        const r = el?.getBoundingClientRect();
+        return r && r.width > 0 && r.height > 0 ? { r, a: r.width * r.height } : undefined;
+      };
+      let covered = 0;
+      for (const sel of [".hud-top", ".hud-bottom", ".camera-cluster", ".hud-minimap"]) {
+        const got = area(document.querySelector(sel));
+        if (!got) continue;
+        covered += got.a;
+        seen.push(`${sel} ${Math.round(got.r.width)}x${Math.round(got.r.height)}`);
+      }
+      return { covered, screen: window.innerWidth * window.innerHeight, seen };
+    });
+    const pct = (100 * share.covered) / share.screen;
+    check(`${label}: the chrome stays under the playtest's 41%`, pct <= 41,
+      `${pct.toFixed(0)}% — ${share.seen.join(", ")}`);
+  }
+
   // --- photo mode (slice F1) -------------------------------------------------
   //
   // From the city and from the street, on both viewports. The mode has no

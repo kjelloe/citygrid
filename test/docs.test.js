@@ -29,6 +29,12 @@ const REQUIRED_DOCS = [
   "workitems-measurement.md",
   "workitems-film.md",
   "workitems-worker.md",
+  // The three lanes P59 added (2026-09-10). Listed here for the reason the
+  // others are: a plan nothing points at is a plan that quietly stops being
+  // true, and `plan-v1.md` names all seven.
+  "workitems-navigation.md",
+  "workitems-world.md",
+  "workitems-behaviour.md",
 ];
 
 /** cityviewer's specification (ruling 032). The README is its index and every

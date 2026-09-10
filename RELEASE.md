@@ -65,18 +65,19 @@ which is what made the governor spend its whole ladder on a machine hitting 60 f
 
 | Set | Gates | Time | What it is |
 |---|---|---|---|
-| `quick` | 12 | **459 s** | the ten browser smokes, the §24 acceptance script, `budget_gate` |
-| `render` | 3 | **3 s** | `walkthrough`, `passability`, `lanes_dump` |
+| `quick` | 11 | **326 s** | the ten browser smokes and the §24 acceptance script |
+| `render` | 4 | **166 s** | `walkthrough`, `passability`, `lanes_dump`, `budget_gate` |
 | `sim` | 3 | **595 s** | `disaster_soak`, `traffic_gate`, `sim_sweep` |
 
-The slowest single gate is `budget_gate` at **152 s**, then `ui_smoke` at 100 and `a11y_smoke` at 45.
+The slowest single gate is `budget_gate` at **151 s**, then `ui_smoke` at 112 and `a11y_smoke` at 45.
 Each run writes `reports/gates-<date>.json`.
 
-`quick` was 375 s when M2 measured it and set the budget as "the measurement plus room". It is now
-**459 s of 480 — 96%** — and the growth is the measurement lane buying coverage: D1's perf-card
-check added 26 s to `ui_smoke`, D8's desktop-viewport rows 49 s to `budget_gate`, and both catch
-things no other gate can see. The budget is deliberately not raised (**Q79**): M2's rule is that a
-gate which grows past its share is a finding, not a fact of life.
+`quick` was 375 s when M2 measured it and set the budget as "the measurement plus room". By
+2026-09-10 it had reached **477 s of 480** — three seconds of headroom — because the measurement
+lane bought real coverage with time. M2's rule is that a gate which grows past its share is a
+finding rather than a fact of life, so the budget was not raised: **`budget_gate` moved to
+`render`**, where it belongs on its merits as a renderer measurement rather than a smoke test
+(**A64**). `quick` is 326 s of 480 again and `render` 166 s of a restated 300.
 
 **A frame at High** — and *which* frame is the whole of it, because two views of the same city
 differ by a factor of two. `budget_gate`'s street-zoom night row is **289,446 triangles of
@@ -93,7 +94,7 @@ on a 128 `hilly` it is 59.3% and 459 of 1,392 (Q64, Q74).
 
 ## What is missing, and known to be
 
-**16 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**15 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 

@@ -1,5 +1,5 @@
 {
- "version": "81cfa009d4dc",
+ "version": "b8d62f2b0a2b",
  "generated": "2026-09-10",
  "files": [
   "./client/audio/audio-model.js",
@@ -71,6 +71,8 @@
   "./client/ui/auto-overlay.js",
   "./client/ui/budget-model.js",
   "./client/ui/build-model.js",
+  "./client/ui/camera-cluster.js",
+  "./client/ui/camera-model.js",
   "./client/ui/help-model.js",
   "./client/ui/help.js",
   "./client/ui/hud-model.js",

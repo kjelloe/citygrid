@@ -5078,3 +5078,103 @@ cannot forget.
 `play_smoke` **24 photo rows** across desktop, desktop-perspective, phone and phone-perspective,
 W flying about 1.9 tiles in 0.4 s on every one; `reach_smoke` green; `budget_gate` green with the
 photo row at **292,968 triangles of 320,000**, 49 draw calls, near 0.02 far 100.
+
+## slice-K1 — the camera cluster on screen (2026-09-10)
+
+Ruling 042, written from Kjell's P59: *"navigation around the world needs to be easier via on
+screen keys and mouse left-and-right mouse button."* Every camera movement existed and a player
+found out about most of them from the help card or not at all — right-drag orbits, middle-drag
+pans, Q and E snap, arrows nudge, F stands in the street. The camera was folklore. This puts it on
+the screen, in one place, in every mode.
+
+**`client/ui/camera-model.js` is the table both halves read** — the buttons as pure data: i18n key,
+keyboard equivalent, intent, whether it repeats and at what rate, the modes it appears in, and the
+label and hint it carries per mode (the pad **pans** in the city, **walks** in the street, **flies**
+in photo). `camera-cluster.js` builds the DOM from it, the controller binds the same keys, and
+`help-model.js` derives the card from it instead of a hand-written list. One table, three readers.
+
+**Held is a rate.** `holdCamera` / `stepCamera(dt)` live in the controller and the cluster never
+touches the view, so ruling 042 §1's *"a button that does something a key cannot, or the reverse,
+is a defect"* is true by construction rather than by vigilance. The cluster deliberately has no
+timer: a second clock there would let the frame rate decide how far a press moved you, which is the
+defect D7 spent a slice removing from the traffic (ruling 042 §3).
+
+Newly bound because the cluster promises them: `PageUp`/`PageDown` tilt — and look, in street and
+photo — and **`Home` fits the whole city**, which is the commonest way a player gets un-lost and
+until now had no answer but zooming out by hand until something looked familiar.
+
+**It found a defect F1 had shipped an hour earlier.** Photo mode's key was `P`, which is the **pipe
+tool's** shortcut. The pipe silently stopped being selectable by keyboard and the whole suite
+stayed green, because `test/keyboard.test.js` compares `TOOLS` only against itself and has never
+known the controller binds keys of its own. Photo mode is `C` now, and `collisions()` is
+scope-aware so it is honest rather than merely strict: `W` is the wire tool in the city and forward
+in the street, which is two scopes and no collision, while a global camera key taking `p` is a real
+one. **That check is the durable part** — it would have caught F1 the moment it was written.
+
+**And three things only the screenshots could see**, which is why the item asks for three:
+
+1. **Two buttons rendered as empty boxes.** `＋` (fullwidth plus) and `🚶` (an emoji) are tofu in the
+   default UI font. `ui_smoke` asserted "zoom changes the span" and passed — the assertion proved
+   the button *worked* while the picture showed it was unreadable. Every glyph is now inside the
+   range a default UI font is certain to have.
+2. **The mode buttons were duplicated.** The item says they *move* from the top bar; I had added
+   them and left the originals, so Street and Photo existed twice and the phone's top bar wrapped
+   to three rows to hold them. They live only on the cluster now and carry their own shortcut as
+   the glyph — `F` and `C` — which is the one place this cluster can teach a key. The phone's top
+   bar is two rows.
+3. **The hint did not follow the label**: a button reading "Leave photo mode" was explained by the
+   hint for entering it. `hintPerMode` sits beside `labelPerMode`, and the reachability test is
+   what caught it — the two `.leave.hint` keys became strings nothing could show.
+
+**Two more the gates found before a player could.** `reach_smoke` reported the cluster's first
+placement sitting on top of **fireStation, policeStation, hospital and park** — bottom-right, where
+the build menu spans the full width above the bottom bar. It is on the right edge, vertically
+centred, which is the only edge not already spoken for. And it called `camera-open` a control that
+could not be brought on screen, which is exactly what it was: the phone's way in, `display: none`
+on a desktop. **A button that is styled away is still a button to anything that walks the
+interface**, so it now *exists* only where it is used — `matchMedia` adds and removes it — and "can
+a player reach this?" has the same answer as "is this here?".
+
+**The omissions sweep, run after the slice and not before it.** Four things, and one was a
+regression this slice caused: deriving the help card's camera rows from `CAMERA_BUTTONS` **dropped
+the pause row**, because `Space` is not a camera movement and so has no entry in a camera table.
+`test/reachability.test.js` caught it as a catalogue string nothing could show — ruling 027's test
+doing exactly its job. Space lives with the actions now.
+
+The other three were dead weight this slice created and nobody would have noticed:
+`LEGACY_CAMERA_KEYS`, thirteen lines of table left behind when the card started deriving; three CSS
+rules targeting `.hud-street` and `.hud-photo`, elements that no longer exist; and two branches in
+`cameraAction` for street and photo, which the cluster routes through the HUD instead — a handler
+nothing can reach, which is ruling 026's defect exactly. Four orphaned `help.*` strings went with
+them, because the card now shows the button's own words: one table means the card and the button
+cannot say different things about one key.
+
+*And a note on the sweep itself:* the first pass reported `POINTER` as unused because it excluded
+same-file references, and it is used ten lines below its own definition. A search that cannot see
+local use cries wolf, and a sweep nobody trusts is worse than no sweep.
+
+**Q79 came due in this slice and was answered by rearranging, not re-budgeting (A64).** `quick`
+reached **477 s of 480** — three seconds of headroom, and the next added check would trip it. M2's
+rule is that a gate which grows past its share is a finding rather than a fact of life, so
+`budget_gate` moved to `render`, where it belongs on its merits: it is a renderer *measurement* —
+three tiers, two projections, four spans, a second viewport — and not a smoke test.
+
+| | before | after |
+|---|---|---|
+| `quick` | 477 s of 480 (99%) | **326 s of 480** |
+| `render` | 17 s of 120 | **166 s of a restated 300** |
+
+`render`'s budget is restated from its new contents rather than left at a number set when the set
+took three seconds. A slice that cannot touch the renderer never needed `budget_gate`; a renderer
+slice runs both sets, which the slice-workflow skill now says.
+
+**Measured.** Suite green twice. `ui_smoke` **137 checks** with seven new ones that press each
+button and read the view afterwards — target, yaw, pitch, span, whichever the button promises —
+plus one that holds the pad, slides the pointer off and lifts elsewhere, because a camera that
+keeps panning after the hand has gone is the worst bug this control can have. `reach_smoke` ok.
+`a11y_smoke` ok **with no new gate code**: the cluster is a `role="toolbar"` on the shared
+`makeRoving`, so one tab stop, arrow keys, Home and End, and the remembered tab stop all applied
+for free — which is ruling 028's whole point, since a hand-rolled toolbar role once promised a
+keyboard pattern that did nothing for nine slices. `play_smoke`: the phone's chrome is **36% of
+390×844 against the playtest's 41% ceiling**, the cluster contributing `44×44` because it collapses
+to one button (ruling 042 §5).

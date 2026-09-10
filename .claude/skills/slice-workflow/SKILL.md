@@ -102,8 +102,8 @@ produced — not "passed".
 time and writes it to `reports/gates-<date>.json`:
 
 ```sh
-node tools/gates.mjs quick     # after ANY change — 12 gates, ~6 min on SwiftShader
-node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump
+node tools/gates.mjs quick     # after ANY change — 11 gates, ~5.5 min on SwiftShader
+node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump, budget_gate
 node tools/gates.mjs sim       # a gameplay slice as well: the three soaks
 ```
 
@@ -122,6 +122,11 @@ keep new tools in `tools/`, not hidden behind a dot.
 once on `controllerchange`, and Playwright's next `evaluate` dies with "Execution context was
 destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
 changed. A gate reads the repository as it runs; edit it and you are testing two trees.
+
+**`budget_gate` is in `render`, not `quick`** (K1, A64). It is a renderer measurement — three
+tiers, two projections, four spans, and a second viewport at a real desktop's pixel count — and at
+151 s it was most of why `quick` reached 477 s of its 480 s budget. A renderer slice runs both
+sets; a slice that cannot touch the renderer does not need it.
 
 Every set has a time budget and the runner says when one is exceeded. A gate that grows past its
 share is a finding, not a fact of life. It also reports any headless browser a gate left running —

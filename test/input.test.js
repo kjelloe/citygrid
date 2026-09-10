@@ -372,10 +372,17 @@ test("entering photo mode drops whatever was in hand", () => {
   assert.match(body, /held\.clear\(\)/, "a held walk key survives into the camera mode");
 });
 
-test("the P key and the button do the same thing", () => {
+test("the photo key and the button do the same thing", () => {
   // Ruling 027: a key without a screen is a feature only the manual has. The
   // button is in `client/ui/hud.js` and both call the controller.
-  assert.match(controller, /event\.key === "p" \|\| event\.key === "P"/, "there is no P key");
+  //
+  // `C` for camera, and not the `P` this test asked for when it was written:
+  // `p` is the pipe tool's shortcut and F1 took it, so the pipe silently stopped
+  // being selectable by keyboard. `client/ui/camera-model.js` owns every key the
+  // camera claims now, and `test/camera-model.test.js` fails on a collision (K1).
+  assert.match(controller, /event\.key === "c" \|\| event\.key === "C"/, "there is no camera key");
+  assert.equal(/event\.key === "p" \|\| event\.key === "P"/.test(controller), false,
+    "the camera has taken the pipe tool's key again");
   const hud = readFileSync(join(repoRoot, "client", "ui", "hud.js"), "utf8");
   assert.match(hud, /onPhoto\?\.\(\)/, "there is no button");
   assert.match(hud, /onLeavePhoto\?\.\(\)/, "there is no way back on the screen");
@@ -383,9 +390,15 @@ test("the P key and the button do the same thing", () => {
   // control left is the one that gets you out — and `reach_smoke` is why it is
   // a rule rather than a preference: an opener that hides itself cannot be the
   // toggle that closes it, and a player who cannot find Escape is stuck.
+  //
+  // K1 moved the button onto the camera cluster, so the rule moved with it: the
+  // cluster is what must survive photo mode, and it is the only interface left.
   const css = readFileSync(join(repoRoot, "client", "style.css"), "utf8");
-  assert.match(css, /\[data-camera="photo"\] \.hud-top > \*:not\(\.hud-photo\)/,
-    "photo mode hides the button that leaves it");
+  assert.equal(/\[data-camera="photo"\][^{]*\.camera-cluster[^{]*\{[^}]*display:\s*none/.test(css), false,
+    "photo mode hides the cluster that leaves it");
+  const cluster = readFileSync(join(repoRoot, "client", "ui", "camera-model.js"), "utf8");
+  assert.match(cluster, /modes: \["city", "ortho", "street", "photo"\][\s\S]*?id: "photo"|id: "photo"[\s\S]*?"photo"\]/,
+    "the photo button does not appear in photo mode, so there is no way out of it");
 });
 
 test("the four snapped yaws still snap after a mode change", () => {

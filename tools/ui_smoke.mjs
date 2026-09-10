@@ -518,6 +518,81 @@ try {
   await phonePage.screenshot({ path: join(root, "reports", "hud-phone.png") });
   await phone.close();
 
+  // --- the camera cluster (slice K1, ruling 042) -----------------------------
+  //
+  // "Assert the effect, not the setting" — the lane says so in its header and
+  // this project has paid for it twice (a high-contrast attribute that themed
+  // nothing, a city name that reached the URL and nowhere else). So every
+  // button is pressed on the real page and the VIEW is read afterwards: the
+  // target for a pan, the yaw for a rotate, the pitch for a tilt, the span for
+  // a zoom. A button that exists and moves nothing is the defect.
+  const clusterContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const clusterPage = await clusterContext.newPage();
+  clusterPage.on("pageerror", (error) => problems.push(`cluster: ${error.message}`));
+  await clusterPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await clusterPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+
+  const readView = () => clusterPage.evaluate(() => {
+    const v = globalThis.CITY.renderer.view;
+    return { x: v.targetX, z: v.targetZ, yaw: v.yaw, pitch: v.pitch, span: v.span, mode: v.mode };
+  });
+  /** Holds a button for `ms` and reports what moved. Held rather than clicked,
+   * because these repeat at a rate (ruling 042 §3) — a click is a rounding
+   * error at 60 fps and would make a working button look broken. */
+  const press = async (selector, ms = 350) => {
+    const before = await readView();
+    const box = await clusterPage.locator(selector).boundingBox();
+    if (!box) return { before, after: before, missing: true };
+    await clusterPage.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await clusterPage.mouse.down();
+    await clusterPage.waitForTimeout(ms);
+    await clusterPage.mouse.up();
+    await clusterPage.waitForTimeout(60);
+    return { before, after: await readView() };
+  };
+
+  for (const [selector, what, moved] of [
+    [".camera-pad-left", "the pad pans", (a, b) => Math.hypot(b.x - a.x, b.z - a.z) > 0.5],
+    [".camera-pad-down", "the pad pans the other way", (a, b) => Math.hypot(b.x - a.x, b.z - a.z) > 0.5],
+    ["#camera-rotate-left", "rotate turns the city", (a, b) => Math.abs(b.yaw - a.yaw) > 0.05],
+    ["#camera-tilt-up", "tilt moves the pitch", (a, b) => Math.abs(b.pitch - a.pitch) > 0.02],
+    ["#camera-zoom-out", "zoom changes the span", (a, b) => Math.abs(b.span - a.span) > 0.5],
+  ]) {
+    const r = await press(selector);
+    check(`the cluster: ${what}`, !r.missing && moved(r.before, r.after),
+      `${JSON.stringify(r.before)} -> ${JSON.stringify(r.after)}`);
+  }
+
+  // Home is a press, not a hold, and its promise is the whole city.
+  await clusterPage.evaluate(() => {
+    const v = globalThis.CITY.renderer.view;
+    v.targetX = 4; v.targetZ = 4; v.span = 12;
+  });
+  await clusterPage.click("#camera-home");
+  await clusterPage.waitForTimeout(80);
+  const home = await readView();
+  check("the cluster: Home fits the city", home.span > 40 && Math.abs(home.x - 32) < 8,
+    JSON.stringify(home));
+
+  // And releasing stops it. A camera that keeps moving after the hand has gone
+  // is the worst bug this control can have, and a pointer that leaves a button
+  // before it lifts never sends `pointerup` to it.
+  const box = await clusterPage.locator(".camera-pad-right").boundingBox();
+  await clusterPage.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await clusterPage.mouse.down();
+  await clusterPage.waitForTimeout(200);
+  await clusterPage.mouse.move(box.x + 400, box.y + 400);   // slide off, then lift
+  await clusterPage.mouse.up();
+  await clusterPage.waitForTimeout(120);
+  const settled = await readView();
+  await clusterPage.waitForTimeout(300);
+  const later = await readView();
+  check("the cluster: letting go stops the camera",
+    Math.hypot(later.x - settled.x, later.z - settled.z) < 0.1,
+    `${JSON.stringify(settled)} -> ${JSON.stringify(later)}`);
+
+  await clusterContext.close();
+
   // --- photo mode saves a picture (slice F1) --------------------------------
   //
   // The one export the game has. `preserveDrawingBuffer` is off in play, so the
@@ -532,13 +607,13 @@ try {
   photoPage.on("pageerror", (error) => problems.push(`photo: ${error.message}`));
   await photoPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
   await photoPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
-  await photoPage.click("#photo");
+  await photoPage.click("#camera-photo");
   const inPhoto = await photoPage.evaluate(() => ({
     mode: globalThis.CITY.renderer.view.mode,
     // The way out has to be on screen, or Escape is the only exit and a player
     // who does not know it is stuck (the same rule street mode follows).
     exitVisible: (() => {
-      const r = document.querySelector("#photo")?.getBoundingClientRect();
+      const r = document.querySelector("#camera-photo")?.getBoundingClientRect();
       return Boolean(r && r.width > 0 && r.height > 0);
     })(),
     barVisible: !document.querySelector("#photobar").hidden,

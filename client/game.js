@@ -368,6 +368,10 @@ export async function startGame(root, given = {}) {
     if (speed > 0) daySeconds += Math.min(frameMs, 250) / 1000;
     // Read from the HUD rather than a local: with "Auto" the overlay follows
     // the tool in hand, and no event fires when a shortcut changes the tool.
+    // Whatever the camera cluster or a held key is asking for, at its rate
+    // (ruling 042 §3). Before the draw, so the frame is of where the player has
+    // moved to rather than where they were.
+    controller.stepCamera?.(frameMs / 1000);
     renderer.draw({
       overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move,
       // The clock chooses only when the player asked it to (plan.md §6).

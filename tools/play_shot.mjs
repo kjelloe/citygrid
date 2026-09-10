@@ -52,6 +52,16 @@ for (const [name, vp] of [["desktop",{width:1280,height:720}],["phone",{width:39
   await page.waitForTimeout(700);
   await page.screenshot({path:`reports/play-${name}.png`});
   console.log("wrote reports/play-"+name+".png");
+  // K1 asks for the cluster in three states, because the thing a green suite
+  // cannot tell you is what a control looks like where it has been put.
+  await page.screenshot({path:`reports/smoke-K1-${name}.png`});
+  if (name === "desktop") {
+    await page.evaluate(() => globalThis.CITY.controller.enterStreet());
+    await page.waitForTimeout(600);
+    await page.screenshot({path:"reports/smoke-K1-street.png"});
+    console.log("wrote reports/smoke-K1-street.png");
+  }
+  console.log("wrote reports/smoke-K1-"+name+".png");
   await c.close();
 }
 await b.close(); server.close();

@@ -1191,7 +1191,9 @@ button, [role="button"] {
 #hud[data-camera="street"] .hud-tools,
 #hud[data-camera="street"] .hud-minimap,
 #hud[data-camera="street"] .hud-preview { display: none; }
-#hud[data-camera="street"] .hud-street { outline: 2px solid var(--accent, currentColor); }
+/* The street and photo buttons live on the camera cluster since K1, so the
+   cluster is what must survive a camera mode — and it does, because it is a
+   child of the HUD root rather than of the top bar. */
 
 /* Photo mode (F1). The HUD gets out of the way of the picture entirely — even
    the top bar, which street mode keeps — because the whole point of the mode is
@@ -1207,9 +1209,7 @@ button, [role="button"] {
    Street mode's rule, and `tools/reach_smoke.mjs` is why it is a rule: a way
    out that hides itself is not a way out, and an opener that hides itself
    cannot be the toggle that closes it either. */
-#hud[data-camera="photo"] .hud-top > *:not(.hud-photo) { display: none; }
-#hud[data-camera="photo"] .hud-top { background: none; box-shadow: none; }
-#hud[data-camera="photo"] .hud-photo { outline: 2px solid var(--accent, currentColor); }
+#hud[data-camera="photo"] .hud-top { display: none; }
 
 .hud-photobar {
   position: absolute;
@@ -1225,3 +1225,64 @@ button, [role="button"] {
   z-index: 5;
 }
 .hud-photobar button { min-height: 44px; min-width: 44px; }
+
+
+/* The camera cluster (K1, ruling 042). Bottom right, above the bottom bar, in
+   every mode — the one place every camera movement lives. */
+.camera-cluster {
+  /* The right edge, vertically centred. Everything else is anchored to an
+     edge that is already busy: the build menu spans the full width above the
+     bottom bar, the minimap is bottom-left, the rail is a column, and the top
+     bar is the top. `reach_smoke` found the first placement sitting on top of
+     fireStation, policeStation, hospital and park — ruling 029's covered-control
+     check, doing what N24 learnt to look for by hand. */
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: auto;
+  z-index: 4;
+}
+.camera-cluster .camera-open { display: none; }
+.camera-body { display: flex; gap: 6px; align-items: center; }
+.camera-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 36px);
+  grid-template-rows: repeat(3, 36px);
+  gap: 2px;
+}
+.camera-pad-up { grid-area: 1 / 2; }
+.camera-pad-left { grid-area: 2 / 1; }
+.camera-pad-right { grid-area: 2 / 3; }
+.camera-pad-down { grid-area: 3 / 2; }
+.camera-rest { display: grid; grid-template-columns: repeat(2, 36px); gap: 2px; }
+.camera-cluster button {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 6px;
+  background: var(--panel, rgba(20, 22, 26, 0.85));
+  color: var(--fg, #e8e6e1);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.15));
+  font-size: 15px;
+  touch-action: none;
+}
+.camera-cluster button[hidden] { display: none; }
+
+/* Photo mode keeps the cluster — it is how the camera is flown — and the rest
+   of the HUD goes. */
+#hud[data-camera="photo"] .camera-cluster { top: 50%; }
+
+/* On a phone the cluster is one button until it is opened (ruling 042 §5) and
+   the targets are 44px. */
+@media (max-width: 520px) {
+  .camera-cluster .camera-open { display: block; min-width: 44px; min-height: 44px; }
+  .camera-cluster .camera-body { display: none; }
+  .camera-cluster[data-open="true"] .camera-body { display: flex; }
+  .camera-cluster button { min-width: 44px; min-height: 44px; }
+  .camera-pad { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); }
+  .camera-rest { grid-template-columns: repeat(2, 44px); }
+}

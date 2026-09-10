@@ -17,7 +17,8 @@ import { buildingCost } from "../../engine/utilities.js";
 import { footprintAt } from "../ui/build-model.js";
 import { RESULT } from "../../shared/protocol.js";
 import { pickTile, groundPoint } from "../render/picking.js";
-import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap, applyPose } from "../render/camera.js";
+import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap, applyPose, focusOn } from "../render/camera.js";
+import { CAMERA_BUTTONS, PAN_SECONDS, TURN_PER_SECOND, ZOOM_PER_SECOND } from "../ui/camera-model.js";
 import { createGestures, down, move, up, cancel } from "./gestures.js";
 import { lineTiles, rectTiles, toRuns, tileIndex, runsLength } from "./runs.js";
 import { TOOLS, DRAG, buildCommand, toolForKey } from "./tools.js";
@@ -410,6 +411,66 @@ export function createController(canvas, state, renderer, options = {}) {
   const MIN_SPAN = 8;
   const STREET_PITCH = 25 * (Math.PI / 180);
 
+  /** Camera buttons (or keys, from K2) held down right now, by button id.
+   *
+   * Ruling 042 §3: held is a RATE, per second, scaled by the caller's delta —
+   * so a button held for a second moves the same distance at any frame rate.
+   * The frame loop calls `stepCamera(dt)`; nothing here reads a clock. */
+  const cameraHold = new Map();
+
+  /** Starts or stops a held camera intent. The cluster and the keyboard both
+   * come through here, which is what makes ruling 042 §1's "a button that does
+   * something a key cannot is a defect" true by construction. */
+  function holdCamera(id, on, axis) {
+    if (!on) { cameraHold.delete(id); return; }
+    const button = CAMERA_BUTTONS.find((b) => b.id === id);
+    if (button) cameraHold.set(id, { button, axis });
+  }
+
+  /** One frame of whatever is held. */
+  function stepCamera(dt) {
+    if (cameraHold.size === 0 || !(dt > 0)) return false;
+    const view = renderer.view;
+    for (const { button, axis } of cameraHold.values()) {
+      if (button.intent === "pan") {
+        const step = (view.span / PAN_SECONDS) * dt;
+        if (freeLook()) continue;   // the pad walks or flies there, through `move`
+        panBy(view, (axis?.x ?? 0) * step, (axis?.y ?? 0) * step);
+        clampToMap(view, state.width, state.height);
+      } else if (button.intent === "rotate") {
+        yawBy(view, button.direction * TURN_PER_SECOND * dt);
+      } else if (button.intent === "tilt") {
+        const by = button.direction * TURN_PER_SECOND * dt;
+        if (photo()) renderer.lookPhoto?.(0, by);
+        else if (street()) renderer.walker?.look(0, by);
+        else pitchBy(view, by);
+      } else if (button.intent === "zoom") {
+        zoomBy(view, Math.pow(2, button.direction * ZOOM_PER_SECOND * dt));
+      }
+    }
+    onChange();
+    return true;
+  }
+
+  /**
+   * The whole city, in view (ruling 042, the cluster's Home button).
+   *
+   * A camera that has wandered is the commonest way a player gets lost, and
+   * until now the only way back was to zoom out by hand until something looked
+   * familiar. Leaves any free-look mode first: "fit the city" from the pavement
+   * means standing up, not flying the walker into the sky.
+   */
+  function fitCity() {
+    if (photo()) leavePhoto();
+    if (street()) leaveStreet();
+    const view = renderer.view;
+    focusOn(view, state.width / 2, state.height / 2);
+    // The longer side, plus a margin, so a rectangle fits in either aspect.
+    zoomBy(view, Math.max(state.width, state.height) * 1.1 / view.span);
+    clampToMap(view, state.width, state.height);
+    onChange();
+  }
+
   /** One notch of zoom, and the two mode changes it can cause. */
   function zoomStep(factor) {
     const view = renderer.view;
@@ -474,7 +535,7 @@ export function createController(canvas, state, renderer, options = {}) {
       if (walk) { event.preventDefault(); held.add(walk); return; }
       if (event.key === "Shift") { held.add("run"); return; }
       if (event.key === "f" || event.key === "F") { event.preventDefault(); leaveStreet(); return; }
-      if (event.key === "p" || event.key === "P") { event.preventDefault(); enterPhoto(); return; }
+      if (event.key === "c" || event.key === "C") { event.preventDefault(); enterPhoto(); return; }
       return;
     }
     // Photo mode owns the keyboard for the same reason street mode does, and
@@ -482,14 +543,20 @@ export function createController(canvas, state, renderer, options = {}) {
     // district from an angle no player could check (F1).
     if (photo() && !modified) {
       if (event.key === "Escape") { event.preventDefault(); leavePhoto(); return; }
-      if (event.key === "p" || event.key === "P") { event.preventDefault(); leavePhoto(); return; }
+      if (event.key === "c" || event.key === "C") { event.preventDefault(); leavePhoto(); return; }
       const fly = walkKey(event.key);
       if (fly) { event.preventDefault(); held.add(fly); return; }
       if (event.key === "Shift") { held.add("run"); return; }
       return;
     }
     // The key that gets you there. It has a button too (ruling 027).
-    if (!modified && (event.key === "p" || event.key === "P")) {
+    //
+    // `C` for camera, and not `P`: `p` is the pipe tool's shortcut, F1 took it,
+    // and the pipe silently stopped being selectable by keyboard. Nothing
+    // caught it — `test/keyboard.test.js` compares the tools only with each
+    // other. `client/ui/camera-model.js` holds every key the camera claims now
+    // and `test/camera-model.test.js` fails on a collision (K1).
+    if (!modified && (event.key === "c" || event.key === "C")) {
       event.preventDefault();
       enterPhoto();
       return;
@@ -505,6 +572,27 @@ export function createController(canvas, state, renderer, options = {}) {
       event.preventDefault();
       undo();
       onChange();
+      return;
+    }
+
+    // Tilt and fit, which the cluster has buttons for — so the keys do the same
+    // thing (ruling 042 §1: a button that does something a key cannot, or the
+    // reverse, is a defect). `PageUp`/`PageDown` were in ruling 042's list and
+    // bound nowhere; `Home` fits the city, which K4 builds "go there" on top of.
+    if (!modified && (event.key === "PageUp" || event.key === "PageDown")) {
+      if (event.target !== canvas) return;
+      event.preventDefault();
+      const by = TURN_PER_SECOND * 0.25 * (event.key === "PageUp" ? 1 : -1);
+      if (photo()) renderer.lookPhoto?.(0, by);
+      else if (street()) renderer.walker?.look(0, by);
+      else pitchBy(renderer.view, by);
+      onChange();
+      return;
+    }
+    if (!modified && event.key === "Home") {
+      if (event.target !== canvas) return;
+      event.preventDefault();
+      fitCity();
       return;
     }
 
@@ -592,6 +680,19 @@ export function createController(canvas, state, renderer, options = {}) {
     leaveStreet,
     enterPhoto,
     leavePhoto,
+    fitCity,
+    holdCamera,
+    stepCamera,
+    /** What a camera button does when it is pressed rather than held.
+     *
+     * `home` only. The cluster's Street and Photo buttons go through the HUD's
+     * own callbacks instead, because the HUD is what says "there is no street
+     * here to stand on" — and a branch here for them would be a handler nothing
+     * reaches, which is ruling 026's defect exactly. */
+    cameraAction(id) {
+      if (id === "home") { fitCity(); return true; }
+      return false;
+    },
     /** What the walker or the photo camera should do this frame. Read by the
      * frame loop; empty in every mode but the two free-look ones. */
     get move() {
