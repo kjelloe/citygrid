@@ -123,6 +123,18 @@ once on `controllerchange`, and Playwright's next `evaluate` dies with "Executio
 destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
 changed. A gate reads the repository as it runs; edit it and you are testing two trees.
 
+**A fallback path needs a lever, or the gate proves the primary one twice.** Where the code
+recovers on its own — a click that asks for Pointer Lock back, a retry, a cache that refills — the
+alternative branch is unreachable from the outside and a gate written against it silently measures
+the happy path. Give it a boot switch the way `?life=0` freezes traffic (`?lock=0` refuses the
+lock, K3/A58) and drive one row of the gate with it. "Both paths are gated" has to mean both were
+run, not that both exist in the source.
+
+**`locator.boundingBox()` hangs once the page has taken the pointer.** Playwright resolves the
+locator, reports it visible, and never returns. `page.evaluate(() => el.getBoundingClientRect())`
+is the same number without the actionability machinery. Suspect any Playwright call that waits on
+element state after a gate enters a pointer-locked mode.
+
 **`budget_gate` is in `render`, not `quick`** (K1, A64). It is a renderer measurement — three
 tiers, two projections, four spans, and a second viewport at a real desktop's pixel count — and at
 151 s it was most of why `quick` reached 477 s of its 480 s budget. A renderer slice runs both

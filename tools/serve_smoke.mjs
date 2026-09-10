@@ -74,6 +74,7 @@ try {
   // rather than only the shell.
   await page.click("#start");
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const city = await page.evaluate(() => ({
     width: globalThis.CITY.state.width,
     three: Boolean(globalThis.CITY.renderer),

@@ -9,7 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   SETTING_ROWS, LANGUAGES, CONTRAST, MOTION, SOUND, LEVELS, SKINS, QUALITY, TIERS, CAMERA, TIME, STYLE,
-  defaultSettings, sanitiseSettings, documentAttributes, mixerSettings,
+  defaultSettings, sanitiseSettings, documentAttributes, mixerSettings, EDGE_SCROLL, CONTROLS_CARD
 } from "../client/ui/settings-model.js";
 import { LOCALES } from "../client/i18n.js";
 import { OPTION_FIELDS } from "../engine/options.js";
@@ -79,7 +79,8 @@ test("every row has at least two choices and a label", () => {
     }
   }
   assert.deepEqual(SETTING_ROWS.map((r) => r.choices),
-    [QUALITY, CAMERA, TIME, STYLE, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION]);
+    [QUALITY, CAMERA, TIME, STYLE, SKINS, SOUND, LEVELS, LEVELS, LANGUAGES, CONTRAST, MOTION,
+      EDGE_SCROLL, CONTROLS_CARD]);
 });
 
 // --- audio (slice 4.4) ------------------------------------------------------

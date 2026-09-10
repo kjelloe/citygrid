@@ -59,6 +59,7 @@ try {
   page.on("pageerror", (e) => pageErrors.push(e.message));
   await page.goto(`${base}?seed=1003&size=48`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   // --- install --------------------------------------------------------------
   const installed = await page.evaluate(async () => {
@@ -105,6 +106,7 @@ try {
 
   await offline.click("#start");
   await offline.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await offline.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const started = await offline.evaluate(() => ({
     width: globalThis.CITY.state.width,
     buildings: globalThis.CITY.state.buildings.length,

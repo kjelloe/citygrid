@@ -49,10 +49,21 @@ const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 const base = `http://127.0.0.1:${port}/index.html`;
-const game = `${base}?seed=1003&size=64`;
+// `lock=0`: Playwright cannot drive a page that has taken the pointer, and
+// this gate presses F and C (K3, A58). The locked path has its own pass in
+// `play_smoke`.
+const game = `${base}?seed=1003&size=64&lock=0`;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
 const pageErrors = [];
-const started = (page) => page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+/** Waits for the city, then puts the first-run controls card away.
+ *
+ * In the helper rather than after each `goto`: this gate opens the game four
+ * times and the card was dismissed on one of them, so the other three met a
+ * dialog sitting over the interface they were about to click (K3, A58). */
+const started = async (page) => {
+  await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+};
 
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -379,8 +390,8 @@ try {
   const stillContext = await browser.newContext({ viewport: { width: 1000, height: 700 }, reducedMotion: "reduce" });
   const stillPage = await stillContext.newPage();
   stillPage.on("pageerror", (error) => problems.push(`motion: ${error.message}`));
-  await stillPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48`);
-  await stillPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await stillPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48&lock=0`);
+  await started(stillPage);
   const stillCars = await seedTraffic(stillPage);
   const still = await stillPage.evaluate(async () => {
     const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));

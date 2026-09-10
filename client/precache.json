@@ -1,5 +1,5 @@
 {
- "version": "4a6cb63ec8da",
+ "version": "81443e29b066",
  "generated": "2026-09-10",
  "files": [
   "./client/audio/audio-model.js",
@@ -16,6 +16,7 @@
   "./client/icon.svg",
   "./client/input/buttons.js",
   "./client/input/controller.js",
+  "./client/input/edge.js",
   "./client/input/gestures.js",
   "./client/input/runs.js",
   "./client/input/tools.js",
@@ -74,6 +75,7 @@
   "./client/ui/build-model.js",
   "./client/ui/camera-cluster.js",
   "./client/ui/camera-model.js",
+  "./client/ui/controls-card.js",
   "./client/ui/help-model.js",
   "./client/ui/help.js",
   "./client/ui/hud-model.js",

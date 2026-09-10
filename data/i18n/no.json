@@ -7,13 +7,11 @@
   "boot.failed.title": "Noe gikk galt",
   "boot.failed.body": "Byen kunne ikke startes. Å laste siden på nytt pleier å hjelpe.",
   "boot.error.title": "Noe gikk galt",
-
   "menu.singleplayer": "Spill alene",
   "menu.multiplayer": "Spill sammen",
   "menu.continue": "Fortsett",
   "menu.settings": "Innstillinger",
   "menu.about": "Om",
-
   "settings.sound": "Lyd",
   "settings.sound.on": "På",
   "settings.sound.off": "Av",
@@ -30,7 +28,7 @@
   "settings.level.normal": "Normalt",
   "settings.level.loud": "Høyt",
   "settings.language": "Språk",
-  "settings.style": "Visuell stil",
+  "settings.style": "Utseende",
   "settings.advisor": "Rådgiver",
   "settings.reducedMotion": "Mindre bevegelse",
   "settings.quality": "Grafikkvalitet",
@@ -45,12 +43,10 @@
   "settings.time.sunset": "Solnedgang",
   "settings.time.night": "Natt",
   "settings.time.auto": "Følg klokka",
-  "settings.style": "Utseende",
   "settings.style.plain": "Enkel",
   "settings.style.painted": "Illustrert",
   "settings.style.pixel": "Pikselkunst",
   "settings.highContrast": "Høy kontrast",
-
   "lobby.size": "Størrelse på området",
   "lobby.size.small": "Liten",
   "lobby.size.standard": "Standard",
@@ -68,22 +64,18 @@
   "lobby.privacy.private": "Privat — kun med kode",
   "lobby.privacy.public": "Åpent — alle med adressen",
   "lobby.regenerate": "Nytt område",
-
   "difficulty.relaxed": "Rolig",
   "difficulty.steady": "Jevn",
   "difficulty.demanding": "Krevende",
-
   "zone.residential": "Bolig",
   "zone.commercial": "Handel",
   "zone.industrial": "Industri",
-
   "tool.inspect": "Undersøk",
   "tool.road": "Vei",
   "tool.wire": "Strømlinje",
   "tool.pipe": "Vannrør",
   "tool.bulldoze": "Riv",
   "tool.request": "Be om riving",
-
   "result.ok": "Ferdig",
   "result.invalid": "Det kan ikke stå der",
   "result.noFunds": "Ikke nok penger",
@@ -91,9 +83,7 @@
   "result.notOwner": "Det tilhører {player}",
   "result.outOfSector": "Det er utenfor bydelen din",
   "result.modeForbidden": "Ikke tillatt i denne spillmodusen",
-
   "result.rateLimited": "For mange kommandoer på én gang — ro ned",
-
   "ping.help": "Hjelp her",
   "ping.building": "Bygger her",
   "ping.remove": "Kan dette fjernes?",
@@ -102,9 +92,7 @@
   "ping.look": "Se på dette",
   "ping.thanks": "Takk",
   "status.afk": "Borte",
-
   "player.you": "Ordfører",
-
   "group.inspect": "Undersøk",
   "group.zones": "Soner",
   "group.roads": "Veier",
@@ -112,14 +100,11 @@
   "group.water": "Vann",
   "group.build": "Bygg",
   "group.bulldoze": "Riving",
-
   "tool.dezone": "Fjern sone",
-
   "category.power": "Strøm",
   "category.water": "Vann",
   "category.service": "Tjenester",
   "category.amenity": "Anlegg",
-
   "building.coalPlant": "Kullkraftverk",
   "building.gasPlant": "Gasskraftverk",
   "building.windTurbine": "Vindturbin",
@@ -132,7 +117,6 @@
   "building.policeStation": "Politistasjon",
   "building.hospital": "Sykehus",
   "building.park": "Park",
-
   "overlay.zoning": "Soner",
   "overlay.power": "Strøm",
   "overlay.water": "Vann",
@@ -144,7 +128,6 @@
   "overlay.health": "Helserisiko",
   "overlay.density": "Befolkningstetthet",
   "overlay.desirability": "Attraktivitet",
-
   "legend.unzoned": "Usonert",
   "legend.supplied": "Forsynt",
   "legend.unsupplied": "Ledning uten strøm",
@@ -179,7 +162,6 @@
   "legend.soughtAfter": "Ettertraktet",
   "legend.ordinary": "Alminnelig",
   "legend.shunned": "Unngått",
-
   "alert.disasterWarning": "Katastrofevarsel",
   "alert.disasterWarning.named": "{disaster} – varsel",
   "alert.disasterStruck": "Katastrofe",
@@ -203,7 +185,6 @@
   "alert.downgraded": "Nabolaget forfaller",
   "alert.noRouteToWork": "Boliger uten vei til arbeid",
   "alert.congestion": "Kø i veinettet",
-
   "disaster.wildfire": "Skogbrann",
   "disaster.earthquake": "Jordskjelv",
   "disaster.flood": "Flom",
@@ -211,18 +192,15 @@
   "disaster.explosion": "Eksplosjon",
   "disaster.blackout": "Strømbrudd",
   "disaster.contamination": "Forurensning",
-
   "terrain.grass": "Gress",
   "terrain.forest": "Skog",
   "terrain.water": "Vann",
   "terrain.shallow": "Grunt vann",
   "terrain.ground": "Bakke",
-
   "band.good": "god",
   "band.fair": "middels",
   "band.severe": "alvorlig",
   "band.none": "ikke aktuelt",
-
   "inspect.terrain": "Terreng",
   "inspect.zone": "Sone",
   "inspect.road": "Vei",
@@ -244,7 +222,6 @@
   "inspect.fireRisk": "Brannfare",
   "inspect.healthRisk": "Helserisiko",
   "inspect.traffic": "Trafikk",
-
   "hud.map": "Bykart — piltaster panorerer, Q og E roterer, pluss og minus zoomer",
   "overlay.auto": "Auto",
   "overlay.auto.idle": "følger verktøyet",
@@ -255,7 +232,6 @@
   "skin.clean": "Moderne rent",
   "skin.retro": "Retro",
   "skin.dark": "Mørkt",
-
   "hud.demand": "Etterspørsel",
   "hud.alerts": "Varsler",
   "hud.tools": "Verktøy",
@@ -272,17 +248,14 @@
   "hud.slot.hint": "Klikk for å lagre · Shift-klikk for å laste",
   "hud.slot.summary": "År {year}, {count} innbyggere",
   "hud.slot.empty": "Tom · klikk for å lagre",
-
   "speed.paused": "Pause",
   "speed.play": "Spill",
   "speed.fast": "Rask",
-
   "street.enter": "Gatenivå",
   "street.leave": "Tilbake til byen",
   "street.enter.hint": "Gå i gata i øyehøyde (F). WASD går, Shift løper, dra for å se deg om.",
   "street.leave.hint": "Tilbake til byvisningen (Escape).",
   "street.noStreet": "Det er ingen gate å stå i her.",
-
   "photo.enter": "Fotomodus",
   "photo.leave": "Avslutt fotomodus",
   "photo.enter.hint": "Fri kamera for å komponere et bilde (P). WASD flyr, Shift er raskere, dra for å se deg om.",
@@ -291,7 +264,6 @@
   "photo.save.hint": "Lagre dette bildet som en fil på enheten din.",
   "photo.saved": "Bildet er lagret.",
   "photo.saveFailed": "Bildet kunne ikke lagres.",
-
   "camera.pan": "Flytt",
   "camera.pan.hint": "Flytt visningen. Piltaster, eller hold en knapp på styrekorset.",
   "camera.pad.walk": "Gå",
@@ -311,23 +283,32 @@
   "camera.home.hint": "Vis hele byen i visningen (Home).",
   "camera.hand": "Hånd",
   "camera.hand.hint": "Hold H, eller trykk her, for å dra kartet med et verktøy i hånden.",
+  "settings.edgeScroll": "Kantrulling",
+  "settings.edgeScroll.on": "På",
+  "settings.edgeScroll.off": "Av",
+  "settings.controlsCard": "Vis kontrollkortet",
+  "settings.controlsCard.on": "Vis det en gang til",
+  "settings.controlsCard.off": "Ikke vis det",
+  "controls.title": "Slik beveger du deg",
+  "controls.dismiss": "Skjønner — ikke vis dette igjen",
+  "controls.reopen": "Du kan hente dette fram igjen fra Innstillinger.",
+  "controls.mouse.left": "Dra med venstre",
+  "controls.mouse.right": "Dra med høyre",
+  "controls.mouse.both": "Begge knappene",
+  "controls.mouse.hand": "H + dra med venstre",
   "camera.cluster": "Kamera",
   "camera.open": "Kamerakontroller",
   "photo.bar": "Kontroller for fotomodus",
-
   "funding.fire": "Brann",
   "funding.police": "Politi",
   "funding.health": "Helse",
   "funding.lean": "Lav ({percent} %)",
   "funding.normal": "Normal ({percent} %)",
   "funding.generous": "Raus ({percent} %)",
-
   "budget.tax": "Skatt",
   "budget.rate": "{rate} %",
   "budget.books": "Inntekt {income} · Utgift {expenses} · Netto {net}",
-
   "advisor.more": "{count} flere underveis",
-
   "status.noStorage": "Lagring er ikke tilgjengelig i denne nettleseren",
   "status.saved": "Lagret i {slot}",
   "status.slotEmpty": "Ingenting i {slot}",
@@ -335,7 +316,6 @@
   "status.loadFailed": "Kunne ikke laste: {reason}",
   "status.importFailed": "Kunne ikke importere: {reason}",
   "status.imported": "Importert",
-
   "menu.help": "Kontroller",
   "help.tools": "Verktøy",
   "help.camera": "Kamera",
@@ -350,10 +330,8 @@
   "help.rightDrag": "Dra med høyre knapp vrir og vipper utsnittet; midtre knapp flytter det. Begge virker med et verktøy i hånden.",
   "help.tapInspect": "Uten verktøy valgt: klikk eller trykk på hva som helst for å se hvorfor det er som det er.",
   "help.minimapClick": "Klikk eller dra på det lille kartet for å flytte utsnittet dit.",
-
   "menu.newCity": "Ny by",
   "menu.newCity.confirm": "Forlate denne byen og starte en ny? Alt siden forrige lagring går tapt.",
-
   "lobby.group.place": "Hvor du bygger",
   "lobby.group.play": "Hvor vanskelig det er",
   "lobby.begin": "Byen din",
@@ -373,11 +351,9 @@
   "lobby.region.none": "Ingen region her",
   "lobby.region.problem": "Den kombinasjonen har ikke plass til en by ({reason}). Prøv en annen region, eller annet vann.",
   "lobby.region.facts": "{buildable} % byggbart · {water} % vann · {forest} % skog",
-
   "difficulty.relaxed.hint": "Mer penger, mildere katastrofer",
   "difficulty.steady.hint": "Balansen spillet er stilt inn etter",
   "difficulty.demanding.hint": "Mindre penger, dyrere bygging, hyppige katastrofer",
-
   "region.plain.open": "Åpenslettene",
   "region.plain.wooded": "Tømmerlandet",
   "region.plain.rocky": "Steinmarkene",
@@ -403,7 +379,6 @@
   "region.valley.rocky": "Steindalen",
   "region.valley.sandy": "Støvdalen",
   "region.valley.watered": "Elvedalen",
-
   "quest.first-road.title": "Et sted å kjøre",
   "quest.first-road.text": "Sånn! Ingen har noen gang flyttet til et jorde. Legg litt vei, så har vi et sted å sette husene ved siden av.",
   "quest.first-zone.title": "Plass til folk",
@@ -446,13 +421,10 @@
   "quest.the-crime-wave.text": "Tre innbrudd i samme gate, og resten av strøket har lagt merke til det. Kriminalitet følger tomme lommer og tynn politidekning, og den drar tomteverdien med seg ned. Få den under kontroll igjen.",
   "quest.after-the-wreckage.title": "Etter ødeleggelsene",
   "quest.after-the-wreckage.text": "Det er over, og det etterlot et rot. Ødelagt grunn blir liggende til noen rydder den — ingenting bygges der, og ingenting vokser der. Ta bulldoseren gjennom det, så begynner vi på nytt.",
-
   "menu.statistics": "Statistikk",
-
   "hud.minimap": "Regionkart — klikk for å flytte utsnittet",
   "hud.minimap.hide": "Skjul kart",
   "hud.minimap.show": "Vis kart",
-
   "stat.noHistory": "Denne byen har nesten ingen historie ennå. Grafene fylles ut måned for måned.",
   "stat.population": "Innbyggere",
   "stat.population.about": "Hvor mange som bor her. Boliger fylles bare der det er strøm, vann og vei.",
@@ -474,11 +446,14 @@
   "stat.demandC.about": "Hvor mye handel som vil etablere seg her. Den følger innbyggere med penger å bruke.",
   "stat.demandI": "Etterspørsel etter industri",
   "stat.demandI.about": "Hvor mye industri som vil bygge her. Den følger jobber byen ennå ikke kan tilby.",
-
   "stat.verdict.tooSoon": "For lite historikk til å si noe ennå.",
   "stat.verdict.steady": "Stabil de siste {months} månedene.",
   "stat.verdict.rising": "Opp {change} % de siste {months} månedene.",
   "stat.verdict.falling": "Ned {change} % de siste {months} månedene.",
   "stat.verdict.better": "Bedre: {change} % i riktig retning over {months} måneder.",
-  "stat.verdict.worse": "Verre: {change} % i feil retning over {months} måneder."
+  "stat.verdict.worse": "Verre: {change} % i feil retning over {months} måneder.",
+  "controls.mouse.walk": "Venstre / høyre knapp",
+  "controls.walk": "Gå eller fly, i gata og i fotomodus",
+  "controls.mouse.move": "Beveg musa",
+  "controls.look": "Se deg omkring — ingenting å holde"
 }

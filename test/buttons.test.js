@@ -8,7 +8,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buttonsToIntent, allCombinations, INTENT, LEFT, RIGHT, MIDDLE } from "../client/input/buttons.js";
+import { buttonsToIntent, looksNow, allCombinations, INTENT, LEFT, RIGHT, MIDDLE } from "../client/input/buttons.js";
 
 const city = (buttons, opts) => buttonsToIntent("city", buttons, opts);
 const street = (buttons, opts) => buttonsToIntent("street", buttons, opts);
@@ -132,6 +132,29 @@ test("the city never walks and the street never orbits", () => {
       for (const banned of [INTENT.orbit, INTENT.dolly, INTENT.tool]) {
         assert.notEqual(mode(buttons).intent, banned, `${banned} at ${buttons}`);
       }
+    }
+  }
+});
+
+test("locked, looking needs nothing held; unlocked, it is a drag (A58)", () => {
+  for (const mode of ["street", "photo"]) {
+    assert.equal(looksNow(mode, 0, { locked: true }), true, `${mode} locked, idle`);
+    assert.equal(looksNow(mode, 0), false, `${mode} unlocked, idle`);
+    for (const buttons of allCombinations()) {
+      if (buttons === 0) continue;
+      assert.equal(looksNow(mode, buttons), true, `${mode} drag-look at ${buttons}`);
+      assert.equal(looksNow(mode, buttons, { locked: true }), true, `${mode} locked at ${buttons}`);
+    }
+  }
+});
+
+test("the city never looks, locked or not", () => {
+  // Pointer Lock is asked for in the free-look modes only; if a stale `locked`
+  // ever survived a return to the city, the orbit would double up.
+  for (const mode of ["city", "ortho"]) {
+    for (const buttons of allCombinations()) {
+      assert.equal(looksNow(mode, buttons, { locked: true }), false, `${mode} ${buttons}`);
+      assert.equal(looksNow(mode, buttons), false, `${mode} ${buttons}`);
     }
   }
 });

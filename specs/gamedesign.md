@@ -1074,6 +1074,29 @@ The camera should snap to comfortable angles and avoid disorienting free rotatio
 >
 > Every binding is listed in the game on the controls card (`?`), which derives
 > its tool half from `TOOLS` so it cannot advertise a key the game lacks.
+>
+> **As built (slice K3, ruling 042 §2, 2026-09-11).** The three buttons above are
+> unchanged and two things joined them. **Both buttons held dolly**: moving the
+> mouse up flies toward the ground point under the cursor and down away from it,
+> span-scaled — the zoom a wheel-less trackpad never had — and the wheel is
+> anchored the same way, so the two gestures agree about where the ground is.
+> **A hand on `H`**, held or toggled from the camera cluster, turns the left
+> button into a pan with a tool still selected; the ghost hides while it is on.
+> `H` rather than the `Space` the work item asked for, because Space pauses.
+>
+> **In the street and in photo mode looking needs nothing held** (A58): the page
+> takes the pointer with Pointer Lock, the mouse looks, and the left and right
+> buttons walk forward and back with both together running. Where the browser
+> refuses the lock — it needs a user gesture and a cross-origin frame is denied
+> outright — the drag-look of Q43 is the fallback and is not a lesser mode.
+> Because a scheme with no buttons in it has nothing on screen to discover, a
+> **first-run card** names the gestures once, with "don't show this again" and a
+> settings row to bring it back.
+>
+> **The pointer at the edge of the canvas pans** (A59), ramped rather than
+> binary, on by default for a mouse and off for a finger — and on touch a drag
+> that *starts* at the border pans instead, which is the same intent through a
+> different hand.
 
 ### 14. Tool Interaction Design
 

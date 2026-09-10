@@ -497,7 +497,18 @@ test("?life=0 reaches the renderer, or no picture gate is repeatable", () => {
   assert.match(main, /life: config\.life/, "the flag stops at the boot module");
   // R2 made reduced motion freeze the city too, so the session ANDs the two:
   // `?life=0` still reaches the renderer, and so does the preference.
-  assert.match(game, /life: stillness \? false : options\.life/, "the flag stops at the session");
+  assert.match(game, /life: stillness \? false : given\.life/, "the flag stops at the session");
+  // **`given`, not `options`.** This test used to pin `options.life`, which is
+  // the WORLD generation record — seed, size, seats — and never carried a
+  // preference in its life. So the assertion protected the bug: `?life=0`, the
+  // quality tier, the projection and the hour all fell back to defaults at
+  // boot, and only the settings panel could put them right (K3 omissions
+  // sweep). A test that pins the text of a line cannot tell whether the line
+  // is right; this one now names the object that actually holds the value.
+  for (const field of ["tier", "mode", "time"]) {
+    assert.match(game, new RegExp(`${field}: given\\.${field}`),
+      `the boot reads ${field} from somewhere other than the caller's options`);
+  }
 });
 
 // --- the wiring V4 and V5 depend on ------------------------------------------

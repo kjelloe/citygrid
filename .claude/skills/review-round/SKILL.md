@@ -488,3 +488,25 @@ never widen the allowlist to make the red go away.
 
 Say what you changed, in one line each. If nothing needed changing, say that — do not manufacture
 churn to look thorough.
+
+**A test written as a transcription of a line protects whatever the line got wrong.**
+`test/render.test.js` asserted the source matched `life: stillness ? false : options.life` — the
+exact text of a defect that had `?life=0`, the quality tier, the projection and the hour all
+falling back to defaults at boot, because `options` there is the world-generation record and never
+carried a preference. The suite had been green over it since R2. When a source-text assertion is
+the only instrument available (a module node cannot import), **assert the thing the line has to be
+true ABOUT** — the object the value comes from, the other fields that must come from the same
+place — not the characters it happens to be spelled with today. K3 (part two).
+
+**A bare call to a name nothing defines is invisible to the suite.** `hideGhost()` where the name
+is `renderer.hideGhost` — a `ReferenceError` every time the hand went down, in a module node cannot
+import, past a `node --check` that only reads syntax. The browser gate's `pageerror` hook is what
+said it out loud. Three of these now (`loadSettings` in R2, `viewport` in `play_smoke`, this):
+**hook `pageerror` in every browser gate and treat one as a failure**, because for renderer-side
+and DOM-side modules it is the only linter the project has.
+
+**Playwright cannot drive a page that holds the pointer.** With Pointer Lock granted,
+`locator.boundingBox()` resolves the element, calls it visible, and never returns — twice for
+fifteen minutes, in a section of the gate nowhere near the change. Keep the lock out of the rows
+that click, give the locked path a pass of its own, and read geometry with
+`page.evaluate(() => el.getBoundingClientRect())` when in doubt. K3/A58.

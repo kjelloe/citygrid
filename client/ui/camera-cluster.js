@@ -40,6 +40,10 @@ const GLYPH = {
   "tilt-up": "⌃", "tilt-down": "⌄",
   "zoom-in": "+", "zoom-out": "−",
   home: "⌂", street: "F", photo: "C",
+  // The hand carries its key for the same reason the mode buttons do, and
+  // because every picture of a hand worth using is an emoji, which is what put
+  // tofu on this cluster the first time.
+  hand: "H",
 };
 
 function button(className, text, label, hint) {
@@ -141,6 +145,14 @@ export function createCameraCluster(root, { controller, onOpen, onMode } = {}) {
     if (spec.repeats) holdable(node, spec.id);
     else if (spec.intent === "street" || spec.intent === "photo") {
       node.addEventListener("click", () => onMode?.(spec.id));
+    } else if (spec.intent === "hand") {
+      // A toggle, not an action: it stays down, because it is a MODE the left
+      // button is in and a player has to be able to see that it is on (K3).
+      node.setAttribute("aria-pressed", "false");
+      node.addEventListener("click", () => {
+        controller?.setHand?.(!controller.hand);
+        node.setAttribute("aria-pressed", String(controller?.hand === true));
+      });
     } else node.addEventListener("click", () => controller?.cameraAction?.(spec.id));
     nodes.set(spec.id, node);
     rest.append(node);
@@ -167,8 +179,15 @@ export function createCameraCluster(root, { controller, onOpen, onMode } = {}) {
         const label = t(labelFor(spec, mode));
         node.setAttribute("aria-label", label);
         node.title = t(hintFor(spec, mode));
-        node.setAttribute("aria-pressed", String(id === mode));
+        // The hand's pressed state is its own — it is on or off, and it is
+        // never a mode, so the mode sweep must not stamp `false` over it.
+        if (spec.intent !== "hand") node.setAttribute("aria-pressed", String(id === mode));
       }
+    },
+    /** The hand went on or off elsewhere — the `H` key. The button has to show
+     * it, or the same state has two appearances (ruling 042 §1). */
+    setHand(on) {
+      nodes.get("hand")?.setAttribute("aria-pressed", String(on === true));
     },
     relabel() {
       cluster.setAttribute("aria-label", t("camera.cluster"));

@@ -31,6 +31,7 @@ import { focusOn } from "./render/camera.js";
 import { createController } from "./input/controller.js";
 import { phaseOf } from "./render/time-of-day.js";
 import { TIME } from "./ui/settings-model.js";
+import { loadSettings, saveSettings } from "./ui/settings.js";
 import { createHud } from "./ui/hud.js";
 import { createMinimap } from "./render/minimap.js";
 import { openStatistics } from "./ui/statistics.js";
@@ -126,13 +127,20 @@ export async function startGame(root, given = {}) {
   // temporal dead zone and `startGame` rejected silently, because `main.js`
   // awaited `play()` without a catch (R2).
   const stillness = given.reducedMotion === true;
+  // **`given`, not `options`.** `options` is the world-generation record —
+  // seed, size, seats, disasters — and never carried a preference in its life.
+  // Reading the tier, the projection, the hour and `?life=` off it meant every
+  // one of them fell back to a default: a player whose settings said Low and
+  // orthographic booted High and perspective, and only opening the settings
+  // panel put it right, because THAT path calls `setQuality`. Found by the
+  // omissions sweep on K3, through `?lock=0` doing nothing for the same reason.
   const renderer = createRenderer(canvas, state, {
-    style, tier: options.tier, mode: options.mode,
+    style, tier: given.tier, mode: given.mode,
     // The cars are motion too (slice 4.5's preference, wired in R2). At the
     // RENDERER, not per draw: `life` at draw time gates the pose, and a car
     // that is simulated and not drawn is still a car being simulated.
-    life: stillness ? false : options.life,
-    time: options.time,
+    life: stillness ? false : given.life,
+    time: given.time,
     // The shop signs are drawn in the player's language (R2, A40).
     locale: currentLocale(),
   });
@@ -177,8 +185,18 @@ export async function startGame(root, given = {}) {
     onHelp: () => openHelp(),
     onFocusTile: (tile) => { focusOn(renderer.view, tile.x, tile.y); },
     onStatus: (key) => hud.setStatus(t(key)),
+    // Read fresh each frame rather than captured: the settings panel can turn
+    // it off while the game is running, and a control that needs a restart to
+    // stop is a control the player cannot actually turn off (A59).
+    edgeScroll: () => loadSettings().edgeScroll !== false,
+    // `?lock=0` (A58). Off, the free look falls back to drag-look, which is
+    // what a cross-origin frame gets in every browser.
+    pointerLock: given.lock !== false,
     // Street mode hides the build tools and shows the way back (slice E4).
     onMode: (mode) => hud.setCameraMode?.(mode),
+    // `H` and the cluster's button are the same toggle, so the button shows the
+    // key's work too (ruling 042 §1).
+    onHand: (on) => hud.setHand?.(on),
   });
 
   // Rebuildable, because a language change has to take effect on the screen the
@@ -198,6 +216,12 @@ export async function startGame(root, given = {}) {
     onPhoto: () => controller.enterPhoto(),
     onLeavePhoto: () => controller.leavePhoto(),
     onSavePhoto: () => savePhoto(),
+    // Once, for a first-time player, and never again after they say so (A58).
+    // A getter, not a value: `hudOptions` is reused on every rebuild, so a
+    // captured `true` would show the card again after a language change and a
+    // captured `false` would never show it again at all.
+    get showControlsCard() { return loadSettings().controlsCard !== false; },
+    onDismissControlsCard: () => saveSettings({ ...loadSettings(), controlsCard: false }),
     onNewCity: onNewCity && (() => { session.stop(); onNewCity(); }),
     onQuestChoice(id, option) {
       apply(state, { type: CMD_QUEST_CHOICE, actor: SEAT, id, option });
@@ -372,6 +396,7 @@ export async function startGame(root, given = {}) {
     // (ruling 042 §3). Before the draw, so the frame is of where the player has
     // moved to rather than where they were.
     controller.stepCamera?.(frameMs / 1000);
+    controller.stepEdge?.(frameMs / 1000);
     renderer.draw({
       overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move,
       // The clock chooses only when the player asked it to (plan.md §6).

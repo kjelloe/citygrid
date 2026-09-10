@@ -7,13 +7,11 @@
   "boot.failed.title": "Something went wrong",
   "boot.failed.body": "The city could not be started. Reloading the page usually clears it.",
   "boot.error.title": "Something went wrong",
-
   "menu.singleplayer": "Play alone",
   "menu.multiplayer": "Play together",
   "menu.continue": "Continue",
   "menu.settings": "Settings",
   "menu.about": "About",
-
   "settings.sound": "Sound",
   "settings.sound.on": "On",
   "settings.sound.off": "Off",
@@ -30,7 +28,7 @@
   "settings.level.normal": "Normal",
   "settings.level.loud": "Loud",
   "settings.language": "Language",
-  "settings.style": "Visual style",
+  "settings.style": "Look",
   "settings.advisor": "Advisor",
   "settings.reducedMotion": "Reduced motion",
   "settings.quality": "Graphics quality",
@@ -45,12 +43,10 @@
   "settings.time.sunset": "Sunset",
   "settings.time.night": "Night",
   "settings.time.auto": "Follow the clock",
-  "settings.style": "Look",
   "settings.style.plain": "Plain",
   "settings.style.painted": "Illustrated",
   "settings.style.pixel": "Pixel art",
   "settings.highContrast": "High contrast",
-
   "lobby.size": "Region size",
   "lobby.size.small": "Small",
   "lobby.size.standard": "Standard",
@@ -68,22 +64,18 @@
   "lobby.privacy.private": "Private — join code only",
   "lobby.privacy.public": "Public — anyone with the address",
   "lobby.regenerate": "Another region",
-
   "difficulty.relaxed": "Relaxed",
   "difficulty.steady": "Steady",
   "difficulty.demanding": "Demanding",
-
   "zone.residential": "Residential",
   "zone.commercial": "Commercial",
   "zone.industrial": "Industrial",
-
   "tool.inspect": "Inspect",
   "tool.road": "Road",
   "tool.wire": "Power line",
   "tool.pipe": "Water pipe",
   "tool.bulldoze": "Demolish",
   "tool.request": "Request removal",
-
   "result.ok": "Done",
   "result.invalid": "That cannot go there",
   "result.noFunds": "Not enough money",
@@ -91,9 +83,7 @@
   "result.notOwner": "That belongs to {player}",
   "result.outOfSector": "That is outside your district",
   "result.modeForbidden": "Not allowed in this game mode",
-
   "result.rateLimited": "Too many commands at once — slow down",
-
   "ping.help": "Help here",
   "ping.building": "Building here",
   "ping.remove": "Please remove this",
@@ -102,9 +92,7 @@
   "ping.look": "Look at this",
   "ping.thanks": "Thank you",
   "status.afk": "Away",
-
   "player.you": "Mayor",
-
   "group.inspect": "Inspect",
   "group.zones": "Zones",
   "group.roads": "Roads",
@@ -112,14 +100,11 @@
   "group.water": "Water",
   "group.build": "Build",
   "group.bulldoze": "Bulldoze",
-
   "tool.dezone": "De-zone",
-
   "category.power": "Power",
   "category.water": "Water",
   "category.service": "Services",
   "category.amenity": "Amenities",
-
   "building.coalPlant": "Coal plant",
   "building.gasPlant": "Gas plant",
   "building.windTurbine": "Wind turbine",
@@ -132,7 +117,6 @@
   "building.policeStation": "Police station",
   "building.hospital": "Hospital",
   "building.park": "Park",
-
   "overlay.zoning": "Zoning",
   "overlay.power": "Electricity",
   "overlay.water": "Water",
@@ -144,7 +128,6 @@
   "overlay.health": "Health risk",
   "overlay.density": "Population density",
   "overlay.desirability": "Desirability",
-
   "legend.unzoned": "Unzoned",
   "legend.supplied": "Supplied",
   "legend.unsupplied": "Wired but unsupplied",
@@ -179,7 +162,6 @@
   "legend.soughtAfter": "Sought after",
   "legend.ordinary": "Ordinary",
   "legend.shunned": "Shunned",
-
   "alert.disasterWarning": "Disaster warning",
   "alert.disasterWarning.named": "{disaster} warning",
   "alert.disasterStruck": "Disaster",
@@ -203,7 +185,6 @@
   "alert.downgraded": "Neighbourhood declining",
   "alert.noRouteToWork": "Homes with no route to work",
   "alert.congestion": "Roads congested",
-
   "disaster.wildfire": "Wildfire",
   "disaster.earthquake": "Earthquake",
   "disaster.flood": "Flood",
@@ -211,18 +192,15 @@
   "disaster.explosion": "Explosion",
   "disaster.blackout": "Blackout",
   "disaster.contamination": "Contamination",
-
   "terrain.grass": "Grass",
   "terrain.forest": "Forest",
   "terrain.water": "Water",
   "terrain.shallow": "Shallow water",
   "terrain.ground": "Ground",
-
   "band.good": "good",
   "band.fair": "fair",
   "band.severe": "severe",
   "band.none": "not applicable",
-
   "inspect.terrain": "Terrain",
   "inspect.zone": "Zone",
   "inspect.road": "Road",
@@ -244,7 +222,6 @@
   "inspect.fireRisk": "Fire risk",
   "inspect.healthRisk": "Health risk",
   "inspect.traffic": "Traffic",
-
   "hud.map": "City map — arrow keys pan, Q and E rotate, plus and minus zoom",
   "overlay.auto": "Auto",
   "overlay.auto.idle": "follows your tool",
@@ -255,7 +232,6 @@
   "skin.clean": "Modern clean",
   "skin.retro": "Retro",
   "skin.dark": "Dark",
-
   "hud.demand": "Demand",
   "hud.alerts": "Alerts",
   "hud.tools": "Tools",
@@ -272,17 +248,14 @@
   "hud.slot.hint": "Click to save · Shift-click to load",
   "hud.slot.summary": "Year {year}, {count} residents",
   "hud.slot.empty": "Empty · click to save",
-
   "speed.paused": "Paused",
   "speed.play": "Play",
   "speed.fast": "Fast",
-
   "street.enter": "Street view",
   "street.leave": "Back to the city",
   "street.enter.hint": "Walk the street at eye height (F). WASD walks, Shift runs, drag looks.",
   "street.leave.hint": "Back to the city view (Escape).",
   "street.noStreet": "There is no street here to stand on.",
-
   "photo.enter": "Photo mode",
   "photo.leave": "Leave photo mode",
   "photo.enter.hint": "Free camera for framing a shot (P). WASD flies, Shift is faster, drag looks.",
@@ -291,7 +264,6 @@
   "photo.save.hint": "Save this frame as a picture on your device.",
   "photo.saved": "Picture saved.",
   "photo.saveFailed": "The picture could not be saved.",
-
   "camera.pan": "Move",
   "camera.pan.hint": "Move the view. Arrow keys, or hold a button on the pad.",
   "camera.pad.walk": "Walk",
@@ -311,23 +283,32 @@
   "camera.home.hint": "Bring the whole city into view (Home).",
   "camera.hand": "Hand",
   "camera.hand.hint": "Hold H, or press this, to drag the map with a tool in hand.",
+  "settings.edgeScroll": "Edge scrolling",
+  "settings.edgeScroll.on": "On",
+  "settings.edgeScroll.off": "Off",
+  "settings.controlsCard": "Show the controls card",
+  "settings.controlsCard.on": "Show it once more",
+  "settings.controlsCard.off": "Do not show it",
+  "controls.title": "Moving around",
+  "controls.dismiss": "Got it — don't show this again",
+  "controls.reopen": "You can bring this back from Settings.",
+  "controls.mouse.left": "Left drag",
+  "controls.mouse.right": "Right drag",
+  "controls.mouse.both": "Both buttons",
+  "controls.mouse.hand": "H + left drag",
   "camera.cluster": "Camera",
   "camera.open": "Camera controls",
   "photo.bar": "Photo mode controls",
-
   "funding.fire": "Fire",
   "funding.police": "Police",
   "funding.health": "Health",
   "funding.lean": "Lean ({percent}%)",
   "funding.normal": "Normal ({percent}%)",
   "funding.generous": "Generous ({percent}%)",
-
   "budget.tax": "Tax",
   "budget.rate": "{rate}%",
   "budget.books": "Income {income} · Upkeep {expenses} · Net {net}",
-
   "advisor.more": "{count} more underway",
-
   "status.noStorage": "Saving is unavailable in this browser",
   "status.saved": "Saved to {slot}",
   "status.slotEmpty": "Nothing in {slot}",
@@ -335,7 +316,6 @@
   "status.loadFailed": "Could not load: {reason}",
   "status.importFailed": "Could not import: {reason}",
   "status.imported": "Imported",
-
   "menu.help": "Controls",
   "help.tools": "Tools",
   "help.camera": "Camera",
@@ -350,10 +330,8 @@
   "help.rightDrag": "Right drag turns and tilts the view; middle drag moves it. Both work with a tool in hand.",
   "help.tapInspect": "With no tool selected, click or tap anything to see why it is the way it is.",
   "help.minimapClick": "Click or drag the small map to move the view there.",
-
   "menu.newCity": "New city",
   "menu.newCity.confirm": "Leave this city and start a new one? Anything since your last save is lost.",
-
   "lobby.group.place": "Where you build",
   "lobby.group.play": "How hard it is",
   "lobby.begin": "Your city",
@@ -373,11 +351,9 @@
   "lobby.region.none": "No region here",
   "lobby.region.problem": "That combination has no room for a city ({reason}). Try another region, or different water.",
   "lobby.region.facts": "{buildable}% buildable · {water}% water · {forest}% forest",
-
   "difficulty.relaxed.hint": "More money, gentler disasters",
   "difficulty.steady.hint": "The balance the game is tuned around",
   "difficulty.demanding.hint": "Less money, dearer building, frequent disasters",
-
   "region.plain.open": "The Open Flats",
   "region.plain.wooded": "The Timberlands",
   "region.plain.rocky": "The Stonefields",
@@ -403,7 +379,6 @@
   "region.valley.rocky": "The Stone Valley",
   "region.valley.sandy": "The Dust Valley",
   "region.valley.watered": "The River Valley",
-
   "quest.first-road.title": "Somewhere to drive",
   "quest.first-road.text": "Right! Nobody has ever moved to a field. Lay some road and we will have somewhere to put the houses beside.",
   "quest.first-zone.title": "Room for people",
@@ -446,13 +421,10 @@
   "quest.the-crime-wave.text": "Three break-ins on the same street and the rest of the district has noticed. Crime follows empty pockets and thin policing, and it drags land value down with it. Get it back under control.",
   "quest.after-the-wreckage.title": "After the wreckage",
   "quest.after-the-wreckage.text": "It is over, and it left a mess. Ruined ground stays ruined until somebody clears it — nothing will build there and nothing will grow there. Take the bulldozer through it and we start again.",
-
   "menu.statistics": "Statistics",
-
   "hud.minimap": "Region map — click to move the view",
   "hud.minimap.hide": "Hide map",
   "hud.minimap.show": "Show map",
-
   "stat.noHistory": "This city has barely any history yet. The graphs fill in a month at a time.",
   "stat.population": "Residents",
   "stat.population.about": "How many people live here. Homes fill only where there is power, water and a road.",
@@ -474,11 +446,14 @@
   "stat.demandC.about": "How much commerce wants to open here. It follows residents with money to spend.",
   "stat.demandI": "Industry demand",
   "stat.demandI.about": "How much industry wants to build here. It follows jobs the city cannot yet supply.",
-
   "stat.verdict.tooSoon": "Not enough history to say yet.",
   "stat.verdict.steady": "Steady over the last {months} months.",
   "stat.verdict.rising": "Up {change}% over the last {months} months.",
   "stat.verdict.falling": "Down {change}% over the last {months} months.",
   "stat.verdict.better": "Better: {change}% in the right direction over {months} months.",
-  "stat.verdict.worse": "Worse: {change}% in the wrong direction over {months} months."
+  "stat.verdict.worse": "Worse: {change}% in the wrong direction over {months} months.",
+  "controls.mouse.walk": "Left / right button",
+  "controls.walk": "Walk or fly, in the street and in photo mode",
+  "controls.mouse.move": "Move the mouse",
+  "controls.look": "Look around — nothing to hold"
 }

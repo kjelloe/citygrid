@@ -22,6 +22,12 @@ cannot move. Where does the camera live?
    right orbits, both together dolly; a hand (the cluster, or `Space` held) makes left pan with a
    tool in hand. Street and photo: left held walks forward in the look direction, right held
    walks back, both run; movement while held looks. Middle pans everywhere.
+   **Amended in K3 (2026-09-11, A58):** the hand is `H`, not `Space` — Space pauses, and taking
+   the most-used key in the game to disambiguate a rare pan would degrade the common control to
+   serve the rare one. And in the street and in photo mode **movement looks whether or not
+   anything is held**, through Pointer Lock; drag-look remains the path where the browser refuses
+   the lock, which a cross-origin frame always does. `looksNow()` in `client/input/buttons.js` is
+   the one place that decides which, and `?lock=0` refuses the lock so both can be gated.
 3. **Held is a rate, per second, scaled by `dt`** — a key, a button or a mouse button held for a
    second moves the same distance at any frame rate (D7's rule applied to input).
 4. **The four snapped yaws are where Q, E and the compass land**, not where the camera is
@@ -44,4 +50,8 @@ the card from `TOOLS`.
 - `test/input.test.js` — button state → intent per mode, and held input is a rate at two `dt`s
 - `tools/ui_smoke.mjs`, `tools/play_smoke.mjs` — every button pressed on both viewports and the
   camera or the walker read afterwards; the phone's chrome share measured
-- `tools/reach_smoke.mjs` — the cluster is clickable and, closed, eats nothing (029)
+- `tools/reach_smoke.mjs` — the cluster is clickable and, closed, eats nothing (029), and the
+  first-run controls card does not persist over the map
+- `test/buttons.test.js` — every button combination in every mode, and both look paths
+- `test/controls-card.test.js` — the card's strings exist in both catalogues, it can be put away
+  for good and brought back, and every camera button has a glyph of its own

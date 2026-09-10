@@ -80,6 +80,25 @@ export const SOUND = [
   { value: false, labelKey: "settings.sound.off" },
 ];
 
+/** Edge scrolling: the pointer at the canvas edge pans (K3, A59).
+ *
+ * **On by default**, which is Kjell's answer rather than Q82's assumption — he
+ * asked for "edge scrolling when using mouse", so the row is an OFF switch for
+ * the case that made it a question at all: it fights a trackpad, where the
+ * pointer reaches the edge on the way to somewhere else. */
+export const EDGE_SCROLL = [
+  { value: true, labelKey: "settings.edgeScroll.on" },
+  { value: false, labelKey: "settings.edgeScroll.off" },
+];
+
+/** The first-run controls overlay (K3, A58). Shown once, dismissed with "don't
+ * show this again", and brought back from here — which is the half of Kjell's
+ * answer that is easy to leave out and impossible to discover without. */
+export const CONTROLS_CARD = [
+  { value: true, labelKey: "settings.controlsCard.on" },
+  { value: false, labelKey: "settings.controlsCard.off" },
+];
+
 /** Four steps rather than a slider: a range input is a poor keyboard target
  * and the difference between 62 and 68 is not a difference anyone hears. */
 export const LEVELS = [
@@ -101,6 +120,8 @@ export const SETTING_ROWS = [
   { field: "locale", labelKey: "settings.language", choices: LANGUAGES },
   { field: "contrast", labelKey: "settings.highContrast", choices: CONTRAST },
   { field: "motion", labelKey: "settings.reducedMotion", choices: MOTION },
+  { field: "edgeScroll", labelKey: "settings.edgeScroll", choices: EDGE_SCROLL },
+  { field: "controlsCard", labelKey: "settings.controlsCard", choices: CONTROLS_CARD },
 ];
 
 /** `deviceClassName` comes from `capabilities.js`, which touches `navigator`;
@@ -126,6 +147,13 @@ export function defaultSettings(locale = "en", deviceClassName = "desktop", coar
     volumeEffects: 70,
     volumeAmbience: 35,
     skin: DEFAULT_SKIN,
+    // On for a mouse and off for a finger: a coarse pointer has no hover, so
+    // there is nothing to rest against an edge — touch gets the border pull
+    // instead, which needs no setting because it is a drag like any other.
+    edgeScroll: !coarsePointer,
+    // Shown until it is dismissed. `true` means "there is still something to
+    // show", so a fresh browser gets the card and a returning player does not.
+    controlsCard: true,
   };
 }
 
@@ -150,6 +178,8 @@ export function sanitiseSettings(given = {}, locale = "en", deviceClassName = "d
     volumeEffects: pick(LEVELS, given.volumeEffects, base.volumeEffects),
     volumeAmbience: pick(LEVELS, given.volumeAmbience, base.volumeAmbience),
     skin: isSkin(given.skin) ? given.skin : base.skin,
+    edgeScroll: pick(EDGE_SCROLL, given.edgeScroll, base.edgeScroll),
+    controlsCard: pick(CONTROLS_CARD, given.controlsCard, base.controlsCard),
   };
 }
 

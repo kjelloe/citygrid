@@ -5179,7 +5179,7 @@ keyboard pattern that did nothing for nine slices. `play_smoke`: the phone's chr
 390×844 against the playtest's 41% ceiling**, the cluster contributing `44×44` because it collapses
 to one button (ruling 042 §5).
 
-## slice-K3 (part) — the two mouse buttons (2026-09-11)
+## slice-K3 (part one) — the two mouse buttons (2026-09-11)
 
 Ruling 042 §2, and the thing Kjell asked for by name in P59. A mouse-only player could not move in
 the street at all — the mouse looked and the keyboard walked — and in the city the only pan with a
@@ -5245,3 +5245,99 @@ defect); the wheel holds the ground to 0.08 and 0.15 tiles; the hand pans with a
 **Not done in this part**, and named rather than left implied: Pointer Lock with the drag-look
 fallback and the first-run overlay (A58), edge scrolling with the touch border-pull (A59), and the
 cluster's hand button. The table, the buttons, the dolly, the anchoring and the hand key are in.
+
+## slice-K3 (part two) — free look, the card and the edge (2026-09-11)
+
+The rest of ruling 042 §2 and the two answers Kjell gave with it: **A58**, looking without a held
+button plus a first-run overlay, and **A59**, edge scrolling for a mouse with a border pull for a
+finger. The hand button the cluster had been missing came with them.
+
+**Looking needs nothing held, where the browser allows it.** `looksNow(mode, buttons, { locked })`
+in `client/input/buttons.js` is the whole decision, and it is pure: locked, any pointer movement
+turns the view; unlocked, it is the drag-look Q43 chose. The controller asks for Pointer Lock
+inside the gesture that entered the mode — the only moment it can be asked for — and again on a
+click, so a player who pressed Escape gets it back the way every first-person page works. One
+expression reads the delta both ways, `movementX` when locked and the difference from the last
+event when not, because a locked pointer has no `offsetX` at all and a drag path reading it would
+have turned by exactly zero, forever, in silence.
+
+**A first-run card, because a scheme with no buttons has nothing to discover.**
+`client/ui/controls-card.js` derives its rows from `CAMERA_BUTTONS` plus the four gestures the
+table cannot carry, has exactly one button — the "don't show this again" Kjell asked for by name —
+and a settings row to bring it back. Making that row work took a second edit: `hudOptions` is
+reused on every HUD rebuild, so a captured `showControlsCard` would have shown the card again after
+a language change and never again after a dismissal. It is a getter now, and turning the row back
+on rebuilds the HUD at once rather than at the next boot, which is the ruling 026 failure the
+quality tier already avoids.
+
+**Edge scrolling, ramped rather than binary.** `client/input/edge.js`: a band that is 4% of the
+shorter canvas axis, capped between 12 and 64 px so it feels the same on a laptop and a 4K panel;
+a pointer one pixel inside it barely moves and one against the frame moves at `PAN_SECONDS`, the
+cluster's own rate; zero outside the canvas, because a browser reporting a stale position while the
+player is in another window must not pan the city for a minute. Touch gets `isBorderPull()`
+instead — it is the START of the drag that decides, once, so it cannot steal a one-finger pan or a
+drag-paint that happens to begin near the frame. That half was nearly shipped as a module nobody
+called: `isBorderPull` was imported, `borderPull` was set to `false` in two places and set to true
+in none. The omissions sweep on the slice caught it. It is wired now, in `handle()`, where a paint
+intent from a border-started touch drag becomes a pan — which is the same gap the hand fills for a
+mouse, and the reason Kjell asked for a pull rather than an edge band a finger cannot rest against.
+
+### Five findings, and one of them was not about this slice
+
+**`?lock=0` did nothing, and the reason was much larger than the flag.** `game.js` read the quality
+tier, the projection, the hour and `life` off `options` — which is the WORLD GENERATION record,
+seed and size and seats, and has never carried a preference in its life. Every one of them fell
+back to a default. A player whose settings said Low and orthographic booted High and perspective,
+and only opening the settings panel put it right, because that path calls `setQuality` and
+`setProjection` directly. Found by trying to add a fifth flag beside them. Now `given.*`, and
+`play_smoke` stores a preference, reloads, and asserts the boot honoured it: **tier "low",
+projection "ortho"**.
+
+**A test was pinning the broken line.** `test/render.test.js` asserted the source matched
+`life: stillness ? false : options.life` — the exact text of the defect — so the suite had been
+green over it since R2. This is the second time in two days that a test written as a transcription
+of a line has protected what the line got wrong. It now names `given` and checks the other three
+fields with it.
+
+**`hideGhost()` was called where nothing defines it.** Two bare calls in `controller.js`, in the
+hand's pointer path and in `setHand`, where the name is `renderer.hideGhost`. A `ReferenceError`
+every time the hand went down — the ghost stayed on screen and the cluster's button never learned
+the hand was on. `node --check` is syntax-only and `controller.js` cannot be imported by node, so
+the suite could not see it; the browser gate's `pageerror` hook is what said it out loud. Third
+time this blind spot has cost something (`loadSettings` in R2, `viewport` in `play_smoke`).
+
+**Playwright cannot drive a page that holds the pointer.** `locator.boundingBox()` resolves the
+element, reports it visible, and never returns; with the lock actually granted the gate hung twice
+for fifteen minutes in a section nowhere near the change. So **every browser gate boots with
+`?lock=0`** — `reach_smoke` found this the hard way, hanging on a click on the photo button after
+photo mode had taken the pointer — and the locked path is a pass of its own, with nothing else in
+it — which is also why the
+fallback needed a lever at all: a click asks for the lock back, so on a browser that grants it the
+drag path is unreachable from outside. `?lock=0` is the same shape as `?life=0`.
+
+And the locked pass is the one place in this gate that **dispatches** an event rather than driving
+one. A locked pointer reports its motion only in `movementX`, and Playwright's mouse API cannot set
+it: `page.mouse.move` in a locked page arrives with movement 0 and turns nothing, which is exactly
+what the first run of the check reported — a green-looking control that had never moved. The
+dispatched `pointermove` still goes through the page's own listener, the real controller and the
+real walker; only the two numbers on it are the gate's. Worth naming, because a gate that fakes an
+event is normally the failure this project measures against.
+
+**The card covered the map.** `reach_smoke`: four build controls under it and 195 of 403 sampled
+points taking no click. It should be prominent — it is the discovery surface for a scheme with no
+buttons — but it must not persist, so the ten gates that boot a city dismiss it immediately after
+`CITY` appears. And the hand button shipped in part one as `•`, because `buttonsFor()` gave the
+cluster a button the glyph map had no entry for: on screen, reachable, labelled, and silent.
+`test/controls-card.test.js` walks the map against `CAMERA_BUTTONS` now.
+
+**Measured.** Suite green twice, 1,193 tests. `play_smoke` green: **locked, the mouse turns the
+street camera 1.200 rad with nothing held** (yaw 4.712 → 3.512) after the pass proved it was
+standing in a street with 48 tiles paved; drag-look turns it **0.900 rad** (yaw −1.571 → 3.812)
+with the lock refused, on both desktop rows; a finger pulling from the left border pans **3.98
+tiles** and builds **nothing** (13 road tiles before and after) with the road tool in hand; the
+pointer resting at the left edge pans **3.12 tiles in 0.5 s**, and **0.000 tiles** with the
+settings row off — no reload, since the controller re-reads the preference every frame; the boot
+honours a stored **low** tier and **ortho** projection. `gates.mjs quick` green, 11 of 11, **349 s
+of a 480 s budget** (ui_smoke 113 s, play_smoke 64 s, reach_smoke 45 s).
+
+**Next:** K2 — held keys move at a rate — then K4 and K5.

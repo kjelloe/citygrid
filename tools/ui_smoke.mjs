@@ -151,8 +151,9 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
   page.on("pageerror", (error) => problems.push(`page error — ${error.message}`));
-  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   const city = await buildCity(page);
   check("the fixture city is worth photographing", !city.reason && city.buildings > 2,
@@ -498,8 +499,9 @@ try {
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const phonePage = await phone.newPage();
   phonePage.on("pageerror", (error) => problems.push(`phone page error — ${error.message}`));
-  await phonePage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await phonePage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
   await phonePage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await phonePage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   await buildCity(phonePage);
   await phonePage.waitForTimeout(200);
   const fits = await phonePage.evaluate(() => ({
@@ -529,8 +531,9 @@ try {
   const clusterContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const clusterPage = await clusterContext.newPage();
   clusterPage.on("pageerror", (error) => problems.push(`cluster: ${error.message}`));
-  await clusterPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await clusterPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
   await clusterPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await clusterPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   const readView = () => clusterPage.evaluate(() => {
     const v = globalThis.CITY.renderer.view;
@@ -605,8 +608,9 @@ try {
   });
   const photoPage = await photoContext.newPage();
   photoPage.on("pageerror", (error) => problems.push(`photo: ${error.message}`));
-  await photoPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await photoPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
   await photoPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await photoPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   await photoPage.click("#camera-photo");
   const inPhoto = await photoPage.evaluate(() => ({
     mode: globalThis.CITY.renderer.view.mode,

@@ -76,8 +76,9 @@ const PROBE = "/client/ui/hud.js";
 try {
   const context = await browser.newContext({ viewport: { width: 1000, height: 700 } });
   const page = await context.newPage();
-  await page.goto(`${base}/index.html?seed=91&size=32`);
+  await page.goto(`${base}/index.html?seed=91&size=32&lock=0`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null,
     undefined, { timeout: 60000 });
 

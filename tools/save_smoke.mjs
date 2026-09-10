@@ -96,7 +96,7 @@ const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
-const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64`;
+const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`;
 
 try {
   // One CONTEXT throughout: it owns the origin's storage. Closing the context
@@ -108,6 +108,7 @@ try {
   first.on("pageerror", (e) => problems.push(`session 1 — ${e.message}`));
   await first.goto(url);
   await first.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await first.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   const built = await first.evaluate(BUILD);
   check("the fixture city is worth saving", !built.reason && built.buildings > 2,
@@ -133,6 +134,7 @@ try {
   second.on("pageerror", (e) => problems.push(`session 2 — ${e.message}`));
   await second.goto(url);
   await second.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await second.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   // Stop the clock FIRST. Every hash below is compared against one taken in
   // another session, and a tick landing between a load and its hash makes this

@@ -1286,3 +1286,35 @@ button, [role="button"] {
   .camera-pad { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); }
   .camera-rest { grid-template-columns: repeat(2, 44px); }
 }
+
+
+/* The first-run controls card (K3, A58). Centred, above the city, with one
+   button — it is read once and put away for good. */
+.controls-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  max-width: min(30rem, 90vw);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 1rem 1.2rem;
+  border-radius: 12px;
+  background: var(--panel, rgba(20, 22, 26, 0.96));
+  color: var(--fg, #e8e6e1);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.15));
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+.controls-card h2 { margin: 0 0 0.6rem; font-size: 1.1rem; }
+.controls-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.9rem;
+  margin: 0 0 0.8rem;
+}
+.controls-card dt { font-weight: 600; white-space: nowrap; }
+.controls-card dd { margin: 0; }
+.controls-note { margin: 0 0 0.8rem; opacity: 0.75; font-size: 0.9em; }
+.controls-dismiss { min-height: 44px; width: 100%; }

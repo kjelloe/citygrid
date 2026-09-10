@@ -6,7 +6,16 @@
 |---|---|---|---|
 | city | orthographic, `span` zoom | pan, wheel zoom, Q/E snapped yaw, right-drag orbit 12-82° | yes (ruling 006) |
 | tilt | perspective, same orbit target and yaw, pitch down to 12° | same inputs; zoom moves the eye along the view ray | V5, Q25 |
-| street | perspective at 1.62-1.7 m eye height, drag-look, WASD | walk with collision; touch: tap-to-walk | yes (E4) |
+| street | perspective at 1.62-1.7 m eye height, free look, WASD | walk with collision; touch: tap-to-walk | yes (E4) |
+| photo | perspective, free camera anywhere over the map | free look, WASD and the mouse buttons | yes (F1) |
+
+**Free look is Pointer Lock, with drag-look as the fallback (K3, A58, 2026-09-11).** In the street
+and in photo mode the pointer is taken on the gesture that entered the mode, and the mouse then
+looks with nothing held; the left and right buttons walk forward and back, both together run. The
+lock needs a user gesture and is refused outright in a cross-origin frame, so `looksNow()` in
+`client/input/buttons.js` also answers for the unlocked case and the drag still looks. `?lock=0`
+refuses the lock on purpose, which is how `play_smoke` drives both paths — the second desktop row
+boots with it.
 
 `view` in `camera.js` has `mode`, keeps `targetX/targetZ/yaw/pitch/span`, and the tilt camera
 derives its distance from `span` so switching projection does not jump. The four snapped yaws

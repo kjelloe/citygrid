@@ -43,6 +43,7 @@ function serve() {
 const problems = [];
 const checks = [];
 function check(name, condition, detail = "") {
+  if (process.env.PLAY_TRACE) process.stderr.write(`… ${name}\n`);
   checks.push({ name, ok: Boolean(condition), detail });
   if (!condition) problems.push(`${name}${detail ? ` — ${detail}` : ""}`);
 }
@@ -162,6 +163,59 @@ async function run(page, label, { touch, mode }) {
   const distance = Math.hypot(panned.x - before.targetX, panned.z - before.targetZ);
   check(`${label}: dragging with no tool pans the camera`, distance > 1,
     `moved ${distance.toFixed(2)} tiles from (${before.targetX}, ${before.targetZ})`);
+
+  // --- a finger pulling from the border pans (K3, A59) -----------------------
+  //
+  // Kjell: "on touch devices, pull and drag from the border to move". With a
+  // tool in hand a one-finger drag paints, so before this a finger had no way
+  // to pan while building — the same gap the hand fills for a mouse. It is the
+  // START of the drag that decides, so this also has to leave a drag-paint
+  // begun in the middle alone, which the check below it proves by the road
+  // count staying put.
+  if (touch) {
+    await page.click('#tools button[data-tool="road"]');
+    const beforePull = await page.evaluate(() => ({
+      x: globalThis.CITY.renderer.view.targetX,
+      z: globalThis.CITY.renderer.view.targetZ,
+      roads: globalThis.CITY.state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0),
+    }));
+    const box = await page.evaluate(() => {
+      const r = document.getElementById("city").getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+    // Six pixels in: inside the band on any viewport this gate drives.
+    //
+    // **Through CDP, not a dispatched event.** A constructed `PointerEvent`
+    // carries a pointer id the browser has no record of, so the controller's
+    // own `setPointerCapture` throws on it — which is a gate defect, not a
+    // game one, and it reported the pan as 0.00 tiles because the exception
+    // came before the recogniser saw the press. `Input.dispatchTouchEvent` is
+    // a real touch as far as the page is concerned.
+    const cdp = await page.context().newCDPSession(page);
+    const x0 = box.x + 6;
+    const y0 = box.y + box.height / 2;
+    const touch = (type, x) => cdp.send("Input.dispatchTouchEvent", {
+      type,
+      touchPoints: type === "touchEnd" ? [] : [{ x, y: y0, id: 1 }],
+    });
+    await touch("touchStart", x0);
+    for (let i = 1; i <= 6; i += 1) await touch("touchMove", x0 + i * 20);
+    await touch("touchEnd", x0 + 120);
+    const pull = await page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(r));
+      return {
+        x: globalThis.CITY.renderer.view.targetX,
+        z: globalThis.CITY.renderer.view.targetZ,
+        roads: globalThis.CITY.state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0),
+      };
+    });
+    const pulled = Math.hypot(pull.x - beforePull.x, pull.z - beforePull.z);
+    check(`${label}: a drag from the border pans with a tool in hand`, pulled > 1,
+      `moved ${pulled.toFixed(2)} tiles`);
+    check(`${label}: and the border pull builds nothing`, pull.roads === beforePull.roads,
+      `${beforePull.roads} road tiles -> ${pull.roads}`);
+    await page.evaluate(() => globalThis.CITY.controller.setTool(undefined));
+  }
 
   // --- the ground has a shape now (V4, ruling 038) ---------------------------
   //
@@ -395,6 +449,36 @@ async function run(page, label, { touch, mode }) {
     const after = await page.evaluate(() => ({ ...globalThis.CITY.renderer.walker.pose }));
     const stepped = Math.hypot(after.x - walked.before.x, after.z - walked.before.z);
     check(`${label}: W walks`, stepped > 0.1, `moved ${stepped.toFixed(2)} m in 0.4 s`);
+
+    // --- looking without the lock (K3, A58) ----------------------------------
+    //
+    // Drag-look is the fallback, and it is what an embedded page and a browser
+    // that refuses the lock get. Every row here boots with `?lock=0` so the
+    // rest of the gate can keep clicking — see the note at the loop — which
+    // makes this the fallback path by construction. The LOCKED path is a pass
+    // of its own, after the loop.
+    if (!touch) {
+      if (process.env.PLAY_TRACE) process.stderr.write(`~ ${label}: drag-look block (touch=${touch})\n`);
+      const turned = (a, b) => Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a)));
+      const yawNow = () => page.evaluate(() => globalThis.CITY.renderer.walker.pose.yaw);
+      const box = await page.evaluate(() => {
+        const r = document.getElementById("city").getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      });
+      const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const locked = await page.evaluate(() => globalThis.CITY.controller.pointerLocked === true);
+      check(`${label}: ?lock=0 leaves the pointer free`, !locked,
+        locked ? "locked anyway" : "unlocked, as asked");
+      const yawA = await yawNow();
+      await page.mouse.move(centre.x, centre.y);
+      await page.mouse.down();
+      await page.mouse.move(centre.x + 90, centre.y, { steps: 6 });
+      await page.mouse.move(centre.x + 180, centre.y, { steps: 6 });
+      await page.mouse.up();
+      const yawB = await yawNow();
+      check(`${label}: and drag-look turns the view without the lock`, turned(yawA, yawB) > 0.05,
+        `yaw ${yawA.toFixed(3)} -> ${yawB.toFixed(3)} (${turned(yawA, yawB).toFixed(3)} rad)`);
+    }
 
     await page.keyboard.press("Escape");
     const left = await page.evaluate(() => globalThis.CITY.renderer.view.mode);
@@ -645,6 +729,10 @@ try {
   // orthographic camera proves half a promise: everything below — the drag, the
   // undo, the rectangle, the orbit — runs through picking and panning, and
   // those are the two things that stop being a constant under perspective.
+  // **Every row boots with `?lock=0`.** Playwright cannot work a page that has
+  // taken the pointer: `locator.boundingBox()` resolves the element, reports it
+  // visible and never returns, and this gate enters the street four times. The
+  // locked path gets a pass of its own below, where nothing else runs (A58).
   for (const [label, viewport, touch, mode] of [
     ["desktop", { width: 1280, height: 720 }, false, "ortho"],
     ["desktop perspective", { width: 1280, height: 720 }, false, "city"],
@@ -654,10 +742,11 @@ try {
     const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
     const page = await context.newPage();
     page.on("pageerror", (error) => problems.push(`${label}: page error — ${error.message}`));
-    await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+    await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
     // Expose three's Vector3 for the tile→pixel helper, using the very module
     // the page already loaded rather than a second copy.
     await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+    await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
     await page.evaluate(async (wanted) => {
       const THREE = await import("/vendor/three.module.js");
       globalThis.THREE_VEC = THREE.Vector3;
@@ -667,12 +756,166 @@ try {
     await context.close();
   }
 
+  // --- the locked look (K3, A58) ---------------------------------------------
+  //
+  // A pass of its own, with nothing else in it. Pointer Lock is what Kjell's
+  // "freelook without buttons" means where the browser grants it, and it has to
+  // be driven rather than asserted from the source — but a locked page cannot
+  // be worked with Playwright's element machinery at all, so the loop above
+  // runs unlocked and this pass does one thing and closes.
+  {
+    const lockCtx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const lockPage = await lockCtx.newPage();
+    lockPage.on("pageerror", (error) => problems.push(`locked look: page error — ${error.message}`));
+    await lockPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+    await lockPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+    await lockPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    // Pave something to stand on, then enter through the real key so the lock
+    // is asked for inside a user gesture — which is the only moment it can be.
+    const paved = await lockPage.evaluate(async () => {
+      const { apply } = await import("/engine/reducer.js");
+      const C = await import("/engine/commands.js");
+      const state = globalThis.CITY.state;
+      const W = state.width;
+      const y = Math.round(W / 2);
+      // The same recipe the rows above use — run-length pairs, not an object,
+      // which is the shape `CMD_PLACE_ROAD` actually takes — and the view moved
+      // onto the pavement, because `enterStreet` stands where the camera looks.
+      apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [y * W + 8, W - 16] });
+      globalThis.CITY.renderer.worldChanged();
+      const { focusOn } = await import("/client/render/camera.js");
+      focusOn(globalThis.CITY.renderer.view, W / 2, y + 0.5);
+      return state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0);
+    });
+    check("locked: the pass has a street to stand in", paved > 10, `${paved} tiles paved`);
+    // A beat for the renderer to take the new road into its own model: the
+    // walker stands on the renderer's ground, not on the state's, and
+    // `enterStreet` refuses a tile whose chunk has not been rebuilt yet.
+    await lockPage.waitForTimeout(600);
+    await lockPage.evaluate(() => document.getElementById("city").focus());
+    await lockPage.keyboard.press("f");
+    const street = await lockPage.evaluate(() => globalThis.CITY.renderer.view.mode);
+    check("locked: the gate reaches the street it means to look from", street === "street",
+      street === "street" ? "in the street" : `in "${street}" mode, so nothing below tested the lock`);
+    const locked = await lockPage.evaluate(() => globalThis.CITY.controller.pointerLocked === true);
+    if (street === "street" && locked) {
+      const yawOf = () => lockPage.evaluate(() => globalThis.CITY.renderer.walker.pose.yaw);
+      const before = await yawOf();
+      // **Dispatched, not driven.** Everything else in this gate uses real
+      // pointer events, and this one cannot: a locked pointer reports its
+      // motion only in `movementX`, and Playwright's mouse API has no way to
+      // set it — `page.mouse.move` in a locked page arrives with movement 0 and
+      // turns nothing, which is what the first run of this check reported. The
+      // event still goes through the page's own listener, the real controller
+      // and the real walker; only the two numbers on it are ours.
+      await lockPage.evaluate(() => {
+        const canvas = document.getElementById("city");
+        for (let i = 0; i < 2; i += 1) {
+          canvas.dispatchEvent(new PointerEvent("pointermove", {
+            bubbles: true, pointerType: "mouse", buttons: 0,
+            movementX: 120, movementY: 0, clientX: 760, clientY: 360,
+          }));
+        }
+      });
+      const after = await yawOf();
+      const turned = Math.abs(Math.atan2(Math.sin(after - before), Math.cos(after - before)));
+      check("locked: the mouse looks with nothing held", turned > 0.05,
+        `yaw ${before.toFixed(3)} -> ${after.toFixed(3)} (${turned.toFixed(3)} rad)`);
+    } else if (street === "street") {
+      // Not a failure, and not silence either: a refused lock is the case the
+      // fallback exists for, and the gate has to say which path it ran.
+      check("locked: the lock was refused, so the fallback is what a player gets", true,
+        "no pointer lock in this browser or context");
+    }
+    await lockPage.evaluate(() => document.exitPointerLock?.());
+    await lockCtx.close();
+  }
+
+  // --- the edge of the canvas pans (K3, A59) ---------------------------------
+  //
+  // Kjell: "edge scrolling when using mouse". It is a frame-rate-scaled rate,
+  // not a jump, so the assertion is that resting the pointer against the frame
+  // for half a second MOVES the view — and that the settings row turns it off,
+  // because a control that cannot be turned off is what made this a question.
+  {
+    const edgeCtx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const edgePage = await edgeCtx.newPage();
+    edgePage.on("pageerror", (error) => problems.push(`edge scroll: page error — ${error.message}`));
+    await edgePage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+    await edgePage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+    await edgePage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    const targetNow = () => edgePage.evaluate(() => ({
+      x: globalThis.CITY.renderer.view.targetX, z: globalThis.CITY.renderer.view.targetZ,
+    }));
+    const restAtEdge = async () => {
+      // Well inside the canvas first, so the move onto the band is a move and
+      // the browser has a previous position to report.
+      await edgePage.mouse.move(640, 360);
+      await edgePage.mouse.move(6, 360);
+      await edgePage.waitForTimeout(500);
+    };
+    const before = await targetNow();
+    await restAtEdge();
+    const after = await targetNow();
+    const moved = Math.hypot(after.x - before.x, after.z - before.z);
+    check("the pointer at the edge pans the view", moved > 0.5,
+      `moved ${moved.toFixed(2)} tiles in 0.5 s at the left edge`);
+
+    // And off. The controller re-reads the preference every frame, so this
+    // needs no reload — which is the point of reading it every frame.
+    await edgePage.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem("citygrid.settings") ?? "{}");
+      localStorage.setItem("citygrid.settings", JSON.stringify({ ...stored, edgeScroll: false }));
+    });
+    const beforeOff = await targetNow();
+    await restAtEdge();
+    const afterOff = await targetNow();
+    const movedOff = Math.hypot(afterOff.x - beforeOff.x, afterOff.z - beforeOff.z);
+    check("and the settings row turns it off without a reload", movedOff < 0.01,
+      `moved ${movedOff.toFixed(3)} tiles with edgeScroll off`);
+    await edgeCtx.close();
+  }
+
+  // --- the boot reads the player's settings (omissions sweep, K3) ------------
+  //
+  // Found through `?lock=0` doing nothing: `game.js` read the tier, the
+  // projection, the hour and `life` off the WORLD options record, which never
+  // carried them, so every one fell back to a default and only the settings
+  // panel could put it right. A stored preference has to survive a reload, and
+  // nothing in the suite could see this — the defaults are what a gate boots
+  // with, so a gate that never stores anything measures the fallback.
+  {
+    const prefCtx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const prefPage = await prefCtx.newPage();
+    prefPage.on("pageerror", (error) => problems.push(`settings boot: page error — ${error.message}`));
+    await prefPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+    await prefPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+    await prefPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    await prefPage.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem("citygrid.settings") ?? "{}");
+      localStorage.setItem("citygrid.settings",
+        JSON.stringify({ ...stored, quality: "low", camera: "ortho", time: "night" }));
+    });
+    await prefPage.reload();
+    await prefPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+    await prefPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    const booted = await prefPage.evaluate(() => ({
+      tier: globalThis.CITY.renderer.tier,
+      mode: globalThis.CITY.renderer.view.mode,
+      night: globalThis.CITY.renderer.stats?.night,
+    }));
+    check("the boot honours the stored quality tier", booted.tier === "low", `booted "${booted.tier}"`);
+    check("the boot honours the stored projection", booted.mode === "ortho", `booted "${booted.mode}"`);
+    await prefCtx.close();
+  }
+
   // --- and the city grows ---------------------------------------------------
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
   page.on("pageerror", (error) => problems.push(`growth: page error — ${error.message}`));
   await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const grew = await page.evaluate(async () => {
     const { state, renderer } = globalThis.CITY;
     const { apply } = await import("/engine/reducer.js");

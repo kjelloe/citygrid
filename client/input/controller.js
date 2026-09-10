@@ -19,7 +19,8 @@ import { RESULT } from "../../shared/protocol.js";
 import { pickTile, groundPoint } from "../render/picking.js";
 import { panBy, zoomBy, rotate, yawBy, pitchBy, clampToMap, applyPose, focusOn } from "../render/camera.js";
 import { CAMERA_BUTTONS, PAN_SECONDS, TURN_PER_SECOND, ZOOM_PER_SECOND } from "../ui/camera-model.js";
-import { buttonsToIntent, INTENT } from "./buttons.js";
+import { buttonsToIntent, looksNow, INTENT } from "./buttons.js";
+import { edgeScroll, isBorderPull, EDGE_SECONDS } from "./edge.js";
 import { createGestures, down, move, up, cancel } from "./gestures.js";
 import { lineTiles, rectTiles, toRuns, tileIndex, runsLength } from "./runs.js";
 import { TOOLS, DRAG, buildCommand, toolForKey } from "./tools.js";
@@ -195,6 +196,45 @@ export function createController(canvas, state, renderer, options = {}) {
    * so a branch that means "free look" cannot come to mean "street" (F1). */
   const freeLook = () => street() || photo();
 
+  /** Pointer Lock, and the drag-look that stands in for it (K3, A58).
+   *
+   * Kjell: *"freelook without buttons, best practice"* — so in the street and
+   * in photo mode the pointer is taken, the mouse looks with nothing held, and
+   * the walk is on the buttons. Where the browser refuses — it needs a user
+   * gesture, and a cross-origin frame is denied outright, which is why Q43
+   * chose drag-look in the first place — `locked` simply stays false and the
+   * drag path below is what a player gets. Neither branch knows which one it
+   * is; `looksNow()` does, and both are gated.
+   *
+   * The request is made from inside the gesture that entered the mode, because
+   * a request made a frame later is not a gesture any more and is refused. */
+  let locked = false;
+  const lockable = () => options.pointerLock !== false
+    && typeof canvas.requestPointerLock === "function";
+  function requestLook() {
+    if (!lockable()) return;
+    // Chrome returns a promise and rejects it when the gesture has gone stale.
+    // A rejection here is the fallback working, not an error worth a console.
+    try { canvas.requestPointerLock()?.catch?.(() => {}); } catch { /* refused */ }
+  }
+  function releaseLook() {
+    if (locked) globalThis.document?.exitPointerLock?.();
+    locked = false;
+  }
+  const onLockChange = () => {
+    const was = locked;
+    locked = globalThis.document?.pointerLockElement === canvas;
+    // Escape releases the lock without telling anyone, and a player who has
+    // just done that is looking at a street they can no longer turn in. Falling
+    // back is enough: the drag still looks, and the mode is theirs to leave.
+    if (was && !locked) { pointerWalk = { forward: 0, run: false }; onChange(); }
+  };
+  globalThis.document?.addEventListener?.("pointerlockchange", onLockChange);
+  // A refusal is silent otherwise, and "the mouse does nothing" would be the
+  // only symptom of a page served into a frame.
+  const onLockError = () => { locked = false; };
+  globalThis.document?.addEventListener?.("pointerlockerror", onLockError);
+
   /** Enters street mode over a tile, or over the middle of the view. */
   function enterStreet(tile) {
     if (street()) return false;
@@ -205,13 +245,14 @@ export function createController(canvas, state, renderer, options = {}) {
     const middle = { x: Math.round(renderer.view.targetX - 0.5), y: Math.round(renderer.view.targetZ - 0.5) };
     const entered = (tile && renderer.enterStreet?.(tile.x, tile.y))
       || renderer.enterStreet?.(middle.x, middle.y);
-    if (entered) { setTool(undefined); options.onMode?.("street"); onChange(); }
+    if (entered) { setTool(undefined); options.onMode?.("street"); requestLook(); onChange(); }
     return entered === true;
   }
 
   function leaveStreet() {
     if (!street()) return false;
     held.clear();
+    releaseLook();
     renderer.leaveStreet?.();
     options.onMode?.("city");
     onChange();
@@ -229,6 +270,7 @@ export function createController(canvas, state, renderer, options = {}) {
     setTool(undefined);
     held.clear();
     options.onMode?.("photo");
+    requestLook();
     onChange();
     return true;
   }
@@ -236,6 +278,7 @@ export function createController(canvas, state, renderer, options = {}) {
   function leavePhoto() {
     if (!photo()) return false;
     held.clear();
+    releaseLook();
     renderer.leavePhoto?.();
     options.onMode?.(renderer.view.mode);
     onChange();
@@ -244,6 +287,23 @@ export function createController(canvas, state, renderer, options = {}) {
 
   function handle(intents) {
     for (const intent of intents) {
+      // A touch drag that STARTED at the border pans, whatever is in hand
+      // (A59). Without this a finger has no way to pan with a tool selected —
+      // the same gap the hand fills for a mouse, and the reason Kjell asked
+      // for "pull and drag from the border" rather than an edge band a finger
+      // cannot rest against.
+      if (borderPull && intent.type.startsWith("paint")) {
+        if (intent.type === "paintStart") { pullFrom = { x: intent.x, y: intent.y }; continue; }
+        if (intent.type === "paintEnd") { pullFrom = undefined; continue; }
+        if (!pullFrom) continue;
+        panBy(renderer.view,
+          -pixelsToTiles(renderer.view, canvas.clientHeight, intent.x - pullFrom.x),
+          -pixelsToTiles(renderer.view, canvas.clientHeight, intent.y - pullFrom.y));
+        clampToMap(renderer.view, state.width, state.height);
+        pullFrom = { x: intent.x, y: intent.y };
+        onChange();
+        continue;
+      }
       switch (intent.type) {
         case "panBy":
           // Negated: dragging the map right must move the CITY right, which
@@ -357,8 +417,15 @@ export function createController(canvas, state, renderer, options = {}) {
   const onPointerDown = (event) => {
     canvas.setPointerCapture?.(event.pointerId);
     drag.buttons = event.buttons;
+    // Decided once, at the start of the gesture (A59).
+    borderPull = event.pointerType === "touch" && !freeLook()
+      && isBorderPull(event.offsetX, event.offsetY, canvas.clientWidth, canvas.clientHeight);
     const asked = intentNow(event.buttons);
     if (freeLook()) {
+      // A click is a user gesture, which is the only moment the lock can be
+      // asked for — so a player who pressed Escape gets it back by clicking,
+      // the way every first-person page does it.
+      if (!locked && event.pointerType !== "touch") requestLook();
       // Every button looks, and the gesture recogniser still runs so a TAP on
       // a touch screen comes through as one (A34).
       drag.button = event.button;
@@ -383,13 +450,16 @@ export function createController(canvas, state, renderer, options = {}) {
       drag.button = 0;
       drag.x = event.offsetX;
       drag.y = event.offsetY;
-      hideGhost();
+      renderer.hideGhost();
       return;
     }
     handle(down(gestures, point(event)));
   };
   const onPointerMove = (event) => {
     drag.buttons = event.buttons;
+    // Only a fine pointer hovers; a finger is always either down or gone, so
+    // edge scrolling would fire on every tap.
+    if (event.pointerType !== "touch") hover = { x: event.offsetX, y: event.offsetY };
     if (freeLook()) {
       // The walk follows whatever is held right now: pressing the second button
       // mid-drag has to become a run without a fresh `pointerdown`.
@@ -397,9 +467,17 @@ export function createController(canvas, state, renderer, options = {}) {
         const asked = intentNow(event.buttons);
         pointerWalk = { forward: asked.forward, run: asked.run };
       }
-      if (drag.button < 0) return;
-      const dx = event.offsetX - drag.x;
-      const dy = event.offsetY - drag.y;
+      // Unlocked, a look is a DRAG, and a drag needs the press that started it
+      // — without that the first move after entering the mode would turn by
+      // however far the pointer had travelled since the last one.
+      if (!looksNow(renderer.view.mode, event.buttons, { locked })) return;
+      if (!locked && drag.button < 0) return;
+      // Locked, the pointer has no position — `offsetX` freezes and only
+      // `movementX` moves. Unlocked, it is the difference from the last event,
+      // which is the drag-look. One expression, so the two paths cannot drift
+      // apart in what a turn feels like.
+      const dx = locked ? (event.movementX ?? 0) : event.offsetX - drag.x;
+      const dy = locked ? (event.movementY ?? 0) : event.offsetY - drag.y;
       drag.x = event.offsetX;
       drag.y = event.offsetY;
       // Drag-look, the way the city camera's orbit reads: the hand is on the
@@ -472,6 +550,8 @@ export function createController(canvas, state, renderer, options = {}) {
   };
   const onPointerUp = (event) => {
     canvas.releasePointerCapture?.(event.pointerId);
+    borderPull = false;
+    pullFrom = undefined;
     grabbed = undefined;
     drag.buttons = event.buttons;
     // Releasing one of two buttons keeps walking on the other, rather than
@@ -485,8 +565,11 @@ export function createController(canvas, state, renderer, options = {}) {
     drag.button = -1;
     handle(up(gestures, point(event)));
   };
+  const onPointerLeave = () => { hover = undefined; };
   const onPointerCancel = () => {
     drag.button = -1;
+    borderPull = false;
+    pullFrom = undefined;
     drag.buttons = 0;
     pointerWalk = { forward: 0, run: false };
     grabbed = undefined;
@@ -499,13 +582,42 @@ export function createController(canvas, state, renderer, options = {}) {
   const MIN_SPAN = 8;
   const STREET_PITCH = 25 * (Math.PI / 180);
 
+  /** Where the pointer last was on the canvas, for edge scrolling (K3, A59).
+   * `undefined` once it has left, so a city does not pan itself while the
+   * player is in another application. */
+  let hover = undefined;
+
+  /** Whether this touch drag began at the border and is therefore a pan (A59).
+   * Decided once, at the start, so it cannot steal a drag-paint that happens to
+   * pass near the frame. */
+  let borderPull = false;
+  /** The last point of a border pull, so the pan can be a difference. The
+   * recogniser's paint intents carry a position and not a delta, because they
+   * are about a tile rather than a distance. */
+  let pullFrom = undefined;
+
+  /** One frame of edge scrolling. Called by the frame loop beside
+   * `stepCamera`, so it is a rate per second like everything else that is held
+   * (ruling 042 §3). */
+  function stepEdge(dt) {
+    if (!options.edgeScroll?.() || !hover || !(dt > 0)) return false;
+    if (freeLook() || drag.button >= 0 || grabbed) return false;
+    const lean = edgeScroll(hover.x, hover.y, canvas.clientWidth, canvas.clientHeight);
+    if (lean.x === 0 && lean.y === 0) return false;
+    const step = (renderer.view.span / EDGE_SECONDS) * dt;
+    panBy(renderer.view, lean.x * step, lean.y * step);
+    clampToMap(renderer.view, state.width, state.height);
+    onChange();
+    return true;
+  }
+
   /** The hand, on or off, from the key or the cluster's toggle. The ghost goes
    * while it is on: a ghost that follows a pan reads as a build about to
    * happen, and the whole point of the hand is that nothing is built. */
   function setHand(on) {
     if (hand === on) return;
     hand = on;
-    if (on) hideGhost();
+    if (on) renderer.hideGhost();
     options.onHand?.(on);
     onChange();
   }
@@ -789,6 +901,7 @@ export function createController(canvas, state, renderer, options = {}) {
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
   canvas.addEventListener("pointercancel", onPointerCancel);
+  canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("contextmenu", onContextMenu);
   canvas.addEventListener("dblclick", onDoubleClick);
@@ -824,8 +937,14 @@ export function createController(canvas, state, renderer, options = {}) {
     fitCity,
     holdCamera,
     stepCamera,
+    stepEdge,
     setHand,
     get hand() { return hand; },
+    /** Whether the pointer is locked. The gate reads it to tell the two look
+     * paths apart — a browser that grants the lock and one that refuses it must
+     * both be able to turn, and a single assertion on "did the view turn" would
+     * pass while one of them was dead (A58). */
+    get pointerLocked() { return locked; },
     /** What a camera button does when it is pressed rather than held.
      *
      * `home` only. The cluster's Street and Photo buttons go through the HUD's
@@ -864,12 +983,16 @@ export function createController(canvas, state, renderer, options = {}) {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
+      canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContextMenu);
       canvas.removeEventListener("dblclick", onDoubleClick);
       globalThis.removeEventListener?.("keydown", onKey);
       globalThis.removeEventListener?.("keyup", onKeyUp);
       globalThis.removeEventListener?.("blur", onBlur);
+      globalThis.document?.removeEventListener?.("pointerlockchange", onLockChange);
+      globalThis.document?.removeEventListener?.("pointerlockerror", onLockError);
+      releaseLook();
     },
   };
 }

@@ -85,8 +85,9 @@ try {
   // `style=plain` PINNED: R2 made the style a setting whose default is
   // `painted` on a desktop, and every number in this gate's history was
   // measured on plain. The painted rows below load their own page.
-  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=96&life=0&style=plain`);
+  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=96&life=0&style=plain&lock=0`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   // A city with something of everything in it, on every tile the camera can
   // see. Measuring on an empty map is measuring nothing.
@@ -370,8 +371,9 @@ try {
   // of it are the same picture, and a frozen city has no traffic to look at.
   const carsPage = await context.newPage();
   carsPage.on("pageerror", (error) => errors.push(`cars: ${error.message}`));
-  await carsPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+  await carsPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
   await carsPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await carsPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const cars = await carsPage.evaluate(async () => {
     const { apply } = await import("/engine/reducer.js");
     const C = await import("/engine/commands.js");
@@ -502,8 +504,9 @@ try {
   const paintedPage = await context.newPage();
   paintedPage.on("pageerror", (error) => errors.push(`painted: ${error.message}`));
   paintedPage.on("console", (m) => { if (m.type() === "error") errors.push(`painted: ${m.text()}`); });
-  await paintedPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=painted`);
+  await paintedPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=painted&lock=0`);
   await paintedPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await paintedPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const painted = await paintedPage.evaluate(async () => {
     const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     globalThis.CITY.setQuality("high");
@@ -608,8 +611,9 @@ try {
   // not care how big the map is, and four times the pixels on a software
   // rasteriser is expensive enough without four times the city as well. At 96
   // this section cost 100 s, over the minute D8 allows itself.
-  await bigPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=plain`);
+  await bigPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=plain&lock=0`);
   await bigPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await bigPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const big = await bigPage.evaluate(async () => {
     const { apply } = await import("/engine/reducer.js");
     const C = await import("/engine/commands.js");

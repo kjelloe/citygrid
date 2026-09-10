@@ -27,6 +27,7 @@ import { buildingCost } from "../../engine/utilities.js";
 import { t } from "../i18n.js";
 import { makeRoving } from "./roving.js";
 import { createCameraCluster } from "./camera-cluster.js";
+import { createControlsCard } from "./controls-card.js";
 import { AUTO, resolveOverlay, autoTarget } from "./auto-overlay.js";
 import { RESULT } from "../../shared/protocol.js";
 
@@ -64,6 +65,7 @@ export function createHud(root, {
   onSave, onLoad, onExport, onImport, slots,
   onQuestChoice, quests, onTax, onFunding, onNewCity, onSettings, onStatistics, onHelp, minimap,
   onStreet, onLeaveStreet, onPhoto, onLeavePhoto, onSavePhoto,
+  showControlsCard = false, onDismissControlsCard,
 }) {
   root.innerHTML = "";
   const alerts = createAlerts();
@@ -120,6 +122,14 @@ export function createHud(root, {
   photoSave.title = t("photo.save.hint");
   photoSave.addEventListener("click", () => onSavePhoto?.());
   photoBar.append(photoSave);
+
+  // The first-run controls card (K3, A58). Shown once, dismissed for good, and
+  // brought back from Settings — a free look has no button to put on a screen,
+  // so being told once is what stands in for one.
+  let controlsCard = createControlsCard(root, {
+    shown: showControlsCard,
+    onDismiss: () => onDismissControlsCard?.(),
+  });
 
   // The camera cluster (K1, ruling 042): every camera movement on the screen,
   // in one place, in every mode. Built here so it lives and dies with the HUD
@@ -786,7 +796,12 @@ export function createHud(root, {
   refresh();
   return {
     refresh, tick, showInspection, setPreview, setResult, setStatus, setSlots,
-    dispose() { for (const r of roving) r.dispose(); panelWatch?.disconnect(); cluster.dispose(); },
+    dispose() {
+      for (const r of roving) r.dispose();
+      panelWatch?.disconnect();
+      cluster.dispose();
+      controlsCard?.dispose();
+    },
     get minimapCanvas() { return minimapCanvas; },
     /** The draw loop skips a hidden minimap rather than drawing under a
      * `hidden` attribute; the toggle is the HUD's, the drawing is the
@@ -804,6 +819,20 @@ export function createHud(root, {
       // reach is worse than no toolbar (ruling 028).
       photoBar.hidden = !inPhoto;
       cluster.setMode(mode);
+    },
+    /** The hand toggled from the keyboard. One state, one appearance. */
+    setHand(on) { cluster.setHand(on); },
+    /** Bring the first-run card back from the settings panel (K3, A58).
+     *
+     * A method rather than a HUD rebuild: rebuilding to show one card would
+     * throw away the dialog the player is standing in, which is where the row
+     * that asks for it lives. */
+    showControlsCard() {
+      if (document.getElementById("controls-card")) return;
+      controlsCard = createControlsCard(root, {
+        shown: true,
+        onDismiss: () => onDismissControlsCard?.(),
+      });
     },
     /** What is actually drawn — Auto resolved against the tool in hand. */
     get overlay() { return activeOverlay(); },

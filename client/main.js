@@ -36,6 +36,11 @@ export const config = Object.freeze({
   // `?life=0` freezes the traffic where it settled, so a gate that measures a
   // frame or compares two screenshots is looking at the same city twice.
   life: params.get("life") !== "0",
+  // `?lock=0` refuses Pointer Lock, which is the only way to reach the
+  // drag-look fallback on a browser that grants the lock — and the fallback is
+  // what an embedded page and a player who has just pressed Escape get, so it
+  // has to be gateable rather than argued about (K3, A58).
+  lock: params.get("lock") !== "0",
   // `?style=painted` — the render style, which is chosen at boot because it
   // decides the materials (spec §7.1). There is no control for it yet: ruling
   // 033 names painted as the target and the decision to ship it is not this
@@ -86,6 +91,10 @@ async function boot() {
   let session;
 
   async function showSettings() {
+    // Deferred to the close, not applied on the click: the card is a dialog of
+    // its own and would otherwise open on top of the panel the player is
+    // standing in — including on top of the row they just used (K3, A58).
+    let wantsCard = false;
     await openSettings({
       onChange(next) {
         // Volume moves while the panel is open, so it is heard as it is set.
@@ -101,6 +110,11 @@ async function boot() {
         // the same answer antialias gets. Rebuilding is restarting the city
         // with the same state, which `play` already does (R2).
         if (session && next.style !== session.style) restartWithStyle(next.style);
+        // Bringing the controls card back has to actually bring it back: the
+        // HUD reads the preference when it is built, so a row that only took
+        // effect on the next boot would be a control that appears to do
+        // nothing — ruling 026, and the exact failure the tier above avoids.
+        wantsCard = next.controlsCard === true;
       },
       onLocaleChange() {
         // Re-render whatever is on screen. The panel knows the language
@@ -109,6 +123,7 @@ async function boot() {
         else newGame();
       },
     });
+    if (wantsCard) session?.hud?.showControlsCard?.();
   }
 
   /** The style decides the materials, so changing it is a new renderer over the
@@ -151,6 +166,7 @@ async function boot() {
       mode: preferences.camera,
       time: preferences.time,
       life: config.life,
+      lock: config.lock,
     });
     if (config.debug) {
       const { runDebugChecks } = await import("./debug.js");

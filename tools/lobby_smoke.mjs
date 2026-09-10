@@ -53,7 +53,12 @@ const base = `http://127.0.0.1:${port}/index.html`;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
 const pageErrors = [];
 
-const started = (page) => page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+/** Waits for the city, then puts the first-run controls card away — in the
+ * helper, because this gate opens the game eight times (K3, A58). */
+const started = async (page) => {
+  await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+};
 
 try {
   for (const [label, viewport] of [["desktop", { width: 1280, height: 900 }], ["phone", { width: 390, height: 844 }]]) {
@@ -384,7 +389,7 @@ try {
     const context = await browser.newContext({ viewport: { width: 1000, height: 700 } });
     const page = await context.newPage();
     page.on("pageerror", (error) => pageErrors.push(`leak: ${error.message}`));
-    await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48&life=0`);
+    await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48&life=0&lock=0`);
     await started(page);
     const counts = await page.evaluate(async () => {
       const out = [];

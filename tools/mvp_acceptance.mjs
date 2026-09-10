@@ -131,7 +131,7 @@ const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
-const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64`;
+const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`;
 const pageErrors = [];
 
 try {
@@ -140,6 +140,7 @@ try {
   page.on("pageerror", (e) => pageErrors.push(e.message));
   await page.goto(url);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   // §24.1 — start an empty map
   const start = await page.evaluate(() => ({
@@ -349,6 +350,7 @@ try {
   second.on("pageerror", (e) => pageErrors.push(e.message));
   await second.goto(url);
   await second.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await second.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const hashAfter = await second.evaluate(async () => {
     const { hashState } = await import("/engine/state.js");
     await globalThis.CITY.load("slot1");
@@ -364,6 +366,7 @@ try {
   phonePage.on("pageerror", (e) => pageErrors.push(`phone: ${e.message}`));
   await phonePage.goto(url);
   await phonePage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await phonePage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   await phonePage.evaluate(() => { globalThis.CITY.pause(); globalThis.CITY.state.players[0].treasury = 900000; });
   await phonePage.evaluate(async () => {
     const THREE = await import("/vendor/three.module.js");

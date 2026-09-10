@@ -84,3 +84,21 @@ export function allCombinations() {
   }
   return out;
 }
+
+/**
+ * Does pointer movement turn the view right now (A58)?
+ *
+ * The whole of Kjell's "freelook without buttons": **with the lock, looking
+ * needs nothing held; without it, it is the drag-look Q43 chose.** Pointer Lock
+ * needs a user gesture and is refused outright in a cross-origin frame, so the
+ * fallback is not a lesser mode — it is the path a player in an embedded page
+ * gets, and both are gated.
+ *
+ * Pure and here rather than inside the pointer handler, because "which of the
+ * two paths am I on" is the one thing about this feature a test can hold still.
+ */
+export function looksNow(mode, buttons = 0, { locked = false } = {}) {
+  if (mode !== "street" && mode !== "photo") return false;
+  if (locked) return true;
+  return buttonsToIntent(mode, buttons).look;
+}

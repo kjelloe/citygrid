@@ -94,7 +94,7 @@ the rate, at `dt = 1/60` and `1/15` within 1%; Q held past the threshold turns f
 snapped on release; keys inside a toolbar are untouched (ruling 028). `play_smoke` holds an arrow
 for 500 ms on the desktop viewport and asserts the target moved.
 
-## K3 — The two mouse buttons (M) — ruling 042 — **part done 2026-09-11 as `slice-K3`**
+## K3 — The two mouse buttons (M) — ruling 042 — **done 2026-09-11 as `slice-K3`**
 
 **In:** `client/input/buttons.js`, a pure `buttonsToIntent(mode, buttons, { hasTool, hand })` with
 every combination planted in `test/buttons.test.js`; left/right/both walking and running in the
@@ -107,8 +107,46 @@ where it was first wired, and the chord *breaking* is a move too. The item's "th
 ground point fixed today — assert it" was **not true**, so it was built rather than asserted. And
 the hand is `H` rather than `Space`, because Space pauses.
 
-**Still to do:** Pointer Lock with the drag-look fallback and the first-run overlay (A58); edge
-scrolling with the touch border-pull (A59); the cluster's hand button.
+**And then the rest of it (same day).** Pointer Lock in the street and in photo mode, with
+drag-look as the fallback (A58); the first-run controls card with "don't show this again" and a
+settings row to bring it back; edge scrolling for a mouse and the touch border-pull (A59); the
+cluster's hand button.
+
+**Four more things this turned up.**
+
+- **The look decision is pure and the handler is not.** `looksNow(mode, buttons, { locked })` in
+  `buttons.js` is the whole of A58: locked, anything moves the view; unlocked, it is a drag. Both
+  branches read the same expression for the delta — `movementX` when locked, because a locked
+  pointer has no `offsetX` at all and the drag path would have turned by zero forever.
+- **The fallback was unreachable on a browser that grants the lock**, because a click in
+  free-look asks for the lock back — correct for a player who pressed Escape, and fatal to a gate
+  that wanted to drive the other path. `?lock=0` refuses it at boot, the way `?life=0` freezes
+  traffic, and `play_smoke`'s second desktop row runs on it. Both paths are now driven, not
+  claimed.
+- **`locator.boundingBox()` hangs once the page has taken the pointer.** The canvas resolves as
+  visible and the call never returns. `getBoundingClientRect()` from inside the page is the same
+  number and does not go through the actionability machinery.
+- **The card covered the map and the build menu**, and `reach_smoke` said so: 195 of 403 sampled
+  points took no click, and four controls were under it. It should be prominent — it is the
+  discovery surface for a scheme with no buttons — but it must not persist, so the ten gates that
+  boot a city dismiss it after `CITY` appears. The card is a first run, not a fixture.
+- **The hand shipped as `•`.** `buttonsFor()` gave the cluster a button the glyph map had no entry
+  for, so it drew the placeholder and did nothing: on screen, reachable, labelled, silent.
+  `test/controls-card.test.js` now walks the map against `CAMERA_BUTTONS`.
+- **The touch half of A59 was nearly a module nobody called.** `isBorderPull` was imported and
+  `borderPull` was set to `false` in two places and to `true` in none — a pure module with tests,
+  a settings row beside it, and no path from a finger to either. Ruling 026 wearing a new hat, and
+  the omissions sweep on the slice is what found it.
+- **`hideGhost()` was called where nothing defines it**, twice, in the hand's own path — the name
+  is `renderer.hideGhost`. A `ReferenceError` every time the hand went down. `node --check` is
+  syntax-only and this module cannot be imported by node; the gate's `pageerror` hook found it.
+
+**And one finding that was not about this item.** `?lock=0` did nothing because `game.js` read it
+off `options`, the WORLD GENERATION record — and so did the quality tier, the projection, the hour
+and `life`. Every one fell back to a default: a player whose settings said Low and orthographic
+booted High and perspective until they opened the settings panel. `test/render.test.js` had pinned
+the broken line as source text and stayed green over it. Fixed, and `play_smoke` now stores a
+preference, reloads, and asserts the boot honoured it.
 
 
 
@@ -203,7 +241,7 @@ assert the view moved, close it, assert the map is fully tappable again (`reach_
 
 ## Order
 
-**K1 is done (2026-09-10).** K3 is next.
+**K1 is done (2026-09-10). K3 is done (2026-09-11).** K2 is next.
 
 K1 → K3 → K2 → K4 → K5. The cluster first because every other item puts a button on it; the
 mouse second because it is what Kjell asked for by name; the phone last because it is the

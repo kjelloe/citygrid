@@ -47,8 +47,9 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
   page.on("pageerror", (e) => problems.push(`page error — ${e.message}`));
-  await page.goto(`${base}?seed=1003&size=48`);
+  await page.goto(`${base}?seed=1003&size=48&lock=0`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+  await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   // A city with a quest running and money to spend, so the advisor is on screen
   // and nothing is disabled for lack of funds.
