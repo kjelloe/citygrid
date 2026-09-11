@@ -188,6 +188,92 @@ walker's side of the same number. **Done when `walkthrough 128 hilly` is green a
 `render` set** — the measurement is what says whether moving junctions was enough, rather than the
 claim that it was. Today it is 459 of 1,392 corridors ungradeable and a steepest street of 59.3%.
 
+## Review after S1 (2026-09-11) — P63
+
+*Read on `dev_night` at `7fd3f02`. Re-run by the reviewer: the suite twice, `gates.mjs quick`
+and `gates.mjs render` — numbers at the end. **K4, K5, S9 and S1 with B2 are accepted** as
+built: the pure modules are the right shape (`house-spec`, `civic-spec`, `age`, `fit`), the salts
+on the chunk hash are the right mechanism, and the budget discipline in S9 — flat things flat, the
+furniture in three chunks — is exactly what E5's lesson asks. But the review's job is the
+picture, and the pictures say the two slices did not reach the reference.*
+
+**What the screenshots show, looked at by the reviewer.**
+- `smoke-S9-street.png` and `-garden.png`: a street of flat-roofed two- and three-storey slabs
+  with a dark parapet, no chimney against the sky, no porch, no fence, no shed — the "garden"
+  shot has water on both sides of the road and no garden in it. The furniture is there in the
+  numbers (126 triangles a house) and not in the frame, because the buildings it lands on are not
+  houses. **Q93 is answered by measurement (A71): the kit, not development.** Most homes in a
+  played city are one- and two-tile lots at level 1 or 2, and every one is drawn as a block
+  filling its lot. → **S10**, first.
+- `smoke-S1-coalPlant.png` and `-hospital.png`: a grey box beside a taller grey box; a grey box
+  with six windows. **Q95 is answered by probe (A73): the baked path is reached** (three live
+  chunks; the count falls by 360 as the box leaves and the masses arrive), so the picture is the
+  kit. Every mass of every definition is one concrete tone; the recognising parts — stacks,
+  cross, doors, lamp — are the same colour as the walls, and at the pavement's distance they
+  vanish. → **S1b**.
+- `smoke-S9-city20.png`: the city from `city 20t` reads well — roofs in four colours, trees,
+  cars on the roads — and the empty zoned grid at its edge is the grey slab Q73 describes,
+  unchanged. S2 stands.
+- `smoke-B2-abandoned.png`: a near-black box. Grime at 0.72 still reads as a black building
+  from the pavement in this light; the boards are not visible at all. B2's tone wants the same
+  screenshot loop S9 got — one more iteration, in S10's slice, since it touches the same walls.
+
+**Q94, the budget**, is answered (A72): the High budget goes to **400,000** on the 4090 card's
+evidence, not the detail down.
+
+**Measured by the reviewer:** suite green twice; `quick` 11 of 11 in 372 s of 480; `render` went
+red on `budget_gate` once — while the reviewer's own Q95 probe was drawing beside it — and green
+alone (`budget gate ok`), which is M2's one-set-at-a-time rule confirmed from the other side.
+
+## S10 — The density ladder (M) — A71, before S2
+
+**Goal.** A level-1 lot is a house with a garden, not a slab. The city grows exactly as it does;
+only what a lot at a given level *draws* changes. Renderer-only, no hashed state.
+
+**Do.** In `client/world/params.js` and `facade-spec.js`, a **form per (footprint, level)**:
+- **level 1**: detached — one house per tile of frontage, 9–11 m wide and 8–10 m deep, one or two
+  storeys with a pitched roof (gable or hip, never flat), gardens front and back, a fence or hedge
+  between neighbours; a 2×1 lot is two houses side by side, a 2×2 lot four round a shared back.
+- **level 2**: semis or a terrace — the tile's frontage as two joined houses or a run of three
+  narrow ones, two storeys, pitched, small front gardens, a shared party wall.
+- **level 3**: low flats — the lot's width, three storeys, a flat or shallow-hipped roof, a
+  communal lawn, bins and bike shed (S3's props).
+- **level 4+**: the block the kit draws today.
+- `storeys` stays `1 + level` only from level 3; below it the form decides. The L2 instanced box
+  becomes **one box per house** at level 1 and 2 (the pool count grows; measure it), so the
+  silhouette from the air matches the pavement (E5's rule). S9's furniture lands on whatever the
+  form is, unchanged. B2's grime and boards get one more screenshot pass here: a derelict house
+  is a house with boarded windows and a grey wash, not a black box.
+
+**Tests first.** `test/params.test.js`: the form is a pure function of `(w, h, level)`; a level-1
+2×1 lot yields two houses whose footprints do not overlap and sit inside the lot; every level-1
+roof is pitched. `test/kit.test.js`: the L2 pool count per lot equals the form's house count.
+**Gate.** `budget_gate` re-measured (more, smaller buildings — the count moves both ways); the
+S9 shots re-taken by `tools/house_shots.mjs` on a **played** city (`years=40`, not the saturated
+recipe — Q72), and looked at against the reference: chimneys against the sky, gardens between,
+a street that reads as a street of houses. `reports/smoke-S10-{street,garden,city20}.png`.
+
+## S1b — Civic buildings you can tell apart (S) — A73
+
+**Goal.** From the pavement, a coal plant is a coal plant before you read the inspector.
+
+**Do.**
+- **A material per mass** in `civic-spec.js`: each mass names one of a small set — `brick`,
+  `concrete`, `steel`, `white`, `red`, `glass`, `tank` — and `civic-parts.js` colours it from the
+  palette per style (the painted style keeps its ramps). Coal plant: brick hall, steel stacks
+  with a dark rim, a black heap. Hospital: white ward, a red cross two storeys tall on the
+  street face, a glass entrance. Fire station: red doors on a brick front. Police: a blue lamp
+  and a sign. Water tower: a steel tank on concrete legs. Wind turbine: a white mast and blades.
+- **A sign**: the definition's name on a board at the entrance through `signs.js` (the shopfront
+  signs exist; the civic ones use the same canvas, localised).
+- **The recognising part sized to be seen**: a stack is a cylinder (eight sides) proud of the
+  hall by half its height; a cross is a metre thick; the entrance canopy spans the door.
+- Age (B2) multiplies these as it does the walls.
+
+**Tests first.** `test/civic-spec.test.js`: every mass has a material from the set; the hospital's
+street face carries the cross; no definition is a single material. **Gate.** the twelve
+`smoke-S1-*.png` re-taken and looked at; `budget_gate` unchanged within 2%.
+
 ## S9 — Houses with more on them (M) — P61 — **done 2026-09-11 as `slice-S9`**
 
 *Kjell, 2026-09-11: "houses need more details." The residential kit has six silhouettes and
@@ -255,7 +341,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9 and S1 are done (2026-09-11); S2 is next.** S9 → S1 → S2 → S6 → S5 → S3 → S4 → S7 → S8, interleaved with `workitems-behaviour.md` where it says
+**S9 and S1 are done (2026-09-11). After the review: S10 → S1b → (B4 and B7 from the behaviour lane) → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

@@ -406,9 +406,6 @@ by number from the code they create.
 | Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | **Kjell**, with Q64 |
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
-| Q93 | The houses S9 furnished are blocks of flats — development's shape or the kit's? | **Kjell**, before S1 finishes |
-| Q94 | The High frame has 18,000 triangles left and four world slices to go | the world lane, at whichever slice first goes over |
-| Q95 | Is the L3 civic path reached at street level at all, or is every S1 picture an instanced box? | the world lane, before S2 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

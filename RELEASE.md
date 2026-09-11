@@ -94,7 +94,7 @@ on a 128 `hilly` it is 59.3% and 459 of 1,392 (Q64, Q74).
 
 ## What is missing, and known to be
 
-**18 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**15 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 

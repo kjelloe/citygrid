@@ -31,7 +31,7 @@ Two instruments, because a phone is fill-rate bound and a triangle budget cannot
 |---|---|---|---|---|---|---|
 | Low | 40k | 40 ms | none | 60 | off | none |
 | Medium | 140k | 40 ms | 4 | 200 | soft | pixel only |
-| High | 320k | 20 ms | 9 | uncapped | soft, following frustum | any |
+| High | 400k (320k until S10) | 20 ms | 9 | uncapped | soft, following frustum | any |
 
 *Amended 2026-09-06 (slice E5, Q37 → A35): the budgets were a V2 prediction made before L3
 existed. Nine chunks of real facade measured 200k on their own, so High went 200k → 320k and
@@ -48,6 +48,14 @@ Now 20 ms and 40 ms: 60 fps and 30 fps with a fifth of a frame of room each, and
 late still costs a pass. **The budgets in this table are still a SwiftShader-era prediction at
 one end** — no phone has produced a card, so Medium and Low have never been measured on a device
 that struggles (`workitems-measurement.md` D2, D3).
+
+*Amended a third time 2026-09-11 (review after S1, A72, on Kjell's second 4090 card —
+`reports/perf/desktop-4090.json`, build `167b733c86ca`).* **High's budget is 400,000**, not
+320,000. The card drew 289,086 triangles at a flat 16.7 ms p50 with the governor idle, so the
+320k figure — measured on SwiftShader in E5 — was holding the world lane's detail below what the
+one real device can draw. `data/cityviewer.json` and this table change together; Medium and Low
+are untouched until a phone card exists (D2), and the next desktop card re-checks that 400k still
+sits under the 20 ms target — the only way a budget may move again. Built in S10.
 
 ## Why
 

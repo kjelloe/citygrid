@@ -224,7 +224,7 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 
 ## Order
 
-B2 → B4 → B7 → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
+B2 (done) → **B4 → B7 right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
 moved up on 2026-09-11 because P61 asked for them by name —: B2 with S1 (the same kit
 files), B1 with S6 (the smoke), B5 after S5 (the benches). Weather last because it is the only
 item that adds a whole preset to every gate.
