@@ -242,7 +242,9 @@ Named T for transport, after the behaviour lane, because the avenue (A60) opens 
 T1 and T2 share one re-pin. T7 can go any time and is the quickest visible result. T6 is the
 one that changes the game's balance most and wants its own sweep era.
 
-## 8. Questions for Kjell, with the assumption each lane would be built against
+## 8. Questions for Kjell — **all six answered as assumed, 2026-09-11 (P62, A65–A70)**
+
+*Kept as written, because the assumptions are now the decisions. The lane is `workitems-transport.md`.*
 
 - **Q87 — The Outside.** Model the beyond-the-map as demand terms and commuter sinks (§1), with no
   state of its own? *Assumed yes.* The alternative — an explicit outside region with its own
