@@ -272,6 +272,13 @@ is the rule a fraction-based form would have broken.
   set back behind a garden; with the ladder they stand near the kerb, and a camera pointed at one
   is inside its front wall.
 
+**Two more from the omissions sweep on the slice itself.** Every house on a lot shared the
+BUILDING's id, so everything that hashes on it — the chimney, the shutters, the lit windows —
+made a terrace four copies of one house; `houseIndex` salts it, and the colour still comes from
+`params` because a terrace is one terrace. And `party` was set by the form and read by nothing: a
+joined house's side walls are now unglazed, because a window in a party wall looks into the
+neighbour's living room.
+
 **Measured.** Street chunks **282,474 → 275,248** over 8 (smaller houses, less wall), the crowd
 frame **301,980 → 329,464 of the new 400,000** (more, smaller instanced boxes), bake p95 6 ms.
 

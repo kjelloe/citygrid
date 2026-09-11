@@ -5709,4 +5709,12 @@ under scaffolding with their roofs going on, which is B2 reading exactly as it s
 pavement. `smoke-S10-city20.png`: rows of individual houses in four roof colours rather than a grid
 of slabs. This is the first shot in the lane that looks like the reference.
 
+**The omissions sweep on the slice found two more.** Every house on a lot shared the BUILDING's
+id, and everything downstream hashes on it — so a terrace came out four copies of one house, same
+chimney, same shutters, same windows lit. `houseIndex` salts the spec's id; the COLOUR still comes
+from `params`, which is right, because a terrace is one terrace. And `party` was set by the form
+and read by nothing — the joined houses' side walls are unglazed now, since a window in a party
+wall looks into the neighbour's living room. The re-taken street shot shows the difference: two
+chimneys of different heights on one pair, and a blank side wall where there was a glazed one.
+
 **Next:** S1b — a material per mass, a sign, and the recognising part scaled to be seen.

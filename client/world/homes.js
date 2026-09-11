@@ -184,6 +184,11 @@ export function houseLots(lot, level) {
         storeys: house.storeys,
         roofKind: house.roof,
         party: house.party,
+        // Which house on the lot this is. Everything downstream hashes on the
+        // spec's id, and every house on a lot shares the BUILDING's id — so a
+        // terrace came out four identical houses, same chimney, same shutters,
+        // same lit windows. The index salts it (S10).
+        houseIndex: houses.indexOf(house),
       };
     }),
   };

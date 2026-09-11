@@ -8,7 +8,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { homeForm, houseCount, formFor, FORMS, HOUSE } from "../client/world/homes.js";
+import { homeForm, houseCount, formFor, houseLots, FORMS, HOUSE } from "../client/world/homes.js";
 
 const forms = (w, d, l) => homeForm(w, d, l);
 
@@ -111,4 +111,26 @@ test("the form is a pure function of the lot and the level", () => {
     assert.deepEqual(forms(w, d, l), forms(w, d, l));
   }
   assert.ok(HOUSE.width >= 9 && HOUSE.width <= 11, "the house is not a house");
+});
+
+test("each house on a lot is its own house", () => {
+  // Everything downstream hashes on the spec's id, and a lot's houses share a
+  // building record — so a terrace came out four copies of one house: same
+  // chimney, same shutters, same windows lit. The index is what varies them.
+  const lot = {
+    id: 7, building: { id: 7, level: 1 }, x0: 0, z0: 0, x1: 34, z1: 34,
+    frontage: 0, seat: 0,
+  };
+  const { lots } = houseLots(lot, 1);
+  assert.ok(lots.length >= 2, "this lot is supposed to hold several houses");
+  assert.deepEqual(lots.map((l) => l.houseIndex), lots.map((_, i) => i));
+  assert.equal(new Set(lots.map((l) => l.houseIndex)).size, lots.length);
+});
+
+test("a joined house says so, and a detached one does not", () => {
+  // `party` is what tells the facade not to glaze a wall it shares with the
+  // house next door. It was set and read by nothing until the omissions sweep.
+  const lot = { id: 1, building: { id: 1, level: 2 }, x0: 0, z0: 0, x1: 14, z1: 14, frontage: 0, seat: 0 };
+  assert.ok(houseLots(lot, 2).lots.every((l) => l.party === true), "a semi has no party wall");
+  assert.ok(houseLots(lot, 1).lots.every((l) => l.party === false), "a detached house has one");
 });

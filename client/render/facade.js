@@ -158,7 +158,9 @@ export function buildFacade(spec) {
   for (const edge of spec.edges) {
     const geom = EDGES[edge.side];
     const origin = originOf(spec, edge.side);
-    const holes = openings(spec, edge, groundTop, wallTop);
+    // A party wall has no openings at all (S10): it is shared with the house
+    // next door, and a window in it looks into their living room.
+    const holes = edge.party ? [] : openings(spec, edge, groundTop, wallTop);
     if (edge.door) holes.push(doorHole(spec, edge));
     // A storefront is the wall stopping short: one wide opening a bay high.
     if (edge.storefront) {

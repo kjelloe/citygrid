@@ -157,7 +157,11 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
   // They are both passed explicitly by `street-chunks.js` (S9).
   const cfg = getConfig();
   const kind = params.kind;
-  const id = lot.building.id;
+  // Salted by which house on the lot this is (S10). A lot's houses share a
+  // building record, so without this a terrace is four copies of one house —
+  // same chimney, same shutters, same windows lit. The COLOUR still comes from
+  // `params`, which is right: a terrace is one terrace.
+  const id = lot.building.id * 8 + (lot.houseIndex ?? 0);
   const bayW = cfg.lot.bayW[kind === "civic" ? "none" : kind];
 
   const edges = DIR4.map(({ side, axis }) => {
@@ -173,6 +177,11 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
       window: { ...WINDOW },
       // A door on the frontage, and only there.
       door: street,
+      // A joined house shares its side walls with the next one along, so they
+      // are not glazed and have no door — `party` from the density ladder is
+      // what says which (S10). Windows on a party wall look into a neighbour's
+      // living room.
+      party: lot.party === true && !street && (side === (lot.frontage + 1) % 4 || side === (lot.frontage + 3) % 4),
       // An industrial ground floor is a blank wall with a roller door in it;
       // everything else has windows down to the pavement.
       groundWindows: kind !== "industrial",
