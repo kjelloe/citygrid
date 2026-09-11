@@ -822,6 +822,9 @@ export function createHud(root, {
     },
     /** The hand toggled from the keyboard. One state, one appearance. */
     setHand(on) { cluster.setHand(on); },
+    /** Which way the view faces, for the cluster's compass (K4). Pushed rather
+     * than read, because the HUD does not hold the view and must not learn to. */
+    setFacing(yaw) { cluster.setFacing(yaw); },
     /** Bring the first-run card back from the settings panel (K3, A58).
      *
      * A method rather than a HUD rebuild: rebuilding to show one card would

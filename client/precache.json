@@ -1,6 +1,6 @@
 {
- "version": "b02dfbec9eb4",
- "generated": "2026-09-10",
+ "version": "ac589eb6335f",
+ "generated": "2026-09-11",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -95,6 +95,7 @@
   "./client/world/config.js",
   "./client/world/corridors.js",
   "./client/world/facade-spec.js",
+  "./client/world/fit.js",
   "./client/world/foliage.js",
   "./client/world/grade.js",
   "./client/world/ground-colour.js",

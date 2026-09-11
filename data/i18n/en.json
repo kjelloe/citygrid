@@ -456,5 +456,10 @@
   "controls.walk": "Walk or fly, in the street and in photo mode",
   "controls.mouse.move": "Move the mouse",
   "controls.look": "Look around — nothing to hold",
-  "help.hurry": "Hold with an arrow, Q, E or +/− to move twice as fast"
+  "help.hurry": "Hold with an arrow, Q, E or +/− to move twice as fast",
+  "compass.n": "N",
+  "compass.e": "E",
+  "compass.s": "S",
+  "compass.w": "W",
+  "camera.compass": "Compass — the view faces {facing}"
 }

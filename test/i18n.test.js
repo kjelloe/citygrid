@@ -90,6 +90,10 @@ const SAME_IN_BOTH = {
   "skin.retro": "Retro is the same word in Norwegian",
   "alert.disasterStruck.named": "the whole string is one interpolation token",
   "camera.pad.fly": "Fly is the same word in Norwegian",
+  // The compass. N and S are the same letter in both, and a compass that says
+  // something else in Norwegian would be a compass that lies (K4).
+  "compass.n": "Nord and North both start with N",
+  "compass.s": "Sør and South both start with S",
 };
 
 // --- the Norwegian pass (slice M4) -------------------------------------------

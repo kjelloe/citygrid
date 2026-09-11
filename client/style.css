@@ -1260,6 +1260,23 @@ button, [role="button"] {
 .camera-pad-right { grid-area: 2 / 3; }
 .camera-pad-down { grid-area: 3 / 2; }
 .camera-rest { display: grid; grid-template-columns: repeat(2, 36px); gap: 2px; }
+
+/* The compass (K4). A picture, so it has no button chrome and no hover — it
+   reports, it does not act (ruling 028). */
+.camera-compass {
+  /* The pad's empty centre cell: no new row, no new column (ruling 042 §5). */
+  grid-area: 2 / 2;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--panel, rgba(20, 22, 26, 0.6));
+  color: var(--fg, #e8e6e1);
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+.camera-needle { display: block; font-size: 10px; line-height: 1; opacity: 0.8; }
+.camera-rose { font-weight: 600; }
 .camera-cluster button {
   min-width: 36px;
   min-height: 36px;

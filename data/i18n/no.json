@@ -456,5 +456,10 @@
   "controls.walk": "Gå eller fly, i gata og i fotomodus",
   "controls.mouse.move": "Beveg musa",
   "controls.look": "Se deg omkring — ingenting å holde",
-  "help.hurry": "Hold sammen med pil, Q, E eller +/− for dobbel fart"
+  "help.hurry": "Hold sammen med pil, Q, E eller +/− for dobbel fart",
+  "compass.n": "N",
+  "compass.e": "Ø",
+  "compass.s": "S",
+  "compass.w": "V",
+  "camera.compass": "Kompass — utsikten vender mot {facing}"
 }

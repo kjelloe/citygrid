@@ -14,7 +14,7 @@
 
 import { t } from "../i18n.js";
 import { makeRoving } from "./roving.js";
-import { buttonsFor, labelFor, hintFor } from "./camera-model.js";
+import { buttonsFor, labelFor, hintFor, facing } from "./camera-model.js";
 
 /** The pad's four directions, in screen space. */
 const PAD = [
@@ -158,13 +158,49 @@ export function createCameraCluster(root, { controller, onOpen, onMode } = {}) {
     rest.append(node);
   }
   body.append(rest);
+
+  /** The compass (K4). A PICTURE, not a control: ruling 028 settled that a
+   * thing which only reports has `role="img"` and a label that reads as a
+   * sentence, the way the minimap and the statistics charts do. Pressing it
+   * would be a second Home, and a toolbar of nine buttons where one of them
+   * does what another already does is how a cluster becomes clutter. */
+  const compass = document.createElement("div");
+  compass.className = "camera-compass";
+  compass.id = "camera-compass";
+  compass.setAttribute("role", "img");
+  const needle = document.createElement("span");
+  needle.className = "camera-needle";
+  needle.textContent = "▲";
+  const rose = document.createElement("span");
+  rose.className = "camera-rose";
+  compass.append(needle, rose);
+  // In the PAD's empty centre cell, which is where a compass belongs and where
+  // it costs nothing: ruling 042 §5 says the chrome does not grow, and a row of
+  // its own put `reach_smoke`'s "most of the map takes a click" under its 85%
+  // bar — 341 of 403 — for a picture that had somewhere free to sit.
+  pad.append(compass);
+
   cluster.append(body);
   root.append(cluster);
   syncOpener();
   const roving = makeRoving(cluster);
 
+  /** Point the needle. Called on every view change, so it follows a free orbit
+   * rather than jumping between the four snapped angles. */
+  function setFacing(yaw) {
+    const { labelKey, degrees } = facing(yaw);
+    // The needle points where NORTH is, which means turning it against the
+    // camera: a compass whose needle follows the view is a compass that always
+    // reads north, which is the commonest way to get this wrong.
+    needle.style.transform = `rotate(${degrees}deg)`;
+    rose.textContent = t(labelKey);
+    compass.setAttribute("aria-label", t("camera.compass", { facing: t(labelKey) }));
+  }
+  setFacing(0);
+
   return {
     node: cluster,
+    setFacing,
     /** The mode changed: show the buttons that belong to it and relabel the
      * ones whose job it changes (the pad pans, walks or flies). */
     setMode(mode) {

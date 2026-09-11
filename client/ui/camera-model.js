@@ -127,6 +127,29 @@ export const CAMERA_BUTTONS = [
   },
 ];
 
+/** The four compass points, in the order `view.yawStep` counts them (K4).
+ *
+ * Which way is north is a decision, not an observation: the world's +Z is south
+ * on the map, so step 0 — the default yaw the city opens at — is looking north.
+ * A compass that is a picture rather than a control (ruling 028's minimap
+ * precedent) still has to be RIGHT, and this is the only place that says so. */
+export const COMPASS_POINTS = ["compass.n", "compass.e", "compass.s", "compass.w"];
+
+/** Which way the view is facing, as a catalogue key and a rotation in degrees.
+ *
+ * The rotation is the free yaw, not the snapped step, so the needle follows a
+ * mouse orbit rather than jumping between four positions — the amendment to
+ * ruling 006 is that the camera may sit between the angles, and a compass that
+ * cannot show that is a compass that lies for three quarters of every turn. */
+export function facing(yaw = 0) {
+  const quarter = Math.PI / 2;
+  const step = ((Math.round(yaw / quarter) % 4) + 4) % 4;
+  return {
+    labelKey: COMPASS_POINTS[step],
+    degrees: (yaw * 180) / Math.PI,
+  };
+}
+
 /** The label this button carries in this mode. */
 export function labelFor(button, mode) {
   return button.labelPerMode?.[mode] ?? button.labelKey;

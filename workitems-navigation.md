@@ -221,7 +221,7 @@ the pointer rows on the card name every button combination the controller binds.
 
 **Must not change:** any fixture hash; `client/world/orbit.js`'s `eyeOf`; the walker's collision.
 
-## K4 — Where am I, and go there (S)
+## K4 — Where am I, and go there (S) — **done 2026-09-11 as `slice-K4`**
 
 **Goal.** The player can always get back to the city and to the place they were.
 
@@ -242,6 +242,31 @@ the pointer rows on the card name every button combination the controller binds.
 city that occupies one corner, and on an empty map; `test/input.test.js`: two Home presses
 restore the prior view exactly. `play_smoke`: double-click centres; Home from the street lands in
 the mode the player came from (R2's `cameFrom`).
+
+**In:** `client/world/fit.js` — `builtBounds` (roads and buildings, not zoning) and `fitBounds`,
+with `test/fit.test.js` planting the corner town, the empty map, the single tile and the long
+thin city. Home frames the built city and a second press gives back the view it interrupted; the
+compass is in the pad's empty centre cell; a double-click walks in the street.
+
+**Four things this turned up.**
+
+- **Home did nothing at all in the street.** The street branch owns the keyboard from the top of
+  `onKey` down, and the Home handler was below it — so the one place a player most needs a way out
+  was the one place the key was dead. It is handled before the mode branches now, like the held
+  camera keys.
+- **No timer on the second press.** The item asked for "within three seconds"; a clock in the
+  controller is a clock the tests cannot hold still, and "is the camera still where Home put it"
+  (`sameView`) answers the same question without one.
+- **`focusOn` takes the target as given**, not as a tile whose middle it centres on. A half-tile
+  adjustment that looked right put the return press half a tile outside `sameView`'s tolerance —
+  the second Home framed the city again instead of going back. Found by the gate, not by reading.
+- **The compass grew the chrome, and `reach_smoke` priced it.** A row of its own took "most of
+  the map takes a click" to 341 of 403, under its 85% bar. The pad's centre cell was empty and is
+  where a compass belongs: 351 of 403 with it there, better than the 345 before it existed.
+
+**Not done, and not needed:** the item's "notifications gain the same easing rule (none under
+reduced motion)". There is no easing anywhere — `focusOn` is instant — so the rule is already
+satisfied; easing is a slice of its own if anyone wants it.
 
 ## K5 — The phone (S)
 
@@ -280,7 +305,7 @@ play_smoke 69, a11y_smoke 46); `render` 3 of 3 in **169 s of 300** (budget_gate 
 
 ## Order
 
-**K1 is done (2026-09-10). K3 and K2 are done (2026-09-11).** K4 is next.
+**K1 is done (2026-09-10). K3, K2 and K4 are done (2026-09-11).** K5 is next, and last in this lane.
 
 K1 → K3 → K2 → K4 → K5. The cluster first because every other item puts a button on it; the
 mouse second because it is what Kjell asked for by name; the phone last because it is the

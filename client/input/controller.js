@@ -22,6 +22,7 @@ import { CAMERA_BUTTONS } from "../ui/camera-model.js";
 import { buttonsToIntent, looksNow, INTENT } from "./buttons.js";
 import { edgeScroll, isBorderPull, EDGE_SECONDS } from "./edge.js";
 import { heldFor, panStep, turnStep, zoomFactor, turnMode, nearestYawStep, TAP_SECONDS } from "./held.js";
+import { fitBounds, sameView } from "../world/fit.js";
 import { createGestures, down, move, up, cancel } from "./gestures.js";
 import { lineTiles, rectTiles, toRuns, tileIndex, runsLength } from "./runs.js";
 import { TOOLS, DRAG, buildCommand, toolForKey } from "./tools.js";
@@ -719,13 +720,45 @@ export function createController(canvas, state, renderer, options = {}) {
    * familiar. Leaves any free-look mode first: "fit the city" from the pavement
    * means standing up, not flying the walker into the sky.
    */
+  /** The view Home left, so a second press can give it back (K4). Kept as
+   * plain numbers rather than a reference: the view object is mutated in
+   * place, and a reference to it would remember wherever the camera ended up. */
+  let beforeHome = undefined;
+
+  /**
+   * Home: frame the city, or go back to where you were.
+   *
+   * It fitted the whole MAP until K4 — on a 128×128 with a town in one corner
+   * that is a green rectangle with a smudge in it, which is a way of losing the
+   * city rather than finding it. `fitBounds` frames what has been BUILT.
+   *
+   * Pressing it again returns to the view it interrupted, because "show me
+   * everything" and "put me back" are the same question asked twice, and a
+   * player who pressed Home to get their bearings should not have to find their
+   * district again by hand. There is no timer on it (the item suggested three
+   * seconds): a clock in the controller is a clock the tests cannot hold still,
+   * and "is the camera still where Home put it" answers the same question
+   * without one.
+   */
   function fitCity() {
     if (photo()) leavePhoto();
     if (street()) leaveStreet();
     const view = renderer.view;
-    focusOn(view, state.width / 2, state.height / 2);
-    // The longer side, plus a margin, so a rectangle fits in either aspect.
-    zoomBy(view, Math.max(state.width, state.height) * 1.1 / view.span);
+    const here = { targetX: view.targetX, targetZ: view.targetZ, span: view.span };
+    const fit = fitBounds(state);
+    if (beforeHome && sameView(here, fit)) {
+      focusOn(view, beforeHome.targetX, beforeHome.targetZ);
+      zoomBy(view, beforeHome.span / view.span);
+      clampToMap(view, state.width, state.height);
+      beforeHome = undefined;
+      onChange();
+      return;
+    }
+    beforeHome = here;
+    // `focusOn` takes the target in tiles and sets it as given — the fit's
+    // answer is already the centre of the box in those units.
+    focusOn(view, fit.targetX, fit.targetZ);
+    zoomBy(view, fit.span / view.span);
     clampToMap(view, state.width, state.height);
     onChange();
   }
@@ -788,6 +821,15 @@ export function createController(canvas, state, renderer, options = {}) {
   // gamedesign.md §13.4: "Double-click: focus selected object." The tile under
   // the pointer is the object; there is no selection model to consult.
   const onDoubleClick = (event) => {
+    // In the street a double-click WALKS there — the phone's tap-to-walk (A34),
+    // given to the mouse, because down there a click on the ground already
+    // means "that place" and the camera is the walker's head (K4).
+    if (street()) {
+      const at = groundAtPixel(event.offsetX, event.offsetY);
+      if (at) renderer.walker?.seek(at.x * renderer.model.tileM, at.z * renderer.model.tileM);
+      return;
+    }
+    if (photo()) return;   // the photo camera is flown, not aimed
     const tile = tileAtPixel(event.offsetX, event.offsetY);
     if (!tile) return;
     options.onFocusTile?.(tile);
@@ -845,6 +887,15 @@ export function createController(canvas, state, renderer, options = {}) {
     // same finger on the same key.
     if (event.key === "Shift") fast = true;
     if (!modified && startHeldCamera(event)) { event.preventDefault(); return; }
+    // Home, before the mode branches: it is a camera button in every mode
+    // (`CAMERA_BUTTONS`), and the street's branch owns the keyboard from here
+    // down — so leaving it below meant Home did nothing at all in the street,
+    // which is the one place a player most needs a way out (K4).
+    if (!modified && event.key === "Home" && event.target === canvas) {
+      event.preventDefault();
+      fitCity();
+      return;
+    }
 
     // Street mode owns the keyboard: WASD walks, Shift runs, Escape leaves. The
     // build tools are not merely ignored, they are gone — a street is for
@@ -910,12 +961,6 @@ export function createController(canvas, state, renderer, options = {}) {
     // thing (ruling 042 §1: a button that does something a key cannot, or the
     // reverse, is a defect). `PageUp`/`PageDown` were in ruling 042's list and
     // bound nowhere; `Home` fits the city, which K4 builds "go there" on top of.
-    if (!modified && event.key === "Home") {
-      if (event.target !== canvas) return;
-      event.preventDefault();
-      fitCity();
-      return;
-    }
 
     if (!modified && event.key === "?") {
       event.preventDefault();

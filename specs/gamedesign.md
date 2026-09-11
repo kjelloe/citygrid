@@ -1105,6 +1105,14 @@ The camera should snap to comfortable angles and avoid disorienting free rotatio
 > single press still moves. `Q` and `E` snap on a tap, as ruling 006 requires,
 > and turn freely when held past 300 ms — releasing lands on the nearest of the
 > four, so the snap is where a turn ENDS rather than a fence around the camera.
+>
+> **As built (slice K4, 2026-09-11).** "Double-click: focus selected object" is
+> a double-click on the GROUND — there is no selection model, so the tile is the
+> object — and in the street it walks there instead. **Home** frames what has
+> been built rather than the whole map, and a second press returns to the view
+> it interrupted. The cluster carries a **compass** in the pad's empty centre:
+> a picture, not a control (ruling 028), reading the free yaw so it follows an
+> orbit rather than jumping between the four angles.
 
 ### 14. Tool Interaction Design
 

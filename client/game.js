@@ -175,7 +175,13 @@ export async function startGame(root, given = {}) {
 
   const controller = createController(canvas, state, renderer, {
     actor: SEAT,
-    onChange: () => { hud.refresh(); minimap?.worldChanged(); },
+    onChange: () => {
+      hud.refresh();
+      // The compass follows a free orbit, so it is told on every view change
+      // rather than on a mode change (K4).
+      hud.setFacing?.(renderer.view.yaw);
+      minimap?.worldChanged();
+    },
     onPreview: (preview) => hud.setPreview(preview),
     onResult: (result) => { hud.setResult(result); audio.play(cueForResult(result)); },
     // With no build tool selected, a tap inspects. That is the design's

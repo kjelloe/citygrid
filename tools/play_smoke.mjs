@@ -164,6 +164,103 @@ async function run(page, label, { touch, mode }) {
   check(`${label}: dragging with no tool pans the camera`, distance > 1,
     `moved ${distance.toFixed(2)} tiles from (${before.targetX}, ${before.targetZ})`);
 
+  // --- Home frames the city, and gives it back (K4) --------------------------
+  //
+  // It fitted the whole MAP before this slice: on a big map with a town in one
+  // corner, pressing Home was a way of losing the city rather than finding it.
+  // And a player who pressed it to get their bearings had no way back to the
+  // district they were looking at.
+  if (!touch) {
+    const viewNow = () => page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      return { x: v.targetX, z: v.targetZ, span: v.span, yaw: v.yaw };
+    });
+    // Snapshot first. This block zooms the camera onto the city and turns it a
+    // quarter, and the checks after it aim at a tile by projecting it — a view
+    // left somewhere else puts that pixel off the canvas, and the drag that
+    // follows lands on nothing. (The wheel-into-street check learnt this in
+    // K3; every block that flies the camera has to put it back.)
+    const cameraWas = await page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      return { x: v.targetX, z: v.targetZ, span: v.span, yaw: v.yaw, step: v.yawStep, pitch: v.pitch };
+    });
+    // Somewhere specific, and nowhere near the city's middle.
+    await page.evaluate(() => {
+      const v = globalThis.CITY.renderer.view;
+      v.targetX = 12; v.targetZ = 12; v.span = 18;
+    });
+    const away = await viewNow();
+    await page.evaluate(() => document.getElementById("city").focus());
+    await page.keyboard.press("Home");
+    const framed = await viewNow();
+    const built = await page.evaluate(async () => {
+      const { builtBounds } = await import("/client/world/fit.js");
+      return builtBounds(globalThis.CITY.state);
+    });
+    check(`${label}: Home frames what has been built, not the whole map`,
+      built !== undefined && framed.span < globalThis.Infinity && framed.span <= 64,
+      `span ${framed.span.toFixed(1)} for a city ${JSON.stringify(built)}`);
+    // The city is inside the frame: the centre must be within half a span of
+    // both corners, or the fit is framing something else.
+    const inside = built && Math.abs(framed.x - (built.minX + built.maxX + 1) / 2) < 1
+      && Math.abs(framed.z - (built.minY + built.maxY + 1) / 2) < 1;
+    check(`${label}: and it is centred on the city`, inside === true,
+      `centre (${framed.x.toFixed(1)}, ${framed.z.toFixed(1)}) against ${JSON.stringify(built)}`);
+
+    await page.keyboard.press("Home");
+    const back = await viewNow();
+    check(`${label}: a second Home gives the view back`,
+      Math.hypot(back.x - away.x, back.z - away.z) < 1 && Math.abs(back.span - away.span) < 1,
+      `(${away.x}, ${away.z}) span ${away.span} -> (${back.x.toFixed(1)}, ${back.z.toFixed(1)}) span ${back.span.toFixed(1)}`);
+
+    // The compass is a picture that tells the truth (ruling 028).
+    const compass = await page.evaluate(() => {
+      const node = document.getElementById("camera-compass");
+      if (!node) return undefined;
+      return {
+        role: node.getAttribute("role"),
+        label: node.getAttribute("aria-label"),
+        rose: node.querySelector(".camera-rose")?.textContent,
+        buttons: node.querySelectorAll("button").length,
+      };
+    });
+    check(`${label}: the cluster carries a compass, and it is a picture`,
+      compass?.role === "img" && compass.buttons === 0 && (compass.label ?? "").length > 0,
+      JSON.stringify(compass));
+    const turned = await page.evaluate(async () => {
+      const { setYawStep } = await import("/client/render/camera.js");
+      const before = document.querySelector(".camera-rose")?.textContent;
+      setYawStep(globalThis.CITY.renderer.view, globalThis.CITY.renderer.view.yawStep + 1);
+      globalThis.CITY.hud.setFacing(globalThis.CITY.renderer.view.yaw);
+      return { before, after: document.querySelector(".camera-rose")?.textContent };
+    });
+    check(`${label}: and the compass follows the view`, turned.before !== turned.after,
+      `${turned.before} -> ${turned.after}`);
+
+    // Double-click centres the view there without changing the zoom (§13.4).
+    const corner = await tilePixel(page, 24, 24);
+    const beforeDouble = await viewNow();
+    await page.mouse.dblclick(corner.x, corner.y);
+    const afterDouble = await viewNow();
+    check(`${label}: a double-click centres the view there`,
+      Math.hypot(afterDouble.x - beforeDouble.x, afterDouble.z - beforeDouble.z) > 0.5
+        && Math.abs(afterDouble.span - beforeDouble.span) < 0.01,
+      `(${beforeDouble.x.toFixed(1)}, ${beforeDouble.z.toFixed(1)}) -> (${afterDouble.x.toFixed(1)}, ${afterDouble.z.toFixed(1)}), span ${beforeDouble.span.toFixed(1)} -> ${afterDouble.span.toFixed(1)}`);
+
+    await page.evaluate(async (was) => {
+      const { focusOn, setYawStep, zoomBy } = await import("/client/render/camera.js");
+      const v = globalThis.CITY.renderer.view;
+      setYawStep(v, was.step);
+      v.pitch = was.pitch;
+      // Through `zoomBy`, not by assigning `span`: the orthographic camera's
+      // frustum comes from `applyZoom`, so a span set by hand leaves the
+      // projection describing the old one — and every pixel this gate projects
+      // afterwards is then wrong by the ratio between them.
+      zoomBy(v, was.span / v.span);
+      focusOn(v, was.x, was.z);
+    }, cameraWas);
+  }
+
   // --- a held key is a rate (K2, ruling 042 §3) ------------------------------
   //
   // An arrow was one nudge per `keydown` until this slice, so the camera moved
@@ -556,6 +653,31 @@ async function run(page, label, { touch, mode }) {
       check(`${label}: and drag-look turns the view without the lock`, turned(yawA, yawB) > 0.05,
         `yaw ${yawA.toFixed(3)} -> ${yawB.toFixed(3)} (${turned(yawA, yawB).toFixed(3)} rad)`);
     }
+
+    // A double-click on the ground WALKS there down here (K4) — the phone's
+    // tap-to-walk, given to the mouse, because a click on the ground already
+    // means "that place" and the camera is the walker's head.
+    const beforeWalk = await page.evaluate(() => ({ ...globalThis.CITY.renderer.walker.pose }));
+    const box = await page.evaluate(() => {
+      const r = document.getElementById("city").getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+    // Below the horizon, so the ray meets the ground rather than the sky.
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height * 0.72);
+    await page.waitForTimeout(600);
+    const afterWalk = await page.evaluate(() => ({ ...globalThis.CITY.renderer.walker.pose }));
+    const walkedTo = Math.hypot(afterWalk.x - beforeWalk.x, afterWalk.z - beforeWalk.z);
+    check(`${label}: a double-click walks there in the street`, walkedTo > 0.5,
+      `moved ${walkedTo.toFixed(2)} m towards the point`);
+
+    // And Home leaves the street before it fits, landing in the projection the
+    // player came from rather than always in perspective (R2's `cameFrom`).
+    await page.evaluate(() => document.getElementById("city").focus());
+    await page.keyboard.press("Home");
+    const afterHome = await page.evaluate(() => globalThis.CITY.renderer.view.mode);
+    check(`${label}: Home from the street comes back up, in the mode it came from`,
+      afterHome === mode, `landed in "${afterHome}", came from "${mode}"`);
+    if (afterHome !== "street") await page.keyboard.press("f");
 
     await page.keyboard.press("Escape");
     const left = await page.evaluate(() => globalThis.CITY.renderer.view.mode);

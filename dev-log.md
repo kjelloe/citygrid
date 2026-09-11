@@ -5393,3 +5393,65 @@ takes the same half second to **8.98 tiles**; a tap on Q snaps one step; a held 
 quarter turn off** a snapped angle mid-hold and lands **exactly** on one when released.
 
 **Next:** K4 — where am I, and go there.
+
+## slice-K4 — where am I, and go there (2026-09-11)
+
+The two questions a player asks when they are lost: show me the city, and put me back.
+
+**Home frames what has been BUILT.** It fitted the whole map before this slice, which on a 128×128
+with a town in one corner is a green rectangle with a smudge in it — a way of losing the city
+rather than finding it. `client/world/fit.js` is pure and in the world layer, so the cases that
+matter are planted in `test/fit.test.js` rather than discovered by zooming out in a browser and
+squinting: a corner town, an empty map, one tile, a long thin city. Roads and buildings count and
+**zoning does not** — a painted district with nothing on it is an intention, and a camera that
+frames intentions drifts away from the city every time somebody paints ahead.
+
+**A second press gives the view back.** "Show me everything" and "put me back" are the same
+question asked twice, and a player who pressed Home to get their bearings should not have to find
+their district again by hand. The item asked for a three-second window; there is no timer, because
+a clock in the controller is a clock the tests cannot hold still — `sameView` asks "is the camera
+still where Home put it", which answers the same question without one.
+
+**A compass in the pad's empty centre.** It is a PICTURE (`role="img"`, no button, no pointer
+events), which is ruling 028's minimap precedent: a thing that only reports is not a control, and
+pressing it would be a second Home. The needle reads the FREE yaw rather than the snapped step, so
+it follows a mouse orbit — the amendment to ruling 006 is that the camera may sit between the four
+angles, and a compass that cannot show that lies for three quarters of every turn.
+
+**And a double-click walks, in the street.** The phone's tap-to-walk (A34), given to the mouse:
+down there a click on the ground already means "that place", and the camera is the walker's head.
+
+### Four findings
+
+**Home did nothing at all in the street.** The street branch owns the keyboard from the top of
+`onKey` down, and the Home handler sat below it — so the one place a player most needs a way out
+was the one place the key was dead. Handled before the mode branches now, beside the held camera
+keys. Nothing had ever pressed it down there.
+
+**`focusOn` takes the target as given.** A half-tile adjustment that read correctly ("focusOn takes
+a tile and centres on the middle of it") put the return press exactly 0.5 outside `sameView`'s 0.5
+tolerance, so the second Home framed the city again instead of going back — a borderline failure
+that a slightly different city would have hidden. The gate found it; reading the line did not.
+
+**The compass grew the chrome, and `reach_smoke` priced it.** A row of its own took "most of the
+map takes a click" to **341 of 403**, under the gate's 85% bar, for a picture that had somewhere
+free to sit. In the pad's centre cell: **351 of 403**, better than the 345 before the compass
+existed. Ruling 042 §5 — the chrome does not grow — has a number behind it now.
+
+**And a gate block that flew the camera did not put it back.** The Home checks zoom onto the city
+and turn it a quarter; the orbit checks after them aim at a tile by projecting it, and that pixel
+was off the canvas, so the drag landed on nothing and three unrelated checks went red. Restoring
+the span through `zoomBy` rather than by assigning `view.span` matters too: the orthographic
+frustum comes from `applyZoom`, so a span set by hand leaves the projection describing the old one
+and every pixel the gate projects afterwards is wrong by the ratio between them. Second time in
+two slices that a camera-moving block has cost a downstream check.
+
+**Measured.** Suite green twice, 1,215 tests. `play_smoke` on both desktop rows: Home frames a
+13×1 city at **span 14.9** centred on it, a second press returns to **(12, 12) span 18** exactly
+where it started, a double-click centres without touching the zoom (**span 18.0 → 18.0**), and the
+compass reads E and follows the view to S when the yaw steps. In the street, on all four rows: a
+double-click walks **1.13 m** towards the point, and Home comes back up **in the projection the
+player came from** — "ortho" from ortho, "city" from perspective. `gates.mjs quick` green, 11 of
+11, **355 s of a 480 s budget**.
+
+**Next:** K5, the phone, and the last item in the navigation lane.

@@ -37,7 +37,10 @@ cannot move. Where does the camera live?
 4. **The four snapped yaws are where Q, E and the compass land**, not where the camera is
    allowed to be — the amendment to ruling 006 that N28 made in code is now written.
 5. **The chrome does not grow.** The cluster on a phone is one button until opened, and the
-   playtest's 41% at 390×844 is the ceiling.
+   playtest's 41% at 390×844 is the ceiling. **K4 put a number on the desktop too:** the compass
+   in a row of its own took `reach_smoke`'s "most of the map takes a click" to 341 of 403, under
+   its 85% bar; in the pad's empty centre cell it is 351, better than the 345 before the compass
+   existed. A new piece of chrome looks for space the cluster already has before it takes more.
 
 ## Why
 
@@ -60,3 +63,5 @@ the card from `TOOLS`.
 - `test/buttons.test.js` — every button combination in every mode, and both look paths
 - `test/controls-card.test.js` — the card's strings exist in both catalogues, it can be put away
   for good and brought back, and every camera button has a glyph of its own
+- `test/fit.test.js`, `test/camera-model.test.js` — Home frames what has been built, and the
+  compass names the four points in the order the yaw steps count them

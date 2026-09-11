@@ -22,6 +22,7 @@ import {
 } from "../client/ui/camera-model.js";
 import { TOOLS } from "../client/input/tools.js";
 import { heldFor } from "../client/input/held.js";
+import { facing, COMPASS_POINTS } from "../client/ui/camera-model.js";
 
 const en = JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "en.json"), "utf8"));
 const no = JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "no.json"), "utf8"));
@@ -156,5 +157,34 @@ test("the table is data — no functions, nothing to remember", () => {
         `${button.id}.${key} is a ${kind}`);
       assert.notEqual(kind, "function", `${button.id}.${key} is a function`);
     }
+  }
+});
+
+// --- the compass (slice K4) --------------------------------------------------
+
+test("the compass names the four points in the order the yaw steps count", () => {
+  assert.equal(COMPASS_POINTS.length, 4);
+  assert.equal(new Set(COMPASS_POINTS).size, 4, "a point is named twice");
+  const quarter = Math.PI / 2;
+  for (let step = 0; step < 4; step += 1) {
+    assert.equal(facing(step * quarter).labelKey, COMPASS_POINTS[step], `step ${step}`);
+  }
+});
+
+test("the compass reads the free yaw, not the snapped step", () => {
+  // The amendment to ruling 006: the camera may sit between the four angles.
+  // A needle that only knows the steps lies for three quarters of every turn.
+  assert.equal(facing(0).degrees, 0);
+  assert.ok(Math.abs(facing(Math.PI / 4).degrees - 45) < 1e-9);
+  // And it rounds to the nearest point for the letter, rather than truncating.
+  assert.equal(facing(Math.PI / 2 * 0.9).labelKey, COMPASS_POINTS[1]);
+  assert.equal(facing(Math.PI / 2 * 0.4).labelKey, COMPASS_POINTS[0]);
+});
+
+test("the compass wraps rather than running off the end of the list", () => {
+  // `yawBy` wraps into [0, 2π), and a drag that crosses the wrap must not ask
+  // for point 4.
+  for (const yaw of [0, Math.PI, Math.PI * 1.99, Math.PI * 2 - 1e-9, -Math.PI / 3]) {
+    assert.ok(COMPASS_POINTS.includes(facing(yaw).labelKey), `yaw ${yaw}`);
   }
 });

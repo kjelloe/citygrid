@@ -123,6 +123,13 @@ once on `controllerchange`, and Playwright's next `evaluate` dies with "Executio
 destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
 changed. A gate reads the repository as it runs; edit it and you are testing two trees.
 
+**A gate block that flies the camera must put it back.** `play_smoke` aims at tiles by projecting
+them through the live camera, so a block that leaves the view somewhere else puts the next block's
+pixels off the canvas and its drags land on nothing — three unrelated checks went red in K4 for
+this, and in K3 before it. Snapshot `{targetX, targetZ, span, yawStep, pitch}` and restore at the
+end, and restore the span through `zoomBy`, never by assigning `view.span`: the orthographic
+frustum comes from `applyZoom`.
+
 **A fallback path needs a lever, or the gate proves the primary one twice.** Where the code
 recovers on its own — a click that asks for Pointer Lock back, a retry, a cache that refills — the
 alternative branch is unreachable from the outside and a gate written against it silently measures
