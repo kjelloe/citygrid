@@ -19,7 +19,7 @@
 
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
-import { houseParts, materialOf } from "./house-spec.js";
+import { houseParts } from "./house-spec.js";
 /**
  * The names over the shops — a mirror of `data/names.json`, one list per locale.
  *
@@ -226,7 +226,6 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
   // 320,000 budget. On the three the player is standing in it is 11,000, and a
   // shutter four chunks away was two pixels of the wall's own colour.
   if (kind === "residential" && furniture) {
-    spec.material = materialOf(params.variant);
     // The old rule gave a porch to variant 1 only, and `houseParts` gives one
     // to three houses in four. Two porches on one house is one too many.
     spec.extras = spec.extras.filter((e) => e.kind !== "porch").concat(houseParts(spec));
