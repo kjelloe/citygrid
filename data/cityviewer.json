@@ -79,7 +79,7 @@
       "lamps": 5
     },
     "high": {
-      "budget": 320000,
+      "budget": 400000,
       "pixelRatio": 2,
       "antialias": true,
       "shadowMap": 4096,

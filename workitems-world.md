@@ -225,7 +225,7 @@ evidence, not the detail down.
 red on `budget_gate` once — while the reviewer's own Q95 probe was drawing beside it — and green
 alone (`budget gate ok`), which is M2's one-set-at-a-time rule confirmed from the other side.
 
-## S10 — The density ladder (M) — A71, before S2
+## S10 — The density ladder (M) — A71 — **done 2026-09-11 as `slice-S10`**
 
 **Goal.** A level-1 lot is a house with a garden, not a slab. The city grows exactly as it does;
 only what a lot at a given level *draws* changes. Renderer-only, no hashed state.
@@ -252,6 +252,28 @@ roof is pitched. `test/kit.test.js`: the L2 pool count per lot equals the form's
 S9 shots re-taken by `tools/house_shots.mjs` on a **played** city (`years=40`, not the saturated
 recipe — Q72), and looked at against the reference: chimneys against the sky, gardens between,
 a street that reads as a street of houses. `reports/smoke-S10-{street,garden,city20}.png`.
+
+**In:** `client/world/homes.js` — `homeForm(widthM, depthM, level)` in lot-local `u`/`v` and
+`houseLots(lot, level)` mapping it to sub-lots in world metres by the lot's own frontage. A sub-lot
+IS a lot, so the facade grammar, S9's furniture and the props all work on it unchanged, and the
+instanced pass pushes one box per house from the same function. Eight assertions in
+`test/homes.test.js` — including that a house is 9–11 m wide IN METRES whatever the lot is, which
+is the rule a fraction-based form would have broken.
+
+**Three things this turned up.**
+
+- **The sizes have to be in metres and the placement in fractions.** A form expressed only in
+  fractions gives a 34 m lot a 34 m house, which is the slab again; one expressed only in metres
+  cannot be mapped by frontage. `homeForm` takes metres and answers in fractions.
+- **The camera stood inside a hedge**, because `house_shots.mjs` aimed at "a road tile next to a
+  house" and a played city has tiles that are a road AND carry a `buildingId`. The shot came back
+  with a green slab across the top of the frame. It now requires the standing tile to be clear.
+- **And the shot had to look ALONG the street.** Facing the houses was right while they were slabs
+  set back behind a garden; with the ladder they stand near the kerb, and a camera pointed at one
+  is inside its front wall.
+
+**Measured.** Street chunks **282,474 → 275,248** over 8 (smaller houses, less wall), the crowd
+frame **301,980 → 329,464 of the new 400,000** (more, smaller instanced boxes), bake p95 6 ms.
 
 ## S1b — Civic buildings you can tell apart (S) — A73
 
@@ -341,7 +363,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9 and S1 are done (2026-09-11). After the review: S10 → S1b → (B4 and B7 from the behaviour lane) → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9, S1 and S10 are done (2026-09-11). Next: S1b → (B4 and B7 from the behaviour lane) → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

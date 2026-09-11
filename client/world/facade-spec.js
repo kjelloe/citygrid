@@ -193,7 +193,10 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
     // about, arrived at from the other side.
     groundH: params.groundH * (params.state?.progress ?? 1),
     floorH: params.floorH * (params.state?.progress ?? 1),
-    storeys: params.storeys,
+    // A sub-lot carries its own storeys and roof (S10): a level-2 lot is a
+    // PAIR of two-storey houses, not one three-storey slab, and `1 + level` is
+    // only right from level 3.
+    storeys: lot.storeys ?? params.storeys,
     seat: lot.seat,
     x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z1,
     edges,
@@ -201,6 +204,7 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
     extras: [],
   };
   spec.roof = roofOf(kind, params.variant, params, id);
+  if (lot.roofKind) spec.roof = { ...spec.roof, kind: lot.roofKind };
 
   if (kind === "commercial") {
     // One tenant per bay along the frontage, each with its own fascia. Two

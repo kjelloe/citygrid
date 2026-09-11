@@ -15,6 +15,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { hasPorch, hasPorchAtL2 } from "../client/world/house-spec.js";
+import { homeForm, houseCount } from "../client/world/homes.js";
 import { VARIANTS, variantFor, kindOf } from "../client/world/params.js";
 import { PALETTES } from "../client/render/palettes.js";
 
@@ -127,4 +128,23 @@ test("the bungalow and the semi build their own, and are not given a second", ()
   assert.equal(hasPorchAtL2(2), false, "the bungalow gets a second porch");
   assert.equal(hasPorchAtL2(4), false, "the semi gets a porch it has no door for");
   assert.ok(hasPorchAtL2(0) && hasPorchAtL2(1), "nothing else has one");
+});
+
+// --- the density ladder reaches the instanced pass (slice S10) ---------------
+
+test("a lot draws one box per house, at both fidelities", () => {
+  // E5's rule, and the whole point of S10: if the baked street is a pair of
+  // semis and the box from the air is one slab across the lot, the player is
+  // looking at two different cities depending on the zoom. Asserted through the
+  // shared function and against the source of the pass that cannot be imported,
+  // which is `instances.js` — it imports three.
+  const instances = readFileSync(join(repoRoot, "client", "render", "instances.js"), "utf8");
+  assert.match(instances, /houseLots\(lot, building\.level/,
+    "the instanced pass still draws one box across the lot");
+  for (const [w, d, level] of [[14, 14, 1], [34, 14, 1], [34, 34, 1], [14, 14, 2], [14, 14, 3]]) {
+    assert.equal(houseCount(w, d, level), homeForm(w, d, level).houses.length);
+  }
+  // And the two levels that matter most in a played city are NOT one box.
+  assert.ok(houseCount(34, 14, 1) > 1, "a two-tile level-1 lot is one building");
+  assert.ok(houseCount(14, 14, 2) > 1, "a level-2 lot is one building");
 });

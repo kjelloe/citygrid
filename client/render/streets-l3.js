@@ -17,6 +17,7 @@ import { chunkOfLot } from "../world/chunks.js";
 import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
+import { houseLots } from "../world/homes.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
 import { treesIn } from "../world/foliage.js";
@@ -234,9 +235,18 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
     // runs again on the toggle (slice V7, A44).
     const family = familyColour(lot.building, palette, showOwner, ZONE_NONE);
     const params = buildingParams(lot.building, palette, family, showOwner, state.tick);
-    const spec = facadeSpec(lot, params, locale, furniture);
-    specs.push(spec);
-    for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
+    // A residential lot is a form, not a building (S10): one detached house at
+    // level 1, a pair of semis at level 2, a block of flats at 3. Each sub-lot
+    // is a lot, so the facade grammar, S9's furniture and the props all work on
+    // it unchanged.
+    const parts = params.kind === "residential"
+      ? houseLots(lot, lot.building.level ?? 0).lots
+      : [lot];
+    for (const part of parts) {
+      const spec = facadeSpec(part, params, locale, furniture);
+      specs.push(spec);
+      for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
+    }
     fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind });
   }
   // The prop pass, which is the difference between a street and a diagram

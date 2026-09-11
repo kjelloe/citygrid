@@ -55,7 +55,7 @@ never the simulation):
 |---|---|---|---|---|---|---|---|
 | Low | 40,000 | 40 ms | none | 60 | 0 | 0 | — |
 | Medium | 140,000 | 40 ms | 4 | 200 | 40 | 5 | pixel |
-| High | 320,000 | 20 ms | 9 | uncapped | 120 | 8 | pixel, ink |
+| High | 400,000 | 20 ms | 9 | uncapped | 120 | 8 | pixel, ink |
 
 The frame targets are thresholds with headroom, not refresh intervals: 20 ms is 60 fps with a fifth
 of a frame of room, 40 ms is 30 fps with the same. They were the intervals themselves until D5,

@@ -24,6 +24,8 @@ import { setFaceContrast } from "./detail-kit.js";
 import { DIR4 } from "../../shared/grid.js";
 import { TIER, setCosts, inBounds, planForChunk, tilePixels, usesChunkPlans } from "./lod.js";
 import { civicSpin } from "../world/civic-spec.js";
+import { houseLots } from "../world/homes.js";
+import { getConfig } from "../world/config.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
   TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, FLAG_RUINED, NET_PRESENT,
@@ -633,6 +635,29 @@ export function updateInstances(state, pools, options = {}) {
     // it from its depth, so the BACK of the house stays where it was.
     const depth = (building.h - p.setback) * 0.98;
     const bz = cz - p.setback / 2;
+    // A residential lot is ONE BOX PER HOUSE below level 3 (S10): a level-1
+    // 2×1 lot is two detached houses, and a single box across the lot is the
+    // slab the whole slice is about. The sub-lots come from the same function
+    // the baked facade uses, so the silhouette from the air is the street from
+    // the pavement (E5's rule).
+    const homes = p.kind === "residential" && lot
+      ? houseLots(lot, building.level ?? 0).lots
+      : undefined;
+    if (homes && homes.length > 0) {
+      const m = getConfig().tileM;
+      for (const home of homes) {
+        const hx = (home.x0 + home.x1) / 2 / m;
+        const hz = (home.z0 + home.z1) / 2 / m;
+        const hw = (home.x1 - home.x0) / m;
+        const hd = (home.z1 - home.z0) / m;
+        // The form's own storeys, scaled the way `unitHeight` scales a level:
+        // a two-storey house is not `1 + level` tall.
+        const height = p.height * (home.storeys / Math.max(1, p.storeys));
+        push(pool, hx, h, hz, hw, height, hd, p.colour, 0);
+        if (roofPool) push(roofPool, hx, h, hz, hw, height, hd, p.roof, 0);
+      }
+      continue;
+    }
     push(pool, cx, h, bz, building.w * 0.98, p.height, depth, p.colour, spin);
     if (roofPool) push(roofPool, cx, h, bz, building.w * 0.98, p.height, depth, p.roof, spin);
   }

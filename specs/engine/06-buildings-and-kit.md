@@ -199,6 +199,25 @@ And one for anything that stands on the ground: **a building's own ground is not
 park's lawn at the full lot covered every ground pixel of its tile, and an overlay is a texture on
 the ground (ruling 041), so a park showed no pollution at all.
 
+## 6.1c The density ladder (S10, 2026-09-11)
+
+A residential lot is a FORM, not a building. `client/world/homes.js` answers what a lot of a given
+size draws at a given level — detached houses at level 1, semis or a terrace at 2, low flats at 3,
+the block at 4 and above — in lot-local `u` (along the frontage) and `v` (back from the street).
+`houseLots(lot, level)` maps that to sub-lots in world metres, and a sub-lot is a lot: the facade
+grammar, the house furniture and the props all work on it unchanged, and the instanced pass pushes
+one box per house from the same function.
+
+**`storeys = 1 + level` applies from level 3 only.** Below it the form decides, which is where the
+14 m × 34 m three-storey slab came from.
+
+**The sizes are in metres and the placement is in fractions.** A form expressed only in fractions
+gives a 34 m lot a 34 m house; one expressed only in metres cannot be turned to face a frontage.
+
+Measured: street chunks 282,474 → 275,248 over 8 (smaller houses are less wall); the crowd frame
+301,980 → 329,464 of the 400,000 High budget, because the instanced pass draws two to four boxes
+where it drew one.
+
 ## 6.6b Trees at eye height (V8, 2026-09-07)
 
 The instanced kit is a trunk and a four-sided cone, and at eighteen pixels a tile that is right.

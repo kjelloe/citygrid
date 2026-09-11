@@ -5653,3 +5653,60 @@ building in those shots is drawn by the instanced pass rather than the baked one
 before S2 rather than a guess now — it is the same question Q93 asks about houses.
 
 **Next:** S2, ground that is somewhere.
+
+## slice-S10 — the density ladder (2026-09-11)
+
+The review after S1 looked at my own S9 shots and said what I should have: a street of flat-roofed
+slabs with a dark parapet, no chimney against the sky, no porch, no garden. The furniture was there
+in the numbers — 126 triangles a house — and not in the frame, because the buildings it landed on
+were not houses. A71 measured why: most homes in a played city are one- and two-tile lots at level
+1 or 2, and the kit drew every one of them as a block filling its lot, because `storeys = 1 + level`
+and the footprint is the lot less its setback. **Development is not the cause and nothing here
+touches it.**
+
+**`client/world/homes.js` is the ladder.** `homeForm(widthM, depthM, level)` answers with a form and
+a list of houses in lot-local `u` (along the frontage) and `v` (back from the street):
+
+| level | form | what it is |
+|---|---|---|
+| 1 | detached | one 10 m × 9 m house per tile of frontage, two storeys, pitched, gardens between; a deep lot gets a second row round a shared back |
+| 2 | semi / terrace | the frontage as two joined houses, or four narrow ones on a wide lot; two storeys, pitched, a party wall |
+| 3 | flats | the lot's width, three storeys, a hipped roof, a communal lawn in front |
+| 4+ | block | what the kit has always drawn |
+
+`houseLots(lot, level)` maps that to sub-lots in world metres **by the lot's own frontage**, and a
+sub-lot IS a lot — so the facade grammar, S9's furniture and the props all work on it unchanged, and
+the instanced pass pushes one box per house from the same function. That is E5's agreement by
+construction: the pair of semis a player walks past is the pair of boxes they saw from the air.
+
+### Three findings
+
+**The sizes have to be in metres and the placement in fractions.** A form expressed only in
+fractions gives a 34 m lot a 34 m house, which is the slab again; one expressed only in metres
+cannot be turned to face a frontage. `homeForm` takes metres, applies the metre rules — 9 to 11 m
+wide, 8 to 10 m deep — and answers in fractions of the lot. `test/homes.test.js` asserts the metres,
+which is the assertion that would have caught the original defect.
+
+**The camera stood inside a hedge.** `house_shots.mjs` aims at "a road tile in front of a house",
+and a played city has tiles that are a road AND carry a `buildingId` — the first shot came back with
+a green slab across the top of the frame and a wall across the middle. The tile has to be clear as
+well as paved. The saturated fixture has no such tiles, which is why twenty slices of shots never
+met one (Q72 again, from a new direction).
+
+**And the shot had to look ALONG the street.** Facing the houses was right while they were slabs set
+back behind a garden; with the ladder they stand near the kerb, and a camera pointed at one is
+inside its front wall. The street shot is the street now.
+
+**Measured.** Suite green twice, 1,249 tests. Street chunks **282,474 → 275,248** over 8 — smaller
+houses are less wall — while the crowd frame went **301,980 → 329,464**, because the instanced pass
+now draws two to four boxes where it drew one. Against the High budget's new **400,000** (A72,
+ruling 040's third amendment, era the 4090 card) that is comfortable; bake p95 6 ms.
+`gates.mjs render` green 4 of 4 (182 s of 300), `quick` green 11 of 11 (369 s of 480).
+
+**What the pictures say**, looked at before writing this. `smoke-S10-street.png`: a street of
+houses — pitched roofs, chimneys against the sky, windows, gardens between them, and two houses
+under scaffolding with their roofs going on, which is B2 reading exactly as it should from the
+pavement. `smoke-S10-city20.png`: rows of individual houses in four roof colours rather than a grid
+of slabs. This is the first shot in the lane that looks like the reference.
+
+**Next:** S1b — a material per mass, a sign, and the recognising part scaled to be seen.

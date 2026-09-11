@@ -125,7 +125,7 @@ Tiers (V2), defaulted from `deviceClass()`:
 |---|---|---|---|---|---|---|
 | Low (phone-weak) | 40k | 40 ms | none | capped 60 | off | none |
 | Medium (phone / weak desktop) | 140k | 40 ms | 4 chunks, day only | capped 200 | soft | pixel only |
-| High (desktop) | 320k | 20 ms | 9 chunks | uncapped | soft, following frustum | any |
+| High (desktop) | 400k | 20 ms | 9 chunks | uncapped | soft, following frustum | any |
 
 The Medium and High numbers were 80k and 200k until E5. They were set in V2, before L3 existed,
 and a chunk of real facades is 25.7k triangles — nine of them is 200k on its own. Measured on a

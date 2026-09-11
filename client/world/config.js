@@ -147,7 +147,7 @@ export const DEFAULTS = Object.freeze({
       post: ["pixel"], frameMs: 40,
     },
     high: {
-      budget: 320000, pixelRatio: 2, antialias: true, shadowMap: 4096, lamps: 8,
+      budget: 400000, pixelRatio: 2, antialias: true, shadowMap: 4096, lamps: 8,
       shadows: true, streetChunks: 9, carCap: 0, pedCap: 120,
       post: ["pixel", "ink"], frameMs: 20,
     },

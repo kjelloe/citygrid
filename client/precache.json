@@ -1,5 +1,5 @@
 {
- "version": "35097dfbda88",
+ "version": "1adf96a10fc1",
  "generated": "2026-09-11",
  "files": [
   "./client/audio/audio-model.js",
@@ -106,6 +106,7 @@
   "./client/world/ground-colour.js",
   "./client/world/ground.js",
   "./client/world/hash.js",
+  "./client/world/homes.js",
   "./client/world/house-spec.js",
   "./client/world/lanes.js",
   "./client/world/lots.js",
