@@ -233,7 +233,7 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
     // instanced boxes do it — the chunk hash is salted with the flag so this
     // runs again on the toggle (slice V7, A44).
     const family = familyColour(lot.building, palette, showOwner, ZONE_NONE);
-    const params = buildingParams(lot.building, palette, family, showOwner);
+    const params = buildingParams(lot.building, palette, family, showOwner, state.tick);
     const spec = facadeSpec(lot, params, locale, furniture);
     specs.push(spec);
     for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);

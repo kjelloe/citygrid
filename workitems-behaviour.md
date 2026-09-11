@@ -56,7 +56,7 @@ state; a burning building's `emissive` is set at noon. **Gate.** `disaster_soak`
 every kind; a new `tools/disaster_shot.mjs` fires each kind on the deputy city and shoots it
 from the pavement — `reports/smoke-B1-<kind>.png`, six of them, looked at.
 
-## B2 — Buildings that age (S)
+## B2 — Buildings that age (S) — **done 2026-09-11 as `slice-S1`, with S1**
 
 **Goal.** A building shows its level, its condition, its occupancy and its age.
 
@@ -72,6 +72,28 @@ and dark. Monotone and pure in `params.js`.
 **Tests first.** `test/params.test.js`: the visual state is a pure function of the record; the
 construction state ends at the tick the data names. **Gate.** `budget_gate` unchanged (states, not
 new geometry, except the scaffold — count it); `reports/smoke-B2-{new,worn,abandoned}.png`.
+
+**In:** `client/world/age.js` — `visualState(building, tick, capacity)` returning the phase, the
+build progress, the grime, the boarded fraction, whether the garden has gone and the lit-window
+share. Ten assertions in `test/age.test.js`, including the monotonicity: nothing about getting
+older or emptier may make a building look better. Applied in `buildingParams`, so the instanced box
+and the baked facade dirty and shrink by the same amount.
+
+**Four things this turned up.**
+
+- **A missing clock had to mean STANDING, not new.** With `tick` defaulting to 0 and `builtTick` 0,
+  every building in the city became a 10%-height shell with a scaffold round it. The default fails
+  safe in the other direction now, and a test pins it.
+- **A baked chunk has to rebake when a building's picture changes** — and must not rebake because
+  `condition` moved by one. `visualKey` is the quantised answer (five steps of progress, eight of
+  grime, four of boarding, eight of lighting), salted into the chunk hash the way the territory
+  overlay is.
+- **A tenth of a two-storey building is under a metre.** The first shell read as a bump in the
+  grass; the progress floor is a quarter, and the scaffold stands to the FINISHED height with the
+  shell growing inside it, which is what a building site looks like.
+- **Grime at 0.55 was near-black from the pavement.** 0.72, for the reason `a11y_smoke` exists:
+  dirtying a city costs the overlays their readability, and the overlays are what a colour-blind
+  player reads the city with (ruling 041).
 
 ## B3 — Service vehicles (M)
 

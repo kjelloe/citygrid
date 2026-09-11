@@ -12,6 +12,7 @@
 // Pure, like the rest of `client/world/` (ruling 032).
 
 import { getConfig } from "./config.js";
+import { visualKey } from "./age.js";
 
 export const CHUNK = getConfig().chunkTiles;
 
@@ -98,6 +99,12 @@ export function chunkHash(state, cx, cy, territory = false, furniture = false) {
     h = fnv(h, b.w * 16 + b.h);
     h = fnv(h, b.zone);
     h = fnv(h, b.owner);
+    // What the building LOOKS like, quantised (B2). A baked chunk has to
+    // rebake when grime, boards or a growing shell change its picture — and
+    // must not rebake because `condition` moved by one. `visualKey` is the
+    // bucketed answer, so a building costs its chunk a couple of dozen rebakes
+    // over its whole life rather than one a month.
+    h = fnv(h, visualKey(b, state.tick));
     h = fnv(h, b.flags);
   }
   return h;

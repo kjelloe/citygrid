@@ -32,7 +32,11 @@ test("every category names every variant", () => {
   // branches on 0..3 gives the same silhouette to 4 and 5 — which is not an
   // error, it is a city of clones.
   const source = kit();
-  for (const category of ["function residential", "function commercial", "function industrial", "function civic"]) {
+  // Civic is not in this list since S1: it does not BRANCH on a variant at all
+  // any more — it reads one mass table per definition, and
+  // `test/civic-spec.test.js` checks that no two definitions come out the same
+  // building, which is what this test is really asking.
+  for (const category of ["function residential", "function commercial", "function industrial"]) {
     const body = source.slice(source.indexOf(category), source.indexOf("\n}", source.indexOf(category)));
     const named = new Set([...body.matchAll(/variant === (\d)/g)].map((m) => Number(m[1])));
     // 0 and the fall-through `else` need not be named; every other one must be.

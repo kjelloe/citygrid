@@ -8,6 +8,8 @@
 
 import { pseudo, jitter } from "./hash.js";
 import { getConfig } from "./config.js";
+import { civicVariant } from "./civic-spec.js";
+import { visualState } from "./age.js";
 
 /** How many silhouettes each category has. The kit imports this rather than
  * keeping its own copy: `variantFor` picks from this number and `createInstances`
@@ -113,16 +115,45 @@ export function storeys(building) {
  * a fence into the geometry for the others (slice V6). */
 const HEDGE_VARIANTS = new Set([2, 4]);
 
-export function buildingParams(building, palette, family, showOwner = false) {
+/** What a building's `occupancy` is a share OF, for the lit-window fraction.
+ *
+ * The catalogue's `capacity` would be the honest answer for a civic building
+ * and `client/world/` may not import `engine/` (ruling 032) — so a grown
+ * building uses what its level can hold and everything else falls through to
+ * the third of windows E5 already lit. A lit fraction that is wrong is a
+ * picture; a mirror of the catalogue that goes stale is a defect. */
+function definitionCapacity(building) {
+  if ((building.def ?? "") !== "") return 0;
+  return 40 * (1 + (building.level ?? 0));
+}
+
+export function buildingParams(building, palette, family, showOwner = false, tick = undefined) {
   const kind = kindOf(building.zone);
   const cfg = getConfig();
   const key = zoneKey(building.zone);
+  const state = visualState(building, tick, definitionCapacity(building));
   return {
     kind,
-    variant: variantFor(building.id, VARIANTS),
-    colour: showOwner ? family : varyColour(family, building.id),
-    roof: showOwner ? darken(family, 0.62) : roofColour(building, kind, palette),
-    height: unitHeight(building),
+    // A civic building's "variant" is its DEFINITION (S1): the instanced pass
+    // keys its pools `civic<n>`, so making `n` the definition's index is what
+    // gives a coal plant its own pool without a second keying scheme. Every
+    // other category keeps the hashed variant it had.
+    variant: kind === "civic" ? civicVariant(building.def) : variantFor(building.id, VARIANTS),
+    def: building.def ?? "",
+    // What the record says about how it looks (B2). One object, so a caller
+    // cannot read the level and forget the condition.
+    state,
+    // Grime is a multiplication on the wall colour (B2), applied HERE so the
+    // instanced box at city zoom and the baked facade at street level dirty by
+    // the same amount — a building that is derelict from the pavement and
+    // pristine from the air is two buildings.
+    colour: darken(showOwner ? family : varyColour(family, building.id), state.grime),
+    roof: darken(showOwner ? darken(family, 0.62) : roofColour(building, kind, palette), state.grime),
+    // A building under construction is a SHORT building with a scaffold round
+    // it (B2). Applied to the height rather than to the geometry, so the
+    // instanced box shrinks too and a block that is going up reads as going up
+    // from the air as well as from the pavement.
+    height: unitHeight(building) * state.progress,
     storeys: storeys(building),
     floorH: cfg.lot.floorH[key],
     groundH: cfg.lot.groundH[key],

@@ -516,3 +516,18 @@ the milliseconds between `keydown` and `keyup` is zero, so the key that used to 
 nothing and reads as broken. Give the press a floor in seconds and let the hold continue from it
 (`TAP_SECONDS`, K2), and keep a gate that presses the key exactly once — `a11y_smoke` does, and it
 is the only check that would have noticed.
+
+**A gate's number can get worse because the thing got better.** S1 gave twelve civic definitions
+their own footprints, most of them smaller than the generic box they replaced, so more ground
+became visible — and `a11y_smoke`'s overlay-band separation fell from 31 to 29 against its floor of
+30, because the fifth percentile of a sample that GREW at the dark end is not the same measurement.
+Establish the before properly first: stash the WHOLE tree, not one directory, or the run you
+compare against is a broken import. Then ask which way the cause points, and if the statistic moves
+with sample size, assert the stable half too (the median) and keep the tail as a floor.
+
+**A pure module in `client/world/` decides; the two renderers draw.** S1 and B2 are the same shape
+as `buttons.js`, `held.js` and `house-spec.js` before them: the judgement ("below 40 a window is
+boarded", "a coal plant is a hall and two stacks") goes where node can test it, and the instanced
+box and the baked facade both read it. That is what makes the L2/L3 agreement (E5) true by
+construction rather than by vigilance — and it is the only way anything in the renderer gets a
+unit test at all.

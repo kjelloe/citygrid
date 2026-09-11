@@ -45,8 +45,13 @@ for (const check of CHECKS) {
   // identical — a city of clones with a green suite, and node cannot see it
   // because `building-kit.js` imports three.
   for (const [kind, counts] of Object.entries(report.kit ?? {})) {
-    if (counts.length !== report.variants) {
-      problems.push(`${kind} builds ${counts.length} variants, not ${report.variants}`);
+    // Civic has one silhouette per DEFINITION since S1 — twelve, not the six
+    // hashed variants every other category has. The count it must match is the
+    // catalogue's, and the reason this is here rather than in a unit test is
+    // the same as ever: `building-kit.js` imports three.
+    const want = kind === "civic" ? (report.civicDefs ?? report.variants) : report.variants;
+    if (counts.length !== want) {
+      problems.push(`${kind} builds ${counts.length} variants, not ${want}`);
     }
     const distinct = new Set(counts).size;
     if (distinct < counts.length) {

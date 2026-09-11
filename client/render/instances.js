@@ -23,6 +23,7 @@ import { jitter } from "../world/hash.js";
 import { setFaceContrast } from "./detail-kit.js";
 import { DIR4 } from "../../shared/grid.js";
 import { TIER, setCosts, inBounds, planForChunk, tilePixels, usesChunkPlans } from "./lod.js";
+import { civicSpin } from "../world/civic-spec.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
   TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, FLAG_RUINED, NET_PRESENT,
@@ -598,7 +599,13 @@ export function updateInstances(state, pools, options = {}) {
     // box drawn here and the facade drawn at street level are the same house
     // (ruling 032).
     const family = familyColour(building, palette, showOwner, ZONE_NONE);
-    const p = buildingParams(building, palette, family, showOwner);
+    // WITH the clock: a building's age decides whether it is a shell with a
+    // scaffold round it (B2), and `state.tick` is the only place that lives.
+    const p = buildingParams(building, palette, family, showOwner, state.tick);
+    // A civic box turns to face its street, like the facade it stands in for
+    // (S1). Every other category keeps the hashed spin: a house has a front
+    // door on its frontage already, and a shop's sign is on its own edge.
+    const spin = p.kind === "civic" ? civicSpin(lot?.frontage) * (Math.PI / 2) : p.spin;
     // The lawn takes the building's seat, not its own tile's height: it is the
     // ground the house was cut into, so on a slope the uphill half of it is
     // buried and that is what a plinth looks like from above (spec §5.6).
@@ -626,8 +633,8 @@ export function updateInstances(state, pools, options = {}) {
     // it from its depth, so the BACK of the house stays where it was.
     const depth = (building.h - p.setback) * 0.98;
     const bz = cz - p.setback / 2;
-    push(pool, cx, h, bz, building.w * 0.98, p.height, depth, p.colour, p.spin);
-    if (roofPool) push(roofPool, cx, h, bz, building.w * 0.98, p.height, depth, p.roof, p.spin);
+    push(pool, cx, h, bz, building.w * 0.98, p.height, depth, p.colour, spin);
+    if (roofPool) push(roofPool, cx, h, bz, building.w * 0.98, p.height, depth, p.roof, spin);
   }
 
   // --- the overlay pass -----------------------------------------------------

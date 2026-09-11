@@ -1,5 +1,5 @@
 {
- "version": "9b0781a6eb92",
+ "version": "35097dfbda88",
  "generated": "2026-09-11",
  "files": [
   "./client/audio/audio-model.js",
@@ -33,6 +33,7 @@
   "./client/render/baker.js",
   "./client/render/building-kit.js",
   "./client/render/camera.js",
+  "./client/render/civic-parts.js",
   "./client/render/detail-kit.js",
   "./client/render/edges.js",
   "./client/render/facade.js",
@@ -92,7 +93,9 @@
   "./client/ui/skins.js",
   "./client/ui/statistics-model.js",
   "./client/ui/statistics.js",
+  "./client/world/age.js",
   "./client/world/chunks.js",
+  "./client/world/civic-spec.js",
   "./client/world/collision.js",
   "./client/world/config.js",
   "./client/world/corridors.js",

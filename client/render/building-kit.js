@@ -19,6 +19,7 @@ import {
   addRoofClutter, addShopfront, addFence, addDormers, addPorch,
 } from "./detail-kit.js";
 import { variantFor, VARIANTS } from "../world/params.js";
+import { civicShape, civicHeight, CIVIC_DEFS } from "../world/civic-spec.js";
 import { hasPorchAtL2 } from "../world/house-spec.js";
 
 const TOP = 1.0;
@@ -450,63 +451,54 @@ function industrial(variant, detail) {
 
 // --- civic ------------------------------------------------------------------
 
+/** A civic building, per DEFINITION (slice S1).
+ *
+ * Twelve definitions had six generic silhouettes picked by a hash of the id, so
+ * a coal plant and a park were the same box with different windows in it. The
+ * masses come from `client/world/civic-spec.js`, which node can read and which
+ * the L3 baker reads too — the L2/L3 agreement (E5) by construction rather than
+ * by two people drawing the same building twice.
+ *
+ * `variant` IS the definition's index here; `buildingParams` puts it there.
+ */
 function civic(variant, detail) {
   const parts = makeParts();
-  const seed = 700 + variant * 31;
-  const top = 0.8;
-  if (detail === 0) return blockForm(parts, 0.88, false);
-  addBox(parts, -W, 0, -W, W, top, W);
-  roofPart(parts, () => addBox(parts, -W - 0.045, top, -W - 0.045, W + 0.045, top + 0.08, W + 0.045));
+  const shape = civicShape(variant);
+  const top = civicHeight(variant);
+  // The coarsest tier is still a block — but a block as tall as the SHAPE, so a
+  // power station's stacks and a turbine's mast survive the silhouette pass
+  // that flattens everything else (ruling 019's ladder).
+  if (detail === 0) return blockForm(parts, Math.min(1.6, 0.5 + top * 0.4), false);
 
-  if (detail > 1) for (const side of [0, 1, 2, 3]) {
-    addWindowGrid(parts, side, W, W, {
-      from: 0.22, to: top - 0.06, columns: side % 2 === 0 ? 4 : 3, rows: 2, windowShade: 0.32,
-    });
+  for (let i = 0; i < shape.masses.length; i += 1) {
+    const m = shape.masses[i];
+    // The tallest mass wears the roof colour: on a hall it is the roof, on a
+    // water tower it is the tank, and on a park it is the path. One rule, and
+    // it is the one that makes a definition readable from the air.
+    const roofish = m.y1 >= top - 1e-6 && shape.masses.length > 1;
+    const build = () => addBox(parts, m.x0 * W, m.y0 * W * 2, m.z0 * W,
+      m.x1 * W, m.y1 * W * 2, m.z1 * W, m.shade);
+    if (roofish) roofPart(parts, build);
+    else build();
   }
-  // A civic entrance: wide doors and a portico.
-  if (detail > 1) addPanel(parts, 2, W, -0.14, 0.005, 0.14, 0.24, 0.38);
-  addBox(parts, -0.2, 0.26, W, 0.2, 0.3, W + 0.09, 0.78);
-  addBox(parts, -0.19, 0, W + 0.05, -0.15, 0.26, W + 0.09, 0.66);
-  addBox(parts, 0.15, 0, W + 0.05, 0.19, 0.26, W + 0.09, 0.66);
-  addBox(parts, -0.24, 0, W, 0.24, 0.025, W + 0.11, 0.85);
-
-  if (variant === 4) {
-    // A hall behind a full colonnade: six columns across the front and a
-    // pediment over them.
-    for (let i = -3; i <= 3; i += 1) {
-      const px = i * W * 0.3;
-      addBox(parts, px - 0.026, 0, W + 0.02, px + 0.026, top * 0.7, W + 0.11, 0.7);
+  // Windows and a door on the biggest mass, which is the one a person goes into.
+  if (detail > 1) {
+    const hall = shape.masses.reduce((best, m) =>
+      (m.x1 - m.x0) * (m.z1 - m.z0) * (m.y1 - m.y0) > (best.x1 - best.x0) * (best.z1 - best.z0) * (best.y1 - best.y0)
+        ? m : best, shape.masses[0]);
+    const hx = Math.min(W, Math.max(hall.x0, hall.x1) * W);
+    const hz = Math.min(W, Math.max(hall.z0, hall.z1) * W);
+    if (hall.y1 - hall.y0 > 0.3) {
+      addWindowGrid(parts, 2, hx, hz, {
+        from: hall.y0 * W * 2 + 0.08, to: hall.y1 * W * 2 - 0.06,
+        columns: 3, rows: hall.y1 - hall.y0 > 0.8 ? 2 : 1, windowShade: 0.32,
+      });
+      addDoor(parts, hz, 0.1, 0.22);
     }
-    addBox(parts, -W, top * 0.7, W + 0.01, W, top * 0.78, W + 0.13, 0.9);
-    roofPart(parts, () => addGable(parts, -W, top * 0.78, W + 0.01, W, top * 0.96, W + 0.13, false));
-  } else if (variant === 5) {
-    // A stepped tower: three setbacks, which is the civic silhouette that
-    // reads from across the map.
-    addBox(parts, -W * 0.62, top + 0.08, -W * 0.62, W * 0.62, top + 0.34, W * 0.62, 0.94);
-    addBox(parts, -W * 0.42, top + 0.34, -W * 0.42, W * 0.42, top + 0.6, W * 0.42, 0.9);
-    addBox(parts, -W * 0.24, top + 0.6, -W * 0.24, W * 0.24, top + 0.82, W * 0.24, 0.86);
-    roofPart(parts, () => addBox(parts, -W * 0.28, top + 0.82, -W * 0.28, W * 0.28, top + 0.88, W * 0.28));
-    if (detail > 1) for (const side of [0, 2]) {
-      addWindowGrid(parts, side, W * 0.42, W * 0.42, { from: top + 0.38, to: top + 0.56, columns: 2, rows: 1, windowShade: 0.3 });
-    }
-  } else if (variant === 0) {
-    addBox(parts, -0.1, top + 0.08, -0.1, 0.1, top + 0.44, 0.1, 0.92);
-    if (detail > 1) addPanel(parts, 2, 0.1, -0.05, top + 0.2, 0.05, top + 0.34, 1.3);
-    roofPart(parts, () => addGable(parts, -0.135, top + 0.44, -0.135, 0.135, top + 0.6, 0.135, true));
-  } else if (variant === 1) {
-    addBox(parts, W * 0.3, top + 0.08, -0.03, W * 0.36, top + 0.52, 0.03, 0.55);
-    if (detail > 1) roofPart(parts, () => addRoofClutter(parts, W, top + 0.08, seed));
-  } else if (variant === 3) {
-    // A rotunda on the roof: a drum with a shallow cone, which is the civic
-    // silhouette that is neither a tower nor a box.
-    addCylinder(parts, 0, top + 0.08, 0, W * 0.42, 0.22, 12, 0.94);
-    roofPart(parts, () => addCone(parts, 0, top + 0.3, 0, W * 0.46, top + 0.48, 12));
-  } else if (variant === 2) {
-    addBox(parts, -W * 0.62, top + 0.08, -W * 0.62, W * 0.62, top + 0.18, W * 0.62, 0.88);
-    if (detail > 1) roofPart(parts, () => addRoofClutter(parts, W * 0.6, top + 0.18, seed));
   }
   return finishBuilding(parts);
 }
+
 
 // --- props ------------------------------------------------------------------
 
@@ -619,8 +611,12 @@ export function buildingVariants(kind, detail = 2) {
     : kind === "commercial" ? commercial
       : kind === "industrial" ? industrial
         : civic;
+  // Civic has one pool per DEFINITION (S1), not per hashed variant — twelve
+  // rather than six, and the index means the same thing here as it does in
+  // `buildingParams`, which is the pairing V6 was written about.
+  const count = kind === "civic" ? CIVIC_DEFS.length : VARIANTS;
   const list = [];
-  for (let i = 0; i < VARIANTS; i += 1) list.push(make(i, detail));
+  for (let i = 0; i < count; i += 1) list.push(make(i, detail));
   return list;
 }
 

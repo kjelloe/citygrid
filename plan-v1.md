@@ -83,7 +83,7 @@ the file to open first.
 | `workitems-film.md` | photo mode, tours, a demo film | not started; unblocked — the measurement lane's buildable half is done, so F1 follows D8 |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
 | `workitems-navigation.md` | the camera on the screen and on both mouse buttons (P59, ruling 042) | **done 2026-09-11** — K1 the cluster, K3 the mouse and the free look, K2 held keys at a rate, K4 Home and the compass, K5 the phone |
-| `workitems-world.md` | the 3D world made detailed — civic kits, ground, streets, water, trees, motion, windows, the compare sheet as gate (P59) | **started 2026-09-11** — S9 houses done; S1 with B2 next, interleaved with behaviour |
+| `workitems-world.md` | the 3D world made detailed — civic kits, ground, streets, water, trees, motion, windows, the compare sheet as gate (P59) | **started 2026-09-11** — S9 houses and S1 civic kits done (B2 with it); S2 next, interleaved with behaviour |
 | `workitems-behaviour.md` | the simulation made visible and life made realistic — damage, ageing, service vehicles, rush hour, roles, weather (P59) | written 2026-09-10; interleaved with world |
 | `workitems-transport.md` | the transport lane from `specs/transport-and-landmarks.md` (P61, P62): T1 the avenue; T2–T3 rail and the station; T4 water bodies, marina, ferry and port; T5 ranks, city hall, the airport; T6 leisure and education coverage; T7 the cheap catalogue rows | written 2026-09-11, Q87–Q92 answered (A65–A70); **after behaviour** — it is the first lane since cityviewer that moves the hash |
 
@@ -408,6 +408,7 @@ by number from the code they create.
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q93 | The houses S9 furnished are blocks of flats — development's shape or the kit's? | **Kjell**, before S1 finishes |
 | Q94 | The High frame has 18,000 triangles left and four world slices to go | the world lane, at whichever slice first goes over |
+| Q95 | Is the L3 civic path reached at street level at all, or is every S1 picture an instanced box? | the world lane, before S2 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

@@ -5576,3 +5576,80 @@ three- and four-storey blocks rather than detached houses. That is a development
 a kit question (the six silhouettes), not a grammar one.
 
 **Next:** S1 with B2, as the world lane's Order section says.
+
+## slice-S1 with B2 — twelve definitions, and buildings that age (2026-09-11)
+
+Two items from two lanes, landed together because their Order sections say so: a coal plant that
+looks like a coal plant, and a building that shows its level, its condition, its occupancy and its
+age. Both are the same shape of change — a pure module in `client/world/` that decides, and two
+renderers that draw what it decided.
+
+**`client/world/civic-spec.js` is twelve shapes as lists of MASSES**, in unit space across the lot,
+which both fidelities read: the instanced box at city zoom and the baked facade at street level are
+the same coal plant by construction rather than by two people drawing it twice (E5's rule). A
+turbine hall with two stacks and a coal heap; a mast with a nacelle and three blades; a tank on
+four legs; an appliance bay with red doors and a drill tower; a ward block with an entrance canopy
+and a cross. A civic building's "variant" is now its DEFINITION's index, so the instanced pass's
+`civic<n>` pool keying needed no second scheme — and `test/civic-spec.test.js` compares the table's
+keys against `definitionIds()`, because `client/world/` may not import `engine/` and a second copy
+of twelve strings is a defect waiting for the next edit.
+
+**`client/world/age.js` is the other one.** `visualState(building, tick, capacity)` answers with the
+phase, the build progress, the grime, the boarded fraction, whether the garden has gone and the
+share of windows lit at night. Applied in `buildingParams`, so a building dirties and shrinks by
+the same amount from the air and from the pavement. The invariant the tests are really for is
+monotonicity: nothing about getting older or emptier may make a building look better.
+
+### Six findings
+
+**A hospital photographed from the north was a blank ward wall.** The masses are authored with the
+entrance on +z because one of the four sides had to be chosen, and nothing turned them.
+`civicSpin(lot.frontage)` does now, at both fidelities — and the screenshot is the only thing that
+could have said so.
+
+**A missing clock had to mean STANDING, not new.** `buildingParams` took `tick = 0` by default and
+`builtTick` is 0 for a fresh city, so every building became a 10%-height shell with a scaffold
+round it — the whole city broken by a default. It is `undefined` now and means "old enough"; the
+cost is one building's first half-year of scaffolding, against a city that cannot be looked at.
+
+**A baked chunk has to rebake when a building's picture changes.** Condition and occupancy move
+most ticks, so hashing them would rebake half the city every month; ignoring them leaves a
+building pristine as it decays. `visualKey` quantises — five steps of progress, eight of grime,
+four of boarding, eight of lighting — and is salted into the chunk hash the way the territory
+overlay is (V7/A44). A building costs its chunk a couple of dozen rebakes over its whole life.
+
+**A tenth of a two-storey building is under a metre.** The first construction shell read as a bump
+in the grass, and the scaffold, standing on the shell, was shorter still. The progress floor is a
+quarter now and the scaffold stands to the FINISHED height with the shell growing inside it, which
+is what a building site actually looks like.
+
+**The park's lawn was a lid.** At the full lot it covered every ground pixel of its tile, and an
+overlay is a texture on the ground (ruling 041) — so a park showed no pollution, no land value and
+no coverage at all. Pulled in to 0.84 of the lot, the terrain and its wash run round the edge of
+the grass.
+
+**And a gate's number moved because the slice made things BETTER.** `a11y_smoke`'s
+"adjacent bands are told apart on a shaded hillside" went from 31 to 29 against a floor of 30 —
+and the cause was that twelve civic definitions have smaller footprints than the generic box they
+replaced, so **more ground is visible**: washed pixels went 1,935 → 2,074, and the new ones are at
+the edges of buildings, in shadow, separating least. The fifth percentile of a growing sample is
+not a readability measurement. The check now asserts the MEDIAN (102 and 77 against a floor of 60),
+which is what a player reads the city by, and keeps the tail as a floor at 25 so a genuinely
+washed-out band still fails. Both numbers are printed either way.
+
+**Measured.** Suite green twice, 1,241 tests. Twelve `reports/smoke-S1-<def>.png` and three
+`reports/smoke-B2-{new,worn,abandoned}.png`, from `tools/civic_shots.mjs`, which places each
+definition through the reducer and reports the result code — a picture of a building the rules
+refused is a picture of nothing. `gates.mjs render` green, 4 of 4, 179 s of 300 (budget_gate 162);
+`gates.mjs quick` green, 11 of 11, 366 s of 480.
+
+**What the pictures say.** The coal plant reads as a power station, the water tower as a water
+tower, the wind turbine as a mast with blades on it, the hospital as a civic building with an
+entrance. The three ages differ by tone rather than by silhouette at the distance the pavement
+puts you at, which is honest — grime is a tint, and the boards are 24 quads on a building 40 m
+away. What is NOT yet visible in them is the L3 civic window pass: the node harness builds it (8
+triangles on a police station) and the frame's triangle count does not move, which says the
+building in those shots is drawn by the instanced pass rather than the baked one. Worth an hour
+before S2 rather than a guess now — it is the same question Q93 asks about houses.
+
+**Next:** S2, ground that is somewhere.

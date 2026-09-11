@@ -20,6 +20,7 @@
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
 import { houseParts } from "./house-spec.js";
+import { civicShape, civicSpin, turnMass } from "./civic-spec.js";
 /**
  * The names over the shops — a mirror of `data/names.json`, one list per locale.
  *
@@ -185,8 +186,13 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
     variant: params.variant,
     wall: params.colour,
     base: params.lawn || params.colour,
-    groundH: params.groundH,
-    floorH: params.floorH,
+    // A building under construction is SHORT at street level too (B2). The
+    // instanced box shrinks through `params.height`; without this the baked
+    // facade stayed full height and the same building was a shell from the air
+    // and finished from the pavement — which is the L2/L3 disagreement E5 is
+    // about, arrived at from the other side.
+    groundH: params.groundH * (params.state?.progress ?? 1),
+    floorH: params.floorH * (params.state?.progress ?? 1),
     storeys: params.storeys,
     seat: lot.seat,
     x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z1,
@@ -225,6 +231,23 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
   // chunks that is 32,000 a frame, which `budget_gate` priced at 50,000 over a
   // 320,000 budget. On the three the player is standing in it is 11,000, and a
   // shutter four chunks away was two pixels of the wall's own colour.
+  // A civic building is its DEFINITION's shape (S1), not a box with a portico
+  // on it. The masses are the same table the instanced kit reads, in unit space
+  // across the lot — so the coal plant a player walks up to is the coal plant
+  // they saw from the air.
+  if (kind === "civic" && params.def) {
+    // Turned so the entrance faces the street. The masses are authored with the
+    // front on +z; a hospital on a lot fronting north showed a blank ward wall
+    // to the road, which is the first thing a screenshot said.
+    const quarters = civicSpin(lot.frontage);
+    spec.civic = {
+      def: params.def,
+      masses: civicShape(params.def).masses.map((m) => turnMass(m, quarters)),
+    };
+  }
+  // What the record says about how it looks (B2). Every category, because a
+  // hospital ages the same way a house does.
+  spec.state = params.state;
   if (kind === "residential" && furniture) {
     // The old rule gave a porch to variant 1 only, and `houseParts` gives one
     // to three houses in four. Two porches on one house is one too many.

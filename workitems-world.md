@@ -18,7 +18,7 @@ per-tier budgets in `data/cityviewer.json` or an amendment to ruling 040 with th
 fixture hash moves. **Detail goes where the eye is**: the street camera and `city 20t` first
 (D8's rows), silhouettes only at `city 80t`.
 
-## S1 — Civic buildings drawn as what they are (M)
+## S1 — Civic buildings drawn as what they are (M) — **done 2026-09-11 as `slice-S1`, with B2**
 
 **Goal.** A coal plant looks like a coal plant. Twelve catalogue definitions, twelve kits.
 
@@ -37,6 +37,28 @@ definition, and the L2 box's footprint matches the L3 kit's; `client_smoke` prin
 **Gate.** `budget_gate` unchanged on the saturated fixture (it has no civic buildings — say so) and
 a new row on the deputy 64×64 at `city 20t` on the big viewport. `reports/smoke-S1-<def>.png`
 from the pavement, twelve of them, looked at.
+
+**In:** `client/world/civic-spec.js` — twelve shapes as lists of MASSES in unit space, which both
+fidelities read: the instanced box at city zoom and the baked facade at street level are the same
+coal plant by construction rather than by two people drawing it twice (E5's rule). A civic
+building's "variant" is now its DEFINITION's index, so the pool keying needed no second scheme.
+`civicSpin` turns each shape so its entrance faces the street.
+
+**Four things this turned up.**
+
+- **A hospital photographed from the north was a blank ward wall.** The masses are authored with
+  the entrance on +z, because one of the four sides had to be chosen, and nothing turned them —
+  `civicSpin(lot.frontage)` does, at both fidelities.
+- **The harness could not photograph a building that does not exist yet.** `shoot.html` grew
+  `place=<def>`, which builds a road and puts one through the REDUCER before the camera is placed,
+  plus `age=` and `wear=` for B2's three states. A picture of a building the rules refused is a
+  picture of nothing, so the tool reports the result code.
+- **Every definition is set back by its own size** in that harness. A fixed gap frames a water
+  tower and a hospital completely differently: one tile put a 3×3 wall across the whole frame and
+  two tiles put a 1×1 at the far end of it.
+- **The park's lawn was a lid.** At the full lot it covered every ground pixel of its tile, and an
+  overlay is a texture on the ground (ruling 041) — so a park showed no pollution and no land
+  value at all.
 
 ## S2 — Ground that is somewhere (M) — D4 findings 1 and 2, Q73
 
@@ -233,7 +255,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9 → S1 → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9 and S1 are done (2026-09-11); S2 is next.** S9 → S1 → S2 → S6 → S5 → S3 → S4 → S7 → S8, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

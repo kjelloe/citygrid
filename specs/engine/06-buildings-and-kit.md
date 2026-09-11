@@ -175,6 +175,30 @@ Measured: per chunk **269,940 → 282,474** over 8 chunks (+4.6%); the crowd fra
 301,980 of 320,000**; chunk bake p95 6 ms. Shots: `reports/smoke-S9-{street,garden,city20}.png`
 from `tools/house_shots.mjs`.
 
+## 6.1b Twelve civic definitions, and buildings that age (S1/B2, 2026-09-11)
+
+`client/world/civic-spec.js` holds one shape per catalogue definition as a list of **masses** in
+unit space — x and z in [-1, 1] across the lot, y in units of the lot's height — so one description
+serves a 1×1 water tower and a 3×3 hospital, and the instanced box and the baked facade read the
+same one. A civic building's "variant" is its definition's INDEX, which is what lets the instanced
+pass keep its `civic<n>` pool keying. `civicSpin(lot.frontage)` turns a shape so its entrance faces
+the street; the masses are authored with the front on +z.
+
+`client/world/age.js` answers what a record LOOKS like: the phase (site, standing, abandoned), the
+build progress, the grime multiplier, the boarded fraction, whether the garden has gone, and the
+share of windows lit at night. Two rules came out of building it:
+
+1. **A missing clock means STANDING.** `buildingParams` takes the tick; with a default of 0 and a
+   `builtTick` of 0 every building in a fresh city became a 10%-height shell.
+2. **The chunk hash carries a QUANTISED visual key.** Condition and occupancy move most ticks, so
+   hashing them rebakes half the city every month; ignoring them leaves a building pristine as it
+   decays. `visualKey` buckets to five steps of progress, eight of grime, four of boarding and
+   eight of lighting.
+
+And one for anything that stands on the ground: **a building's own ground is not a lid.** The
+park's lawn at the full lot covered every ground pixel of its tile, and an overlay is a texture on
+the ground (ruling 041), so a park showed no pollution at all.
+
 ## 6.6b Trees at eye height (V8, 2026-09-07)
 
 The instanced kit is a trunk and a four-sided cone, and at eighteen pixels a tile that is right.

@@ -19,11 +19,13 @@
 // simulation did not actually produce would be worth nothing.
 import * as THREE from "three";
 import { buildingVariants, VARIANTS } from "../client/render/building-kit.js";
+import { CIVIC_DEFS } from "../client/world/civic-spec.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
-import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
+import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PLACE_BUILDING } from "../engine/commands.js";
+import { definition } from "../engine/catalogue.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -82,6 +84,41 @@ if (dense) {
     if (tick % 6 === 0) for (const d of deputies) deputyTurn(state, d);
   }
 }
+
+// `place=<def>[,<def>…]` builds a road across the middle and puts one of each
+// definition beside it, through the REDUCER (slice S1). A picture of a building
+// the rules refused is a picture of nothing, and the gate for twelve civic kits
+// is twelve pictures — so the harness has to be able to put one in front of the
+// camera before the camera is placed.
+//
+// `age=<ticks>` then backdates every building's `builtTick` by that many ticks,
+// which is how B2's three ages are photographed: a site, a finished building
+// and a derelict one are the same record at three numbers.
+const placeList = (params.get("place") ?? "").split(",").filter(Boolean);
+const placed = [];
+if (placeList.length > 0) {
+  const W = state.width;
+  const row = Math.round(W / 2);
+  state.players[0].treasury = 9000000;
+  apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: [row * W + 3, W - 6] });
+  let at = 5;
+  for (const def of placeList) {
+    const d = definition(def);
+    if (!d) throw new Error("no such definition: " + def);
+    // Set back by its own SIZE. At 20 m a tile, a fixed gap frames a water
+    // tower and a hospital completely differently: two tiles put a 1×1 at the
+    // far end of the shot and one tile put a 3×3 wall across the whole frame.
+    // Back by (w - 1) keeps every definition about the same size in it.
+    const y = row + 1 + Math.max(0, d.w - 1);
+    const result = apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def, x: at, y }).result;
+    placed.push({ def, x: at, y, w: d.w, h: d.h, result });
+    at += d.w + 2;
+  }
+}
+const backdate = Number(params.get("age") ?? 0);
+if (backdate !== 0) for (const b of state.buildings) b.builtTick -= backdate;
+const wear = Number(params.get("wear") ?? -1);
+if (wear >= 0) for (const b of state.buildings) b.condition = wear;
 
 // `pollute` fills the pollution layer with one value, which puts the WHOLE map
 // in one overlay band without changing a single thing that is drawn (slice V7).
@@ -235,6 +272,9 @@ globalThis.SHOT_REPORT = {
   lampsHeld: stats.lampsHeld,
   cars: stats.cars,
   variants: VARIANTS,
+  // Civic is keyed by DEFINITION since S1, so its pool count is the
+  // catalogue's, not the six hashed variants every other category has.
+  civicDefs: CIVIC_DEFS.length,
   // How many of the garden pools were actually placed (slice V6). A pool that
   // is silently empty looks exactly like a pool whose conditions were not met,
   // which is the lesson E6 paid for.
@@ -243,6 +283,7 @@ globalThis.SHOT_REPORT = {
   relief: getConfig().reliefM,
   maxGrade: getConfig().road.maxGrade,
   spanUsed: view.view.span,
+  placed: placed.map((p) => `${p.def}:${p.result}`).join(" ") || undefined,
   maxH: view.model.maxHeight,
   steepestStreet: view.model.steepestStreet,
   // Every category's variants, as triangle counts (slice V6). A variant the kit
@@ -307,6 +348,7 @@ globalThis.SHOT_VIEW = view;
 // The state too, so a shot can be AIMED at something — "a residential street"
 // is a query, not a coordinate somebody remembered (S9).
 globalThis.SHOT_STATE = state;
+globalThis.SHOT_PLACED = placed;
 globalThis.SHOT_READY = true;
 </script>
 </body>

@@ -231,8 +231,13 @@ test("the baked facades honour the territory overlay the instanced boxes do", ()
   const source = readFileSync(join(repoRoot, "client", "render", "streets-l3.js"), "utf8");
   assert.match(source, /familyColour\(lot\.building, palette, showOwner, ZONE_NONE\)/,
     "bakeLots still hard-codes the family colour");
-  assert.match(source, /buildingParams\([^)]*showOwner\)/,
+  assert.match(source, /buildingParams\([^)]*showOwner[^)]*\)/,
     "the params do not know about the overlay, so the roof stays a roof colour");
+  // And the CLOCK, since B2: a building's age decides whether it is a shell
+  // with a scaffold round it, and `state.tick` is the only place that lives.
+  // Asserted here because the bake is the one call site a test cannot reach.
+  assert.match(source, /buildingParams\([^)]*state\.tick\)/,
+    "the bake draws every building as finished, whatever its age");
 });
 
 test("the verge takes the colour of the land under it, not a flat lawn (A38)", () => {

@@ -17,6 +17,7 @@ import { sink } from "./solid.js";
 import { EDGES, originOf } from "./edges.js";
 import { roof } from "./roof-kit.js";
 import { buildHouseParts } from "./house-parts.js";
+import { buildCivic, buildAge } from "./civic-parts.js";
 // Re-exported so `signs.js` and anything else that draws on a wall keeps one
 // import for "where the walls are".
 export { EDGES, originOf } from "./edges.js";
@@ -138,6 +139,17 @@ export function buildFacade(spec) {
   const glass = 0x39566b;
   const trim = 0xe8e4da;
 
+  // A civic building is its definition's shape, not a wall with windows in it
+  // (S1). It leaves this function early: a coal plant has no bays, no
+  // storefront and no front door on a frontage, and pretending it does is what
+  // made every civic building the same box.
+  if (spec.civic) {
+    const height = (wallTop - spec.seat) / 1.0;
+    out.push(...buildCivic(spec, { height, trim, glass }));
+    out.push(...buildAge(spec, { groundTop, wallTop, trim }));
+    return out.filter((piece) => piece.part.triangles > 0);
+  }
+
   const walls = sink();
   const reveals = sink();
   const glazing = sink();
@@ -162,9 +174,15 @@ export function buildFacade(spec) {
       const back = reveal(reveals, { ...geom, length: edge.length }, origin, hole, DEPTH);
       // The backing panel. A window is lit at night for about a third of the
       // building (spec §6.5) and goes in its own bucket so E6 can dial it.
+      // How many windows are lit at night is the building's OCCUPANCY (B2),
+      // not a third of them for everybody: `spec.state.lit` is the fraction,
+      // and the choice stays deterministic from the id so the same windows are
+      // lit between frames and between two players' cities.
+      const share = spec.state?.lit ?? 1 / 3;
+      const pick = ((spec.id * 7 + (hole.floor ?? 0) * 13 + (hole.bay ?? 0) * 5) % 100) / 100;
       const target = hole.door ? glazing
         : hole.shop ? lit
-          : ((spec.id * 7 + (hole.floor ?? 0) * 13 + (hole.bay ?? 0) * 5) % 3 === 0 ? lit : glazing);
+          : (pick < share ? lit : glazing);
       // One face, pointing out through the opening.
       if (geom.out[0] + geom.out[1] > 0) target.quad(back[0], back[1], back[2], back[3]);
       else target.quad(back[3], back[2], back[1], back[0]);
@@ -243,6 +261,10 @@ export function buildFacade(spec) {
   // and `groundTop` this function worked out — passing them rather than
   // recomputing is what keeps a chimney on the roof rather than above it.
   out.push(...buildHouseParts(spec, { groundTop, wallTop, trim, glass }));
+  // What age and neglect add (B2): a scaffold while it is going up, boards over
+  // the windows when its condition has gone. Nothing at all for a building in
+  // good repair, which is most of them.
+  out.push(...buildAge(spec, { groundTop, wallTop, trim }));
 
   return out.filter((piece) => piece.part.triangles > 0);
 }
