@@ -282,7 +282,7 @@ neighbour's living room.
 **Measured.** Street chunks **282,474 → 275,248** over 8 (smaller houses, less wall), the crowd
 frame **301,980 → 329,464 of the new 400,000** (more, smaller instanced boxes), bake p95 6 ms.
 
-## S1b — Civic buildings you can tell apart (S) — A73
+## S1b — Civic buildings you can tell apart (S) — A73 — **done 2026-09-12 as `slice-S1b`**
 
 **Goal.** From the pavement, a coal plant is a coal plant before you read the inspector.
 
@@ -302,6 +302,24 @@ frame **301,980 → 329,464 of the new 400,000** (more, smaller instanced boxes)
 **Tests first.** `test/civic-spec.test.js`: every mass has a material from the set; the hospital's
 street face carries the cross; no definition is a single material. **Gate.** the twelve
 `smoke-S1-*.png` re-taken and looked at; `budget_gate` unchanged within 2%.
+
+**In:** a `mat` on every mass from a set of nine, resolved per style in `palettes.js`
+(`civicColour`) and as a per-vertex shade in the instanced kit (`shadeOf`); one sink per material
+in `civic-parts.js`; a sign board over the entrance through the existing sign canvas, from
+`buildingLabelKey` in the game and `defaultName` in a harness that has no catalogue; stacks as
+drums that clear their hall, a cross on the street face, doors the height of the appliance bay.
+
+**And the finding that was hiding behind all twelve pictures: the chunk the camera stands in was
+never baked.** `inView` samples a chunk's centre and four corners against the visible bounds, and
+every one of them can be outside the wedge while the chunk's interior — the ground the player is
+standing on — is inside it. So the buildings CLOSEST to the camera were drawn as instanced boxes,
+in every street-level screenshot this project has ever taken. That is why S1's twelve shots showed
+one concrete tone whatever the spec said, and why A73's probe (a 360-triangle drop) was reading the
+roads rather than the building. `holdsCamera` is the fix; `street-chunks.js` reports which chunk
+keys are live now, because "3 live" could not answer "is the building in front of me one of them".
+
+**Measured.** Street chunks **275,248 → 226,232** over 8 with 9 groups (the near chunk joins and a
+distant one leaves), the crowd frame **329,464 → 310,885 of 400,000**, bake p95 5 ms.
 
 ## S9 — Houses with more on them (M) — P61 — **done 2026-09-11 as `slice-S9`**
 
@@ -370,7 +388,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9, S1 and S10 are done (2026-09-11). Next: S1b → (B4 and B7 from the behaviour lane) → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9, S1, S10 and S1b are done (2026-09-11/12). Next: (B4 and B7 from the behaviour lane) → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

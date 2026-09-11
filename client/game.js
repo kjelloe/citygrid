@@ -32,6 +32,7 @@ import { createController } from "./input/controller.js";
 import { phaseOf } from "./render/time-of-day.js";
 import { TIME } from "./ui/settings-model.js";
 import { loadSettings, saveSettings } from "./ui/settings.js";
+import { buildingLabelKey } from "./ui/build-model.js";
 import { createHud } from "./ui/hud.js";
 import { createMinimap } from "./render/minimap.js";
 import { openStatistics } from "./ui/statistics.js";
@@ -141,8 +142,14 @@ export async function startGame(root, given = {}) {
     // that is simulated and not drawn is still a car being simulated.
     life: stillness ? false : given.life,
     time: given.time,
-    // The shop signs are drawn in the player's language (R2, A40).
+    // The shop signs are drawn in the player's language (R2, A40), and so are
+    // the civic ones (S1b) — the renderer has no catalogue, so the lookup is
+    // passed in rather than mirrored.
     locale: currentLocale(),
+    // Through `buildingLabelKey`, which is the one place that knows how a
+    // definition becomes a catalogue key — the build menu has used it since
+    // N11 and it had no other caller until now.
+    buildingName: (def) => t(buildingLabelKey(def)),
   });
   focusOn(renderer.view, state.width / 2, state.height / 2);
   renderer.view.span = 28;

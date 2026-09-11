@@ -150,7 +150,7 @@ function extrasOf(kind, variant, spec, id) {
  * two the instanced kit reads, which is the guarantee that L2 and L3 are the
  * same house.
  */
-export function facadeSpec(lot, params, locale = "en", furniture = true) {
+export function facadeSpec(lot, params, locale = "en", furniture = true, style = undefined) {
   // The default is ON here and OFF in `bakeLots` and `chunkHash` deliberately:
   // a caller asking for one facade wants the whole house, and the two that
   // decide per CHUNK must never disagree with each other about what was baked.
@@ -249,6 +249,16 @@ export function facadeSpec(lot, params, locale = "en", furniture = true) {
   // across the lot — so the coal plant a player walks up to is the coal plant
   // they saw from the air.
   if (kind === "civic" && params.def) {
+    // The style's palette reaches the civic renderer through the spec (S1b):
+    // a mass names a MATERIAL and the style resolves it, which is how the
+    // painted style keeps its ramps while a coal plant's stacks stop being the
+    // same grey as its hall. `client/world/` never looks inside it.
+    spec.palette = style?.palette;
+    spec.styleName = style?.name;
+    // The board over the entrance. A KEY, not a word: the sign canvas is
+    // localised (R2/A40) and `t()` is the UI's, so what travels is the key and
+    // the caller resolves it — the same arrangement the shop names have.
+    spec.civicSign = style?.nameFor?.(params.def) ?? undefined;
     // Turned so the entrance faces the street. The masses are authored with the
     // front on +z; a hospital on a lot fronting north showed a blank ward wall
     // to the road, which is the first thing a screenshot said.

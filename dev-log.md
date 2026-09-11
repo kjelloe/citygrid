@@ -5718,3 +5718,62 @@ wall looks into the neighbour's living room. The re-taken street shot shows the 
 chimneys of different heights on one pair, and a blank side wall where there was a glazed one.
 
 **Next:** S1b — a material per mass, a sign, and the recognising part scaled to be seen.
+
+## slice-S1b — civic buildings you can tell apart (2026-09-12)
+
+The review after S1: twelve definitions drawn in one concrete tone, so a coal plant's stacks and a
+hospital's ward were the same grey as each other and as the wall they stood on, and from the
+pavement they read as warehouses.
+
+**A material per mass.** Nine names — brick, concrete, steel, white, red, glass, tank, dark, lawn —
+resolved per style in `palettes.js` (`civicColour`) and as a per-vertex shade in the instanced kit
+(`shadeOf`), so the same coal plant is brick-and-steel at street level and a differentiated
+silhouette from the air. One sink per material in `civic-parts.js`; the baker merges by colour
+anyway, so it costs the map and nothing else.
+
+**A sign over the entrance**, through the sign canvas the shopfronts already use. The name comes
+from `buildingLabelKey` in the game — which had no caller until now — and from `defaultName` in a
+screenshot harness, which has no catalogue: `coalPlant` → "Coal plant". A mirror of the twelve
+names would have been a third copy of the catalogue.
+
+**And the recognising part sized to be seen**: stacks are eight-sided drums that clear their hall by
+more than its own height, the fire station's doors are the height of the appliance bay in red, the
+hospital's cross is on the street face.
+
+### The finding that was hiding behind all twelve pictures
+
+**The chunk the camera stands in was never baked.** After the materials were built, tested and
+correct in node, the screenshots were still grey. A magenta test colour changed nothing; doubling
+the baked geometry's height changed nothing; turning the instanced civic kit off made the building
+**disappear**. So every `smoke-S1-*.png` was the L2 box, and the L3 civic facade had never been
+photographed.
+
+`inView` samples a chunk's centre and its four corners against the visible bounds. For the chunk
+the camera is standing in, the north corners are behind the eye and the far corners are wide of a
+60° field — all five points fail while the chunk's interior, the ground in front of the player, is
+squarely in view. So the buildings CLOSEST to the camera have been drawn as instanced boxes in
+every street-level screenshot this project has taken, and A73's "the baked path is reached" probe
+(a 360-triangle drop with the cache on) was reading the roads, not the building. `holdsCamera` is
+the fix: a chunk containing the camera is in view, whatever the corners say.
+
+The instrument that would have found it sooner is now in the stats: `street-chunks.js` reports the
+live chunk KEYS, not just how many, because "3 live" cannot answer "is the building in front of me
+one of the three".
+
+**Two smaller ones.** A comment of mine quoted the name lookup with its quotes intact, and
+`test/hud.test.js` — which scans source text for `t("…")` — asked both catalogues for a key called
+`building.<def>`; a purity check reads prose. And rewriting the shape table to carry material names
+silently dropped the numeric `shade` the instanced kit read, so the L2 box went flat; `shadeOf`
+restores it from the material, which is the better rule anyway.
+
+**Measured.** Suite green twice, 1,259 tests. Street chunks **275,248 → 226,232** over 8 live with 9
+groups — the near chunk joins and a distant one leaves — and the crowd frame **329,464 → 310,885 of
+400,000**, bake p95 5 ms. `gates.mjs render` green 4 of 4 (182 s of 300), `quick` green 11 of 11
+(366 s of 480).
+
+**What the pictures say**, looked at first. `smoke-S1-coalPlant.png`: a brick hall with a round
+steel stack standing over it and a sign on the front. `smoke-S1-hospital.png`: a white ward block
+with a red cross on the street face and a glass entrance under it. Both are buildings you can name
+from across the road, which is what the item asked for.
+
+**Next:** B4 — doors and rush hour.

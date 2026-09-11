@@ -19,7 +19,7 @@ import {
   addRoofClutter, addShopfront, addFence, addDormers, addPorch,
 } from "./detail-kit.js";
 import { variantFor, VARIANTS } from "../world/params.js";
-import { civicShape, civicHeight, CIVIC_DEFS } from "../world/civic-spec.js";
+import { civicShape, civicHeight, shadeOf, CIVIC_DEFS } from "../world/civic-spec.js";
 import { hasPorchAtL2 } from "../world/house-spec.js";
 
 const TOP = 1.0;
@@ -476,8 +476,12 @@ function civic(variant, detail) {
     // water tower it is the tank, and on a park it is the path. One rule, and
     // it is the one that makes a definition readable from the air.
     const roofish = m.y1 >= top - 1e-6 && shape.masses.length > 1;
+    // The MATERIAL as a shade (S1b). An instanced pool has one colour, so at
+    // city zoom "brick" and "steel" are a multiplier on the building's own
+    // tone — and without it the box is one flat grey, which is exactly what
+    // the shape table stopping carrying numeric shades produced.
     const build = () => addBox(parts, m.x0 * W, m.y0 * W * 2, m.z0 * W,
-      m.x1 * W, m.y1 * W * 2, m.z1 * W, m.shade);
+      m.x1 * W, m.y1 * W * 2, m.z1 * W, shadeOf(m.mat) * (m.shade ?? 1));
     if (roofish) roofPart(parts, build);
     else build();
   }

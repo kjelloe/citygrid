@@ -56,10 +56,10 @@ export function signCacheSize() {
 }
 
 /** The four corners of one fascia, in world metres, on the lot's street edge. */
-function fasciaQuad(spec, front, from, to) {
+function fasciaQuad(spec, front, from, to, lift = 0) {
   const geom = EDGES[front.side];
   const [ox, oz] = originOf(spec, front.side);
-  const groundTop = spec.seat + spec.groundH;
+  const groundTop = spec.seat + spec.groundH + lift;
   const y0 = groundTop - 0.62;
   const y1 = groundTop - 0.1;
   // A hair proud of the wall, or it z-fights with the panel behind it.
@@ -80,7 +80,18 @@ export function buildSigns(specs, styleName = "plain") {
   const byText = new Map();
   for (const spec of specs) {
     const front = spec.edges.find((e) => e.street);
-    if (!front || spec.storefronts.length === 0) continue;
+    if (!front) continue;
+    // A civic building's name on a board over its entrance (S1b). The same
+    // canvas the shopfronts use, localised the same way — a coal plant that
+    // says "Coal plant" is a coal plant before you read the inspector.
+    if (spec.civicSign) {
+      const list = byText.get(spec.civicSign) ?? [];
+      const middle = front.length / 2;
+      const half = Math.min(6, front.length * 0.32);
+      list.push(fasciaQuad(spec, front, middle - half, middle + half, spec.groundH * 0.9));
+      byText.set(spec.civicSign, list);
+    }
+    if (spec.storefronts.length === 0) continue;
     for (const shop of spec.storefronts) {
       const list = byText.get(shop.sign) ?? [];
       list.push(fasciaQuad(spec, front, shop.from + 0.25, shop.to - 0.25));

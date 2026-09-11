@@ -99,3 +99,39 @@ export const PALETTES = {
   },
 };
 
+/** What a civic mass is made of, per style (slice S1b).
+ *
+ * The review after S1: every mass of every definition was `palette.civic`, one
+ * concrete tone, so a coal plant's stacks and a hospital's ward were the same
+ * grey as each other and as the wall they stood on. Seven names, resolved per
+ * style — the painted style keeps its warmer, chalkier range, the pixel style
+ * its flatter one — so a definition is told apart by MATERIAL rather than by
+ * silhouette alone.
+ *
+ * `lawn` and `dark` fall through to the palette's own, which is what keeps a
+ * park's grass the same green as every other lawn in the city.
+ */
+const CIVIC_MATERIALS = {
+  plain: {
+    brick: 0xa8674a, concrete: 0xc6c2b8, steel: 0x9aa3ab, white: 0xeeeae2,
+    red: 0xb63a2e, glass: 0x5a7f96, tank: 0xb9c2c6,
+  },
+  pixel: {
+    brick: 0x96583e, concrete: 0xb0aca2, steel: 0x8b939a, white: 0xdcd8d0,
+    red: 0xa3332a, glass: 0x4d6f85, tank: 0xa7b0b4,
+  },
+  painted: {
+    brick: 0xbf7b58, concrete: 0xd9d2c4, steel: 0xa9b2b8, white: 0xf4efe4,
+    red: 0xc8483a, glass: 0x6b8fa6, tank: 0xc7cfd2,
+  },
+};
+
+/** The colour of one mass. Unknown names fall back to the palette's civic tone,
+ * which is what every mass used to be — so a material this table forgets is a
+ * building that looks like it did before, not a black hole. */
+export function civicColour(mat, palette, styleName = "plain") {
+  const table = CIVIC_MATERIALS[styleName] ?? CIVIC_MATERIALS.plain;
+  if (mat === "lawn") return palette.lawn;
+  if (mat === "dark") return palette.roof.flat?.[0] ?? 0x3b4047;
+  return table[mat] ?? palette.civic;
+}

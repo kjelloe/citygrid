@@ -324,7 +324,13 @@ export function createRenderer(canvas, state, options = {}) {
 
   // The baked street cache (slice E2). It draws nothing until a chunk is close
   // enough to be worth baking and the tier allows any.
-  const streets = createStreetChunks(scene, { style: styleName, locale: options.locale });
+  // `buildingName` resolves a definition to the name on its sign (S1b). Passed
+  // in rather than looked up, for the reason the locale is: the renderer has no
+  // catalogue and no `t()`, and a mirror of twelve names here would be a third
+  // copy of the list. Absent, `defaultName` turns `coalPlant` into "Coal plant".
+  const streets = createStreetChunks(scene, {
+    style: styleName, locale: options.locale, buildingName: options.buildingName,
+  });
 
   // The walker (slice E4). Both halves are pure and neither knows a camera
   // exists: the collision world is the lots as solids, and the walker takes its

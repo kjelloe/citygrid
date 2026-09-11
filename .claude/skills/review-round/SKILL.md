@@ -531,3 +531,14 @@ boarded", "a coal plant is a hall and two stacks") goes where node can test it, 
 box and the baked facade both read it. That is what makes the L2/L3 agreement (E5) true by
 construction rather than by vigilance — and it is the only way anything in the renderer gets a
 unit test at all.
+
+**Prove which path drew it before changing the one you assume.** S1b's materials were built, tested
+and correct in node while every screenshot stayed grey. A magenta test colour changed nothing (the
+branch that reads the palette was never entered), and doubling the baked geometry changed nothing —
+what settled it in one run was turning the SUSPECTED pass off and watching the building vanish. The
+cause was that the chunk the camera stands in fails a centre-and-corners visibility test, so the
+nearest buildings had been instanced boxes in every street-level shot the project has taken.
+
+**And when a "3 live" style number cannot answer the question you are asking, make it answer.** The
+street cache reported how many chunks were live and not WHICH; the whole investigation was "is the
+building in front of me one of the three".

@@ -12,6 +12,7 @@
 
 import { sink } from "./solid.js";
 import { EDGES, originOf } from "./edges.js";
+import { civicColour } from "./palettes.js";
 
 /** How many sides a round mass gets. Eight: a tank at street level reads as
  * round at eight and the difference to sixteen is 48 triangles a tank, on a
@@ -45,18 +46,27 @@ function drum(s, m, y0, y1) {
  * own height; `height` is what one unit of y is worth, which the caller knows
  * because it worked out the wall top already.
  */
-export function buildCivic(spec, { height, trim, glass }) {
+export function buildCivic(spec, { height, trim, glass, palette, styleName }) {
   if (!spec.civic) return [];
   const out = [];
-  const body = sink();
-  const cap = sink();
-  const detail = sink();
   const cx = (spec.x0 + spec.x1) / 2;
   const cz = (spec.z0 + spec.z1) / 2;
   const hx = (spec.x1 - spec.x0) / 2;
   const hz = (spec.z1 - spec.z0) / 2;
   let top = 0;
   for (const m of spec.civic.masses) top = Math.max(top, m.y1);
+
+  // ONE SINK PER MATERIAL (S1b). Grouped by what a mass is MADE of rather than
+  // by where it sits, because that is what the review found missing: a coal
+  // plant's stacks and its hall were the same grey, and from the pavement the
+  // whole thing read as a warehouse. The baker merges by colour anyway, so this
+  // costs nothing but the map.
+  const byMaterial = new Map();
+  const sinkFor = (mat) => {
+    let s = byMaterial.get(mat);
+    if (!s) { s = sink(); byMaterial.set(mat, s); }
+    return s;
+  };
 
   for (const m of spec.civic.masses) {
     const x0 = cx + m.x0 * hx;
@@ -65,11 +75,7 @@ export function buildCivic(spec, { height, trim, glass }) {
     const z1 = cz + m.z1 * hz;
     const y0 = spec.seat + m.y0 * height;
     const y1 = spec.seat + m.y1 * height;
-    // The tallest mass wears the roof colour — the tank on a water tower, the
-    // stack on a power station — and a flat one under 0.15 of the lot's height
-    // is ground rather than building: a yard, a coal heap, the park's lawn.
-    const target = m.y1 >= top - 1e-6 && spec.civic.masses.length > 1 ? cap
-      : (m.y1 - m.y0) < 0.15 ? detail : body;
+    const target = sinkFor(m.mat ?? "concrete");
     if (m.round) drum(target, { x0, x1, z0, z1 }, y0, y1);
     else target.box(x0, y0, z0, x1, y1, z1);
   }
@@ -81,7 +87,7 @@ export function buildCivic(spec, { height, trim, glass }) {
   const hall = spec.civic.masses.reduce((best, m) =>
     volume(m) > volume(best) ? m : best, spec.civic.masses[0]);
   if (hall.y1 - hall.y0 > 0.35) {
-    const glassSink = sink();
+    const glassSink = sinkFor("glass");
     const fx0 = cx + hall.x0 * hx;
     const fx1 = cx + hall.x1 * hx;
     const fz = cz + hall.z1 * hz + 0.03;
@@ -97,13 +103,30 @@ export function buildCivic(spec, { height, trim, glass }) {
         glassSink.quad([u0, y0, fz], [u1, y0, fz], [u1, y1, fz], [u0, y1, fz]);
       }
     }
-    out.push({ part: glassSink.done(), colour: glass });
   }
 
-  out.push({ part: body.done(), colour: spec.wall });
-  out.push({ part: cap.done(), colour: spec.roof?.colour ?? trim });
-  out.push({ part: detail.done(), colour: spec.base ?? trim });
-  return out.filter((piece) => piece.part.triangles > 0);
+  for (const [mat, s] of byMaterial) {
+    const part = s.done();
+    if (part.triangles === 0) continue;
+    // Age multiplies a material the way it multiplies a wall (B2): a derelict
+    // fire station's doors are a dirty red, not a clean one.
+    const colour = palette
+      ? dim(civicColour(mat, palette, styleName), spec.state?.grime ?? 1)
+      : spec.wall;
+    out.push({ part, colour, options: mat === "glass" ? { emissive: 0xffdca8 } : undefined });
+  }
+  return out;
+}
+
+/** A colour multiplied by a factor, the way `params.js` dirties a wall. Here
+ * rather than imported because `params.js` is the world layer and this is the
+ * renderer's own copy of one line of arithmetic. */
+function dim(hex, factor) {
+  if (factor >= 1) return hex;
+  const r = Math.round(((hex >> 16) & 0xff) * factor);
+  const g = Math.round(((hex >> 8) & 0xff) * factor);
+  const b = Math.round((hex & 0xff) * factor);
+  return (r << 16) | (g << 8) | b;
 }
 
 /**

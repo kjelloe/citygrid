@@ -37,6 +37,27 @@ const GRACE_MS = 2000;
 /** Is any part of this chunk inside what the camera can see? The same "any
  * corner or the centre" rule `countScene` uses for the terrain, because they
  * are the same chunks. */
+/** Is the camera standing IN this chunk?
+ *
+ * `inView` samples a chunk's centre and its four corners against the visible
+ * bounds, and every one of them can be outside the wedge while the chunk's
+ * interior — the ground the player is standing on — is inside it: north of the
+ * eye is behind the camera, and the far corners are wide of a 60° field. So the
+ * chunk under the camera was culled, never baked, and the buildings closest to
+ * the player were drawn as instanced boxes.
+ *
+ * That is why twelve civic screenshots were taken of the L2 kit believing they
+ * were of the L3 facade, and why the S1 review's "the baked path is reached"
+ * probe (a 360-triangle drop) was reading the roads, not the building (S1b).
+ */
+function holdsCamera(chunk, view) {
+  const x = view?.targetX;
+  const z = view?.targetZ;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+  return x >= chunk.cx * CHUNK && x < (chunk.cx + 1) * CHUNK
+    && z >= chunk.cy * CHUNK && z < (chunk.cy + 1) * CHUNK;
+}
+
 function inView(chunk, bounds) {
   const x0 = chunk.cx * CHUNK;
   const z0 = chunk.cy * CHUNK;
@@ -85,7 +106,7 @@ export function createStreetChunks(scene, options = {}) {
     (baker, state, model, cx, cy) => bakeStreets(baker, state, model, cx, cy, palette, ground),
     (baker, state, model, cx, cy) =>
       bakeLots(baker, state, model, cx, cy, palette, styleName, options.locale ?? "en", territory,
-        furnished.has(`${cx},${cy}`)),
+        furnished.has(`${cx},${cy}`), options.buildingName),
   ];
 
   return {
@@ -119,7 +140,9 @@ export function createStreetChunks(scene, options = {}) {
       // around the target include the ones BEHIND the camera — so the cache
       // spent its budget baking a block the player had walked past.
       const near = chunksNear(view, radius, state.width, state.height);
-      const visible = bounds ? near.filter((c) => inView(c, bounds)) : near;
+      const visible = bounds
+        ? near.filter((c) => holdsCamera(c, view) || inView(c, bounds))
+        : near;
       const wanted = (visible.length > 0 ? visible : near).slice(0, budget);
       const wantedKeys = new Set(wanted.map((c) => c.key));
       // The three nearest carry the furniture. Thirty houses a chunk at 126
@@ -176,7 +199,14 @@ export function createStreetChunks(scene, options = {}) {
 
       let triangles = 0;
       for (const entry of live.values()) triangles += entry.triangles;
-      return { built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, total: built };
+      // WHICH chunks are live, not only how many. Twelve civic screenshots were
+      // taken of the instanced box believing they were of the baked facade,
+      // and "3 live" could not tell anyone whether the building in front of the
+      // camera was one of the three (S1b).
+      return {
+        built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, total: built,
+        keys: [...live.values()].map((e) => `${e.cx},${e.cy}`).sort().join(" "),
+      };
     },
 
     /**

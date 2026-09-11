@@ -145,7 +145,9 @@ export function buildFacade(spec) {
   // made every civic building the same box.
   if (spec.civic) {
     const height = (wallTop - spec.seat) / 1.0;
-    out.push(...buildCivic(spec, { height, trim, glass }));
+    out.push(...buildCivic(spec, {
+      height, trim, glass, palette: spec.palette, styleName: spec.styleName,
+    }));
     out.push(...buildAge(spec, { groundTop, wallTop, trim }));
     return out.filter((piece) => piece.part.triangles > 0);
   }

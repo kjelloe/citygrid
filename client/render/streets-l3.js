@@ -18,6 +18,7 @@ import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
 import { houseLots } from "../world/homes.js";
+import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
 import { treesIn } from "../world/foliage.js";
@@ -217,7 +218,7 @@ export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
  * built once — a building drawn twice is a building with z-fighting on every
  * face, which at street level is the most obvious artefact there is.
  */
-export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false) {
+export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false, buildingName = undefined) {
   const cfg = getConfig();
   const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
   const fronts = [];
@@ -243,7 +244,9 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
       ? houseLots(lot, lot.building.level ?? 0).lots
       : [lot];
     for (const part of parts) {
-      const spec = facadeSpec(part, params, locale, furniture);
+      const spec = facadeSpec(part, params, locale, furniture, {
+        palette, name: styleName, nameFor: buildingName ?? defaultName,
+      });
       specs.push(spec);
       for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
     }

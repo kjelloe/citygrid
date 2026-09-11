@@ -218,6 +218,24 @@ Measured: street chunks 282,474 → 275,248 over 8 (smaller houses are less wall
 301,980 → 329,464 of the 400,000 High budget, because the instanced pass draws two to four boxes
 where it drew one.
 
+## 6.1d Civic materials, and the chunk under the camera (S1b, 2026-09-12)
+
+Every civic mass names a **material** — brick, concrete, steel, white, red, glass, tank, dark, lawn
+— which `palettes.js` resolves per style for the baked facade and `shadeOf` turns into a per-vertex
+multiplier for the instanced box. A definition made of one material is the defect S1 shipped: from
+the pavement it reads as a warehouse. The name on the sign comes from the game's own catalogue
+lookup, or from `defaultName` in a harness that has no catalogue.
+
+**And the street cache culled the chunk the camera was standing in.** `inView` samples a chunk's
+centre and its four corners against the visible bounds; for the chunk containing the eye, the near
+corners are behind it and the far ones are wide of the field, so all five fail while the ground in
+front of the player is in view. The nearest buildings were drawn as instanced boxes in every
+street-level screenshot this project has taken. `holdsCamera` fixes it, and the cache now reports
+which chunk KEYS are live rather than only how many.
+
+Measured: street chunks 275,248 → 226,232 over 8 live with 9 groups; the crowd frame 329,464 →
+310,885 of 400,000; bake p95 5 ms.
+
 ## 6.6b Trees at eye height (V8, 2026-09-07)
 
 The instanced kit is a trunk and a four-sided cone, and at eighteen pixels a tile that is right.
