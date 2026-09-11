@@ -85,6 +85,7 @@ the file to open first.
 | `workitems-navigation.md` | the camera on the screen and on both mouse buttons (P59, ruling 042) | written 2026-09-10; **after F1**, first of the three P59 lanes |
 | `workitems-world.md` | the 3D world made detailed — civic kits, ground, streets, water, trees, motion, windows, the compare sheet as gate (P59) | written 2026-09-10; after navigation, interleaved with behaviour |
 | `workitems-behaviour.md` | the simulation made visible and life made realistic — damage, ageing, service vehicles, rush hour, roles, weather (P59) | written 2026-09-10; interleaved with world |
+| `specs/transport-and-landmarks.md` | **a design study, not a lane yet** (P61): the Outside as gates, rail and a station, harbour, ferry and port, the airport, and which other builders' buildings earn a place; seven T slices proposed after behaviour, the avenue (A60) as T1 | written 2026-09-11; waits on Q87–Q92 |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
 The frame-time governor exists to decide what a phone gives up and has never run on a phone. D1
@@ -404,6 +405,12 @@ by number from the code they create.
 | Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | **Kjell**, with Q64 |
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
+| Q87 | The Outside: gates as demand terms and commuter sinks, no state of its own? | transport T2 |
+| Q88 | Rail as a drawn `tiles.rail` network, re-pinned with the avenue? | transport T2 |
+| Q89 | The harbour as a bigger park first, leisure coverage later? | transport T4, T6 |
+| Q90 | A separate freight port beside the ferry terminal? | transport T4 |
+| Q91 | The airport rank-locked through the unread `unlock` field, city hall marking the rank? | transport T5 |
+| Q92 | Which of the landmark study's "yes" rows first? | transport T5–T7 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

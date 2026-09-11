@@ -259,6 +259,25 @@ the mode the player came from (R2's `cameFrom`).
 assert the view moved, close it, assert the map is fully tappable again (`reach_smoke`'s
 "nothing invisible eats the map", ruling 029).
 
+## Review after K3 (2026-09-11)
+
+*Read on `dev_night` at `a4f1c7b`. Re-run by the reviewer: the suite twice, `gates.mjs quick` and
+`gates.mjs render`. **F1, K1, K3 (both parts) and K2 are accepted.** The shape is right: one
+intent table (`buttons.js`, `held.js`, `camera-model.js`) read by the cluster, the keyboard, the
+help card and the first-run card, and every gate row reads the camera or the walker afterwards.
+The chorded-press finding (a second button arrives as a `pointermove`) and the three transcription
+tests replaced by route tests are the kind of thing this lane exists to find. Two notes for K4, no
+fix slice:*
+
+- **Home fits the map, not the built city.** `fitCity` centres on `width / 2, height / 2` at the
+  map's span; K4 asks for the bounding box of paved or built tiles, with the whole map only when
+  nothing is built. On a 128×128 with a town in one corner that is the difference between seeing
+  the town and seeing a green square.
+- **`onPointerUp` asks `intentNow(event.buttons)` twice** for one answer. Cosmetic.
+
+**Measured by the reviewer:** suite green twice; `quick` 11 of 11 in **353 s of 480** (ui_smoke 112,
+play_smoke 69, a11y_smoke 46); `render` 3 of 3 in **169 s of 300** (budget_gate 154).
+
 ## Order
 
 **K1 is done (2026-09-10). K3 and K2 are done (2026-09-11).** K4 is next.

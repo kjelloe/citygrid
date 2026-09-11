@@ -164,6 +164,27 @@ floods) is Q84 and not here.
 governor's ladder can drop the rain pool (a rung). **Gate.** `budget_gate` gains a rain row;
 `a11y_smoke` measures overlay contrast under rain; `reports/smoke-B6-{street,city}.png`.
 
+## B7 — Cars and people, seen from the city camera (S) — P61
+
+*Kjell, 2026-09-11: "realistic in simulation behaviour i.e cars and people walking about." The
+cars are visible from the air; the crowd is not. `RESOLVE.peds` is 50 px a tile, which on the
+gate's 720 px canvas is never reached at city zoom and on the 4090 is reached only at `city 20t`;
+the crowd is capped at 120 and spent nearest the eye, so from above a street with people on it is
+a street with nobody on it.*
+
+**Do.** A second person model for L2 — a 12-triangle faceted figure, never a billboard — in the
+same pool discipline as the cars, with its own resolvability threshold (about 30 px a tile) and a
+separate `pedCapCity` in the tier table (High: 600) spent across the visible pavements by demand
+rather than nearest the eye; the L3 crowd stays as E7 built it. People at L2 walk the same nav
+edges at the same rate, so a person the camera zooms in on does not change kind mid-stride. The
+D7 invariants hold: a rate per second, never a function of the camera for *how many exist*, only
+for *which are drawn*.
+
+**Tests first.** `test/pedestrians.test.js`: the L2 pool is filled by demand across bounds, not by
+distance to the eye; the count is the same under two camera positions. **Gate.** `budget_gate`'s
+`city 20t` big-viewport row gains a people column; `reports/smoke-B7-{city20,city40}.png` with the
+crowd painted magenta once (E7's trick) and then normal.
+
 ## Noted, not items — engine-side realism (each a question, each moves the hash)
 
 **The avenue is now a yes (Q83 → A60, 2026-09-10).** Kjell: *"yes add second road kind."* It stays
@@ -181,6 +202,7 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 
 ## Order
 
-B2 → B1 → B3 → B4 → B5 → B6, interleaved with `workitems-world.md`: B2 with S1 (the same kit
+B2 → B4 → B7 → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
+moved up on 2026-09-11 because P61 asked for them by name —: B2 with S1 (the same kit
 files), B1 with S6 (the smoke), B5 after S5 (the benches). Weather last because it is the only
 item that adds a whole preset to every gate.

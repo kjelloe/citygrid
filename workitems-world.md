@@ -166,9 +166,44 @@ walker's side of the same number. **Done when `walkthrough 128 hilly` is green a
 `render` set** — the measurement is what says whether moving junctions was enough, rather than the
 claim that it was. Today it is 459 of 1,392 corridors ungradeable and a steepest street of 59.3%.
 
+## S9 — Houses with more on them (M) — P61, first in this lane
+
+*Kjell, 2026-09-11: "houses need more details." The residential kit has six silhouettes and
+fourteen roofs (V6) and the facade grammar (E5) glazes every face; what a house does not have is
+the things that make one house that house. The reference Kjell attached in August — pitched
+roofs, chimneys, faceted canopies, vivid grass — is the standard (memory: he judges by eye
+against the reference; iterate with the render in front of you).*
+
+**Do.** Per house, from the building's hash and its `level` (B2), all through the existing
+facade grammar and roof kit — no new pipeline:
+- **Roof furniture**: chimneys with pots on the ridge end (on all variants, by hash), dormers on
+  level-2+ roofs, a skylight, gutters and a downpipe at one corner, a TV aerial or a dish, ridge
+  tiles a shade darker.
+- **Walls**: three materials by variant — clapboard (horizontal bands as vertex colour stripes),
+  brick (a darker course every fourth band), render (plain) — and a plinth course at the base.
+  Window shutters or window boxes on half the windows by hash; a bay window on level 3.
+- **The front**: a porch with two posts and a step, a door with a fanlight and a house number
+  plate, a garage door on wide lots, a path (exists), a gate in the hedge, a post box at the kerb
+  (S3), a bin by the side wall.
+- **The garden** (with S5): a shed, a washing line, a flower bed, a tree by variant; a fence type
+  per street so a street reads as one street.
+- **Distinct at city zoom too**: the L2 box gets the chimney and the porch as two extra boxes, so
+  the silhouette from the air matches the facade from the pavement (the L2/L3 agreement, E5).
+
+**Budget.** A house at L3 is 700–1,100 triangles today; this may add 300. Measure a chunk before
+and after (V8: 33.7k) and record it; the L2 additions are counted in `budget_gate`'s rows.
+
+**Tests first.** `test/facade-spec.test.js`: every added part is a pure function of `(id, level,
+variant)`; a level-1 house has no dormer; the three materials are reachable. `test/kit.test.js`:
+the L2 silhouette hash changes with the chimney and porch and there are still six distinct.
+**Gate.** `reports/smoke-S9-{street,garden,city20}.png` — a residential street from the pavement,
+one garden from the side, and the same street from `city 20t` on the big viewport (D8) — looked at
+against the reference. The compare sheet (S8) row 3.
+
 ## Order
 
-S1 → S2 → S6 → S5 → S3 → S4 → S7 → S8, interleaved with `workitems-behaviour.md` where it says so
-(S1 with B2, S6 with B1). Buildings first because every screenshot has them in it; ground second
+**S9 → S1 → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
+screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every
 later screenshot alive.
