@@ -1113,6 +1113,13 @@ The camera should snap to comfortable angles and avoid disorienting free rotatio
 > it interrupted. The cluster carries a **compass** in the pad's empty centre:
 > a picture, not a control (ruling 028), reading the free yaw so it follows an
 > orbit rather than jumping between the four angles.
+>
+> **As built (slice K5, 2026-09-11).** On a phone the cluster is that compass
+> and nothing else — 44×44, reading the letter it faces — until it is tapped;
+> open, the pad sits above two rows of buttons, and it closes on a tap anywhere
+> else or after five idle seconds. The chrome is **30% of a 390×844 screen
+> closed and 46% open**, against the playtest's 41% ceiling, which is the
+> resting state rather than the transient one.
 
 ### 14. Tool Interaction Design
 

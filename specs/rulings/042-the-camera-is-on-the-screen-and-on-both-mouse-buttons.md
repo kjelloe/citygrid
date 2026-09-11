@@ -41,6 +41,12 @@ cannot move. Where does the camera live?
    in a row of its own took `reach_smoke`'s "most of the map takes a click" to 341 of 403, under
    its 85% bar; in the pad's empty centre cell it is 351, better than the 345 before the compass
    existed. A new piece of chrome looks for space the cluster already has before it takes more.
+   **And the 41% is the RESTING state (K5).** The closed cluster is 44×44 and the chrome is 30% of
+   a 390×844 screen; opened it is 136×374 and the chrome is 46%, which is allowed because the
+   player asked for it and it closes again — on a tap anywhere else, and after five idle seconds.
+   Holding an OPEN cluster to 41% would mean either targets under the accessibility floor or fewer
+   movements than §1 requires. Chrome share is measured as the UNION of the panels, sampled on a
+   10 px grid: summing rectangles double-counts an overlap.
 
 ## Why
 

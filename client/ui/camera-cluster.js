@@ -16,6 +16,13 @@ import { t } from "../i18n.js";
 import { makeRoving } from "./roving.js";
 import { buttonsFor, labelFor, hintFor, facing } from "./camera-model.js";
 
+/** How long an open cluster survives on a phone with nothing touching it.
+ *
+ * Five seconds, which is the item's number and is long enough to press two
+ * buttons and think about the third. It exists because the open cluster covers
+ * a sixth of a 390×844 screen — chrome that stays is chrome that grew. */
+export const IDLE_CLOSE_MS = 5000;
+
 /** The pad's four directions, in screen space. */
 const PAD = [
   { id: "up", x: 0, y: -1, glyph: "▲", labelKey: "camera.pan" },
@@ -74,13 +81,53 @@ export function createCameraCluster(root, { controller, onOpen, onMode } = {}) {
 
   // On a phone the cluster is one button until it is opened (ruling 042 §5: the
   // chrome does not grow, and the playtest's 41% at 390×844 is the ceiling).
-  const opener = button("camera-open", "◎", t("camera.open"), t("camera.open"));
+  // The opener IS the compass (K5). A ring with nothing in it says "there is a
+  // thing here"; a needle and a letter say which way you are facing and that
+  // the camera lives behind it — the one button a phone shows is worth more as
+  // a reading than as a hint.
+  const opener = button("camera-open", "", t("camera.open"), t("camera.open"));
   opener.id = "camera-open";
-  opener.addEventListener("click", () => {
-    const open = cluster.dataset.open !== "true";
+  const openerNeedle = document.createElement("span");
+  openerNeedle.className = "camera-needle";
+  openerNeedle.textContent = "▲";
+  const openerRose = document.createElement("span");
+  openerRose.className = "camera-rose";
+  opener.append(openerNeedle, openerRose);
+  opener.addEventListener("click", () => setOpen(cluster.dataset.open !== "true"));
+
+  /** Opened or closed, in one place, with the idle timer that goes with it.
+   *
+   * On a phone the open cluster covers a sixth of the screen, so it closes
+   * again by itself — and on a tap anywhere else, which is what every sheet on
+   * a phone does. Both only exist where the opener does: on a desktop the
+   * cluster is always open and a timer that closed it would be a control
+   * disappearing from under the pointer (ruling 042 §5). */
+  let idle;
+  function setOpen(open) {
     cluster.dataset.open = String(open);
     onOpen?.(open);
-  });
+    clearTimeout(idle);
+    if (open && narrow?.matches) idle = setTimeout(() => setOpen(false), IDLE_CLOSE_MS);
+  }
+
+  /** Any use of the cluster starts the five seconds again: a player halfway
+   * through lining up a shot is not idle. */
+  const touched = () => {
+    if (cluster.dataset.open !== "true" || !narrow?.matches) return;
+    clearTimeout(idle);
+    idle = setTimeout(() => setOpen(false), IDLE_CLOSE_MS);
+  };
+  cluster.addEventListener("pointerdown", touched);
+  cluster.addEventListener("keydown", touched);
+
+  /** A tap anywhere else puts it away. Captured on the document rather than on
+   * the map, because "anywhere else" includes the build menu and the rail. */
+  const onOutside = (event) => {
+    if (!narrow?.matches || cluster.dataset.open !== "true") return;
+    if (cluster.contains(event.target)) return;
+    setOpen(false);
+  };
+  globalThis.document?.addEventListener?.("pointerdown", onOutside, true);
 
   /** The opener EXISTS only where it is used.
    *
@@ -195,6 +242,10 @@ export function createCameraCluster(root, { controller, onOpen, onMode } = {}) {
     needle.style.transform = `rotate(${degrees}deg)`;
     rose.textContent = t(labelKey);
     compass.setAttribute("aria-label", t("camera.compass", { facing: t(labelKey) }));
+    // And the closed cluster's one button, which is the same compass (K5).
+    openerNeedle.style.transform = `rotate(${degrees}deg)`;
+    openerRose.textContent = t(labelKey);
+    opener.setAttribute("aria-label", t("camera.open.facing", { facing: t(labelKey) }));
   }
   setFacing(0);
 
@@ -229,7 +280,12 @@ export function createCameraCluster(root, { controller, onOpen, onMode } = {}) {
       cluster.setAttribute("aria-label", t("camera.cluster"));
       opener.setAttribute("aria-label", t("camera.open"));
     },
+    /** Whether the cluster is showing its buttons. The gate reads it, and so
+     * does the phone's chrome measurement. */
+    get open() { return cluster.dataset.open === "true"; },
     dispose() {
+      clearTimeout(idle);
+      globalThis.document?.removeEventListener?.("pointerdown", onOutside, true);
       narrow?.removeEventListener?.("change", syncOpener);
       for (const stop of held) stop();
       roving?.dispose?.();

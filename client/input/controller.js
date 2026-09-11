@@ -558,9 +558,10 @@ export function createController(canvas, state, renderer, options = {}) {
     drag.buttons = event.buttons;
     // Releasing one of two buttons keeps walking on the other, rather than
     // stopping dead until the hand presses again.
-    pointerWalk = event.buttons === 0
-      ? { forward: 0, run: false }
-      : { forward: intentNow(event.buttons).forward, run: intentNow(event.buttons).run };
+    const stillHeld = event.buttons === 0 ? undefined : intentNow(event.buttons);
+    pointerWalk = stillHeld
+      ? { forward: stillHeld.forward, run: stillHeld.run }
+      : { forward: 0, run: false };
     // In street mode the drag IS the gesture, so the recogniser still has to
     // see the release — otherwise a tap never completes and touch cannot walk.
     if (drag.button >= 0 && !freeLook()) { drag.button = -1; return; }

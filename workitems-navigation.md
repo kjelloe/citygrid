@@ -268,7 +268,7 @@ compass is in the pad's empty centre cell; a double-click walks in the street.
 reduced motion)". There is no easing anywhere — `focusOn` is instant — so the rule is already
 satisfied; easing is a slice of its own if anyone wants it.
 
-## K5 — The phone (S)
+## K5 — The phone (S) — **done 2026-09-11 as `slice-K5`**
 
 **Goal.** Everything above on a 390×844 screen, without the chrome growing.
 
@@ -283,6 +283,28 @@ satisfied; easing is a slice of its own if anyone wants it.
 **Tests first.** `play_smoke` on the phone viewport: open the cluster, press pan and rotate,
 assert the view moved, close it, assert the map is fully tappable again (`reach_smoke`'s
 "nothing invisible eats the map", ruling 029).
+
+**In:** the closed cluster is the compass — a needle and a letter rather than a ring, so the one
+button a phone shows READS rather than merely marking the spot. It closes on a tap anywhere else
+and after five idle seconds, both only where the opener exists (on a desktop a cluster that closed
+itself would be a control disappearing from under the pointer). Open, it stacks: the pad above,
+the rest in rows of three. The gate block is in `ui_smoke` and drives it through real CDP touch
+events, because the buttons have to work under a finger and not only under a mouse.
+
+**Three things this turned up.**
+
+- **Open, the cluster took the chrome to 50%.** Side by side it was 232×278 of a 390×844 screen —
+  a fifth of the phone for one control. Stacked at the same 44 px targets it is 136×374, and the
+  chrome is 46% open and **30% closed**, against the playtest's 41% ceiling.
+- **The ceiling is the RESTING state.** An open cluster is a transient the player asked for and
+  which puts itself away; the gate holds the closed number to 41% and reports the open one. Both
+  are in the dev-log, which is what this item asked for.
+- **Chrome share was being summed, not unioned.** Four rectangles added up double-count wherever
+  two overlap. It is sampled on a 10 px grid now, in both gates — nothing overlaps today, so the
+  number did not move, but a layout that did would have been priced wrongly.
+
+**Also fixed here:** the reviewer's cosmetic note — `onPointerUp` asked `intentNow(event.buttons)`
+twice for one answer.
 
 ## Review after K3 (2026-09-11)
 
@@ -305,7 +327,9 @@ play_smoke 69, a11y_smoke 46); `render` 3 of 3 in **169 s of 300** (budget_gate 
 
 ## Order
 
-**K1 is done (2026-09-10). K3, K2 and K4 are done (2026-09-11).** K5 is next, and last in this lane.
+**The navigation lane is done (K1 2026-09-10; K3, K2, K4 and K5 2026-09-11).** Next is
+`workitems-world.md` and `workitems-behaviour.md`, interleaved as their Order sections say — S9
+first, per the review after K3.
 
 K1 → K3 → K2 → K4 → K5. The cluster first because every other item puts a button on it; the
 mouse second because it is what Kjell asked for by name; the phone last because it is the

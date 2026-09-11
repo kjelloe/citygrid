@@ -461,5 +461,6 @@
   "compass.e": "Ø",
   "compass.s": "S",
   "compass.w": "V",
-  "camera.compass": "Kompass — utsikten vender mot {facing}"
+  "camera.compass": "Kompass — utsikten vender mot {facing}",
+  "camera.open.facing": "Kamerakontroller — vender mot {facing}"
 }

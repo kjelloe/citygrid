@@ -461,5 +461,6 @@
   "compass.e": "E",
   "compass.s": "S",
   "compass.w": "W",
-  "camera.compass": "Compass — the view faces {facing}"
+  "camera.compass": "Compass — the view faces {facing}",
+  "camera.open.facing": "Camera controls — facing {facing}"
 }

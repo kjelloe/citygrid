@@ -811,21 +811,29 @@ async function run(page, label, { touch, mode }) {
   const narrow = await page.evaluate(() => window.innerWidth <= 520);
   if (narrow) {
     const share = await page.evaluate(() => {
+      // The UNION of the panels, sampled on a 10 px grid — chrome share is how
+      // much of the screen is not map, and two panels that overlap cover their
+      // overlap once. Summing the rectangles counted it twice and would price a
+      // future layout wrongly (K5).
+      const rects = [];
       const seen = [];
-      const area = (el) => {
-        const r = el?.getBoundingClientRect();
-        return r && r.width > 0 && r.height > 0 ? { r, a: r.width * r.height } : undefined;
-      };
-      let covered = 0;
       for (const sel of [".hud-top", ".hud-bottom", ".camera-cluster", ".hud-minimap"]) {
-        const got = area(document.querySelector(sel));
-        if (!got) continue;
-        covered += got.a;
-        seen.push(`${sel} ${Math.round(got.r.width)}x${Math.round(got.r.height)}`);
+        const r = document.querySelector(sel)?.getBoundingClientRect();
+        if (!r || r.width <= 0 || r.height <= 0) continue;
+        rects.push(r);
+        seen.push(`${sel} ${Math.round(r.width)}x${Math.round(r.height)}`);
       }
-      return { covered, screen: window.innerWidth * window.innerHeight, seen };
+      let covered = 0;
+      let total = 0;
+      for (let y = 5; y < window.innerHeight; y += 10) {
+        for (let x = 5; x < window.innerWidth; x += 10) {
+          total += 1;
+          if (rects.some((r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)) covered += 1;
+        }
+      }
+      return { covered, total, seen };
     });
-    const pct = (100 * share.covered) / share.screen;
+    const pct = (100 * share.covered) / share.total;
     check(`${label}: the chrome stays under the playtest's 41%`, pct <= 41,
       `${pct.toFixed(0)}% — ${share.seen.join(", ")}`);
   }

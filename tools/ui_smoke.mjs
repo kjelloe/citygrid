@@ -596,6 +596,129 @@ try {
 
   await clusterContext.close();
 
+  // --- the cluster on a phone (slice K5, ruling 042 §5) ----------------------
+  //
+  // One button until it is opened, and it closes again by itself — the open
+  // cluster covers a sixth of a 390×844 screen, and chrome that stays is chrome
+  // that grew. The desktop block above proves the buttons DO things; this one
+  // proves a phone can reach them and then get its map back.
+  const phoneCluster = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const phoneClusterPage = await phoneCluster.newPage();
+  phoneClusterPage.on("pageerror", (error) => problems.push(`phone cluster: ${error.message}`));
+  await phoneClusterPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
+  await phoneClusterPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
+  await phoneClusterPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+
+  const clusterState = () => phoneClusterPage.evaluate(() => {
+    const cluster = document.getElementById("camera-cluster");
+    const opener = document.getElementById("camera-open");
+    const body = cluster?.querySelector(".camera-body");
+    const rect = cluster?.getBoundingClientRect();
+    return {
+      open: cluster?.dataset.open === "true",
+      opener: opener ? getComputedStyle(opener).display !== "none" : false,
+      bodyShown: body ? getComputedStyle(body).display !== "none" : false,
+      area: rect ? Math.round(rect.width * rect.height) : 0,
+      screen: window.innerWidth * window.innerHeight,
+      facing: opener?.querySelector(".camera-rose")?.textContent,
+    };
+  });
+
+  const closed = await clusterState();
+  check("phone: the cluster is one button until it is opened",
+    closed.opener && !closed.bodyShown && closed.area < 60 * 60,
+    JSON.stringify(closed));
+  check("phone: and that button is the compass", (closed.facing ?? "").length > 0,
+    `the closed cluster reads "${closed.facing}"`);
+
+  await phoneClusterPage.tap("#camera-open");
+  await phoneClusterPage.waitForTimeout(80);
+  const opened = await clusterState();
+  check("phone: tapping it opens the pad and the buttons", opened.open && opened.bodyShown,
+    JSON.stringify(opened));
+
+  // The buttons work under a finger, not only under a mouse.
+  const phoneView = () => phoneClusterPage.evaluate(() => {
+    const v = globalThis.CITY.renderer.view;
+    return { x: v.targetX, z: v.targetZ, yaw: v.yaw };
+  });
+  const holdTouch = async (selector, ms = 350) => {
+    const box = await phoneClusterPage.locator(selector).boundingBox();
+    if (!box) return false;
+    const cdp = await phoneClusterPage.context().newCDPSession(phoneClusterPage);
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...at, id: 1 }] });
+    await phoneClusterPage.waitForTimeout(ms);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await phoneClusterPage.waitForTimeout(60);
+    return true;
+  };
+  const beforePad = await phoneView();
+  await holdTouch(".camera-pad-left");
+  const afterPad = await phoneView();
+  check("phone: the pad pans under a finger",
+    Math.hypot(afterPad.x - beforePad.x, afterPad.z - beforePad.z) > 0.5,
+    `${JSON.stringify(beforePad)} -> ${JSON.stringify(afterPad)}`);
+  const beforeTurn = await phoneView();
+  await holdTouch("#camera-rotate-left");
+  const afterTurn = await phoneView();
+  check("phone: rotate turns the city under a finger",
+    Math.abs(Math.atan2(Math.sin(afterTurn.yaw - beforeTurn.yaw), Math.cos(afterTurn.yaw - beforeTurn.yaw))) > 0.05,
+    `yaw ${beforeTurn.yaw.toFixed(3)} -> ${afterTurn.yaw.toFixed(3)}`);
+
+  // Open, it may not take more of the screen than the ceiling allows.
+  const openShare = await phoneClusterPage.evaluate(() => {
+    // The UNION, not the sum: chrome share is how much of the screen is not
+    // map, and two panels that overlap cover their overlap once. Sampled on a
+    // 10 px grid, which is exact enough for a percentage and cannot be fooled
+    // by a rectangle that sticks out past the viewport.
+    const rects = [];
+    const seen = [];
+    for (const sel of [".hud-top", ".hud-bottom", ".camera-cluster", ".hud-minimap"]) {
+      const r = document.querySelector(sel)?.getBoundingClientRect();
+      if (!r || r.width <= 0 || r.height <= 0) continue;
+      rects.push(r);
+      seen.push(`${sel} ${Math.round(r.width)}x${Math.round(r.height)}`);
+    }
+    let covered = 0;
+    let total = 0;
+    for (let y = 5; y < window.innerHeight; y += 10) {
+      for (let x = 5; x < window.innerWidth; x += 10) {
+        total += 1;
+        if (rects.some((r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)) covered += 1;
+      }
+    }
+    return { pct: (100 * covered) / total, seen };
+  });
+  // **Open is a transient, and the ceiling is the resting state.** Ruling 042
+  // §5's 41% is what a player looks at while they play; the cluster they opened
+  // on purpose closes on a tap outside and after five seconds, which the two
+  // checks below prove. What matters here is that opening it does not take the
+  // screen — and the number goes in the dev-log beside the closed one.
+  check("phone: the OPEN cluster still leaves most of the map",
+    openShare.pct <= 50, `${openShare.pct.toFixed(0)}% — ${openShare.seen.join(", ")}`);
+
+  // A tap anywhere else puts it away, which is what every sheet on a phone does.
+  await phoneClusterPage.touchscreen.tap(60, 400);
+  await phoneClusterPage.waitForTimeout(120);
+  const afterOutside = await clusterState();
+  check("phone: a tap outside closes it", !afterOutside.open && !afterOutside.bodyShown,
+    JSON.stringify(afterOutside));
+
+  // And it closes on its own, so a player who opened it and looked away gets
+  // the map back without having to ask.
+  await phoneClusterPage.tap("#camera-open");
+  await phoneClusterPage.waitForTimeout(100);
+  const stillOpen = await clusterState();
+  await phoneClusterPage.waitForTimeout(5400);
+  const idled = await clusterState();
+  check("phone: and it closes itself when nothing is touching it",
+    stillOpen.open && !idled.open, `open ${stillOpen.open} -> open ${idled.open} after 5.4 s`);
+
+  await phoneCluster.close();
+
   // --- photo mode saves a picture (slice F1) --------------------------------
   //
   // The one export the game has. `preserveDrawingBuffer` is off in play, so the

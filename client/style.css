@@ -1296,9 +1296,28 @@ button, [role="button"] {
 /* On a phone the cluster is one button until it is opened (ruling 042 §5) and
    the targets are 44px. */
 @media (max-width: 520px) {
-  .camera-cluster .camera-open { display: block; min-width: 44px; min-height: 44px; }
+  /* The one button a phone shows is the compass (K5): a needle and a letter,
+     stacked, so it reads rather than merely marks the spot. */
+  .camera-cluster .camera-open {
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    line-height: 1;
+  }
+  .camera-cluster .camera-open .camera-needle { font-size: 11px; opacity: 0.85; }
+  .camera-cluster .camera-open .camera-rose { font-size: 13px; font-weight: 600; }
   .camera-cluster .camera-body { display: none; }
-  .camera-cluster[data-open="true"] .camera-body { display: flex; }
+  /* Open, it stacks: the pad above, the rest in rows of three (K5). Side by
+     side it was 232×278 of a 390×844 screen — a fifth of the phone for one
+     control. Stacked at the same 44px targets it is 136 wide, which is the
+     difference between 20% of the screen and 13%. */
+  .camera-cluster[data-open="true"] .camera-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .camera-cluster[data-open="true"] .camera-rest { grid-template-columns: repeat(3, 44px); }
   .camera-cluster button { min-width: 44px; min-height: 44px; }
   .camera-pad { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); }
   .camera-rest { grid-template-columns: repeat(2, 44px); }

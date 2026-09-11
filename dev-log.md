@@ -5455,3 +5455,56 @@ player came from** — "ortho" from ortho, "city" from perspective. `gates.mjs q
 11, **355 s of a 480 s budget**.
 
 **Next:** K5, the phone, and the last item in the navigation lane.
+
+## slice-K5 — the phone (2026-09-11)
+
+The last item in the navigation lane, and the one ruling 042 §5 exists for: everything K1 to K4
+built, on a 390×844 screen, without the chrome growing.
+
+**The one button a phone shows is the compass.** A ring with nothing in it says "there is a thing
+here"; a needle and a letter say which way you are facing and that the camera lives behind them.
+The closed cluster is 44×44 and reads N, E, S or W, turning with the view — K4's compass doing a
+second job for nothing.
+
+**And it puts itself away.** A tap anywhere else closes it, which is what every sheet on a phone
+does, and five idle seconds close it too. Both only exist where the opener does: on a desktop the
+cluster is always open, and a timer that closed it would be a control disappearing from under the
+pointer. Any press or key inside the cluster starts the five seconds again — a player halfway
+through lining up a shot is not idle.
+
+**Driven through real touch events.** The gate block is in `ui_smoke` and holds the pad and the
+rotate button with `Input.dispatchTouchEvent` through CDP, because a constructed `PointerEvent`
+carries a pointer id the browser has no record of and the controller's own `setPointerCapture`
+throws on it (K3 learnt that the hard way). The pad pans **2.77 tiles** under a finger and rotate
+turns the city **0.44 rad**.
+
+### Three findings
+
+**Open, the cluster took the chrome to 50%.** Side by side the pad and two columns of buttons were
+232×278 of a 390×844 screen — a fifth of the phone for one control, on top of a top bar and a
+bottom panel that already take 30%. Stacked, with the pad above and the rest in rows of three at
+the same 44 px targets, it is 136×374: **46% open, 30% closed**, against the playtest's 41%
+ceiling.
+
+**The ceiling is the resting state.** An open cluster is a transient the player asked for and which
+puts itself away after five seconds; holding it to 41% would mean either buttons under the
+accessibility floor or fewer movements than ruling 042 §1 requires. The gate holds the CLOSED
+number to 41% and reports the open one, and the two checks either side of it prove the map comes
+back.
+
+**Chrome share was being summed, not unioned.** Four rectangles added together double-count
+wherever two overlap, so the measurement would have priced an overlapping layout wrongly — and the
+first thing anyone tries when a panel is too big is to overlap it with another. Sampled on a 10 px
+grid now, in both gates. Nothing overlaps today, so the number did not move; the measurement is
+just no longer wrong for the next layout.
+
+**Measured.** Suite green twice, 1,215 tests. `ui_smoke`: the closed cluster is **1,936 px²** of a
+**329,160 px²** screen and reads its compass letter; opening it shows the pad and the buttons;
+the pad pans and rotate turns under a finger; the chrome is **46% open**; a tap outside closes it;
+and it closes itself **after 5.4 s** with nothing touching it. `play_smoke`: **30% closed** on both
+phone rows, against the 41% ceiling. `gates.mjs quick` green, 11 of 11, **368 s of a 480 s
+budget** — ui_smoke is 122 s of it, the slowest gate in the set and the one to watch.
+
+**The navigation lane is done.** K1 put every camera movement on the screen, K3 put them on both
+mouse buttons and took the pointer, K2 made the keyboard a rate, K4 answered "where am I", and K5
+made all of it fit in a hand. Next is the world lane, S9 first.
