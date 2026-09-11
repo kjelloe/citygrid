@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
+import { hasPorch, hasPorchAtL2 } from "../client/world/house-spec.js";
 import { VARIANTS, variantFor, kindOf } from "../client/world/params.js";
 import { PALETTES } from "../client/render/palettes.js";
 
@@ -99,4 +100,27 @@ test("every category the zones map to is one the kit builds", () => {
   for (const zone of [0, 1, 2, 3]) {
     assert.match(source, new RegExp(`function ${kindOf(zone)}\\(`), `no kit for ${kindOf(zone)}`);
   }
+});
+
+// --- the L2 box and the L3 house agree about the porch (slice S9) ------------
+
+test("about as many houses have a porch from the air as from the pavement", () => {
+  // E5's rule: the box a player sees at city zoom has to be the house they walk
+  // up to. The box knows only its variant and the facade knows the id, so they
+  // cannot match house for house — what they can do is agree about how common a
+  // porch is, and this is the number that says whether they do.
+  const atL2 = Array.from({ length: VARIANTS }, (_, v) => hasPorchAtL2(v)).filter(Boolean).length / VARIANTS;
+  let atL3 = 0;
+  const n = 400;
+  for (let id = 1; id <= n; id += 1) if (hasPorch(id)) atL3 += 1;
+  assert.ok(Math.abs(atL3 / n - atL2) < 0.15,
+    `${Math.round(100 * atL3 / n)}% of houses and ${Math.round(100 * atL2)}% of boxes have a porch`);
+});
+
+test("the bungalow and the semi build their own, and are not given a second", () => {
+  // Two porches on one house is the defect this predicate exists to prevent,
+  // and it is invisible from the air — which is where the box is looked at.
+  assert.equal(hasPorchAtL2(2), false, "the bungalow gets a second porch");
+  assert.equal(hasPorchAtL2(4), false, "the semi gets a porch it has no door for");
+  assert.ok(hasPorchAtL2(0) && hasPorchAtL2(1), "nothing else has one");
 });

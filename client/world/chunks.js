@@ -58,12 +58,13 @@ function fnv(hash, value) {
  * chunks share a hash, and a cache keyed by hash hands one chunk's geometry to
  * another.
  *
- * `territory` is a SALT rather than a tile layer (slice V7, A44). Turning the
+ * `territory` and `furniture` are SALTS rather than tile layers (slices V7/A44
+ * and S9). Turning the
  * overlay on changes what colour every baked building is painted without
  * changing a single tile, so a hash that ignores it leaves the near half of the
  * city in family colours while the instanced far half is in player colours.
  */
-export function chunkHash(state, cx, cy, territory = false) {
+export function chunkHash(state, cx, cy, territory = false, furniture = false) {
   const { width, height } = state;
   const x0 = cx * CHUNK;
   const y0 = cy * CHUNK;
@@ -73,6 +74,11 @@ export function chunkHash(state, cx, cy, territory = false) {
   let h = fnv(2166136261, cx);
   h = fnv(h, cy);
   h = fnv(h, territory ? 1 : 0);
+  // And whether this chunk is near enough to carry the houses' furniture (S9).
+  // A salt for the same reason `territory` is one: it changes what is baked
+  // without changing a tile, so a chunk that crosses the line has to rebake or
+  // it keeps the detail it had when it was closer.
+  h = fnv(h, furniture ? 1 : 0);
   const { terrain, elevation, zone, road, buildingId } = state.tiles;
   for (let y = y0; y < y1; y += 1) {
     for (let x = x0; x < x1; x += 1) {

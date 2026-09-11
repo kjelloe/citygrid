@@ -14,25 +14,15 @@
 // `streets-l3.js` turns the pieces into geometry and hands them to the baker.
 
 import { sink } from "./solid.js";
+import { EDGES, originOf } from "./edges.js";
 import { roof } from "./roof-kit.js";
+import { buildHouseParts } from "./house-parts.js";
+// Re-exported so `signs.js` and anything else that draws on a wall keeps one
+// import for "where the walls are".
+export { EDGES, originOf } from "./edges.js";
 
 /** How far a reveal sets a window back from the wall it is in. */
 const DEPTH = 0.14;
-/** The four edges, as an outward normal and a direction along the wall. */
-export const EDGES = [
-  { side: 0, out: [0, -1], along: [1, 0] },   // north face, runs +x
-  { side: 1, out: [1, 0], along: [0, 1] },    // east face, runs +z
-  { side: 2, out: [0, 1], along: [-1, 0] },   // south face, runs -x
-  { side: 3, out: [-1, 0], along: [0, -1] },  // west face, runs -z
-];
-
-/** Where an edge starts, in world metres: the corner it runs away from. */
-export function originOf(spec, side) {
-  if (side === 0) return [spec.x0, spec.z0];
-  if (side === 1) return [spec.x1, spec.z0];
-  if (side === 2) return [spec.x1, spec.z1];
-  return [spec.x0, spec.z1];
-}
 
 /**
  * One wall face with rectangular holes in it.
@@ -248,6 +238,11 @@ export function buildFacade(spec) {
     }
   }
   out.push({ part: extras.done(), colour: trim });
+
+  // The house's own furniture (S9). Last, because it reads the same `wallTop`
+  // and `groundTop` this function worked out — passing them rather than
+  // recomputing is what keeps a chimney on the roof rather than above it.
+  out.push(...buildHouseParts(spec, { groundTop, wallTop, trim, glass }));
 
   return out.filter((piece) => piece.part.triangles > 0);
 }

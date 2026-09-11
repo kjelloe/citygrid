@@ -123,6 +123,13 @@ once on `controllerchange`, and Playwright's next `evaluate` dies with "Executio
 destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
 changed. A gate reads the repository as it runs; edit it and you are testing two trees.
 
+**A per-thing triangle budget is meaningless until you multiply it.** S9's item allowed "+300 a
+house"; eight baked chunks of thirty houses is 240 houses, so +300 was +80,000 and `budget_gate`
+went 50k over. Multiply by things-per-chunk and chunks-per-frame BEFORE building to a per-thing
+number, and check the other half of the ratio (the item said a house was 700–1,100 triangles; it is
+272). Flat details are quads, not boxes — two triangles where twelve were — and detail that only
+reads up close belongs to the nearest N chunks, salted into the chunk hash.
+
 **A gate block that flies the camera must put it back.** `play_smoke` aims at tiles by projecting
 them through the live camera, so a block that leaves the view somewhere else puts the next block's
 pixels off the canvas and its drags land on nothing — three unrelated checks went red in K4 for

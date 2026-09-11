@@ -149,6 +149,32 @@ saturated city, a High frame is ~316k and a Medium one ~130k, so the budgets are
 140k Medium**, Low unchanged at 40k because Low has no street chunks at all. The frame-time
 governor is still what protects a device; the triangle budget only decides what to sacrifice.
 
+## 6.2b House furniture (S9, 2026-09-11)
+
+*Kjell, P61: "houses need more details."* Every house was a correct house and no house was
+anybody's. `client/world/house-spec.js` adds the furniture — a chimney and its pot, dormers from
+level 2, a skylight, a downpipe, a plinth, clapboard and brick courses, shutters, a bay window, a
+porch, a fanlight, a number plate, a garage door — all from `(id, storeys, variant)`, all through
+the existing grammar, no new pipeline.
+
+**Three rules came out of the budget, and they generalise.**
+
+1. **Flat things are quads.** A course, a shutter, a fanlight, a number plate and a garage door
+   have no thickness anybody can see: two triangles, not twelve. Built as boxes the furniture was
+   276–348 a house and took the crowd frame from 289k to **370k of a 320k budget**; as panels it
+   is **126 a house** with every part still on it.
+2. **Per-house detail is a chunk-rank decision.** The furniture is baked into the **three nearest
+   chunks** (`FURNISHED` in `street-chunks.js`), salted into the chunk hash the way the territory
+   overlay is. A rank rather than a pixel threshold, because `chunksNear` already orders by
+   distance and a threshold would rebake on every zoom.
+3. **Anything that sits on a roof must use `ridgeRise()`.** The roof is built on a box expanded by
+   the eave, so a ridge computed from the wall span alone is 0.4 m short — and a chimney sized to
+   it is buried in the slope, which no test that checks "nothing is in the sky" can see.
+
+Measured: per chunk **269,940 → 282,474** over 8 chunks (+4.6%); the crowd frame **289,446 →
+301,980 of 320,000**; chunk bake p95 6 ms. Shots: `reports/smoke-S9-{street,garden,city20}.png`
+from `tools/house_shots.mjs`.
+
 ## 6.6b Trees at eye height (V8, 2026-09-07)
 
 The instanced kit is a trunk and a four-sided cone, and at eighteen pixels a tile that is right.

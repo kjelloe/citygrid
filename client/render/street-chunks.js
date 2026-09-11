@@ -13,6 +13,14 @@
 
 import { createBaker } from "./baker.js";
 import { chunkHash, chunksNear, CHUNK } from "../world/chunks.js";
+
+/** How many of the nearest baked chunks carry the houses' furniture (S9).
+ *
+ * Three: the one the camera is in and its two nearest neighbours, which at 16
+ * tiles a chunk and 20 m a tile is the block a player can actually look at from
+ * the pavement. `budget_gate` is what chose the number — eight was 50,000
+ * triangles over a 320,000 frame. */
+export const FURNISHED = 3;
 import { PALETTES } from "./palettes.js";
 import { bakeStreets, bakeLots } from "./streets-l3.js";
 import { createGroundColour } from "../world/ground-colour.js";
@@ -62,13 +70,22 @@ export function createStreetChunks(scene, options = {}) {
    * is painted without changing a tile, so it is a salt on the chunk hash
    * rather than something the bake can read for itself (slice V7, A44). */
   let territory = false;
+  /** Which chunks are near enough to carry the houses' furniture (S9).
+   *
+   * A COUNT of the nearest, not a distance: `chunksNear` already orders by
+   * distance to the target, so the rank is stable — it changes when the player
+   * moves a chunk, not every time the camera breathes, which is what a pixel
+   * threshold would have done to the bake queue. */
+  let furnished = new Set();
   /** The ground module, for the verge's colour (A38). Built once per world:
    * `natural()` reads the terrain layer, which a build action does not move. */
   let ground;
 
   const PHASES = [
     (baker, state, model, cx, cy) => bakeStreets(baker, state, model, cx, cy, palette, ground),
-    (baker, state, model, cx, cy) => bakeLots(baker, state, model, cx, cy, palette, styleName, options.locale ?? "en", territory),
+    (baker, state, model, cx, cy) =>
+      bakeLots(baker, state, model, cx, cy, palette, styleName, options.locale ?? "en", territory,
+        furnished.has(`${cx},${cy}`)),
   ];
 
   return {
@@ -105,6 +122,11 @@ export function createStreetChunks(scene, options = {}) {
       const visible = bounds ? near.filter((c) => inView(c, bounds)) : near;
       const wanted = (visible.length > 0 ? visible : near).slice(0, budget);
       const wantedKeys = new Set(wanted.map((c) => c.key));
+      // The three nearest carry the furniture. Thirty houses a chunk at 126
+      // triangles each is 3,800 a chunk: on all eight that is 32,000 of a
+      // 320,000 frame and `budget_gate` said no; on three it is 11,000, and a
+      // shutter four chunks away is two pixels of the wall's own colour (S9).
+      furnished = new Set(wanted.slice(0, FURNISHED).map((c) => `${c.cx},${c.cy}`));
 
       for (const c of wanted) {
         const entry = live.get(c.key);
@@ -116,7 +138,8 @@ export function createStreetChunks(scene, options = {}) {
       // can be (it imports three).
       let didBuild = 0;
       if (!pending) {
-        const next = nextBuild(wanted, live, (c) => chunkHash(state, c.cx, c.cy, territory));
+        const next = nextBuild(wanted, live,
+          (c) => chunkHash(state, c.cx, c.cy, territory, furnished.has(`${c.cx},${c.cy}`)));
         if (next) pending = { ...next, baker: createBaker(styleName), phase: 0 };
       }
       if (pending) {

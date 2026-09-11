@@ -16,9 +16,10 @@
 import * as THREE from "three";
 import {
   pushTri, pushQuad, addBox, addPanel, addWindowGrid, addDoor, addBalcony,
-  addRoofClutter, addShopfront, addFence, addDormers,
+  addRoofClutter, addShopfront, addFence, addDormers, addPorch,
 } from "./detail-kit.js";
 import { variantFor, VARIANTS } from "../world/params.js";
+import { hasPorchAtL2 } from "../world/house-spec.js";
 
 const TOP = 1.0;
 const SOUTH = 0.88;
@@ -269,6 +270,15 @@ function residential(variant, detail) {
     if (variant === 1) addBalcony(parts, W, eave * 0.55, W * 0.55);
     if (detail > 1) addDoor(parts, W);
     if (variant === 0) roofPart(parts, () => addDormers(parts, W * 0.8, eave, 1.0, 1, seed));
+  }
+
+  // A porch, on the variants that have not already got one (S9). Variant 2 is
+  // the bungalow, which builds its own; 4 is a semi with two front doors and
+  // nowhere to put one. At L3 three houses in four have a porch, and the L2
+  // box has to agree with the facade it is replaced by (E5's rule).
+  if (detail > 0 && hasPorchAtL2(variant)) {
+    const front = variant === 5 ? W : variant === 3 ? W : W * (variant === 4 ? 0.9 : 1);
+    addPorch(parts, front, W * 0.26, eave * (variant === 5 ? 0.42 : 0.55));
   }
 
   // Chimney, offset per variant so a row of houses is not a row of clones.

@@ -5508,3 +5508,71 @@ budget** — ui_smoke is 122 s of it, the slowest gate in the set and the one to
 **The navigation lane is done.** K1 put every camera movement on the screen, K3 put them on both
 mouse buttons and took the pointer, K2 made the keyboard a rate, K4 answered "where am I", and K5
 made all of it fit in a hand. Next is the world lane, S9 first.
+
+## slice-S9 — houses with more on them (2026-09-11)
+
+Kjell, P61: *"houses need more details."* The residential kit had six silhouettes and fourteen
+roofs (V6) and the facade grammar (E5) glazed every face, so every house was a correct house and no
+house was anybody's. What was missing was the furniture.
+
+**`client/world/house-spec.js` is pure and says where each piece sits**; `client/render/house-parts.js`
+turns the list into geometry. A chimney with a pot on half of them, dormers from level 2, a
+skylight instead on the roofs without one, a downpipe at a corner, a plinth, clapboard and brick
+courses on the street wall, shutters and a window box, a bay window at level 3, a porch with a
+post, a fanlight and a number plate, a garage door on a wide lot. Everything is a function of
+`(id, storeys, variant)` — a house keeps its chimney for life and two players see the same street.
+
+**The L2 box gained a porch**, through `hasPorchAtL2(variant)` — a predicate in the pure module,
+because `building-kit.js` imports three and node cannot look at it. The box knows only its variant
+and the facade knows the id, so they cannot match house for house; what `test/kit.test.js` checks
+is that they agree about how COMMON a porch is, which is as close as the two fidelities can get to
+E5's rule.
+
+### Four findings, and one of them cost the slice its budget
+
+**The item's +300 a house was three times what the frame had spare.** Built to it, the furniture
+came to 276–348 a house — **10,306 triangles a chunk** — and `budget_gate` said what that means:
+the crowd frame went from **289,446 to 369,858 against a 320,000 budget**, and the chunk bake from
+6 ms to 9 ms, over its own limit. The item's other number was wrong too: a one-tile house is **272
+triangles at level 1 and 508 at level 3**, not the 700–1,100 it assumed. Eight baked chunks of
+about thirty houses is 240 houses a frame, and 30k of headroom over 240 houses is **125 each**.
+
+**Half of it came back by drawing flat things flat.** A course of brick, a shutter, a fanlight, a
+number plate and a garage door have no thickness anybody can see — the facade's own window reveals
+provide all the depth a wall reads — so they are quads, 1 cm proud of the wall, at **two triangles
+where twelve were**. 126 a house with every part still on it.
+
+**The rest came from putting the detail where it can be seen.** The furniture is baked into the
+**three nearest chunks** only — `FURNISHED` in `street-chunks.js`, salted into the chunk hash the
+way the territory overlay is (V7/A44), so a chunk rebakes when it crosses the line. A rank, not a
+pixel threshold: `chunksNear` already orders by distance, so it changes when the player moves a
+chunk rather than every time the camera breathes. A shutter four chunks away was two pixels of the
+wall's own colour.
+
+**A chimney sized to a ridge computed without the eave is buried in the roof.** `roof-kit.js` builds
+the roof on a box EXPANDED by the overhang, so its half-span is half the short axis plus the eave
+on both sides. The first version came up 0.4 m short: invisible to a test that only asked whether
+anything stood in the sky, and obvious in the first screenshot. `ridgeRise()` is shared by the
+renderer and the test now, and the test asserts the chimney CLEARS the ridge rather than merely
+failing to leave the building.
+
+**And hashes multiply.** Every part is behind one, and the first cut left house 1 with a chimney, a
+plinth and nothing else — 36 triangles, the bare box this slice exists to fix. A house that draws
+no SHAPE (a porch, a dormer or a bay) gets a porch, and the budget test has a floor as well as a
+ceiling. The garage is not on that list: it became a flat quad when the budget was cut, and a door
+painted on a wall is not a shape.
+
+**Measured.** Suite green twice, 1,225 tests. Per house: **126 triangles at one tile, 140 at four**,
+against 272 and 1,588 for the house itself. Per chunk: **269,940 → 282,474 over 8 chunks** (+4.6%).
+The crowd frame: **289,446 → 301,980 of 320,000**, with the bake p95 at 6 ms. `gates.mjs render`
+green, 4 of 4, 171 s of 300 (budget_gate 155); `gates.mjs quick` green, 11 of 11, 366 s of 480.
+Shots in `reports/smoke-S9-{street,garden,city20}.png`, taken by `tools/house_shots.mjs`, which
+asks the page where its houses are rather than remembering a coordinate.
+
+**What the pictures say.** The street reads as a street: chimneys against the sky, a porch and a
+downpipe on the near houses, courses on the brick ones. The gap to Kjell's reference that is left
+is not facade detail — it is the SHAPE of the residential buildings this fixture grows, which are
+three- and four-storey blocks rather than detached houses. That is a development question (B2) and
+a kit question (the six silhouettes), not a grammar one.
+
+**Next:** S1 with B2, as the world lane's Order section says.

@@ -132,6 +132,19 @@ export function addDoor(parts, extent, width = 0.1, height = 0.22, shade = 0.42)
   addBox(parts, -width * 1.1, 0, extent, width * 1.1, 0.022, extent + 0.05, 0.8);
 }
 
+/** A porch: a canopy on two posts, over the front door (slice S9).
+ *
+ * At L3 three houses in four have one; the instanced box only knows its
+ * variant, so "most variants" is as close as the two fidelities can agree —
+ * and that agreement is the whole point of the L2/L3 rule (E5). Three boxes,
+ * 36 triangles, on the wall the door is on. */
+export function addPorch(parts, extent, halfWidth, height, shade = 0.95) {
+  addBox(parts, -halfWidth, height, extent - 0.02, halfWidth, height + 0.02, extent + 0.09, shade);
+  for (const x of [-halfWidth + 0.012, halfWidth - 0.026]) {
+    addBox(parts, x, 0, extent + 0.05, x + 0.014, height, extent + 0.064, shade * 0.8);
+  }
+}
+
 /** A balcony: a slab and a rail. Reads immediately as somewhere people are. */
 export function addBalcony(parts, extent, y, halfWidth, shade = 0.9) {
   addBox(parts, -halfWidth, y, extent, halfWidth, y + 0.016, extent + 0.075, shade);

@@ -166,7 +166,7 @@ walker's side of the same number. **Done when `walkthrough 128 hilly` is green a
 `render` set** — the measurement is what says whether moving junctions was enough, rather than the
 claim that it was. Today it is 459 of 1,392 corridors ungradeable and a steepest street of 59.3%.
 
-## S9 — Houses with more on them (M) — P61, first in this lane
+## S9 — Houses with more on them (M) — P61 — **done 2026-09-11 as `slice-S9`**
 
 *Kjell, 2026-09-11: "houses need more details." The residential kit has six silhouettes and
 fourteen roofs (V6) and the facade grammar (E5) glazes every face; what a house does not have is
@@ -199,6 +199,37 @@ the L2 silhouette hash changes with the chimney and porch and there are still si
 **Gate.** `reports/smoke-S9-{street,garden,city20}.png` — a residential street from the pavement,
 one garden from the side, and the same street from `city 20t` on the big viewport (D8) — looked at
 against the reference. The compare sheet (S8) row 3.
+
+**In:** `client/world/house-spec.js` (pure: the parts, the materials, the courses, the porch
+predicate both fidelities read) and `client/render/house-parts.js` (boxes and panels). A chimney
+with a pot, dormers from level 2, a skylight, a downpipe, a plinth, clapboard and brick courses,
+shutters and window boxes, a bay window at level 3, a porch with a post, a fanlight and a number
+plate, a garage door on a wide lot. The L2 box gained a porch through `hasPorchAtL2`, which is the
+one predicate both the instanced kit and the test can read.
+
+**Four things this turned up, and one of them cost the slice its budget.**
+
+- **The item's +300 a house was three times what the frame had spare.** Built to it, the furniture
+  was 276–348 a house, **10,306 triangles a chunk**, and took `budget_gate`'s crowd frame from
+  **289,446 to 369,858 against a 320,000 budget** — with the chunk bake at 9 ms against its own
+  limit. The item's "700–1,100 triangles a house at L3" was also wrong for the common case: a
+  one-tile house is **272 at level 1 and 508 at level 3**.
+- **Drawing flat things flat paid for half of it.** A course of brick, a shutter, a fanlight, a
+  number plate and a garage door have no thickness anybody can see, so they are quads rather than
+  boxes — two triangles where twelve were. 126 a house with every part still on it.
+- **And the rest came from putting the detail where it can be seen.** The furniture is baked into
+  the **three nearest chunks** only (`FURNISHED` in `street-chunks.js`), salted into the chunk hash
+  the way the territory overlay is, so a chunk rebakes when it crosses the line. The crowd frame is
+  **301,980 of 320,000** and the bake p95 is back to 6 ms.
+- **A chimney sized to a ridge computed without the eave is buried in the roof.** `roof-kit.js`
+  builds the roof on a box EXPANDED by the overhang, so the ridge is higher than the wall span
+  alone suggests. The first version came up 0.4 m short — invisible to a test that only asked
+  whether anything was in the sky, obvious in the first screenshot. `ridgeRise()` is shared by the
+  renderer and the test now, and the test asserts the chimney CLEARS the ridge.
+
+**Also:** every part is behind a hash, and hashes multiply — the first cut left house 1 with a
+chimney, a plinth and nothing else. A house that draws no SHAPE (porch, dormer or bay) gets a
+porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 

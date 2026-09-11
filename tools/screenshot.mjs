@@ -86,10 +86,17 @@ export async function shoot({
     }
 
     const report = await page.evaluate(() => globalThis.SHOT_REPORT);
+    // An optional second question, asked of the page that is already standing:
+    // `extra.__ask` is a function body evaluated against `globalThis.SHOT_STATE`
+    // and `SHOT_VIEW`, so a caller can AIM a shot at something rather than
+    // remembering a coordinate (S9).
+    const answer = extra.__ask
+      ? await page.evaluate(new Function("return (" + extra.__ask + ")(globalThis.SHOT_STATE, globalThis.SHOT_VIEW)"))
+      : undefined;
     await mkdir(dirname(join(root, out)), { recursive: true });
     const png = await page.locator("#city").screenshot();
     await writeFile(join(root, out), png);
-    return { ok: problems.length === 0, out, report, problems };
+    return { ok: problems.length === 0, out, report, answer, problems };
   } finally {
     await browser.close();
     server.close();

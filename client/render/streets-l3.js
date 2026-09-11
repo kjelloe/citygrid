@@ -216,7 +216,7 @@ export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
  * built once — a building drawn twice is a building with z-fighting on every
  * face, which at street level is the most obvious artefact there is.
  */
-export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false) {
+export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false) {
   const cfg = getConfig();
   const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
   const fronts = [];
@@ -234,7 +234,7 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
     // runs again on the toggle (slice V7, A44).
     const family = familyColour(lot.building, palette, showOwner, ZONE_NONE);
     const params = buildingParams(lot.building, palette, family, showOwner);
-    const spec = facadeSpec(lot, params, locale);
+    const spec = facadeSpec(lot, params, locale, furniture);
     specs.push(spec);
     for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
     fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind });

@@ -19,6 +19,7 @@
 
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
+import { houseParts, materialOf } from "./house-spec.js";
 /**
  * The names over the shops — a mirror of `data/names.json`, one list per locale.
  *
@@ -148,7 +149,11 @@ function extrasOf(kind, variant, spec, id) {
  * two the instanced kit reads, which is the guarantee that L2 and L3 are the
  * same house.
  */
-export function facadeSpec(lot, params, locale = "en") {
+export function facadeSpec(lot, params, locale = "en", furniture = true) {
+  // The default is ON here and OFF in `bakeLots` and `chunkHash` deliberately:
+  // a caller asking for one facade wants the whole house, and the two that
+  // decide per CHUNK must never disagree with each other about what was baked.
+  // They are both passed explicitly by `street-chunks.js` (S9).
   const cfg = getConfig();
   const kind = params.kind;
   const id = lot.building.id;
@@ -211,5 +216,20 @@ export function facadeSpec(lot, params, locale = "en") {
   }
 
   spec.extras = extrasOf(kind, params.variant, spec, id);
+  // What makes one house that house (S9). Appended rather than merged into
+  // `extrasOf`, because these are residential furniture and that function is
+  // the four categories' shared list — and a renderer that does not know a
+  // part draws nothing, so the two can grow apart safely.
+  // `furniture` is the nearest chunks only (S9). The parts are 126 triangles a
+  // house and there are about thirty houses in a chunk: on all eight baked
+  // chunks that is 32,000 a frame, which `budget_gate` priced at 50,000 over a
+  // 320,000 budget. On the three the player is standing in it is 11,000, and a
+  // shutter four chunks away was two pixels of the wall's own colour.
+  if (kind === "residential" && furniture) {
+    spec.material = materialOf(params.variant);
+    // The old rule gave a porch to variant 1 only, and `houseParts` gives one
+    // to three houses in four. Two porches on one house is one too many.
+    spec.extras = spec.extras.filter((e) => e.kind !== "porch").concat(houseParts(spec));
+  }
   return spec;
 }
