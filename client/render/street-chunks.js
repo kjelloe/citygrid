@@ -86,6 +86,7 @@ export function createStreetChunks(scene, options = {}) {
    * the buildings another over the lots — and neither half is worth showing on
    * its own, so the group is published only when both are done. */
   let pending;
+  let lastBuilt = "";
 
   /** Is the territory overlay showing? It changes what colour a baked building
    * is painted without changing a tile, so it is a salt on the chunk hash
@@ -187,6 +188,10 @@ export function createStreetChunks(scene, options = {}) {
           // (V5 left that boundary where it was).
           group.scale.setScalar(1 / getConfig().tileM);
           scene.add(group);
+          // What was just built and why, for the gate's trail: a count of
+          // rebakes cannot say which chunk came back or what changed in it.
+          lastBuilt = `${chunk.cx},${chunk.cy}${live.has(chunk.key) ? " rebake" : " new"}`
+            + `${furnished.has(`${chunk.cx},${chunk.cy}`) ? " furnished" : ""}${territory ? " territory" : ""}`;
           live.set(chunk.key, {
             hash, group, cx: chunk.cx, cy: chunk.cy, seen: now,
             triangles: baker.triangles, lamps: baker.lamps, signals: baker.signals,
@@ -212,7 +217,7 @@ export function createStreetChunks(scene, options = {}) {
       // and "3 live" could not tell anyone whether the building in front of the
       // camera was one of the three (S1b).
       return {
-        built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, total: built,
+        built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, total: built, lastBuilt,
         keys: [...live.values()].map((e) => `${e.cx},${e.cy}`).sort().join(" "),
       };
     },

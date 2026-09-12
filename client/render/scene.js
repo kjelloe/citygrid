@@ -11,7 +11,7 @@ import { createWater } from "./water.js";
 import { createInstances, updateInstances, pushInstance, settlePools, CAR_COLOURS } from "./instances.js";
 import { UI } from "./palette.js";
 import { STYLES, createPost } from "./styles.js";
-import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown, inFootprint, inBounds } from "./lod.js";
+import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown, inFootprint, inBounds, tilePixels, usesChunkPlans, RESOLVE, createChunkCeiling } from "./lod.js";
 import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
@@ -123,6 +123,8 @@ export function createRenderer(canvas, state, options = {}) {
   // Zero is a real answer here and not "no limit": the Low tier has no
   // pedestrians at all (ruling 040).
   const pedCap = () => options.pedCap ?? tier.pedCap ?? 0;
+  /** The crowd from the air (B7). Zero at Low, like `pedCap`. */
+  const pedCapCity = () => options.pedCapCity ?? tier.pedCapCity ?? 0;
 
   /** Shadow map size and whether the pass runs at all. Re-applied when the
    * tier changes; the per-frame `castShadow` is decided in `draw`. */
@@ -320,11 +322,35 @@ export function createRenderer(canvas, state, options = {}) {
   // The nav graph and the people on it (slice E7, spec §9.3). Same contract as
   // the cars: derived, renderer-local, never state, frozen by `life: false`.
   let nav = deriveNav(state, model);
-  let pedestrians = createPedestrians(state, model, nav, { cap: pedCap(), life: options.life });
+  // Two crowds over one graph (B7). The CITY crowd is spread over every
+  // pavement by demand and is the same whatever the camera does; E7's crowd
+  // tops the pavements near the eye up to what the buildings ask for, reading
+  // the city crowd's count so it never doubles a street.
+  let crowd = createPedestrians(state, model, nav, { cap: pedCapCity(), life: options.life, spread: true });
+  let pedestrians = createPedestrians(state, model, nav, {
+    cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId),
+  });
   // The crossings without a light ask the cars for a gap (T1, A51). Wired here
   // because `life/pedestrians.js` may not reach into `life/traffic.js`: they are
   // two independent simulations over one derived graph.
   pedestrians.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
+  crowd.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
+
+  /** Which person to draw at a spot, from how many pixels a tile is there: E7's
+   * figure, the one from the air, or nobody (B7). Per spot under perspective,
+   * where the near street and the horizon are different zooms. */
+  let crowdPosed = 0;
+  /** What the measured frame has said about street chunks at this view, and a
+   * counter that makes a rebuilt world a new view (B7, ruling 019). */
+  const chunkCeiling = createChunkCeiling();
+  let worldEpoch = 0;
+  function figureAt(x, z) {
+    const px = usesChunkPlans(view.mode)
+      ? tilePixels(view, canvas.height, { x, z })
+      : tilePixels(view, canvas.height);
+    if (px >= RESOLVE.peds) return "l3";
+    return px >= RESOLVE.pedsCity ? "l2" : null;
+  }
 
   // The baked street cache (slice E2). It draws nothing until a chunk is close
   // enough to be worth baking and the tier allows any.
@@ -422,6 +448,7 @@ export function createRenderer(canvas, state, options = {}) {
   }
 
   function worldChanged() {
+    worldEpoch += 1;
     model = createModel(state);
     // The lane graph is part of the model, so the cars have to start again on
     // the new one: a car holding a link id from a graph that no longer exists
@@ -438,8 +465,12 @@ export function createRenderer(canvas, state, options = {}) {
     water = createWater(state, model, styleName);
     scene.add(water.group);
     nav = deriveNav(state, model);
-    pedestrians = createPedestrians(state, model, nav, { cap: pedCap(), life: options.life });
+    crowd = createPedestrians(state, model, nav, { cap: pedCapCity(), life: options.life, spread: true });
+    pedestrians = createPedestrians(state, model, nav, {
+      cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId),
+    });
     pedestrians.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
+    crowd.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
     collision = createCollision(model);
     // Where the walker stands is a fact about the OLD lots; a rebuild can put a
     // building on top of it, so it is settled onto the new ground.
@@ -700,8 +731,12 @@ export function createRenderer(canvas, state, options = {}) {
     // from where the player has moved to rather than from where they were last
     // frame. A rate, scaled by the delta the caller measured (ruling 042 §3).
     if (view.mode === "photo") flyPhoto(drawOptions.move, dt);
+    crowd.update(dt);
     pedestrians.update(dt, lastBounds, eyeOf(view));
-    traffic.yieldTo(pedestrians.yields(), view.mode === "street" ? walkerPoint() : undefined);
+    // Everybody in a carriageway, from both crowds: a car does not drive
+    // through a person because the person is being drawn from the air.
+    traffic.yieldTo([...pedestrians.yields(), ...crowd.yields()],
+      view.mode === "street" ? walkerPoint() : undefined);
     // The hour reaches the road (B4). Handed in, never read from a clock here:
     // `client/life/` takes its time from the caller, which is what makes
     // `?life=0` freeze it (ruling 037).
@@ -733,6 +768,9 @@ export function createRenderer(canvas, state, options = {}) {
     // Only the cars on screen, which is the same set `pose` writes (R1.1).
     counts.cars = traffic.count(bounds);
     counts.peds = pedestrians.count(bounds);
+    const crowdSeen = crowd.countBy(bounds, figureAt);
+    counts.pedsCity = crowdSeen.l2;
+    counts.pedsCityNear = crowdSeen.l3;
     // What a baked street chunk actually cost, last frame (slice E3).
     const held = stats.streets;
     counts.streetPerChunk = held?.live > 0 ? held.triangles / held.live : 0;
@@ -742,9 +780,22 @@ export function createRenderer(canvas, state, options = {}) {
     // over at close zoom (slice E5) — the same failure as N30's "charged 49k
     // for ground never drawn", one lane along.
     counts.bakedChunks = countVisible(streets.keys, bounds);
+    // The view, as far as the street chunks are concerned: where the camera
+    // is and which way it faces, the canvas, the budget and the world. While
+    // none of those changes, a count of chunks the measured frame refused is
+    // not asked for again (B7).
+    const eye = view.camera.position;
+    const turn = view.camera.quaternion;
+    const viewKey = [view.mode, eye.x, eye.y, eye.z, turn.x, turn.y, turn.z, turn.w]
+      .map((v) => (typeof v === "number" ? v.toFixed(3) : v)).join("|")
+      + `|${canvas.width}x${canvas.height}|${drawOptions.budget ?? getBudget()}|${worldEpoch}`;
+    // What the plan ASKED for, before the estimate or the measurement shed
+    // anything: the shed that matters was the estimate's, made while the ninth
+    // chunk was baked and could be priced (B7).
+    const chunksAsked = chunkCeiling.cap(viewKey, drawOptions.streetChunks ?? tier.streetChunks);
     const plan = choosePlan(counts, view, canvas.height, {
       budget: drawOptions.budget,
-      streetChunks: drawOptions.streetChunks ?? tier.streetChunks,
+      streetChunks: chunksAsked,
     });
     plan.mode = view.mode;
 
@@ -795,7 +846,14 @@ export function createRenderer(canvas, state, options = {}) {
         result.triangles = settled.triangles;
       }
       if (plan.peds !== false && drawOptions.life !== false) {
-        pedestrians.pose(pools, pushInstance, CAR_COLOURS, bounds);
+        pedestrians.pose(pools, pushInstance, CAR_COLOURS, bounds, undefined, drawOptions.crowdColour);
+        const settled = settlePools(pools);
+        result.instances = settled.instances;
+        result.triangles = settled.triangles;
+      }
+      crowdPosed = 0;
+      if (plan.pedsCity !== false && drawOptions.life !== false) {
+        crowdPosed = crowd.pose(pools, pushInstance, CAR_COLOURS, bounds, figureAt, drawOptions.crowdColour);
         const settled = settlePools(pools);
         result.instances = settled.instances;
         result.triangles = settled.triangles;
@@ -849,6 +907,10 @@ export function createRenderer(canvas, state, options = {}) {
       if (plan.actual <= plan.budget || !stepDown(plan)) break;
       stats.rebuilds += 1;
     }
+    chunkCeiling.settle(viewKey, chunksAsked, plan.streetChunks);
+    // For the gate's trail: whether the view the ceiling is keyed on moved.
+    stats.viewKey = viewKey;
+    stats.chunksPlanned = plan.streetChunks;
     plan.overBudget = plan.actual > plan.budget;
 
     // At most one chunk baked per frame, nearest first (spec §6.4). After the
@@ -895,6 +957,14 @@ export function createRenderer(canvas, state, options = {}) {
     stats.peds = pedestrians.count(bounds);
     stats.pedsHeld = pedestrians.count();
     stats.pedCap = pedCap();
+    // What was POSED, beside what was counted: the first version reported the
+    // count, and a city camera printed 167 people while the plan had dropped
+    // every one of them (B7, R1.1's lesson one lane along).
+    stats.pedsCityPosed = crowdPosed;
+    stats.pedsCity = counts.pedsCity ?? 0;
+    stats.pedsCityNear = counts.pedsCityNear ?? 0;
+    stats.pedsCityHeld = crowd.count();
+    stats.pedCapCity = pedCapCity();
     stats.nav = nav.stats;
     stats.frameP95 = governor.p95();
     stats.given = governor.disabled();
@@ -1017,5 +1087,5 @@ export function createRenderer(canvas, state, options = {}) {
   return { renderer, scene, view, terrain, pools, style, setTier, setProjection, setTime,
     get night() { return timeOfDay.current.night; },
     enterStreet, leaveStreet, enterPhoto, leavePhoto, flyPhoto, lookPhoto, capture,
-    get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get pedestrians() { return pedestrians; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+    get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get pedestrians() { return pedestrians; }, get crowd() { return crowd; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

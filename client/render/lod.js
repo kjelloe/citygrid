@@ -43,6 +43,7 @@ const DEFAULT_COSTS = {
   road: 0,      // painted into the terrain mesh since N30; free
   car: 76,      // measured from the car pool by `createInstances`
   ped: 36,      // measured from the pedestrian pool by `createInstances` (E7)
+  pedCity: 12,  // the figure seen from the air, `client/world/figure.js` (B7)
   marking: 2,
   pole: 12,     // a box; vertical, so it cannot be flattened
   wireHub: 2,
@@ -165,6 +166,10 @@ export const RESOLVE = {
   // fifty pixels a tile they are two pixels of a colour that is already on the
   // pavement, and there may be a hundred of them (slice E7).
   peds: 50,
+  // The same person from the air (B7): a 12-triangle figure drawn from thirty
+  // pixels a tile, so the city camera sees a crowd. Below that it is two
+  // pixels of a colour already on the pavement.
+  pedsCity: 30,
   shape: 30, shadows: 16, block: 13, trees: 8,
   // Above this a chunk is worth BAKING rather than instancing (slice E2, spec
   // §8.2): 160 px a tile at TILE_M = 20 is a chunk within about 40–60 m of the
@@ -188,6 +193,7 @@ export function planForChunk(plan, px) {
   if (px < RESOLVE.props) out.props = false;
   if (px < RESOLVE.cars) out.cars = false;
   if (px < RESOLVE.peds) out.peds = false;
+  if (px < RESOLVE.pedsCity) out.pedsCity = false;
   if (px < RESOLVE.markings) out.markings = false;
   if (px < RESOLVE.poles) out.poles = false;
   if (px < RESOLVE.networks) out.networks = false;
@@ -271,6 +277,11 @@ function estimateOne(counts, plan) {
   const flat = counts.roads * costs.road
     + (plan.cars !== false ? counts.cars * costs.car : 0)
     + (plan.peds !== false ? counts.peds * costs.ped : 0)
+    // The city crowd (B7): the figure from the air where it is drawn, and E7's
+    // person where the same people are close enough to be drawn as one.
+    + (plan.pedsCity !== false
+      ? (counts.pedsCity ?? 0) * costs.pedCity + (counts.pedsCityNear ?? 0) * costs.ped
+      : 0)
     + (plan.markings ? counts.markArms * costs.marking * loose : 0)
     // Every network the renderer draws has a term here. Wire and pipe had
     // none, and `counts.poles` was computed and then never read — a term
@@ -335,6 +346,10 @@ const LADDER = [
   // 5,040 triangles of a 320,000 budget — 1.6%, measured, against the 24,000 a
   // car pool can reach. Sacrificing them buys almost nothing (slice E7).
   (p) => (p.peds ? ((p.peds = false), "people dropped") : ""),
+  // The crowd from the air goes straight after the one on the pavement, and
+  // for the same reason: six hundred of them at twelve triangles is 7,200 of a
+  // 400,000 frame (B7).
+  (p) => (p.pedsCity ? ((p.pedsCity = false), "city crowd dropped") : ""),
   (p) => (p.markings ? ((p.markings = false), "markings dropped") : ""),
   (p) => (p.poles ? ((p.poles = false), "poles dropped") : ""),
   (p) => (p.networks ? ((p.networks = false), "networks dropped") : ""),
@@ -418,6 +433,7 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
     networks: true,
     cars: true,
     peds: true,
+    pedsCity: true,
     // How many chunks of baked street the tier allows around the camera. Set
     // by the caller from the tier (ruling 040); 0 means none at all.
     streetChunks: options.streetChunks ?? 0,
@@ -433,6 +449,13 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
   // hundreds of them (slice V1).
   if (px < RESOLVE.cars) { plan.cars = false; plan.reason = "cars not resolvable"; }
   if (px < RESOLVE.peds) { plan.peds = false; plan.reason = "people not resolvable"; }
+  // Not under perspective. There the frame's `px` is the zoom at the view
+  // TARGET, and the city crowd is already decided per spot (`figureAt` in
+  // scene.js): cut here, a city camera at 40 tiles across read 27 px at the
+  // target and dropped the whole crowd, while the foreground it was looking
+  // over was well above 30 and the counter reported 167 people nobody drew
+  // (B7). The ladder can still drop it for budget.
+  if (px < RESOLVE.pedsCity && !planFor) { plan.pedsCity = false; plan.reason = "city crowd not resolvable"; }
   if (px < RESOLVE.markings) { plan.markings = false; plan.reason = "markings not resolvable"; }
   if (px < RESOLVE.poles) { plan.poles = false; plan.reason = "poles not resolvable"; }
   // A wire ribbon is 0.16 of a tile wide and a pipe main 0.28, so below about
@@ -739,5 +762,39 @@ export function countScene(state, bounds) {
     cars: 0,
     // ...and neither is the number of people, for the same reason.
     peds: 0,
+  };
+}
+
+/**
+ * How many baked street chunks the plan has said fit this view (B7, ruling
+ * 019).
+ *
+ * The estimate charges the chunks that are baked, so it can only price the
+ * ninth while the ninth IS baked. On `budget_gate`'s street view, with it
+ * baked the estimate came to about 405,000 and shed it; after its two-second
+ * grace it was evicted; the estimate, now charging eight, came to 380,134 and
+ * asked for it back; rebake — every two seconds with the camera and the city
+ * standing still, logged draw by draw. The shed made while the chunk could be
+ * priced is the informed answer, so once a plan — estimated or measured — has
+ * shed chunks at a view, that count is the ceiling until the view, the budget
+ * or the world changes: hysteresis, which is what a threshold with feedback on
+ * both sides of it needs.
+ *
+ * Pure, so the rule is tested; `scene.js` supplies the key and the counts.
+ */
+export function createChunkCeiling() {
+  let key = "";
+  let ceiling = Infinity;
+  return {
+    /** The most chunks a plan at this view may ask for. */
+    cap(viewKey, wanted) {
+      if (viewKey !== key) { key = viewKey; ceiling = Infinity; }
+      return Math.min(wanted, ceiling);
+    },
+    /** After the measured loop: if it shed chunks, remember where it stopped. */
+    settle(viewKey, before, after) {
+      if (viewKey !== key) { key = viewKey; ceiling = Infinity; }
+      if (after < before) ceiling = Math.min(ceiling, after);
+    },
   };
 }

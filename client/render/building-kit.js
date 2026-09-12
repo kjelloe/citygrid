@@ -21,6 +21,7 @@ import {
 import { variantFor, VARIANTS } from "../world/params.js";
 import { civicShape, civicHeight, shadeOf, CIVIC_DEFS } from "../world/civic-spec.js";
 import { hasPorchAtL2 } from "../world/house-spec.js";
+import { cityFigure } from "../world/figure.js";
 
 const TOP = 1.0;
 const SOUTH = 0.88;
@@ -659,6 +660,15 @@ export function carVariants() {
   const list = [];
   for (let i = 0; i < CAR_VARIANTS; i += 1) list.push(car(i));
   return list;
+}
+
+/** The person seen from the air (B7): `client/world/figure.js`'s twelve faces,
+ * handed over in the order they were wound — `pushTri` takes its normal from
+ * that order, and the figure module is where the winding is tested. */
+export function cityPersonGeometry() {
+  const parts = makeParts();
+  for (const { tri: [a, b, c], shade } of cityFigure()) pushTri(parts, a, b, c, shade);
+  return finish(parts);
 }
 
 export function pedVariants() {

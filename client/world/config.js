@@ -124,7 +124,8 @@ export const DEFAULTS = Object.freeze({
   // and two players on different tiers would desync on the first month tick.
   //
   // `pixelRatio` is a CAP on the device's own ratio, not a replacement for it.
-  // `carCap: 0` means uncapped. `post` lists the passes a tier may run; the
+  // `carCap: 0` means uncapped. `pedCapCity` is the crowd seen from the air
+  // (B7), spread over the city by demand; `pedCap` is E7's near-eye crowd. `post` lists the passes a tier may run; the
   // frame-time governor may still take one away (`frameMs` is its target).
   //
   // **`frameMs` is a threshold with headroom, not the refresh interval.** It was
@@ -138,17 +139,17 @@ export const DEFAULTS = Object.freeze({
   tiers: {
     low: {
       budget: 40000, pixelRatio: 1, antialias: false, shadowMap: 0, lamps: 0,
-      shadows: false, streetChunks: 0, carCap: 60, pedCap: 0,
+      shadows: false, streetChunks: 0, carCap: 60, pedCap: 0, pedCapCity: 0,
       post: [], frameMs: 40,
     },
     medium: {
       budget: 140000, pixelRatio: 1.5, antialias: true, shadowMap: 2048, lamps: 5,
-      shadows: true, streetChunks: 4, carCap: 200, pedCap: 40,
+      shadows: true, streetChunks: 4, carCap: 200, pedCap: 40, pedCapCity: 200,
       post: ["pixel"], frameMs: 40,
     },
     high: {
       budget: 400000, pixelRatio: 2, antialias: true, shadowMap: 4096, lamps: 8,
-      shadows: true, streetChunks: 9, carCap: 0, pedCap: 120,
+      shadows: true, streetChunks: 9, carCap: 0, pedCap: 120, pedCapCity: 600,
       post: ["pixel", "ink"], frameMs: 20,
     },
   },

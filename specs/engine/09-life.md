@@ -171,6 +171,38 @@ Three things the summary above does not say, all of them found by looking at the
   harder wall than a red light. The collision world deliberately never keeps a person off a
   carriageway.
 
+## 9.3b As built (B7, 2026-09-12) — the crowd seen from the air
+
+E7's crowd is 120 people spent nearest the eye and drawn from 50 px a tile, which the city camera
+reaches only on a big screen — so from the air a street with people on it had nobody on it.
+
+**Two crowds over one nav graph.** The **city crowd** (`createPedestrians({ spread: true })`) fills
+every pavement towards its demand, in an order hashed from the pavements, and never thins for being
+off screen: how many exist is a function of the city and `pedCapCity` (Low 0, Medium 200, High
+600) and nothing else, and the camera decides only which are drawn (D7). E7's crowd is unchanged
+except that it reads the city crowd's count per pavement (`reserve`) and tops a street up to its
+demand instead of doubling it. Both walk the same edges at the same pace, and both are handed to
+the cars at crossings.
+
+**The figure** is `client/world/figure.js`: twelve triangles — a tapered three-sided body with a
+lid and a floor, and a pointed three-sided head in a lighter shade — 1.84 m tall, faceted, never a
+billboard. Pure, so node checks the count, the size and that every face winds outwards;
+`building-kit.js` only hands the faces to three.
+
+**Which figure, where.** `figureAt(x, z)` in `scene.js` asks what the SPOT resolves — E7's person
+from 50 px a tile, the figure from the air from 30 (`RESOLVE.pedsCity`), nobody below — so a person
+the camera zooms in on keeps their stride and changes detail. Under perspective the frame plan does
+not cut the city crowd at the target's zoom, because the foreground is finer than the target: at
+40 tiles across the target read 27 px and the first version dropped all of them while its counter
+reported 167. The ladder drops the crowd straight after E7's people.
+
+**Measured**, the 64-tile played city (forty years), High, 1920×1080, city camera at pitch 30:
+at 20 tiles across **570 of 600 posed** (297 as the figure from the air, 273 as E7's), and
+**1,041 pixels** that are magenta only in the magenta shot; at 40 across **167 posed** and 184
+pixels, +2,004 triangles (167 × 12). What that looks like: at 20 across a person is an upright tick
+about two pixels by five, at 40 a one- or two-pixel dot strung along a pavement — life on the
+street rather than figures, which is what thirty pixels a tile buys.
+
 ## 9.4 Ambient motion
 
 Higashiyama's rule: restrained. Trees sway a little, a flag moves, smoke from an industrial

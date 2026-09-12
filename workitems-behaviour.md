@@ -197,7 +197,21 @@ floods) is Q84 and not here.
 governor's ladder can drop the rain pool (a rung). **Gate.** `budget_gate` gains a rain row;
 `a11y_smoke` measures overlay contrast under rain; `reports/smoke-B6-{street,city}.png`.
 
-## B7 — Cars and people, seen from the city camera (S) — P61
+## B7 — Cars and people, seen from the city camera (S) — P61 — **built 2026-09-12** (`specs/engine/09-life.md` §9.3b)
+
+**As built.** A second crowd, spread over every pavement by demand and capped by `pedCapCity`
+(Low 0, Medium 200, High 600), the same whatever the camera does; E7's crowd tops each pavement up
+to its demand instead of doubling it. The figure is `client/world/figure.js`, twelve triangles,
+drawn where the spot resolves 30 px a tile and swapped for E7's person from 50 — the same person on
+the same stride. On the played city at 1920×1080: 570 of 600 posed at 20 tiles across, 167 at 40,
+and from the air they read as ticks and dots of life on the pavements rather than figures, which is
+what thirty pixels a tile buys. Found on the way: the frame plan cut the crowd at the TARGET's zoom
+under perspective while the counter counted the foreground, so a shot printed 167 people nobody
+drew; and the near crowd read the city crowd's count from before its refills and doubled it. And the budget gate's
+territory check, flaky since B4, failed every run once the crowd was in the frame: the estimate could
+price the ninth street chunk only while it was baked, so a still camera shed it, evicted it, asked
+for it back and rebaked it every two seconds. A ceiling per view holds the refused count (ruling
+019, amended).
 
 *Kjell, 2026-09-11: "realistic in simulation behaviour i.e cars and people walking about." The
 cars are visible from the air; the crowd is not. `RESOLVE.peds` is 50 px a tile, which on the
@@ -218,6 +232,25 @@ distance to the eye; the count is the same under two camera positions. **Gate.**
 `city 20t` big-viewport row gains a people column; `reports/smoke-B7-{city20,city40}.png` with the
 crowd painted magenta once (E7's trick) and then normal.
 
+## B8 — Cars stop at a junction (S) — **Q96 → A74**, Kjell 2026-09-12
+
+*"Cars have to stop and not drive through."* Measured in B4: 7 pairs of cars under 2 m apart
+inside junction boxes on the 64-tile played city before B4, 16 at the morning rush after; 58 of 78
+on the 96-tile city (`lanes_dump`'s `overlaps` row). Every one is two TURN links crossing one box;
+the per-link invariant has never been able to see it.
+
+**Do.** A conflict table per junction, derived once with the lane graph: for each turn link, the
+turn links whose paths cross it within a car's width. A car may enter a turn link only while no
+car occupies one that crosses it, and holds at the stop line otherwise — T1's give-way already does
+this for the stem of a T; this is every other pair, including opposing left turns under the same
+green. Ties go to the link that has waited longest, so two queues cannot deadlock.
+
+**Tests first.** `test/cars.test.js`: two turn links that cross are never both occupied, at an X
+and at a signalled T, over a long run; the settled count at a busy X is within 20% of today's (a
+junction that clears slower is expected, one that locks is not); no car waits for ever. **Gate.**
+`lanes_dump`'s `overlaps` row reaches 0 in a junction and becomes a gate; D7's settled rows
+re-baselined; `smoke-B4-morning.png` re-taken.
+
 ## Noted, not items — engine-side realism (each a question, each moves the hash)
 
 **The avenue is now a yes (Q83 → A60, 2026-09-10).** Kjell: *"yes add second road kind."* It stays
@@ -235,7 +268,7 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 
 ## Order
 
-B2 (done) → B4 (done) → **B7 right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
+B2 (done) → B4 (done) → B7 (done) → **B8 (A74) right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
 moved up on 2026-09-11 because P61 asked for them by name —: B2 with S1 (the same kit
 files), B1 with S6 (the smoke), B5 after S5 (the benches). Weather last because it is the only
 item that adds a whole preset to every gate.

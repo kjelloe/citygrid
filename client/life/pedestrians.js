@@ -32,6 +32,15 @@ export function createPedestrians(state, model, nav, options = {}) {
   const { pace, paceVary, bob, stride, spacing, crossWait } = cfg.ped;
   const live = options.life !== false;
   const cap = options.cap === undefined ? Infinity : options.cap;
+  /** The crowd seen from the air (B7): filled across the WHOLE city by demand,
+   * in an order hashed from the pavements, and never thinned for being off
+   * screen. How many people exist is then a function of the city and the cap
+   * and nothing else — the camera decides only which of them are drawn (D7's
+   * rule, the item's words). E7's crowd keeps its nearest-the-eye budget. */
+  const spread = options.spread === true;
+  /** How many people ANOTHER crowd already has on a pavement, so this one
+   * tops it up to what the buildings ask for instead of doubling it (B7). */
+  const reserve = options.reserve;
 
   const people = [];
   /** Per edge, who is on it, ordered along — rebuilt each step, like the cars'
@@ -57,6 +66,16 @@ export function createPedestrians(state, model, nav, options = {}) {
    * same reasoning as A39's "bake the chunks that are ON SCREEN first". */
   let inView = walks;
   let inViewKey = "";
+  const spreadOrder = walks.slice().sort((a, b) => jitter(a.id, 83) - jitter(b.id, 83));
+  /** How many people are on each edge AFTER the last step — spawns included.
+   * `onEdge` is bucketed at the START of a step, so reading it from another
+   * crowd saw the count before this crowd's refills, and both crowds filled the
+   * same shortfall: 509 + 408 people where one crowd alone held 482 (B7). */
+  const held = new Map();
+  function recount() {
+    held.clear();
+    for (const person of people) held.set(person.edge, (held.get(person.edge) ?? 0) + 1);
+  }
 
   /** How many people this pavement holds, as a whole number.
    *
@@ -179,7 +198,9 @@ export function createPedestrians(state, model, nav, options = {}) {
   }
 
   function step(dt, bounds, focus) {
-    if (bounds) {
+    if (spread) {
+      inView = spreadOrder;
+    } else if (bounds) {
       // Quantised to whole tiles: the box moves every frame under a moving
       // camera and re-sorting four thousand pavements sixty times a second is
       // the kind of cost that does not show up in a triangle budget.
@@ -217,7 +238,7 @@ export function createPedestrians(state, model, nav, options = {}) {
     // could be spending on the street they are standing in, and nobody can
     // tell the difference — the street cache lets a chunk go for exactly the
     // same reason.
-    if (bounds) {
+    if (bounds && !spread) {
       for (const person of people) {
         if (!onScreen(nav.edges[person.edge], bounds)) leaving.push(person);
       }
@@ -237,8 +258,8 @@ export function createPedestrians(state, model, nav, options = {}) {
     for (const edge of inView) {
       if (people.length >= cap) break;
       let here = (onEdge.get(edge.id) ?? []).length;
-      const wants = holdsOn(edge);
-      while (here < wants && people.length < cap && spawn(edge, focus)) here += 1;
+      const wants = holdsOn(edge) - (reserve ? reserve(edge.id) : 0);
+      while (here < wants && people.length < cap && spawn(edge, spread ? undefined : focus)) here += 1;
     }
 
     for (const [edgeId, list] of onEdge) {
@@ -284,6 +305,7 @@ export function createPedestrians(state, model, nav, options = {}) {
       person.s = person.dir > 0 ? 0 : beyond.len;
     }
     for (const person of leaving) people.splice(people.indexOf(person), 1);
+    recount();
 
     clock += dt;
   }
@@ -318,7 +340,7 @@ export function createPedestrians(state, model, nav, options = {}) {
   let resettled = false;
   let focusPoint;
   function ensureSettled(bounds) {
-    if (live || resettled || !bounds) return;
+    if (live || resettled || !bounds || spread) return;
     resettled = true;
     people.length = 0;
     for (let i = 0; i < SETTLE; i += 1) step(1 / 30, bounds, focusPoint);
@@ -348,7 +370,7 @@ export function createPedestrians(state, model, nav, options = {}) {
      * the eye reads sliding as "this is not alive" faster than it reads any
      * amount of detail.
      */
-    pose(pools, push, colours, bounds) {
+    pose(pools, push, colours, bounds, figureAt, colour) {
       ensureSettled(bounds);
       const tileM = model.tileM;
       let posed = 0;
@@ -357,15 +379,41 @@ export function createPedestrians(state, model, nav, options = {}) {
         if (!edge) continue;
         if (!onScreen(edge, bounds)) continue;
         nav.sample(edge, person.s, out);
-        const pool = pools[`ped${person.variant}`];
+        // Which figure (B7): the caller says what this spot's zoom resolves —
+        // E7's person, the figure from the air, or nothing. The same person
+        // on the same stride either way, so zooming in changes the detail and
+        // never the walk.
+        const figure = figureAt ? figureAt(out.x / tileM, out.z / tileM) : "l3";
+        if (!figure) continue;
+        const pool = figure === "l2" ? pools.pedCity : pools[`ped${person.variant}`];
         if (!pool) continue;
         const lift = person.v > 0.05 ? Math.abs(Math.sin(person.phase)) * bob : 0;
         push(pool, out.x / tileM, (out.y + lift) / tileM, out.z / tileM, 1, 1, 1,
-          colours[person.colour % colours.length],
+          colour ?? colours[person.colour % colours.length],
           Math.atan2(-out.tz * person.dir, out.tx * person.dir));
         posed += 1;
       }
       return posed;
+    },
+
+    /** The same people `pose` would draw, split by figure, for the budget —
+     * the figure from the air and E7's person cost different amounts. */
+    countBy(bounds, figureAt) {
+      ensureSettled(bounds);
+      const seen = { l2: 0, l3: 0 };
+      for (const person of people) {
+        const edge = nav.edges[person.edge];
+        if (!edge || !onScreen(edge, bounds)) continue;
+        nav.sample(edge, person.s, out);
+        const figure = figureAt ? figureAt(out.x / model.tileM, out.z / model.tileM) : "l3";
+        if (figure) seen[figure] += 1;
+      }
+      return seen;
+    },
+
+    /** How many people this crowd has on a pavement right now (B7's reserve). */
+    heldOn(edgeId) {
+      return held.get(edgeId) ?? 0;
     },
 
     /** How many people are on screen — the same set `pose` writes, or the

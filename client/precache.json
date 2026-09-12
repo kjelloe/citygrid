@@ -1,5 +1,5 @@
 {
- "version": "923f0cb88896",
+ "version": "31f651d5bf9f",
  "generated": "2026-09-12",
  "files": [
   "./client/audio/audio-model.js",
@@ -100,6 +100,7 @@
   "./client/world/config.js",
   "./client/world/corridors.js",
   "./client/world/facade-spec.js",
+  "./client/world/figure.js",
   "./client/world/fit.js",
   "./client/world/foliage.js",
   "./client/world/grade.js",

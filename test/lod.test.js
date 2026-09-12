@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import {
-  TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels,
+  TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels, createChunkCeiling,
   visibleBounds, inBounds, setBudget, getBudget, setCosts, getCosts,
   countScene, markingInstances, planForChunk, inFootprint, RESOLVE,
 } from "../client/render/lod.js";
@@ -635,4 +635,64 @@ test("a frame with no baked streets is not held up by the repeating rung", () =>
   const plan = { ...planAt(60, 5000000), step: 0, streetChunks: 0 };
   assert.equal(stepDown(plan), true);
   assert.equal(plan.reason, "props dropped for budget");
+});
+
+// --- the crowd from the air (slice B7) ----------------------------------------
+
+test("the city crowd resolves below E7's crowd and above nothing", () => {
+  assert.ok(RESOLVE.pedsCity < RESOLVE.peds, "the figure from the air must resolve before the close one");
+  assert.equal(planAt(RESOLVE.pedsCity - 1, 5000000).pedsCity, false);
+  assert.equal(planAt(RESOLVE.pedsCity + 1, 5000000).pedsCity, true);
+  assert.equal(planAt(RESOLVE.pedsCity + 1, 5000000).peds, false, "E7's crowd is not resolvable here");
+});
+
+test("the estimate charges for the city crowd, and dropping it takes the charge away", () => {
+  const counts = { ...CITY, pedsCity: 600, pedsCityNear: 0 };
+  const on = estimate(counts, { ...planAt(40, 5000000), pedsCity: true });
+  const off = estimate(counts, { ...planAt(40, 5000000), pedsCity: false });
+  assert.ok(on - off >= 600 * 12 - 1, `the crowd changed the estimate by ${on - off}`);
+});
+
+test("the city crowd goes straight after the people, before the markings", () => {
+  const plan = { ...planAt(60, 5000000), step: 0 };
+  const order = [];
+  while (stepDown(plan)) order.push(plan.reason.replace(" for budget", ""));
+  const at = (r) => order.indexOf(r);
+  assert.ok(at("city crowd dropped") === at("people dropped") + 1, order.join(" → "));
+  assert.ok(at("city crowd dropped") < at("markings dropped"), order.join(" → "));
+});
+
+test("under perspective the city crowd is decided per spot, not at the view target", () => {
+  // The frame's px is the zoom where the camera is pointed; the foreground of a
+  // city camera is finer than that. Cutting the crowd for the whole frame at
+  // the target's 27 px left a foreground at 40 px with nobody on it (B7).
+  const view = { mode: "city", span: 40, targetX: 32, targetZ: 32, yaw: 0, pitch: 0.5 };
+  const perspective = choosePlan(CITY, view, 1080, { tilePixels: RESOLVE.pedsCity - 3, budget: 5000000 });
+  assert.equal(perspective.pedsCity, true, "a city camera dropped the crowd at the target's zoom");
+  const flat = choosePlan(CITY, { span: 1 }, 1080, { tilePixels: RESOLVE.pedsCity - 3, budget: 5000000 });
+  assert.equal(flat.pedsCity, false, "an orthographic frame kept a crowd it cannot resolve anywhere");
+});
+
+// --- the measured frame's word on street chunks is kept (slice B7) --------------
+
+test("once the measured frame sheds street chunks at a view, the plan stays there", () => {
+  // Without this the estimate — which can only price baked chunks — invited
+  // the shed chunk back as soon as it was evicted, and a still camera rebaked
+  // it every two seconds (B7).
+  const ceiling = createChunkCeiling();
+  assert.equal(ceiling.cap("view A", 9), 9, "a new view starts at what the tier allows");
+  ceiling.settle("view A", 9, 8);
+  assert.equal(ceiling.cap("view A", 9), 8, "the shed chunk was asked for again at the same view");
+  ceiling.settle("view A", 8, 8);
+  assert.equal(ceiling.cap("view A", 9), 8, "a frame that fitted raised the ceiling on its own");
+});
+
+test("the ceiling is forgotten when the view changes, and never raises the tier", () => {
+  const ceiling = createChunkCeiling();
+  ceiling.cap("view A", 9);
+  ceiling.settle("view A", 9, 6);
+  assert.equal(ceiling.cap("view B", 9), 9, "a moved camera kept the old view's ceiling");
+  assert.equal(ceiling.cap("view B", 4), 4, "the ceiling asked for more than the tier allows");
+  ceiling.settle("view B", 4, 4);
+  assert.equal(ceiling.cap("view B", 4), 4);
 });

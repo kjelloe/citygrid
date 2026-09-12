@@ -15,7 +15,7 @@ import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } f
 import { CHUNK, chunkKey, chunkOfLot } from "../world/chunks.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
-  buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry,
+  buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry, cityPersonGeometry,
   carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
@@ -160,6 +160,9 @@ export function createInstances(scene, styleName = "plain") {
   // crowd, and is the artefact the cars' oversized pools were sized against.
   const peds = pedVariants();
   for (let v = 0; v < peds.length; v += 1) make(`ped${v}`, peds[v], 0xffffff, 3000);
+  // The same people from the air (B7): one pool, twelve triangles a figure,
+  // sized for the High tier's six hundred with room for a crowd at a junction.
+  make("pedCity", cityPersonGeometry(), 0xffffff, 1500);
   const tufts = tuftVariants();
   for (let v = 0; v < tufts.length; v += 1) make(`tuft${v}`, tufts[v], 0xffffff, 30000);
   make("lamp", lampGeometry(), 0xffffff, 8000);
@@ -230,6 +233,7 @@ export function createInstances(scene, styleName = "plain") {
     ...measured,
     car: Math.round(propSample.slice(1, 1 + cars.length).reduce((a, b) => a + b, 0) / cars.length),
     ped: Math.round(peds.map(triangleCount).reduce((a, b) => a + b, 0) / peds.length),
+    pedCity: triangleCount(pools.pedCity.geometry),
     prop: { 2: Math.round(propSample.reduce((a, b) => a + b, 0) / propSample.length), 1: 0, 0: 0 },
     road: 0,  // painted into the terrain mesh
     marking: triangleCount(pools.mark.geometry),

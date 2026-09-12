@@ -59,6 +59,7 @@
       "streetChunks": 0,
       "carCap": 60,
       "pedCap": 0,
+      "pedCapCity": 0,
       "post": [],
       "frameMs": 40,
       "lamps": 0
@@ -72,6 +73,7 @@
       "streetChunks": 4,
       "carCap": 200,
       "pedCap": 40,
+      "pedCapCity": 200,
       "post": [
         "pixel"
       ],
@@ -87,6 +89,7 @@
       "streetChunks": 9,
       "carCap": 0,
       "pedCap": 120,
+      "pedCapCity": 600,
       "post": [
         "pixel",
         "ink"

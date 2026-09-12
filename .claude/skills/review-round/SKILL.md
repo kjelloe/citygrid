@@ -161,6 +161,14 @@ every car and every person to save a fifth of what the next chunk would have, an
 screenshot the project had taken contained a moving car (B4). When a rung's resource comes in
 units, ask how many units it has and what one of them is worth against the rest of the ladder.
 
+**A decision priced on the state it changes will oscillate.** The estimate charges the street
+chunks that are baked, so it could only say "the ninth fits" while the ninth was not baked; the
+measured frame shed it, the cache evicted it, the estimate asked for it again, and a still camera
+rebaked it every two seconds (B7). Four guesses at the mechanism came first; one run with the
+cache's state logged after every draw settled it. When something flaky lives in a loop, record
+every iteration before changing code, and when the loop feeds back on its own threshold, give it
+hysteresis rather than a better constant.
+
 **An invariant scoped to one structure cannot see a defect between two.** "Cars never overlap"
 was asserted per LINK on a straight road for the life of the traffic code; every overlap B4
 measured was between two turn links crossing one junction box (Q96). Ask of any invariant what

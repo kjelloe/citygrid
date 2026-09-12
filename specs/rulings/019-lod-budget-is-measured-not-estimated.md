@@ -127,6 +127,25 @@ and the street's traffic drawn (387,818 of 400,000).
 the budget let in, and the flag is part of a chunk's hash — so a frame squeezed below three chunks
 rebaked chunks it had kept. `street-chunks.js` now ranks furniture by distance alone.
 
+## Amendment, 2026-09-12 (B7) — a street-chunk count the plan refused is not asked for again at the same view
+
+The estimate charges the chunks that are baked, so it can only price a chunk while it is baked.
+On `budget_gate`'s street view that made the ninth chunk flicker, logged draw by draw: baked, the
+estimate came to about 405,000 and shed it; after the cache's two-second grace it was evicted;
+charging eight, the estimate came to 380,134 and asked for it back; rebake — every two seconds
+with the camera and the city standing still. The gate's "settles with nothing changing" check had
+been failing intermittently since B4 and every run once B7's crowd added to the frame.
+
+`createChunkCeiling` in `client/render/lod.js` is the hysteresis: when a plan, estimated or
+measured, sheds street chunks at a view, the count it settled on is the ceiling until the view
+(camera position and rotation, canvas), the budget or the world changes. The shed made while the
+chunk could be priced is the informed answer, and a still camera keeps it. Measured after: the
+territory toggle rebakes 8, 0 while held, 8 back; the night frame is "full" at 295,859 of 400,000.
+
+A price-ahead estimate — charging the chunks the plan would hold rather than those baked — was
+tried first and reverted: some chunks the plan wants in view never bake, and the close zoom's
+estimate went 56–171% over what was drawn.
+
 ## Also enforced by
 
 - `tools/budget_gate.mjs` — a saturated city at four zooms: the frame is inside
@@ -142,4 +161,5 @@ rebaked chunks it had kept. `street-chunks.js` now ranks furniture by distance a
 - `client/render/lod.js` — `setBudget`, `estimate`, `stepDown`, the ladder
 - `client/render/scene.js` — the render-measure-step loop in `draw()`
 - `test/lod.test.js` — the order of sacrifice, the floor, the shadow doubling, and the street rung
-  shedding chunks down to one before anything else goes
+  shedding chunks down to one before anything else goes, and the ceiling holding a refused count
+  at one view and forgetting it at the next

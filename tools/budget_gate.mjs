@@ -253,6 +253,12 @@ try {
   const streets = await page.evaluate(async () => {
     const { renderer, state } = globalThis.CITY;
     const { focusOn, zoomBy } = await import("/client/render/camera.js");
+    // The CLOCK stops for this block. "Settles with nothing changing" has to
+    // mean nothing, and since B2 a building's age is in its chunk's hash: the
+    // page is the real game, its clock kept ticking, and a house placed at tick
+    // 0 crossed an age step at some random frame — two rebakes with all nine
+    // chunks live and the ladder at "full", in two runs of four (B7).
+    globalThis.CITY.pause();
     // The budget city is roads and zoning; nothing DEVELOPS without power and
     // water, so it has no buildings and therefore no lots to bake. Placed
     // directly, the way `test/traffic.test.js` seeds the engine's own commuter
@@ -281,10 +287,17 @@ try {
     const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const builds = [];
-    let now = 0;
+    // The SAME clock the page draws on. `scene.js` hands the cache
+    // `drawOptions.now ?? Date.now()`, and the page's own frame loop passes no
+    // `now` — so a gate counting up from zero in 16 ms steps put two clocks
+    // 1.7 × 10^12 ms apart into one cache. A chunk the ladder let go for a
+    // frame was then past its two-second grace the moment the page drew, and
+    // was thrown away and rebaked: chunk 1,1 was baked "new" three times with
+    // the overlay held on and the clock stopped (B7).
+    let now = Date.now();
     // One chunk a frame, so nine frames for nine chunks — plus a few spare.
     for (let i = 0; i < 24; i += 1) {
-      now += 16;
+      now = Date.now();
       renderer.draw({ now });
       await frame();
       const s = renderer.stats.streets;
@@ -295,7 +308,7 @@ try {
     // A second pass over an unchanged city: the cache must build nothing.
     let rebuilt = 0;
     for (let i = 0; i < 6; i += 1) {
-      now += 16;
+      now = Date.now();
       renderer.draw({ now });
       await frame();
       rebuilt += renderer.stats.streets?.built ?? 0;
@@ -325,30 +338,51 @@ try {
     // Every frame that baked, with the live chunk keys and the ladder's reason,
     // so a count that comes out wrong says WHICH chunk came back and why.
     const trail = [];
+    // The PAGE draws; the gate only waits and reads. Drawing from here as well
+    // put two callers with different options through one cache — the gate
+    // passed `{ now }`, the page its hour, frame time and overlay — and they
+    // planned different chunk counts for the same camera, so the ninth chunk
+    // was let go by one and rebuilt by the other: 1,1 was baked "new" three
+    // times with nothing changing (B7). The count is the cache's cumulative
+    // total, because one waited frame is two of the page's draws.
+    // Every one of the page's draws while the overlay is held on, so a rebake
+    // with nothing changing can be read draw by draw instead of guessed at.
+    const draws = [];
     const rebakes = async (territory, label) => {
-      renderer.draw = (options = {}) => realDraw({ ...options, territory });
-      let count = 0;
+      renderer.draw = (options = {}) => {
+        const out = realDraw({ ...options, territory });
+        const s = renderer.stats.streets;
+        if (label === "stayed on") {
+          draws.push(`${s?.total} ${s?.built ? `+ ${s?.lastBuilt}` : "  "} [${s?.keys ?? ""}] "${renderer.stats.lod}" `
+            + `est ${Math.round(renderer.stats.estimate)} tri ${renderer.stats.triangles} `
+            + `planned ${renderer.stats.chunksPlanned} key ${renderer.stats.viewKey}`);
+        }
+        return out;
+      };
+      const before = renderer.stats.streets?.total ?? 0;
+      let seen = before;
       for (let i = 0; i < 24; i += 1) {
-        now += 16;
-        renderer.draw({ now });
         await frame();
-        const built = renderer.stats.streets?.built ?? 0;
-        count += built;
-        if (built > 0) {
-          trail.push(`${label} frame ${i}: +${built}, live [${renderer.stats.streets?.keys ?? ""}], `
-            + `"${renderer.stats.lod}", ${renderer.stats.triangles} of ${renderer.stats.budget}`);
+        const s = renderer.stats.streets;
+        const total = s?.total ?? seen;
+        if (total > seen) {
+          trail.push(`${label} frame ${i}: +${total - seen} (${s?.lastBuilt ?? "?"}), tick ${state.tick}, `
+            + `live [${s?.keys ?? ""}], "${renderer.stats.lod}", ${renderer.stats.triangles} of ${renderer.stats.budget}, `
+            + `estimate ${Math.round(renderer.stats.estimate)}`);
+          seen = total;
         }
       }
-      return count;
+      return seen - before;
     };
     const onToggle = await rebakes(true, "on");
     const settled = await rebakes(true, "stayed on");
     const offToggle = await rebakes(false, "off");
     renderer.draw = realDraw;
+    globalThis.CITY.resume();
 
     return {
       builds, live: after?.live ?? 0, triangles: after?.triangles ?? 0, rebuilt, groups, meshes,
-      onToggle, settled, offToggle, trail,
+      onToggle, settled, offToggle, trail, draws,
     };
   });
 
@@ -360,6 +394,7 @@ try {
     `${streets.settled} rebakes with nothing changing`);
   if (streets.settled !== 0 || streets.offToggle > streets.live + 1) {
     for (const line of streets.trail) console.log(`        ${line}`);
+    for (const line of streets.draws) console.log(`          draw ${line}`);
   }
   check("and turning it off rebakes them back", streets.offToggle >= streets.live,
     `${streets.offToggle} rebakes for ${streets.live} live chunks`);
@@ -711,12 +746,46 @@ try {
         lod: s.lod,
       });
     }
-    return rows;
+
+    // The crowd from the air (B7), on the SAME page after D8's rows are taken,
+    // so D8's numbers stay the ones it was baselined on. The city above is
+    // roads and zoning that never develops (no power, no water), so it has no
+    // doors, no demand and no crowd — a people column on it read "0 posed of
+    // 0" and could not fail for the right reason. Houses are placed directly,
+    // the way the street-chunk block does.
+    let id = 1 + state.buildings.reduce((m, b) => Math.max(m, b.id), 0);
+    for (let y = 9; y < W - 9; y += 1) {
+      for (let x = 9; x < W - 9; x += 1) {
+        const i = y * W + x;
+        if ((state.tiles.road[i] & 16) !== 0 || state.tiles.buildingId[i] !== 0) continue;
+        if ((x + y) % 3 !== 0) continue;
+        state.buildings.push({
+          id, def: "res", zone: 1, x, y, w: 1, h: 1, owner: 1,
+          level: 2, valueTier: 1, occupancy: 20, condition: 100, builtTick: 0, flags: 0,
+        });
+        state.tiles.buildingId[i] = id;
+        id += 1;
+      }
+    }
+    state.nextId = id;
+    renderer.worldChanged();
+    const crowd = [];
+    for (const span of [20, 40]) {
+      focusOn(renderer.view, W / 2, W / 2);
+      zoomBy(renderer.view, span / renderer.view.span);
+      for (let i = 0; i < 20; i += 1) await frame();
+      const s = renderer.stats;
+      crowd.push({
+        span, posed: s.pedsCityPosed, counted: s.pedsCity + s.pedsCityNear, held: s.pedsCityHeld,
+        cap: s.pedCapCity, px: s.tilePixels, triangles: s.triangles, budget: s.budget, lod: s.lod,
+      });
+    }
+    return { rows, crowd };
   });
   await bigPage.close();
   await bigContext.close();
 
-  for (const row of big) {
+  for (const row of big.rows) {
     const share = row.triangles > 0 ? (100 * row.chunkTris / row.triangles).toFixed(0) : "0";
     console.log(`      desktop viewport, span ${row.span}: ${row.live} live chunks, `
       + `${row.chunkTris} of ${row.triangles} triangles (${share}%), ${row.calls} draw calls, `
@@ -733,8 +802,25 @@ try {
   }
   // The same cap `client_smoke` holds the small viewport to, checked once where
   // the chunks are actually being drawn.
+  // The whole point of B7: from the city camera a street with people on it is
+  // a street with people on it. Held is the cap's business, drawn is this row's.
   check("the desktop viewport keeps the draw calls under eighty",
-    big.every((r) => r.calls <= 80), big.map((r) => `span ${r.span}: ${r.calls}`).join(", "));
+    big.rows.every((r) => r.calls <= 80), big.rows.map((r) => `span ${r.span}: ${r.calls}`).join(", "));
+  for (const row of big.crowd) {
+    console.log(`      people from the air, city ${row.span}t: ${row.posed} posed of ${row.held} held (cap ${row.cap}), `
+      + `${row.px} px a tile, ${row.triangles} of ${row.budget} triangles, ladder at "${row.lod}"`);
+  }
+  // The whole point of B7: from the city camera a street with people on it is
+  // a street with people on it. Held is the cap's business; posed is this row's.
+  check("the city camera shows a crowd on the desktop screen (B7)",
+    big.crowd.every((r) => r.held > 0 && r.posed > 0),
+    big.crowd.map((r) => `city ${r.span}t: ${r.posed} posed of ${r.held}`).join(", "));
+  check("and the budget counts the people it poses (R1.1)",
+    big.crowd.every((r) => r.posed === r.counted),
+    big.crowd.map((r) => `city ${r.span}t: ${r.posed} posed, ${r.counted} counted`).join(", "));
+  check("and a frame with the crowd in it is inside its budget",
+    big.crowd.every((r) => r.triangles <= r.budget),
+    big.crowd.map((r) => `city ${r.span}t: ${r.triangles} of ${r.budget}`).join(", "));
 
   check("no page errors", errors.length === 0, errors.join(" | "));
   await context.close();

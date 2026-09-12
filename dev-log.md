@@ -5879,3 +5879,73 @@ and 14 within 200, all 76 with headlights and tail lights — an honest empty st
 missing lamp.
 
 **Next:** B7, then S2.
+
+## slice-B7 — the crowd seen from the air (2026-09-12)
+
+P64 first: Q96 answered — *"Cars have to stop and not drive through"* — so the junction conflict
+zone is **B8**, queued straight after this; Q97 closed with no change (A74, A75).
+
+The item: E7's crowd is 120 people spent nearest the eye and drawn from 50 px a tile, which the
+city camera reaches only on a big screen, so from the air a street with people on it had nobody
+on it.
+
+**Two crowds over one nav graph.** The city crowd (`createPedestrians({ spread: true })`) fills
+every pavement towards its demand in an order hashed from the pavements and never thins for being
+off screen, so how many exist depends on the city and `pedCapCity` (Low 0, Medium 200, High 600)
+and never on the camera. E7's crowd reads the city crowd's count per pavement and tops a street up
+to its demand. Both are handed to the cars at crossings.
+
+**The figure** is `client/world/figure.js`: twelve triangles, a tapered three-sided body and a
+pointed head in a lighter shade, 1.84 m, faceted rather than a billboard. It is pure so node checks
+the count, the size and the winding; `building-kit.js` only converts it. `figureAt(x, z)` in
+`scene.js` picks E7's person from 50 px a tile, this figure from 30 (`RESOLVE.pedsCity`), nobody
+below — per spot, so a person the camera zooms in on keeps their stride. The ladder drops the city
+crowd straight after E7's people.
+
+### What was wrong, in the order it was found
+
+**The near crowd doubled the city crowd.** `heldOn` read the city crowd's per-pavement lists, which
+are rebucketed at the START of a step, so the near crowd saw the count from before the city
+crowd's refills and both filled the same shortfall: 509 + 408 people where one crowd alone held
+482. Recounted after the step it is 509 + 31. My first test asserted the wrong thing (both within
+10% of one crowd alone, when the spread crowd settles higher on its own); it asserts the near
+crowd's share now, which the bug put at 80% and the fix at 6%.
+
+**The counter counted people nobody drew.** Under perspective the frame plan cut the city crowd
+at the view TARGET's zoom — 27 px a tile at 40 across — while the counter asked each spot, and the
+foreground was finer. The shot tool printed 167 people; the magenta shot had **0** magenta pixels.
+The crowd is decided per spot now, the stats report POSED as well as counted, and `budget_gate`
+checks the two agree: 167 posed at 40 across, +2,004 triangles, 167 × 12.
+
+**A people column that could not fail.** The big-viewport page is roads and zoning that never
+develops, so its city crowd held 0 of 600 and the first version of the check read "0 posed of 0".
+Houses are placed after D8's rows are taken, so D8's numbers stay the ones it was baselined on.
+
+**The territory flake, found at last.** `budget_gate`'s "settles with nothing changing" failed in
+one B4 run of two and then in every B7 run: 2 rebakes with the overlay held on. Four guesses, each
+tested by a gate run and each wrong: the clock (a house placed at tick 0 crossing an age step — the
+clock is now stopped for the block anyway, because it could); furniture ranked from the budget's
+chunks (`street-chunks.js` ranks it by distance now, which is right regardless); two clocks in one
+cache (the gate's draws now use `Date.now()` like the page's); and pricing the chunks the plan
+would hold, which cured the flake and put the close-zoom estimate 56–171% over what was drawn, so
+it was reverted. What found it was logging the cache after every one of the page's draws: with
+the ninth chunk baked the estimate came to about 405,000 and shed it; after the two-second grace it
+was evicted; charging eight, the estimate came to 380,134 and asked for it back; rebake — every two
+seconds with nothing moving. `createChunkCeiling` (`lod.js`, tested) holds a count the plan refused
+until the view, the budget or the world changes (ruling 019, amended). After: **8 rebaked on, 0
+while held, 8 back**; the night frame "full" at 295,859.
+
+**Measured.** Suite green twice, **1,295 tests**. The played city at 1920×1080, city camera pitch
+30: at 20 tiles across **570 of 600 posed** and 1,041 pixels magenta only in the magenta shot; at
+40 across 167 posed and 184 pixels. `budget_gate`'s desktop page with houses: city 20t **599 of
+600** posed at 98 px a tile, 315,123 of 400,000; city 40t 600 posed, 308,889. Crowd frame 295,859,
+photo 363,909. `gates.mjs render` 4 of 4 in **238 s** of 300 (`budget_gate` 176 → 200 s for the
+waited phases and the crowd rows). `quick` 11 of 11 in 372 s of 480.
+
+**What the pictures say**, looked at first and then enlarged four times. At 20 tiles across a
+person is an upright tick about two pixels by five, in their clothes' colour, beside cars four
+times their size; at 40 across a one- or two-pixel dot strung along a pavement. From the air the
+crowd reads as life on the pavements rather than as figures — which is what thirty pixels a tile
+buys, and what the item's threshold asked for.
+
+**Next:** B8 — cars stop at a junction (A74), then S2.

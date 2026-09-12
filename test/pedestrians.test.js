@@ -299,3 +299,117 @@ test("the node reaches the cars, so one busy crossing is not all of them", () =>
   }
   assert.ok(peds.crossed > 0, "the whole crowd stopped because one crossing was busy");
 });
+
+// --- the crowd seen from the air (slice B7) -----------------------------------
+//
+// "A separate pedCapCity spent across the visible pavements by demand rather
+// than nearest the eye ... never a function of the camera for how many exist,
+// only for which are drawn."
+
+/** A grid of streets with houses along every one, so demand is everywhere. */
+function suburb() {
+  const state = blank(40);
+  const tiles = [];
+  for (const y of [6, 14, 22, 30]) tiles.push(...row(y, 2, 37));
+  for (const x of [6, 14, 22, 30]) tiles.push(...col(x, 2, 37));
+  pave(state, tiles);
+  let id = 1;
+  for (const y of [5, 13, 21, 29]) {
+    for (let x = 3; x <= 36; x += 2) {
+      if ([6, 14, 22, 30].includes(x)) continue;
+      place(state, { id: id++, x, y });
+    }
+  }
+  const model = createModel(state);
+  const nav = deriveNav(state, model);
+  return { state, model, nav };
+}
+
+const settle = (crowd, seconds, bounds, focus) => {
+  for (let t = 0; t < seconds; t += 1 / 30) crowd.update(1 / 30, bounds, focus);
+};
+
+test("the city crowd is the same crowd whatever the camera is doing", () => {
+  const { state, model, nav } = suburb();
+  const a = createPedestrians(state, model, nav, { cap: 150, spread: true });
+  const b = createPedestrians(state, model, nav, { cap: 150, spread: true });
+  settle(a, 20, { x0: 0, y0: 0, x1: 10, y1: 10 }, { x: 3, z: 3 });
+  settle(b, 20, { x0: 28, y0: 28, x1: 39, y1: 39 }, { x: 36, z: 36 });
+  const where = (c) => c.people().map((p) => `${p.id}:${p.edge}:${p.s.toFixed(3)}`).join(" ");
+  assert.ok(a.count() > 50, `only ${a.count()} people in the city crowd`);
+  assert.equal(where(a), where(b), "two cameras made two different crowds");
+});
+
+test("the city crowd spreads over the city rather than gathering at the eye", () => {
+  // Same cap, same camera in one corner: E7's crowd spends it nearest the eye,
+  // the city crowd across every pavement.
+  const { state, model, nav } = suburb();
+  const bounds = { x0: 0, y0: 0, x1: 39, y1: 39 };
+  const focus = { x: 4, z: 4 };
+  const near = createPedestrians(state, model, nav, { cap: 60 });
+  const city = createPedestrians(state, model, nav, { cap: 60, spread: true });
+  settle(near, 20, bounds, focus);
+  settle(city, 20, bounds, focus);
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  const meanDistance = (c) => {
+    const d = c.people().map((p) => {
+      nav.sample(nav.edges[p.edge], p.s, out);
+      return Math.hypot(out.x / T - focus.x, out.z / T - focus.z);
+    });
+    return d.reduce((s, x) => s + x, 0) / Math.max(1, d.length);
+  };
+  assert.equal(city.count(), 60, "the cap was not spent");
+  assert.ok(meanDistance(city) > meanDistance(near) * 1.5,
+    `the city crowd is ${meanDistance(city).toFixed(1)} tiles from the eye on average, E7's ${meanDistance(near).toFixed(1)}`);
+});
+
+test("the near crowd tops a street up to its demand instead of doubling it", () => {
+  const { state, model, nav } = suburb();
+  const alone = createPedestrians(state, model, nav, {});
+  const bounds = { x0: 0, y0: 0, x1: 39, y1: 39 };
+  settle(alone, 20, bounds, { x: 20, z: 20 });
+  const city = createPedestrians(state, model, nav, { spread: true });
+  const near = createPedestrians(state, model, nav, { reserve: (id) => city.heldOn(id) });
+  for (let t = 0; t < 20; t += 1 / 30) {
+    city.update(1 / 30);
+    near.update(1 / 30, bounds, { x: 20, z: 20 });
+  }
+  // With the city crowd uncapped it already meets the demand, so the near
+  // crowd should find almost nothing to add. Reading the city crowd's count
+  // from the START of its step, the near one refilled every shortfall the city
+  // crowd was refilling in the same frame: 509 + 408 where one crowd alone
+  // held 482. Recounted after the step it is 509 + 31.
+  assert.ok(alone.count() > 50, `only ${alone.count()} people to compare against`);
+  assert.ok(near.count() <= city.count() * 0.1 + 2,
+    `${city.count()} + ${near.count()} people where one crowd alone held ${alone.count()}`);
+});
+
+test("pose draws each person as the figure the spot resolves, or not at all", () => {
+  const { state, model, nav } = suburb();
+  const city = createPedestrians(state, model, nav, { cap: 200, spread: true });
+  settle(city, 10);
+  const pushed = [];
+  const pools = { ped0: "ped0", ped1: "ped1", pedCity: "pedCity" };
+  // West of x = 20 resolves as the figure from the air, east of it as nothing.
+  const figureAt = (x) => (x < 20 ? "l2" : null);
+  city.pose(pools, (pool, x, y, z, sx, sy, sz, colour) => pushed.push({ pool, x, colour }),
+    [0x123456], undefined, figureAt, 0xff00ff);
+  assert.ok(pushed.length > 10, `only ${pushed.length} posed`);
+  assert.ok(pushed.every((p) => p.pool === "pedCity"), "somebody drawn in the wrong pool");
+  assert.ok(pushed.every((p) => p.x < 20), "somebody drawn where nothing resolves");
+  assert.ok(pushed.every((p) => p.colour === 0xff00ff), "the colour override was ignored");
+  const seen = city.countBy(undefined, figureAt);
+  assert.equal(seen.l2, pushed.length, "the budget's count and the pose disagree");
+  assert.equal(seen.l3, 0);
+});
+
+test("a frozen city crowd is there at once, and is the same picture twice", () => {
+  const { state, model, nav } = suburb();
+  const city = createPedestrians(state, model, nav, { cap: 200, spread: true, life: false });
+  const snap = () => city.people().map((p) => `${p.edge}:${p.s.toFixed(3)}`).join(" ");
+  assert.ok(city.count() > 50, `only ${city.count()} people in a frozen city crowd`);
+  const before = snap();
+  city.update(1 / 30, { x0: 0, y0: 0, x1: 5, y1: 5 }, { x: 2, z: 2 });
+  city.pose({ ped0: {}, ped1: {}, pedCity: {} }, () => {}, [0], { x0: 0, y0: 0, x1: 5, y1: 5 }, () => "l2");
+  assert.equal(snap(), before, "a frozen city crowd moved or re-settled for the camera");
+});
