@@ -322,25 +322,33 @@ try {
     // alternate frames measured the cache thrashing between the two answers —
     // 15 rebakes on, 9 more with nothing changing, 0 coming back off.
     const realDraw = renderer.draw.bind(renderer);
-    const rebakes = async (territory) => {
+    // Every frame that baked, with the live chunk keys and the ladder's reason,
+    // so a count that comes out wrong says WHICH chunk came back and why.
+    const trail = [];
+    const rebakes = async (territory, label) => {
       renderer.draw = (options = {}) => realDraw({ ...options, territory });
       let count = 0;
       for (let i = 0; i < 24; i += 1) {
         now += 16;
         renderer.draw({ now });
         await frame();
-        count += renderer.stats.streets?.built ?? 0;
+        const built = renderer.stats.streets?.built ?? 0;
+        count += built;
+        if (built > 0) {
+          trail.push(`${label} frame ${i}: +${built}, live [${renderer.stats.streets?.keys ?? ""}], `
+            + `"${renderer.stats.lod}", ${renderer.stats.triangles} of ${renderer.stats.budget}`);
+        }
       }
       return count;
     };
-    const onToggle = await rebakes(true);
-    const settled = await rebakes(true);
-    const offToggle = await rebakes(false);
+    const onToggle = await rebakes(true, "on");
+    const settled = await rebakes(true, "stayed on");
+    const offToggle = await rebakes(false, "off");
     renderer.draw = realDraw;
 
     return {
       builds, live: after?.live ?? 0, triangles: after?.triangles ?? 0, rebuilt, groups, meshes,
-      onToggle, settled, offToggle,
+      onToggle, settled, offToggle, trail,
     };
   });
 
@@ -350,6 +358,9 @@ try {
     `${streets.onToggle} rebakes for ${streets.live} live chunks`);
   check("and it settles again rather than rebaking every frame", streets.settled === 0,
     `${streets.settled} rebakes with nothing changing`);
+  if (streets.settled !== 0 || streets.offToggle > streets.live + 1) {
+    for (const line of streets.trail) console.log(`        ${line}`);
+  }
   check("and turning it off rebakes them back", streets.offToggle >= streets.live,
     `${streets.offToggle} rebakes for ${streets.live} live chunks`);
 
@@ -382,7 +393,16 @@ try {
     const W = state.width;
     // A road with traffic on it. The engine's commuter layer is what the
     // renderer's cars read (ruling 037).
-    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [Math.round(W / 2) * W + 4, W - 8] });
+    const mid = Math.round(W / 2);
+    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [mid * W + 4, W - 8] });
+    // A CROSSING, not just a straight (B4). A free-flowing straight has nothing
+    // to turn into and nothing to close on, so the lamp counts on one are zero
+    // whether the feature works or not — a gate that cannot fail.
+    for (const x of [mid - 6, mid + 6]) {
+      const runs = [];
+      for (let y = mid - 6; y <= mid + 6; y += 1) runs.push(y * W + x, 1);
+      apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs });
+    }
     for (let i = 0; i < state.tiles.road.length; i += 1) {
       if (state.tiles.road[i] & 16) state.tiles.traffic[i] = 200;
     }
@@ -396,11 +416,31 @@ try {
     zoomBy(renderer.view, 14 / renderer.view.span);
     for (let i = 0; i < 40; i += 1) await frame();
 
+    // Simulated time first. Forty frames under SwiftShader is a second or two
+    // of traffic, and a car that spawned at an entry has not reached a
+    // junction yet — the first run of this block reported 0 braking and 0
+    // indicating on 48 cars, a gate failing on how long it waited rather than
+    // on the lamps. Sixty simulated seconds, as the settled counts use (D7).
+    for (let i = 0; i < 60 * 30; i += 1) renderer.traffic.update(1 / 30);
+    // Then over a second of frames, not one: a lamp is a thing that happens,
+    // and an indicator blinks. The MAX is what the pools have to carry.
     const pools = renderer.pools;
+    let brake = 0;
+    let turn = 0;
+    for (let i = 0; i < 40; i += 1) {
+      await frame();
+      brake = Math.max(brake, pools.carBrake?.count ?? 0);
+      turn = Math.max(turn, pools.carTurn?.count ?? 0);
+    }
     const keys = ["car0", "car1"];
     return {
       inPools: keys.reduce((n, k) => n + (pools[k]?.count ?? 0), 0),
       hidden: keys.filter((k) => (pools[k]?.count ?? 0) > 0 && !pools[k].visible).length,
+      // What the cars are DOING (B4). Two pools that ride the bodies; the
+      // number that matters is the SHARE, because a lamp on every car is a
+      // threshold that has stopped discriminating.
+      brake,
+      turn,
       inCity: renderer.traffic.count(),
       counted: renderer.stats.counted,
       lod: renderer.stats.lod,
@@ -409,10 +449,24 @@ try {
   await carsPage.close();
   console.log(`      cars: ${cars.inPools} in the pools, ${cars.inCity} moving in the city, `
     + `ladder at "${cars.lod}"`);
+  console.log(`      lamps: ${cars.brake} braking, ${cars.turn} indicating `
+    + `(${cars.inPools > 0 ? Math.round(100 * cars.brake / cars.inPools) : 0}% of the cars on screen)`);
   check("cars are moving at a street zoom", cars.inCity > 0, JSON.stringify(cars));
   check("and they are drawn", cars.inPools > 0, JSON.stringify(cars));
   check("no pool is hidden after the cars went into it (R1.2)", cars.hidden === 0,
     `${cars.hidden} pool(s) hidden with cars in them`);
+  // Not "some car is braking" — on a free-flowing straight none is, and that is
+  // correct. The check is that the lamps cannot be on for EVERYBODY, which is
+  // the failure a threshold picked by eye actually has (B4).
+  // Both directions. A lamp that never lights is the feature not working; a
+  // lamp that is on for everybody is a threshold that has stopped
+  // discriminating, and both look like a green gate from one side only.
+  check("somebody's brakes come on at a junction", cars.brake > 0, JSON.stringify(cars));
+  check("the brake lights are a signal, not a paint job", cars.brake <= cars.inPools * 0.8,
+    `${cars.brake} of ${cars.inPools} cars have their brakes on`);
+  check("somebody indicates at a junction", cars.turn > 0, JSON.stringify(cars));
+  check("the indicators are a signal too", cars.turn <= cars.inPools * 0.6,
+    `${cars.turn} of ${cars.inPools} cars are indicating`);
 
   // --- the people, priced against the night frame (slice E7, spec §9.3) ------
   //

@@ -26,6 +26,7 @@ import { apply } from "../engine/reducer.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PLACE_BUILDING } from "../engine/commands.js";
 import { definition } from "../engine/catalogue.js";
+import { phaseForPreset } from "../client/world/rush.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -178,7 +179,10 @@ const mode = params.get("mode") ?? "ortho";
 const time = params.get("time") ?? "day";
 // `post=0` turns the style's post pass off without changing anything else,
 // which is how the ink is shown to be a finish rather than the style (P2).
-const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode, time, post: params.get("post") !== "0" });
+const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode, time, post: params.get("post") !== "0",
+  // `hour=` also decides the hour a FROZEN city settles at (B4): `life=0`
+  // settles once, before any frame has said what time it is.
+  phase: params.has("hour") ? Number(params.get("hour")) : undefined });
 setYawStep(view.view, yaw);
 if (pitchDeg > 0) pitchBy(view.view, pitchDeg * (Math.PI / 180) - view.view.pitch);
 if (span > 0) {
@@ -217,6 +221,11 @@ const streetChunks = Number(params.get("streets") ?? -1);
 // shows a city with one chunk of street in it (slice E3).
 const frames = Number(params.get("frames") ?? 1);
 const drawOptions = {
+  // The hour the ROAD keeps (B4). `hour=` overrides it as a number for a shot
+  // that wants a rush; otherwise it follows the `time=` preset, so a night
+  // screenshot has night traffic on it rather than a midday road under a dark
+  // sky.
+  dayPhase: params.has("hour") ? Number(params.get("hour")) : phaseForPreset(time),
   streetChunks: streetChunks >= 0 ? streetChunks : undefined,
   props: !reduced, trees: !reduced,
   // `shadows=0` to tell a toon ramp's banding apart from a cast shadow.

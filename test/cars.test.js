@@ -846,3 +846,332 @@ test("the traffic is the same city whatever the camera is doing", () => {
     "where the camera was changed how many cars exist");
   assert.ok(a.count(tiny) < a.count(whole), "the bounds do not filter the count at all");
 });
+
+// --- the hour on the road (slice B4) ----------------------------------------
+
+test("night is quieter than day, and the rush is busier than both", () => {
+  // The item's number: the settled count at night is the day's × 0.4 within 5%.
+  // Measured on one road, settled each time, because a count taken while the
+  // road is still filling is a measurement of how long you waited (D7).
+  const settle = (phase) => {
+    const { state, model } = highway(180);
+    const traffic = createTraffic(state, model, { cap: 1000 });
+    traffic.setPhase(phase);
+    run(traffic, 150);
+    return traffic.count();
+  };
+  const day = settle(0.25);
+  const night = settle(0.8);
+  const rush = settle(0.08);
+  assert.ok(day > 10, `only ${day} cars by day — the fixture is too quiet to measure`);
+  const ratio = night / day;
+  assert.ok(ratio > 0.3 && ratio < 0.6,
+    `night is ${night} against a day of ${day} (${ratio.toFixed(2)}, wanted about 0.4)`);
+  assert.ok(rush >= day, `the rush is ${rush} against a day of ${day}`);
+});
+
+test("the hour never asks for more cars than the road holds", () => {
+  // `jam` caps the target, so a rush hour on a short link cannot ask for more
+  // cars than physically fit — the check that stops a multiplier becoming a
+  // pile-up.
+  const { state, model } = highway(255);
+  const traffic = createTraffic(state, model, { cap: 5000 });
+  traffic.setPhase(0.08);
+  run(traffic, 150);
+  const metres = model.lanes.links.filter((l) => l.kind === "block")
+    .reduce((sum, l) => sum + l.len, 0);
+  assert.ok(traffic.count() < metres / 7,
+    `${traffic.count()} cars in ${metres.toFixed(0)} m is bumper to bumper`);
+});
+
+test("a phase nobody set is an ordinary day", () => {
+  // The renderer hands the clock in; a caller that has not started one must get
+  // the city it had before the hour existed, not an empty one.
+  const { state, model } = highway(180);
+  const traffic = createTraffic(state, model, { cap: 1000 });
+  run(traffic, 120);
+  const before = traffic.count();
+  traffic.setPhase(0.25);
+  run(traffic, 60);
+  assert.ok(Math.abs(traffic.count() - before) <= Math.max(3, before * 0.25),
+    `${before} cars became ${traffic.count()} when the clock was set to midday`);
+});
+
+// --- brake lights and indicators (slice B4) ----------------------------------
+
+/** Poses one frame and returns where each pool's instances went. */
+function lamps(traffic, bounds) {
+  const seen = { body: [], carBrake: [], carTurn: [] };
+  const pools = { car0: "car0", car1: "car1", carBrake: "carBrake", carTurn: "carTurn" };
+  traffic.pose(pools, (pool, x, y, z) => {
+    if (pool === "carBrake" || pool === "carTurn") seen[pool].push({ x, y, z });
+    else seen.body.push({ x, y, z });
+  }, [0xffffff], bounds);
+  return seen;
+}
+
+test("a lamp is only ever pushed on top of a car that was posed", () => {
+  // The two lamp pools ride the body pool: same position, same rotation. If a
+  // lamp is ever pushed where no body was, it is a floating light in the road —
+  // which is exactly what a `continue` in the wrong place would produce.
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 40);
+  const bounds = { x0: 0, y0: 0, x1: 14, y1: 27 };
+  const seen = lamps(traffic, bounds);
+  const bodies = new Set(seen.body.map((p) => `${p.x},${p.y},${p.z}`));
+  assert.ok(bodies.size > 4, `only ${bodies.size} cars posed to hang lamps on`);
+  for (const kind of ["carBrake", "carTurn"]) {
+    assert.ok(seen[kind].length <= seen.body.length,
+      `${seen[kind].length} ${kind} lamps for ${seen.body.length} cars`);
+    for (const at of seen[kind]) {
+      assert.ok(bodies.has(`${at.x},${at.y},${at.z}`),
+        `a ${kind} lamp at ${at.x},${at.z} with no car under it`);
+    }
+  }
+});
+
+test("the pools are optional, so a caller that has not made them still poses", () => {
+  // Every other caller in the tree passes the pools it has. A renderer built
+  // before B4 — or the budget harness, which builds a subset — must not throw.
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 200 });
+  run(traffic, 20);
+  const pools = { car0: fakePool(), car1: fakePool() };
+  assert.equal(traffic.pose(pools, fakePush, [0xffffff]), traffic.count());
+});
+
+test("cars brake where the traffic is dense and hardly at all where it is not", () => {
+  // Braking is the intelligent-driver model decelerating or a car held at a
+  // stop line — not a flag we set. Measured on the T: on a settled straight
+  // road nothing brakes at all, because a uniform flow at its desired speed
+  // has nothing to close on. The queue is what a viewer sees.
+  const busy = (() => {
+    const { state, model } = tee(28);
+    const traffic = createTraffic(state, model, { cap: 1000 });
+    run(traffic, 90);
+    return traffic;
+  })();
+  const quiet = (() => {
+    const state = blank(28);
+    pave(state, row(6, 2, 25), column(12, 6, 25));
+    load(state, 12);
+    const traffic = createTraffic(state, createModel(state), { cap: 1000 });
+    run(traffic, 90);
+    return traffic;
+  })();
+  const share = (traffic) => {
+    const seen = lamps(traffic);
+    return seen.body.length === 0 ? 0 : seen.carBrake.length / seen.body.length;
+  };
+  const dense = share(busy);
+  const sparse = share(quiet);
+  assert.ok(dense > sparse,
+    `${(dense * 100).toFixed(1)}% braking on a full road against ${(sparse * 100).toFixed(1)}% on an empty one`);
+  assert.ok(dense < 0.9, `${(dense * 100).toFixed(1)}% of the city has its brakes on`);
+});
+
+test("nobody indicates on a road with nothing to turn into", () => {
+  // A straight run has one successor per link, and a lane continuing into the
+  // next block is not a turn. This is the check that would fail if the
+  // indicator asked "is there a successor" instead of "is it the straight one".
+  const { state, model } = highway(200, 30);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 60);
+  const seen = lamps(traffic);
+  assert.ok(seen.body.length > 10, `only ${seen.body.length} cars posed`);
+  assert.equal(seen.carTurn.length, 0,
+    `${seen.carTurn.length} cars indicating on a road with no junctions`);
+});
+
+test("somebody indicates at a T, and the same car indicates the same way twice", () => {
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  // Long enough that cars are spread over the whole T, including the approaches.
+  let indicated = 0;
+  for (let frame = 0; frame < 30 * 40; frame += 1) {
+    traffic.update(1 / 30);
+    indicated += lamps(traffic).carTurn.length;
+  }
+  assert.ok(indicated > 0, "not one car indicated in forty seconds at a T junction");
+});
+
+test("the indicator blinks rather than burning steadily", () => {
+  // Posing the same frame twice gives the same answer; posing across a second
+  // must not, or it is a fault light. The blink comes off the traffic clock,
+  // so `?life=0` freezes it like everything else (ruling 037).
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  run(traffic, 40);
+  const counts = new Set();
+  for (let frame = 0; frame < 30; frame += 1) {
+    counts.add(lamps(traffic).carTurn.length === 0 ? "dark" : "lit");
+    traffic.update(1 / 30);
+  }
+  assert.deepEqual([...counts].sort(), ["dark", "lit"],
+    "the indicators never changed state across a whole second");
+});
+
+test("a frozen city shows its indicators rather than freezing them dark", () => {
+  // `life: false` settles for 240 steps of 1/30 and stops. That sum is
+  // 7.999999999999981 — two parts in 10^14 below eight, and on the dark side
+  // of a 1.5 Hz blink, which it then stays on forever. Every screenshot of a
+  // frozen city came back with cars about to turn and no indicator lit (B4).
+  // A grid, not a T: at any one instant a single junction may have nobody
+  // within twenty metres of it, and this is a test about a frozen INSTANT.
+  const state = blank(40);
+  pave(state, ...[6, 14, 22, 30].map((y) => row(y, 4, 35)),
+    ...[6, 14, 22, 30].map((x) => column(x, 4, 35)));
+  load(state, 220);
+  const traffic = createTraffic(state, createModel(state), { cap: 2000, life: false });
+  const seen = lamps(traffic);
+  assert.ok(seen.body.length > 4, `only ${seen.body.length} cars in a frozen city`);
+  assert.ok(seen.carTurn.length > 0, "not one indicator lit in a frozen city");
+  // And a second pose is the same picture: a frozen shot taken twice must not
+  // differ, which is the whole point of `?life=0`.
+  assert.equal(lamps(traffic).carTurn.length, seen.carTurn.length);
+});
+
+// --- doors (slice B4) --------------------------------------------------------
+//
+// "A car appears out of a driveway or a bay and leaves into one, rather than
+// materialising mid-link. The density control keeps the equilibrium (D7); this
+// changes only where the spawn and despawn happen."
+
+/** Puts a building on the map the way the engine would, so the model gives it
+ * a lot and a frontage. */
+function placeLot(state, b) {
+  const building = {
+    id: b.id, def: "", zone: 1, x: 0, y: 0, w: 1, h: 1, owner: 1,
+    level: 2, valueTier: 1, occupancy: 30, condition: 100, builtTick: 0, flags: 0, ...b,
+  };
+  state.buildings.push(building);
+  state.tiles.buildingId[tileAt(state.width, building.x, building.y)] = building.id;
+  return building;
+}
+
+/** A long street with houses along one side and shops along the other. */
+function street({ buildings = true, value = 160 } = {}) {
+  const state = blank(32);
+  pave(state, row(8, 1, 30));
+  if (buildings) {
+    let id = 1;
+    for (let x = 3; x <= 28; x += 3) placeLot(state, { id: id++, x, y: 7, zone: 1 });
+    for (let x = 4; x <= 28; x += 4) placeLot(state, { id: id++, x, y: 9, zone: 2 });
+  }
+  load(state, value);
+  return { state, model: createModel(state) };
+}
+
+/** Runs the traffic and records where every new car was first seen. */
+function watchSpawns(traffic, seconds, dt = 1 / 30) {
+  let seen = Math.max(0, ...traffic.cars().map((c) => c.id));
+  const spawns = [];
+  for (let t = 0; t < seconds; t += dt) {
+    traffic.update(dt);
+    for (const car of traffic.cars()) {
+      if (car.id > seen) spawns.push({ link: car.link, s: car.s, v: car.v });
+    }
+    seen = Math.max(seen, ...traffic.cars().map((c) => c.id));
+  }
+  return spawns;
+}
+
+test("the doors are on the lanes outside the lots they belong to", () => {
+  const { state, model } = street();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  const doors = [...traffic.doors().values()].flat();
+  assert.ok(doors.length >= 10, `only ${doors.length} of 16 lots got a door on a lane`);
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  for (const [linkId, list] of traffic.doors()) {
+    for (const door of list) {
+      model.lanes.sample(model.lanes.links[linkId], door.s, out);
+      const lot = model.lotOf(door.lot);
+      const d = Math.hypot(out.x - lot.cx, out.z - lot.cz);
+      assert.ok(d < 20, `a door ${d.toFixed(1)} m from the middle of its own lot`);
+    }
+  }
+});
+
+test("a spawn is at a door or at the mouth of its link, never mid-link", () => {
+  const { state, model } = street();
+  const traffic = createTraffic(state, model, { cap: 400 });
+  const spawns = watchSpawns(traffic, 90);
+  assert.ok(spawns.length > 20, `only ${spawns.length} spawns to check`);
+  let atDoor = 0;
+  for (const at of spawns) {
+    const slack = at.v / 30 + 0.05;
+    const doors = traffic.doors().get(at.link) ?? [];
+    const door = doors.find((d) => Math.abs(at.s - d.s) <= slack);
+    if (door) { atDoor += 1; continue; }
+    assert.ok(at.s <= slack, `a car appeared ${at.s.toFixed(1)} m along link ${at.link}, at no door`);
+  }
+  // The tail is the fallback, not the answer: a test that passes with every
+  // car arriving round the corner is a test of the old code.
+  assert.ok(atDoor > spawns.length / 3, `${atDoor} of ${spawns.length} spawns came out of a door`);
+});
+
+test("doors change where the cars appear, not how many there are (D7)", () => {
+  // The first version of B4 boosted any link with frontage by 1.35 and the
+  // ordinary day went from 295 cars to 412. This is the test that fails on it.
+  const settle = (buildings) => {
+    const { state, model } = street({ buildings });
+    const traffic = createTraffic(state, model, { cap: 1000 });
+    traffic.setPhase(0.25);
+    run(traffic, 150);
+    return traffic.count();
+  };
+  const bare = settle(false);
+  const built = settle(true);
+  assert.ok(bare > 10, `only ${bare} cars on the bare street`);
+  assert.ok(Math.abs(built - bare) <= Math.max(2, bare * 0.1),
+    `${built} cars with doors against ${bare} without`);
+});
+
+test("homes send the cars out in the morning, and shops in the evening", () => {
+  const share = (phase) => {
+    const { state, model } = street();
+    const traffic = createTraffic(state, model, { cap: 400 });
+    traffic.setPhase(phase);
+    let home = 0;
+    let shop = 0;
+    for (const at of watchSpawns(traffic, 90)) {
+      const door = (traffic.doors().get(at.link) ?? []).find((d) => Math.abs(at.s - d.s) <= at.v / 30 + 0.05);
+      if (!door) continue;
+      if (door.home) home += 1;
+      else shop += 1;
+    }
+    return { home, shop };
+  };
+  const morning = share(0.08);
+  const evening = share(0.44);
+  assert.ok(morning.home > morning.shop, `morning: ${morning.home} from homes, ${morning.shop} from shops`);
+  assert.ok(evening.shop > evening.home, `evening: ${evening.shop} from shops, ${evening.home} from homes`);
+});
+
+test("a car leaves by turning in at a door, indicating first", () => {
+  // Settle busy, then lower the engine's load so the street has to empty.
+  const { state, model } = street({ value: 220 });
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 60);
+  load(state, 40);
+  let turnedIn = 0;
+  let indicated = 0;
+  let last = new Map(traffic.cars().map((c) => [c.id, { ...c }]));
+  for (let t = 0; t < 60; t += 1 / 30) {
+    traffic.update(1 / 30);
+    const now = new Map(traffic.cars().map((c) => [c.id, { ...c }]));
+    for (const [id, was] of last) {
+      if (now.has(id) || was.exitAt === undefined) continue;
+      turnedIn += 1;
+      const doors = traffic.doors().get(was.link) ?? [];
+      assert.ok(doors.some((d) => Math.abs(d.s - was.exitAt) < 1e-6),
+        `car ${id} turned in at ${was.exitAt.toFixed(1)} m, which is not a door`);
+      assert.ok(was.exitAt - was.s < 1, `car ${id} vanished ${(was.exitAt - was.s).toFixed(1)} m short of its door`);
+    }
+    for (const car of now.values()) if (car.exitAt !== undefined && car.exitAt - car.s <= 20) indicated += 1;
+    last = now;
+  }
+  assert.ok(turnedIn > 3, `only ${turnedIn} cars turned in at a door while the street emptied`);
+  assert.ok(indicated > 0, "nobody was indicating for their door");
+});

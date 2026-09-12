@@ -143,13 +143,21 @@ export function createStreetChunks(scene, options = {}) {
       const visible = bounds
         ? near.filter((c) => holdsCamera(c, view) || inView(c, bounds))
         : near;
-      const wanted = (visible.length > 0 ? visible : near).slice(0, budget);
+      const ranked = visible.length > 0 ? visible : near;
+      const wanted = ranked.slice(0, budget);
       const wantedKeys = new Set(wanted.map((c) => c.key));
       // The three nearest carry the furniture. Thirty houses a chunk at 126
       // triangles each is 3,800 a chunk: on all eight that is 32,000 of a
       // 320,000 frame and `budget_gate` said no; on three it is 11,000, and a
       // shutter four chunks away is two pixels of the wall's own colour (S9).
-      furnished = new Set(wanted.slice(0, FURNISHED).map((c) => `${c.cx},${c.cy}`));
+      //
+      // Ranked by DISTANCE, not by what this frame's budget let in. The flag is
+      // part of a chunk's hash, so taking it from `wanted` meant a frame the
+      // ladder squeezed below three chunks changed the hash of chunks it KEPT
+      // — they rebaked, and rebaked again when the budget came back. Once the
+      // street rung could shed more than one chunk (B4), `budget_gate`'s
+      // territory check caught two such rebakes with nothing changing.
+      furnished = new Set(ranked.slice(0, FURNISHED).map((c) => `${c.cx},${c.cy}`));
 
       for (const c of wanted) {
         const entry = live.get(c.key);

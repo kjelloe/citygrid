@@ -17,6 +17,10 @@
 
 import { jitter } from "../world/hash.js";
 import { getConfig } from "../world/config.js";
+import { rushScale, tideAt } from "../world/rush.js";
+import { doorPoint } from "../world/street-furniture.js";
+import { frontEdgeOf, OUTWARD } from "../world/lots.js";
+import { closestAlong } from "../world/polyline.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 
 /** A car, in metres. The mesh is 0.22 tiles long and a tile is 20 m. */
@@ -85,6 +89,14 @@ export function createTraffic(state, model, options = {}) {
   const desired = new Map();
   let clock = 0;
   let nextId = 1;
+  /** Where the day is, 0..1 — the same number the light rig buckets into
+   * presets. The caller hands it in, the way it hands in the delta: this
+   * module has no clock of its own (ruling 037). */
+  // The hour the road keeps (B4). Set at construction as well as through
+  // `setPhase`, because a frozen shot (`?life=0`) settles its cars ONCE, before
+  // the first frame has told anybody what time it is — so an `hour=` screenshot
+  // would otherwise show an ordinary day's population under a night sky.
+  let phase = options.phase;
 
   const blocks = links.filter((l) => l.kind === "block");
 
@@ -97,6 +109,17 @@ export function createTraffic(state, model, options = {}) {
    * at the speed limit a link admits about one car every two seconds however
    * often it is asked. */
   const FILL_PER_SECOND = 10;
+
+  /** How far a lot's door may be from a lane and still open onto it, metres.
+   * The door is on the pavement (`doorPoint`), the near lane about five metres
+   * in from it; twelve takes the far lane's centre line too, and no further. */
+  const DOOR_REACH = 12;
+
+  /** How fast a car pulls out of a driveway, as a share of the street's speed.
+   * It enters slower than the traffic, which is what makes it read as coming
+   * OUT of something — and only with twice a headway behind it, so the car it
+   * pulls out in front of eases off rather than stopping (see `spawn`). */
+  const PULL_OUT = 0.5;
 
   /** Fractional cars owed to each link, so a rate per second survives being
    * asked in sixtieths. Renderer-local memory, which is what `client/life/` is
@@ -197,7 +220,89 @@ export function createTraffic(state, model, options = {}) {
    * cars per 100 m at a full byte, capped by what the road physically holds. */
   function targetFor(link, load) {
     const jam = link.len / (CAR_M + S0);
-    return Math.min(jam, (link.len / 100) * maxDensity * load);
+    // The HOUR multiplies the street's own load (B4): 0.4 at night, 1.3 at the
+    // two rushes. The engine says how busy a street is; the clock says how busy
+    // the hour is, and a city with no difference between the two is a city with
+    // no day in it. `jam` still caps it — a rush cannot put more cars on a road
+    // than physically fit.
+    const hour = rushScale(phase);
+    // Doors change WHERE a car appears, never how many (B4: "the density
+    // control keeps the equilibrium"). A first version boosted any link with
+    // frontage by 1.35 and the ordinary-day city went from 295 cars to 412,
+    // with the junction pile-ups that came with them.
+    return Math.min(jam, (link.len / 100) * maxDensity * load * hour);
+  }
+
+  /** Where on each block link a car comes out of a building and goes back into
+   * one (B4): "a car appears out of a driveway or a bay and leaves into one,
+   * rather than materialising mid-link".
+   *
+   * A lot's door is the pavement end of E5's path — the same `doorPoint` the
+   * pedestrians use (`nav.js`) — seated on the nearest lane within reach. Not
+   * within a car and a gap of either end of the link: a driveway in the mouth
+   * of a junction is a car appearing in the junction. Sorted by `s`.
+   *
+   * Candidates come from the tiles the door is beside, not from every link in
+   * the city: this is rebuilt on every build action, and a scan of all of
+   * them per lot was a third of a second on the 96-tile city. */
+  const doorsOn = (() => {
+    const byTile = new Map();
+    for (const link of blocks) {
+      for (const tile of link.tiles) {
+        const list = byTile.get(tile);
+        if (list) list.push(link);
+        else byTile.set(tile, [link]);
+      }
+    }
+    const margin = CAR_M + S0;
+    const byLink = new Map();
+    for (const lot of model.lots) {
+      if (lot.facing === false) continue;
+      const point = doorPoint(frontEdgeOf(lot), OUTWARD[lot.frontage]);
+      const tx = Math.floor(point.x / cfg.tileM);
+      const ty = Math.floor(point.z / cfg.tileM);
+      let best;
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = tx + dx;
+        const y = ty + dy;
+        if (x < 0 || y < 0 || x >= state.width || y >= state.height) continue;
+        for (const link of byTile.get(y * state.width + x) ?? []) {
+          if (link.len < 2 * margin) continue;
+          const hit = closestAlong(link, point.x, point.z);
+          if (hit.dist <= DOOR_REACH && (!best || hit.dist < best.dist)) best = { link, hit };
+        }
+      }
+      if (!best) continue;
+      const at = Math.max(margin, Math.min(best.link.len - margin, best.hit.s));
+      const list = byLink.get(best.link.id);
+      const door = { s: at, home: lot.building.zone === 1, lot: lot.id };
+      if (list) list.push(door);
+      else byLink.set(best.link.id, [door]);
+    }
+    for (const list of byLink.values()) list.sort((a, b) => a.s - b.s);
+    return byLink;
+  })();
+
+  /** The doors on a link that are sending cars OUT at this hour, or all of
+   * them when the hour has no tide: homes in the morning, shops and works in
+   * the evening (B4).
+   *
+   * Possibly none, and then the car comes round the corner instead (`spawn`
+   * falls back to the link's tail). A fallback to "any door" read well and was
+   * wrong: each door sits on its own side's lane, so most links carry only
+   * homes or only shops, and on those the fallback let the homes emit all
+   * evening — 24 cars from homes against 20 from shops at the evening rush. */
+  function emitting(doors) {
+    const tide = tideAt(phase);
+    if (tide === "none") return doors;
+    return doors.filter((d) => d.home === (tide === "out"));
+  }
+
+  /** And the ones RECEIVING: the other half of the same tide. */
+  function receiving(doors) {
+    const tide = tideAt(phase);
+    if (tide === "none") return doors;
+    return doors.filter((d) => d.home === (tide === "in"));
   }
 
   /** Where a car goes at the end of its link: one of the successors, chosen by
@@ -207,6 +312,22 @@ export function createTraffic(state, model, options = {}) {
     if (link.next.length === 0) return -1;
     const roll = jitter(car.id * 31 + link.id, 17);
     return link.next[Math.min(link.next.length - 1, Math.floor(roll * link.next.length))].link;
+  }
+
+  /** Is this car about to leave its link by anything but the straight ahead?
+   *
+   * The turn is already chosen — `chooseNext` is a hash of the car and the
+   * link, so a car turns the same way every time it is asked — and this only
+   * asks whether the answer is the FIRST successor, which is the one a lane
+   * continues into. Within twenty metres of the end, which is about when a
+   * driver would signal.
+   */
+  function turningSoon(car, link) {
+    // A car turning in at a door signals for it too.
+    if (car.exitAt !== undefined) return car.exitAt - car.s <= 20;
+    if (link.next.length < 2) return false;
+    if (link.len - car.s > 20) return false;
+    return chooseNext(car, link) !== link.next[0].link;
   }
 
   function bucket() {
@@ -219,29 +340,80 @@ export function createTraffic(state, model, options = {}) {
     for (const list of onLink.values()) list.sort((a, b) => a.s - b.s);
   }
 
-  /** Adds a car at the tail of a link if there is a PROPER following gap.
+  /** Adds a car at one of the link's doors or, failing that, at its tail — if
+   * there is a PROPER gap.
    *
    * Not a token one: admitting a car 6 m behind another at the speed limit made
    * it brake hard, and the slow car it became throttled everything behind it —
    * a permanent plug at the entry that halved the road's throughput and made
-   * the load setting irrelevant. It arrives at the speed of the traffic and one
-   * headway behind it, or it does not arrive. */
+   * the load setting irrelevant. At the tail it arrives at the speed of the
+   * traffic and one headway behind it, or it does not arrive.
+   *
+   * At a door (B4) it pulls out slower than the traffic, so it needs room on
+   * BOTH sides: a headway to the car in front at its own speed, and two of the
+   * following car's headways behind it, so that car eases off rather than
+   * stops. Which door is a hash of the car, so the same city spawns the same
+   * way on two clients (ruling 032). */
   function spawn(link, v0) {
     if (cars.length >= cap) return false;
-    const list = onLink.get(link.id);
-    const first = list && list.length > 0 ? list[0] : undefined;
-    if (first && first.s < CAR_M + S0 + v0 * HEADWAY) return false;
+    const list = onLink.get(link.id) ?? [];
+    const at = doorSlot(link, list, v0) ?? tailSlot(list, v0);
+    if (!at) return false;
     const id = nextId;
     nextId += 1;
     const car = {
-      id, link: link.id, s: 0, v: first ? Math.min(v0, first.v) : v0, v0,
+      id, link: link.id, s: at.s, v: at.v, v0,
       variant: jitter(id, 23) > 0.5 ? 1 : 0,
       colour: Math.floor(jitter(id, 29) * 6),
     };
     cars.push(car);
-    const existing = onLink.get(link.id);
-    if (existing) existing.unshift(car);
-    else onLink.set(link.id, [car]);
+    list.splice(at.index, 0, car);
+    if (!onLink.has(link.id)) onLink.set(link.id, list);
+    return true;
+  }
+
+  function tailSlot(list, v0) {
+    const first = list[0];
+    if (first && first.s < CAR_M + S0 + v0 * HEADWAY) return undefined;
+    return { s: 0, v: first ? Math.min(v0, first.v) : v0, index: 0 };
+  }
+
+  function doorSlot(link, list, v0) {
+    const doors = doorsOn.get(link.id);
+    if (!doors) return undefined;
+    const open = emitting(doors);
+    if (open.length === 0) return undefined;
+    const door = open[Math.floor(jitter(nextId * 7 + link.id, 41) * open.length) % open.length];
+    let index = 0;
+    while (index < list.length && list[index].s < door.s) index += 1;
+    const ahead = list[index];
+    const behind = list[index - 1];
+    const v = Math.max(MIN_SPEED, Math.min(v0 * PULL_OUT, ahead ? ahead.v : v0));
+    if (ahead && ahead.s - door.s - CAR_M < S0 + v * HEADWAY) return undefined;
+    if (behind && door.s - behind.s - CAR_M < S0 + 2 * behind.v * HEADWAY) return undefined;
+    return { s: door.s, v, index };
+  }
+
+  /** Picks a car on this link to turn in at a door ahead of it, rather than
+   * deleting one (B4: "and leaves into one"). The nearest such turn that is
+   * still eight metres off, so there is time to see the indicator. Returns
+   * false when nobody on the link has a door ahead of them. */
+  function sendHome(link, list) {
+    const doors = doorsOn.get(link.id);
+    if (!doors) return false;
+    const open = receiving(doors);
+    let best;
+    for (const car of list) {
+      if (car.exitAt !== undefined) continue;
+      for (const door of open) {
+        const d = door.s - car.s;
+        if (d < 8) continue;
+        if (!best || d < best.d) best = { car, d, s: door.s };
+        break;
+      }
+    }
+    if (!best) return false;
+    best.car.exitAt = best.s;
     return true;
   }
 
@@ -363,11 +535,15 @@ export function createTraffic(state, model, options = {}) {
       let credit = (fillCredit.get(link.id) ?? 0) + FILL_PER_SECOND * dt;
       while (credit >= 1) {
         credit -= 1;
-        if (list.length + 0.5 < target) {
+        // A car already turning in for a door is gone as far as the count is
+        // concerned; it just has not arrived yet.
+        const staying = list.length - list.filter((c) => c.exitAt !== undefined).length;
+        if (staying + 0.5 < target) {
           if (!spawn(link, desired.get(link.id))) break;
-        } else if (list.length - 0.5 > target && list.length > 0) {
-          // The car nearest the end goes, so nothing vanishes under the eye in
-          // the middle of a street.
+        } else if (staying - 0.5 > target && staying > 0) {
+          if (sendHome(link, list)) continue;
+          // Nobody has a door ahead: the car nearest the end goes, so nothing
+          // vanishes under the eye in the middle of a street.
           const going = list[list.length - 1];
           cars.splice(cars.indexOf(going), 1);
           list.pop();
@@ -395,6 +571,12 @@ export function createTraffic(state, model, options = {}) {
           : (car.v0 ?? VMAX);
         const v0 = car.v0;
         const a = accelerate(car.v, v0, gap, leadV, hard);
+        // What the car is DOING, for its lamps (B4). No state and no hash.
+        // Two ways to have your brakes on, and the second is the one a viewer
+        // actually sees: a queue at a red light is a line of red lamps, and
+        // measured on a four-junction city only 2.5% of cars are decelerating
+        // at any instant while 13% are stopped or crawling.
+        car.brake = a < -0.8 || (car.v < 1.5 && v0 > 2);
         car.v = Math.max(0, Math.min(VMAX, car.v + a * dt));
         // Never move further than the gap: the model is stable at these
         // constants but a fixed step is not a proof, and two cars in the same
@@ -408,6 +590,8 @@ export function createTraffic(state, model, options = {}) {
       const link = links[car.link];
       car.s += car.pending ?? 0;
       car.pending = 0;
+      // Turned in at its door (B4).
+      if (car.exitAt !== undefined && car.s >= car.exitAt) { leaving.push(car); continue; }
       if (car.s < link.len) continue;
       const target = chooseNext(car, link);
       if (target < 0) { leaving.push(car); continue; }
@@ -443,6 +627,18 @@ export function createTraffic(state, model, options = {}) {
       yieldPoints = walker ? [...points, walker] : points;
     },
 
+    /** Where the day is, 0..1 (B4). Handed in by the caller with the same
+     * clock the light rig uses, so the hour a player sees and the hour the
+     * traffic keeps are one hour. */
+    setPhase(at) {
+      phase = at;
+    },
+
+    /** Each block link's doors, by link id: `{ s, home, lot }`, sorted by `s`. */
+    doors() {
+      return doorsOn;
+    },
+
     /** One frame. Nothing happens when life is off. */
     update(dt) {
       if (!live || !(dt > 0)) return;
@@ -458,6 +654,18 @@ export function createTraffic(state, model, options = {}) {
     pose(pools, push, colours, bounds) {
       const tileM = model.tileM;
       let posed = 0;
+      const brakePool = pools.carBrake;
+      const turnPool = pools.carTurn;
+      // An indicator that does not blink reads as a fault light. 1.5 Hz, off
+      // the traffic clock, so it stops with everything else when life is off.
+      //
+      // And when life is off it is always ON. A frozen city settles for 240
+      // steps of 1/30 and that sum lands at 7.999999999999981, two parts in
+      // 10^14 short of eight — which put the blink in its dark half and left
+      // it there, so every screenshot of a frozen city came back with 153 cars
+      // about to turn and not one indicator lit. A frozen frame cannot wait
+      // for the next blink.
+      const blink = !live || Math.floor(clock * 3) % 2 === 0;
       for (const car of cars) {
         const link = links[car.link];
         if (!link) continue;
@@ -467,8 +675,17 @@ export function createTraffic(state, model, options = {}) {
         if (!pool) continue;
         // Local +x runs along the car; rotating by θ about Y sends it to
         // (cos θ, −sin θ) in world x, z.
+        const rotation = Math.atan2(-out.tz, out.tx);
         push(pool, out.x / tileM, out.y / tileM, out.z / tileM, 1, 1, 1,
-          colours[car.colour % colours.length], Math.atan2(-out.tz, out.tx));
+          colours[car.colour % colours.length], rotation);
+        // The lamps, only for the cars showing them. A car near the end of its
+        // link that has chosen a turn indicates; one that is slowing brakes.
+        if (brakePool && car.brake) {
+          push(brakePool, out.x / tileM, out.y / tileM, out.z / tileM, 1, 1, 1, 0xd83a2a, rotation);
+        }
+        if (turnPool && blink && turningSoon(car, link)) {
+          push(turnPool, out.x / tileM, out.y / tileM, out.z / tileM, 1, 1, 1, 0xe8a33a, rotation);
+        }
         posed += 1;
       }
       return posed;

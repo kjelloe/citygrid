@@ -153,6 +153,19 @@ in buildings — seven-sided tree blobs and 36-triangle signal lenses each took 
 ladder a rung further down. Watch the `lod` string in `budget_gate`, not only the triangle count:
 the count staying under budget is the ladder doing its job, and the rung is what it cost.
 
+**A rung that can give repeatedly must not be stepped past after giving once.** The street-chunk
+rung dropped ONE chunk and the ladder moved on: at street level on a played city that chunk was
+38,700 triangles, and everything after it on the ladder — props, cars, people, markings, poles,
+networks, shadows, building detail, trees — came to 25,000. So every street-level frame gave up
+every car and every person to save a fifth of what the next chunk would have, and no street
+screenshot the project had taken contained a moving car (B4). When a rung's resource comes in
+units, ask how many units it has and what one of them is worth against the rest of the ladder.
+
+**An invariant scoped to one structure cannot see a defect between two.** "Cars never overlap"
+was asserted per LINK on a straight road for the life of the traffic code; every overlap B4
+measured was between two turn links crossing one junction box (Q96). Ask of any invariant what
+it is keyed by, and whether the failure it guards against can happen across the key.
+
 **Colour arithmetic happens in linear space, and your eye does not.** E8 dimmed an unlit water
 surface by the night preset's hemisphere — 0.34 — and got a river glowing cyan through a black
 city, because in three's working space that factor is about 0.6 to the eye while everything lit

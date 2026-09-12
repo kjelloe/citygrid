@@ -348,10 +348,27 @@ const LADDER = [
 /** Takes one step down the ladder. Returns false when there is nothing left to
  * give — at which point the city is boxes on ground and the budget is simply
  * too small for the map. */
+/** The chunk the walker is standing in is never given up: it is the ground
+ * under the camera, and a street view of unbaked instanced boxes is not a
+ * cheaper picture of the same place, it is a different place (S1b). */
+const KEEP_STREET_CHUNKS = 1;
+
+/** Rungs that may be taken more than once, and the test for whether there is
+ * still something on them worth having.
+ *
+ * Only the baked street chunks. The rung was walked past after ONE chunk, and
+ * measured on a played city at street level that one chunk was 38,700
+ * triangles while the entire rest of the ladder — props, cars, people,
+ * markings, poles, networks, shadows, building detail, trees — came to 25,000.
+ * So the frame gave up every car and every person in the street to save a
+ * fifth of what the next chunk would have, and no street screenshot this
+ * project has ever taken had a moving car in it (B4). */
+const AGAIN = { 0: (plan) => (plan.streetChunks ?? 0) > KEEP_STREET_CHUNKS };
+
 export function stepDown(plan) {
   while (plan.step < LADDER.length) {
     const note = LADDER[plan.step](plan);
-    plan.step += 1;
+    if (!(note && AGAIN[plan.step]?.(plan))) plan.step += 1;
     if (note) {
       plan.reason = note + " for budget";
       return true;

@@ -630,6 +630,31 @@ export function treeVariants(detail = 2) {
   return list;
 }
 
+/** The lamps a car shows about what it is DOING (slice B4).
+ *
+ * Two quads at the back for the brakes and one at each front corner for the
+ * indicators, as their own tiny geometries — an instanced pool the traffic
+ * pushes into only for the cars that are actually braking or turning, so the
+ * cost is the cars showing them rather than every car in the city.
+ *
+ * Separate from the car body because a per-instance colour cannot say "this
+ * one's brakes are on": the body pool carries the paint, and these carry the
+ * signal.
+ */
+export function carLampGeometry(kind) {
+  const parts = makeParts();
+  if (kind === "brake") {
+    for (const z of [-0.036, 0.036]) {
+      addBox(parts, -0.118, 0.03, z - 0.012, -0.104, 0.05, z + 0.012, 1);
+    }
+  } else {
+    // One corner, mirrored by the rotation the pusher applies: an indicator is
+    // on the side the car is turning towards.
+    addBox(parts, 0.102, 0.03, 0.03, 0.116, 0.048, 0.054, 1);
+  }
+  return finish(parts);
+}
+
 export function carVariants() {
   const list = [];
   for (let i = 0; i < CAR_VARIANTS; i += 1) list.push(car(i));

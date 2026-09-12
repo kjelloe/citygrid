@@ -20,6 +20,7 @@ reports/.photo-smoke.png
 # `house_shots.mjs` opens a 320x240 page to ask where the houses are before it
 # aims the real shots. The answer is the point; the picture is scratch (S9).
 reports/.house-shots-probe.png
+reports/.traffic-shots-probe.png
 # `civic_shots.mjs` and the ad-hoc probes write these while aiming a shot. The
 # answer is the point; the picture is scratch (S1).
 reports/.civic-probe.png

@@ -107,6 +107,26 @@ room for and nothing ever gives it back. Neither direction was visible to any
 test, because nothing compared the two numbers. `tools/budget_gate.mjs` does,
 and it is the gate this ruling was missing.
 
+## Amendment, 2026-09-12 (B4) — the street-chunk rung is taken until one chunk is left
+
+The ladder's first rung dropped **one** baked street chunk and moved on. At street level on the
+64-tile played city (seed 1003, forty years, High) one chunk was **38,700** triangles and every rung
+after it together — props, cars, people, markings, poles, networks, shadows, building detail,
+trees — came to **25,000**. So the frame kept six chunks and gave up every car and every person in
+the street to save a fifth of what a second chunk would have: no street-level screenshot this
+project had taken contained a moving car, and B4's own gate (a street at rush) could not be met.
+
+`stepDown` now stays on a rung while it can still give (`AGAIN` in `client/render/lod.js`), and the
+only such rung is the street chunks, down to `KEEP_STREET_CHUNKS = 1` — the chunk the camera stands
+in is never given up (S1b). The order is unchanged: every chunk the rung is willing to give goes
+before the props, because on the frames that have chunks at all a chunk outweighs the rest of the
+ladder. Measured on the B4 shot: 7 live chunks and 0 cars (296,706 triangles) became 2 live chunks
+and the street's traffic drawn (387,818 of 400,000).
+
+**A consequence found the same day:** the cache chose which chunks carry furniture from the chunks
+the budget let in, and the flag is part of a chunk's hash — so a frame squeezed below three chunks
+rebaked chunks it had kept. `street-chunks.js` now ranks furniture by distance alone.
+
 ## Also enforced by
 
 - `tools/budget_gate.mjs` — a saturated city at four zooms: the frame is inside
@@ -121,4 +141,5 @@ and it is the gate this ruling was missing.
 
 - `client/render/lod.js` — `setBudget`, `estimate`, `stepDown`, the ladder
 - `client/render/scene.js` — the render-measure-step loop in `draw()`
-- `test/lod.test.js` — the order of sacrifice, the floor, the shadow doubling
+- `test/lod.test.js` — the order of sacrifice, the floor, the shadow doubling, and the street rung
+  shedding chunks down to one before anything else goes

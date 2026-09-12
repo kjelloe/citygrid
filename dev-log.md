@@ -5777,3 +5777,105 @@ with a red cross on the street face and a glass entrance under it. Both are buil
 from across the road, which is what the item asked for.
 
 **Next:** B4 — doors and rush hour.
+
+## slice-B4 — traffic that reads as traffic (2026-09-12)
+
+The item: cars come out of a door and go into one, the city has a rush hour, and a car shows what
+it is doing. The gate is two pictures of one street, and the first time they were taken there was
+not a single car in either of them.
+
+**The hour.** `client/world/rush.js` — 0.4 at night, about 1.0 by day, 1.3 at the rushes (phase 0.08
+and 0.44) — multiplies `targetFor` under the same `jam` cap. The phase is handed in (`setPhase`, and
+`options.phase` at construction, because a frozen `?life=0` city settles once before any frame has
+said what time it is). `lanes_dump` on the 96-tile city: **morning 10,616, sunset 8,023, night 4,706**,
+night/morning 0.44 — above the curve's 0.38 because `jam` clips the rush.
+
+**The doors.** A lot's door is the pedestrians' `doorPoint`, seated on the nearest block lane within
+12 m. A car spawns at a door that is emitting at this hour (homes out in the morning, shops and
+works in the evening), pulling out at half the street's speed with a headway in front and two
+behind; one the density control wants gone turns in at a receiving door ahead of it, indicating for
+20 m. The link's tail and the car nearest the end are the fallbacks. Deriving the doors costs
+**1.0 ms** a rebuild on the 64-tile saturated city and **2.0 ms** on the 96, against 0.2 and 0.7.
+
+**The lamps.** Two unlit, shadowless pools riding the bodies. Brakes: decelerating harder than
+0.8 m/s², or held below 1.5 m/s — on a four-junction city 2.5% of cars decelerate at an instant and
+13% are queued, and the queue is what a viewer sees. Indicators: a chosen turn that is not straight
+on, within 20 m of the end, or a door ahead; 1.5 Hz.
+
+### What was wrong, in the order it was found
+
+**The ladder dropped every car at street level.** Aimed at the busiest junction of the played city,
+the morning shot had 438 cars in the city and none in frame; the pools said 0 cars, the ladder said
+"detail dropped for budget" at 296,706 of 400,000. `stepDown` took the street-chunk rung once — one
+chunk, 38,700 triangles — and then walked through props, cars, people, markings, poles, networks,
+shadows and building detail, 25,000 together. So no street-level screenshot this project has taken
+had a moving car in it. The rung now repeats down to one chunk (ruling 019, amended): 2 live chunks
+and the street's traffic, 387,818 of 400,000.
+
+**A frozen city's indicators were stuck dark.** 240 steps of 1/30 is 7.999999999999981 s — the dark
+half of the blink, forever, while 153 cars were about to turn. Lit whenever life is off.
+
+**The first door design broke the item's own rule.** "The density control keeps the equilibrium;
+this changes only where the spawn and despawn happen." I had boosted any link with frontage by 1.35
+instead, and the second shot came back as a heap of cars in the junction. Measured with a node
+comparison of the pre-B4 traffic module (restored from `HEAD` for the purpose) against the new one,
+on the 64-tile played city, uncapped as at High, 120 s settled:
+
+| | cars | stopped | pairs under 2 m (in a junction) |
+|---|---|---|---|
+| before B4 | 295 | 25% | 8 (7) |
+| B4 with the boost, no hour set | 412 | 29% | 22 (18) |
+| B4 with the boost, rush | 550 | 36% | 35 (30) |
+| B4 as built, no hour set | 312 | 25% | 8 (8) |
+| B4 as built, rush | 432 | 36% | 16 (16) |
+
+The node instrument was checked against the browser first — the same city at the rush gave 438
+cars, 18% stopped and 16 pairs at 8 s in both. A new test holds the rule: a street with lots settles
+within 10% of the same street without them. And the tide's fallback was wrong the first time: "no
+door of the wanted kind, so any door" let the homes emit all evening (24 from homes against 20 from
+shops), because each door sits on its own side's lane and most links carry only one kind. It falls
+back to the tail now.
+
+**Cars drive through each other inside a junction, and always have (Q96).** Every overlap measured is
+between two TURN links crossing one box; the same-link count is 0 in every run, which is all
+`test/cars.test.js`'s overlap invariant has ever looked at. Seven pairs before B4. `lanes_dump` now
+prints it — **78 pairs under 2 m, 58 of them in a junction, of 10,597 cars** on the 96-tile city —
+as a measurement, not a gate, until the conflict-zone question is answered.
+
+**Standing on a junction tile puts you in the road (Q97).** The shot tool's first aim stood two tiles
+back from the junction on a tile that was itself on a crossing road; `enterStreet` stepped onto the
+pavement of the nearest corridor, which was the other street's carriageway, and at rush the frame
+was the inside of a mustard car 1.6 m from the lens. `traffic_shots.mjs` stands on a plain straight
+and counts the cars near the camera before shooting; the player's own `enterStreet` does not yet.
+
+**Two instruments that could not fail.** `budget_gate`'s new lamp rows first ran on a single
+straight road, where nothing brakes and nothing turns whether the feature works or not: 0 and 0, and
+green. Then on a crossing, sampled after forty frames: 0 and 0 again, because under SwiftShader that
+is two simulated seconds and no car had reached the junction. It now lays a crossing, simulates
+sixty seconds, samples a second of frames, and checks both directions — somebody brakes, and not
+everybody. And a node script that grows a city needs the engine's nine system modules imported for
+their side effects, or it ticks an empty map without a word: the pre/post comparison measured "0
+cars" three times before that was found.
+
+**An intermittent rebake.** One `budget_gate` run failed the territory check — 2 rebakes with the
+overlay held on — and the next passed on identical code. The cache chose which three chunks carry
+furniture from the chunks the budget let in, and the flag is in each chunk's hash, so a frame the
+repeating rung squeezed below three chunks rebaked chunks it had kept. Furniture is ranked by
+distance alone now, and the check prints each frame that baked, with the live keys and the ladder's
+reason, whenever it fails.
+
+**Measured.** `test/cars.test.js` 56 tests, `test/lod.test.js` 44; suite green twice, 1,280 tests. `budget_gate`
+on the crossing: **87 cars in the pools, 30 braking, 12 indicating**; crowd and night frames
+**310,885 of 400,000**, photo 357,773, street chunks 226,232 over 8 live. `gates.mjs render` green 4
+of 4 (**215 s** of 300 — `lanes_dump` went from 13 s to 37 s for the three-hour census and the
+overlap run), `quick` green 11 of 11 (370 s of 480).
+
+**What the pictures say**, looked at first. `smoke-B4-morning.png`: a red car and a blue one in the
+near lane heading away from the camera toward a queue at the junction, houses either side. It is a
+street with traffic on it now, not a heap — but the queue at the junction mouth is still a jumble of
+cars at mixed angles, which is Q96 seen from the pavement. `smoke-B4-night.png`: lamps lit, windows
+lit, and no car within the first hundred metres; the probe says 76 cars in the city, 3 within 100 m
+and 14 within 200, all 76 with headlights and tail lights — an honest empty street at ×0.4, not a
+missing lamp.
+
+**Next:** B7, then S2.

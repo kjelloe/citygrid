@@ -15,6 +15,7 @@ import { choosePlan, countScene, setBudget, getBudget, visibleBounds, stepDown, 
 import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
+import { phaseForPreset } from "../world/rush.js";
 import { tierConfig } from "../world/config.js";
 import { photoStep, photoLook } from "../world/photo.js";
 import { createGovernor } from "./governor.js";
@@ -173,6 +174,9 @@ export function createRenderer(canvas, state, options = {}) {
   // The hour (E6, spec §7.3). Pure and delta-driven, so `life: false` freezes
   // the sun where it stood along with the traffic and the walker.
   const timeOfDay = createTimeOfDay(options.time ?? "day");
+  // The hour a frozen city settles its traffic at (B4). A live renderer is told
+  // the phase every frame; a frozen one never draws a frame before it settles.
+  const startPhase = options.phase ?? phaseForPreset(options.time ?? "day");
   if (lights.key > 0) {
     const key = new THREE.DirectionalLight(lights.keyColour, lights.key);
     const sun = lights.sunHeight ?? 120;
@@ -312,7 +316,7 @@ export function createRenderer(canvas, state, options = {}) {
   // The cars (slice V1, ruling 037). Renderer-local: the engine says how busy a
   // road is and this decides what busy looks like. `life: false` freezes them
   // where they settled, so a screenshot is the same picture twice.
-  let traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
+  let traffic = createTraffic(state, model, { cap: carCap(), life: options.life, phase: startPhase });
   // The nav graph and the people on it (slice E7, spec §9.3). Same contract as
   // the cars: derived, renderer-local, never state, frozen by `life: false`.
   let nav = deriveNav(state, model);
@@ -351,7 +355,10 @@ export function createRenderer(canvas, state, options = {}) {
     // Flat ground-level pieces receive shadows but do not cast them: a road
     // casting a shadow onto the ground it lies on is a second render of a
     // thing that changes nothing.
-    const flat = name === "road" || name === "mark" || name === "pipe";
+    // A lamp is four triangles on a bumper; a shadow map pass for it is a
+    // second render of something that changes no pixel (B4).
+    const flat = name === "road" || name === "mark" || name === "pipe"
+      || name === "carBrake" || name === "carTurn";
     mesh.castShadow = !flat;
     mesh.receiveShadow = true;
   }
@@ -419,7 +426,7 @@ export function createRenderer(canvas, state, options = {}) {
     // The lane graph is part of the model, so the cars have to start again on
     // the new one: a car holding a link id from a graph that no longer exists
     // is a car in a field.
-    traffic = createTraffic(state, model, { cap: carCap(), life: options.life });
+    traffic = createTraffic(state, model, { cap: carCap(), life: options.life, phase: startPhase });
     // The nav graph is derived from the same corridors, so it goes the same
     // way: a person holding an edge id from a graph that no longer exists is a
     // person in a field (E7).
@@ -695,6 +702,10 @@ export function createRenderer(canvas, state, options = {}) {
     if (view.mode === "photo") flyPhoto(drawOptions.move, dt);
     pedestrians.update(dt, lastBounds, eyeOf(view));
     traffic.yieldTo(pedestrians.yields(), view.mode === "street" ? walkerPoint() : undefined);
+    // The hour reaches the road (B4). Handed in, never read from a clock here:
+    // `client/life/` takes its time from the caller, which is what makes
+    // `?life=0` freeze it (ruling 037).
+    if (drawOptions.dayPhase !== undefined) traffic.setPhase(drawOptions.dayPhase);
     traffic.update(dt);
     if (drawOptions.frameMs > 0) {
       const before = governor.disabled().length;

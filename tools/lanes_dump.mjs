@@ -171,6 +171,62 @@ if (shortest.len < CAR) {
       console.error(`\nFAIL  the settled traffic depends on the frame rate (${(spread * 100).toFixed(0)}%)`);
       process.exit(1);
     }
+
+    // **The hour on the road** (B4). The same city at the three presets the
+    // player can pick. The ratios are the item's gate — night is the day's
+    // 0.4 — and the absolute numbers are what the budget has to carry.
+    const { phaseForPreset } = await import("../client/world/rush.js");
+    const atHour = (name) => {
+      const t = createTraffic(state, model, { cap: 100000 });
+      t.setPhase(phaseForPreset(name));
+      for (let elapsed = 0; elapsed < 140; elapsed += 1 / 30) t.update(1 / 30);
+      return t.cars().length;
+    };
+    const hours = { morning: atHour("morning"), sunset: atHour("sunset"), night: atHour("night") };
+    console.log(`cars by hour    ${Object.entries(hours)
+      .map(([k, v]) => `${k} ${v}`).join(", ")} `
+      + `(night/morning ${(hours.night / Math.max(1, hours.morning)).toFixed(2)})`);
+    if (!(hours.night < hours.sunset && hours.sunset < hours.morning)) {
+      console.error("\nFAIL  the hour does not order the traffic");
+      process.exit(1);
+    }
+
+    // **Cars through each other inside a junction.** Printed, not gated: it
+    // predates B4 (seven pairs on the 64-tile played city before the slice),
+    // and `test/cars.test.js`'s overlap invariant is per LINK, so two turn
+    // links crossing one box are invisible to it. A number to watch until the
+    // junction conflict question is answered.
+    {
+      const t = createTraffic(state, model, { cap: 100000 });
+      t.setPhase(phaseForPreset("morning"));
+      for (let elapsed = 0; elapsed < 120; elapsed += 1 / 30) t.update(1 / 30);
+      const cars = t.cars();
+      const at = cars.map((c) => { const l = t.lampsOf(c); return { x: (l[0].x + l[1].x) / 2, z: (l[0].z + l[1].z) / 2, c }; });
+      const grid = new Map();
+      for (const p of at) {
+        const k = `${Math.floor(p.x / 4)},${Math.floor(p.z / 4)}`;
+        if (grid.has(k)) grid.get(k).push(p);
+        else grid.set(k, [p]);
+      }
+      let pairs = 0;
+      let inJunction = 0;
+      for (const p of at) {
+        const gx = Math.floor(p.x / 4);
+        const gz = Math.floor(p.z / 4);
+        for (let dx = -1; dx <= 1; dx += 1) {
+          for (let dz = -1; dz <= 1; dz += 1) {
+            for (const q of grid.get(`${gx + dx},${gz + dz}`) ?? []) {
+              if (q.c.id <= p.c.id || Math.hypot(q.x - p.x, q.z - p.z) >= 2) continue;
+              pairs += 1;
+              if (lanes.links[p.c.link].kind === "turn" && lanes.links[q.c.link].kind === "turn") inJunction += 1;
+            }
+          }
+        }
+      }
+      const stopped = cars.filter((c) => c.v < 0.5).length;
+      console.log(`overlaps        ${pairs} pairs of cars under 2 m apart (${inJunction} both in a junction) `
+        + `of ${cars.length}, ${Math.round(100 * stopped / Math.max(1, cars.length))}% stopped, morning, 120 s`);
+    }
   }
   if (cars === 0) {
     console.error("\nFAIL  the step was timed on an empty road");

@@ -30,6 +30,7 @@ import { createRenderer } from "./render/scene.js";
 import { focusOn } from "./render/camera.js";
 import { createController } from "./input/controller.js";
 import { phaseOf } from "./render/time-of-day.js";
+import { phaseForPreset } from "./world/rush.js";
 import { TIME } from "./ui/settings-model.js";
 import { loadSettings, saveSettings } from "./ui/settings.js";
 import { buildingLabelKey } from "./ui/build-model.js";
@@ -414,6 +415,13 @@ export async function startGame(root, given = {}) {
       overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move,
       // The clock chooses only when the player asked it to (plan.md §6).
       time: timeSetting === "auto" ? phaseOf(daySeconds, DAY_SECONDS) : timeSetting,
+      // The same clock as a NUMBER, for the traffic's rush hour (B4). The light
+      // takes a preset name and the road takes a curve, and they have to be the
+      // same hour — a player who pins night and sees a rush outside is looking
+      // at two times of day in one window.
+      dayPhase: timeSetting === "auto"
+        ? (daySeconds % DAY_SECONDS) / DAY_SECONDS
+        : phaseForPreset(timeSetting),
     });
     if (minimap && hud.minimapVisible) minimap.draw(canvas.clientWidth / canvas.clientHeight);
     frame = requestAnimationFrame(loop);

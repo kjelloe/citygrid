@@ -406,6 +406,8 @@ by number from the code they create.
 | Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | **Kjell**, with Q64 |
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
+| Q96 | Cars drive through each other inside a junction — two turn links crossing one box; predates B4, invisible to the per-link invariant | a behaviour or T-lane slice, before anything films a junction at rush |
+| Q97 | Entering street mode on a junction tile stands you in the crossing street's carriageway | navigation lane, or the next slice that touches `enterStreet` |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

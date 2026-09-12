@@ -16,6 +16,7 @@ import { CHUNK, chunkKey, chunkOfLot } from "../world/chunks.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry,
+  carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
 import { buildingParams } from "../world/params.js";
@@ -162,6 +163,24 @@ export function createInstances(scene, styleName = "plain") {
   const tufts = tuftVariants();
   for (let v = 0; v < tufts.length; v += 1) make(`tuft${v}`, tufts[v], 0xffffff, 30000);
   make("lamp", lampGeometry(), 0xffffff, 8000);
+  // What a car is DOING (B4): brakes at the back, an indicator at the corner.
+  // Their own pools, pushed into only for the cars actually showing them, so a
+  // city of two hundred cars pays for the dozen that are stopping.
+  //
+  // UNLIT, for the same reason the headlights are: a lamp shaded by the sun is
+  // off at the one hour it exists for. Drawn after the bodies so a lamp sitting
+  // on the bumper is not z-fought by it.
+  for (const [name, kind] of [["carBrake", "brake"], ["carTurn", "turn"]]) {
+    const mesh = new THREE.InstancedMesh(carLampGeometry(kind),
+      new THREE.MeshBasicMaterial({ vertexColors: false }), 1200);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(1200 * 3), 3);
+    mesh.count = 0;
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 3;
+    scene.add(mesh);
+    pools[name] = mesh;
+  }
   // A signal lens (V8, spec §9.2). Unlit for the same reason a headlight is:
   // a green light that goes off at night is not a light.
   {

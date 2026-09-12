@@ -61,6 +61,43 @@ Measured: 997 cars on a 64×64 at **0.09 ms** a step, 3,660 on a 128×128 at **0
 gate at 18 px a tile. `?life=0` freezes them where they settled and two `screenshot.mjs` runs of
 one city come out byte identical.
 
+## 9.1b As built (B4, 2026-09-12) — the hour, the doors and the lamps
+
+**The hour.** `client/world/rush.js` is a curve over the light cycle's phase: 0.4 at night, about
+1.0 by day, 1.3 at the two rushes (phase 0.08 and 0.44). It multiplies the per-link target in
+`targetFor`, under the same `jam` cap, so a rush cannot ask for more cars than a road holds. The
+phase is handed in (`setPhase`, and `options.phase` at construction so a frozen `?life=0` city
+settles at its own hour); `client/life/` still reads no clock (ruling 037). `tideAt` names the
+tide: `out` in the morning, `in` in the evening.
+
+**The doors.** A lot's door is the same point the pedestrians use — `doorPoint` on the lot's front
+edge — seated on the nearest block lane within 12 m, and never within a car and a gap of either end
+of the link. A car spawns at a door that is EMITTING at this hour (homes in the morning, shops and
+works in the evening, all of them otherwise), pulling out at half the street's speed with a headway
+in front and two of the follower's behind; failing that, at the link's tail as before. A car the
+density control wants gone turns in at a RECEIVING door ahead of it, indicating for the last 20 m;
+failing that, the car nearest the end goes, as before. **Doors change where a car appears, never how
+many** — the item's own words, and the test that holds them to it (a street with lots settles within
+10% of the same street without). A first version boosted every link with frontage by 1.35: the
+ordinary day went from 295 cars to 412 and the junctions filled.
+
+**The lamps.** Two pools that ride the car bodies, unlit (a lamp shaded by the sun is off at the
+hour it exists for) and shadowless. Brakes: decelerating harder than 0.8 m/s², or crawling below
+1.5 m/s on a road that wants more than 2 — a queue at a red light is a line of red lamps, and on a
+four-junction city only 2.5% of cars decelerate at any instant while 13% are held. Indicators: the
+turn already chosen is not the straight one and the car is within 20 m of the end, or it is turning
+in at a door; blinking at 1.5 Hz off the traffic clock, and always lit when life is off — a frozen
+settle of 240 steps of 1/30 lands at 7.999999999999981 s, on the dark half of the blink, forever.
+
+**Measured**, the 64-tile played city (seed 1003, forty years, 294 buildings), uncapped as at High,
+120 s settled: before B4 295 cars, 25% stopped; after, 312 on an ordinary day (25%) and 432 at the
+morning rush (36%). `lanes_dump` on the 96-tile city: morning 10,616, sunset 8,023, night 4,706
+(night/morning 0.44 — the rush is clipped by `jam`, so the ratio is above the curve's 0.38). Door
+derivation: 1.0 ms a rebuild on the 64-tile saturated city, 2.0 ms on the 96.
+
+**Not fixed here: cars through each other in a junction (Q96).** It predates B4 and the per-link
+overlap invariant cannot see it; `lanes_dump` prints the count.
+
 ## 9.2 Signals
 
 Nodes with degree ≥ 3 on a corridor of `road` kind get a two-phase cycle (Union Square:

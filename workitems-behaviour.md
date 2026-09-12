@@ -125,9 +125,20 @@ setting in singleplayer; in a room the clock is the server's, and "within an hou
 that keeps it from being one more thing to synchronise every frame. The hour scale on car density
 stays — it is now scaling something both clients agree about.
 
-## B4 — Traffic that reads as traffic (M)
+## B4 — Traffic that reads as traffic (M) — **built 2026-09-12** (`specs/engine/09-life.md` §9.1b)
 
 **Goal.** Cars come from somewhere and go somewhere, and the city has a rush hour.
+
+**As built.** The hour is `client/world/rush.js` (0.4 / 1.0 / 1.3) on `targetFor`, under `jam`;
+cars spawn at a door that is emitting at this hour (homes out in the morning, shops and works in
+the evening) and turn in at one that is receiving, indicating for the last 20 m, with the link's
+tail and the car nearest the end as the fallbacks; brake lights and indicators are two unlit pools
+that ride the bodies. Doors change where, never how many — a street with lots settles within 10% of
+the same street without. Three things found on the way, none of them the item's: the budget
+ladder took the street-chunk rung once and then dropped every car at street level (ruling 019,
+amended); a frozen city's indicators were stuck dark; and cars drive through each other inside a
+junction, which predates B4 and the per-link invariant cannot see (**Q96**). Entering street mode
+on a junction tile stands you in the crossing street's carriageway (**Q97**).
 
 **Do.**
 - **Doors**: a car appears out of a driveway (E5's path) or a bay and leaves into one, rather
@@ -224,7 +235,7 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 
 ## Order
 
-B2 (done) → **B4 → B7 right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
+B2 (done) → B4 (done) → **B7 right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
 moved up on 2026-09-11 because P61 asked for them by name —: B2 with S1 (the same kit
 files), B1 with S6 (the smoke), B5 after S5 (the benches). Weather last because it is the only
 item that adds a whole preset to every gate.

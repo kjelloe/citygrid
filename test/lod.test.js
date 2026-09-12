@@ -594,3 +594,45 @@ test("the difference is the canvas height and nothing else", () => {
   assert.ok(Math.abs(ratio - DESKTOP_H / HEADLESS_H) < 1e-9,
     `${small.toFixed(1)} and ${big.toFixed(1)} px are not in the ratio of their canvases`);
 });
+
+// --- the expensive rung is not walked past (slice B4) ------------------------
+
+test("the ladder sheds street chunks until one is left, not one and then everything else", () => {
+  // What this is about: a baked street chunk measured 38,700 triangles at
+  // street level on a played city, and the whole rest of the ladder — props,
+  // cars, people, markings, poles, networks, shadows, building detail, trees —
+  // came to 25,000. Stepping past the rung after ONE chunk meant the frame
+  // gave up every car and every person in the street to save a fifth of what
+  // the next chunk would have returned. Every street screenshot this project
+  // has taken came back with no moving car in it, for that reason (B4).
+  const plan = { ...planAt(60, 5000000), step: 0, streetChunks: 7 };
+  const order = [];
+  while (stepDown(plan)) order.push(plan.reason);
+  const chunks = order.filter((r) => r.startsWith("street chunk dropped")).length;
+  assert.equal(chunks, 6, `the rung gave up ${chunks} of 7 chunks`);
+  assert.equal(plan.streetChunks, 1, "the chunk under the camera was given up too");
+  // And still in order: every chunk it is willing to give goes before the
+  // props, because a chunk is worth more than everything after it put together.
+  const firstProp = order.findIndex((r) => r.startsWith("props"));
+  const lastChunk = order.findLastIndex((r) => r.startsWith("street chunk"));
+  assert.ok(lastChunk < firstProp, order.join(" → "));
+});
+
+test("the ladder still terminates when a rung repeats", () => {
+  const plan = { ...planAt(60, 1000), step: 0, streetChunks: 40 };
+  let steps = 0;
+  while (stepDown(plan)) {
+    steps += 1;
+    assert.ok(steps <= ladderLength() + 40, "stepDown never returned false");
+  }
+  assert.equal(plan.trees, false);
+  assert.equal(plan.streetChunks, 1);
+});
+
+test("a frame with no baked streets is not held up by the repeating rung", () => {
+  // The city zoom has no street chunks at all; the rung must fall through to
+  // the props exactly as it did before.
+  const plan = { ...planAt(60, 5000000), step: 0, streetChunks: 0 };
+  assert.equal(stepDown(plan), true);
+  assert.equal(plan.reason, "props dropped for budget");
+});
