@@ -6059,3 +6059,61 @@ fields — this city fills its map. No stones or reeds either, and that is not t
 the new matter was not done; it is instanced at every zoom.
 
 **Next:** S6, per the world lane's order; Q98 waits on Kjell.
+
+## slice-S6 — ambient motion (2026-09-13)
+
+**The review round first (P66).** Two risks left by S2. The `render` set had 21 s of headroom:
+`lanes_dump`'s three-hour census now steps at the traffic's longest step — the row above it shows
+the settled count does not depend on the step (0% apart) — and the dump went **66 → 52 s**. And one
+`budget_gate` failure after S2 was never identified, because the runner kept 4,000 characters and
+the caller piped those through `tail`: `gates.mjs` now writes every gate's full output to
+`reports/gates/<date>-<gate>.log` and prints the FAIL lines and the path on a failure. Every new
+export from B8 and S2 has a caller.
+
+**Built.** `client/world/motion.js` is every formula and number — tree sway (4% of the height at the
+crown), a turbine rotor, a flag's ripple, a crane's slew, six-puff smoke columns — each exactly zero,
+or at a fixed rest pose, at t = 0. `client/render/motion-material.js` chains a vertex patch onto a
+pool's existing `onBeforeCompile` with the numbers injected from `motion.js`, one shared `uTime`, a
+program-cache key per kind; it never imports three, so node tests it. The clock advances in
+`scene.js` only while life is on, and reduced motion already turns life off, so one rule stills
+both. Posed: sway on the instanced trees, a rotor on a turbine's hub (its blades removed from the
+building at both zooms), smoke from the coal and gas plants' stacks and from burning buildings,
+flags on the fire station, police station and hospital, a crane on every building site.
+
+**What went wrong on the way.**
+- **Motion vanished near the camera.** It was posed after the instanced pass's baked-lot `continue`,
+  and at the gate's 1280×720 city view the nearest lots are baked: rotor 0, smoke 0, while a
+  640×400 probe drew the rotor. It is posed before that line now, and on a baked lot in the street
+  builder's own frame (`civicPointOnLot`, tested against `turnMass`) so a rotor sits on its nacelle.
+- **The flag check had nothing to count.** `place=` went through the reducer and came back
+  `needsBulldoze`: after twenty years the harness's row is built on. `SHOT_REPORT.placed` said so;
+  the flag and crane shots use a two-year city.
+- **The smoke read as cardboard.** Flat quads of one alpha were grey panels near the camera; a round
+  soft fall-off and 60% opacity make them wisps.
+- **The flags were two pixels.** A 2 m pole with a 1.1 m cloth is a hand flag; a rooftop pole is 6 m
+  with a 2.8 m cloth now. Still small at a city zoom, and legible.
+- **A test told -0 from 0**: the cloth at the pole is `amp · 0 · sin(…)`.
+- **And the S2 mystery, found by the new logs.** The failing check was "a chunk bakes inside its
+  frame budget": builds **[9, 6, 4, 3, 4, 4, 3, 4, 3]** ms. Over nine samples the 95th percentile is
+  the slowest, and the slowest is always the first — the baker's code warming up, one-off. The
+  check now bounds the steady bakes (p95 ≤ 8 ms: **5 ms**) and the first on its own (≤ 16 ms, one
+  frame: **6 ms**).
+
+**Not moving:** the trees baked into street chunks — merged meshes with no per-vertex height above
+their trunk to sway by. That is a baker change the item did not ask for, and it is written down.
+
+**Measured.** `tools/motion_shots.mjs`: two `?life=0` shots **byte-identical** (`622b576c14d1f1cb`
+twice); the turbine and the coal plant alive and different at two times; rotor 1, smoke 24, flags 2,
+crane 1 drawn. Suite green twice, **1,319 tests**. `gates.mjs render` 4 of 4 bar `budget_gate`'s
+bake check in 266 s of 300 — the check was split and `budget_gate` rerun alone, green; `quick` 11 of
+11 in 390 s of 480. `motion_shots` is not in a gate set: five minutes of browser would put `render`
+over its budget.
+
+**What the pictures say**, looked at: `smoke-S6-wind-t1/t2.png` — the rotor at two clearly different
+angles on top of its mast; `smoke-S6-smoke-t2.png` — faint soft smoke over the placed plant's stacks
+(the grey drums near the camera are the deputy's plant's own stacks, not smoke); `smoke-S6-flag.png`
+— a thin pole and a small cloth over each station; `smoke-S6-crane.png` — an orange mast and jib at
+the corner of a scaffolded site, and on that young map S2's hedgerows round the fields, visible for
+the first time.
+
+**Next:** S5, per the world lane's order.

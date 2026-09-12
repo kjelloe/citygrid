@@ -54,6 +54,8 @@ export const CIVIC_SHAPES = Object.freeze({
       box(-0.9, 0, -1, 0.2, 0.26, -0.62, "dark"),           // coal heap
       box(-1, 0.62, -0.55, 0.35, 0.68, 1, "dark"),          // the hall's roof
     ],
+    // Where the smoke comes out (S6): the tops of the two stacks.
+    emits: [{ x: 0.61, y: 1.85, z: -0.05 }, { x: 0.61, y: 1.5, z: 0.49 }],
   },
   gasPlant: {
     tall: true,
@@ -64,6 +66,7 @@ export const CIVIC_SHAPES = Object.freeze({
       box(-0.1, 0, -1, 0.4, 0.42, -0.55, "tank", true),
       box(-1, 0.55, -0.5, 0.3, 0.6, 1, "dark"),
     ],
+    emits: [{ x: 0.57, y: 1.45, z: 0.05 }],
   },
   windTurbine: {
     tall: true,
@@ -72,10 +75,14 @@ export const CIVIC_SHAPES = Object.freeze({
       // The nacelle is the machine, not the tower: steel against the white mast
       // is what stops a turbine being one undifferentiated white stick.
       box(-0.22, 2.2, -0.16, 0.22, 2.42, 0.16, "steel"),    // nacelle
-      box(-0.06, 2.42, -0.05, 0.06, 3.3, 0.05, "white"),
-      box(-0.85, 2.2, -0.05, -0.06, 2.32, 0.05, "white"),
-      box(0.06, 2.2, -0.05, 0.85, 2.32, 0.05, "white"),
+      // The three blades are the ROTOR (S6): neither the instanced turbine nor
+      // the baked one draws them; a rotor pool turns in their place, about
+      // `hub`, at every zoom.
+      { ...box(-0.06, 2.42, -0.05, 0.06, 3.3, 0.05, "white"), rotor: true },
+      { ...box(-0.85, 2.2, -0.05, -0.06, 2.32, 0.05, "white"), rotor: true },
+      { ...box(0.06, 2.2, -0.05, 0.85, 2.32, 0.05, "white"), rotor: true },
     ],
+    hub: { x: 0, y: 2.31, z: 0 },
   },
   solarPlant: {
     tall: false,
@@ -126,6 +133,8 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   fireStation: {
+    // A flag on the roof (S6): a public service flies one.
+    flag: true,
     tall: true,
     masses: [
       box(-1, 0, -0.7, 1, 0.5, 0.8, "brick"),               // appliance bay
@@ -138,6 +147,8 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   policeStation: {
+    // A flag on the roof (S6): a public service flies one.
+    flag: true,
     tall: false,
     masses: [
       box(-1, 0, -0.6, 0.45, 0.62, 0.9, "brick"),           // the station
@@ -147,6 +158,8 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   hospital: {
+    // A flag on the roof (S6): a public service flies one.
+    flag: true,
     tall: true,
     masses: [
       box(-1, 0, -0.9, 1, 1.15, 0.5, "white"),              // the ward block
@@ -227,6 +240,41 @@ export function civicHeight(def) {
  */
 export function civicSpin(frontage) {
   return (((frontage ?? 2) - 2) % 4 + 4) % 4;
+}
+
+/**
+ * Where a point of a civic shape lands on a BAKED lot, in metres (S6).
+ *
+ * The street builder's own frame, not the instanced kit's: across the lot's
+ * rectangle, turned for the frontage by `turnMass`'s quarter turn, and up from
+ * the seat by one wall-height a unit — exactly how `buildCivic` places the
+ * masses, so a rotor sits on its nacelle and smoke leaves its stack. `turn` is
+ * the rotation to give anything posed there, and `scale` the lot's half-width,
+ * the length a unit across is worth.
+ */
+export function civicPointOnLot(lot, params, point) {
+  const quarters = ((civicSpin(lot.frontage) % 4) + 4) % 4;
+  let x = point.x;
+  let z = point.z;
+  for (let i = 0; i < quarters; i += 1) {
+    const nx = -z;
+    z = x;
+    x = nx;
+  }
+  const progress = params.state?.progress ?? 1;
+  const storeys = lot.storeys ?? params.storeys ?? 1;
+  const height = (params.groundH + (storeys - 1) * params.floorH) * progress;
+  const hx = (lot.x1 - lot.x0) / 2;
+  const hz = (lot.z1 - lot.z0) / 2;
+  return {
+    x: (lot.x0 + lot.x1) / 2 + x * hx,
+    y: lot.seat + point.y * height,
+    z: (lot.z0 + lot.z1) / 2 + z * hz,
+    // `turnMass` turns (x, z) to (-z, x): a quarter the OTHER way from three's
+    // rotation about y, so the pose is turned by minus the quarters.
+    turn: -quarters * (Math.PI / 2),
+    scale: hx,
+  };
 }
 
 /** A mass rotated into the lot's frame, still in unit space. */

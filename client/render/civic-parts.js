@@ -69,6 +69,9 @@ export function buildCivic(spec, { height, trim, glass, palette, styleName }) {
   };
 
   for (const m of spec.civic.masses) {
+    // The rotor is instanced and turns (S6); baked as well, it would be two
+    // sets of blades, one of them still.
+    if (m.rotor) continue;
     const x0 = cx + m.x0 * hx;
     const x1 = cx + m.x1 * hx;
     const z0 = cz + m.z0 * hz;

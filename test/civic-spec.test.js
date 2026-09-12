@@ -148,3 +148,41 @@ test("a definition's name is readable without a catalogue", () => {
     assert.equal(defaultName(def), defaultName(def));
   }
 });
+
+// --- what moves on a civic building (slice S6) ---------------------------------
+
+test("a turbine's rotor is three blades about a hub, and the stacks smoke from their tops", async () => {
+  const { CIVIC_SHAPES } = await import("../client/world/civic-spec.js");
+  const turbine = CIVIC_SHAPES.windTurbine;
+  assert.equal(turbine.masses.filter((m) => m.rotor).length, 3, "the turbine does not have three blades to turn");
+  assert.ok(turbine.hub, "a rotor with no hub turns about the lot's corner");
+  for (const [def, shape] of Object.entries(CIVIC_SHAPES)) {
+    for (const e of shape.emits ?? []) {
+      const stack = shape.masses.find((m) => m.round && e.x >= m.x0 && e.x <= m.x1 && e.z >= m.z0 && e.z <= m.z1
+        && Math.abs(e.y - m.y1) < 1e-6);
+      assert.ok(stack, `${def}'s smoke comes out of nothing at ${JSON.stringify(e)}`);
+    }
+  }
+  assert.ok(CIVIC_SHAPES.coalPlant.emits.length === 2 && CIVIC_SHAPES.gasPlant.emits.length === 1);
+  const flagged = Object.entries(CIVIC_SHAPES).filter(([, s]) => s.flag).map(([d]) => d).sort();
+  assert.deepEqual(flagged, ["fireStation", "hospital", "policeStation"]);
+});
+
+test("a point on a baked lot lands where the baked masses land, at every quarter turn", async () => {
+  // The rotor, the smoke and the flag are posed from these points; the masses
+  // are placed by `turnMass` and `buildCivic`. Two answers for one shape is a
+  // rotor beside its nacelle (S6).
+  const { civicPointOnLot, turnMass } = await import("../client/world/civic-spec.js");
+  const params = { groundH: 4, floorH: 3, storeys: 3, state: { progress: 1 } };
+  for (const frontage of [0, 1, 2, 3]) {
+    const lot = { x0: 100, x1: 120, z0: 40, z1: 56, seat: 12, frontage };
+    const point = { x: 0.6, y: 1.8, z: -0.3 };
+    const at = civicPointOnLot(lot, params, point);
+    const mass = turnMass({ x0: point.x, x1: point.x, z0: point.z, z1: point.z },
+      ((frontage - 2) % 4 + 4) % 4);
+    assert.ok(Math.abs(at.x - (110 + mass.x0 * 10)) < 1e-9, `frontage ${frontage}: x`);
+    assert.ok(Math.abs(at.z - (48 + mass.z0 * 8)) < 1e-9, `frontage ${frontage}: z`);
+    assert.ok(Math.abs(at.y - (12 + 1.8 * (4 + 2 * 3))) < 1e-9, `frontage ${frontage}: y`);
+    assert.equal(at.scale, 10);
+  }
+});

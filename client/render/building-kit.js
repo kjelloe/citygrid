@@ -185,6 +185,9 @@ function finishBuilding(parts) {
 }
 
 const W = 0.45;
+/** The civic kit's scale: a mass unit across is `W`, and up is `2W` (S6 places
+ * rotors, stacks' smoke and flags on the shapes with it). */
+export const CIVIC_W = W;
 
 /** The coarsest tier: a box with a roof-coloured cap. At the zoom where this is
  * used a building is a handful of pixels, and this is all of it anyone can
@@ -473,6 +476,8 @@ function civic(variant, detail) {
 
   for (let i = 0; i < shape.masses.length; i += 1) {
     const m = shape.masses[i];
+    // The rotor is its own pool, turning (S6).
+    if (m.rotor) continue;
     // The tallest mass wears the roof colour: on a hall it is the roof, on a
     // water tower it is the tank, and on a park it is the path. One rule, and
     // it is the one that makes a definition readable from the air.
@@ -713,6 +718,80 @@ export function signGeometry() {
   const parts = makeParts();
   addBox(parts, -0.004, 0, -0.004, 0.004, 0.06, 0.004, 0.6);
   addBox(parts, -0.022, 0.042, -0.003, 0.022, 0.068, 0.003, 1.3);
+  return finish(parts);
+}
+
+/** Turns the vertices added since `from` about the local z axis. */
+function rotateAddedZ(parts, from, angle) {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  for (let i = from; i < parts.position.length; i += 3) {
+    const x = parts.position[i];
+    const y = parts.position[i + 1];
+    parts.position[i] = c * x - s * y;
+    parts.position[i + 1] = s * x + c * y;
+    const nx = parts.normal[i];
+    const ny = parts.normal[i + 1];
+    parts.normal[i] = c * nx - s * ny;
+    parts.normal[i + 1] = s * nx + c * ny;
+  }
+}
+
+/** A turbine's rotor (S6): a hub and three blades at 120°, in the civic kit's
+ * units about the hub, so the pool turns it about z. */
+export function rotorGeometry() {
+  const parts = makeParts();
+  addBox(parts, -0.06 * W, -0.06 * W, -0.06 * W, 0.06 * W, 0.06 * W, 0.06 * W, 0.8);
+  for (let k = 0; k < 3; k += 1) {
+    const from = parts.position.length;
+    addBox(parts, -0.035 * W, 0.05 * W, -0.03 * W, 0.035 * W, 0.85 * W, 0.03 * W, 1);
+    rotateAddedZ(parts, from, (k * 2 * Math.PI) / 3);
+  }
+  return finish(parts);
+}
+
+/** A flag (S6): a pole and a cloth of four segments along x, both faces, so
+ * the shader can ripple it. Tile units: a 6 m pole with a 2.8 m cloth. The
+ * first was 2 m with a 1.1 m cloth, true to a hand flag and two pixels at a
+ * city zoom — a rooftop flagpole is five to eight metres. */
+export const FLAG_LEN = 0.14;
+export function flagGeometry() {
+  const parts = makeParts();
+  addBox(parts, -0.005, 0, -0.005, 0.005, 0.3, 0.005, 0.7);
+  const y0 = 0.22;
+  const y1 = 0.29;
+  for (let i = 0; i < 4; i += 1) {
+    const x0 = 0.005 + (FLAG_LEN - 0.005) * (i / 4);
+    const x1 = 0.005 + (FLAG_LEN - 0.005) * ((i + 1) / 4);
+    pushQuad(parts, [x0, y0, 0], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0], 1);
+    pushQuad(parts, [x0, y0, 0], [x0, y1, 0], [x1, y1, 0], [x1, y0, 0], 0.85);
+  }
+  return finish(parts);
+}
+
+/** A tower crane (S6): a mast, a jib with its counterweight and a hook line.
+ * Everything above `CRANE_SLEW` turns with the jib. Tile units. */
+export const CRANE_MAST = 0.55;
+export const CRANE_SLEW = CRANE_MAST - 0.16;
+export function craneGeometry() {
+  const parts = makeParts();
+  addBox(parts, -0.01, 0, -0.01, 0.01, CRANE_MAST, 0.01, 0.9);
+  addBox(parts, -0.12, CRANE_MAST, -0.008, 0.38, CRANE_MAST + 0.018, 0.008, 1);
+  addBox(parts, -0.12, CRANE_MAST + 0.018, -0.015, -0.07, CRANE_MAST + 0.045, 0.015, 0.5);
+  addBox(parts, 0.3, CRANE_MAST - 0.14, -0.002, 0.304, CRANE_MAST, 0.002, 0.6);
+  return finish(parts);
+}
+
+/** A puff of smoke (S6): two crossed quads, both faces, so it reads from any
+ * side. The shader lifts, drifts, grows and fades it. Tile units. */
+export const SMOKE_HALF = 0.08;
+export function smokeGeometry() {
+  const parts = makeParts();
+  const s = SMOKE_HALF;
+  pushQuad(parts, [-s, -s, 0], [s, -s, 0], [s, s, 0], [-s, s, 0], 1);
+  pushQuad(parts, [-s, -s, 0], [-s, s, 0], [s, s, 0], [s, -s, 0], 1);
+  pushQuad(parts, [0, -s, -s], [0, s, -s], [0, s, s], [0, -s, s], 1);
+  pushQuad(parts, [0, -s, -s], [0, -s, s], [0, s, s], [0, s, -s], 1);
   return finish(parts);
 }
 

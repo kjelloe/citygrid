@@ -17,6 +17,8 @@ import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { phaseForPreset } from "../world/rush.js";
 import { countrysideFor } from "../world/countryside.js";
+import { motionTime } from "../world/motion.js";
+import { setMotionTime } from "./motion-material.js";
 import { tierConfig } from "../world/config.js";
 import { photoStep, photoLook } from "../world/photo.js";
 import { createGovernor } from "./governor.js";
@@ -713,6 +715,10 @@ export function createRenderer(canvas, state, options = {}) {
 
   /** Last frame's visible box, for the crowd's own budget (E7). */
   let lastBounds;
+  /** Seconds of ambient motion lived through (S6). Advances only while life is
+   * on — reduced motion turns life off in `game.js` — so a frozen frame is
+   * still, and two frozen screenshots are the same bytes. */
+  let motionClock = 0;
 
   function draw(drawOptions = {}) {
     // The haze follows the zoom, so it is re-derived rather than remembered.
@@ -725,6 +731,9 @@ export function createRenderer(canvas, state, options = {}) {
     // The cars move on wall-clock time, not on the game clock: a paused city
     // still has traffic on it, and a city at ×4 does not have cars at ×4.
     const dt = drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000;
+    const living = options.life !== false && drawOptions.life !== false;
+    if (living && dt > 0) motionClock += Math.min(dt, 0.25);
+    setMotionTime(motionTime(motionClock, { life: living }));
     // People before cars, because the cars have to see them: A45 gives a
     // pedestrian on a crossing right of way, and a car that reads last frame's
     // positions brakes for somebody who has already gone.

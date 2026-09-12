@@ -243,6 +243,33 @@ Higashiyama's rule: restrained. Trees sway a little, a flag moves, smoke from an
 stack drifts, a crane on a construction site turns. Nothing bounces, nothing pulses. Each is a
 per-frame uniform on an instanced pool, not per-instance work.
 
+## 9.4b As built (S6, 2026-09-13) — ambient motion
+
+Restrained movement where the eye expects it, all on one clock and all still when it is:
+
+- **The formulas and numbers** are `client/world/motion.js` (pure, tested): tree sway (4% of the
+  tree's height at the crown, a slow sine), a turbine rotor, a flag's ripple, a crane's slew, and
+  six-puff smoke columns that rise, drift downwind, grow and fade. Sway, rotor and crane are exactly
+  zero at t = 0; smoke and flag hold a rest pose that depends on nothing but the instance.
+- **The shader** is `client/render/motion-material.js`: a patch chained onto a pool's existing
+  `onBeforeCompile`, its numbers injected from `motion.js`, one shared `uTime`, a program-cache key
+  per kind. No per-instance work — the phase comes from where the instance stands, and a puff's
+  place in its column from its instance index. It never imports three, so node tests it.
+- **The clock** advances in `scene.js` only while life is on. Reduced motion already turns life off
+  (`game.js`), so one rule stills both; two `?life=0` shots are the same bytes.
+- **What moves:** the instanced trees; a rotor on a wind turbine's hub (its three blades left out
+  of the building at both zooms); smoke from the coal and gas plants' stacks and from any burning
+  building; a flag on a fire station, a police station and a hospital; a crane on every building
+  site. Posed with the building, in the frame it was drawn in — the street builder's for a baked
+  lot (`civicPointOnLot`), the instanced kit's otherwise — so the rotor sits on its nacelle at every
+  zoom. The first version posed only instanced lots, and at a close city view, where the lots are
+  baked, the gate found no rotor and no smoke at all.
+- **Not moving:** the trees baked into street chunks. They are merged meshes with no per-vertex
+  height above their trunk, and giving them one is a baker change the item did not ask for.
+
+`tools/motion_shots.mjs` is the gate: two frozen shots byte-identical, the turbine and the coal
+plant alive at two times, and a flag and a crane actually drawn.
+
 ## 9.4a Sound, at eye height (V8, 2026-09-07)
 
 `ambienceFor` is a property of the CITY — population and congestion — and it is the right answer

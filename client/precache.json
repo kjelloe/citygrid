@@ -1,5 +1,5 @@
 {
- "version": "1abff5b6c24d",
+ "version": "de12ba6ab30d",
  "generated": "2026-09-12",
  "files": [
   "./client/audio/audio-model.js",
@@ -45,6 +45,7 @@
   "./client/render/merge.js",
   "./client/render/minimap-model.js",
   "./client/render/minimap.js",
+  "./client/render/motion-material.js",
   "./client/render/night-lights.js",
   "./client/render/overlay-texture.js",
   "./client/render/palette.js",
@@ -113,6 +114,7 @@
   "./client/world/lanes.js",
   "./client/world/lots.js",
   "./client/world/model.js",
+  "./client/world/motion.js",
   "./client/world/nav.js",
   "./client/world/orbit.js",
   "./client/world/params.js",

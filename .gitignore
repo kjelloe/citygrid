@@ -47,4 +47,5 @@ deploy/secrets/
 # local 
 dev-prompts.md
 dev-questions.md
-
+reports/gates/
+reports/.motion-*.png

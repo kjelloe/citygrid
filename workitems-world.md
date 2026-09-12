@@ -144,7 +144,12 @@ L3, and the crowd's `nav.js` gets park paths as walk edges so people go in.
 `test/nav.test.js`: a park's path is reachable from the pavement. **Gate.** Budget re-measured;
 `reports/smoke-S5-{park,garden,street-trees}.png`.
 
-## S6 — Ambient motion (S) — spec §9.4
+## S6 — Ambient motion (S) — spec §9.4 — **built 2026-09-13** (`specs/engine/09-life.md` §9.4b)
+
+**As built.** `client/world/motion.js` and a shader patch on one clock: tree sway, a turbine rotor,
+stack and fire smoke, flags on public buildings, a crane on building sites — posed in whichever
+frame the building was drawn in, still under reduced motion and `?life=0`. Street-level (baked)
+trees do not sway: they have no per-vertex height to sway by. `tools/motion_shots.mjs`.
 
 **Goal.** Restrained movement where the eye expects it. Nothing bounces, nothing pulses.
 
@@ -395,7 +400,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9, S1, S10, S1b and S2 are done (2026-09-11/12), with B4, B7 and B8 from the behaviour lane. Next: S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9, S1, S10, S1b, S2 and S6 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. Next: → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

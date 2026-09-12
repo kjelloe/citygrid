@@ -179,7 +179,10 @@ if (shortest.len < CAR) {
     const atHour = (name) => {
       const t = createTraffic(state, model, { cap: 100000 });
       t.setPhase(phaseForPreset(name));
-      for (let elapsed = 0; elapsed < 140; elapsed += 1 / 30) t.update(1 / 30);
+      // At the longest step the traffic takes: the row above shows the settled
+      // count does not depend on it (0% apart), and three runs at 1/30 were
+      // 28 s of a render set left with 21 s of headroom after B8 and S2.
+      for (let elapsed = 0; elapsed < 140; elapsed += MAX_STEP) t.update(MAX_STEP);
       return t.cars().length;
     };
     const hours = { morning: atHour("morning"), sunset: atHour("sunset"), night: atHour("night") };

@@ -132,12 +132,15 @@ function runGate(name) {
   return new Promise((resolve) => {
     const started = Date.now();
     const child = spawn(process.execPath, gate.args, { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
-    let tail = "";
-    const keep = (chunk) => { tail = (tail + chunk).slice(-4000); };
+    // ALL of it, kept, and written to a file per gate. The tail alone lost a
+    // `budget_gate` failure after S2: twelve lines printed, piped through a
+    // `tail` by the caller, and which check had failed was gone for good.
+    let output = "";
+    const keep = (chunk) => { output += chunk; };
     child.stdout.on("data", keep);
     child.stderr.on("data", keep);
     child.on("close", (code) => {
-      resolve({ name, ok: code === 0, ms: Date.now() - started, tail });
+      resolve({ name, ok: code === 0, ms: Date.now() - started, tail: output.slice(-4000), output });
     });
   });
 }
@@ -162,13 +165,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const before = await browsersAlive();
   console.log(`gates: ${set} — ${names.length} of them, budget ${(BUDGET_MS[set] / 60000).toFixed(0)} min\n`);
 
+  const logs = join(root, "reports", "gates");
+  await mkdir(logs, { recursive: true });
+  const day = new Date().toISOString().slice(0, 10);
   const results = [];
   for (const name of names) {
     process.stdout.write(`  ${name.padEnd(16)} `);
     const result = await runGate(name);
     results.push(result);
     console.log(`${result.ok ? "ok  " : "FAIL"} ${(result.ms / 1000).toFixed(1)}s`);
+    const log = join(logs, `${day}-${name}.log`);
+    await writeFile(log, result.output);
     if (!result.ok) {
+      // Every FAIL line first — the checks that failed, by name — then where
+      // the whole run is.
+      const fails = result.output.split("\n").filter((l) => /^\s*FAIL\b/.test(l));
+      for (const line of fails.slice(0, 12)) console.log(`      ${line.trim()}`);
+      console.log(`      full output: ${log.slice(root.length + 1)}`);
       // The tail of the gate's own output, because "FAIL" alone sends the reader
       // back to run it again by hand — which is what the runner is for.
       console.log(result.tail.split("\n").slice(-12).map((l) => `      ${l}`).join("\n"));

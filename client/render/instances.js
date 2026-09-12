@@ -17,6 +17,7 @@ import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry, cityPersonGeometry,
   boulderVariants, BOULDER_VARIANTS, signGeometry,
+  rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
   carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
@@ -28,6 +29,12 @@ import { TIER, setCosts, inBounds, planForChunk, tilePixels, usesChunkPlans } fr
 import { civicSpin } from "../world/civic-spec.js";
 import { houseLots } from "../world/homes.js";
 import { countrysideFor } from "../world/countryside.js";
+import { civicShape, civicHeight, civicPointOnLot } from "../world/civic-spec.js";
+import { MOTION } from "../world/motion.js";
+import { addMotion } from "./motion-material.js";
+
+/** A flag's colours (S6), by building id. */
+const FLAGS = [0xc83c3c, 0x3c64c8, 0xf0f0f0];
 
 /** A field hedgerow's green, and a marsh reed's (S2). */
 const HEDGEROW = 0x4a8a3c;
@@ -35,7 +42,7 @@ const REED = 0x8f9f58;
 import { getConfig } from "../world/config.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
-  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, FLAG_RUINED, NET_PRESENT,
+  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, FLAG_RUINED, FLAG_BURNING, NET_PRESENT,
 } from "../constants-mirror.js";
 
 /** Parked cars and flowers carry the only strong accent colours in the scene,
@@ -152,6 +159,10 @@ export function createInstances(scene, styleName = "plain") {
     let treeSample = 0;
     for (let v = 0; v < trees.length; v += 1) {
       make(`tree${v}_${tier}`, trees[v], 0xffffff, 14000);
+      // Sway (S6): a vertex offset by height and a slow sine, per variant's
+      // own height so a tall pine and a squat oak move alike.
+      trees[v].computeBoundingBox();
+      addMotion(pools[`tree${v}_${tier}`].material, "sway", Math.max(0.05, trees[v].boundingBox.max.y));
       treeSample += triangleCount(trees[v]);
     }
     measured.tree[tier] = Math.round(treeSample / trees.length);
@@ -178,6 +189,15 @@ export function createInstances(scene, styleName = "plain") {
   for (let v = 0; v < boulders.length; v += 1) make(`boulder${v}`, boulders[v], 0xffffff, 8000);
   make("kerb", flatGeometry(styleName, 1, 0.08, 0.05), 0xffffff, 20000);
   make("sign", signGeometry(), 0xffffff, 3000);
+  // The things that move (S6), each on the one clock (`motion-material.js`).
+  make("rotor", rotorGeometry(), 0xffffff, 400);
+  addMotion(pools.rotor.material, "rotor");
+  make("flag", flagGeometry(), 0xffffff, 800);
+  addMotion(pools.flag.material, "flag", FLAG_LEN);
+  make("crane", craneGeometry(), 0xffffff, 1000);
+  addMotion(pools.crane.material, "crane", CRANE_SLEW);
+  make("smoke", smokeGeometry(), 0xffffff, 3000);
+  addMotion(pools.smoke.material, "smoke", SMOKE_HALF);
   make("lamp", lampGeometry(), 0xffffff, 8000);
   // What a car is DOING (B4): brakes at the back, an indicator at the corner.
   // Their own pools, pushed into only for the cars actually showing them, so a
@@ -721,6 +741,56 @@ export function updateInstances(state, pools, options = {}) {
       push(pools.path, cx, h, cz + building.h / 2 - p.setback / 2, 1, 1, p.setback * 2, p.garden.path, p.spin);
     }
 
+    // Ambient motion (S6). Before the baked-lot `continue`: close to the camera
+    // a lot is baked, and skipping it there took the rotor and the smoke away
+    // at exactly the zooms where motion is seen. Each lot is posed in the frame
+    // its building was drawn in — the street builder's for a baked lot, the
+    // instanced kit's otherwise — so a rotor sits on its nacelle either way.
+    if (planAt(building.x, building.y).props !== false) {
+      const baked = lotIsBaked(lot);
+      const tileM = getConfig().tileM;
+      const depthL2 = (building.h - p.setback) * 0.98;
+      const bzL2 = cz - p.setback / 2;
+      const c = Math.cos(spin);
+      const s = Math.sin(spin);
+      const civicAt = (m) => {
+        if (baked) {
+          const at = civicPointOnLot(lot, p, m);
+          return { x: at.x / tileM, y: at.y / tileM, z: at.z / tileM, turn: at.turn, scale: at.scale / tileM / CIVIC_W };
+        }
+        const lx = m.x * CIVIC_W * building.w * 0.98;
+        const lz = m.z * CIVIC_W * depthL2;
+        return { x: cx + lx * c + lz * s, y: h + m.y * CIVIC_W * 2 * p.height, z: bzL2 - lx * s + lz * c,
+          turn: spin, scale: building.w * 0.98 };
+      };
+      const puffs = (at, colour) => {
+        for (let k = 0; k < MOTION.smoke.puffs; k += 1) push(pools.smoke, at.x, at.y, at.z, 1, 1, 1, colour, 0);
+      };
+      if (p.kind === "civic" && p.state.phase === "standing") {
+        const shape = civicShape(building.def);
+        if (shape.hub) {
+          const at = civicAt(shape.hub);
+          push(pools.rotor, at.x, at.y, at.z, at.scale, at.scale, at.scale, 0xf4f4f0, at.turn);
+        }
+        for (const e of shape.emits ?? []) puffs(civicAt(e), 0xdcdcd6);
+        if (shape.flag) {
+          const at = civicAt({ x: 0, y: civicHeight(building.def), z: 0 });
+          push(pools.flag, at.x, at.y, at.z, 1, 1, 1, FLAGS[building.id % FLAGS.length], at.turn);
+        }
+      }
+      if (p.state.phase === "site") {
+        push(pools.crane, building.x + 0.18, h, building.y + 0.18, 1, 1, 1, 0xe8b830,
+          jitter(building.id, 211) * Math.PI * 2);
+      }
+      if ((building.flags & FLAG_BURNING) !== 0) {
+        // From the roof the building was drawn with.
+        const roof = baked
+          ? (lot.seat + (p.groundH + ((lot.storeys ?? p.storeys ?? 1) - 1) * p.floorH) * (p.state.progress ?? 1)) / tileM
+          : h + p.height;
+        puffs({ x: cx, y: roof, z: cz }, 0x4a4a4a);
+      }
+    }
+
     // A baked chunk builds this lot as a real facade (slice E5); drawing the
     // instanced box as well is the same house twice, z-fighting on every face.
     if (lotIsBaked(lot)) continue;
@@ -733,6 +803,7 @@ export function updateInstances(state, pools, options = {}) {
     // it from its depth, so the BACK of the house stays where it was.
     const depth = (building.h - p.setback) * 0.98;
     const bz = cz - p.setback / 2;
+
     // A residential lot is ONE BOX PER HOUSE below level 3 (S10): a level-1
     // 2×1 lot is two detached houses, and a single box across the lot is the
     // slab the whole slice is about. The sub-lots come from the same function
