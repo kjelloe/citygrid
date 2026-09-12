@@ -172,7 +172,11 @@ hysteresis rather than a better constant.
 **An invariant scoped to one structure cannot see a defect between two.** "Cars never overlap"
 was asserted per LINK on a straight road for the life of the traffic code; every overlap B4
 measured was between two turn links crossing one junction box (Q96). Ask of any invariant what
-it is keyed by, and whether the failure it guards against can happen across the key.
+it is keyed by, and whether the failure it guards against can happen across the key. And define the
+failure once, geometrically: B8's first overlap metric (centres under 2 m) counted two cars passing
+round a bend and missed one sitting on another's rear, and its first threshold came from an assumed
+car width — the kit's cars are 2.2 m, and the lanes they drove bowed to 2.00 m apart in every
+junction. Read the dimensions from the code that draws them before tuning anything against them.
 
 **Colour arithmetic happens in linear space, and your eye does not.** E8 dimmed an unlit water
 surface by the night preset's hemisphere — 0.34 — and got a river glowing cyan through a black

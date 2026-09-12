@@ -95,8 +95,42 @@ morning rush (36%). `lanes_dump` on the 96-tile city: morning 10,616, sunset 8,0
 (night/morning 0.44 — the rush is clipped by `jam`, so the ratio is above the curve's 0.38). Door
 derivation: 1.0 ms a rebuild on the 64-tile saturated city, 2.0 ms on the 96.
 
-**Not fixed here: cars through each other in a junction (Q96).** It predates B4 and the per-link
-overlap invariant cannot see it; `lanes_dump` prints the count.
+**Cars through each other in a junction (Q96)** predated B4 and are fixed by B8 (§9.1c).
+
+## 9.1c As built (B8, 2026-09-12) — cars stop at a junction
+
+Kjell, P64: *"Cars have to stop and not drive through."* Every overlap measured before was two
+cars in one junction box; the per-link invariant could never see it.
+
+**The geometry first.** A connector's control point was the node's centre, so every curve bowed
+toward the middle of the box: two opposing straights came within **2.00 m** there, with car bodies
+**2.2 m** wide (the kit's ±0.055 of a tile) — oncoming cars overlapped in every junction. The
+control point is now where the two lane lines meet (`cornerOf`); a straight keeps its lane, 4 m
+from the oncoming one.
+
+**The conflict table** (`lanes.conflicts`): per junction, the turns whose paths come within 3.0 m
+— a car's width and the sweep of its corners on a curve — except turns off one approach (a queue,
+kept apart by the following model) and the same two streets driven in opposite directions (a
+bend's two curves pinch, but never cross).
+
+**The box rule** (`decideClaims` in `traffic.js`), once a step before anyone moves: the front car
+of each approach, within stopping distance of its line and let go by the light and the give-way
+rule, asks for its turn; it is let in only if no crossing turn is occupied or granted — including
+by a car stopped at the start of its road with its rear still in the box — and the road beyond has
+room. Longest-held first; after 4 s a car is owed the box; after 6 s it may queue into it with no
+room beyond. A car that has just crossed the line, or is on a sibling turn in the shared start,
+is in front of the next one whatever the wall says.
+
+**Gridlock is broken by removal, never by overlap.** Where junctions are a tile apart the link
+between them holds one car, and a ring of such links waits on itself. Past 20 s the longest-held
+car turns off the street, one a step, and `traffic.cleared` counts it.
+
+**Measured**, played city (64 tiles, forty years), 120 s: bodies overlapping in a box **0** with the
+rule, 4–6 without; cleared 12 (day) and 19 (rush); 28–32% of cars stopped against 13–25%.
+`lanes_dump` on the 96-tile city: **0 of 10,356** cars overlap and the row is a gate now; settled
+9,436 → 9,042. `footprintsOverlap` (a separating-axis test on two 4.4 × 2.2 m bodies) is the one
+definition every check uses — the first metric, centres under 2 m apart, counted two cars passing
+1.8 m apart round a bend and missed a car sitting on another's rear.
 
 ## 9.2 Signals
 

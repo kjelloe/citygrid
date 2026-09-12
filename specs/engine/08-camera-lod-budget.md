@@ -105,6 +105,13 @@ than a pixel — and on a wired city the two ribbons are the largest single thin
 did not fit its own budget with the whole ladder spent. The power and water overlays still say
 where the network reaches.
 
+**B4 and B7 (2026-09-12)** changed three things. The L3 rung **repeats** down to the one chunk the
+camera stands in: taken once, it gave up one 38,700-triangle chunk and then every car and person
+in the street, 25,000 together (ruling 019, amended). The crowd seen from the air (§9.3b) is a rung
+of its own, straight after E7's people, at 12 triangles a figure. And a count of chunks a plan
+refused is the **ceiling** at that view (`createChunkCeiling`): the estimate prices only baked
+chunks, so without it a still camera shed, evicted and rebaked the ninth chunk every two seconds.
+
 ## 8.3 The budget and what it cannot see
 
 The render-measure-step-down loop in `scene.js` stays the promise. Three costs sit outside it:
@@ -121,11 +128,11 @@ The render-measure-step-down loop in `scene.js` stays the promise. Three costs s
 
 Tiers (V2), defaulted from `deviceClass()`:
 
-| Tier | Budget | Frame target | L3 | Cars | Shadows | Post |
-|---|---|---|---|---|---|---|
-| Low (phone-weak) | 40k | 40 ms | none | capped 60 | off | none |
-| Medium (phone / weak desktop) | 140k | 40 ms | 4 chunks, day only | capped 200 | soft | pixel only |
-| High (desktop) | 400k | 20 ms | 9 chunks | uncapped | soft, following frustum | any |
+| Tier | Budget | Frame target | L3 | Cars | People (near / from the air) | Shadows | Post |
+|---|---|---|---|---|---|---|---|
+| Low (phone-weak) | 40k | 40 ms | none | capped 60 | none / none | off | none |
+| Medium (phone / weak desktop) | 140k | 40 ms | 4 chunks, day only | capped 200 | 40 / 200 | soft | pixel only |
+| High (desktop) | 400k | 20 ms | 9 chunks | uncapped | 120 / 600 | soft, following frustum | any |
 
 The Medium and High numbers were 80k and 200k until E5. They were set in V2, before L3 existed,
 and a chunk of real facades is 25.7k triangles — nine of them is 200k on its own. Measured on a

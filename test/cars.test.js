@@ -28,7 +28,7 @@ import { createModel } from "../client/world/model.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
-import { createTraffic, CAR_M, MAX_STEP } from "../client/life/traffic.js";
+import { createTraffic, CAR_M, MAX_STEP, footprintsOverlap } from "../client/life/traffic.js";
 
 const { stopLine, speed: VMAX, maxDensity } = DEFAULTS.road;
 
@@ -1174,4 +1174,201 @@ test("a car leaves by turning in at a door, indicating first", () => {
   }
   assert.ok(turnedIn > 3, `only ${turnedIn} cars turned in at a door while the street emptied`);
   assert.ok(indicated > 0, "nobody was indicating for their door");
+});
+
+// --- the junction box (slice B8, A74) ----------------------------------------
+//
+// Kjell, P64: "Cars have to stop and not drive through." Every overlap B4
+// measured was two TURN links crossing one box, which the per-link invariant
+// above has never been able to see.
+
+/** A signalled crossroads with both streets busy. */
+function crossroads(value = 220) {
+  const state = blank(28);
+  pave(state, row(12, 2, 25), column(12, 2, 25));
+  load(state, value);
+  return { state, model: createModel(state) };
+}
+
+/** How many pairs of cars are on two turn links that conflict, right now. */
+function boxViolations(traffic, model) {
+  const occupied = new Set();
+  for (const car of traffic.cars()) {
+    if (model.lanes.links[car.link].kind === "turn") occupied.add(car.link);
+  }
+  let n = 0;
+  for (const id of occupied) {
+    for (const other of model.lanes.conflicts.get(id) ?? []) if (other > id && occupied.has(other)) n += 1;
+  }
+  return n;
+}
+
+/** Pairs of cars whose bodies overlap, where at least one is inside a junction. */
+function boxOverlaps(traffic, model) {
+  const at = traffic.cars().map((c) => ({ ...traffic.footprintOf(c), turn: model.lanes.links[c.link].kind === "turn" }));
+  let n = 0;
+  for (let i = 0; i < at.length; i += 1) {
+    for (let j = i + 1; j < at.length; j += 1) {
+      if (!at[i].turn && !at[j].turn) continue;
+      if (footprintsOverlap(at[i], at[j])) n += 1;
+    }
+  }
+  return n;
+}
+
+test("two car bodies overlap when they touch, and not when they pass in their own lanes", () => {
+  const car = (x, z, tx, tz) => ({ x, z, tx, tz });
+  assert.equal(footprintsOverlap(car(0, 0, 1, 0), car(4.3, 0, 1, 0)), true, "nose to tail 4.3 m apart");
+  assert.equal(footprintsOverlap(car(0, 0, 1, 0), car(4.5, 0, 1, 0)), false, "nose to tail 4.5 m apart");
+  assert.equal(footprintsOverlap(car(0, 0, 1, 0), car(0, 4, -1, 0)), false, "oncoming, lanes 4 m apart");
+  assert.equal(footprintsOverlap(car(0, 0, 1, 0), car(0, 2, -1, 0)), true, "oncoming, 2 m apart");
+  assert.equal(footprintsOverlap(car(0, 0, 1, 0), car(1, 1, 0, 1)), true, "crossing at right angles");
+});
+
+test("a straight keeps its lane through the box, and a right turn is tighter than a left", () => {
+  // The curve's control point was the node's centre, so two opposing straights
+  // bowed to within 2.00 m of each other mid-box, with 2.2 m cars (B8).
+  const { model } = crossroads();
+  const node = model.nodes.find((n) => n.degree === 4);
+  const turns = model.lanes.links.filter((l) => l.kind === "turn" && l.node === node.id);
+  const straights = turns.filter((t) => t.turn === "straight");
+  let closest = Infinity;
+  for (const a of straights) {
+    for (const b of straights) {
+      if (a === b || a.axis !== b.axis) continue;
+      for (let i = 0; i < a.pts.length; i += 3) {
+        for (let j = 0; j < b.pts.length; j += 3) {
+          closest = Math.min(closest, Math.hypot(a.pts[i] - b.pts[j], a.pts[i + 2] - b.pts[j + 2]));
+        }
+      }
+    }
+  }
+  assert.ok(closest >= 3.5, `two opposing straights come within ${closest.toFixed(2)} m in the box`);
+  const mean = (kind) => {
+    const list = turns.filter((t) => t.turn === kind);
+    return list.reduce((s, t) => s + t.len, 0) / list.length;
+  };
+  assert.ok(mean("right") < mean("left"), `right ${mean("right").toFixed(1)} m against left ${mean("left").toFixed(1)} m`);
+});
+
+test("crossing turns are listed as conflicts, and a queue and two parallel streams are not", () => {
+  const { model } = crossroads();
+  const node = model.nodes.find((n) => n.degree === 4);
+  const turns = model.lanes.links.filter((l) => l.kind === "turn" && l.node === node.id);
+  const conflicts = model.lanes.conflicts;
+  assert.ok(turns.length >= 12, `${turns.length} turns at a crossroads`);
+  for (const t of turns) {
+    for (const other of conflicts.get(t.id) ?? []) {
+      assert.notEqual(other, t.id, "a turn conflicts with itself");
+      assert.ok((conflicts.get(other) ?? []).includes(t.id), "the table is not symmetric");
+      assert.notEqual(model.lanes.links[other].preds[0], t.preds[0], "two turns off one approach are a queue, not a crossing");
+    }
+  }
+  const straights = turns.filter((t) => t.turn === "straight");
+  const lefts = turns.filter((t) => t.turn === "left");
+  // The two straights along one street run past each other in their own lanes.
+  const opposed = straights.filter((a) => straights.some((b) => b !== a && b.axis === a.axis));
+  assert.ok(opposed.length >= 2, "no pair of opposing straights to check");
+  for (const a of opposed) {
+    const b = straights.find((x) => x !== a && x.axis === a.axis);
+    assert.ok(!(conflicts.get(a.id) ?? []).includes(b.id), "two opposing straights are listed as crossing");
+  }
+  // And a left turn cuts across the straight coming the other way.
+  for (const left of lefts) {
+    const oncoming = straights.find((s) => s.axis === left.axis && s.preds[0] !== left.preds[0]);
+    assert.ok(oncoming && (conflicts.get(left.id) ?? []).includes(oncoming.id),
+      "a left turn is not in conflict with the oncoming straight");
+  }
+});
+
+test("two turns that cross are never both occupied, and the test can see it when they are", () => {
+  // The lever is the test's own proof that it can fail: with the rule off,
+  // the same junction has cars in crossing turns at once (fallback-needs-a-lever).
+  const count = (conflicts) => {
+    const { state, model } = crossroads();
+    const traffic = createTraffic(state, model, { cap: 600, conflicts });
+    let violations = 0;
+    let overlaps = 0;
+    for (let step = 0; step < 30 * 120; step += 1) {
+      traffic.update(1 / 30);
+      if (step % 3 !== 0) continue;
+      violations += boxViolations(traffic, model);
+      overlaps += boxOverlaps(traffic, model);
+    }
+    return { violations, overlaps };
+  };
+  const off = count(false);
+  assert.ok(off.violations > 0, "with the rule off nothing ever crossed — the fixture cannot see the defect");
+  const on = count(true);
+  assert.equal(on.violations, 0, `${on.violations} samples with two crossing turns occupied`);
+  assert.equal(on.overlaps, 0, `${on.overlaps} samples with two cars under 2 m apart in the box (${off.overlaps} with the rule off)`);
+});
+
+test("a T holds its box too", () => {
+  const { state, model } = tee(28);
+  const traffic = createTraffic(state, model, { cap: 600 });
+  let violations = 0;
+  for (let step = 0; step < 30 * 90; step += 1) {
+    traffic.update(1 / 30);
+    violations += boxViolations(traffic, model);
+  }
+  assert.equal(violations, 0);
+});
+
+test("the box does not jam: the crossroads still carries its traffic and nobody waits for ever", () => {
+  // A junction that clears more slowly is expected; one that locks is not.
+  const settle = (conflicts) => {
+    const { state, model } = crossroads();
+    const traffic = createTraffic(state, model, { cap: 1000, conflicts });
+    let longest = 0;
+    for (let step = 0; step < 30 * 150; step += 1) {
+      traffic.update(1 / 30);
+      for (const car of traffic.cars()) longest = Math.max(longest, car.held ?? 0);
+    }
+    const moving = traffic.cars().filter((c) => c.v > 1).length;
+    return { count: traffic.count(), moving, longest, cleared: traffic.cleared };
+  };
+  const off = settle(false);
+  const on = settle(true);
+  assert.equal(on.cleared, 0, "a plain crossroads gridlocked and cars were taken off it");
+  assert.ok(on.count >= off.count * 0.8, `${on.count} cars with the rule against ${off.count} without`);
+  assert.ok(on.moving > on.count * 0.3, `only ${on.moving} of ${on.count} moving`);
+  assert.ok(on.longest < 60, `somebody waited ${on.longest.toFixed(1)} s at the box`);
+});
+
+test("the two directions round a bend are not a crossing", () => {
+  // They pinch under a car's width at a tight corner; listed as a conflict, a
+  // car waited for every oncoming car for as long as anyone watched (B8).
+  const state = blank(28);
+  pave(state, row(12, 2, 12), column(12, 12, 25));
+  load(state, 200);
+  const model = createModel(state);
+  const bend = model.nodes.find((n) => n.kind === "bend");
+  assert.ok(bend, "no bend in the fixture");
+  const turns = model.lanes.links.filter((l) => l.kind === "turn" && l.node === bend.id);
+  assert.ok(turns.length >= 2, `${turns.length} turns at the bend`);
+  for (const t of turns) assert.deepEqual(model.lanes.conflicts.get(t.id) ?? [], []);
+});
+
+test("nobody is held at a box for ever, where junctions are a tile apart", () => {
+  // The played city's worst case: two streets one tile apart, so a car
+  // waiting at one junction sits at the start of the link out of the next.
+  const state = blank(30);
+  pave(state, row(10, 2, 27), row(11, 2, 27), column(8, 2, 27), column(15, 2, 27), column(22, 2, 27));
+  load(state, 230);
+  const model = createModel(state);
+  const traffic = createTraffic(state, model, { cap: 1000 });
+  let longest = 0;
+  let violations = 0;
+  for (let step = 0; step < 30 * 150; step += 1) {
+    traffic.update(1 / 30);
+    for (const car of traffic.cars()) longest = Math.max(longest, car.held ?? 0);
+    if (step % 5 === 0) violations += boxViolations(traffic, model);
+  }
+  assert.ok(traffic.count() > 40, `only ${traffic.count()} cars on the grid`);
+  assert.equal(violations, 0, "two crossing turns were occupied at once");
+  // Nobody waits past the gridlock limit, and the way it is kept is a car
+  // turning off the street — never one driving through another.
+  assert.ok(longest < 22, `somebody was held ${longest.toFixed(1)} s at a box (cleared ${traffic.cleared})`);
+  assert.ok(traffic.cleared < 400, `${traffic.cleared} cars cleared from gridlock in 150 s`);
 });

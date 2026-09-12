@@ -5949,3 +5949,57 @@ crowd reads as life on the pavements rather than as figures — which is what th
 buys, and what the item's threshold asked for.
 
 **Next:** B8 — cars stop at a junction (A74), then S2.
+
+## slice-B8 — cars stop at a junction (2026-09-12)
+
+Kjell, P64: *"Cars have to stop and not drive through."* Before it, the review round after B7 found
+one omission: A63 says a room's hour is the room's clock, and B4's rush follows each client's own
+light clock — because no client plays a room yet (nothing in `client/` opens a socket). It is now
+part of slice 5.1's done-when, where the first client that does is built.
+
+**The geometry first, and it was the real defect.** I built a conflict table with a threshold from
+an assumed car width (1.8 m) and it listed oncoming straights as crossing. The kit's cars are
+**2.2 m** wide; the connectors bent round the NODE's centre, so every curve bowed into the middle of
+the box and two opposing straights passed **2.00 m** apart — oncoming cars overlapped in every
+junction in the city, and no threshold could fix that. The control point is where the two lane
+lines meet now (`cornerOf`), and a straight keeps its lane 4 m from the oncoming one.
+
+**The rule** (§9.1c): a conflict table per junction (paths within 3.0 m, less turns off one
+approach and the same two streets in opposite directions), and a claim per step for the front car
+of each approach — let in only if nothing crossing it is in the box or granted, and the road
+beyond has room. Then, one defect at a time, each found by classifying every pair of overlapping
+bodies on the played city rather than by guessing:
+
+- A tail spawn put a car in the mouth of a road a turning car was driving into — `tailSlot` looked
+  only at its own link. It checks the turns feeding it now.
+- Starvation: longest-held-first only orders the cars asking in one step, and a crossing flow that
+  never left the box empty held eleven cars for two minutes. After 4 s a car is owed the box.
+- Gridlock: where junctions are a tile apart the link between them holds one car, stopped at 6.0 m
+  of 8.0, so "room at the start" was never true behind it, and a ring of such links waited on
+  itself. After 6 s a car may queue into the box with no room beyond; after 20 s the longest-held
+  car turns off the street — **counted in `traffic.cleared`, never by letting it through**.
+- A car held at its line sat on the rear of the one that had just crossed it: the wall hid a nearer
+  car. The nearest thing in front wins now. Two turns off one lane touched at the corners as they
+  parted, and a car stopped at the start of a full road with its rear in the box let a crossing car
+  through that rear: the shared start is three car lengths, and a rear still in a turn occupies it.
+- The measure itself: centres under 2 m counted two cars passing round a bend and missed a car on
+  another's rear, and a car straddling two links was placed on the wrong one. `footprintsOverlap`
+  (a separating-axis test on two 4.4 × 2.2 m bodies) is the one definition every check uses, with
+  a lever (`conflicts: false`) that proves each test can fail.
+
+**Cost, measured and trimmed.** The conflict table first made the lane graph 48 ms instead of 11 on
+the 96-tile city (model 73.7 ms) — on a derivation that runs on every build action; an early-exit
+threshold test with a bounding-box reject brought the model back to **30.0 ms**. The traffic step is
+**0.20 ms** for 400 cars against 0.13 with the rule off (profiled: an array allocated per road per
+step, and the give-way question asked of the lane graph twice per front car per step, both removed).
+
+**Measured.** Played city (64 tiles, forty years), 120 s: overlapping bodies in a box **0** with the
+rule at both hours (4–6 without); longest wait 20 s; cleared 12 (day) and 19 (rush); 28–32% of cars
+stopped against 13–25%. `lanes_dump` on the 96-tile city: 0 of 10,356 cars overlapping, and the row
+is a gate; settled 9,436 → 9,042. Suite green twice, **1,303 tests**. `gates.mjs render` 4 of 4 in
+275 s of 300 (`lanes_dump` 35 → 66 s for the slower step); `quick` 11 of 11 in 374 s of 480.
+
+**What the picture says.** `smoke-B4-morning.png`, re-taken: a red car in the near lane and a short,
+orderly queue at the junction ahead, where B4's first shot had a heap of cars at mixed angles.
+
+**Next:** S2 — ground that is somewhere.

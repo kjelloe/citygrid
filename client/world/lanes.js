@@ -23,9 +23,13 @@ import { isSignalled, givesWayAt } from "./signals.js";
 // centre line" and "stop short of a junction", not two.
 import { rightOf, offsetPolyline, trim, lengthOf } from "./polyline.js";
 
-/** A quadratic through a junction: out of one lane's end, round the node, into
- * the next lane's start. The control point is the node itself, which is what
- * makes a right turn tighter than a left one without any special case. */
+/** A quadratic through a junction: out of one lane's end, round the corner,
+ * into the next lane's start. The control point is where the two LANE lines
+ * meet (`cornerOf`) — not the node's centre, which pulled every curve toward
+ * the middle of the box: two opposing straights came within 2.00 m of each
+ * other there, with cars 2.2 m wide, so oncoming cars overlapped in every
+ * junction in the city (B8). A right turn is still tighter than a left one,
+ * because its two lane lines meet nearer the kerb. */
 function turnCurve(a, node, b, samples = 6) {
   const pts = [];
   for (let i = 0; i <= samples; i += 1) {
@@ -277,7 +281,7 @@ export function deriveLanes(state, network, ground) {
         const n = into.pts.length;
         const a = { x: into.pts[n - 3], z: into.pts[n - 1] };
         const b = { x: out.pts[0], z: out.pts[2] };
-        const packed = packBetween(turnCurve(a, node, b), into.pts[n - 2], out.pts[1]);
+        const packed = packBetween(turnCurve(a, cornerOf(a, fin, b, fout), b), into.pts[n - 2], out.pts[1]);
         if (packed.len < 1e-6) continue;
         const link = {
           id: links.length, kind: "turn", lane: -1, corridor: -1, dir: into.dir,
@@ -316,6 +320,11 @@ export function deriveLanes(state, network, ground) {
     link.entry = link.preds.length === 0 && link.kind === "block";
     if (link.kind === "block" && node) link.axis = AXIS[armOf(link, node)];
   }
+
+  // --- the junction box (B8, A74) ----------------------------------------------
+  // Which turns cross which, per junction. Derived once with the graph; the
+  // traffic reads it to keep two crossing turns from being driven at once.
+  const conflicts = deriveConflicts(links);
 
   // --- signals ----------------------------------------------------------------
   const signals = new Map();
@@ -391,6 +400,8 @@ export function deriveLanes(state, network, ground) {
     phaseAt,
     givesWay,
     sample,
+    /** Turn link id → the turn links at the same junction whose paths it crosses. */
+    conflicts,
     stats: {
       lanes: lanes.length,
       links: links.length,
@@ -399,4 +410,134 @@ export function deriveLanes(state, network, ground) {
       signals: signals.size,
     },
   };
+}
+
+/** A car's width (the kit's body is ±0.055 of a tile, 2.2 m) and the sweep of
+ * its corners on a curve: two paths closer than this anywhere in the box
+ * cannot both be driven at once (B8). At 2.2 exactly, a car coming out of one
+ * turn and a car crossing near the end of it touched at the corners on the
+ * played city. Two straights along one street keep their lanes through the
+ * box, 4 m apart (`cornerOf`), so they stay clear of it. */
+const CONFLICT_M = 3.0;
+
+/**
+ * Turn link id → the turn links at the same junction it conflicts with.
+ *
+ * Every pair of turns at a node whose paths pass within `CONFLICT_M` — a left
+ * across the oncoming straight, two turns into the same lane, a right across
+ * the cross street — except two turns off the SAME approach: those share a
+ * start because they are one queue, and the following model keeps them apart.
+ * Two straights along one street run in their own lanes and never meet.
+ */
+function deriveConflicts(links) {
+  const byNode = new Map();
+  for (const link of links) {
+    if (link.kind !== "turn") continue;
+    if (byNode.has(link.node)) byNode.get(link.node).push(link);
+    else byNode.set(link.node, [link]);
+  }
+  const out = new Map();
+  const add = (a, b) => {
+    if (out.has(a)) out.get(a).push(b);
+    else out.set(a, [b]);
+  };
+  for (const turns of byNode.values()) {
+    for (let i = 0; i < turns.length; i += 1) {
+      for (let j = i + 1; j < turns.length; j += 1) {
+        const a = turns[i];
+        const b = turns[j];
+        if (a.preds[0] === b.preds[0]) continue;
+        // The same two streets driven in opposite directions — round a bend,
+        // or a left and the mirrored right at a crossroads — are on their own
+        // sides of the road and never cross. At a tight bend the two curves
+        // pinch under a car's width, and listing them held a car on the played
+        // city for the whole two minutes it was watched, behind oncoming
+        // traffic that never stopped (B8).
+        if (streetOf(links, a.preds[0]) === streetOf(links, b.next[0].link)
+          && streetOf(links, a.next[0].link) === streetOf(links, b.preds[0])) continue;
+        if (!pathsWithin(a, b, CONFLICT_M)) continue;
+        add(a.id, b.id);
+        add(b.id, a.id);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Where a lane arriving at `a` heading `da` would meet a lane leaving `b`
+ * heading `db` — the corner a turn bends round. Parallel lines (a straight
+ * through) have no corner, so the midpoint is used and the "curve" is a line
+ * that keeps its lane. Clamped to the span between the two ends, so a nearly
+ * parallel pair cannot throw the control point across the map.
+ */
+function cornerOf(a, da, b, db) {
+  const cross = da.x * db.z - da.z * db.x;
+  const mid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+  if (Math.abs(cross) < 0.2) return mid;
+  const s = ((b.x - a.x) * db.z - (b.z - a.z) * db.x) / cross;
+  const span = Math.hypot(b.x - a.x, b.z - a.z);
+  if (!(s > 0) || s > span) return mid;
+  return { x: a.x + da.x * s, z: a.z + da.z * s };
+}
+
+/** Which corridor a block link belongs to. */
+function streetOf(links, id) {
+  return links[id]?.corridor ?? -1;
+}
+
+/**
+ * Do two turns' paths come within `limit` of each other anywhere?
+ *
+ * A yes/no, not a distance, so it stops at the first close pair of segments,
+ * and two turns whose bounding boxes are further apart than `limit` — a right
+ * turn on each of two opposite corners — are not compared at all. Measuring
+ * the least distance of every pair made the lane graph of a 96-tile city 48 ms
+ * instead of 11, on a derivation that runs on every build action (B8).
+ */
+function pathsWithin(a, b, limit) {
+  const ba = boundsOf(a);
+  const bb = boundsOf(b);
+  if (ba.x0 - bb.x1 > limit || bb.x0 - ba.x1 > limit || ba.z0 - bb.z1 > limit || bb.z0 - ba.z1 > limit) return false;
+  const p = a.pts;
+  const q = b.pts;
+  for (let i = 3; i < p.length; i += 3) {
+    for (let j = 3; j < q.length; j += 3) {
+      if (segmentGap(p[i - 3], p[i - 1], p[i], p[i + 2], q[j - 3], q[j - 1], q[j], q[j + 2]) < limit) return true;
+    }
+  }
+  return false;
+}
+
+/** A link's ground-plane bounding box, computed once and kept on the link. */
+function boundsOf(link) {
+  if (link.bounds) return link.bounds;
+  let x0 = Infinity; let z0 = Infinity; let x1 = -Infinity; let z1 = -Infinity;
+  for (let i = 0; i < link.pts.length; i += 3) {
+    x0 = Math.min(x0, link.pts[i]); x1 = Math.max(x1, link.pts[i]);
+    z0 = Math.min(z0, link.pts[i + 2]); z1 = Math.max(z1, link.pts[i + 2]);
+  }
+  link.bounds = { x0, z0, x1, z1 };
+  return link.bounds;
+}
+
+function segmentGap(ax, az, bx, bz, cx, cz, dx, dz) {
+  const side = (px, pz, qx, qz, rx, rz) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+  const d1 = side(cx, cz, dx, dz, ax, az);
+  const d2 = side(cx, cz, dx, dz, bx, bz);
+  const d3 = side(ax, az, bx, bz, cx, cz);
+  const d4 = side(ax, az, bx, bz, dx, dz);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+  return Math.min(
+    pointGap(ax, az, cx, cz, dx, dz), pointGap(bx, bz, cx, cz, dx, dz),
+    pointGap(cx, cz, ax, az, bx, bz), pointGap(dx, dz, ax, az, bx, bz),
+  );
+}
+
+function pointGap(px, pz, ax, az, bx, bz) {
+  const vx = bx - ax;
+  const vz = bz - az;
+  const len = vx * vx + vz * vz;
+  const t = len > 1e-12 ? Math.max(0, Math.min(1, ((px - ax) * vx + (pz - az) * vz) / len)) : 0;
+  return Math.hypot(px - (ax + vx * t), pz - (az + vz * t));
 }

@@ -232,7 +232,14 @@ distance to the eye; the count is the same under two camera positions. **Gate.**
 `city 20t` big-viewport row gains a people column; `reports/smoke-B7-{city20,city40}.png` with the
 crowd painted magenta once (E7's trick) and then normal.
 
-## B8 — Cars stop at a junction (S) — **Q96 → A74**, Kjell 2026-09-12
+## B8 — Cars stop at a junction (S) — **Q96 → A74**, Kjell 2026-09-12 — **built 2026-09-12** (`specs/engine/09-life.md` §9.1c)
+
+**As built.** Lanes keep their offset through the box (the connector's control point was the
+node's centre, so oncoming straights passed 2.00 m apart with 2.2 m cars); a conflict table per
+junction; a box rule that lets a car in only when nothing crossing it is in the box and there is
+room beyond, with patience and a queue-in after 6 s; and a gridlock broken by taking the
+longest-held car off the road after 20 s, counted, never by an overlap. Played city: 0 overlapping
+bodies in a box, 12–19 cars cleared in two minutes. `lanes_dump`'s overlap row is a gate.
 
 *"Cars have to stop and not drive through."* Measured in B4: 7 pairs of cars under 2 m apart
 inside junction boxes on the 64-tile played city before B4, 16 at the morning rush after; 58 of 78
@@ -268,7 +275,7 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 
 ## Order
 
-B2 (done) → B4 (done) → B7 (done) → **B8 (A74) right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
+B2 (done) → B4 (done) → B7 (done) → B8 (done) → **next behaviour item right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
 moved up on 2026-09-11 because P61 asked for them by name —: B2 with S1 (the same kit
 files), B1 with S6 (the smoke), B5 after S5 (the benches). Weather last because it is the only
 item that adds a whole preset to every gate.

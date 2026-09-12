@@ -155,6 +155,12 @@ Three things the implementation settled that the paragraph above did not:
   a 2 m stop line the two are the same distance, so a right turn's endpoints coincided and the
   connector came out zero metres long. An `end` node has no box to keep clear, so a straight
   road is still `(n − 1) × TILE_M − 2 × stopLine`.
+- **A connector bends round the corner where its two lane lines meet** (`cornerOf`), not round
+  the node's centre (B8). Round the centre every curve bowed into the middle of the box, and two
+  opposing straights passed 2.00 m apart with cars 2.2 m wide. A straight keeps its lane.
+- **Each junction carries a conflict table** (`lanes.conflicts`, B8): the turns whose paths come
+  within 3.0 m, except turns off one approach and the same two streets in opposite directions.
+  The traffic's box rule reads it (`specs/engine/09-life.md` §9.1c).
 - **A connector takes its two end heights from the links it joins** and interpolates between.
   Those are the same points, the ground inside a junction box is flattened by the corridor
   blend, and it removes 30,000 of the 37,332 ground queries a saturated 96×96 makes — 60 ms of

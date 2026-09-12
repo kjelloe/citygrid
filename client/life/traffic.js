@@ -32,6 +32,29 @@ import { NET_PRESENT } from "../constants-mirror.js";
 export const MAX_STEP = 1 / 15;
 
 export const CAR_M = 4.4;
+/** A car's width, for the overlap checks (B8). The kit's body is ±0.055 of a
+ * tile (`building-kit.js`, which node cannot load) — change the two together. */
+export const CAR_W = 2.2;
+
+/**
+ * Do two cars' bodies overlap? Each is `{ x, z, tx, tz }`: the middle and the
+ * unit heading, in metres. A separating-axis test on two CAR_M × CAR_W
+ * rectangles — the check every gate and test uses, so "two cars drove through
+ * each other" means the same thing everywhere. A centre distance under 2 m
+ * did not: it counted two oncoming cars passing 1.8 m apart round a bend as a
+ * collision and would have missed two parked nose to nose.
+ */
+export function footprintsOverlap(p, q) {
+  const dx = q.x - p.x;
+  const dz = q.z - p.z;
+  const hl = CAR_M / 2;
+  const hw = CAR_W / 2;
+  for (const [ax, az] of [[p.tx, p.tz], [-p.tz, p.tx], [q.tx, q.tz], [-q.tz, q.tx]]) {
+    const reach = (c) => hl * Math.abs(c.tx * ax + c.tz * az) + hw * Math.abs(-c.tz * ax + c.tx * az);
+    if (Math.abs(dx * ax + dz * az) >= reach(p) + reach(q)) return false;
+  }
+  return true;
+}
 
 // The intelligent-driver model, which is four constants and one equation.
 // Chosen for behaviour rather than realism: S0 and HEADWAY set what a queue
@@ -77,6 +100,9 @@ export function createTraffic(state, model, options = {}) {
   const links = lanes.links;
   const live = options.life !== false;
   const cap = options.cap > 0 ? options.cap : Infinity;
+  /** Keep two crossing turns from being driven at once (B8, A74). A lever so a
+   * test can show it fails without it; nothing in the game turns it off. */
+  const boxRule = options.conflicts !== false;
 
   // A car is five numbers and never an object allocation in the loop.
   const cars = [];
@@ -357,7 +383,7 @@ export function createTraffic(state, model, options = {}) {
   function spawn(link, v0) {
     if (cars.length >= cap) return false;
     const list = onLink.get(link.id) ?? [];
-    const at = doorSlot(link, list, v0) ?? tailSlot(list, v0);
+    const at = doorSlot(link, list, v0) ?? tailSlot(link, list, v0);
     if (!at) return false;
     const id = nextId;
     nextId += 1;
@@ -372,9 +398,18 @@ export function createTraffic(state, model, options = {}) {
     return true;
   }
 
-  function tailSlot(list, v0) {
+  function tailSlot(link, list, v0) {
     const first = list[0];
     if (first && first.s < CAR_M + S0 + v0 * HEADWAY) return undefined;
+    // Nor on top of a car about to come OUT of the junction into this link.
+    // The check above sees only this link, and with the box rule in place every
+    // overlap left at a crossroads was a car spawned in the mouth of the road a
+    // turning car was driving into (B8).
+    for (const pred of link.preds) {
+      const into = onLink.get(pred);
+      const last = into && into.length > 0 ? into[into.length - 1] : undefined;
+      if (last && links[pred].len - last.s < CAR_M + S0 + last.v * HEADWAY) return undefined;
+    }
     return { s: 0, v: first ? Math.min(v0, first.v) : v0, index: 0 };
   }
 
@@ -428,6 +463,11 @@ export function createTraffic(state, model, options = {}) {
       leadV = next.v;
       return { gap, leadV, hard: false };
     }
+    // Inside the shared start of a turn, the turns off the same approach are
+    // one road: a left turner stopped 7 m in because its exit is full is in
+    // front of the straight car behind it, which otherwise drove past with
+    // their corners touching (B8).
+    const alongside = beside(car, link);
 
     // Somebody in the road is a wall, and a harder one than a red light:
     // A45 gives a person right of way and a car that merely slows for one has
@@ -437,10 +477,17 @@ export function createTraffic(state, model, options = {}) {
       return { gap: Math.max(0, person - car.s - S0), leadV: 0, hard: true };
     }
 
-    // Nothing in front on this link. A signal at the end of it is a wall.
+    // Nothing in front on this link — but the car that has just crossed the
+    // line may still have its rear on it. The nearest thing in front wins, so
+    // a wall at the line never hides a car already past it: a car held at a
+    // box sat on the rear of the one that had just entered (B8).
+    const entered = justEntered(car, link);
+    const wall = (at) => (entered && entered.gap < at ? entered : { gap: at, leadV: 0, hard: true });
+
+    // A signal at the end of it is a wall.
     const node = link.kind === "block" ? link.to : -1;
     if (node >= 0 && lanes.signals.has(node) && lanes.phaseAt(node, clock) !== link.axis) {
-      return { gap: link.len - car.s, leadV: 0, hard: true };
+      return wall(link.len - car.s);
     }
     // And so is a junction this arm gives way at (T1, A51). Since only a
     // crossing of two real streets is signalled, most junctions on an ordinary
@@ -448,20 +495,191 @@ export function createTraffic(state, model, options = {}) {
     // through each other at every one of them. The minor arm waits until
     // nothing on the through road is within `GIVE_WAY_SECONDS` of the box; the
     // through road never stops.
-    if (node >= 0 && lanes.givesWay(link) && !gapAt(node, link)) {
-      return { gap: link.len - car.s, leadV: 0, hard: true };
+    if (node >= 0 && yieldsAt(link) && !gapAt(node, link)) {
+      return wall(link.len - car.s);
     }
+
+    // And the box (B8): somebody crossing this car's turn, or no room beyond.
+    if (car.hold) return wall(link.len - car.s);
 
     // Otherwise look onto the link this car will join, so a queue does not stop
     // dead at every junction it crosses.
     const target = chooseNext(car, link);
     if (target < 0) return { gap: Infinity, leadV: 0, hard: false };
+    let gapTo = Infinity;
+    let leadTo = 0;
     const beyond = onLink.get(target);
     if (beyond && beyond.length > 0) {
-      const lead = beyond[0];
-      return { gap: (link.len - car.s) + lead.s - CAR_M, leadV: lead.v, hard: false };
+      gapTo = (link.len - car.s) + beyond[0].s - CAR_M;
+      leadTo = beyond[0].v;
     }
-    return { gap: Infinity, leadV: 0, hard: false };
+    if (entered && entered.gap < gapTo) return entered;
+    if (alongside && alongside.gap < gapTo) return alongside;
+    return { gap: gapTo, leadV: leadTo, hard: false };
+  }
+
+  /** The nearest car ahead of this one on a SIBLING turn — another turn off the
+   * same approach — while this car is still in their shared start. */
+  function beside(car, link) {
+    if (!boxRule || link.kind !== "turn" || car.s >= SHARED_START) return undefined;
+    const approach = links[link.preds[0]];
+    if (!approach) return undefined;
+    let best;
+    for (const step of approach.next) {
+      if (step.link === link.id) continue;
+      for (const other of onLink.get(step.link) ?? []) {
+        if (other.s <= car.s || other.s - CAR_M >= SHARED_START) continue;
+        const gap = other.s - car.s - CAR_M;
+        if (!best || gap < best.gap) best = { gap, leadV: other.v, hard: false };
+      }
+    }
+    return best;
+  }
+
+  /** How far a turn off one approach shares its start with the others: two
+   * turns from the same lane are within a car's width of each other for about
+   * this long, so a car still in it is in front of the next car whichever way
+   * that one is going. 6.4 m let a straight car in beside a left turner 6.6 m
+   * along, and a turning car's body swings its rear corner back toward the
+   * shared start for about three car lengths (B8). */
+  const SHARED_START = 3 * CAR_M;
+
+  /** The nearest car that has left this approach into ANY of its turns and is
+   * still within `SHARED_START` of it — as a lead, with its gap measured
+   * through the line. Undefined when there is none. */
+  function justEntered(car, link) {
+    if (!boxRule || link.kind !== "block") return undefined;
+    let best;
+    for (const step of link.next) {
+      const list = onLink.get(step.link);
+      if (!list || list.length === 0 || list[0].s >= SHARED_START) continue;
+      const gap = (link.len - car.s) + list[0].s - CAR_M;
+      if (!best || gap < best.gap) best = { gap, leadV: list[0].v, hard: false };
+    }
+    return best;
+  }
+
+  /** How near its stop line a car asks for the box, in metres, at the least —
+   * more when it is going fast enough to need longer to stop (B8). */
+  const CLAIM_M = 8;
+  /** Turn links somebody is in, or has been let into, this step. */
+  const boxBusy = new Set();
+  /** How long a car may be held at a box before it is owed it: nobody whose
+   * turn crosses its turn is let in ahead of it after this (B8). */
+  const PATIENCE_S = 4;
+  /** And how long before it may enter a box with no room beyond it, as long as
+   * nothing crossing it is in the box (B8). Where junctions are a tile apart
+   * the link between them is 8 m and holds ONE car, stopped at its line at
+   * 6.0 m — so "room at the start" was never true behind it, a ring of such
+   * links waited on itself, and a car on the played city was held for the
+   * whole two minutes watched. Entering, it queues on its turn behind that car:
+   * the following model keeps it off the car ahead and the occupied turn keeps
+   * crossing traffic out, so nothing drives through anything. */
+  const STUCK_S = 6;
+  /** A gridlock is broken by taking a car OFF the road, never by letting one
+   * drive through another (A74). Past this, the longest-held car — one a step,
+   * so a ring of waiting cars loses one and unwinds — turns off the street as
+   * if into a side entrance. Counted, so how often it happens is a number and
+   * not a secret (B8). */
+  const GRIDLOCK_S = 20;
+  let cleared = 0;
+
+  /**
+   * Who may enter a junction box this step (B8, A74: "cars have to stop and not
+   * drive through").
+   *
+   * The front car of each approach, once it is within stopping distance of the
+   * line and the light and the give-way rule would let it go, asks for the turn
+   * it has chosen. It is let in only if no turn that CROSSES it is occupied or
+   * already granted, and only if the road beyond has room for it — a car that
+   * enters a box it cannot leave holds every crossing movement behind it, which
+   * is how a grid locks. Whoever has been held longest asks first, so nobody
+   * waits for ever. A car not let in holds at the line (`ahead`).
+   */
+  function decideClaims() {
+    if (!boxRule) {
+      for (const car of cars) car.hold = false;
+      return;
+    }
+    boxBusy.clear();
+    for (const car of cars) {
+      car.hold = false;
+      if (links[car.link].kind === "turn") boxBusy.add(car.link);
+      // A car that has left its turn but not cleared it — stopped at the very
+      // start of a full road with its rear still in the box — still occupies
+      // it. Counted only by where its FRONT was, a crossing car was let through
+      // its rear (B8).
+      else if (car.s < CAR_M && car.from !== undefined && links[car.from]?.kind === "turn") boxBusy.add(car.from);
+    }
+    const asking = [];
+    for (const [linkId, list] of onLink) {
+      const link = links[linkId];
+      if (link.kind !== "block" || list.length === 0 || link.next.length === 0) continue;
+      const car = list[list.length - 1];
+      const reach = Math.max(CLAIM_M, (car.v * car.v) / (2 * BRAKE) + S0);
+      if (link.len - car.s > reach) { car.claim = undefined; continue; }
+      const node = link.to;
+      // The light and the give-way rule hold it first; a car waiting at a red
+      // must not keep a claim that stops the green crossing it.
+      if (lanes.signals.has(node) && lanes.phaseAt(node, clock) !== link.axis) { car.claim = undefined; continue; }
+      if (yieldsAt(link) && !gapAt(node, link)) { car.claim = undefined; continue; }
+      const target = chooseNext(car, link);
+      if (target < 0) continue;
+      if (car.claim === target) { boxBusy.add(target); continue; }
+      asking.push({ car, target });
+    }
+    asking.sort((a, b) => (b.car.held ?? 0) - (a.car.held ?? 0) || a.car.id - b.car.id);
+    // Somebody held past their patience is OWED the box. Longest-held-first
+    // only orders the cars asking in the same step, and on the played city a
+    // crossing flow that never left the box empty — or kept filling the road
+    // beyond — held eleven cars for two minutes. So nobody whose turn crosses
+    // an owed car's turn goes ahead of it; the conflict table includes two
+    // turns into the same lane, which is what frees the road beyond.
+    const owed = asking.filter((a) => (a.car.held ?? 0) > PATIENCE_S);
+    for (const { car, target } of asking) {
+      const crossed = (lanes.conflicts.get(target) ?? []).some((id) => boxBusy.has(id));
+      const crossing = lanes.conflicts.get(target) ?? [];
+      const yields = owed.some((o) => o.car !== car && (o.car.held ?? 0) >= (car.held ?? 0)
+        && crossing.includes(o.target));
+      if (!crossed && !yields && (roomBeyond(target) || (car.held ?? 0) > STUCK_S)) {
+        car.claim = target;
+        boxBusy.add(target);
+      } else {
+        car.claim = undefined;
+        car.hold = true;
+      }
+    }
+  }
+
+  /** Takes the longest-held car off the road once it has waited `GRIDLOCK_S`
+   * at a box. One a step: a ring of cars waiting on each other needs one gap. */
+  function breakGridlock() {
+    if (!boxRule) return;
+    let worst;
+    for (const car of cars) {
+      if (car.hold && (car.held ?? 0) > GRIDLOCK_S && (!worst || car.held > worst.held)) worst = car;
+    }
+    if (!worst) return;
+    cars.splice(cars.indexOf(worst), 1);
+    const list = onLink.get(worst.link);
+    if (list) list.splice(list.indexOf(worst), 1);
+    cleared += 1;
+  }
+
+  /** Is there room for one more car at the start of the road a turn leads to? */
+  function roomBeyond(turnId) {
+    const out = links[turnId].next[0]?.link;
+    if (out === undefined) return true;
+    const list = onLink.get(out);
+    return !list || list.length === 0 || list[0].s > CAR_M + S0;
+  }
+
+  /** Whether a link gives way where it arrives — the answer stored on the link
+   * at construction, not asked of the lane graph again: it works it out from
+   * the corridors on every call, and the box rule made that two calls per
+   * front car per step (B8). */
+  function yieldsAt(link) {
+    return link.givesWay === true;
   }
 
   /** How long a gap the minor arm needs on the through road, in seconds. */
@@ -533,15 +751,19 @@ export function createTraffic(state, model, options = {}) {
       desired.set(link.id, speedFor(load));
       const target = targetFor(link, load);
       let credit = (fillCredit.get(link.id) ?? 0) + FILL_PER_SECOND * dt;
+      // A car already turning in for a door is gone as far as the count is
+      // concerned; it just has not arrived yet. Counted once per link rather
+      // than filtered inside the loop — an array per link per step was the
+      // largest allocation in the traffic step.
+      let turningIn = 0;
+      if (credit >= 1) for (const c of list) if (c.exitAt !== undefined) turningIn += 1;
       while (credit >= 1) {
         credit -= 1;
-        // A car already turning in for a door is gone as far as the count is
-        // concerned; it just has not arrived yet.
-        const staying = list.length - list.filter((c) => c.exitAt !== undefined).length;
+        const staying = list.length - turningIn;
         if (staying + 0.5 < target) {
           if (!spawn(link, desired.get(link.id))) break;
         } else if (staying - 0.5 > target && staying > 0) {
-          if (sendHome(link, list)) continue;
+          if (sendHome(link, list)) { turningIn += 1; continue; }
           // Nobody has a door ahead: the car nearest the end goes, so nothing
           // vanishes under the eye in the middle of a street.
           const going = list[list.length - 1];
@@ -551,6 +773,9 @@ export function createTraffic(state, model, options = {}) {
       }
       fillCredit.set(link.id, Math.min(credit, 1));
     }
+
+    decideClaims();
+    breakGridlock();
 
     // Follow, then advance. Two passes so every car sees the same instant.
     for (const [linkId, list] of onLink) {
@@ -577,6 +802,8 @@ export function createTraffic(state, model, options = {}) {
         // measured on a four-junction city only 2.5% of cars are decelerating
         // at any instant while 13% are stopped or crawling.
         car.brake = a < -0.8 || (car.v < 1.5 && v0 > 2);
+        // How long this car has been held at a box, so it asks first (B8).
+        car.held = car.hold ? (car.held ?? 0) + dt : 0;
         car.v = Math.max(0, Math.min(VMAX, car.v + a * dt));
         // Never move further than the gap: the model is stable at these
         // constants but a fixed step is not a proof, and two cars in the same
@@ -596,7 +823,9 @@ export function createTraffic(state, model, options = {}) {
       const target = chooseNext(car, link);
       if (target < 0) { leaving.push(car); continue; }
       car.s -= link.len;
+      car.from = car.link;
       car.link = target;
+      car.claim = undefined;
       const beyond = links[target];
       if (car.s > beyond.len) car.s = beyond.len;
     }
@@ -633,6 +862,9 @@ export function createTraffic(state, model, options = {}) {
     setPhase(at) {
       phase = at;
     },
+
+    /** How many cars have been taken off the road to break a gridlock (B8). */
+    get cleared() { return cleared; },
 
     /** Each block link's doors, by link id: `{ s, home, lot }`, sorted by `s`. */
     doors() {
@@ -699,6 +931,21 @@ export function createTraffic(state, model, options = {}) {
      * something a screenshot argues about — a car with them behind it reads as
      * traffic going the wrong way down the street, and only at a distance.
      */
+    /** A car's body for `footprintsOverlap`: middle and heading, in metres. */
+    footprintOf(car) {
+      const link = links[car.link];
+      if (!link) return undefined;
+      // A car whose middle is still behind the line is on the link it came
+      // from: clamped to this link's start, it was placed up to 2.2 m too far
+      // forward, and the overlap test missed the car sitting on its rear.
+      const middle = car.s - CAR_M / 2;
+      const back = middle < 0 ? links[car.from] : undefined;
+      const at = back
+        ? lanes.sample(back, back.len + middle, { x: 0, y: 0, z: 0, tx: 0, tz: 0 })
+        : lanes.sample(link, middle, { x: 0, y: 0, z: 0, tx: 0, tz: 0 });
+      return { x: at.x, z: at.z, tx: at.tx, tz: at.tz };
+    },
+
     lampsOf(car) {
       const link = links[car.link];
       if (!link) return [];

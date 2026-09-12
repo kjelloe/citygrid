@@ -51,11 +51,11 @@ here has run on a phone, and the frame-time governor exists for phones — see "
 **The triangle budget** (`data/cityviewer.json`, ruling 040 — the tier changes rendering only,
 never the simulation):
 
-| Tier | Triangles | Frame target | Street chunks | Cars | People | Lamps | Post |
+| Tier | Triangles | Frame target | Street chunks | Cars | People (near / from the air) | Lamps | Post |
 |---|---|---|---|---|---|---|---|
-| Low | 40,000 | 40 ms | none | 60 | 0 | 0 | — |
-| Medium | 140,000 | 40 ms | 4 | 200 | 40 | 5 | pixel |
-| High | 400,000 | 20 ms | 9 | uncapped | 120 | 8 | pixel, ink |
+| Low | 40,000 | 40 ms | none | 60 | 0 / 0 | 0 | — |
+| Medium | 140,000 | 40 ms | 4 | 200 | 40 / 200 | 5 | pixel |
+| High | 400,000 | 20 ms | 9 | uncapped | 120 / 600 | 8 | pixel, ink |
 
 The frame targets are thresholds with headroom, not refresh intervals: 20 ms is 60 fps with a fifth
 of a frame of room, 40 ms is 30 fps with the same. They were the intervals themselves until D5,

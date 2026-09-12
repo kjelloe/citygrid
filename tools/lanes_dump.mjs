@@ -191,17 +191,18 @@ if (shortest.len < CAR) {
       process.exit(1);
     }
 
-    // **Cars through each other inside a junction.** Printed, not gated: it
-    // predates B4 (seven pairs on the 64-tile played city before the slice),
-    // and `test/cars.test.js`'s overlap invariant is per LINK, so two turn
-    // links crossing one box are invisible to it. A number to watch until the
-    // junction conflict question is answered.
+    // **Cars through each other inside a junction.** Printed from B4, a GATE
+    // from B8 (A74: "cars have to stop and not drive through"): it predated B4
+    // (seven pairs on the 64-tile played city), and `test/cars.test.js`'s
+    // original overlap invariant is per LINK, so two turn links crossing one
+    // box were invisible to it.
     {
       const t = createTraffic(state, model, { cap: 100000 });
       t.setPhase(phaseForPreset("morning"));
       for (let elapsed = 0; elapsed < 120; elapsed += 1 / 30) t.update(1 / 30);
       const cars = t.cars();
-      const at = cars.map((c) => { const l = t.lampsOf(c); return { x: (l[0].x + l[1].x) / 2, z: (l[0].z + l[1].z) / 2, c }; });
+      const { footprintsOverlap } = await import("../client/life/traffic.js");
+      const at = cars.map((c) => ({ ...t.footprintOf(c), c }));
       const grid = new Map();
       for (const p of at) {
         const k = `${Math.floor(p.x / 4)},${Math.floor(p.z / 4)}`;
@@ -216,7 +217,7 @@ if (shortest.len < CAR) {
         for (let dx = -1; dx <= 1; dx += 1) {
           for (let dz = -1; dz <= 1; dz += 1) {
             for (const q of grid.get(`${gx + dx},${gz + dz}`) ?? []) {
-              if (q.c.id <= p.c.id || Math.hypot(q.x - p.x, q.z - p.z) >= 2) continue;
+              if (q.c.id <= p.c.id || !footprintsOverlap(p, q)) continue;
               pairs += 1;
               if (lanes.links[p.c.link].kind === "turn" && lanes.links[q.c.link].kind === "turn") inJunction += 1;
             }
@@ -224,8 +225,12 @@ if (shortest.len < CAR) {
         }
       }
       const stopped = cars.filter((c) => c.v < 0.5).length;
-      console.log(`overlaps        ${pairs} pairs of cars under 2 m apart (${inJunction} both in a junction) `
+      console.log(`overlaps        ${pairs} pairs of cars whose bodies overlap (${inJunction} both in a junction) `
         + `of ${cars.length}, ${Math.round(100 * stopped / Math.max(1, cars.length))}% stopped, morning, 120 s`);
+      if (inJunction > 0) {
+        console.error(`\nFAIL  ${inJunction} pair(s) of cars inside a junction box together (B8)`);
+        process.exit(1);
+      }
     }
   }
   if (cars === 0) {
