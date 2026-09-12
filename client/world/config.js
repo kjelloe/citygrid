@@ -93,7 +93,9 @@ export const DEFAULTS = Object.freeze({
   // picture exactly; `mottle` is the per-tile lightness scatter; `urbanReach`
   // is how far from a street the tended ground extends, and `farTone` how much
   // darker and greyer the country beyond it goes.
-  ground: { blend: 1, mottle: 0.06, urbanReach: 40, farTone: 0.12 },
+  // `tone` is how far a grass tile goes toward the second grass colour where
+  // the coarse noise says so (S2) — 0 is one green.
+  ground: { blend: 1, mottle: 0.06, urbanReach: 40, farTone: 0.12, tone: 0.55 },
   lot: {
     setback: { none: 2, residential: 3, commercial: 0, industrial: 2 },
     bayW: { none: 6, residential: 6, commercial: 5, industrial: 8 },

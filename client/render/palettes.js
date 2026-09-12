@@ -11,7 +11,7 @@ export const PALETTES = {
     // Vivid, cheerful, high-contrast — the reference's grass is almost
     // luminous and its water is cyan rather than navy. A cosy toy world does
     // not use realistic colours.
-    terrain: [0x62c144, 0xc0a274, 0x3f9b34, 0x39c5e8, 0xa8ecfa, 0xa8a49e, 0xf0dfae, 0x74a05c],
+    terrain: [0x98f040, 0xc0a274, 0x3f9b34, 0x39c5e8, 0xa8ecfa, 0xa8a49e, 0xf0dfae, 0x74a05c],
     tree: 0x2f8f3a,
     trunk: 0x6b5340,
     zone: [0x000000, 0xefc9a4, 0x8fd0f0, 0xd9a45c],
@@ -43,7 +43,7 @@ export const PALETTES = {
   // palette rather than as a lit 3D scene.
   pixel: {
     sky: 0x58a8d8,
-    terrain: [0x58b038, 0xa8804a, 0x2f8830, 0x2878b8, 0x8fd8f0, 0x8f8f98, 0xe8d078, 0x5a8848],
+    terrain: [0x8ae03c, 0xa8804a, 0x2f8830, 0x2878b8, 0x8fd8f0, 0x8f8f98, 0xe8d078, 0x5a8848],
     tree: 0x1f7a2f,
     trunk: 0x6b5340,
     zone: [0x000000, 0xe8b888, 0x58a8e8, 0xd89838],

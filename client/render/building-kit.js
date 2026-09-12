@@ -671,6 +671,51 @@ export function cityPersonGeometry() {
   return finish(parts);
 }
 
+/** Stones for rock and dirt ground (S2): five faces round a raised point,
+ * three sizes, wound so every face points out of the stone. */
+export const BOULDER_VARIANTS = 3;
+
+function boulder(size) {
+  const parts = makeParts();
+  const r = [0.035, 0.06, 0.09][size];
+  const h = r * 0.75;
+  const ring = [];
+  for (let i = 0; i < 5; i += 1) {
+    const a = (i / 5) * Math.PI * 2 + size;
+    const k = 0.78 + 0.22 * (((i * 7 + size * 3) % 5) / 4);
+    ring.push([Math.cos(a) * r * k, 0, Math.sin(a) * r * k]);
+  }
+  const top = [r * 0.15, h, -r * 0.1];
+  for (let i = 0; i < 5; i += 1) {
+    const a = ring[i];
+    const b = ring[(i + 1) % 5];
+    const ux = b[0] - a[0]; const uy = b[1] - a[1]; const uz = b[2] - a[2];
+    const vx = top[0] - a[0]; const vy = top[1] - a[1]; const vz = top[2] - a[2];
+    const nx = uy * vz - uz * vy;
+    const nz = ux * vy - uy * vx;
+    const mx = (a[0] + b[0]) / 2;
+    const mz = (a[2] + b[2]) / 2;
+    const shade = 0.85 + 0.05 * i;
+    if (nx * mx + nz * mz >= 0) pushTri(parts, a, b, top, shade);
+    else pushTri(parts, a, top, b, shade);
+  }
+  return finish(parts);
+}
+
+export function boulderVariants() {
+  const list = [];
+  for (let v = 0; v < BOULDER_VARIANTS; v += 1) list.push(boulder(v));
+  return list;
+}
+
+/** A sign post on an empty plot (S2, Q73): a pole and a board. */
+export function signGeometry() {
+  const parts = makeParts();
+  addBox(parts, -0.004, 0, -0.004, 0.004, 0.06, 0.004, 0.6);
+  addBox(parts, -0.022, 0.042, -0.003, 0.022, 0.068, 0.003, 1.3);
+  return finish(parts);
+}
+
 export function pedVariants() {
   const list = [];
   for (let i = 0; i < PED_VARIANTS; i += 1) list.push(person(i));

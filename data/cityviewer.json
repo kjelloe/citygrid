@@ -21,7 +21,8 @@
     "blend": 1,
     "mottle": 0.06,
     "urbanReach": 40,
-    "farTone": 0.12
+    "farTone": 0.12,
+    "tone": 0.55
   },
   "lot": {
     "setback": {

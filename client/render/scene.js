@@ -16,6 +16,7 @@ import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { phaseForPreset } from "../world/rush.js";
+import { countrysideFor } from "../world/countryside.js";
 import { tierConfig } from "../world/config.js";
 import { photoStep, photoLook } from "../world/photo.js";
 import { createGovernor } from "./governor.js";
@@ -764,7 +765,7 @@ export function createRenderer(canvas, state, options = {}) {
     // own bounds are known. One frame stale is a person on the edge of the
     // view, which is invisible; deriving the bounds twice a frame is not.
     lastBounds = bounds;
-    counts = countScene(state, bounds);
+    counts = countScene(state, bounds, countrysideFor(state, model));
     // Only the cars on screen, which is the same set `pose` writes (R1.1).
     counts.cars = traffic.count(bounds);
     counts.peds = pedestrians.count(bounds);

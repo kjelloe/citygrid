@@ -29,6 +29,11 @@ export const TIER = {
  * geometry itself at startup (see measureCosts) rather than being guessed —
  * a guessed cost budget is not a budget. */
 const DEFAULT_COSTS = {
+  // S2's ground detail, priced as what it is rather than as an average prop
+  // (90): a kerb is a flat quad, a stone five faces. Measured by
+  // `createInstances` like everything else here.
+  kerb: 2,
+  groundProp: 12,
   building: { 2: 620, 1: 190, 0: 36 },
   // A tier-0 tree is a stump and a canopy, not nothing. Pricing it at zero
   // hid 18,000 triangles from a budget that was supposed to be counting them.
@@ -277,6 +282,8 @@ function estimateOne(counts, plan) {
   const flat = counts.roads * costs.road
     + (plan.cars !== false ? counts.cars * costs.car : 0)
     + (plan.peds !== false ? counts.peds * costs.ped : 0)
+    // S2's ground detail rides the props rung, at its own measured cost.
+    + (plan.props ? (counts.kerbs ?? 0) * costs.kerb + (counts.groundProps ?? 0) * costs.groundProp : 0)
     // The city crowd (B7): the figure from the air where it is drawn, and E7's
     // person where the same people are close enough to be drawn as one.
     + (plan.pedsCity !== false
@@ -619,9 +626,11 @@ export function markingInstances(mask) {
 }
 
 /** Counts the renderer needs before it can plan. Cheap: no geometry touched. */
-export function countScene(state, bounds) {
+export function countScene(state, bounds, country = undefined) {
   let trees = 0;
   let props = 0;
+  let kerbs = 0;
+  let groundProps = 0;
   let roads = 0;
   let poles = 0;
   let markArms = 0;
@@ -637,7 +646,7 @@ export function countScene(state, bounds) {
   const blank = () => ({
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
     markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0, peds: 0,
-    waterTiles: 0,
+    waterTiles: 0, kerbs: 0, groundProps: 0,
   });
   const chunkAt = (x, y) => {
     const key = ((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0);
@@ -648,6 +657,11 @@ export function countScene(state, bounds) {
   const NET = 16;
   const FOREST = 2;
   const GRASS = 0;
+  const ROCK = 5;
+  const DIRT = 1;
+  // Read once, and optional: a hand-built state with no zone layer is simply
+  // unzoned (S2's plot kerbs are the first thing here to read it).
+  const zones = state.tiles.zone;
   const MARSH = 7;
   const WATER = 3;
   const SHALLOW = 4;
@@ -705,6 +719,38 @@ export function countScene(state, bounds) {
       props += PROPS_PER_FIELD;
       part.props += PROPS_PER_FIELD;
     }
+    // The ground's matter (S2), at the rates `instances.js` places it: stones
+    // on rock (one or two) and dirt (six in ten), undergrowth in a wood, reeds
+    // in a marsh; an empty plot's kerbs exactly, one per edge it does not share
+    // with the same plot, and a sign on a quarter; and each hedgerow once,
+    // from the same countryside the renderer asks.
+    if (!paved && state.tiles.buildingId[i] === 0) {
+      const t = state.tiles.terrain[i];
+      let extra = t === ROCK ? 1.5 : t === DIRT ? 0.6 : (t === FOREST || t === MARSH) ? 1 : 0;
+      let kerb = 0;
+      const W = state.width;
+      const tx = i % W;
+      const ty = (i - tx) / W;
+      const zone = zones ? zones[i] : 0;
+      if (zone !== 0) {
+        const same = (nx, ny) => nx >= 0 && ny >= 0 && nx < W && ny < state.height
+          && zones[ny * W + nx] === zone && state.tiles.buildingId[ny * W + nx] === 0
+          && (state.tiles.road[ny * W + nx] & 16) === 0;
+        kerb = (same(tx, ty - 1) ? 0 : 1) + (same(tx, ty + 1) ? 0 : 1)
+          + (same(tx - 1, ty) ? 0 : 1) + (same(tx + 1, ty) ? 0 : 1);
+        extra += 0.25;
+      }
+      if (country) {
+        const field = country.at(tx, ty);
+        if (field) extra += (field.hedge[1] ? 1 : 0) + (field.hedge[2] ? 1 : 0);
+      }
+      // Their own counts, priced at their own cost: charged as props (90
+      // triangles each) the close zoom's estimate went 31% over what was drawn.
+      groundProps += extra;
+      part.groundProps += extra;
+      kerbs += kerb;
+      part.kerbs += kerb;
+    }
   }
   // NOT rounded: `props` is an expectation (0.56 a paved tile, 1.45 a field),
   // and rounding the total while the per-chunk parts stay fractional makes the
@@ -753,7 +799,7 @@ export function countScene(state, bounds) {
   }
   return {
     buildings, trees, props, roads, poles, groundChunks, waterTiles,
-    markArms, wireTiles, wireArms, pipeTiles, pipeArms, chunks,
+    markArms, wireTiles, wireArms, pipeTiles, pipeArms, chunks, kerbs, groundProps,
     // Filled in by the caller from what the street cache measured last frame.
     streetPerChunk: 0,
     // Filled in by the caller from the traffic system's live count: the number

@@ -42,6 +42,34 @@ Measured on a saturated 128×128, median of five full rebuilds: 10.2 ms with the
 slice off, 11.6 ms with all of it on. Triangles unchanged — this is vertex
 colour, not geometry.
 
+## 5.1b As built (S2, 2026-09-12) — ground that is somewhere
+
+D4's sheet put City Grid's town beside a reference whose ground is bright lime grass and open
+country, and ours was a colour chart: dark grass, and empty zoning painted as a beige slab the size
+of the town (Q73).
+
+- **The countryside** (`client/world/countryside.js`, pure): grass between `FIELD_REACH` (3) and
+  `FIELD_RANGE` (12) tiles from anything built is fields, in blocks of `FIELD_BLOCK` (4) tiles — a
+  meadow or a striped crop in one of three colours, hedgerows along six in ten of the edges between
+  blocks, a farm track along one in twelve. A function of the tile, its distance to the town and
+  the map seed; a map with nothing built on it has no farms. `countrysideFor(state, model)` caches
+  one per model, because the instanced pass and the estimate both ask every frame.
+- **Two grass tones** by a coarse bilinear noise (`ground.tone`, 0.55, in data), and a **wet band**
+  on sand beside water.
+- **An empty plot is ground** with a faint wash of its zone (22%), and the "this is zoned" is a
+  kerb in the zone's full colour on every edge the plot does not share, plus a sign on a quarter.
+- **Matter** at L2, on the props rung with the tufts and drawn inside baked chunks too (the baker
+  places none of it): stones on rock and dirt, undergrowth in woods, reeds in marsh, hedgerows,
+  kerbs, signs. `countScene` prices each at the rate it is placed, the plot kerbs and the hedges
+  exactly.
+- **The grass** moved 0x62c144 → 0x98f040 in two measured steps (art-direction §3.1).
+
+**Measured**, the 64-tile played city: lit grass **#48a038 → #78b058–#88b850** against the
+reference's #70d050–#98f068; beige-slab samples from 11,336 in a city shot to **0.0–0.2%** of the
+compare sheet's; at a close city view 550 kerbs, 43 signs and 18 hedges drawn. **Two things it
+could not show:** no fields, because this city fills its map; and no stones or reeds, because
+worldgen makes no dirt or marsh and rock only above elevation 215 (Q98).
+
 ## 5.2 Ribbons (L3 only)
 
 Union Square's `strip` and Higashiyama's `ribbon` are the same primitive: a quad strip along a

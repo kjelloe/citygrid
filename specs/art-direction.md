@@ -130,7 +130,7 @@ section cannot quietly go stale.
 | Role | Hex |
 | --- | --- |
 | Sky | `0xbfe0f0` |
-| Grass | `0x62c144` |
+| Grass | `0x98f040` |
 | Sand | `0xc0a274` |
 | Forest | `0x3f9b34` |
 | Water | `0x39c5e8` |
@@ -142,6 +142,14 @@ section cannot quietly go stale.
 
 The greens are deliberately more saturated than life and the water is cyan
 rather than navy. A cosy toy world does not use realistic colours — §1.7.
+
+The grass moved from 0x62c144 in S2 (2026-09-12), measured rather than picked: lit and inked,
+the old value rendered as #48a038 at city zoom and #308028 in the street, against the reference's
+#70d050 to #98f068 (D4's compare sheet). The sun and the grade take about a quarter off whatever
+the palette says, so the palette has to be lighter and yellower than the grass it is aiming at.
+Two steps (0x86e050, then 0x98f040) brought the lit grass to #78b058–#88b850; the green channel
+stops near 0xb8 however light the palette gets, so what is left of the gap is the light rig and the
+grade, not the palette.
 
 **Buildings**
 

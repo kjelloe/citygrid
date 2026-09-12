@@ -60,7 +60,14 @@ building's "variant" is now its DEFINITION's index, so the pool keying needed no
   overlay is a texture on the ground (ruling 041) — so a park showed no pollution and no land
   value at all.
 
-## S2 — Ground that is somewhere (M) — D4 findings 1 and 2, Q73
+## S2 — Ground that is somewhere (M) — D4 findings 1 and 2, Q73 — **built 2026-09-12** (`specs/engine/05-ground-and-streets.md` §5.1b)
+
+**As built.** Fields in blocks round the town (`countryside.js`), two grass tones, a wet shore, an
+empty plot drawn as ground with a kerb in its zone's colour and a sign, stones, reeds, undergrowth
+and hedgerows priced at the rate they are drawn, and the grass moved toward the reference by
+measurement (#48a038 → #78b058 lit). The beige slab is gone from D4's sheet. Not visible yet: fields
+on a city that fills its map, and stones or reeds on worlds that generate no rock, dirt or marsh
+(Q98). Street-level baking of the new matter was not done — it is instanced at every zoom.
 
 **Goal.** The land reads as country, not as a colour chart, and the town has an edge.
 
@@ -388,7 +395,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9, S1, S10 and S1b are done (2026-09-11/12). Next: (B4 and B7 from the behaviour lane) → S2 → S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9, S1, S10, S1b and S2 are done (2026-09-11/12), with B4, B7 and B8 from the behaviour lane. Next: S6 → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

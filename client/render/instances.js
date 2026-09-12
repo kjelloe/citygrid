@@ -16,6 +16,7 @@ import { CHUNK, chunkKey, chunkOfLot } from "../world/chunks.js";
 import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry, cityPersonGeometry,
+  boulderVariants, BOULDER_VARIANTS, signGeometry,
   carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
 } from "./building-kit.js";
@@ -26,10 +27,15 @@ import { DIR4 } from "../../shared/grid.js";
 import { TIER, setCosts, inBounds, planForChunk, tilePixels, usesChunkPlans } from "./lod.js";
 import { civicSpin } from "../world/civic-spec.js";
 import { houseLots } from "../world/homes.js";
+import { countrysideFor } from "../world/countryside.js";
+
+/** A field hedgerow's green, and a marsh reed's (S2). */
+const HEDGEROW = 0x4a8a3c;
+const REED = 0x8f9f58;
 import { getConfig } from "../world/config.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
-  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, FLAG_RUINED, NET_PRESENT,
+  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, FLAG_RUINED, NET_PRESENT,
 } from "../constants-mirror.js";
 
 /** Parked cars and flowers carry the only strong accent colours in the scene,
@@ -100,7 +106,8 @@ export function createInstances(scene, styleName = "plain") {
   // A hedge ACROSS THE FRONTAGE, not a ring: at city zoom the two side hedges
   // are behind the house and the back one is never seen, so a ring is three
   // instances of nothing. One per lot.
-  make("hedge", slabGeometry(styleName, 1, 0.1, 0.07), 0xffffff, 12000);
+  // Hedgerows round the fields (S2) share it, so it holds both.
+  make("hedge", slabGeometry(styleName, 1, 0.1, 0.07), 0xffffff, 30000);
   make("path", flatGeometry(styleName, 0.16, 0.5, 0.06), 0xffffff, 12000);
 
   // The overlay pass. One tint quad per tile, plus a per-band MARK — a dot, a
@@ -165,6 +172,12 @@ export function createInstances(scene, styleName = "plain") {
   make("pedCity", cityPersonGeometry(), 0xffffff, 1500);
   const tufts = tuftVariants();
   for (let v = 0; v < tufts.length; v += 1) make(`tuft${v}`, tufts[v], 0xffffff, 30000);
+  // The ground's matter (S2): stones on rock and dirt, a kerb round an empty
+  // plot, and a sign on some of them.
+  const boulders = boulderVariants();
+  for (let v = 0; v < boulders.length; v += 1) make(`boulder${v}`, boulders[v], 0xffffff, 8000);
+  make("kerb", flatGeometry(styleName, 1, 0.08, 0.05), 0xffffff, 20000);
+  make("sign", signGeometry(), 0xffffff, 3000);
   make("lamp", lampGeometry(), 0xffffff, 8000);
   // What a car is DOING (B4): brakes at the back, an indicator at the corner.
   // Their own pools, pushed into only for the cars actually showing them, so a
@@ -234,6 +247,12 @@ export function createInstances(scene, styleName = "plain") {
     car: Math.round(propSample.slice(1, 1 + cars.length).reduce((a, b) => a + b, 0) / cars.length),
     ped: Math.round(peds.map(triangleCount).reduce((a, b) => a + b, 0) / peds.length),
     pedCity: triangleCount(pools.pedCity.geometry),
+    // S2: a kerb, and the average of the ground's matter (stones, a sign, a
+    // hedgerow piece, an undergrowth tuft), so the estimate prices them as what
+    // they are.
+    kerb: triangleCount(pools.kerb.geometry),
+    groundProp: Math.round([pools.boulder0, pools.boulder1, pools.boulder2, pools.sign, pools.hedge, pools.tuft0]
+      .map((m) => triangleCount(m.geometry)).reduce((a, b) => a + b, 0) / 6),
     prop: { 2: Math.round(propSample.reduce((a, b) => a + b, 0) / propSample.length), 1: 0, 0: 0 },
     road: 0,  // painted into the terrain mesh
     marking: triangleCount(pools.mark.geometry),
@@ -468,6 +487,7 @@ export function updateInstances(state, pools, options = {}) {
   // furniture is not drawn: the baked group carries the real markings, poles
   // and wires, and a pipe is underground (slice E3).
   const baked = options.bakedChunks;
+  const country = options.model ? countrysideFor(state, options.model) : undefined;
   const isBaked = (x, y) => baked !== undefined
     && baked.has(((y / CHUNK) | 0) * 4096 + ((x / CHUNK) | 0));
   /** The same question for a LOT, by the one rule (R2): its centre's chunk, not
@@ -584,6 +604,61 @@ export function updateInstances(state, pools, options = {}) {
             1, 0.8 + jitter(index, 89 + k) * 0.6, 1,
             v === 1 ? FLOWER_COLOURS[Math.floor(jitter(index, 97 + k) * FLOWER_COLOURS.length)]
               : palette.terrain[TERRAIN_GRASS], jitter(index, 101 + k) * Math.PI * 2);
+        }
+      }
+
+      // The ground's matter (S2, D4 finding 1): stones on rock, a few on dirt,
+      // undergrowth in the woods, reeds in the marsh, hedgerows between the
+      // fields and a kerb round an empty plot. On the props rung like the
+      // tufts, and drawn inside baked chunks too — the baker places none of it.
+      // `countScene` charges each at the rate it is placed here.
+      if (grassDetail && !paved && state.tiles.buildingId[index] === 0) {
+        const terrain = state.tiles.terrain[index];
+        if (terrain === TERRAIN_ROCK) {
+          const n = jitter(index, 151) > 0.5 ? 2 : 1;
+          for (let k = 0; k < n; k += 1) {
+            const v = Math.floor(jitter(index, 157 + k) * BOULDER_VARIANTS) % BOULDER_VARIANTS;
+            const bx = x + 0.15 + jitter(index, 163 + k) * 0.7;
+            const bz = y + 0.15 + jitter(index, 167 + k) * 0.7;
+            push(pools[`boulder${v}`], bx, at(bx, bz), bz, 1, 1, 1,
+              palette.terrain[TERRAIN_ROCK], jitter(index, 173 + k) * Math.PI * 2);
+          }
+        } else if (terrain === TERRAIN_DIRT && jitter(index, 179) < 0.6) {
+          const bx = x + 0.2 + jitter(index, 181) * 0.6;
+          const bz = y + 0.2 + jitter(index, 183) * 0.6;
+          push(pools.boulder0, bx, at(bx, bz), bz, 0.6, 0.5, 0.6,
+            palette.terrain[TERRAIN_ROCK], jitter(index, 185) * Math.PI * 2);
+        } else if (terrain === TERRAIN_FOREST) {
+          const ux = x + 0.15 + jitter(index, 187) * 0.7;
+          const uz = y + 0.15 + jitter(index, 189) * 0.7;
+          push(pools.tuft0, ux, at(ux, uz), uz, 1.4, 1.1, 1.4,
+            palette.tree ?? palette.terrain[TERRAIN_FOREST], jitter(index, 193) * Math.PI * 2);
+        } else if (terrain === TERRAIN_MARSH) {
+          const rx = x + 0.2 + jitter(index, 195) * 0.6;
+          const rz = y + 0.2 + jitter(index, 197) * 0.6;
+          push(pools.tuft0, rx, at(rx, rz), rz, 0.8, 2.2, 0.8, REED, jitter(index, 199) * Math.PI * 2);
+        }
+        // Each hedgerow once: the east and south edges of the tile it bounds.
+        const field = country ? country.at(x, y) : undefined;
+        if (field) {
+          if (field.hedge[1]) push(pools.hedge, x + 1, at(x + 1, y + 0.5), y + 0.5, 1, 1, 1, HEDGEROW, Math.PI / 2);
+          if (field.hedge[2]) push(pools.hedge, x + 0.5, at(x + 0.5, y + 1), y + 1, 1, 1, 1, HEDGEROW, 0);
+        }
+        // An empty plot's kerb, in the zone's own colour, on every edge it does
+        // not share with the same kind of plot — the "this is zoned" the ground
+        // no longer says across the whole tile (Q73) — and a sign on a quarter.
+        const zone = state.tiles.zone[index];
+        if (zone !== 0) {
+          const kerb = palette.zone[zone] ?? 0x888888;
+          const same = (nx, ny) => nx >= 0 && ny >= 0 && nx < state.width && ny < state.height
+            && state.tiles.zone[ny * state.width + nx] === zone
+            && state.tiles.buildingId[ny * state.width + nx] === 0
+            && (state.tiles.road[ny * state.width + nx] & NET_PRESENT) === 0;
+          if (!same(x, y - 1)) push(pools.kerb, x + 0.5, at(x + 0.5, y + 0.04), y + 0.04, 1, 1, 1, kerb, 0);
+          if (!same(x, y + 1)) push(pools.kerb, x + 0.5, at(x + 0.5, y + 0.96), y + 0.96, 1, 1, 1, kerb, 0);
+          if (!same(x - 1, y)) push(pools.kerb, x + 0.04, at(x + 0.04, y + 0.5), y + 0.5, 1, 1, 1, kerb, Math.PI / 2);
+          if (!same(x + 1, y)) push(pools.kerb, x + 0.96, at(x + 0.96, y + 0.5), y + 0.5, 1, 1, 1, kerb, Math.PI / 2);
+          if (jitter(index, 191) < 0.25) push(pools.sign, x + 0.5, at(x + 0.5, y + 0.2), y + 0.2, 1, 1, 1, 0xf2efe6, 0);
         }
       }
 

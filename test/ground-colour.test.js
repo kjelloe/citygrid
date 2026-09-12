@@ -18,6 +18,8 @@ import { NET_PRESENT } from "../client/constants-mirror.js";
 import { DEFAULTS, getConfig, setConfig } from "../client/world/config.js";
 import { createGroundColour } from "../client/world/ground-colour.js";
 import { PALETTES } from "../client/render/palettes.js";
+import { zoneTint } from "../client/world/params.js";
+import * as countryside from "../client/world/countryside.js";
 
 const PALETTE = PALETTES.plain;
 const GRASS = 0;
@@ -87,9 +89,10 @@ test("a corner between four natural tiles is their mean", () => {
 
 test("two tiles of the same terrain still meet in their own colour", () => {
   // The mean of four identical colours is that colour: an all-grass field must
-  // not acquire a gradient out of nothing.
+  // not acquire a gradient out of nothing. With every source of variation off
+  // — S2's second grass tone is one, so `tone: 0` as well.
   const state = blank();
-  const g = colours(state, { blend: 1, mottle: 0, farTone: 0 });
+  const g = colours(state, { blend: 1, mottle: 0, farTone: 0, tone: 0 });
   for (let c = 0; c < 4; c += 1) assert.equal(g.corner(8, 8, c), g.tile(8, 8));
 });
 
@@ -168,7 +171,7 @@ test("open country away from a street is darker than the verge beside it", () =>
 test("farTone 0 leaves the country alone", () => {
   const state = blank(24);
   pave(state, row(6, 2, 20));
-  const g = colours(state, { blend: 1, mottle: 0, farTone: 0, urbanReach: 40 });
+  const g = colours(state, { blend: 1, mottle: 0, farTone: 0, urbanReach: 40, tone: 0 });
   assert.ok(near(g.tile(10, 5), g.tile(10, 20)), "the tone fired with the knob at zero");
 });
 
@@ -191,7 +194,7 @@ test("every corner of every tile has a colour, on any terrain", () => {
 
 test("the ground's numbers live in data", () => {
   const ground = getConfig().ground;
-  for (const key of ["blend", "mottle", "urbanReach", "farTone"]) {
+  for (const key of ["blend", "mottle", "urbanReach", "farTone", "tone"]) {
     assert.ok(Number.isFinite(ground[key]), `ground.${key} is not a number`);
   }
   assert.ok(ground.blend >= 0 && ground.blend <= 1);
@@ -228,4 +231,58 @@ test("natural clamps to the map like every other accessor", () => {
   const g = colours(state, { blend: 0, mottle: 0, farTone: 0 });
   assert.equal(g.natural(-3, -3), g.natural(0, 0));
   assert.equal(g.natural(999, 999), g.natural(state.width - 1, state.height - 1));
+});
+
+// --- ground that is somewhere (slice S2) --------------------------------------
+
+test("an empty zoned tile is ground with a faint tint: not the road, not the old slab", () => {
+  // Q73: three quarters of zoned ground in a played city is empty, and in the
+  // zone's full colour it read as a beige slab the size of the town.
+  const state = blank();
+  state.tiles.zone[tileAt(16, 9, 9)] = 1;
+  const g = colours(state, { blend: 1, mottle: 0, farTone: 0 });
+  const plot = g.tile(9, 9);
+  assert.notEqual(plot, PALETTE.road, "an empty plot is painted as road");
+  assert.ok(!near(plot, zoneTint(1, PALETTE), 6), "an empty plot is still the zone's full colour");
+  // Greener than it is anything else: it is ground.
+  const [r, gg, b] = rgb(plot);
+  assert.ok(gg > r && gg > b, `an empty plot is ${plot.toString(16)}, not green`);
+});
+
+test("a crop field's stripes alternate, and a meadow's do not", () => {
+  // A street through the middle of a grass map, so there is a town for the
+  // fields to ring (they stop FIELD_RANGE from anything built).
+  const state = blank(40);
+  pave(state, row(20, 2, 37));
+  const g = colours(state, { blend: 0, mottle: 0, farTone: 0 });
+  const { createCountryside } = countryside;
+  const country = createCountryside(state);
+  let crops = 0;
+  for (let y = 4; y < 36; y += 1) {
+    for (let x = 4; x < 35; x += 1) {
+      const f = country.at(x, y);
+      const n = country.at(f?.stripe === 0 ? x + 1 : x, f?.stripe === 0 ? y : y + 1);
+      if (!f || !n || f.kind !== "crop" || n.kind !== "crop" || f.tone !== n.tone || f.track || n.track) continue;
+      if (Math.floor(x / 4) !== Math.floor((f.stripe === 0 ? x + 1 : x) / 4)) continue;
+      if (Math.floor(y / 4) !== Math.floor((f.stripe === 0 ? y : y + 1) / 4)) continue;
+      assert.notEqual(g.tile(x, y), g.tile(f.stripe === 0 ? x + 1 : x, f.stripe === 0 ? y : y + 1),
+        `no stripe between ${x},${y} and its neighbour in the same crop`);
+      crops += 1;
+    }
+  }
+  assert.ok(crops > 10, `only ${crops} crop stripes checked`);
+});
+
+test("sand that meets the water is wet", () => {
+  const state = blank();
+  const SAND = 6;
+  const WATER = 3;
+  for (let x = 2; x < 14; x += 1) {
+    state.tiles.terrain[tileAt(16, x, 8)] = SAND;
+    state.tiles.terrain[tileAt(16, x, 7)] = SAND;
+    state.tiles.terrain[tileAt(16, x, 9)] = WATER;
+  }
+  const g = colours(state, { blend: 0, mottle: 0, farTone: 0 });
+  const lum = (hex) => rgb(hex).reduce((s, v) => s + v, 0);
+  assert.ok(lum(g.tile(6, 8)) < lum(g.tile(6, 7)), "the sand at the water's edge is as dry as the sand behind it");
 });

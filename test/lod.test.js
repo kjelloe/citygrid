@@ -696,3 +696,34 @@ test("the ceiling is forgotten when the view changes, and never raises the tier"
   ceiling.settle("view B", 4, 4);
   assert.equal(ceiling.cap("view B", 4), 4);
 });
+
+// --- the ground's matter is priced (slice S2) --------------------------------------
+
+test("stones, kerbs and hedgerows are priced at the rate they are drawn", async () => {
+  // A new kind of instance with no term in the estimate is a cost the ladder
+  // cannot trade away (P35) — S2 adds four.
+  const { createState } = await import("../engine/state.js");
+  const { defaultOptions } = await import("../engine/options.js");
+  const { countScene } = await import("../client/render/lod.js");
+  const { createCountryside } = await import("../client/world/countryside.js");
+  const map = (terrain) => {
+    const s = createState(defaultOptions({ width: 24, height: 24, seed: 7 }));
+    s.tiles.terrain.fill(terrain);
+    return s;
+  };
+  // Counted apart from the props, because they cost a fraction of one: priced
+  // at the average prop's 90 triangles, the close zoom went 31% over.
+  const rock = countScene(map(5)).groundProps;
+  assert.ok(rock >= 24 * 24 * 1.5 - 1, `a map of rock prices ${rock.toFixed(0)} stones`);
+  const plots = map(0);
+  for (let x = 4; x < 20; x += 1) plots.tiles.zone[10 * 24 + x] = 1;
+  assert.ok(countScene(plots).kerbs >= 16 * 2, "an empty plot's kerbs are not priced");
+  const town = map(0);
+  town.tiles.road[12 * 24 + 12] = 16;
+  const withFields = countScene(town, undefined, createCountryside(town)).groundProps;
+  assert.ok(withFields > countScene(town).groundProps, "the hedgerows round the fields are not priced");
+  const plan = planAt(60, 5000000);
+  const counts = { ...CITY, kerbs: 100, groundProps: 0 };
+  assert.ok(estimate(counts, plan) - estimate({ ...CITY, kerbs: 0, groundProps: 0 }, plan) <= 100 * 4,
+    "a kerb is priced like a car");
+});

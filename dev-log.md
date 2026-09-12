@@ -6003,3 +6003,59 @@ is a gate; settled 9,436 → 9,042. Suite green twice, **1,303 tests**. `gates.m
 orderly queue at the junction ahead, where B4's first shot had a heap of cars at mixed angles.
 
 **Next:** S2 — ground that is somewhere.
+
+## slice-S2 — ground that is somewhere (2026-09-12)
+
+D4's compare sheet, re-read before anything was changed: the reference's ground is bright lime
+grass and open country; ours was dark grass, a beige slab wherever zoning had not developed (Q73),
+and no countryside. `reports/compare-before-S2.png` was shot at `6634620` before the first line.
+
+**Measured first, both sides with one rule** (G > R+25 and G > B+50, binned): the reference's grass
+is #70d050–#98f068, its rock #8890a0, its dirt #c0a070. Ours, lit and inked, was **#48a038** at city
+zoom and #308028 in the street from a palette of 0x62c144, and the beige slab was 11,336 samples in
+one city shot.
+
+**Built.** Fields in blocks round the town (`client/world/countryside.js`: crop or meadow, stripes,
+hedgerows, a farm track), two grass tones by coarse noise (`ground.tone` in data), a wet shore on
+sand, an empty plot drawn as ground with a 22% wash of its zone and a kerb in the zone's colour on
+the edges it does not share, a sign on a quarter of them, stones on rock and dirt, undergrowth in
+the woods, reeds in marsh. All instanced on the props rung and drawn inside baked chunks too.
+
+**What went wrong on the way.**
+- The first ground-colour change turned every empty test map into farmland, because "beyond the
+  built area" includes a map with nothing built on it. Fields stop `FIELD_RANGE` (12) from the
+  town now: farmland rings a town.
+- The second tone broke two tests that pin "with variation off, the grass is one colour" — which is
+  why the tone is a data knob (`ground.tone`) the tests turn off, like `mottle`.
+- Pricing the new detail as props charged a kerb (2 triangles) and a stone (5) at a prop's 90, and
+  the close zoom's estimate went **31%** over what was drawn. They have their own counts and
+  measured costs now: 2% and 19% out.
+- `country.at` built a fresh object per call and the baker asks the ground's colour per vertex:
+  chunk bakes went from 5 ms to **12** at p95. Both answers are kept per tile now: 7 ms.
+- A `countScene` read of `state.tiles.zone` crashed on hand-built test states with no zone layer —
+  the first thing in there to read it. It is optional now.
+- And a gate run crashed with "execution context destroyed": I had regenerated the precache list
+  while it ran, and the service worker reloaded the page under it. Not a code defect; not again.
+
+**The grass, in two measured steps**: 0x62c144 → 0x86e050 → **0x98f040**, lit #48a038 → #70b060 →
+**#78b058–#88b850**. The green channel stops near 0xb8 however light the palette gets, so the rest of
+the gap to the reference is the light rig and the grade — an art-lane lever, not this slice's.
+
+**Measured.** Beige-slab samples **0.0–0.2%** of the compare sheet's shots. A close city view drew
+550 kerbs, 43 signs and 18 hedges. `budget_gate`: crowd frame 296,333 of 400,000, bake p95 7 ms.
+Suite green twice, **1,312 tests**. `gates.mjs render` 4 of 4 in **279 s** of 300 — 21 s of headroom,
+the least this set has had, with `lanes_dump` at 66 s since B8; `quick` 11 of 11 in 377 s of 480.
+**One `render` run on this final code failed `budget_gate`** and the rerun passed; I kept only the
+summary line of the failing run, so which check it was is not known. It is written down here rather
+than rerun until green: the next run that fails should be run with its full output kept.
+
+**What the pictures say**, looked at: `reports/compare-S2-rows12.png` puts rows 1 and 2 before and
+after side by side. The town's grid now sits on green ground; where the beige plots were there is
+pale green with a thin kerb, and at a close view (`smoke-S2-centre.png`) they read as plots. Still
+unlike the reference: our grass is greener-blue than its lime, the deputy's paved grid across the
+river is a grey slab of its own (roads, not zoning), the water shows its tiles, and there are no
+fields — this city fills its map. No stones or reeds either, and that is not the renderer:
+**worldgen makes no dirt or marsh and rock only above elevation 215 (Q98)**. Street-level baking of
+the new matter was not done; it is instanced at every zoom.
+
+**Next:** S6, per the world lane's order; Q98 waits on Kjell.

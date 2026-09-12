@@ -21,6 +21,22 @@ import { jitter } from "./hash.js";
 import { getConfig } from "./config.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 import { zoneTint } from "./params.js";
+import { createCountryside } from "./countryside.js";
+import { TERRAIN_GRASS, TERRAIN_SAND, TERRAIN_WATER, TERRAIN_SHALLOW, TERRAIN_DIRT } from "../constants-mirror.js";
+
+/** How much a crop field's stripes lift and drop the green (S2). */
+const STRIPE = 0.07;
+/** How far the second grass tone is from the first, and how big its patches
+ * are in tiles: "two grass tones by noise, so a field is not one green". */
+const SECOND_TONE = 0x9ad860;
+const TONE_CELL = 6;
+/** How much of the zone's colour an EMPTY plot keeps (S2, Q73): three
+ * quarters of zoned ground in a played city is empty, and painted in the full
+ * tint it was a beige slab the size of the town. The plot is ground, with a
+ * faint tint; the kerb of colour round its edge is instanced. */
+const PLOT_TINT = 0.22;
+/** A crop's colour by field tone: two greens and a ripening one. */
+const CROPS = [0x7cc84a, 0x96d45a, 0xc8c870];
 
 const r8 = (hex) => (hex >> 16) & 0xff;
 const g8 = (hex) => (hex >> 8) & 0xff;
@@ -67,13 +83,14 @@ function floodFromRoads(state, rings) {
 
 export function createGroundColour(state, palette) {
   const cfg = getConfig();
-  const { blend, mottle, urbanReach, farTone } = cfg.ground;
+  const { blend, mottle, urbanReach, farTone, tone = 0 } = cfg.ground;
   const tileM = cfg.tileM;
   const { width, height } = state;
   // The palette is handed in. `world/` never imports `render/` — the model is
   // derived from state and must not depend on how anything is drawn, and
   // `test/render.test.js` already holds every style's table to being complete.
   const table = palette.terrain;
+  const country = createCountryside(state);
 
   const inside = (x, y) => x >= 0 && y >= 0 && x < width && y < height;
   const clampX = (x) => (x < 0 ? 0 : x >= width ? width - 1 : x);
@@ -115,12 +132,48 @@ export function createGroundColour(state, palette) {
    * a carriageway is INSIDE the road tile (ruling 035), so `tile()` answers
    * tarmac for it and a flat `palette.lawn` was the workaround — green grass
    * beside a road through sand. */
+  /** `naturalTile`'s answers, per tile: the verges ask it per vertex (S2). */
+  const naturalCache = new Int32Array(width * height).fill(-1);
+
   function naturalTile(x, y) {
     const index = y * width + x;
+    if (naturalCache[index] >= 0) return naturalCache[index];
+    const value = naturalTileUncached(x, y, index);
+    naturalCache[index] = value;
+    return value;
+  }
+
+  function naturalTileUncached(x, y, index) {
     const base = table[state.tiles.terrain[index]] ?? 0xff00ff;
     let r = r8(base);
     let g = g8(base);
     let b = b8(base);
+
+    // Two grass tones by noise (S2): a bilinear blend of a coarse lattice of
+    // hashes, so the second tone comes in soft patches a few fields across
+    // rather than per tile.
+    const terrain = state.tiles.terrain[index];
+    if (terrain === TERRAIN_GRASS) {
+      const t = toneAt(x, y) * tone;
+      r += (r8(SECOND_TONE) - r) * t; g += (g8(SECOND_TONE) - g) * t; b += (b8(SECOND_TONE) - b) * t;
+      // Fields beyond the town (S2): a crop is its own colour in stripes, and
+      // a farm track is the dirt it is worn down to.
+      const field = country.at(x, y);
+      if (field && field.kind === "crop") {
+        const crop = CROPS[field.tone];
+        r = r8(crop); g = g8(crop); b = b8(crop);
+        const lift = ((field.stripe === 0 ? x : y) % 2 === 0) ? 1 + STRIPE : 1 - STRIPE;
+        r *= lift; g *= lift; b *= lift;
+      }
+      if (field && field.track) {
+        const dirt = table[TERRAIN_DIRT];
+        r = r * 0.35 + r8(dirt) * 0.65; g = g * 0.35 + g8(dirt) * 0.65; b = b * 0.35 + b8(dirt) * 0.65;
+      }
+    }
+    // Sand that meets water is wet: darker, a band along every shore (S2).
+    if (terrain === TERRAIN_SAND && besideWater(x, y)) {
+      r *= 0.82; g *= 0.82; b *= 0.8;
+    }
 
     // A field is not one flat sheet. ±`mottle` of lightness, from the tile.
     if (mottle > 0) {
@@ -140,6 +193,31 @@ export function createGroundColour(state, palette) {
     return pack(r, g, b);
   }
 
+  /** A smooth 0..1 over the map, from hashes on a coarse lattice. */
+  function toneAt(x, y) {
+    const gx = x / TONE_CELL;
+    const gy = y / TONE_CELL;
+    const x0 = Math.floor(gx);
+    const y0 = Math.floor(gy);
+    const fx = gx - x0;
+    const fy = gy - y0;
+    const at = (i, j) => jitter(((j + 9) * 1031 + (i + 9)) >>> 0, 131);
+    const top = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx;
+    const bottom = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx;
+    return top * (1 - fy) + bottom * fy;
+  }
+
+  function besideWater(x, y) {
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!inside(nx, ny)) continue;
+      const t = state.tiles.terrain[ny * width + nx];
+      if (t === TERRAIN_WATER || t === TERRAIN_SHALLOW) return true;
+    }
+    return false;
+  }
+
   function computeTile(x, y) {
     const index = y * width + x;
     if (built(index)) {
@@ -154,8 +232,19 @@ export function createGroundColour(state, palette) {
       //
       // Only where nothing has developed: an empty plot has to say "this is
       // zoned", a built one is already saying it with a building.
+      // An EMPTY plot is ground with a faint wash of its zone (S2, Q73), not
+      // the zone's colour: that was a beige slab the size of the town. The
+      // edge that says "zoned" is an instanced kerb of the full tint.
       const zone = state.tiles.zone[index];
-      if (zone !== 0 && state.tiles.buildingId[index] === 0) return zoneTint(zone, palette);
+      if (zone !== 0 && state.tiles.buildingId[index] === 0) {
+        const ground = naturalTile(x, y);
+        const tint = zoneTint(zone, palette);
+        return pack(
+          r8(ground) + (r8(tint) - r8(ground)) * PLOT_TINT,
+          g8(ground) + (g8(tint) - g8(ground)) * PLOT_TINT,
+          b8(ground) + (b8(tint) - b8(ground)) * PLOT_TINT,
+        );
+      }
       return table[state.tiles.terrain[index]] ?? 0xff00ff;
     }
     return naturalTile(x, y);
