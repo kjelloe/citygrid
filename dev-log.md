@@ -6360,3 +6360,64 @@ should be, and the town is still sparser and its streets still wider than the re
 which is Q102 — with the deputy's empty road grid across the river, which is B9.
 
 **Next:** B5, then B9 — per P70's order.
+
+## slice-B5 — people with somewhere to go (2026-09-14)
+
+**What it is.** The role state machine A48 deferred, in `client/life/pedestrians.js`. A person is
+a commuter (home to work in the morning, home in the evening), a shopper (to a shop, never a
+house, at midday), a sitter (to a park's middle or a shop's bench, then sits) or a crosser (E7's
+hashed walk) — from their id, the door and the hour. One route search on `nav.js` per journey,
+cached; the journey ends at its door. The cap and the nearest-eye fill are unchanged. Spec
+`specs/engine/09-life.md` §9.3c.
+
+**What went wrong on the way.**
+- **The evening had nobody going home** — 98% wanderers. The crowd fills pavements by what their
+  doors ask for, a shop asks for nobody (its `occupancy` is 0, S3b's finding), so almost everybody
+  spawns at a house, and in the evening a house's door made crossers. An evening commuter asked for
+  by a home now starts at a workplace nearby and walks back to it.
+- **The crowd was never held to its demand — since E7.** Counted where they stood, a person who
+  walked off the pavement that asked for them left it looking empty; it asked again, and the
+  crowd grew. On the test town 24 became 47 in a minute; on the played city the night was 259
+  people (87% wanderers) for pavements asking for about ninety. Journeys made it obvious; it was
+  there for the crossers all along. Everybody now counts for their `origin` pavement until they
+  go, and `heldOn` (B7's reserve) the same, or the near crowd doubled the city crowd again
+  (408 + 97). A test holds the invariant at four hours. **And that emptied the streets**: 5%
+  held to its demand is 86 people on the played 64×64, and the role shots showed nobody. The
+  crowds judged since E7 and B7 were three to four times 5% — so `ped.perOccupant` is 0.15, a data
+  change to keep the picture that was accepted, now honestly.
+
+- **`budget_gate` then read 0 people at street zoom — on a street full of them.** Held to its
+  demand, the city crowd (cap 600) covers a played city's whole demand (86 on the deputy 64), and
+  the near crowd tops up only what is left: nothing. Close to the eye the city crowd's people are
+  drawn as E7's person (B7), and priced as one; the check counted the near crowd alone. It counts
+  both now. A node probe of the two crowds together is what said so.
+- **The role shots compared a city with itself.** `time=` is the light's preset (day, sunset,
+  night); "morning" and "noon" are not presets, so `phaseForPreset` gave both 0.25 and both shots
+  had noon's roles. They pass `hour=` now, which the harness hands the crowd at construction and
+  every frame.
+
+**Measured.** Suite green twice, **1,355 tests**; `node --test test/docs.test.js` green.
+`lanes_dump`'s roles by hour on the deputy's 64×64 (20 years, 187 buildings, 40 shops, cap 600,
+60 s settled): morning **223 commuters (85%)** and 38 crossers; noon **104 shoppers (40%), 38 sitters
+(15%)**, 119 crossers; evening **251 commuters (96%)**; night 229 crossers and 32 sitters — 261
+people at every hour, which is the pavements' demand at `perOccupant` 0.15. `budget_gate` green on
+the final code (people at street zoom 171 on screen, the city crowd 599 and 600 posed of 600,
+the near crowd within its cap); `render`'s other three and `quick` 11 of 11 (402 s of 480) ran
+before the `perOccupant` change, which moves no pass or fail in them. The render set was at
+**293 s of 300** — `lanes_dump` is 56 s with the histogram; the next slice that adds a second to
+it splits `budget_gate` into its own set (M2).
+
+**The review round before B9 (P71)** also: 41 scratch images in `reports/` were tracked — probes and
+sweeps named one by one in `.gitignore`, and missed one by one; `reports/.*.png` is ignored and
+they are untracked. `workitems-film.md` F2 and spec §9.3 said the route planner did not exist;
+`sim-gate`'s table still listed "Balance sweep — not built yet"; `review-round` gained the three
+lessons of S3–B5 (a fixture the engine never makes, a fill that counts presence, a percentile of
+eighteen).
+
+**What the pictures say**, looked at: `smoke-B5-{morning,noon}.png`, the shopping street from the
+closest city zoom, frozen — people along the street in both (91 posed), and from the air a
+commuter and a shopper are the same figure, so the pictures say the crowd is there and the counts
+say who it is. The first pair had nobody in it: filmed three seconds after load with life on, on a
+street whose pavements ask for nobody, before any shopper had walked there.
+
+**Next:** B9.

@@ -66,7 +66,12 @@ export const DEFAULTS = Object.freeze({
   // keeps behind another; `bob` and `stride` are the walk cycle, which is the
   // whole difference between a person and a post that slides.
   ped: {
-    pace: 1.35, paceVary: 0.35, perOccupant: 0.05,
+    // 0.15 since B5: the crowd was never held to 5% — a person who walked off
+    // their pavement left it asking again (E7's fill by presence), and the
+    // streets everyone judged since E7 and B7 had three to four times it. Held
+    // to its demand, 5% was 86 people on the whole played 64×64 and an empty
+    // street; 15% is about the picture that was accepted.
+    pace: 1.35, paceVary: 0.35, perOccupant: 0.15,
     bob: 0.055, stride: 0.85, spacing: 1.6, crossWait: 1,
   },
   // Time of day (E6, spec §7.3). Presets, not a slider: each one is a

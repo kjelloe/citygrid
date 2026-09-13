@@ -50,3 +50,7 @@ dev-questions.md
 reports/gates/
 reports/.motion-*.png
 reports/.smoke-frozen-*.png
+# Every tool's scratch image is a dot-file in reports/ — probes, sweeps, frozen
+# pairs. Named one by one they were missed one by one, and bulk commits kept
+# them (review round before B9).
+reports/.*.png

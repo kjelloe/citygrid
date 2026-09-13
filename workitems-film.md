@@ -108,7 +108,9 @@ the framing is decided by looking at a storyboard rather than by rendering the f
   over a graph search — Q62's answer was "not until a shot needs it"); and if a shot wants a
   river that reads as a channel rather than a trough, F2 points R3's `gradeProfile` at the
   water layer (Q65). Neither is built unless a shot in the list asks for it, and the storyboard
-  is what decides.
+  is what decides. **B5 built the first (2026-09-14):** `client/life/pedestrians.js` has the role
+  state machine (`roleFor`) and one route search per journey over `nav.js`; a shot that wants a
+  specific person at a specific door asks that search for the route instead of building one.
 
 **Tests first.** The shot list schema is validated in node (`test/film.test.js`): every shot has
 a duration, a `walk` shot's endpoints are on a corridor of the fixture, styles and hours are

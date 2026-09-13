@@ -452,6 +452,23 @@ cars' spawn rule, `here + 0.5 < target`, and a pavement outside an ordinary hous
 people — so a whole city of houses had nobody on it while every unit test passed, because the test
 fixture happened to ask for 1.44. When you copy a threshold, check what it is a threshold ON.
 
+**A fixture can hold a state the engine never makes.** S3a painted crossings where shop doors draw
+people, by `occupancy`; its test gave a shop forty occupants and passed — and the engine fills
+`occupancy` with residents, so every shop in a played city has none, and no crossing was painted at
+any of them. Found when the next slice's shot tool asked the page for an occupied shop and got none
+of forty. Before a rule keys on a state field, ask a played city what that field holds, and build
+the fixture from what it says.
+
+**A fill that counts presence leaks while things move.** E7 topped each pavement up to its doors'
+demand by counting who stood on it; a person who walked away left it looking empty and it spawned
+again. B5's journeys made it obvious — 24 became 47 in a minute on the test town, 259 for about 90
+on the played city's night. Count each agent against the source that asked for it, everywhere that
+count is read, and write the invariant as a test over time.
+
+**A percentile of eighteen samples is the maximum.** A78's bake check took a p95 over eighteen
+chunks' worst frames, and the nearest-rank p95 of eighteen is the eighteenth: one stall failed it,
+which was the very thing A78 set out to end. Before trusting a percentile, count what it is over.
+
 **A setting is not built until a pixel changes.** High contrast set an attribute for two slices
 while 61 rules used system colours `--bg`/`--fg` could not reach, and the gate checked only that the
 attribute landed. For anything that themes the interface, assert a **computed colour** before and

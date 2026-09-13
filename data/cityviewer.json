@@ -130,7 +130,7 @@
   "ped": {
     "pace": 1.35,
     "paceVary": 0.35,
-    "perOccupant": 0.05,
+    "perOccupant": 0.15,
     "bob": 0.055,
     "stride": 0.85,
     "spacing": 1.6,

@@ -16,7 +16,6 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Event census** | `node debugging/dbg_systems.mjs [years] [seed]` | Did it actually *fire*? Per-event-kind counts and the year each was first seen |
 | **Chaos** | `node tools/chaos.mjs [commands] [seed]` | Can it be broken? Random legal and illegal commands against two engines |
 | **Map sweep** | `node tools/mapsweep.mjs [count] [size] [seats]` | Is generation fair? Acceptance rate and district spread. `MODE=`, `WATER=`, `STYLE=` |
-| **Balance sweep** | *not built yet — Wave 3* | Is the game fair? One row per game |
 | **Client smoke** | `node tools/client_smoke.mjs` | Does the real client draw a real city? Page errors, draw calls, instancing |
 | **Screenshot** | `STYLE=… SPAN=… node tools/screenshot.mjs out.png [seed] [years]` | What does the renderer look like? |
 | **Play gate** | `node tools/play_smoke.mjs` | Can a person actually build, on a mouse AND on a phone? |

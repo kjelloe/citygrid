@@ -182,7 +182,7 @@ on a junction tile stands you in the crossing street's carriageway (**Q97**).
 a spawn is at a door or a bay, never mid-link; the D7 invariants hold. **Gate.** `budget_gate`'s
 car rows re-baselined (two quads a car); `reports/smoke-B4-{morning,night}.png` of one street.
 
-## B5 — People with somewhere to go (M) — Q62 (A48)
+## B5 — People with somewhere to go (M) — Q62 (A48) — **built 2026-09-14** (`specs/engine/09-life.md` §9.3c)
 
 **Goal.** The crowd has commuters, shoppers and sitters, not a hash walk.
 

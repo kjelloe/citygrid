@@ -575,8 +575,15 @@ try {
     // Long enough for the crowd to fill and for the street cache to bake.
     for (let i = 0; i < 90; i += 1) { renderer.draw({ now: i * 16, dt: 1 / 30 }); await frame(); }
     const s = renderer.stats;
+    // Both crowds (B5): the city crowd's people near the eye are drawn as E7's
+    // person (B7) and priced as one, and once B5 held the city crowd to the
+    // pavements' demand it covers a played city's whole demand — the near crowd
+    // tops up only what is left, which there it is nothing. Counting the near
+    // crowd alone read 0 people on a street full of them.
     return {
-      onScreen: s.peds, held: s.pedsHeld, cap: s.pedCap, nav: s.nav,
+      onScreen: s.peds + (s.pedsCityNear ?? 0), held: s.pedsHeld + (s.pedsCityHeld ?? 0),
+      // The near crowd's own count, for its own cap — the city crowd has its own.
+      nearHeld: s.pedsHeld, cap: s.pedCap, nav: s.nav,
       cost: getCosts().ped, triangles: s.triangles, budget: s.budget,
       lod: s.lod, estimate: s.estimate,
     };
@@ -586,7 +593,7 @@ try {
   console.log(`      nav graph: ${JSON.stringify(crowd.nav)}`);
   check("there are people on the pavement at street zoom", crowd.held > 0,
     `${crowd.held} people, ladder at "${crowd.lod}"`);
-  check("the cap is a cap", crowd.held <= crowd.cap, `${crowd.held} of ${crowd.cap}`);
+  check("the cap is a cap", crowd.nearHeld <= crowd.cap, `${crowd.nearHeld} of ${crowd.cap}`);
   check("a person is cheap enough to be the last thing sacrificed", crowd.cost <= 60,
     `${crowd.cost} triangles a person`);
   check("the crowd fits in what the night frame leaves", crowd.cap * crowd.cost <= 320000 - 266538,

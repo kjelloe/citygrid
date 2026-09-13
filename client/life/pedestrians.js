@@ -17,6 +17,7 @@
 
 import { jitter } from "../world/hash.js";
 import { getConfig } from "../world/config.js";
+import { tideAt } from "../world/rush.js";
 
 /** How near a person may come to the person in front before slowing.
  * A queue on a pavement, not a collision system: people are soft. */
@@ -26,6 +27,37 @@ const LOOK = 3;
  * metres. Long enough to cross a couple of junctions, short enough that the
  * crowd is always turning over rather than being the same twelve people. */
 const JOURNEY = 220;
+
+/** The roles (B5). A commuter goes from a door to a door of the other kind —
+ * home to work in the morning, back in the evening; a shopper between shop
+ * doors at midday; a sitter to a park or a shop's bench, to sit a while; a
+ * crosser walks the old hashed way, which is also what anybody becomes when no
+ * route exists. */
+export const ROLES = Object.freeze(["commuter", "shopper", "sitter", "crosser"]);
+
+/** Of the doors a role may go to, how many of the nearest it picks between —
+ * so a journey is a walk across a neighbourhood, not across the map. */
+const NEAREST = 12;
+/** A journey longer than this is not a walk; the person crosses instead. */
+const ROUTE_MAX = 700;
+/** How long a sitter sits, in seconds, before going. */
+const SIT_MIN = 30;
+const SIT_SPAN = 60;
+
+/** The role somebody coming out of `zone`'s door has at `phase` (B5). Pure:
+ * the id, the kind of door and the hour, nothing else. */
+export function roleFor(id, zone, phase) {
+  const home = zone === 1;
+  const p = ((phase % 1) + 1) % 1;
+  const tide = tideAt(p);
+  if (tide === "out") return home ? "commuter" : "crosser";
+  // The evening: everybody out is on their way home — from a workplace, or
+  // (asked for by a home's own pavement) back to it from one nearby.
+  if (tide === "in") return "commuter";
+  const roll = jitter(id, 89);
+  if (p >= 0.16 && p < 0.40) return roll < 0.5 ? "shopper" : roll < 0.7 ? "sitter" : "crosser";
+  return roll < 0.15 ? "sitter" : "crosser";
+}
 
 export function createPedestrians(state, model, nav, options = {}) {
   const cfg = getConfig();
@@ -43,6 +75,143 @@ export function createPedestrians(state, model, nav, options = {}) {
   const reserve = options.reserve;
 
   const people = [];
+  // The hour (B5), handed in like the traffic's — this module has no clock of
+  // its own (ruling 037). Set at construction too: a frozen shot settles once,
+  // before any frame has said what time it is.
+  let phase = options.phase ?? 0.3;
+  let arrived = 0;
+
+  // --- where people go (B5) --------------------------------------------------
+  const zoneOfDoor = (door) => model.lotOf(door.lot)?.building?.zone ?? 1;
+  /** The doors each kind of journey may END at, and the places a sitter sits:
+   * a park's middle (its paths meet there, S5) or a shop's door (its bench,
+   * S3). */
+  const ends = { home: [], work: [], shop: [], sit: [] };
+  nav.doors.forEach((door, i) => {
+    const zone = zoneOfDoor(door);
+    if (zone === 1) ends.home.push({ door: i });
+    else ends.work.push({ door: i });
+    if (zone === 2) { ends.shop.push({ door: i }); ends.sit.push({ door: i }); }
+  });
+  for (const edge of nav.edges) {
+    if (edge.kind === "park" && !ends.sit.some((e) => e.node === edge.to)) ends.sit.push({ node: edge.to });
+  }
+  const whereIs = (end) => (end.door !== undefined
+    ? { x: nav.doors[end.door].x, z: nav.doors[end.door].z }
+    : { x: nav.nodes[end.node].x, z: nav.nodes[end.node].z });
+  /** Which list a role's journey ends in. */
+  function endsFor(role, zone) {
+    if (role === "commuter") return zone === 1 ? ends.work : ends.home;
+    if (role === "shopper") return ends.shop;
+    if (role === "sitter") return ends.sit;
+    return [];
+  }
+
+  /** The shortest walk from a node to a node, as edge ids, over the nav graph
+   * — searched once per journey, not per junction (B5), and remembered: many
+   * people leave one street for the same shop. */
+  const routes = new Map();
+  function route(from, to) {
+    const key = `${from}|${to}`;
+    if (routes.has(key)) return routes.get(key);
+    const dist = new Map([[from, 0]]);
+    const via = new Map();
+    const open_ = [[0, from]];
+    let found;
+    while (open_.length > 0) {
+      let best = 0;
+      for (let i = 1; i < open_.length; i += 1) if (open_[i][0] < open_[best][0]) best = i;
+      const [d, n] = open_.splice(best, 1)[0];
+      if (d > (dist.get(n) ?? Infinity)) continue;
+      if (n === to) { found = d; break; }
+      if (d > ROUTE_MAX) break;
+      for (const id of nav.nodes[n].edges) {
+        const e = nav.edges[id];
+        const m = e.from === n ? e.to : e.from;
+        const nd = d + e.len;
+        if (nd < (dist.get(m) ?? Infinity)) {
+          dist.set(m, nd);
+          via.set(m, id);
+          open_.push([nd, m]);
+        }
+      }
+    }
+    let path;
+    if (found !== undefined) {
+      path = [];
+      for (let n = to; n !== from;) {
+        const id = via.get(n);
+        path.push(id);
+        const e = nav.edges[id];
+        n = e.from === n ? e.to : e.from;
+      }
+      path.reverse();
+    }
+    if (routes.size > 4000) routes.clear();
+    routes.set(key, path);
+    return path;
+  }
+
+  /** Puts an evening commuter at a workplace near the home `doorIndex`, on a
+   * route back to its door. Counted against the home's pavement while they
+   * walk (`bound`), so the fill does not send a second one. */
+  function homeward(person, homeEdge, doorIndex) {
+    const home = nav.doors[doorIndex];
+    const works = ends.work
+      .map((end) => ({ end, d: Math.hypot(nav.doors[end.door].x - home.x, nav.doors[end.door].z - home.z) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, NEAREST);
+    if (works.length === 0) return false;
+    const work = nav.doors[works[Math.floor(jitter(person.id, 97) * works.length) % works.length].end.door];
+    const from = nav.edges[work.edge];
+    const start = person.dir > 0 ? from.to : from.from;
+    const goal = home.s < homeEdge.len / 2 ? homeEdge.from : homeEdge.to;
+    const path = route(start, goal);
+    if (!path) return false;
+    person.edge = work.edge;
+    person.s = work.s;
+    person.route = [...path, homeEdge.id];
+    person.target = { door: doorIndex };
+    person.role = "commuter";
+    person.homeward = homeEdge.id;
+    person.origin = homeEdge.id;
+    person.left = ROUTE_MAX * 2;
+    return true;
+  }
+
+  /** Gives a newly spawned person a journey: a target, and the route to it.
+   * Anybody without one crosses — the old walk. */
+  function plan(person, door) {
+    person.role = roleFor(person.id, zoneOfDoor(door), phase);
+    if (person.role === "crosser") return;
+    const here = { x: door.x, z: door.z };
+    const candidates = endsFor(person.role, zoneOfDoor(door))
+      .filter((end) => end.door === undefined || nav.doors[end.door] !== door)
+      .map((end) => ({ end, d: Math.hypot(whereIs(end).x - here.x, whereIs(end).z - here.z) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, NEAREST);
+    if (candidates.length === 0) { person.role = "crosser"; return; }
+    const target = candidates[Math.floor(jitter(person.id, 97) * candidates.length) % candidates.length].end;
+    const edge = nav.edges[person.edge];
+    const start = person.dir > 0 ? edge.to : edge.from;
+    // The goal is a node: the park's middle, or the nearer end of the target
+    // door's pavement, from which the last edge is walked to the door itself.
+    let goal = target.node;
+    let last;
+    if (target.door !== undefined) {
+      const td = nav.doors[target.door];
+      last = nav.edges[td.edge];
+      goal = td.s < last.len / 2 ? last.from : last.to;
+    }
+    const path = route(start, goal);
+    if (!path) { person.role = "crosser"; return; }
+    person.route = path.slice();
+    if (last && !(last.id === person.edge)) person.route.push(last.id);
+    person.target = target;
+    // Long enough for the route, finite in case it runs out anywhere but the
+    // door — a journey with no end is somebody walking for ever.
+    person.left = ROUTE_MAX * 2;
+  }
   /** Per edge, who is on it, ordered along — rebuilt each step, like the cars'
    * buckets: with a couple of hundred people a rebuild is cheaper than keeping
    * a sorted structure correct through spawns, turns and despawns. */
@@ -74,7 +243,9 @@ export function createPedestrians(state, model, nav, options = {}) {
   const held = new Map();
   function recount() {
     held.clear();
-    for (const person of people) held.set(person.edge, (held.get(person.edge) ?? 0) + 1);
+    // By the pavement that asked for them, as the fill counts (B5): another
+    // crowd reading this tops up the same claims, not where people happen to be.
+    for (const person of people) held.set(person.origin, (held.get(person.origin) ?? 0) + 1);
   }
 
   /** How many people this pavement holds, as a whole number.
@@ -114,9 +285,9 @@ export function createPedestrians(state, model, nav, options = {}) {
     let best;
     for (const id of edge.doors) {
       const door = nav.doors[id];
-      if (!focus) { best = { door, d: 0 }; break; }
+      if (!focus) { best = { door, d: 0, index: id }; break; }
       const d = Math.hypot(door.x / model.tileM - focus.x, door.z / model.tileM - focus.z);
-      if (!best || d < best.d) best = { door, d };
+      if (!best || d < best.d) best = { door, d, index: id };
     }
     return best;
   }
@@ -125,9 +296,10 @@ export function createPedestrians(state, model, nav, options = {}) {
    * set off, hashed so the same person always leaves the same way. */
   function spawn(edge, focus) {
     if (people.length >= cap) return false;
-    const door = focus
-      ? nearestDoor(edge, focus)?.door
-      : nav.doors[edge.doors[Math.floor(jitter(nextId, 41) * edge.doors.length) % edge.doors.length]];
+    const doorIndex = focus
+      ? nearestDoor(edge, focus)?.index
+      : edge.doors[Math.floor(jitter(nextId, 41) * edge.doors.length) % edge.doors.length];
+    const door = nav.doors[doorIndex];
     if (!door) return false;
     const id = nextId;
     nextId += 1;
@@ -146,7 +318,21 @@ export function createPedestrians(state, model, nav, options = {}) {
       variant: jitter(id, 61) > 0.5 ? 1 : 0,
       colour: Math.floor(jitter(id, 67) * 6),
       waiting: 0,
+      role: "crosser",
+      sit: 0,
+      // The pavement whose doors asked for this person. Somebody on a journey
+      // counts against it until they arrive, wherever they are walking (B5).
+      origin: edge.id,
     };
+    // An evening commuter asked for by a HOME's pavement walks back to it from a
+    // workplace nearby (B5): the crowd fills pavements by what their doors
+    // ask for, and a shop asks for nobody, so without this the evening was
+    // 98% people wandering and nobody going home.
+    if (zoneOfDoor(door) === 1 && tideAt(phase) === "in" && homeward(person, edge, doorIndex)) {
+      people.push(person);
+      return true;
+    }
+    plan(person, door);
     people.push(person);
     return true;
   }
@@ -255,9 +441,19 @@ export function createPedestrians(state, model, nav, options = {}) {
     // that is the whole city: 39 of 120 people stood more than 250 m from the
     // camera and the street underfoot had two. The cap is a budget, and it is
     // spent where it can be seen (the same reasoning as A39).
+    // Who each pavement's demand is already spent on (B5): everybody counts for
+    // the pavement whose doors asked for them, until they go — wherever they
+    // have walked. Counted where they stood (E7), a person who walked off
+    // their street left it looking empty, it asked again, and the crowd grew:
+    // 24 people for a demand of 24 became 47 in a minute on the test town, and
+    // the played city's night was 259 people, 87% of them wanderers, for
+    // pavements that ask for about ninety. The pavements that ask for nobody —
+    // crossings, corners, a shopfront — were absorbing them.
+    const claims = new Map();
+    for (const p of people) claims.set(p.origin, (claims.get(p.origin) ?? 0) + 1);
     for (const edge of inView) {
       if (people.length >= cap) break;
-      let here = (onEdge.get(edge.id) ?? []).length;
+      let here = claims.get(edge.id) ?? 0;
       const wants = holdsOn(edge) - (reserve ? reserve(edge.id) : 0);
       while (here < wants && people.length < cap && spawn(edge, spread ? undefined : focus)) here += 1;
     }
@@ -266,6 +462,8 @@ export function createPedestrians(state, model, nav, options = {}) {
       const edge = nav.edges[edgeId];
       for (let i = 0; i < list.length; i += 1) {
         const person = list[i];
+        // A sitter sitting is still (B5).
+        if (person.sitting) { person.v = 0; person.pending = 0; continue; }
         const room = roomAhead(person, list, i);
         // Slow for the person in front rather than stopping dead behind them:
         // a pavement is not a lane, and people flow round each other.
@@ -277,7 +475,22 @@ export function createPedestrians(state, model, nav, options = {}) {
 
     for (const person of people) {
       const edge = nav.edges[person.edge];
+      if (person.sitting) {
+        person.sit -= dt;
+        if (person.sit <= 0) { arrived += 1; leaving.push(person); }
+        continue;
+      }
       person.s += (person.pending ?? 0) * person.dir;
+      // At the door they were going to: indoors (B5), or a sitter sits.
+      if (person.target?.door !== undefined && person.route.length === 0) {
+        const door = nav.doors[person.target.door];
+        if (door.edge === person.edge && (person.dir > 0 ? person.s >= door.s : person.s <= door.s)) {
+          person.s = door.s;
+          if (person.role === "sitter") { person.sitting = true; person.sit = SIT_MIN + jitter(person.id, 101) * SIT_SPAN; }
+          else { arrived += 1; leaving.push(person); }
+          continue;
+        }
+      }
       person.left -= Math.abs(person.pending ?? 0);
       person.phase += ((person.pending ?? 0) / stride) * Math.PI;
       person.pending = 0;
@@ -288,7 +501,15 @@ export function createPedestrians(state, model, nav, options = {}) {
       if (person.left <= 0) { leaving.push(person); continue; }
 
       const at = person.dir > 0 ? edge.to : edge.from;
-      const target = chooseNext(person, edge);
+      // At the park's middle they were going to (B5).
+      if (person.target?.node === at && person.route.length === 0) {
+        person.s = person.dir > 0 ? edge.len : 0;
+        person.sitting = true;
+        person.sit = SIT_MIN + jitter(person.id, 101) * SIT_SPAN;
+        continue;
+      }
+      // On a journey the next edge is the route's; otherwise the old hash.
+      const target = person.route?.length > 0 ? person.route[0] : chooseNext(person, edge);
       if (target < 0) { leaving.push(person); continue; }
       const beyond = nav.edges[target];
       // A red light is a wall at the kerb, not a person standing in the road:
@@ -300,6 +521,7 @@ export function createPedestrians(state, model, nav, options = {}) {
         continue;
       }
       person.waiting = 0;
+      if (person.route?.length > 0) person.route.shift();
       person.edge = target;
       person.dir = directionOn(beyond, at);
       person.s = person.dir > 0 ? 0 : beyond.len;
@@ -350,6 +572,20 @@ export function createPedestrians(state, model, nav, options = {}) {
   return {
     /** Wires the crossings to the cars (T1). */
     setTraffic(isBusy) { busyOn = isBusy; },
+
+    /** Where the day is, 0..1 (B5): the hour decides who goes where. The same
+     * clock the traffic keeps. */
+    setPhase(at) { phase = at; },
+
+    /** How many people are in each role right now (B5). */
+    roles() {
+      const out_ = Object.fromEntries(ROLES.map((r) => [r, 0]));
+      for (const person of people) out_[person.role] = (out_[person.role] ?? 0) + 1;
+      return out_;
+    },
+
+    /** How many journeys have ended at their door or their bench (B5). */
+    get arrived() { return arrived; },
 
     update(dt, bounds, focus) {
       // Remembered even when frozen: `?life=0` settles the crowd lazily, on the

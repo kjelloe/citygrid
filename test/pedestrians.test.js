@@ -413,3 +413,119 @@ test("a frozen city crowd is there at once, and is the same picture twice", () =
   city.pose({ ped0: {}, ped1: {}, pedCity: {} }, () => {}, [0], { x0: 0, y0: 0, x1: 5, y1: 5 }, () => "l2");
   assert.equal(snap(), before, "a frozen city crowd moved or re-settled for the camera");
 });
+
+// --- people with somewhere to go (B5) ------------------------------------------
+//
+// A commuter goes from a door to a door of the other kind, a shopper between
+// shops, a sitter to a park or a shop's bench; a crosser walks the old hashed
+// way. One search on the nav graph per journey, and the journey ends where it
+// was going.
+
+import { roleFor, ROLES } from "../client/life/pedestrians.js";
+import { phaseForPreset } from "../client/world/rush.js";
+
+/** A crossroads with houses on one street, shops on the other and a park. */
+function mixed() {
+  const state = blank(24);
+  pave(state, [...row(12, 2, 21), ...col(12, 2, 21)]);
+  let id = 1;
+  for (let x = 3; x < 11; x += 2) place(state, { id: id++, x, y: 13, zone: 1, occupancy: 120 });
+  for (let y = 3; y < 11; y += 2) place(state, { id: id++, x: 13, y, zone: 2, level: 2, occupancy: 0 });
+  place(state, { id: id++, x: 15, y: 13, zone: 0, def: "park", level: 0, occupancy: 0 });
+  const model = createModel(state);
+  return { state, model, nav: deriveNav(state, model) };
+}
+
+const zoneOf = (model, nav, doorIndex) => model.lotOf(nav.doors[doorIndex].lot).building.zone;
+
+test("a role is a function of the id, the door and the hour, and every role is reachable", () => {
+  const morning = phaseForPreset("morning");
+  const noon = 0.28;
+  assert.equal(roleFor(7, 1, morning), roleFor(7, 1, morning));
+  const seen = new Set();
+  for (let id = 1; id < 200; id += 1) {
+    for (const zone of [0, 1, 2]) for (const p of [morning, noon, 0.46, 0.76]) seen.add(roleFor(id, zone, p));
+  }
+  assert.deepEqual([...seen].sort(), [...ROLES].sort());
+  // The morning tide: a home's door sends commuters, a shop's does not.
+  assert.equal(roleFor(3, 1, 0.1), "commuter");
+  assert.notEqual(roleFor(3, 2, 0.1), "commuter");
+  assert.equal(roleFor(3, 2, 0.46), "commuter", "nobody goes home from work in the evening");
+});
+
+test("a morning commuter leaves a home for a workplace, on a route that joins up", () => {
+  const { model, nav } = mixed();
+  const peds = createPedestrians(model.state ?? undefined, model, nav, { phase: 0.1 });
+  run(peds, 5);
+  const commuters = peds.people().filter((p) => p.role === "commuter");
+  assert.ok(commuters.length > 0, "no commuters in the morning");
+  for (const p of commuters) {
+    assert.ok(p.target?.door !== undefined, "a commuter going nowhere");
+    assert.notEqual(zoneOf(model, nav, p.target.door), 1, "a morning commuter walking to another house");
+    // Each step of the route shares a node with the next.
+    for (let i = 1; i < p.route.length; i += 1) {
+      const a = nav.edges[p.route[i - 1]];
+      const b = nav.edges[p.route[i]];
+      assert.ok([a.from, a.to].some((n) => n === b.from || n === b.to), `route ${i} jumps between edges`);
+    }
+  }
+});
+
+test("a shopper only ever goes to a shop, and at noon there are shoppers and sitters", () => {
+  const { model, nav } = mixed();
+  const peds = createPedestrians(undefined, model, nav, { phase: 0.28 });
+  const roles = new Set();
+  for (let i = 0; i < 60; i += 1) {
+    run(peds, 1);
+    for (const p of peds.people()) {
+      roles.add(p.role);
+      if (p.role === "shopper") assert.equal(zoneOf(model, nav, p.target.door), 2, "a shopper going into a house");
+    }
+  }
+  assert.ok(roles.has("shopper"), `noon roles: ${[...roles]}`);
+  assert.ok(roles.has("sitter"), `noon roles: ${[...roles]}`);
+});
+
+test("journeys end where they were going", () => {
+  const { model, nav } = mixed();
+  const peds = createPedestrians(undefined, model, nav, { phase: 0.1 });
+  run(peds, 240);
+  assert.ok(peds.arrived > 0, "in four minutes nobody reached their door");
+});
+
+test("roles change who goes where, not how many there are", () => {
+  // The cap and the fill are E7's: a role is a destination, not a person.
+  const { model, nav } = mixed();
+  const peds = createPedestrians(undefined, model, nav, { phase: 0.28, cap: 5 });
+  run(peds, 30);
+  assert.ok(peds.people().length <= 5);
+  const tally = peds.roles();
+  assert.equal(Object.values(tally).reduce((a, b) => a + b, 0), peds.people().length);
+});
+
+test("an evening commuter walks home from a workplace", () => {
+  const { model, nav } = mixed();
+  const peds = createPedestrians(undefined, model, nav, { phase: 0.46 });
+  run(peds, 3);
+  const homeward = peds.people().filter((p) => p.role === "commuter" && p.homeward !== undefined);
+  assert.ok(homeward.length > 0, "nobody going home in the evening");
+  for (const p of homeward) {
+    assert.equal(zoneOf(model, nav, p.target.door), 1, "an evening commuter going somewhere other than a home");
+  }
+});
+
+test("at every hour the crowd is what the pavements ask for, not more", () => {
+  // The population invariant (B5). A journey takes somebody off the street
+  // that asked for them; counting where they stand refilled it behind them,
+  // and the crowd grew for as long as journeys lasted.
+  const { model, nav } = mixed();
+  const whole = nav.edges.filter((e) => e.kind === "walk" && e.demand > 0)
+    .reduce((n, e) => n + Math.floor(e.demand) + 1, 0);
+  for (const phase of [0.1, 0.28, 0.46, 0.76]) {
+    const peds = createPedestrians(undefined, model, nav, { phase, spread: true });
+    let most = 0;
+    for (let i = 0; i < 90; i += 1) { run(peds, 1); most = Math.max(most, peds.people().length); }
+    assert.ok(most <= whole, `phase ${phase}: ${most} people for pavements that ask for at most ${whole}`);
+    assert.ok(peds.people().length > 0, `phase ${phase}: nobody out`);
+  }
+});

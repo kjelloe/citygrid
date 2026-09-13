@@ -188,7 +188,8 @@ a person picks a successor edge at each junction by a hash of their own id, exac
 picks its turn, and the doors decide where people enter and how many (`ped.perOccupant` of a
 building's occupancy). That gives crowds outside busy buildings, people waiting at red and
 nobody walking through a wall, for the cost of a hash. Roles, benches and real door-to-door
-journeys are **Q62**.
+journeys are **Q62** — **built in B5** (§9.3c): the crossers still walk this way; commuters,
+shoppers and sitters follow one route search per journey.
 
 Three things the summary above does not say, all of them found by looking at the render:
 
@@ -236,6 +237,40 @@ at 20 tiles across **570 of 600 posed** (297 as the figure from the air, 273 as 
 pixels, +2,004 triangles (167 × 12). What that looks like: at 20 across a person is an upright tick
 about two pixels by five, at 40 a one- or two-pixel dot strung along a pavement — life on the
 street rather than figures, which is what thirty pixels a tile buys.
+
+## 9.3c As built (B5, 2026-09-14) — people with somewhere to go
+
+**Roles.** `roleFor(id, zone, phase)` in `client/life/pedestrians.js` — a function of the person's
+id, the kind of door they come out of, and the hour (`tideAt`, the same clock the traffic keeps):
+in the morning tide somebody leaving a home is a **commuter** bound for a workplace; in the
+evening tide everybody out is a commuter going home; at midday half are **shoppers** (bound for
+a shop door, never a house), a fifth **sitters** (bound for a park's middle, where its paths
+meet, or a shop's door and its bench) and the rest **crossers**, who walk E7's hashed way — as
+does anybody for whom no route exists. Nothing is state (ruling 037).
+
+**Journeys.** A target is chosen by hash among the twelve nearest ends of the right kind, and the
+route is **one search per journey** on `nav.js` (shortest by length, cached by its two ends,
+refused beyond 700 m), not a choice at every junction. A person follows it — waiting at a red
+light as before — and goes indoors at the target door; a sitter sits there 30–90 s first. An
+evening commuter asked for by a HOME's pavement walks back to it from a workplace nearby: the
+crowd is filled by what doors ask for and a shop asks for nobody, so without this the evening was
+98% wanderers and nobody going home.
+
+**The population invariant.** Everybody counts for the pavement whose doors asked for them
+(`origin`) until they go, wherever they have walked — the fill, and the `heldOn` another crowd
+tops up against. Counted where they stood (E7), a person who walked off their street left it
+looking empty, it asked again, and the crowd grew: 24 people for a demand of 24 became 47 in a
+minute on the test town, and the played city's night was 259 people, 87% of them wanderers, for
+pavements asking for about ninety — the pavements that ask for nobody (crossings, corners,
+shopfronts) were absorbing them. That was E7's, not B5's; the journeys made it visible. **So
+`ped.perOccupant` is 0.15, not 0.05:** the streets everyone had judged since E7 and B7 held three to
+four times what 5% asked for, and held to it the played 64×64 had 86 people and an empty street.
+
+The cap and the nearest-eye fill are E7's, unchanged. Held to its demand, the city crowd (cap 600
+at High) covers a played city's whole demand — 86 people on the deputy's 64×64 — so the near crowd
+tops up nothing there; near the eye the city crowd's own people are drawn as E7's person (B7), and
+`budget_gate`'s street-zoom check counts both crowds. `lanes_dump` prints the roles by hour on the
+deputy's 64×64.
 
 ## 9.4 Ambient motion
 

@@ -331,9 +331,9 @@ export function createRenderer(canvas, state, options = {}) {
   // pavement by demand and is the same whatever the camera does; E7's crowd
   // tops the pavements near the eye up to what the buildings ask for, reading
   // the city crowd's count so it never doubles a street.
-  let crowd = createPedestrians(state, model, nav, { cap: pedCapCity(), life: options.life, spread: true });
+  let crowd = createPedestrians(state, model, nav, { cap: pedCapCity(), life: options.life, spread: true, phase: startPhase });
   let pedestrians = createPedestrians(state, model, nav, {
-    cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId),
+    cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId), phase: startPhase,
   });
   // The crossings without a light ask the cars for a gap (T1, A51). Wired here
   // because `life/pedestrians.js` may not reach into `life/traffic.js`: they are
@@ -470,9 +470,9 @@ export function createRenderer(canvas, state, options = {}) {
     water = createWater(state, model, styleName);
     scene.add(water.group);
     nav = deriveNav(state, model);
-    crowd = createPedestrians(state, model, nav, { cap: pedCapCity(), life: options.life, spread: true });
+    crowd = createPedestrians(state, model, nav, { cap: pedCapCity(), life: options.life, spread: true, phase: startPhase });
     pedestrians = createPedestrians(state, model, nav, {
-      cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId),
+      cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId), phase: startPhase,
     });
     pedestrians.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
     crowd.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
@@ -752,7 +752,12 @@ export function createRenderer(canvas, state, options = {}) {
     // The hour reaches the road (B4). Handed in, never read from a clock here:
     // `client/life/` takes its time from the caller, which is what makes
     // `?life=0` freeze it (ruling 037).
-    if (drawOptions.dayPhase !== undefined) traffic.setPhase(drawOptions.dayPhase);
+    if (drawOptions.dayPhase !== undefined) {
+      traffic.setPhase(drawOptions.dayPhase);
+      // Who is going where depends on the hour too (B5).
+      crowd.setPhase(drawOptions.dayPhase);
+      pedestrians.setPhase(drawOptions.dayPhase);
+    }
     traffic.update(dt);
     if (drawOptions.frameMs > 0) {
       const before = governor.disabled().length;
@@ -970,6 +975,9 @@ export function createRenderer(canvas, state, options = {}) {
     // budget is charged for the first and the cap is a limit on the second.
     stats.peds = pedestrians.count(bounds);
     stats.pedsHeld = pedestrians.count();
+    // Who the people are (B5), for the shots that say "a morning of commuters".
+    stats.pedRoles = pedestrians.roles();
+    stats.pedCityRoles = crowd.roles();
     stats.pedCap = pedCap();
     // What was POSED, beside what was counted: the first version reported the
     // count, and a city camera printed 167 people while the plan had dropped

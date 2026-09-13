@@ -247,6 +247,49 @@ if (worstLane > LANE_TOLERANCE) {
   process.exit(1);
 }
 
+// Who is walking where, by hour (B5). On a PLAYED city — the saturated one is
+// 1,129 copies of one house (Q72), so it has nobody to shop at — the deputy's
+// 64×64 after twenty years, the crowd settled for a minute at four hours of the
+// day, counted by role.
+{
+  const { generateWorld } = await import("../engine/worldgen.js");
+  const { defaultOptions } = await import("../engine/options.js");
+  const { apply } = await import("../engine/reducer.js");
+  const { makeDeputy, deputyTurn } = await import("../engine/deputy.js");
+  const { CMD_JOIN, CMD_TICK } = await import("../engine/commands.js");
+  const { TICKS_PER_YEAR } = await import("../engine/constants.js");
+  for (const m of ["build-commands", "development", "utilities", "economy", "civic", "fire", "disasters", "traffic", "history"]) {
+    await import(`../engine/${m}.js`);
+  }
+  const world = generateWorld(defaultOptions({ seed: 1003, width: 64, height: 64, seats: 1, waterStyle: "river" }));
+  const town = world.state;
+  apply(town, { type: CMD_JOIN, actor: 1, seat: 1, name: "Deputy" });
+  const deputy = makeDeputy(1, "expand");
+  for (let tick = 1; tick <= 20 * TICKS_PER_YEAR; tick += 1) {
+    apply(town, { type: CMD_TICK });
+    if (tick % 6 === 0) deputyTurn(town, deputy);
+  }
+  const { deriveNav } = await import("../client/world/nav.js");
+  const { createPedestrians, ROLES } = await import("../client/life/pedestrians.js");
+  const townModel = createModel(town);
+  const townNav = deriveNav(town, townModel);
+  const shops = town.buildings.filter((b) => b.zone === 2).length;
+  console.log(`\nroles by hour   deputy 64x64, 20 years: ${town.buildings.length} buildings, ${shops} shops, cap 600, 60 s settled`);
+  let noonShoppers = 0;
+  for (const [name, at] of [["morning", 0.10], ["noon", 0.28], ["evening", 0.46], ["night", 0.76]]) {
+    const crowd = createPedestrians(town, townModel, townNav, { cap: 600, spread: true, phase: at });
+    for (let t = 0; t < 60; t += 1 / 15) crowd.update(1 / 15);
+    const roles = crowd.roles();
+    const total = Math.max(1, Object.values(roles).reduce((a, b) => a + b, 0));
+    if (name === "noon") noonShoppers = roles.shopper;
+    console.log(`  ${name.padEnd(8)} ${ROLES.map((r) => `${r} ${String(roles[r]).padStart(3)} (${String(Math.round(100 * roles[r] / total)).padStart(2)}%)`).join("  ")}  arrived ${crowd.arrived}`);
+  }
+  if (shops > 0 && noonShoppers === 0) {
+    console.error("\nFAIL  a town with shops has no shoppers at noon (B5)");
+    process.exit(1);
+  }
+}
+
 const orphans = lanes.links.filter((l) => !l.exit && l.next.length === 0);
 if (orphans.length > 0) {
   console.error(`\nFAIL  ${orphans.length} link(s) lead nowhere and are not exits`);
