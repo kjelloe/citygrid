@@ -40,6 +40,13 @@ both; `render` set; `reports/smoke-T1-{avenue,junction}.png` from the pavement a
 
 ## T2 — Rail and the station, in the engine (L) — A65, A66
 
+**Amended 2026-09-13 (A79).** The re-pin this item shares with T1 carries a third change:
+**worldgen places rock and marsh** — a lower rock threshold on `hilly` maps (`rockyPeaks`) and a
+marsh band where the shallow-water shelf is widest, in `engine/terrain.js`. `test/worldgen.test.js`:
+a `hilly` seed has rock tiles, a `river` seed has marsh at its widest shelf, `rolling` at the default
+seed is unchanged in its buildable count within 2%. The fairness sweep re-runs with the era,
+because both are unbuildable ground. S2's stones and reeds then appear without a renderer change.
+
 **Goal.** A player draws a line to the edge, builds a station on it, and people arrive.
 
 **Do.**

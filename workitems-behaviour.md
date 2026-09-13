@@ -15,6 +15,22 @@ parking as state) is listed at the end as questions, not items. Same rules as
 **Two invariants from D7, kept by test:** life fills and moves at a rate per second scaled by
 `dt`, never per frame; and the population of cars and people is never a function of the camera.
 
+## B9 — The deputy lays roads near the town (S, engine) — A81
+
+**Goal.** A played city has an edge. The deputy paves only where the town is.
+
+**Do.** In `engine/deputy.js`, a road cell is laid only within `ROAD_REACH` tiles (data, start at
+3) of a lot that is built, or zoned and supplied with power and water; the grid the doctrine
+plans stays the same shape, so it grows outward with the town instead of ahead of it. Nothing
+is ever unpaved. The `expand` doctrine keeps a slightly longer reach than `hold the line`.
+Schema unchanged; every played fixture and every soak city changes.
+
+**Tests first.** `test/deputy.test.js`: after N years no road tile is further than `ROAD_REACH`
+from a qualifying lot; a city still grows to within 10% of era 1's population on the sweep seeds.
+**Gate.** The `sim` set on a new era (`reports/balance-era3.md` if T1's era 2 has not landed yet,
+else its own row), `disaster_soak` green; `tools/compare_sheet.mjs` re-run — D4's finding 2, the
+town with no edge, before and after in one image, and the dev-log says what the eye sees.
+
 ## B1 — Damage you can see (M) — **Q85 answered 2026-09-10 (A62), and it is bigger than a picture**
 
 Kjell: *"add fire that expands if not addressed by firedepartement, i.e not available or none
@@ -283,7 +299,7 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 
 ## Order
 
-B2 (done) → B4 (done) → B7 (done) → B8 (done) → **next behaviour item right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
+B2 (done) → B4 (done) → B7 (done) → B8 (done) → **next behaviour item right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → **B9** → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
 moved up on 2026-09-11 because P61 asked for them by name —: B2 with S1 (the same kit
 files), B1 with S6 (the smoke), B5 after S5 (the benches). Weather last because it is the only
 item that adds a whole preset to every gate.

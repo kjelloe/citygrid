@@ -97,9 +97,12 @@ geometry on every grass tile).
 
 **Amended 2026-09-13 (review after S5).** Two things from the pictures join this item: **crossing
 bars only where a signal or a door demand is** — T1 kept them at every junction and from the air a
-dense grid is white bars — and, **if Kjell agrees Q100**, pipes drawn only while the water overlay
-is on and wires thinner at city zoom, so a street from the air is a street and not a wiring
-diagram. Both are small and both are the first thing the reference does not have.
+dense grid is white bars — and, **A80 (Kjell, 2026-09-13)**: pipes drawn only while the water
+overlay is on, through the overlay texture rather than instances, and wires thinner and greyer at
+city zoom, so a street from the air is a street and not a wiring diagram. Test: `client_smoke`
+reports zero pipe instances with the overlay off and the water overlay's byte plane marks every
+piped tile; `a11y_smoke`'s water-overlay contrast row still passes. Both are small and both are
+the first thing the reference does not have.
 
 **Goal.** A street from the pavement has the things a street has, and reads at the width of its
 houses.
@@ -477,7 +480,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9, S1, S10, S1b, S2, S6 and S5 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. After the review of 2026-09-13: R5 → S3 → B5 → S4 → B1 → S7 → B3 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9, S1, S10, S1b, S2, S6 and S5 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. After the review of 2026-09-13: R5 → S3 → B5 → B9 → S4 → B1 → S7 → B3 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every
