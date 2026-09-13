@@ -16,7 +16,7 @@ import { sink } from "./solid.js";
 // WHERE a lamp or a hedge is now lives in `client/world/` — the collision world
 // reads the same functions, and it cannot import a renderer module (E7, A43).
 import {
-  lampsAlong, lampOffset, hedgeSpans, POST_HALF, HEDGE_HALF,
+  lampsAlong, lampOffset, hedgeSpans, POST_HALF, HEDGE_HALF, BAY_LEN,
 } from "../world/street-furniture.js";
 
 export { lampsAlong as lamps };
@@ -107,10 +107,76 @@ export function bin(s, x, y, z) {
  * and the night rig needs to know where they are without re-deriving them from
  * the geometry it was handed.
  */
-export function buildProps({ corridors, lots, cfg, heightAt, palette, chunk = 0 }) {
+/** An axis-aligned box `w` along `along`, `d` across it, `h` tall, centred on (x, z). */
+function turnedBox(s, x, y, z, along, w, d, h) {
+  const alongX = !along || Math.abs(along.x) >= Math.abs(along.z);
+  const [hx, hz] = alongX ? [w / 2, d / 2] : [d / 2, w / 2];
+  s.box(x - hx, y, z - hz, x + hx, y + h, z + hz);
+}
+
+/**
+ * One S3 prop (`street-furniture.js` placed it; this only draws it). Heights:
+ * a thing in the carriageway on the road surface, a thing on the pavement on
+ * the kerb, a thing in a shop's forecourt on the ground.
+ */
+export function streetPropGeometry(sinks, prop, cfg, heightAt) {
+  const ground = heightAt(prop.x, prop.z);
+  const road = ground + cfg.road.lift + 0.006;
+  const kerb = ground + cfg.road.lift + cfg.road.kerb;
+  const { metal, dark, red, wood } = sinks;
+  if (prop.kind === "bollard") turnedBox(metal, prop.x, kerb, prop.z, undefined, 0.2, 0.2, 0.9);
+  else if (prop.kind === "sign") turnedBox(metal, prop.x, kerb, prop.z, undefined, 0.12, 0.12, 2.6);
+  else if (prop.kind === "postbox") {
+    turnedBox(red, prop.x, kerb, prop.z, undefined, 0.5, 0.5, 1.0);
+    turnedBox(dark, prop.x, kerb + 1.0, prop.z, undefined, 0.56, 0.56, 0.08);
+  } else if (prop.kind === "bench") {
+    turnedBox(wood, prop.x, ground + 0.42, prop.z, prop.along, 1.6, 0.45, 0.06);
+    const bx = prop.x - (prop.along ? -prop.along.z : 0) * 0.2;
+    const bz = prop.z - (prop.along ? prop.along.x : 0) * 0.2;
+    turnedBox(wood, bx, ground + 0.48, bz, prop.along, 1.6, 0.06, 0.4);
+    turnedBox(dark, prop.x, ground, prop.z, prop.along, 1.4, 0.35, 0.42);
+  } else if (prop.kind === "bikerack") {
+    for (const k of [-0.45, 0.45]) {
+      const ox = (prop.along?.x ?? 1) * k;
+      const oz = (prop.along?.z ?? 0) * k;
+      turnedBox(metal, prop.x + ox, ground, prop.z + oz, prop.along, 0.06, 0.7, 0.8);
+    }
+  } else if (prop.kind === "manhole") flatQuad(dark, prop.x, road, prop.z, undefined, 0.7, 0.7);
+  else if (prop.kind === "drain") flatQuad(dark, prop.x, road, prop.z, prop.along, 0.6, 0.3);
+}
+
+/** A flat quad facing up, `w` along `along` and `d` across — two triangles
+ * where a box is twelve (S9's lesson: a thing with no thickness anybody can see
+ * is a quad). */
+function flatQuad(s, x, y, z, along, w, d) {
+  const alongX = !along || Math.abs(along.x) >= Math.abs(along.z);
+  const [hx, hz] = alongX ? [w / 2, d / 2] : [d / 2, w / 2];
+  s.quad([x - hx, y, z - hz], [x + hx, y, z - hz], [x + hx, y, z + hz], [x - hx, y, z + hz]);
+}
+
+/** A parking bay: its surface and a line at each end, all flat. */
+function bayGeometry(surface, lines, bay, heightAt) {
+  const y = heightAt(bay.x, bay.z) + 0.03;
+  flatQuad(surface, bay.x, y, bay.z, bay.along, BAY_LEN, 2.6);
+  for (const end of [-1, 1]) {
+    const ex = bay.x + bay.along.x * end * (BAY_LEN / 2 - 0.05);
+    const ez = bay.z + bay.along.z * end * (BAY_LEN / 2 - 0.05);
+    flatQuad(lines, ex, y + 0.005, ez, bay.along, 0.1, 2.6);
+  }
+}
+
+export function buildProps({ corridors, lots, cfg, heightAt, palette, chunk = 0, street = { props: [], bays: [] } }) {
   const metal = sink();
   const green = sink();
   const stone = sink();
+  // S3's street props and bays, in their own colours.
+  const dark = sink();
+  const red = sink();
+  const wood = sink();
+  const baySurface = sink();
+  const bayLines = sink();
+  for (const prop of street.props) streetPropGeometry({ metal, dark, red, wood }, prop, cfg, heightAt);
+  for (const bay of street.bays) bayGeometry(baySurface, bayLines, bay, heightAt);
   const all = [];
   const offset = lampOffset(cfg);
   const placed_ = [];
@@ -138,5 +204,10 @@ export function buildProps({ corridors, lots, cfg, heightAt, palette, chunk = 0 
   all.push({ part: metal.done(), colour: palette.lamp });
   all.push({ part: green.done(), colour: palette.lawn });
   all.push({ part: stone.done(), colour: palette.civic });
+  all.push({ part: dark.done(), colour: 0x3b3d40 });
+  all.push({ part: red.done(), colour: 0xb0302a });
+  all.push({ part: wood.done(), colour: 0x7a5a3c });
+  all.push({ part: baySurface.done(), colour: palette.road });
+  all.push({ part: bayLines.done(), colour: palette.roadMark ?? 0xd8d4c8 });
   return { pieces: all.filter((p) => p.part.triangles > 0), lamps: placed_ };
 }

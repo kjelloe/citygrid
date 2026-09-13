@@ -22,9 +22,11 @@ import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
 import { treesIn } from "../world/foliage.js";
-import { signalHeads, crossingBars } from "../world/signals.js";
+import { signalHeads, crossingBars, stopMarks } from "../world/signals.js";
+import { streetProps, streetNameIndex, STREET_NAMES } from "../world/street-furniture.js";
+import { jitter } from "../world/hash.js";
 import { sink } from "./solid.js";
-import { buildSigns } from "./signs.js";
+import { buildSigns, buildNameBoards } from "./signs.js";
 import { buildingParams, fenceOf } from "../world/params.js";
 import { familyColour } from "./palette.js";
 import { ZONE_NONE } from "../constants-mirror.js";
@@ -146,6 +148,8 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
   const chunkTiles = cfg.chunkTiles;
 
   const asphalt = palette.road;
+  const wear = shadeHex(asphalt, 0.9);
+  const patch = shadeHex(asphalt, 1.1);
   const kerbColour = palette.roadMark ?? 0xd8d4c8;
   const concrete = palette.civic ?? 0xd0ccc4;
 
@@ -166,6 +170,22 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
       // The carriageway, crowned. It runs THROUGH the junctions at either end,
       // because that is what a junction is.
       addStrip(baker, ribbon(pts, half, height, { lift, camber, heights: hs }), asphalt);
+      // Wear (S3): a darker band down each lane where the wheels run, and a
+      // lighter patch or two where the road was dug up — the road as a thing
+      // that has been used, with no texture.
+      for (const side of [-1, 1]) {
+        addStrip(baker, ribbon(shift(pts, side * half / 2), 0.55, height, { lift: lift + 0.004 }), wear);
+      }
+      let runLen = 0;
+      for (let i = 1; i < pts.length; i += 1) runLen += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+      const patches = runLen > 30 ? 1 + (jitter(Math.round(pts[0].x * 7 + pts[0].z * 13), 91) < 0.5 ? 1 : 0) : 0;
+      for (let k = 0; k < patches; k += 1) {
+        const at = 8 + jitter(Math.round(pts[0].x + pts[0].z) + k * 31, 93) * (runLen - 16);
+        const sub = trim(pts, at, runLen - at - 3.5);
+        if (sub.length < 2) continue;
+        const side = k % 2 === 0 ? 1 : -1;
+        addStrip(baker, ribbon(shift(sub, side * half / 2), half * 0.4, height, { lift: lift + 0.005 }), patch);
+      }
     }
     // Everything kerbside stops short of the junction. Drawn along the whole
     // corridor it paints a kerb, a pavement and a centre line straight across
@@ -303,9 +323,13 @@ export function bakeLotFacades(baker, state, lots, from, stop, acc, palette, sty
 
 /** What a chunk's lots share once their facades are done: the props, the
  * trees, the lamps and the signs (R5: its own frame). */
-export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName = "plain") {
+export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName = "plain", locale = "en") {
   const cfg = getConfig();
   const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
+  // S3's props and bays in this chunk, from the list the colliders read.
+  const inBox = (p) => p.x >= box.x0 && p.x < box.x1 && p.z >= box.z0 && p.z < box.z1;
+  const all = streetProps(model, cfg);
+  const street = { props: all.props.filter(inBox), bays: all.bays.filter(inBox) };
   // The prop pass, which is the difference between a street and a diagram
   // (spec §6.6). Lamps come from the corridors, hedges and paths from the lots.
   const props = buildProps({
@@ -316,7 +340,7 @@ export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleNa
     corridors: corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM, cfg.road.width / 2 + cfg.road.sidewalk)
       .flatMap((c) => c.kerbside),
     lots: acc.fronts, cfg, heightAt: model.heightAt, palette,
-    chunk: cy * 4096 + cx,
+    chunk: cy * 4096 + cx, street,
   });
   for (const piece of props.pieces) baker.addPart(piece.part, piece.colour, piece.options);
   // Trees, at eye height (V8). The instanced cone is right at city zoom and is
@@ -333,6 +357,32 @@ export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleNa
   // carry a texture. One mesh per distinct NAME, added to the same group, so a
   // high street of forty shops is eighteen draw calls at worst (spec §6.5).
   baker.extra(buildSigns(acc.specs, styleName));
+  // The street-name boards, one mesh for the chunk off one atlas (S3).
+  baker.extra(buildNameBoards(street.props
+    .filter((p) => p.kind === "sign")
+    .map((p) => ({ index: streetNameIndex(p.name), quad: nameBoard(p, model.heightAt, cfg) })),
+  STREET_NAMES[locale] ?? STREET_NAMES.en, styleName));
+}
+
+/** A street-name board on its post, facing the junction (S3): bottom-RIGHT
+ * first as a reader standing in the junction sees it, which is the corner
+ * `buildSigns` gives u = 1. */
+function nameBoard(sign, heightAt, cfg) {
+  const y0 = heightAt(sign.x, sign.z) + cfg.road.lift + cfg.road.kerb + 2.15;
+  const y1 = y0 + 0.32;
+  const f = sign.face;
+  const rx = f.z;
+  const rz = -f.x;
+  const cx = sign.x + f.x * 0.08;
+  const cz = sign.z + f.z * 0.08;
+  const at = (u, y) => [cx + rx * u, y, cz + rz * u];
+  return { corners: [at(0.65, y0), at(-0.65, y0), at(-0.65, y1), at(0.65, y1)], out: [f.x, f.z] };
+}
+
+/** A colour scaled by `k`, clamped. */
+function shadeHex(hex, k) {
+  const ch = (shift) => Math.min(255, Math.round(((hex >> shift) & 255) * k));
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
 }
 
 /** Every lot of a chunk at once: the facades, then the extras. */
@@ -340,7 +390,7 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
   const acc = { specs: [], fronts: [] };
   bakeLotFacades(baker, state, lotsOfChunk(model, cx, cy), 0, () => false, acc,
     palette, styleName, locale, showOwner, furniture, buildingName);
-  bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName);
+  bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName, locale);
 }
 
 /**
@@ -376,6 +426,8 @@ function bakeSignals(baker, model, cx, cy, chunkTiles, cfg, palette, state) {
       });
     }
     for (const bar of crossingBars(model, node, cfg)) paint.push(bar);
+    // And the stop line and the lane arrow where the lights are (S3).
+    for (const mark of stopMarks(model, node, cfg)) paint.push(mark);
   }
   const part = metal.done();
   if (part.triangles > 0) baker.addPart(part, palette.lamp ?? 0xb8bcc0);

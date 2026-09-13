@@ -6294,3 +6294,69 @@ grey wire, and the street grid reads as streets. The crossings are an L3 change 
 no baked chunks; the tests hold them.
 
 **Next:** the rest of S3.
+
+## slice-S3b — streets with detail (2026-09-13)
+
+**What it is.** The rest of S3 that does not depend on the widths. Placed by pure functions in
+`client/world/street-furniture.js` and `signals.js`, drawn by `props-l3.js` and the street baker,
+collided from the same list (A43):
+- a bollard on each pavement corner of a junction and one **street-name sign** per junction — a
+  name per corridor from a new `streets` list in `data/names.json`, through the fascia canvas;
+- manholes in the lanes, drains at the kerb, a post box on a street of three tiles or more;
+- outside an occupied shop, a bench and a bike rack, and **parking bays** between the pavement
+  and the shopfront, never across the door — the instanced pass parks cars in them at every
+  zoom and no longer drops a random car on the road in front of a shop;
+- a stop line and a lane arrow on each approach to a signalled junction, from the lane graph's
+  own inbound links;
+- wear down the lanes and a patch or two per run, as ribbons.
+
+**The widths are a question, not a change: Q102.** S3 said "decide with `road.width`,
+`road.sidewalk` and `lot.setback` — a data change". Measured against D4's TERRACE reference: its
+road is about two thirds of a house wide kerb to kerb, and the houses nearly fill their plots.
+Ours is about 1.3 houses kerb to kerb at street level, and from the air the whole 20 m road tile
+is asphalt — two houses. `road.width` and `road.sidewalk` only reach the baked street, and the
+setback is an inset on all four sides of the tile that moves the gaps, not the 10 m house. The
+recommendation (bigger houses and a green verge from the air) moves every house shot, so it is
+Kjell's. The bridges go with S4, as the item said.
+
+**What went wrong on the way.**
+- **S3a's crossing rule painted no crossing at any shop in a real game — and S3b's shop props
+  appeared outside none.** Both keyed on `occupancy`, and the engine fills it with RESIDENTS: every
+  one of the forty shops in the played city has zero (asked of the page). S3a's test passed on a
+  shop it gave forty occupants, a state the engine never makes. Found when this slice's shot tool
+  could not find one occupied shop. Both now key on a shop that stands (not `FLAG_RUINED`), and the
+  tests use the engine's own zero. (The first fix used flag bit 2 for ruined; it is 8.)
+- **`walkthrough` stopped dead at every junction corner**: the bollards stood mid-pavement, which
+  is exactly the line a person walks (5.3 m out). On the kerb corner now, the sign at the back of
+  the pavement, and a test holds every solid prop off `WALK_OFFSET`.
+- **81 meshes over nine chunks** against "one draw call per material": a textured mesh per street
+  name. One atlas of every name, a row each — one mesh a chunk.
+- **The merge phase read 9.4 ms warm** with 15% more triangles a chunk; bays, bay lines, manholes and
+  drains are flat quads now (two triangles, not twelve).
+- **And my own A78 check had the Q99 flaw back.** Its p95 was over the eighteen warm rebuilds'
+  worst phases, and with eighteen samples the nearest-rank p95 is the maximum: one warm rebuild
+  read 14.6 ms once while every other chunk's worst was 4.3–6.6, and the check failed on it. Each
+  phase is one frame's work, so the p95 is over the frames now (~125), and the cold bound is the
+  worst single frame. A change to a gate's statistic, written here for the reviewer.
+- The two docs checks: a new open question has to be in `plan-v1.md`'s table and `RELEASE.md`'s
+  count in the same commit.
+
+**Measured.** Suite green twice, **1,348 tests**; `node --test test/docs.test.js` green.
+`gates.mjs render`: `walkthrough`, `passability` and `lanes_dump` ok with the new colliders
+(288 s of 300 — budget_gate 234 s of it, twelve seconds of headroom); `budget_gate` alone green
+with the frame statistic: warm p95 **5 ms over 125 frames**, cold worst **8 ms over 69 frames**,
+27 meshes over 9 groups. Street chunks **266,692 → 296,020 triangles** over nine: 29.6k → 32.9k a
+chunk, under V8's 33.7k. `quick` 11 of 11 in 396 s of 480.
+
+**What the pictures say**, looked at: `smoke-S3-corner.png` — a "Chapel Lane" board on its
+post at the back of the pavement, a bollard on each kerb corner, the zebra, and a darker band
+down each lane (the repair patches came out darker than the lighter shade meant; they still read
+as patches). `smoke-S3-shop.png` — the fascias read, "Newsagent", "Cycles", "Bakery", "Optician"
+(R5's white vertex colours), a bench in front and a car in its bay. `smoke-S3-street.png` —
+a bay's car fills the foreground; along a street from the road is the wrong place to stand for
+this. `smoke-S3-row3.png` — the same streets at D4's row-3 zoom beside the reference: the blue
+pipe lines are gone, cars stand along the shopping street, the furniture is below a pixel as it
+should be, and the town is still sparser and its streets still wider than the reference's —
+which is Q102 — with the deputy's empty road grid across the river, which is B9.
+
+**Next:** B5, then B9 — per P70's order.

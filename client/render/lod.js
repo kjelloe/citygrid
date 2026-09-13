@@ -653,7 +653,7 @@ function extrasOf(b, tick) {
 }
 
 /** Counts the renderer needs before it can plan. Cheap: no geometry touched. */
-export function countScene(state, bounds, country = undefined, forest = undefined) {
+export function countScene(state, bounds, country = undefined, forest = undefined, street = undefined) {
   let trees = 0;
   let props = 0;
   let kerbs = 0;
@@ -783,6 +783,17 @@ export function countScene(state, bounds, country = undefined, forest = undefine
       if (!inBounds(bounds, tx, ty)) continue;
       trees += 1;
       chunkAt(tx, ty).trees += 1;
+    }
+  }
+  // Parked cars in the shops' bays (S3), at a prop's measured price like the
+  // random ones they replace.
+  if (street) {
+    for (const bay of street.bays) {
+      const tx = Math.floor(bay.x / street.tileM);
+      const ty = Math.floor(bay.z / street.tileM);
+      if (!inBounds(bounds, tx, ty)) continue;
+      props += 1;
+      chunkAt(tx, ty).props += 1;
     }
   }
   let buildings = 0;

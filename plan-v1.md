@@ -405,6 +405,7 @@ by number from the code they create.
 | Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | **Kjell**, with Q64 |
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
+| Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

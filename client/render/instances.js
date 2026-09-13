@@ -31,6 +31,7 @@ import { civicSpin } from "../world/civic-spec.js";
 import { houseLots } from "../world/homes.js";
 import { countrysideFor } from "../world/countryside.js";
 import { treesFor, backGardens } from "../world/foliage.js";
+import { streetProps } from "../world/street-furniture.js";
 import { civicShape, civicHeight, civicPointOnLot, parkHasPond } from "../world/civic-spec.js";
 import { MOTION } from "../world/motion.js";
 import { addMotion } from "./motion-material.js";
@@ -465,6 +466,18 @@ export function updateInstances(state, pools, options = {}) {
   const palette = PALETTES[styleName] ?? PALETTES.plain;
   // Greyer from the air (S3, A80): street furniture, not a coloured network.
   const wireColour = mixHex(palette.wire, 0xa4a6a8, 0.5);
+  // A road tile in front of a shop has its cars in the shop's bays (S3); a
+  // random one as well parks on top of them.
+  const besideShop = (x, y) => {
+    for (const d of DIR4) {
+      const nx = x + d.dx;
+      const ny = y + d.dy;
+      if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+      const id = state.tiles.buildingId[ny * state.width + nx];
+      if (id !== 0 && model.lotOf(id)?.building.zone === 2) return true;
+    }
+    return false;
+  };
   const model = options.model;
   const tileM = model.tileM;
   /** A tile CENTRE's height, in tile units. Everything that stands on a tile
@@ -617,7 +630,7 @@ export function updateInstances(state, pools, options = {}) {
           const lz = y + 0.5 + (horizontal ? side : 0);
           push(pools.lamp, lx, at(lx, lz), lz,
             1, 1, 1, palette.lamp ?? 0x9aa0a6, horizontal ? 0 : Math.PI / 2);
-        } else if (roll > 0.44) {
+        } else if (roll > 0.44 && !besideShop(x, y)) {
           const side = jitter(index, 47) > 0.5 ? 0.26 : -0.26;
           const v = Math.floor(jitter(index, 53) * CAR_VARIANTS) % CAR_VARIANTS;
           const px = x + 0.5 + (horizontal ? (jitter(index, 59) - 0.5) * 0.5 : side);
@@ -700,6 +713,21 @@ export function updateInstances(state, pools, options = {}) {
         }
       }
     }
+  }
+
+  // Parked cars in their bays in front of the shops (S3), at every zoom: a car
+  // is not baked, so near the camera it is posed here like a moving one.
+  for (const bay of streetProps(model).bays) {
+    const tx = Math.floor(bay.x / getConfig().tileM);
+    const ty = Math.floor(bay.z / getConfig().tileM);
+    if (!inBounds(bounds, tx, ty) || planAt(tx, ty).props === false || options.props === false) continue;
+    const key = Math.round(bay.x * 3 + bay.z * 7);
+    if (jitter(key, 97) < 0.35) continue;   // an empty bay now and then
+    const v = Math.floor(jitter(key, 53) * CAR_VARIANTS) % CAR_VARIANTS;
+    const px = bay.x / getConfig().tileM;
+    const pz = bay.z / getConfig().tileM;
+    push(pools[`car${v}`], px, at(px, pz), pz, 1, 1, 1, CAR_COLOURS[Math.floor(jitter(key, 67) * CAR_COLOURS.length)],
+      Math.abs(bay.along.x) >= Math.abs(bay.along.z) ? 0 : Math.PI / 2);
   }
 
   // Trees (V8, S5), from the city's one list (`world/foliage.js`): the wood's,

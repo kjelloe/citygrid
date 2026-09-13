@@ -16,6 +16,7 @@
 
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
+import { FLAG_RUINED } from "../constants-mirror.js";
 import { frontEdgeOf, OUTWARD } from "./lots.js";
 import { doorPoint } from "./street-furniture.js";
 
@@ -179,8 +180,9 @@ export function signalHeads(model, node, cfg = getConfig()) {
   return out;
 }
 
-/** How many people a crossing's doors must ask for before it is painted (S3). */
+/** How many doors that draw people an arm needs before its crossing is painted. */
 const DOOR_PEOPLE = 1;
+
 
 /** The shortest distance from a point to a polyline, in metres. */
 function toLine(points, x, z) {
@@ -198,11 +200,15 @@ function toLine(points, x, z) {
 }
 
 /**
- * How many people the doors that DRAW people ask for, per corridor (S3): a
- * shop's and a civic building's, by the same `occupancy × perOccupant` the nav
- * graph puts on the pavement outside them, each on the corridor its door is
- * nearest. A house's door is not counted — people leave a house for somewhere,
- * and the somewhere is where they cross. Derived once per model.
+ * How many doors that DRAW people open onto each corridor (S3): a standing
+ * shop's and a civic building's, each on the corridor its door is nearest. A
+ * house's door is not counted — people leave a house for somewhere, and the
+ * somewhere is where they cross. Derived once per model.
+ *
+ * Not `occupancy`: the engine fills it with RESIDENTS, so every shop in a played
+ * city has none. The first cut counted `occupancy × perOccupant`, passed its
+ * test on a shop the test gave 40 occupants, and painted no crossing at a shop
+ * in any real game — found when S3b's shot tool could not find a single one.
  */
 const demandByModel = new WeakMap();
 export function doorDemand(model, cfg = getConfig()) {
@@ -212,8 +218,9 @@ export function doorDemand(model, cfg = getConfig()) {
   for (const lot of model.lots) {
     const b = lot.building;
     if (!b || !(b.zone === 2 || (b.zone === 0 && b.def))) continue;
-    const people = (b.occupancy ?? 0) * cfg.ped.perOccupant;
-    if (people <= 0) continue;
+    // A building the fire has taken is not somewhere anyone crosses to.
+    if ((b.flags & FLAG_RUINED) !== 0) continue;
+    const people = 1;
     const door = doorPoint(frontEdgeOf(lot), OUTWARD[lot.frontage]);
     let near;
     let dist = Infinity;
@@ -276,6 +283,49 @@ export function crossingBars(model, node, cfg = getConfig()) {
           { x: cx + rx * half, z: cz + rz * half },
         ],
       });
+    }
+  }
+  return out;
+}
+
+/**
+ * The stop line and a lane arrow on each approach to a SIGNALLED junction (S3):
+ * where the lights stop the traffic, painted. From the lane graph's own inbound
+ * links, whose last point is where a car stops — a second copy of "where is the
+ * stop line" is a line painted where no car stops. The line sits just behind
+ * the zebra and the arrow a car's length behind that, both across and along
+ * the one lane that arrives. Each mark is `{ kind, width, points }`, like a bar.
+ */
+export function stopMarks(model, node, cfg = getConfig()) {
+  if (!node || !isSignalled(node, model.corridors, cfg)) return [];
+  const laneHalf = cfg.road.width / 4;
+  const behindZebra = BARS * BAR_W * 2.2 / 2 + BAR_W + 0.4;
+  const out = [];
+  for (const link of model.lanes?.links ?? []) {
+    if (link.kind !== "block" || link.to !== node.id) continue;
+    const n = link.pts.length / 3;
+    if (n < 2) continue;
+    const px = link.pts[(n - 1) * 3];
+    const pz = link.pts[(n - 1) * 3 + 2];
+    const qx = link.pts[(n - 2) * 3];
+    const qz = link.pts[(n - 2) * 3 + 2];
+    const len = Math.hypot(px - qx, pz - qz) || 1;
+    const tx = (px - qx) / len;   // towards the junction
+    const tz = (pz - qz) / len;
+    const rx = -tz;
+    const rz = tx;
+    const back = (d) => ({ x: px - tx * d, z: pz - tz * d });
+    const s = back(behindZebra);
+    out.push({
+      kind: "stop", width: 0.3,
+      points: [{ x: s.x - rx * laneHalf, z: s.z - rz * laneHalf }, { x: s.x + rx * laneHalf, z: s.z + rz * laneHalf }],
+    });
+    const tip = back(behindZebra + 3);
+    const tail = back(behindZebra + 7);
+    out.push({ kind: "arrow", width: 0.18, points: [tail, tip] });
+    for (const side of [-1, 1]) {
+      const barb = back(behindZebra + 4.2);
+      out.push({ kind: "arrow", width: 0.18, points: [{ x: barb.x + rx * side * 0.6, z: barb.z + rz * side * 0.6 }, tip] });
     }
   }
   return out;

@@ -41,5 +41,48 @@
       "Skredder",
       "Leker"
     ]
-  }
+  },
+  "streets": {
+    "en": [
+      "Mill Lane",
+      "Church Street",
+      "Station Road",
+      "Park Avenue",
+      "High Street",
+      "Orchard Way",
+      "Victoria Road",
+      "Bridge Street",
+      "Queen Street",
+      "King's Road",
+      "Chapel Lane",
+      "Market Street",
+      "School Lane",
+      "Rose Avenue",
+      "Meadow Close",
+      "Water Lane",
+      "North Road",
+      "Elm Grove"
+    ],
+    "no": [
+      "Møllegata",
+      "Kirkegata",
+      "Stasjonsveien",
+      "Parkveien",
+      "Storgata",
+      "Hagegata",
+      "Torggata",
+      "Brugata",
+      "Dronningens gate",
+      "Kongens gate",
+      "Kapellveien",
+      "Markedsgata",
+      "Skoleveien",
+      "Roseveien",
+      "Engveien",
+      "Elveveien",
+      "Nordre vei",
+      "Almeveien"
+    ]
+  },
+  "note_streets": "Street names for L3 name signs at junctions (slice S3). Picked by jitter(corridor.id) so a street keeps its name while its corridor does; never game state. Equal length in every locale, like the shops: a language change renames a street and moves none."
 }

@@ -49,6 +49,82 @@ export function signTexture(text, ink = "#f4f0e6", ground = "#2b3138") {
   return texture;
 }
 
+const ATLAS = new Map();
+
+/** Every street name on ONE texture, a row each (S3). A texture per name made a
+ * mesh per name per chunk — 81 meshes over nine chunks, and `budget_gate`'s
+ * "one draw call per material" said so. Cached by the list. */
+export function nameAtlas(names, ink = "#f4f0e6", ground = "#2b3138") {
+  const key = `${names.join("|")}|${ink}|${ground}`;
+  const found = ATLAS.get(key);
+  if (found) return found;
+  const canvas = document.createElement("canvas");
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT * names.length;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = ink;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  names.forEach((text, row) => {
+    let size = 30;
+    ctx.font = `600 ${size}px system-ui, sans-serif`;
+    while (ctx.measureText(text).width > WIDTH - 24 && size > 12) {
+      size -= 2;
+      ctx.font = `600 ${size}px system-ui, sans-serif`;
+    }
+    ctx.fillText(text, WIDTH / 2, row * HEIGHT + HEIGHT / 2 + 1);
+  });
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  // No mipmaps: a mip level blends a row into its neighbours' names.
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  ATLAS.set(key, texture);
+  return texture;
+}
+
+/** The street-name boards of a chunk as ONE mesh reading the name atlas.
+ * `boards` are `{ index, quad }`, the quad with its bottom-right corner first
+ * like a fascia's. */
+export function buildNameBoards(boards, names, styleName = "plain") {
+  if (boards.length === 0) return [];
+  const n = names.length;
+  const position = new Float32Array(boards.length * 18);
+  const uv = new Float32Array(boards.length * 12);
+  const normal = new Float32Array(boards.length * 18);
+  let at = 0;
+  for (const { index, quad } of boards) {
+    const q = quad.corners;
+    // Row `index` counted from the TOP of the canvas; a texture's v runs up.
+    const inset = 0.5 / (HEIGHT * n);
+    const v1 = 1 - index / n - inset;
+    const v0 = 1 - (index + 1) / n + inset;
+    const corners = [q[0], q[3], q[2], q[0], q[2], q[1]];
+    const uvs = [[1, v0], [1, v1], [0, v1], [1, v0], [0, v1], [0, v0]];
+    for (let i = 0; i < 6; i += 1) {
+      position.set(corners[i], at * 3);
+      normal.set([quad.out[0], 0, quad.out[1]], at * 3);
+      uv.set(uvs[i], at * 2);
+      at += 1;
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(position, 3));
+  geometry.setAttribute("normal", new THREE.BufferAttribute(normal, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  // White vertex colours: the style's material multiplies by them (R5).
+  geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(boards.length * 18).fill(1), 3));
+  geometry.computeBoundingSphere();
+  const material = makeMaterial(styleName, 0xffffff);
+  material.map = nameAtlas(names);
+  material.needsUpdate = true;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = "sign:streets";
+  return [mesh];
+}
+
 /** How many distinct fascias have been drawn. Read by the gate: a cache that
  * never hits is a texture per shop, which is a draw call per shop. */
 export function signCacheSize() {
@@ -76,8 +152,14 @@ function fasciaQuad(spec, front, from, to, lift = 0) {
  * One mesh per distinct sign text, holding every fascia in the chunk that says
  * it. `specs` are the facade specs of the chunk's lots.
  */
-export function buildSigns(specs, styleName = "plain") {
+export function buildSigns(specs, styleName = "plain", extra = []) {
   const byText = new Map();
+  // Boards that are not on a lot: a street's name on its sign post (S3).
+  for (const { text, quad } of extra) {
+    const list = byText.get(text) ?? [];
+    list.push(quad);
+    byText.set(text, list);
+  }
   for (const spec of specs) {
     const front = spec.edges.find((e) => e.street);
     if (!front) continue;

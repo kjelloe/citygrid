@@ -139,7 +139,8 @@ export function createStreetChunks(scene, options = {}) {
       return job.cursor >= job.lots.length;
     },
     (job, state, model) => {
-      bakeLotExtras(job.baker, state, model, job.chunk.cx, job.chunk.cy, job.acc, palette, styleName);
+      bakeLotExtras(job.baker, state, model, job.chunk.cx, job.chunk.cy, job.acc, palette, styleName,
+        options.locale ?? "en");
       return true;
     },
   ];

@@ -215,6 +215,7 @@ test("a node that is not a junction at all gets neither", () => {
 // its arms draw people: a shop's, a civic building's.
 
 import { crossingWanted } from "../client/world/signals.js";
+import { FLAG_RUINED } from "../client/constants-mirror.js";
 
 function tee(buildings = []) {
   // A street along y = 8 with a stem down from x = 8: a T, which is give-way.
@@ -253,13 +254,45 @@ test("a shop on one of its arms paints the crossing", () => {
   const { model, node } = tee([{ x: 10, zone: 2, occupancy: 40 }, { x: 4 }]);
   assert.equal(crossingWanted(model, node), true, "a shop's door did not ask for a crossing");
   assert.ok(crossingBars(model, node).length >= node.corridors.length * 3);
-  // An empty shop draws nobody.
-  const empty = tee([{ x: 10, zone: 2, occupancy: 0 }]);
-  assert.equal(crossingWanted(empty.model, empty.node), false, "an empty shop painted a crossing");
+  // A shop as the engine makes it: no occupants at all (occupancy counts
+  // RESIDENTS). It still draws people.
+  const real = tee([{ x: 10, zone: 2, occupancy: 0 }]);
+  assert.equal(crossingWanted(real.model, real.node), true, "a shop with the engine's zero occupancy painted nothing");
+  // A ruined one draws nobody.
+  const ruin = tee([{ x: 10, zone: 2, occupancy: 0, flags: FLAG_RUINED }]);
+  assert.equal(crossingWanted(ruin.model, ruin.node), false, "a ruined shop painted a crossing");
 });
 
 test("a signalled crossroads keeps its bars whatever is on it", () => {
   const model = crossroads();
   const node = model.nodes.find((n) => model.lanes.signals.has(n.id));
   assert.equal(crossingWanted(model, node), true);
+});
+
+import { stopMarks } from "../client/world/signals.js";
+
+test("a signalled junction has a stop line and an arrow on each approach, behind its zebra (S3)", () => {
+  const cfg = DEFAULTS;
+  const model = crossroads();
+  const node = model.nodes.find((n) => model.lanes.signals.has(n.id));
+  const marks = stopMarks(model, node);
+  const stops = marks.filter((m) => m.kind === "stop");
+  assert.equal(stops.length, node.corridors.length, `${stops.length} stop lines on ${node.corridors.length} approaches`);
+  const bars = crossingBars(model, node);
+  const far = (p) => Math.hypot(p.x - node.x, p.z - node.z);
+  const zebraOut = Math.max(...bars.flatMap((b) => b.points.map(far)).map((d) => d));
+  for (const stop of stops) {
+    const width = Math.hypot(stop.points[1].x - stop.points[0].x, stop.points[1].z - stop.points[0].z);
+    assert.ok(Math.abs(width - cfg.road.width / 2) < 1e-6, `a stop line ${width.toFixed(2)} m long: not one lane`);
+    const mid = { x: (stop.points[0].x + stop.points[1].x) / 2, z: (stop.points[0].z + stop.points[1].z) / 2 };
+    assert.ok(far(mid) > Math.min(...bars.map((b) => far({ x: (b.points[0].x + b.points[1].x) / 2, z: (b.points[0].z + b.points[1].z) / 2 }))),
+      "a stop line in front of the zebra");
+  }
+  assert.ok(zebraOut > 0);
+  for (const arrow of marks.filter((m) => m.kind === "arrow")) assert.equal(arrow.points.length, 2);
+});
+
+test("a give-way junction has no stop line", () => {
+  const { model, node } = tee([{ x: 10, zone: 2, occupancy: 40 }]);
+  assert.deepEqual(stopMarks(model, node), []);
 });

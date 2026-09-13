@@ -136,11 +136,13 @@ than a texture. **A33** settles it: crosswalks and stop bars are ribbons too.
   walker can be tested against it. A canvas would have been a second sampling path and a
   texture per chunk for a few strips of paint.
 
-**Amended (S3a, 2026-09-13): a crossing where a signal or a door demand is.** T1 kept zebra bars
+**Amended (S3a; corrected in S3b): a crossing where a signal or a door demand is.** T1 kept zebra bars
 at every junction (A51), and from the air a dense grid was white bars (the review after S5).
 `crossingWanted(model, node)` in `signals.js`: a signalled junction, or one where the doors on an
-arm draw people — a shop's or a civic building's, by the nav graph's own `occupancy ×
-perOccupant`, each door on its nearest corridor (`doorDemand`, derived once per model). A house's
+arm draw people — a standing shop's or civic building's, each door on its nearest corridor
+(`doorDemand`, derived once per model). S3a counted `occupancy × perOccupant`, and the engine's
+`occupancy` is residents: every shop in a played city has none, so S3a painted no crossing at any
+shop in a real game while its test, on a shop it gave forty occupants, passed. A house's
 door is not counted: people leave a house for somewhere, and the somewhere is where they cross.
 
 ## 5.4 Networks
@@ -157,6 +159,37 @@ a hill in straight segments instead of vanishing into it. Poles every third tile
 a pole is a thin box with a cross-arm and a sagging wire between poles (`sagCurve` in
 Higashiyama's `util.js`) - eight triangles a span, and the single thing that most makes a
 suburb read as a suburb from eye height.
+
+## 5.4b Streets with detail (S3b, 2026-09-13)
+
+Every street prop beyond the lamps and hedges is placed by a pure function in
+`client/world/street-furniture.js`, and the solid ones become colliders from the same list (A43):
+
+- **At a junction** (`junctionProps`): a bollard on each KERB corner between two arms at about a
+  right angle, and one **street-name sign** at the back of the pavement — both clear of the line a
+  person walks, which is where the first cut put the bollard and where `walkthrough` stopped dead.
+  The name is from `data/names.json`'s `streets` (mirrored in `STREET_NAMES`, equal length in every
+  locale), picked by the corridor's id; every board in a chunk reads ONE atlas texture
+  (`nameAtlas`, a row per name), because a texture per name was a mesh per name — 81 meshes over
+  nine chunks against `budget_gate`'s "one draw call per material".
+- **Along a corridor** (`corridorProps`): a manhole in a lane every 40 m, a drain at the kerb every
+  30 m, and on a street of three tiles or more a post box at the back of the pavement — nothing
+  inside a junction box.
+- **Outside a standing shop** (`shopProps`; not ruined — not `occupancy`, which the engine fills
+  with residents and leaves at zero on every shop): a bench on one side of the door and a bike
+  rack on the other, and a row of **parking bays** in the strip between the pavement and the shopfront,
+  never across the door's path (`DOOR_CLEAR`). The instanced pass parks cars in them at every
+  zoom, in the same pools as every car, and no longer drops a random one on the road in front of a
+  shop; the estimate prices them as the props they replaced.
+- **At a signalled junction** (`stopMarks` in `signals.js`): a stop line across each inbound lane
+  just behind the zebra, and a lane arrow behind that — from the lane graph's own inbound links,
+  whose last point is where a car stops.
+- **Wear**: a darker band down each lane where the wheels run and a lighter patch or two per run —
+  extra ribbons on the carriageway, no texture.
+
+Colliders: bollards, sign posts, post boxes and benches; a drain, a manhole and a bike rack are
+stepped over. **Not in S3b:** the widths (Q102 — the item's three knobs cannot change the air
+view) and bridges (with S4).
 
 ## 5.5 Water
 

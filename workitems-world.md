@@ -104,7 +104,12 @@ reports zero pipe instances with the overlay off and the water overlay's byte pl
 piped tile; `a11y_smoke`'s water-overlay contrast row still passes. Both are small and both are
 the first thing the reference does not have. **Built 2026-09-13 as `slice-S3a`** (spec §5.3–5.4): `crossingWanted` —
 a signal, or a shop's or civic door drawing people on an arm; no pipe instances, the water overlay
-shows them; the wire 0.09 of a tile and greyer. The rest of S3 below is still to do.
+shows them; the wire 0.09 of a tile and greyer. The rest of S3 below: **built 2026-09-13 as `slice-S3b`** (spec §5.4b) — junction
+bollards and a street-name sign, manholes, drains, post boxes, a bench and a bike rack outside each
+shop, parking bays in front of the shops with cars in them, stop lines and lane arrows at the
+lights, and wear down the lanes; the solid props are colliders. **Not built:** the widths, which
+became **Q102** (the three knobs cannot change the air view, where D4 saw it), and the bridges,
+which go with S4.
 
 **Goal.** A street from the pavement has the things a street has, and reads at the width of its
 houses.

@@ -11,7 +11,7 @@
 import { getConfig } from "./config.js";
 import { storeys, zoneKey, kindOf } from "./params.js";
 import { frontEdgeOf } from "./lots.js";
-import { lampsAlong, lampOffset, furnitureBoxes } from "./street-furniture.js";
+import { lampsAlong, lampOffset, furnitureBoxes, streetProps } from "./street-furniture.js";
 
 /** Hash cell, metres. Eight is half a carriageway and smaller than a lot, so a
  * query touches four cells and a 40 m frontage is not in twenty of them. */
@@ -84,7 +84,7 @@ function furnitureOf(model) {
   const fronts = model.lots
     .filter((lot) => kindOf(lot.building.zone) === "residential")
     .map(frontEdgeOf);
-  return furnitureBoxes(model, lamps, fronts);
+  return furnitureBoxes(model, lamps, fronts, streetProps(model, cfg).props);
 }
 
 /**

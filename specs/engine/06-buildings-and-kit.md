@@ -347,7 +347,10 @@ its own. With the lots sliced the STREET phase was the worst frame (5.6–10.2 m
 the same way: `bakeStreetCorridors` in slices, then `bakeStreetJoints` (junction boxes,
 connectors, signals, wires). The geometry is the same; a chunk takes a few more frames to arrive.
 The gate reads every draw for its cold builds too — most chunks now finish on one of the page's own
-draws, and the first run counted 2 cold builds of 9.
+draws, and the first run counted 2 cold builds of 9. **And since S3b the p95 is over FRAMES** — every phase
+of every warm rebuild, about 125 of them — not over the eighteen chunks' worst phases: with
+eighteen samples the nearest-rank p95 IS the maximum, so one stall failed it again (14.6 ms once,
+every other warm chunk 4.3–6.6), which is the thing A78 was written to end.
 
 **A park** has two benches beside its path, a pond on half of them (`parkHasPond` — the item said
 "a big one" and every park in the catalogue is one tile, so a rule on size alone was a pond
