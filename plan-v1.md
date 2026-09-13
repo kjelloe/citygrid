@@ -406,6 +406,8 @@ by number from the code they create.
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q98 | Worldgen makes no dirt or marsh, and rock only above elevation 215 — S2's stones and reeds have nothing to stand on | Kjell, or a worldgen slice |
+| Q100 | Wires and pipes are drawn at every zoom on every road — pipes only with the water overlay? | world S3, if Kjell agrees |
+| Q101 | The deputy paves a grid far beyond what it builds — the "town with no edge" | a deputy slice, sim set |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

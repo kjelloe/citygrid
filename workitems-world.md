@@ -95,6 +95,12 @@ geometry on every grass tile).
 
 ## S3 — Streets with detail (M) — D4 finding 4
 
+**Amended 2026-09-13 (review after S5).** Two things from the pictures join this item: **crossing
+bars only where a signal or a door demand is** — T1 kept them at every junction and from the air a
+dense grid is white bars — and, **if Kjell agrees Q100**, pipes drawn only while the water overlay
+is on and wires thinner at city zoom, so a street from the air is a street and not a wiring
+diagram. Both are small and both are the first thing the reference does not have.
+
 **Goal.** A street from the pavement has the things a street has, and reads at the width of its
 houses.
 
@@ -119,6 +125,10 @@ with the collider derived from the same one (A43); a bay never overlaps a drivew
 beside D4's reference row 3; the chunk triangle count before and after (V8: 33.7k a chunk).
 
 ## S4 — Water, banks and bridges (S) — Q65 (A50), A46
+
+**Amended 2026-09-13.** The surface shows its tiles — seams and a cross-hatch in `smoke-S2-edge.png`.
+One mesh with shared vertices and a per-vertex level blended across a tile's corners, the way the
+terrain's corners are, so a lake is one sheet; the river's step-down stays.
 
 **Goal.** A river has banks and a bridge, a lake has a shore, and the walker can stand on both.
 
@@ -333,6 +343,73 @@ keys are live now, because "3 live" could not answer "is the building in front o
 **Measured.** Street chunks **275,248 → 226,232** over 8 with 9 groups (the near chunk joins and a
 distant one leaves), the crowd frame **329,464 → 310,885 of 400,000**, bake p95 5 ms.
 
+## Review after S5 (2026-09-13) — P68
+
+*Read on `dev_night` at `8c0a99e`. Re-run by the reviewer: the suite (red on two docs checks only
+— Q99 was in the local questions file and not in `plan-v1.md`, and the release count; both fixed
+in this round), `gates.mjs quick` and `render`. **S10, S1b, B4, B7, B8, S2, S6 and S5 are
+accepted.** This is the round the world lane turned: `smoke-S10-street.png` is a street of houses
+with pitched roofs and chimneys against the sky, `smoke-S10-city20.png` reads as the reference at
+distance, `smoke-B4-morning.png` is a queue of cars at a junction on a street of houses, and
+`smoke-S5-park.png` is a park. S1b's finding — the chunk the camera stands in was never baked —
+is the most important thing found since R4, and it corrects the reviewer's own A73.*
+
+**What the screenshots show, looked at by the reviewer.**
+- **The civic sign floats.** `smoke-S1-coalPlant.png`: a black bar hangs in the air left of the
+  tree. `signs.js` puts a civic sign on a fascia at the LOT's street edge (`fasciaQuad(spec,
+  front, …)`), and a civic building's masses are set back inside the lot — so the board stands in
+  the garden, edge-on and unlit. → R5.
+- **The coal plant's drum stands beside the hall, not over it**; from the pavement it is a silo.
+  The hospital's cross reads; its glass entrance is a dark strip along the whole front. S1b did
+  what it said and the shapes want one more pass by eye — the same loop S9 and S10 got. → R5.
+- **Every junction has a zebra on every arm**, and from the air a dense grid is white bars
+  (`smoke-S5-garden.png`, top left). T1 kept crossing bars at unsignalled junctions on purpose;
+  the picture says that was too many. → S3 (bars where a signal or a door demand is).
+- **Wires and pipes edge every road in blue and grey from the air** (`smoke-S10-city20.png`,
+  `smoke-S2-edge.png`). Q100, with a recommendation; a decision for Kjell, because it changes what
+  a player can see of their own network.
+- **The town has no edge because the deputy paves one** — a grid of empty roads across the river.
+  Q101. Not a renderer item.
+- **The water shows its tiles** (`smoke-S2-edge.png`): seams and a cross-hatch on the surface.
+  → S4, which was going to touch it anyway.
+- **A house stands on a pale band** (`smoke-S10-street.png`, left): the plinth or the lawn quad
+  showing under the ground floor as a light strip. → R5, by screenshot.
+- **Cars are two boxes.** Fine from the air; from the pavement (`smoke-B4-morning.png`) they are
+  the least detailed thing in the frame now. → B3 gains a car kit.
+
+**Q99 is answered (A78)**: the bake check reads warm rebuilds and every phase. **Q98 waits for
+Kjell** with a recommendation: bundle the worldgen change with the transport lane's re-pin.
+
+**Measured by the reviewer:** `quick` 11 of 11 in **400 s of 480** (ui_smoke 128, play_smoke 86);
+`render` 4 of 4 in **285 s of 300** (budget_gate 223, lanes_dump 59) — fifteen seconds of headroom.
+
+**The `render` set is at 285 s of 300.** `budget_gate` alone is 200 s. M2's rule applies:
+the next slice that pushes it over splits `budget_gate` into its own `budget` set rather than
+raising the number — and `motion_shots` and `foliage_shots` stay out of any set, as the ally
+decided.
+
+### R5 — Review fixes after S5 (S)
+
+Each names its test. Commit as `slice-R5`.
+
+1. **The civic sign on the building, not on the lot.** Place the board on the street face of the
+   mass nearest the frontage (`civic-spec.js` knows the masses; the nearest face at `groundH ×
+   0.9` is a pure function), or on a post at the entrance where no mass touches the frontage.
+   Test in `test/civic-spec.test.js`: the sign's quad lies on a mass face for all twelve; the
+   twelve shots re-taken.
+2. **The coal plant's stacks stand ON the hall**, proud of its roof, and the gas plant's likewise;
+   the hospital's entrance is a glazed bay one bay wide, not a strip. One pass by eye per
+   definition, and the shot beside the previous one in the dev-log.
+3. **The house's pale band.** Find what draws the light strip under the ground floor in
+   `smoke-S10-street.png` (the plinth colour, or the lawn quad's edge at `LAWN_TOP`) and fix the
+   one; re-take the shot.
+4. **The bake check (A78).** `street-chunks.js` records every phase's time; `budget_gate` bounds
+   the warm p95 at 8 ms and the cold first build at 16 ms, and prints both.
+5. **Docs sync.** `Q99` closed (A78); `plan-v1.md`'s open table and `RELEASE.md`'s count match
+   `dev-questions.md` — the two docs checks the reviewer found red — and the ally's own review
+   round runs `node --test test/docs.test.js` before a commit, since `dev-questions.md` is local
+   and the suite is the only thing that sees it.
+
 ## S9 — Houses with more on them (M) — P61 — **done 2026-09-11 as `slice-S9`**
 
 *Kjell, 2026-09-11: "houses need more details." The residential kit has six silhouettes and
@@ -400,7 +477,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9, S1, S10, S1b, S2, S6 and S5 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. Next: → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9, S1, S10, S1b, S2, S6 and S5 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. After the review of 2026-09-13: R5 → S3 → B5 → S4 → B1 → S7 → B3 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

@@ -97,6 +97,14 @@ and the baked facade dirty and shrink by the same amount.
 
 ## B3 — Service vehicles (M)
 
+**Amended 2026-09-13 (review after S5).** The item gains **a car kit** before the service
+vehicles: from the pavement a car is two boxes and the least detailed thing in a frame that now
+has chimneys, shutters and zebra bars. Three body types (hatchback, saloon, van) from one pure
+`client/world/vehicle-spec.js`, with wheels as eight-sided drums, a glazed cabin in a dark tone,
+and the lamps B4 already poses — within 120 triangles a car (76 today), and the L2 pool keeps its
+two-box silhouette. The fire engine, the police car and the truck are then the same kit with a
+body and a colour. Measure the car pool's triangles before and after in `budget_gate`'s car rows.
+
 **Goal.** A fire is fought, a beat is walked, a factory ships.
 
 **Do.** Three vehicle kinds in `client/life/`, each renderer-local and derived:
