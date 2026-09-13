@@ -136,10 +136,23 @@ than a texture. **A33** settles it: crosswalks and stop bars are ribbons too.
   walker can be tested against it. A canvas would have been a second sampling path and a
   texture per chunk for a few strips of paint.
 
+**Amended (S3a, 2026-09-13): a crossing where a signal or a door demand is.** T1 kept zebra bars
+at every junction (A51), and from the air a dense grid was white bars (the review after S5).
+`crossingWanted(model, node)` in `signals.js`: a signalled junction, or one where the doors on an
+arm draw people — a shop's or a civic building's, by the nav graph's own `occupancy ×
+perOccupant`, each door on its nearest corridor (`doorDemand`, derived once per model). A house's
+door is not counted: people leave a house for somewhere, and the somewhere is where they cross.
+
 ## 5.4 Networks
 
-Wire and pipe keep ruling 030: hub plus arms from the mask, one width end to end, above the
-road. With relief they sample `heightAt` at the tile centre and the arm ends, so a run climbs
+**Amended (S3a, A80): a pipe is underground.** It is not instanced at all; it shows while the water
+overlay is on, as that overlay's texture (ruling 041), which marks every piped tile supplied or dry
+— `client_smoke` checks the pools hold no pipe on a city with 1,361 piped tiles. The estimate no
+longer charges for pipes. The wire stays at every zoom, **0.09 of a tile** (it was 0.16) and greyer
+from the city camera; the baked street-level wire is unchanged.
+
+Wire (and, until S3a, pipe) keeps ruling 030: hub plus arms from the mask, one width end to end,
+above the road. With relief they sample `heightAt` at the tile centre and the arm ends, so a run climbs
 a hill in straight segments instead of vanishing into it. Poles every third tile at L2; at L3
 a pole is a thin box with a cross-arm and a sagging wire between poles (`sagCurve` in
 Higashiyama's `util.js`) - eight triangles a span, and the single thing that most makes a

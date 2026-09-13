@@ -211,13 +211,19 @@ test("the estimate charges for every network the renderer draws (P35)", () => {
   const source = readFileSync(join(repoRoot, "client", "render", "lod.js"), "utf8");
   const body = source.slice(source.indexOf("export function estimate("), source.indexOf("export function stepDown") >= 0
     ? source.indexOf("export function stepDown") : source.length);
-  for (const term of ["wireTiles", "wireArms", "pipeTiles", "pipeArms", "markArms"]) {
+  for (const term of ["wireTiles", "wireArms", "markArms"]) {
     assert.ok(body.includes(term), `the estimate ignores ${term}`);
   }
   const counted = countScene(SAMPLE, undefined);
-  for (const key of ["wireTiles", "wireArms", "pipeTiles", "pipeArms", "markArms"]) {
+  for (const key of ["wireTiles", "wireArms", "markArms"]) {
     assert.ok(Number.isFinite(counted[key]), `countScene does not report ${key}`);
   }
+  // And nothing for a pipe (S3, A80): a water main is drawn only by the water
+  // overlay's texture, which costs no triangles. Charged, it was a term the
+  // budget traded detail away for with nothing on screen.
+  const plan = { buildings: 2, trees: true, treeDetail: 2, props: true, markings: true, shadows: false, streetChunks: 0 };
+  assert.equal(estimate({ ...CITY, pipeTiles: 600, pipeArms: 1100 }, plan), estimate({ ...CITY, pipeTiles: 0, pipeArms: 0 }, plan),
+    "a pipe still costs something");
 });
 
 test("a junction's markings are counted, not assumed to be one", () => {

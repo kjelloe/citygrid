@@ -55,8 +55,6 @@ const DEFAULT_COSTS = {
   pole: 12,     // a box; vertical, so it cannot be flattened
   wireHub: 2,
   wireArm: 2,
-  pipeHub: 2,
-  pipeArm: 2,
 };
 
 /** One terrain chunk is 16x16 tiles at two triangles each. Terrain is not
@@ -300,12 +298,12 @@ function estimateOne(counts, plan) {
       ? (counts.pedsCity ?? 0) * costs.pedCity + (counts.pedsCityNear ?? 0) * costs.ped
       : 0)
     + (plan.markings ? counts.markArms * costs.marking * loose : 0)
-    // Every network the renderer draws has a term here. Wire and pipe had
-    // none, and `counts.poles` was computed and then never read — a term
-    // missing from the estimate is a term the budget cannot trade away (P35).
+    // Every network the renderer draws has a term here. Wire had none, and
+    // `counts.poles` was computed and then never read — a term missing from
+    // the estimate is a term the budget cannot trade away (P35). A pipe is not
+    // drawn at all since S3 (A80): the water overlay's texture shows it.
     + (plan.networks !== false
-      ? (counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm
-        + counts.pipeTiles * costs.pipeHub + counts.pipeArms * costs.pipeArm) * loose
+      ? (counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm) * loose
       : 0)
     + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole * loose : 0)
     // The baked street chunks, at what they MEASURED last frame (slice E3).
@@ -475,11 +473,12 @@ export function choosePlan(counts, view, canvasHeight, options = {}) {
   if (px < RESOLVE.pedsCity && !planFor) { plan.pedsCity = false; plan.reason = "city crowd not resolvable"; }
   if (px < RESOLVE.markings) { plan.markings = false; plan.reason = "markings not resolvable"; }
   if (px < RESOLVE.poles) { plan.poles = false; plan.reason = "poles not resolvable"; }
-  // A wire ribbon is 0.16 of a tile wide and a pipe main 0.28, so below about
-  // twelve pixels a tile they are drawing a line thinner than a pixel — and on
-  // a wired city they are the single largest thing on screen: 13,476 instances
-  // and 43% of the frame at the default span on a 64x64 (slice V2). The power
-  // and water overlays still say where the network reaches.
+  // A wire ribbon is 0.09 of a tile wide since S3 (A80; it was 0.16, and the
+  // pipe main beside it 0.28), so below about twelve pixels a tile it is a line
+  // about a pixel wide — and on a wired city the networks were the single
+  // largest thing on screen: 13,476 instances and 43% of the frame at the
+  // default span on a 64x64 (slice V2). The power and water overlays still say
+  // where the network reaches.
   if (px < RESOLVE.networks) { plan.networks = false; plan.reason = "networks not resolvable"; }
   // L3 is a ZOOM, not a tier setting. The cache was baking its tier's quota at
   // every span, so a city-zoom frame paid for kerbs a third of a pixel wide and
@@ -664,8 +663,6 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   let markArms = 0;
   let wireTiles = 0;
   let wireArms = 0;
-  let pipeTiles = 0;
-  let pipeArms = 0;
   // The same counts, split by 16x16 chunk, so a perspective frame can price
   // each chunk at its own plan (slice V5). One extra Map entry per chunk; the
   // per-tile work is the same walk it always was.
@@ -673,7 +670,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   const CHUNK = 16;
   const blank = () => ({
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
-    markArms: 0, wireTiles: 0, wireArms: 0, pipeTiles: 0, pipeArms: 0, cars: 0, peds: 0,
+    markArms: 0, wireTiles: 0, wireArms: 0, cars: 0, peds: 0,
     waterTiles: 0, kerbs: 0, groundProps: 0,
   });
   const chunkAt = (x, y) => {
@@ -723,13 +720,6 @@ export function countScene(state, bounds, country = undefined, forest = undefine
       part.wireTiles += 1;
       for (let d = 0; d < 4; d += 1) {
         if (state.tiles.wire[i] & (1 << d)) { wireArms += 1; part.wireArms += 1; }
-      }
-    }
-    if ((state.tiles.pipe[i] & NET) !== 0) {
-      pipeTiles += 1;
-      part.pipeTiles += 1;
-      for (let d = 0; d < 4; d += 1) {
-        if (state.tiles.pipe[i] & (1 << d)) { pipeArms += 1; part.pipeArms += 1; }
       }
     }
     if (state.tiles.terrain[i] === WATER || state.tiles.terrain[i] === SHALLOW) part.waterTiles += 1;
@@ -846,7 +836,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   }
   return {
     buildings, trees, props, roads, poles, groundChunks, waterTiles,
-    markArms, wireTiles, wireArms, pipeTiles, pipeArms, chunks, kerbs, groundProps,
+    markArms, wireTiles, wireArms, chunks, kerbs, groundProps,
     // Filled in by the caller from what the street cache measured last frame.
     streetPerChunk: 0,
     // Filled in by the caller from the traffic system's live count: the number

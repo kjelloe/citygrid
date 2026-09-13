@@ -79,6 +79,25 @@ for (const check of CHECKS) {
   }
 }
 
+// A pipe is underground (S3, A80): none is drawn with the overlay off — while
+// the city it is looking at has them, or the check passes on a dry town.
+{
+  const r = await shoot({
+    out: "reports/.smoke-pipes.png", seed: 1003, years: 12, style: "plain", span: 9, width: 480, height: 270, frames: 10,
+    extra: { __ask: `(state, view) => ({
+      piped: state.tiles.pipe.filter((p) => (p & 16) !== 0).length,
+      drawn: Object.keys(view.pools ?? {}).filter((k) => k.startsWith("pipe"))
+        .reduce((n, k) => n + (view.pools[k].count ?? 0), 0),
+    })` },
+  });
+  const a = r.answer ?? {};
+  if (a.piped > 0 && a.drawn === 0) console.log(`ok    no pipe drawn with the overlay off (${a.piped} piped tiles)`);
+  else {
+    failures += 1;
+    console.log(`FAIL  pipes with the overlay off: ${JSON.stringify(a)}`);
+  }
+}
+
 // Frozen is frozen: two shots of one city under `?life=0` are the same BYTES.
 // S6's item calls this "V1's gate, kept", and no tool had ever checked it —
 // `motion_shots.mjs` did, and it is too slow for any set. Here it costs two
@@ -99,5 +118,5 @@ for (const check of CHECKS) {
   }
 }
 
-console.log(failures === 0 ? "\nclient smoke ok" : `\nCLIENT SMOKE FAILED — ${failures} of ${CHECKS.length + 1}`);
+console.log(failures === 0 ? "\nclient smoke ok" : `\nCLIENT SMOKE FAILED — ${failures} of ${CHECKS.length + 2}`);
 if (failures > 0) process.exit(1);

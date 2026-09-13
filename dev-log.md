@@ -6258,3 +6258,39 @@ houses is a darker course of the wall, and the porches stand out from the doors 
 lot's LOWEST corner and the lawn is centimetres thick) — the path shows now, the lawn does not.
 
 **Next:** S3.
+
+## slice-S3a — crossings where people cross, pipes underground (2026-09-13)
+
+**What it is.** The two amendments the review after S5 put on S3, landed before the rest of the
+item so the air view stops reading as a wiring diagram with a zebra on every corner. The rest of
+S3 — street widths against the houses, furniture, wear, bridges — follows as its own commit.
+
+- **A crossing where a signal or a door demand is.** T1 painted bars at every junction (A51).
+  `crossingWanted(model, node)` in `signals.js`: a signalled junction, or one where a shop's or a
+  civic building's doors on an arm draw at least one person by the nav graph's own formula,
+  each door on its nearest corridor (`doorDemand`, once per model). A house's door is not
+  counted — people leave a house for somewhere. Tested: a give-way T on a street of houses has
+  no zebra, the same T with a shop on an arm has one, an empty shop draws nobody, a signalled
+  crossroads keeps its bars. T1's own test said the opposite and was rewritten to the new rule.
+- **A pipe is underground (A80).** No pipe pool, no draw, no term in the estimate: the water
+  overlay's texture already marks every piped tile, supplied or dry, and a new test holds it to
+  exactly the piped tiles. `client_smoke` asks the real page: **0 pipe instances with 1,361
+  piped tiles** in the city.
+- **The wire, thinner and greyer from the air**: 0.09 of a tile (0.16), mixed half toward grey.
+  The baked street-level wire, poles and sag are unchanged.
+
+**What went wrong on the way.** Six tests in `render.test.js` were P32/P33/P35's source checks
+that pipes are drawn, joined, one width, above the road and measured — true of a decision A80
+reversed. Each now checks the wire alone, and the first says what a pipe is now.
+
+**Measured.** Suite green twice, **1,339 tests**; `node --test test/docs.test.js` green.
+`gates.mjs render` 4 of 4 in 282 s of 300; `quick` 11 of 11 in 397 s of 480, `a11y_smoke`'s
+water-overlay contrast row among them; `client_smoke`: 0 pipe instances, 1,361 piped tiles. The
+`city 20t` frame of `smoke-S10-city20.png`: **207,418 → 189,172 triangles** with the pipes gone.
+
+**What the pictures say**, looked at: `smoke-S10-city20.png` before and after, cropped side by
+side — before, a blue line edges every road in the town; after, the roads are grey with a thin
+grey wire, and the street grid reads as streets. The crossings are an L3 change and that view has
+no baked chunks; the tests hold them.
+
+**Next:** the rest of S3.

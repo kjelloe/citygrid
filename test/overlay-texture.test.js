@@ -134,3 +134,19 @@ test("NONE is a value the shader can test, not a band index", () => {
   assert.ok(PLANE_NONE > 200, `${PLANE_NONE} is too close to a band index to be a sentinel`);
   assert.equal(OVERLAY_COLOURS.length, 4);
 });
+
+test("the water overlay's plane marks every piped tile, and nothing else (S3, A80)", () => {
+  // A pipe is drawn ONLY here since S3: no instances, underground, shown while
+  // the water overlay is on. So this plane is the whole of what a player sees
+  // of their water network.
+  const state = createState(defaultOptions({ width: 12, height: 12, seed: 3 }));
+  const piped = [5, 6, 7, 17, 29, 41, 42];
+  for (const i of piped) state.tiles.pipe[i] = NET_PRESENT;
+  state.tiles.flags[6] |= FLAG_WATERED;
+  const plane = new Uint8Array(144);
+  fillOverlayPlane(plane, state, "water");
+  for (let i = 0; i < 144; i += 1) {
+    assert.equal(plane[i] !== PLANE_NONE, piped.includes(i), `tile ${i}: piped ${piped.includes(i)}, marked ${plane[i]}`);
+  }
+  assert.notEqual(plane[5], plane[6], "a supplied and a dry pipe look the same");
+});

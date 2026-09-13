@@ -16,6 +16,8 @@
 
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
+import { frontEdgeOf, OUTWARD } from "./lots.js";
+import { doorPoint } from "./street-furniture.js";
 
 const AXIS = ["ns", "ew", "ns", "ew"];   // DIR4 order: N, E, S, W
 
@@ -177,6 +179,68 @@ export function signalHeads(model, node, cfg = getConfig()) {
   return out;
 }
 
+/** How many people a crossing's doors must ask for before it is painted (S3). */
+const DOOR_PEOPLE = 1;
+
+/** The shortest distance from a point to a polyline, in metres. */
+function toLine(points, x, z) {
+  let best = Infinity;
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1];
+    const b = points[i];
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const len2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / len2));
+    best = Math.min(best, Math.hypot(a.x + dx * t - x, a.z + dz * t - z));
+  }
+  return best;
+}
+
+/**
+ * How many people the doors that DRAW people ask for, per corridor (S3): a
+ * shop's and a civic building's, by the same `occupancy × perOccupant` the nav
+ * graph puts on the pavement outside them, each on the corridor its door is
+ * nearest. A house's door is not counted — people leave a house for somewhere,
+ * and the somewhere is where they cross. Derived once per model.
+ */
+const demandByModel = new WeakMap();
+export function doorDemand(model, cfg = getConfig()) {
+  let found = demandByModel.get(model);
+  if (found) return found;
+  found = new Map();
+  for (const lot of model.lots) {
+    const b = lot.building;
+    if (!b || !(b.zone === 2 || (b.zone === 0 && b.def))) continue;
+    const people = (b.occupancy ?? 0) * cfg.ped.perOccupant;
+    if (people <= 0) continue;
+    const door = doorPoint(frontEdgeOf(lot), OUTWARD[lot.frontage]);
+    let near;
+    let dist = Infinity;
+    for (const corridor of model.corridors) {
+      const d = toLine(corridor.points, door.x, door.z);
+      if (d < dist) { dist = d; near = corridor.id; }
+    }
+    if (near !== undefined) found.set(near, (found.get(near) ?? 0) + people);
+  }
+  demandByModel.set(model, found);
+  return found;
+}
+
+/**
+ * Is a crossing painted here? (S3, the review after S5.) At a signalled
+ * junction, or where the doors on one of its arms draw people. T1 kept bars at
+ * EVERY junction (A51), and from the air a dense grid was white bars: a zebra
+ * is where people cross, and on a street of houses at a give-way corner there
+ * is nobody to cross to.
+ */
+export function crossingWanted(model, node, cfg = getConfig()) {
+  if (!node || node.kind !== "junction") return false;
+  if (isSignalled(node, model.corridors, cfg)) return true;
+  const demand = doorDemand(model, cfg);
+  return node.corridors.some((id) => (demand.get(id) ?? 0) >= DOOR_PEOPLE);
+}
+
 /** How many bars a zebra has, and how wide each one is. */
 const BARS = 3;
 const BAR_W = 0.5;
@@ -189,11 +253,9 @@ const BAR_W = 0.5;
  * with nothing to stop the traffic is a lie about who has right of way.
  */
 export function crossingBars(model, node, cfg = getConfig()) {
-  // Every JUNCTION, signalled or not (T1, A51): an unsignalled crossing keeps
-  // its bars and loses only its heads. A zebra is where people cross; a head is
-  // what stops the traffic, and at a give-way junction there is nothing there
-  // to stop.
-  if (!node || node.kind !== "junction") return [];
+  // Where a signal or a door demand is (S3): T1 kept the bars at every
+  // junction, and the review after S5 saw a grid of white bars from the air.
+  if (!crossingWanted(model, node, cfg)) return [];
   const half = cfg.road.width / 2;
   const box = half + cfg.road.sidewalk;
   const out = [];

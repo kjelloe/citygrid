@@ -252,14 +252,16 @@ test("a power line is drawn on every tile it covers, not every third", () => {
   assert.equal(/% 3/.test(runs), false, "the continuous run is gated on the pole modulo");
 });
 
-test("water pipes are drawn at all", () => {
-  // They were gated on `options.underground === true`, which nothing anywhere
-  // passed, so water mains had never been rendered.
-  assert.match(instances, /pools\.pipe/);
-  // The gate, not the word: the comment above the draw explains what the flag
-  // used to do, and matching that would fail for describing the fix.
-  assert.equal(/options\.underground|underground\s*&&/.test(instances), false,
-    "the pipe draw is still behind a flag nothing sets");
+test("a water pipe is drawn by the water overlay, and only there (A80)", () => {
+  // Until S3 they were instanced ribbons, and from the air every road was
+  // edged in blue: a street read as a wiring diagram. A pipe is underground in
+  // the fiction; it shows while the water overlay is on, as that overlay's
+  // texture (ruling 041), and nowhere else. `client_smoke` counts the pools on
+  // the real page; this is the half node can see.
+  assert.equal(/pools\.pipe/.test(instances), false, "a pipe is still instanced");
+  const overlays = readFileSync(join(repoRoot, "client", "ui", "overlays.js"), "utf8");
+  const water = overlays.slice(overlays.indexOf("water: {"), overlays.indexOf("traffic: {"));
+  assert.match(water, /tiles\.pipe\[index\]/, "the water overlay does not read the pipe layer");
 });
 
 test("the zone tint keeps enough of its own colour to tell R from C from I", () => {
@@ -284,17 +286,16 @@ test("the zone tint keeps enough of its own colour to tell R from C from I", () 
 
 // --- networks read as networks (P32) ----------------------------------------
 
-test("wire and pipe are drawn joined, like roads", () => {
+test("a wire is drawn joined, like a road", () => {
   // The playtest: "power lines and water pipes do not look like they are
   // connected, just a dot on each tile". A square centred on each tile leaves a
   // gap at every boundary; roads avoid it by filling the tile. These draw a hub
   // plus an arm towards each neighbour the connection mask says they join.
   assert.match(instances, /function connect\(/, "there is no join helper");
-  for (const pool of ["wireHub", "wireArm", "pipeHub", "pipeArm"]) {
+  for (const pool of ["wireHub", "wireArm"]) {
     assert.match(instances, new RegExp(`make\\("${pool}"`), `no ${pool} pool`);
   }
   assert.match(instances, /connect\(pools\.wireHub, pools\.wireArm/);
-  assert.match(instances, /connect\(pools\.pipeHub, pools\.pipeArm/);
 });
 
 test("an arm reaches exactly half a tile, so two neighbours meet", () => {
@@ -348,13 +349,11 @@ test("a network ribbon is one width from end to end", () => {
     return { w: Number(match[1]), d: Number(match[2]) };
   };
   assert.equal(width("wireHub").w, width("wireArm").w, "the wire hub and arm are different widths");
-  assert.equal(width("pipeHub").w, width("pipeArm").w, "the pipe hub and arm are different widths");
-  // And each network keeps its own silhouette (ruling 030): a pipe main is
-  // wider than a power line, or the overlay is the only way to tell them apart.
-  assert.ok(width("pipeHub").w > width("wireHub").w, "wire and pipe are the same width");
+  // Thin since S3 (A80): at 0.16 of a tile it edged every road from the air.
+  assert.ok(width("wireHub").w <= 0.1, `the wire is ${width("wireHub").w} of a tile wide`);
 });
 
-test("wire and pipe cross a road instead of vanishing under it", () => {
+test("a wire crosses a road instead of vanishing under it", () => {
   // Both were drawn below the road surface, so a run crossing a street broke
   // in two — the same complaint as the boundary gap, one tile wide. The road
   // surface IS the ground now (N30), so anything above the ground clears it —
@@ -362,8 +361,8 @@ test("wire and pipe cross a road instead of vanishing under it", () => {
   // is passed to `connect` and applied to a height sampled at each arm's own
   // position, so the number here is the lift rather than a tile's height.
   const surface = 0.02;
-  for (const [pool, name] of [["wire", "power line"], ["pipe", "water pipe"]]) {
-    const height = /, ([0-9.]+), (?:palette\.wire|PIPE_COLOUR)/.exec(
+  for (const [pool, name] of [["wire", "power line"]]) {
+    const height = /, ([0-9.]+), (?:palette\.wire|wireColour)/.exec(
       instances.slice(instances.indexOf(`connect(pools.${pool}Hub`)),
     );
     assert.ok(height, `the ${name}'s height is not readable`);
@@ -425,7 +424,7 @@ test("a network ribbon is a quad again, not a box", () => {
   // The same skirt, for the same reason, at 48,600 triangles for wire and pipe
   // together. They do not need it: a ribbon is drawn well above the road
   // surface, and that offset already clears any step a run crosses.
-  for (const pool of ["wireHub", "wireArm", "pipeHub", "pipeArm"]) {
+  for (const pool of ["wireHub", "wireArm"]) {
     assert.match(instances, new RegExp(`make\\("${pool}", flatGeometry\\(`),
       `${pool} is still a skirted box`);
   }
@@ -440,7 +439,6 @@ test("the triangle budget is spent against MEASURED ground costs", () => {
   // trees have been measured since N1; the ground was remembered.
   assert.match(instances, /setCosts\(\{[\s\S]*?marking:/, "markings are not measured");
   assert.match(instances, /wireHub:/, "the wire ribbon is not measured");
-  assert.match(instances, /pipeHub:/, "the pipe ribbon is not measured");
 });
 
 // --- the wiring the pure modules depend on (V1, V2) --------------------------

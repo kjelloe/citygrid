@@ -106,12 +106,14 @@ export function createInstances(scene, styleName = "plain") {
   // skirted these too and it cost 48,600 triangles for wire and pipe together
   // (P35). They are drawn well clear of the ground, and that offset already
   // carries a run over any step it crosses.
-  make("wireHub", flatGeometry(styleName, 0.16, 0.16, 0), 0xffffff, 40000);
-  make("wireArm", flatGeometry(styleName, 0.16, 0.56, 0), 0xffffff, 80000);
-  // Wider and softer than the wire: a main under the street rather than a
-  // cable over it. Its own silhouette, so the two never need a legend.
-  make("pipeHub", flatGeometry(styleName, 0.28, 0.28, 0), 0xffffff, 40000);
-  make("pipeArm", flatGeometry(styleName, 0.28, 0.56, 0), 0xffffff, 80000);
+  //
+  // Thinner since S3 (A80): at 0.16 a tile the wire edged every road in grey
+  // from the air and a street read as a wiring diagram. And no pipe here at
+  // all: a water main is underground and shows only while the water overlay
+  // is on, as that overlay's texture (ruling 041) — which already marks every
+  // piped tile, supplied or dry.
+  make("wireHub", flatGeometry(styleName, 0.09, 0.09, 0), 0xffffff, 40000);
+  make("wireArm", flatGeometry(styleName, 0.09, 0.56, 0), 0xffffff, 80000);
   make("ruin", slabGeometry(styleName, 0.7, 0.14, 0.7), 0xffffff, 6000);
   // A garden plot under every house. In the reference this is doing far more
   // work than it looks: it is what stops a suburb reading as buildings dropped
@@ -295,8 +297,6 @@ export function createInstances(scene, styleName = "plain") {
     pole: triangleCount(pools.wire.geometry),
     wireHub: triangleCount(pools.wireHub.geometry),
     wireArm: triangleCount(pools.wireArm.geometry),
-    pipeHub: triangleCount(pools.pipeHub.geometry),
-    pipeArm: triangleCount(pools.pipeArm.geometry),
   });
 
   return pools;
@@ -338,6 +338,12 @@ export function settlePools(pools) {
   return { instances, triangles };
 }
 
+/** Two colours mixed, `t` of the way from `a` to `b`. */
+function mixHex(a, b, t) {
+  const ch = (shift) => Math.round(((a >> shift) & 255) * (1 - t) + ((b >> shift) & 255) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 function push(mesh, x, y, z, sx, sy, sz, colour, rotation = 0) {
   const i = mesh.count;
   if (i >= mesh.instanceMatrix.count) return;
@@ -365,7 +371,6 @@ export function triangleCount(geometry) {
 
 /** Water mains, as a trace in the surface. Not from the palette: it is the same
  * blue in every style because it stands for water, like the pipe overlay. */
-const PIPE_COLOUR = 0x4a86a8;
 
 /** Draws one tile of a network as a hub plus an arm towards every neighbour it
  * is joined to.
@@ -458,6 +463,8 @@ export function updateInstances(state, pools, options = {}) {
   reset(pools);
   const styleName = options.style ?? "plain";
   const palette = PALETTES[styleName] ?? PALETTES.plain;
+  // Greyer from the air (S3, A80): street furniture, not a coloured network.
+  const wireColour = mixHex(palette.wire, 0xa4a6a8, 0.5);
   const model = options.model;
   const tileM = model.tileM;
   /** A tile CENTRE's height, in tile units. Everything that stands on a tile
@@ -585,15 +592,12 @@ export function updateInstances(state, pools, options = {}) {
         // ABOVE the road surface (0.05), not under it. Both networks were drawn
         // below it, so a run crossing a street broke in two — the boundary gap
         // again, one tile wide (P33).
-        connect(pools.wireHub, pools.wireArm, state.tiles.wire[index], x, y, 0.07, palette.wire, at);
+        connect(pools.wireHub, pools.wireArm, state.tiles.wire[index], x, y, 0.07, wireColour, at);
         // A pole per tile is a picket fence down every street, and it buries
         // the city in clutter — every third, and only where one is resolvable.
         if (poles && ((x + y) % 3 === 0)) {
           push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
         }
-      }
-      if (networks && (state.tiles.pipe[index] & NET_PRESENT)) {
-        connect(pools.pipeHub, pools.pipeArm, state.tiles.pipe[index], x, y, 0.064, PIPE_COLOUR, at);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
         push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, 0x5a5048);

@@ -176,10 +176,10 @@ test("heads and bars are a function of the model and nothing else", () => {
 
 // --- what an unsignalled junction keeps (slice T1, A51) ----------------------
 
-test("an unsignalled junction keeps its crossing and loses its heads", () => {
-  // A51: "the unsignalled crossings keep their crosswalk bars and lose their
-  // heads." A zebra is where people cross; a head is what stops the traffic,
-  // and there is nothing there to stop.
+test("an unsignalled junction loses its heads, and its zebra unless a door asks for one", () => {
+  // A51 kept the bars at every give-way junction; the review after S5 saw a
+  // grid of white bars from the air, and S3 paints a crossing only where a
+  // signal or a door demand is. This T has no doors on it at all.
   const state = createState(defaultOptions({ width: 16, height: 16, seed: 7 }));
   state.tiles.elevation.fill(40);
   const road = state.tiles.road;
@@ -196,7 +196,7 @@ test("an unsignalled junction keeps its crossing and loses its heads", () => {
   assert.ok(tee, "no T in the fixture");
   assert.equal(model.lanes.signals.has(tee.id), false);
   assert.deepEqual(signalHeads(model, tee), [], "a give-way junction has heads on it");
-  assert.ok(crossingBars(model, tee).length > 0, "a give-way junction lost its zebra");
+  assert.deepEqual(crossingBars(model, tee), [], "a give-way junction with nobody to cross to has a zebra");
 });
 
 test("a node that is not a junction at all gets neither", () => {
@@ -206,4 +206,60 @@ test("a node that is not a junction at all gets neither", () => {
     assert.deepEqual(signalHeads(model, node), []);
     assert.deepEqual(crossingBars(model, node), []);
   }
+});
+
+// --- where a crossing is painted (S3) --------------------------------------------
+//
+// T1 kept the bars at every junction and from the air a dense grid was white
+// bars. A crossing is painted where a signal is, or where the doors on one of
+// its arms draw people: a shop's, a civic building's.
+
+import { crossingWanted } from "../client/world/signals.js";
+
+function tee(buildings = []) {
+  // A street along y = 8 with a stem down from x = 8: a T, which is give-way.
+  const size = 16;
+  const state = createState(defaultOptions({ width: size, height: size, seed: 7 }));
+  state.tiles.elevation.fill(40);
+  const road = state.tiles.road;
+  const tiles = [];
+  for (let x = 2; x < 14; x += 1) tiles.push([x, 8]);
+  for (let y = 9; y < 14; y += 1) tiles.push([8, y]);
+  for (const [x, y] of tiles) road[tileAt(size, x, y)] = NET_PRESENT;
+  for (const [x, y] of tiles) {
+    road[tileAt(size, x, y)] = NET_PRESENT | adjacencyMask(size, size, x, y, (i) => (road[i] & NET_PRESENT) !== 0);
+  }
+  let id = 1;
+  for (const b of buildings) {
+    const building = { id: id++, def: "", zone: 1, x: 0, y: 7, w: 1, h: 1, owner: 1, level: 1, valueTier: 1,
+      occupancy: 30, condition: 100, builtTick: 0, flags: 0, ...b };
+    state.buildings.push(building);
+    state.tiles.buildingId[tileAt(size, building.x, building.y)] = building.id;
+  }
+  const model = createModel(state);
+  return { model, node: model.nodes.find((n) => n.kind === "junction") };
+}
+
+test("a give-way corner on a street of houses has no zebra", () => {
+  const houses = [3, 4, 5, 6, 10, 11, 12].map((x) => ({ x }));
+  const { model, node } = tee(houses);
+  assert.ok(node, "the fixture has no junction");
+  assert.equal(model.lanes.signals.has(node.id), false, "the T is signalled");
+  assert.equal(crossingWanted(model, node), false);
+  assert.deepEqual(crossingBars(model, node), []);
+});
+
+test("a shop on one of its arms paints the crossing", () => {
+  const { model, node } = tee([{ x: 10, zone: 2, occupancy: 40 }, { x: 4 }]);
+  assert.equal(crossingWanted(model, node), true, "a shop's door did not ask for a crossing");
+  assert.ok(crossingBars(model, node).length >= node.corridors.length * 3);
+  // An empty shop draws nobody.
+  const empty = tee([{ x: 10, zone: 2, occupancy: 0 }]);
+  assert.equal(crossingWanted(empty.model, empty.node), false, "an empty shop painted a crossing");
+});
+
+test("a signalled crossroads keeps its bars whatever is on it", () => {
+  const model = crossroads();
+  const node = model.nodes.find((n) => model.lanes.signals.has(n.id));
+  assert.equal(crossingWanted(model, node), true);
 });
