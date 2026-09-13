@@ -287,6 +287,12 @@ try {
     const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const builds = [];
+    // WHICH chunk each timed build was, cold here and warm in the territory
+    // rebakes below: a slow build is a heavy chunk if it is slow warm too, and
+    // the baker warming up if it is not (S5). What is timed is the frame that
+    // FINISHES a chunk — the merge — not the phases before it.
+    const cold = [];
+    const warm = [];
     // The SAME clock the page draws on. `scene.js` hands the cache
     // `drawOptions.now ?? Date.now()`, and the page's own frame loop passes no
     // `now` — so a gate counting up from zero in 16 ms steps put two clocks
@@ -301,7 +307,7 @@ try {
       renderer.draw({ now });
       await frame();
       const s = renderer.stats.streets;
-      if (s?.built) builds.push(s.buildMs);
+      if (s?.built) { builds.push(s.buildMs); cold.push(`${s.lastBuilt}: ${s.buildMs}`); }
     }
     const after = renderer.stats.streets;
 
@@ -352,6 +358,7 @@ try {
       renderer.draw = (options = {}) => {
         const out = realDraw({ ...options, territory });
         const s = renderer.stats.streets;
+        if (s?.built) warm.push(`${s.lastBuilt}: ${s.buildMs}`);
         if (label === "stayed on") {
           draws.push(`${s?.total} ${s?.built ? `+ ${s?.lastBuilt}` : "  "} [${s?.keys ?? ""}] "${renderer.stats.lod}" `
             + `est ${Math.round(renderer.stats.estimate)} tri ${renderer.stats.triangles} `
@@ -382,7 +389,7 @@ try {
 
     return {
       builds, live: after?.live ?? 0, triangles: after?.triangles ?? 0, rebuilt, groups, meshes,
-      onToggle, settled, offToggle, trail, draws,
+      onToggle, settled, offToggle, trail, draws, cold, warm,
     };
   });
 
@@ -410,6 +417,8 @@ try {
   const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 0;
   console.log(`      street chunks: ${streets.live} live, ${streets.groups} groups / ${streets.meshes} meshes, `
     + `${streets.triangles} triangles, build p95 ${p95} ms over ${sorted.length} steady builds, first ${first} ms`);
+  console.log(`      cold builds: ${streets.cold.join(" | ")}`);
+  console.log(`      warm rebuilds: ${streets.warm.join(" | ")}`);
   check("street chunks are baked at all", streets.live > 0, JSON.stringify(streets));
   check("a chunk bakes inside its frame budget", p95 <= 8, `p95 ${p95} ms over ${sorted.length} steady builds`);
   check("and the first bake, warming up, inside a frame", first <= 16, `first build ${first} ms`);

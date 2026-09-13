@@ -72,6 +72,25 @@ export function treeGeometry(trunkSink, leafSink, tree, heightAt, cfg) {
     blob(leafSink, x, y + h * 0.42, z, r, h * 0.6, spin);
     return;
   }
+  // S5's three. A willow is a wide crown over a low skirt of fronds; a street
+  // tree a small crown on a tall stem in a dark pit; an orchard tree squat.
+  if (kind === "willow") {
+    trunkSink.box(x - trunkR, y, z - trunkR, x + trunkR, y + h * 0.4, z + trunkR);
+    blob(leafSink, x, y + h * 0.46, z, r * 1.15, h * 0.52, spin);
+    blob(leafSink, x, y + h * 0.18, z, r * 1.25, h * 0.3, spin + 0.6);
+    return;
+  }
+  if (kind === "street") {
+    trunkSink.box(x - r * 0.32, y, z - r * 0.32, x + r * 0.32, y + 0.06, z + r * 0.32);
+    trunkSink.box(x - trunkR * 0.7, y, z - trunkR * 0.7, x + trunkR * 0.7, y + h * 0.62, z + trunkR * 0.7);
+    blob(leafSink, x, y + h * 0.6, z, r * 0.62, h * 0.36, spin);
+    return;
+  }
+  if (kind === "orchard") {
+    trunkSink.box(x - trunkR, y, z - trunkR, x + trunkR, y + h * 0.34, z + trunkR);
+    blob(leafSink, x, y + h * 0.36, z, r * 0.74, h * 0.34, spin);
+    return;
+  }
   // A fork: two crowns off one trunk, offset either side of it.
   trunkSink.box(x - trunkR, y, z - trunkR, x + trunkR, y + h * 0.5, z + trunkR);
   const lean = r * 0.34;

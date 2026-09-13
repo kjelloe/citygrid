@@ -6117,3 +6117,85 @@ the corner of a scaffolded site, and on that young map S2's hedgerows round the 
 the first time.
 
 **Next:** S5, per the world lane's order.
+
+## slice-S5 — trees, gardens and parks (2026-09-13)
+
+**What it is.** Six tree species from three, by the ground and the lot (`client/world/foliage.js`):
+a willow at water, a conifer at rock, the wood's three by the hash it always used (no existing wood
+changed species), a street tree in a pit in front of a shop, an orchard row in a third of small
+houses' back gardens, and a ring round a park. One list per model (`treesFor`), read by the
+instanced pass, the street baker and the estimate. Back gardens get a flower bed and, on half, a
+shed; a house has a fence TYPE by variant (picket, hedge, low wall) at both zooms; a park has two
+benches, a pond on half of them and its path; `nav.js` walks people into a park and out again.
+Spec: `specs/engine/06-buildings-and-kit.md` §6.6c.
+
+**Review round first.** `client_smoke` now ends with the frozen-twice check (two `?life=0` shots,
+byte-compared) — it was only in `motion_shots`, which no gate set runs.
+
+**What went wrong on the way.**
+- **A rule on size was a pond nothing drew.** "A pond on a big one" — every park in the catalogue is
+  one tile. `parkHasPond`: a big one always, half of the rest; the instanced pass and the estimate
+  both ask it.
+- **The pond was invisible and the benches were slivers**: stood on the lot's seat, under the lawn
+  quad every lot is drawn on. They stand on `LAWN_TOP` now; so do the sheds, which were buried.
+- **A one-tile park's ring was a copse**: at full size its trees met in the middle and hid the lawn,
+  benches and pond. Smaller (0.4) and at the fence.
+- **The park's path**: under the lawn quad at first; with the quad gone, still invisible — the L2
+  civic mesh takes ONE instance colour and a park's path was a shade of its lawn. It is the path
+  pool in path colour now, on unbaked parks (a baked park builds its own).
+- **The lawn quad had been scaled wrongly since V6.** `push(pools.lawn, …, w, h, 1)` where a flat
+  quad's depth is its z: a two-deep lot's lawn was ONE tile deep at TWICE its lift, over the back
+  garden — which is why the garden shot showed 35 beds in the pool and none on screen. `(w, 1, h)`.
+  It also hid a baked park's lawn and path, so it is not drawn under a baked one; an instanced park
+  keeps it, because without it the one-colour civic mesh is a grey slab (found by looking: the first
+  cut removed it everywhere and the park turned to concrete).
+- **A deep lot holds one house behind another**, and the back garden ran to the lot's back — through
+  the second house. Found by the test written to hold every bed and shed outside every house, not
+  by the probe before it, which only had one-deep lots.
+- **A bed a metre off the wall is under the eaves** from every city camera: 1.6 m now.
+- **A one-tile house lot has 1.9 m behind the house.** Room for a bed and a 1.8 m shed side by side;
+  an orchard wants 6 m and grows only on deep lots.
+- **The estimate charged a baked chunk twice.** City mode prices each chunk on its own, and a chunk
+  on its own had no baked share: its buildings, trees, props, markings and wires were charged on top
+  of the chunk's measured mesh, which the instanced pass skips. S5's lot trees took that over the
+  line at city span 10 — 98,496 estimated against 78,053 drawn, 26%. A first fix on the whole-frame
+  share moved it by exactly 0.00 (the per-chunk path never reads it), which is what said where the
+  charge really was. `counts.bakedKeys`; a baked chunk now pays for its road surface and what is
+  still instanced on it.
+- **The bake check went red: 9, 8 and 10 ms** worst steady build over three runs, against 8. Timed in
+  the page per step (temporary timers, removed), S5's lot trees and fences added perhaps 0.3–0.5 ms a
+  chunk, inside a ±1 ms run-to-run noise — the probe could not say. The control could: the budget
+  gate run on a checkout of S6 the same afternoon read builds [8, 7, 5, 4, 4, 5, 4, 6, 5], p95 7,
+  against S5's [5, 10, 6, 4, 3, 4, 5, 6, 5] — the same median, one heavy chunk — and 28.3k triangles
+  a chunk against 31.3k. Most of the 10% was picket posts every 1.2 m; every 3 m now: builds
+  [5, 7, 4, 5, 5, 4, 5, 4, 4], p95 **7 ms**, 29.6k triangles a chunk.
+- **And the instrument was not measuring what its name says.** A chunk is baked in phases, one a
+  frame (`street-chunks.js`), and `buildMs` is recorded on the frame that FINISHES it — the merge
+  into meshes. "A chunk bakes inside its frame budget" times the merge alone; the lot phase
+  (facades, fences, trees: ~5 ms a chunk, timed in the page) runs on a frame of its own that no
+  check reads. The next run of the same code read 13 ms on identical geometry (266,692 triangles),
+  and the slow build was the second one in every S5 run: `budget_gate` now logs each build's chunk,
+  cold and warm (the territory rebakes merge the same chunks again). The run that
+  logged them: cold [8, 6, 6, 5, 5, 5, 5, 5, 4], every chunk warm in 3–5 ms, and the second chunk
+  (3,2) 6 cold and 5 warm — the 10 and 13 ms were stalls on a cold merge, not a heavy chunk.
+  Whether the check should read the warm builds, or time the lot phase too, is **Q99**.
+- **Framing a small thing took six rounds** (memory `shot-camera-limits`): city mode clamps at span 8
+  (two "different" spans were one picture), the walker is kept on the pavement (a back-garden shot
+  stood on the kerb), and close up the pools read zero because the chunks are baked.
+
+**Measured.** Suite green twice, **1,331 tests** (1,319 before). `gates.mjs quick` 11 of 11 in
+399 s of 480. `gates.mjs render`: walkthrough, passability and lanes_dump ok; `budget_gate`'s
+estimate 5% out at city span 10 (26% before the per-chunk fix), every row inside its tolerance;
+the bake check red on two runs (the stalls above) and green on two, p95 7 and 6 ms. In view at
+span 14 on seed 1003: 40 street trees, 6 orchard trees, 25 beds, 7 sheds; a park's 2 benches and
+its pond. **No willow in any shot** — the shores in those views are beach, not grass; the test
+holds willows at water. `tools/foliage_shots.mjs` is not in a gate set, like `motion_shots`.
+
+**What the pictures say**, looked at (crops): `smoke-S5-park.png` (span 8, the closest a player
+gets from above) — a lawn with a blue pond, two benches and a ring of trees near the fence; the
+path shows on an instanced park and **not on a baked one** (open, §6.6c). `smoke-S5-garden.png` — a
+block of four houses on one lawn with two orchard rows between their backs; the beds are slivers at
+the back walls, drawn and small at that zoom. `smoke-S5-street-trees.png` — from the pavement, a
+street tree in its dark pit in front of a shop, crown in frame, the street and its crowd beyond.
+
+**Next:** S3, per the world lane's order.

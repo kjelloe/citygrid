@@ -14,6 +14,8 @@
 // y in units of the lot's own height, so one description serves a 1×1 water
 // tower and a 3×3 hospital. The renderer multiplies; nothing here knows a metre.
 
+import { jitter } from "./hash.js";
+
 /** The materials a civic mass can be made of (slice S1b).
  *
  * The review after S1: every mass of every definition was one concrete tone, so
@@ -212,6 +214,14 @@ export function civicVariant(def) {
 }
 
 /** The shape for a definition, by name or by index. */
+/** Whether a park has a pond (S5). The item said "a pond on a big one", and
+ * every park in the catalogue is one tile: a rule on size alone was a pond
+ * nothing ever drew. So a big one always, and half of the rest. Both the
+ * instanced pass and the estimate ask this, so they cannot disagree. */
+export function parkHasPond(building) {
+  return building.w * building.h >= 4 || jitter(building.id, 227) < 0.5;
+}
+
 export function civicShape(def) {
   const name = typeof def === "number" ? CIVIC_DEFS[def] : def;
   return CIVIC_SHAPES[name] ?? CIVIC_SHAPES[CIVIC_DEFS[0]];

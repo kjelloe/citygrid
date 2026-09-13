@@ -196,6 +196,40 @@ export function deriveNav(state, model) {
     edges[best.edge].demand += door.people;
   }
 
+  // --- the parks (S5) ----------------------------------------------------------
+  //
+  // A park's path joins the pavement at its gate, so people go in. Two edges
+  // from the nearer end of the pavement to the park's middle — along the
+  // pavement to the gate, then in — a little apart: a person who walks in on
+  // one arrives at a node with only the other left, and walks out on it.
+  for (const door of doors) {
+    const lot = model.lotOf(door.lot);
+    if (!lot || (lot.building?.def ?? "") !== "park") continue;
+    const edge = edges[door.edge];
+    const fromStart = door.s < edge.len / 2;
+    const end = fromStart ? edge.from : edge.to;
+    const s0 = fromStart ? 0 : edge.len;
+    const steps = Math.max(1, Math.ceil(Math.abs(door.s - s0) / 2));
+    const along = [];
+    const at = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+    for (let i = 0; i <= steps; i += 1) {
+      sampleAlong(edge, s0 + ((door.s - s0) * i) / steps, at);
+      along.push({ x: at.x, z: at.z });
+    }
+    const middle = navNode(lot.cx, lot.cz, -1);
+    const dx = lot.cx - door.x;
+    const dz = lot.cz - door.z;
+    const run = Math.hypot(dx, dz) || 1;
+    for (const lean of [-0.6, 0.6]) {
+      const px = (-dz / run) * lean;
+      const pz = (dx / run) * lean;
+      const packed = packWithHeight([...along, { x: door.x + px, z: door.z + pz },
+        { x: lot.cx + px, z: lot.cz + pz }], surface);
+      if (packed.len < 1e-6) continue;
+      addEdge({ kind: "park", lot: lot.id, from: end, to: middle, doors: [], demand: 0, ...packed });
+    }
+  }
+
   /** Which edges can be walked onto from the end of `edge` reached travelling
    * in `dir` (+1 towards `to`, −1 towards `from`). Includes neither `edge`
    * itself nor a way back the way you came. */

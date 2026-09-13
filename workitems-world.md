@@ -130,7 +130,7 @@ where a road corridor crosses (S3). A lake keeps E8's shelf. `collision.floorAt`
 surface is the deck, not the water. **Gate.** `walkthrough` walks every bridge; `reports/smoke-S4-{river,bridge}.png`
 from the bank and from the deck.
 
-## S5 — Trees, gardens and parks (M)
+## S5 — Trees, gardens and parks (M) — **built 2026-09-13** (`specs/engine/06-buildings-and-kit.md` §6.6c)
 
 **Goal.** Vegetation with variety, and a park that is a park.
 
@@ -400,7 +400,7 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**S9, S1, S10, S1b, S2 and S6 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. Next: → S5 → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
+**S9, S1, S10, S1b, S2, S6 and S5 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. Next: → S3 → S4 → S7 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every

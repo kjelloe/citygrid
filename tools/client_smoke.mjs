@@ -79,5 +79,25 @@ for (const check of CHECKS) {
   }
 }
 
-console.log(failures === 0 ? "\nclient smoke ok" : `\nCLIENT SMOKE FAILED — ${failures} of ${CHECKS.length}`);
+// Frozen is frozen: two shots of one city under `?life=0` are the same BYTES.
+// S6's item calls this "V1's gate, kept", and no tool had ever checked it —
+// `motion_shots.mjs` did, and it is too slow for any set. Here it costs two
+// small shots, in the set every slice runs.
+{
+  const { readFileSync } = await import("node:fs");
+  const { createHash } = await import("node:crypto");
+  const hashes = [];
+  for (const k of [1, 2]) {
+    const out = `reports/.smoke-frozen-${k}.png`;
+    await shoot({ out, seed: 1003, years: 12, style: "plain", span: 9, width: 480, height: 270, frames: 20 });
+    hashes.push(createHash("sha256").update(readFileSync(out)).digest("hex").slice(0, 16));
+  }
+  if (hashes[0] === hashes[1]) console.log(`ok    two frozen shots are the same bytes (${hashes[0]})`);
+  else {
+    failures += 1;
+    console.log(`FAIL  two frozen shots differ: ${hashes.join(" and ")} — something moves with life off`);
+  }
+}
+
+console.log(failures === 0 ? "\nclient smoke ok" : `\nCLIENT SMOKE FAILED — ${failures} of ${CHECKS.length + 1}`);
 if (failures > 0) process.exit(1);

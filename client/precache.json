@@ -1,6 +1,6 @@
 {
- "version": "de12ba6ab30d",
- "generated": "2026-09-12",
+ "version": "54fc9149ded6",
+ "generated": "2026-09-13",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",

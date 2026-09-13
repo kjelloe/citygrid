@@ -17,6 +17,7 @@ import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { phaseForPreset } from "../world/rush.js";
 import { countrysideFor } from "../world/countryside.js";
+import { treesFor } from "../world/foliage.js";
 import { motionTime } from "../world/motion.js";
 import { setMotionTime } from "./motion-material.js";
 import { tierConfig } from "../world/config.js";
@@ -774,7 +775,7 @@ export function createRenderer(canvas, state, options = {}) {
     // own bounds are known. One frame stale is a person on the edge of the
     // view, which is invisible; deriving the bounds twice a frame is not.
     lastBounds = bounds;
-    counts = countScene(state, bounds, countrysideFor(state, model));
+    counts = countScene(state, bounds, countrysideFor(state, model), treesFor(state, model));
     // Only the cars on screen, which is the same set `pose` writes (R1.1).
     counts.cars = traffic.count(bounds);
     counts.peds = pedestrians.count(bounds);
@@ -790,6 +791,8 @@ export function createRenderer(canvas, state, options = {}) {
     // over at close zoom (slice E5) — the same failure as N30's "charged 49k
     // for ground never drawn", one lane along.
     counts.bakedChunks = countVisible(streets.keys, bounds);
+    // Which ones, for the estimate's per-chunk pricing (S5).
+    counts.bakedKeys = new Set(streets.keys);
     // The view, as far as the street chunks are concerned: where the camera
     // is and which way it faces, the canvas, the budget and the world. While
     // none of those changes, a count of chunks the measured frame refused is

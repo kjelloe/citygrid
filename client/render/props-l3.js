@@ -42,7 +42,7 @@ export function lampGeometry(s, lamp) {
  * `front` is the lot's street edge as `{ x0, z0, x1, z1 }` in world metres and
  * `out` is the outward normal of that edge.
  */
-export function frontage(hedgeSink, pathSink, lot, out, cfg, heightAt) {
+export function frontage(hedgeSink, pathSink, lot, out, cfg, heightAt, fence = "hedge") {
   const s = hedgeSink;
   const { hedgeH, pathW } = cfg;
   const along = { x: lot.x1 - lot.x0, z: lot.z1 - lot.z0 };
@@ -52,12 +52,33 @@ export function frontage(hedgeSink, pathSink, lot, out, cfg, heightAt) {
   // The SPANS come from `world/street-furniture.js`, which is also what the
   // collision world turns into hedge boxes (E7, A43). Two copies of "where the
   // gate is" is a hedge you can see through and not walk through.
+  // A fence TYPE per house variant (S5, `fenceOf`): a hedge, a low wall, or a
+  // picket — posts and a rail — on the same spans. The spans do not change, so
+  // what a walker bumps into is what is drawn, whichever it is.
   for (const span of hedgeSpans(lot, cfg)) {
     const { ax, az, bx, bz } = span;
     const y = heightAt((ax + bx) / 2, (az + bz) / 2);
-    s.box(
+    if (fence === "picket") {
+      // A post every three metres, not every 1.2: at 1.2 the pickets were most
+      // of the 10% more triangles a chunk baked in S5, and the bake check read
+      // 9–10 ms against its 8. A post and a rail still read as a fence.
+      const run = Math.hypot(bx - ax, bz - az);
+      const posts = Math.max(2, Math.round(run / 3) + 1);
+      for (let k = 0; k < posts; k += 1) {
+        const px = ax + ((bx - ax) * k) / (posts - 1);
+        const pz = az + ((bz - az) * k) / (posts - 1);
+        pathSink.box(px - 0.05, y, pz - 0.05, px + 0.05, y + 0.9, pz + 0.05);
+      }
+      pathSink.box(
+        Math.min(ax, bx) - 0.03, y + 0.62, Math.min(az, bz) - 0.03,
+        Math.max(ax, bx) + 0.03, y + 0.72, Math.max(az, bz) + 0.03,
+      );
+      continue;
+    }
+    const top = fence === "wall" ? hedgeH * 0.55 : hedgeH;
+    (fence === "wall" ? pathSink : s).box(
       Math.min(ax, bx) - HEDGE_HALF, y, Math.min(az, bz) - HEDGE_HALF,
-      Math.max(ax, bx) + HEDGE_HALF, y + hedgeH, Math.max(az, bz) + HEDGE_HALF,
+      Math.max(ax, bx) + HEDGE_HALF, y + top, Math.max(az, bz) + HEDGE_HALF,
     );
   }
   // The path: from the gap in the hedge out to the pavement. Its own sink,
@@ -110,9 +131,9 @@ export function buildProps({ corridors, lots, cfg, heightAt, palette, chunk = 0 
       }
     }
   }
-  for (const { lot, out, kind } of lots) {
+  for (const { lot, out, kind, fence } of lots) {
     if (kind !== "residential") continue;
-    frontage(green, stone, lot, out, cfg.props, heightAt);
+    frontage(green, stone, lot, out, cfg.props, heightAt, fence);
   }
   all.push({ part: metal.done(), colour: palette.lamp });
   all.push({ part: green.done(), colour: palette.lawn });

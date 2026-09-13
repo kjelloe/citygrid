@@ -22,6 +22,7 @@ import { variantFor, VARIANTS } from "../world/params.js";
 import { civicShape, civicHeight, shadeOf, CIVIC_DEFS } from "../world/civic-spec.js";
 import { hasPorchAtL2 } from "../world/house-spec.js";
 import { cityFigure } from "../world/figure.js";
+import { TREE_KINDS } from "../world/foliage.js";
 
 const TOP = 1.0;
 const SOUTH = 0.88;
@@ -518,7 +519,30 @@ function tree(variant, detail) {
     // A trunk and one four-sided cone. From above, at the zoom this is used
     // at, a tree is a green triangle and nothing more.
     addBox(parts, -0.03, 0, -0.03, 0.03, 0.26, 0.03, 0.48);
-    addCone(parts, 0, 0.16, 0, 0.24, 0.86, 4);
+    // The S5 species are smaller or wider from the air too.
+    const r = [0.24, 0.24, 0.24, 0.32, 0.15, 0.19][variant] ?? 0.24;
+    const top = [0.86, 0.86, 0.86, 0.6, 0.62, 0.45][variant] ?? 0.86;
+    addCone(parts, 0, 0.16, 0, r, top, 4);
+    return finish(parts);
+  }
+  // The three S5 added: a willow (a wide crown over a skirt of fronds), a
+  // street tree (a small crown on a tall thin stem, in a pit) and an orchard
+  // tree (squat and round).
+  if (variant === 3) {
+    addBox(parts, -0.03, 0, -0.03, 0.03, 0.28, 0.03, 0.48);
+    addBlob(parts, 0, 0.5, 0, 0.3, 7, 1.08);
+    addCone(parts, 0, 0.1, 0, 0.32, 0.46, 7, 0.9);
+    return finish(parts);
+  }
+  if (variant === 4) {
+    addBox(parts, -0.06, 0, -0.06, 0.06, 0.012, 0.06, 0.3);
+    addBox(parts, -0.018, 0, -0.018, 0.018, 0.4, 0.018, 0.48);
+    addBlob(parts, 0, 0.52, 0, 0.16, 7);
+    return finish(parts);
+  }
+  if (variant === 5) {
+    addBox(parts, -0.026, 0, -0.026, 0.026, 0.18, 0.026, 0.48);
+    addBlob(parts, 0, 0.3, 0, 0.2, 7, 1.12);
     return finish(parts);
   }
   addBox(parts, -0.032, 0, -0.032, 0.032, 0.3, 0.032, 0.48);
@@ -611,7 +635,9 @@ function tuft(variant, detail = 2) {
 // to agree or `pools[kind + variant]` came back undefined and every building of
 // the missing variant silently stopped being drawn (slice V6).
 export { VARIANTS };
-export const TREE_VARIANTS = 3;
+/** One pool per species, and the species are foliage.js's list — a second
+ * copy of the number is a species nothing draws (V6's lesson, S5). */
+export const TREE_VARIANTS = TREE_KINDS.length;
 export const CAR_VARIANTS = 2;
 export const PED_VARIANTS = 2;
 export const TUFT_VARIANTS = 2;
@@ -718,6 +744,31 @@ export function signGeometry() {
   const parts = makeParts();
   addBox(parts, -0.004, 0, -0.004, 0.004, 0.06, 0.004, 0.6);
   addBox(parts, -0.022, 0.042, -0.003, 0.022, 0.068, 0.003, 1.3);
+  return finish(parts);
+}
+
+/** A park bench (S5): a seat, a back and two legs, in tile units. */
+export function benchGeometry() {
+  const parts = makeParts();
+  addBox(parts, -0.07, 0, -0.015, -0.06, 0.018, 0.015, 0.5);
+  addBox(parts, 0.06, 0, -0.015, 0.07, 0.018, 0.015, 0.5);
+  addBox(parts, -0.075, 0.018, -0.018, 0.075, 0.024, 0.018, 1);
+  addBox(parts, -0.075, 0.024, 0.012, 0.075, 0.05, 0.018, 1);
+  return finish(parts);
+}
+
+/** A pond (S5): a flat ten-sided disc, radius 0.5, so the caller scales it. */
+export function pondGeometry() {
+  const parts = makeParts();
+  addCone(parts, 0, 0.002, 0, 0.5, 0.008, 10);
+  return finish(parts);
+}
+
+/** A garden shed (S5): a box and a pitched roof, in tile units. */
+export function shedGeometry() {
+  const parts = makeParts();
+  addBox(parts, -0.045, 0, -0.035, 0.045, 0.07, 0.035, 1);
+  addCone(parts, 0, 0.07, 0, 0.064, 0.1, 4, 0.7);
   return finish(parts);
 }
 

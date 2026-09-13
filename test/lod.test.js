@@ -727,3 +727,51 @@ test("stones, kerbs and hedgerows are priced at the rate they are drawn", async 
   assert.ok(estimate(counts, plan) - estimate({ ...CITY, kerbs: 0, groundProps: 0 }, plan) <= 100 * 4,
     "a kerb is priced like a car");
 });
+
+// S5: the town's own trees and a building's small extras are priced.
+import { createState as newState } from "../engine/state.js";
+import { defaultOptions as newOptions } from "../engine/options.js";
+import { createModel as newModel } from "../client/world/model.js";
+import { treesFor as cityTrees } from "../client/world/foliage.js";
+import { countScene as countIt } from "../client/render/lod.js";
+
+test("the trees a lot plants and a park's benches are in the estimate (S5)", () => {
+  const state = newState(newOptions({ width: 16, height: 16, seed: 7 }));
+  state.tiles.elevation.fill(40);
+  for (let x = 1; x < 15; x += 1) state.tiles.road[6 * 16 + x] = 1 << 4 | 10;
+  state.buildings.push({ id: 1, def: "park", zone: 0, x: 6, y: 7, w: 2, h: 2, owner: 1, level: 0,
+    valueTier: 1, occupancy: 0, condition: 100, builtTick: 0, flags: 0 });
+  for (let y = 7; y < 9; y += 1) for (let x = 6; x < 8; x += 1) state.tiles.buildingId[y * 16 + x] = 1;
+  const model = newModel(state);
+  const bare = countIt(state, undefined);
+  const withTrees = countIt(state, undefined, undefined, cityTrees(state, model));
+  assert.equal(bare.trees, 0, "trees on a map with no forest");
+  assert.ok(withTrees.trees >= 6, `a park's ring priced as ${withTrees.trees} trees`);
+  assert.ok(bare.groundProps >= 2, `a park's benches priced as ${bare.groundProps} ground props`);
+});
+
+test("a tree a baked chunk already holds is not charged again (S5)", () => {
+  // The chunk's measured cost has its trees in it and the instanced pass skips
+  // them; charging them as well put the estimate 26% over at city span 10.
+  const plan = { buildings: 2, trees: true, treeDetail: 2, props: true, markings: true, shadows: false, streetChunks: 0 };
+  const cost = (counts) => estimate(counts, plan) - estimate(counts, { ...plan, trees: false });
+  const none = cost({ ...CITY, bakedChunks: 0 });
+  const half = cost({ ...CITY, bakedChunks: CITY.groundChunks / 2 });
+  const all = cost({ ...CITY, bakedChunks: CITY.groundChunks });
+  assert.ok(none > 0, "trees cost nothing with no chunk baked");
+  assert.ok(Math.abs(half - none / 2) < 1e-6, `half the chunks baked charged ${half} of ${none}`);
+  assert.equal(all, 0, "every chunk baked and the trees still charged");
+});
+
+test("a baked chunk priced on its own is charged for none of what it bakes (S5)", () => {
+  const plan = { buildings: 2, trees: true, treeDetail: 2, props: true, markings: true, shadows: false, streetChunks: 0 };
+  const part = { buildings: 20, trees: 30, props: 40, roads: 50, poles: 12, markArms: 60, wireTiles: 5, wireArms: 9,
+    pipeTiles: 5, pipeArms: 9, cars: 0, peds: 0, waterTiles: 0, kerbs: 0, groundProps: 0 };
+  const counts = { ...part, groundChunks: 1, chunks: new Map([[0, part], [1, part]]) };
+  const loose = estimate({ ...counts, bakedKeys: new Set() }, plan, () => plan);
+  const oneBaked = estimate({ ...counts, bakedKeys: new Set([1]) }, plan, () => plan);
+  const lone = estimate({ ...counts, bakedKeys: new Set() }, plan, () => plan) - estimate({ ...counts, chunks: new Map([[0, part]]), bakedKeys: new Set() }, plan, () => plan);
+  const roadsOnly = part.roads * getCosts().road;
+  assert.ok(Math.abs((loose - oneBaked) - (lone - roadsOnly)) < 1e-6,
+    `a baked chunk still charged ${(lone - (loose - oneBaked)).toFixed(0)} beyond its road surface`);
+});

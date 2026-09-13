@@ -20,6 +20,7 @@ import {
   rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
   carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
+  benchGeometry, pondGeometry, shedGeometry,
 } from "./building-kit.js";
 import { buildingParams } from "../world/params.js";
 import { jitter } from "../world/hash.js";
@@ -29,7 +30,8 @@ import { TIER, setCosts, inBounds, planForChunk, tilePixels, usesChunkPlans } fr
 import { civicSpin } from "../world/civic-spec.js";
 import { houseLots } from "../world/homes.js";
 import { countrysideFor } from "../world/countryside.js";
-import { civicShape, civicHeight, civicPointOnLot } from "../world/civic-spec.js";
+import { treesFor, backGardens } from "../world/foliage.js";
+import { civicShape, civicHeight, civicPointOnLot, parkHasPond } from "../world/civic-spec.js";
 import { MOTION } from "../world/motion.js";
 import { addMotion } from "./motion-material.js";
 
@@ -38,6 +40,15 @@ const FLAGS = [0xc83c3c, 0x3c64c8, 0xf0f0f0];
 
 /** A field hedgerow's green, and a marsh reed's (S2). */
 const HEDGEROW = 0x4a8a3c;
+/** A tree's leaves by species (S5): the wood's own green for the three wild
+ * ones, a paler willow, a darker street tree, a bright orchard. */
+const TREE_COLOURS = { willow: 0x7fae55, street: 0x3f8a3a, orchard: 0x6aa84a };
+/** A flower bed's colour, hashed per house. */
+const BEDS = [0xc0587a, 0xd8a03a, 0x9a6ac0, 0xc8643c];
+/** The top of the lawn quad every house and civic lot is drawn on (its lift in
+ * `make("lawn", …)`). A bench, a pond or a shed stood on the lot's SEAT is
+ * under it: the pond was invisible and the benches were slivers (S5). */
+const LAWN_TOP = 0.055;
 const REED = 0x8f9f58;
 import { getConfig } from "../world/config.js";
 import {
@@ -116,6 +127,11 @@ export function createInstances(scene, styleName = "plain") {
   // Hedgerows round the fields (S2) share it, so it holds both.
   make("hedge", slabGeometry(styleName, 1, 0.1, 0.07), 0xffffff, 30000);
   make("path", flatGeometry(styleName, 0.16, 0.5, 0.06), 0xffffff, 12000);
+  // A park's benches and pond, and a back garden's bed and shed (S5).
+  make("bench", benchGeometry(), 0xffffff, 2000);
+  make("pond", pondGeometry(), 0xffffff, 400);
+  make("shed", shedGeometry(), 0xffffff, 8000);
+  make("bed", flatGeometry(styleName, 1, 1, 0.062), 0xffffff, 12000);
 
   // The overlay pass. One tint quad per tile, plus a per-band MARK — a dot, a
   // bar, a cross — because §16 and §30 both say never colour alone, and a
@@ -549,8 +565,6 @@ export function updateInstances(state, pools, options = {}) {
       const props = drawn && local.props !== false && options.props !== false;
       // Tufts are on GRASS, which no baked chunk draws, so they stay.
       const grassDetail = local.props !== false && options.props !== false;
-      const trees = local.trees !== false && options.trees !== false;
-      const treeTier = local.treeDetail;
 
       if (state.tiles.road[index] & NET_PRESENT) {
         // The road surface itself is the terrain mesh's colour; only the
@@ -681,25 +695,27 @@ export function updateInstances(state, pools, options = {}) {
           if (jitter(index, 191) < 0.25) push(pools.sign, x + 0.5, at(x + 0.5, y + 0.2), y + 0.2, 1, 1, 1, 0xf2efe6, 0);
         }
       }
-
-      // Forest is drawn as actual trees rather than as a green tile. Species,
-      // size, offset and spin all come from the tile index, so a wood looks
-      // planted rather than tiled — and none of it has to be remembered.
-      // `drawn`, like the markings, the networks and the props: inside a baked
-      // chunk the real trees are in the group and drawing the cones as well is
-      // two trees in one place (V8). It was the one pass that had never been
-      // gated on it.
-      if (trees && drawn && state.tiles.terrain[index] === TERRAIN_FOREST
-        && state.tiles.buildingId[index] === 0 && !paved) {
-        const v = Math.floor(jitter(index, 3) * TREE_VARIANTS) % TREE_VARIANTS;
-        const scale = 0.72 + jitter(index, 5) * 0.6;
-        const rx = x + 0.2 + jitter(index, 7) * 0.6;
-        const rz = y + 0.2 + jitter(index, 11) * 0.6;
-        push(pools[`tree${v}_${treeTier}`], rx, at(rx, rz), rz,
-          scale, scale, scale, palette.tree ?? palette.terrain[TERRAIN_FOREST],
-          jitter(index, 13) * Math.PI * 2);
-      }
     }
+  }
+
+  // Trees (V8, S5), from the city's one list (`world/foliage.js`): the wood's,
+  // the shore's willows, and the ones a lot plants — a street tree in front of
+  // a shop, an orchard row, a park's ring. Species, size, offset and spin are
+  // all hashed, so a wood looks planted rather than tiled and none of it has
+  // to be remembered. `drawn`, like the markings and the props: inside a baked
+  // chunk the real trees are in the group, and drawing these as well is two
+  // trees in one place (V8).
+  const forest = treesFor(state, model);
+  for (const t of forest.list) {
+    const tx = Math.floor(t.x / forest.tileM);
+    const ty = Math.floor(t.z / forest.tileM);
+    if (!inBounds(bounds, tx, ty) || isBaked(tx, ty)) continue;
+    const local = planAt(tx, ty);
+    if (local.trees === false || options.trees === false) continue;
+    const rx = t.x / forest.tileM;
+    const rz = t.z / forest.tileM;
+    push(pools[`tree${t.variant}_${local.treeDetail}`], rx, at(rx, rz), rz,
+      t.scale, t.scale, t.scale, TREE_COLOURS[t.kind] ?? palette.tree ?? palette.terrain[TERRAIN_FOREST], t.spin);
   }
 
   for (const building of state.buildings) {
@@ -729,15 +745,23 @@ export function updateInstances(state, pools, options = {}) {
     // The lawn takes the building's seat, not its own tile's height: it is the
     // ground the house was cut into, so on a slope the uphill half of it is
     // buried and that is what a plinth looks like from above (spec §5.6).
-    if (p.lawn) push(pools.lawn, cx, h, cz, building.w, building.h, 1, p.lawn);
+    // Scaled (w, 1, h): the quad's DEPTH is its z. It was (w, h, 1), which on
+    // a two-deep lot drew the lawn one tile deep and at twice its lift — over
+    // the back garden's bed and shed (S5). Not under a BAKED park, whose own
+    // lawn and path it lay over; an instanced park needs it, its kit is grey.
+    if (p.lawn && !(building.def === "park" && lotIsBaked(lot))) {
+      push(pools.lawn, cx, h, cz, building.w, 1, building.h, p.lawn);
+    }
     // The rest of the front garden (slice V6): a boundary and a way in. Both
     // sit on the lot's own seat like the lawn, and both are skipped inside a
     // baked chunk, where E5's prop pass draws the real thing.
     if (p.garden && !lotIsBaked(lot)) {
       // The hedge stands on the lot line and the path crosses the setback to
       // the door. Both in the same +z direction the kit puts the door in, and
-      // both rotated with the house so a spun one keeps its own front.
-      push(pools.hedge, cx, h, cz + building.h / 2 - 0.03, building.w * 0.9, 1, 1, p.garden.hedge, p.spin);
+      // both rotated with the house so a spun one keeps its own front. A wall
+      // (S5) is the same slab, lower and in stone.
+      const rise = p.garden.fence === "wall" ? 0.7 : 1;
+      push(pools.hedge, cx, h, cz + building.h / 2 - 0.03, building.w * 0.9, rise, 1, p.garden.hedge, p.spin);
       push(pools.path, cx, h, cz + building.h / 2 - p.setback / 2, 1, 1, p.setback * 2, p.garden.path, p.spin);
     }
 
@@ -776,6 +800,42 @@ export function updateInstances(state, pools, options = {}) {
         if (shape.flag) {
           const at = civicAt({ x: 0, y: civicHeight(building.def), z: 0 });
           push(pools.flag, at.x, at.y, at.z, 1, 1, 1, FLAGS[building.id % FLAGS.length], at.turn);
+        }
+      }
+      // A park (S5): two benches beside its path and, on a big one, a pond —
+      // in the same frame as the lawn they stand on.
+      if (building.def === "park" && p.state.phase === "standing") {
+        for (const [ux, uz] of [[-0.24, -0.35], [0.24, 0.35]]) {
+          const at = civicAt({ x: ux, y: 0, z: uz });
+          push(pools.bench, at.x, h + LAWN_TOP, at.z, 1, 1, 1, 0x7a5a3c, at.turn + (ux < 0 ? Math.PI / 2 : -Math.PI / 2));
+        }
+        // Its path, in path colour. The L2 civic mesh takes ONE instance
+        // colour and every part is a shade of it, so a park's path was a shade
+        // of its lawn and could not be seen. A baked park builds its own.
+        if (!baked) {
+          push(pools.path, cx, h, cz, 1, 1, building.h * 1.9,
+            palette.civic ?? 0xcfc8b8, spin);
+        }
+        if (parkHasPond(building)) {
+          const at = civicAt({ x: 0.45, y: 0, z: -0.42 });
+          const r = 0.55 * CIVIC_W * at.scale;
+          push(pools.pond, at.x, h + LAWN_TOP, at.z, r, 1, r, 0x5b8fa8, 0);
+        }
+      }
+      // A back garden (S5): a bed along the house and a shed in the far
+      // corner, from the lot's own metres — the frame both passes share.
+      if (p.kind === "residential" && lot) {
+        for (const g of backGardens(lot)) {
+          // Clear of the eaves — 1.6 m off the back wall, or the middle of a
+          // narrow strip; at a metre the roof hid it from every city camera.
+          const bed = g.at(0.35, Math.min(1.6, g.depth / 2) / g.depth);
+          push(pools.bed, bed.x / tileM, h, bed.z / tileM, (g.width * 0.45) / tileM, 1, 1.2 / tileM,
+            BEDS[g.id % BEDS.length], g.turn);
+          if (g.shed) {
+            // The middle of a narrow strip; towards the back of a deep one.
+            const shed = g.at(0.82, g.depth < 3.5 ? 0.5 : 0.72);
+            push(pools.shed, shed.x / tileM, h + LAWN_TOP, shed.z / tileM, 1, 1, 1, 0x8a6e52, g.turn);
+          }
         }
       }
       if (p.state.phase === "site") {

@@ -115,6 +115,15 @@ export function storeys(building) {
  * a fence into the geometry for the others (slice V6). */
 const HEDGE_VARIANTS = new Set([2, 4]);
 
+/** A house's boundary (S5): the kit's fence on most, a hedge on two variants
+ * and a low wall on the one that had nothing. One type per variant, so a row
+ * of the same houses is one street and the next row is another. */
+export function fenceOf(building) {
+  const v = variantFor(building.id, VARIANTS);
+  if (HEDGE_VARIANTS.has(v)) return "hedge";
+  return v === 3 ? "wall" : "picket";
+}
+
 /** What a building's `occupancy` is a share OF, for the lit-window fraction.
  *
  * The catalogue's `capacity` would be the honest answer for a civic building
@@ -178,9 +187,12 @@ export function buildingParams(building, palette, family, showOwner = false, tic
     // leaves — so the box and the facade agree a little better than before
     // rather than a little worse.
     setback: kind === "residential" ? cfg.lot.setback.residential / cfg.tileM : 0,
-    garden: kind === "residential" && HEDGE_VARIANTS.has(variantFor(building.id, VARIANTS))
+    garden: kind === "residential" && fenceOf(building) !== "picket"
       ? {
-        hedge: varyColour(darken(palette.lawn, 0.62), building.id * 3 + 1, 0.5),
+        fence: fenceOf(building),
+        hedge: fenceOf(building) === "wall"
+          ? varyColour(palette.civic, building.id * 3 + 1, 0.4)
+          : varyColour(darken(palette.lawn, 0.62), building.id * 3 + 1, 0.5),
         path: varyColour(palette.civic, building.id * 7 + 2, 0.35),
       }
       : undefined,

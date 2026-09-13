@@ -17,6 +17,8 @@
 // see.
 
 import { eyeOf, verticalSpan } from "../world/orbit.js";
+import { civicShape, parkHasPond } from "../world/civic-spec.js";
+import { TICKS_PER_YEAR } from "../constants-mirror.js";
 
 /** Tiers, coarsest last. Each names what it keeps. */
 export const TIER = {
@@ -229,7 +231,12 @@ export function estimate(counts, plan, planFor) {
     for (const [key, part] of counts.chunks) {
       const cz = Math.floor(key / 4096);
       const cx = key - cz * 4096;
-      total += estimateOne({ ...part, groundChunks: 0, streetPerChunk: 0 }, planFor(cx, cz));
+      // A BAKED chunk draws its buildings, trees, props, markings and wires in
+      // its own mesh, which `streetCost` charges at what it measured, and the
+      // instanced pass skips them there. Priced again here, S5's lot trees put
+      // city span 10 at 98,496 estimated against 78,053 drawn.
+      const looseShare = counts.bakedKeys?.has(key) ? 0 : 1;
+      total += estimateOne({ ...part, groundChunks: 0, streetPerChunk: 0, looseShare }, planFor(cx, cz));
     }
     return total;
   }
@@ -276,9 +283,12 @@ function estimateOne(counts, plan) {
   const t = plan.trees ? (costs.tree[plan.treeDetail] ?? 0) : 0;
   const p = plan.props ? costs.prop[2] : 0;
 
-  const casters = counts.buildings * b + counts.trees * t + counts.props * p;
-  // What the baked chunks have taken over is not drawn by the instanced pass.
-  const loose = 1 - bakedShare(counts);
+  // What the baked chunks have taken over is not drawn by the instanced pass:
+  // exactly, for one chunk priced on its own (`looseShare`), and as a share of
+  // the frame otherwise. Buildings, trees and props too — the instanced pass
+  // skips a baked lot's box, a baked chunk's trees and its lamps.
+  const loose = counts.looseShare ?? 1 - bakedShare(counts);
+  const casters = (counts.buildings * b + counts.trees * t + counts.props * p) * loose;
   const flat = counts.roads * costs.road
     + (plan.cars !== false ? counts.cars * costs.car : 0)
     + (plan.peds !== false ? counts.peds * costs.ped : 0)
@@ -625,8 +635,26 @@ export function markingInstances(mask) {
   return (mask === 5 || mask === 10) ? 1 : bits;
 }
 
+/** How many small instances the instanced pass poses with one building (S5,
+ * S6) — the same rules `instances.js` uses, counted without the geometry. */
+function extrasOf(b, tick) {
+  let n = 0;
+  const def = b.def ?? "";
+  if (b.zone === 0 && def) {
+    const shape = civicShape(def);
+    if (shape.hub) n += 1;
+    n += (shape.emits?.length ?? 0) * 6;
+    if (shape.flag) n += 1;
+    if (def === "park") n += 3 + (parkHasPond(b) ? 1 : 0);
+  }
+  if (b.zone === 1 && (b.level ?? 0) <= 2) n += 1.5;
+  if (Number.isFinite(tick) && tick - (b.builtTick ?? 0) < TICKS_PER_YEAR / 2) n += 1;
+  if ((b.flags & 4) !== 0) n += 6;
+  return n;
+}
+
 /** Counts the renderer needs before it can plan. Cheap: no geometry touched. */
-export function countScene(state, bounds, country = undefined) {
+export function countScene(state, bounds, country = undefined, forest = undefined) {
   let trees = 0;
   let props = 0;
   let kerbs = 0;
@@ -705,7 +733,9 @@ export function countScene(state, bounds, country = undefined) {
       }
     }
     if (state.tiles.terrain[i] === WATER || state.tiles.terrain[i] === SHALLOW) part.waterTiles += 1;
-    if (state.tiles.terrain[i] === FOREST && state.tiles.buildingId[i] === 0 && !paved) {
+    // From the city's tree list when there is one (S5: street trees, orchards,
+    // a park's ring and shore willows are not forest tiles), else the forest.
+    if (!forest && state.tiles.terrain[i] === FOREST && state.tiles.buildingId[i] === 0 && !paved) {
       trees += 1;
       part.trees += 1;
     }
@@ -756,11 +786,28 @@ export function countScene(state, bounds, country = undefined) {
   // and rounding the total while the per-chunk parts stay fractional makes the
   // two disagree — which under perspective means the budget is spent against a
   // slightly different city from the one drawn.
+  if (forest) {
+    for (const t of forest.list) {
+      const tx = Math.floor(t.x / forest.tileM);
+      const ty = Math.floor(t.z / forest.tileM);
+      if (!inBounds(bounds, tx, ty)) continue;
+      trees += 1;
+      chunkAt(tx, ty).trees += 1;
+    }
+  }
   let buildings = 0;
   for (const b of state.buildings) {
     if (!inBounds(bounds, b.x, b.y)) continue;
     buildings += 1;
-    chunkAt(b.x, b.y).buildings += 1;
+    const part = chunkAt(b.x, b.y);
+    part.buildings += 1;
+    // What the instanced pass poses WITH a building, beyond its box: S6's
+    // rotor, smoke and flag, a crane on a site, smoke off a fire; S5's benches
+    // and pond in a park, and a house's bed and shed. Small, and still a cost
+    // the estimate should know, at the ground props' measured price.
+    const extra = extrasOf(b, state.tick);
+    groundProps += extra;
+    part.groundProps += extra;
   }
   // Only the chunks the camera can see. Terrain chunks are frustum-culled by
   // three.js, so counting the whole map charged the budget for ground that is

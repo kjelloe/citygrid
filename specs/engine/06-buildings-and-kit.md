@@ -257,6 +257,65 @@ A blob has **five** sides, and it had seven: seven put 21,336 triangles into the
 fixture's eight baked chunks and took the night frame's ladder from "detail dropped" to
 "silhouettes only" — the trees were being paid for in buildings.
 
+## 6.6c Trees, gardens and parks (S5, 2026-09-13)
+
+**Six species, by the ground and the lot.** `TREE_KINDS` in `client/world/foliage.js` is the one
+list; the kit's `TREE_VARIANTS` is its length, so a species is never a pool nothing draws (V6's
+lesson). A wild tree's species is a function of the terrain round its tile and a hash, nothing
+else (`wildSpecies`): a **willow** where it meets water or shallows, a **conifer** where it meets
+rock, otherwise one of the wood's three by the same hash over three it always used — no existing
+wood changed. Some unzoned grass on a shore carries a willow too. A lot plants the rest: a
+**street tree** in a pit on the pavement in front of a shop (frontage ≥ 8 m, placed by the door
+point, shifted along the frontage), an **orchard** row of three across a third of small houses'
+back gardens, and a **ring** round a park that leaves its path clear. Faceted blobs at both zooms,
+never billboards.
+
+**One list per model.** `treesFor(state, model)` derives every tree once and caches it on the
+model; the instanced pass, the street baker (`treesIn(…, model)`) and the estimate
+(`countScene(…, forest)`) all read it. Without a model `treesIn` is still the wild scan, and the
+test holds the two to the same wild trees.
+
+**Back gardens** (`backGardens(lot)`): per house, the strip between the back of the house and the
+back of the lot. A one-tile lot leaves about two metres: a flower bed along the house and, on half
+of them, a small shed (1.8 by 1.4 m). An orchard wants six metres, so only deep lots grow one.
+A deep lot holds one house behind another, so a strip ends at the next house behind, not at
+the lot's back (the first cut put the front house's shed inside the back one; the test that found
+it holds every bed and shed outside every house). Beds and sheds are posed from the lot's metres,
+before the baked-lot `continue`, so both zooms agree; a shed stands on `LAWN_TOP`, the lawn quad's
+lift, and a bed 1.6 m off the back wall — at a metre the eaves hid it from every city camera.
+
+**The lawn quad was scaled wrongly since V6**: `(w, h, 1)` where a flat quad's depth is its z, so a
+two-deep lot's lawn was one tile deep at twice its lift, over the back garden. It is `(w, 1, h)`.
+It is not drawn under a BAKED park, where it lay over the park's own lawn and path; an instanced
+park keeps it, because the L2 civic mesh has one instance colour and a park unlawned is a grey slab.
+
+**Fence types** (`fenceOf(building)`, by variant): the kit's picket on most, a hedge on two, a low
+stone wall on the one that had nothing. At L2 the wall is the hedge slab, lower and in stone; at
+L3 `props-l3.js` draws posts and a rail, a wall or a hedge on the same spans the colliders use.
+A post every **three** metres: at 1.2 the pickets were most of the 10% more triangles an S5 chunk
+baked (31.3k against S6's 28.3k), and the bake check's worst steady build read 9–10 ms against 8.
+That check times only the frame that MERGES a chunk (`buildMs` is recorded on the finishing
+frame), and its p95 over eight builds is the maximum: the same geometry read 7, 10 and 13 ms on
+three runs while every chunk rebuilt warm in 3–5 ms. `budget_gate` logs each build's chunk, cold
+and warm, so a red can be told from a stall.
+
+**A park** has two benches beside its path, a pond on half of them (`parkHasPond` — the item said
+"a big one" and every park in the catalogue is one tile, so a rule on size alone was a pond
+nothing drew) and its ring near the fence at 0.4 scale: at full size a one-tile park's ring met
+in the middle and hid its own lawn. Its path, instanced, is the path pool in path colour — as a
+part of the civic mesh it was a shade of the lawn. **Open:** a BAKED park's path does not show; the
+builder draws it (S1's `concrete` mass), a few centimetres over the seat like its lawn, and the
+ground there reads over both. The walkers go in: `nav.js` adds two `park` edges from the
+nearer end of the pavement to the park's middle, a little apart, so a person who walks in on one
+walks out on the other.
+
+**Priced.** `countScene` counts the lot trees from the list, and each building's small extras —
+S6's rotor, smoke and flag, a crane, fire smoke, a park's benches and pond, a house's bed and shed —
+as ground props, by the same rules the instanced pass uses. And trees are charged only for the
+chunks that are NOT baked (`loose`, like the markings and the networks): a baked chunk's trees are
+in its own measured mesh and the instanced pass skips them. Charged in full, S5's lot trees put
+city span 10 at 98,496 estimated against 78,053 drawn — 26%, the gate's one red.
+
 ## 6.6a As built (V6, 2026-09-06)
 
 **Six silhouettes per category, not four**, and `VARIANTS` is now written down ONCE. It was in

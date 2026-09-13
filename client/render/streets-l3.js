@@ -25,7 +25,7 @@ import { treesIn } from "../world/foliage.js";
 import { signalHeads, crossingBars } from "../world/signals.js";
 import { sink } from "./solid.js";
 import { buildSigns } from "./signs.js";
-import { buildingParams } from "../world/params.js";
+import { buildingParams, fenceOf } from "../world/params.js";
 import { familyColour } from "./palette.js";
 import { ZONE_NONE } from "../constants-mirror.js";
 import { NET_PRESENT } from "../constants-mirror.js";
@@ -250,7 +250,7 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
       specs.push(spec);
       for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
     }
-    fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind });
+    fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind, fence: fenceOf(lot.building) });
   }
   // The prop pass, which is the difference between a street and a diagram
   // (spec §6.6). Lamps come from the corridors, hedges and paths from the lots.
@@ -269,7 +269,9 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
   // a four-sided pyramid standing under it; `updateInstances` stops drawing
   // them inside a baked chunk, so what a walker sees is this.
   for (const piece of buildTrees({
-    trees: treesIn(state, box, cfg), heightAt: model.heightAt, palette, cfg,
+    // With the model: the lots' trees too — street trees, orchards, a park's
+    // ring (S5) — from the same cached list the instanced pass reads.
+    trees: treesIn(state, box, cfg, model), heightAt: model.heightAt, palette, cfg,
   })) baker.addPart(piece.part, piece.colour, piece.options);
   // Where the lamps are, for the night rig to hang point lights on (E6).
   baker.lamps.push(...props.lamps);

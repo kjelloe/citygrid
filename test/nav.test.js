@@ -285,3 +285,32 @@ test("a crossing at a signalled crossroads still carries its axis", () => {
     assert.ok(c.axis === "ns" || c.axis === "ew", `axis "${c.axis}"`);
   }
 });
+
+test("a park's path is reachable from the pavement, and leads back out (S5)", () => {
+  const state = blank(16);
+  pave(state, row(6, 1, 14));
+  place(state, { id: 1, zone: 0, def: "park", x: 6, y: 7, w: 2, h: 2, level: 0 });
+  const { model, nav } = navOf(state);
+  const lot = model.lotOf(1);
+  const park = nav.edges.filter((e) => e.kind === "park");
+  assert.equal(park.length, 2, `${park.length} park paths`);
+  const middle = park[0].to;
+  assert.equal(park[1].to, middle, "the two paths meet at one middle");
+  assert.ok(nav.nodes[middle].x > lot.x0 && nav.nodes[middle].x < lot.x1
+    && nav.nodes[middle].z > lot.z0 && nav.nodes[middle].z < lot.z1, "the middle is not in the park");
+  // From any pavement, over the graph, to the park's middle.
+  const start = nav.edges.find((e) => e.kind === "walk").from;
+  const seen = new Set([start]);
+  const queue = [start];
+  while (queue.length) {
+    const n = queue.shift();
+    for (const id of nav.nodes[n].edges) {
+      const e = nav.edges[id];
+      const other = e.from === n ? e.to : e.from;
+      if (!seen.has(other)) { seen.add(other); queue.push(other); }
+    }
+  }
+  assert.ok(seen.has(middle), "the park cannot be walked to from the pavement");
+  // And a person who walked in on one path has the other to walk out on.
+  assert.ok(nav.next(park[0], 1).includes(park[1].id), "a dead end in the middle of the park");
+});
