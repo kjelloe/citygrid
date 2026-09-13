@@ -160,12 +160,17 @@ export function buildHouseParts(spec, { groundTop, wallTop, trim, glass }) {
     }
     if (part.kind === "porch") {
       const u = front.length / 2;
-      const [px, pz] = atEdge(spec, front.side, u, part.depth / 2);
-      upright(woodwork, px, pz, spec.seat + 2.2, part.w, part.depth, 0.2);
+      // OUT from the wall — `atEdge` moves inward for a positive depth, and the
+      // canopy and its post were half inside the house since S9 (R5). And
+      // turned with the wall: `upright` is axis-aligned, so on an east or west
+      // front the width runs along z.
+      const [px, pz] = atEdge(spec, front.side, u, -part.depth / 2);
+      const [cw, cd] = front.side % 2 === 0 ? [part.w, part.depth] : [part.depth, part.w];
+      upright(woodwork, px, pz, spec.seat + 2.2, cw, cd, 0.2);
       if (part.posts) {
         // One post, on the side the door is not. A canopy on two posts is 12
         // triangles more for a symmetry nobody notices.
-        const [qx, qz] = atEdge(spec, front.side, u - (part.w / 2 - 0.1), part.depth - 0.15);
+        const [qx, qz] = atEdge(spec, front.side, u - (part.w / 2 - 0.1), -(part.depth - 0.15));
         upright(woodwork, qx, qz, spec.seat, 0.14, 0.14, 2.2);
       }
     }

@@ -293,6 +293,7 @@ try {
     // FINISHES a chunk — the merge — not the phases before it.
     const cold = [];
     const warm = [];
+    const warmMs = [];
     // The SAME clock the page draws on. `scene.js` hands the cache
     // `drawOptions.now ?? Date.now()`, and the page's own frame loop passes no
     // `now` — so a gate counting up from zero in 16 ms steps put two clocks
@@ -301,14 +302,24 @@ try {
     // was thrown away and rebaked: chunk 1,1 was baked "new" three times with
     // the overlay held on and the clock stopped (B7).
     let now = Date.now();
-    // One chunk a frame, so nine frames for nine chunks — plus a few spare.
-    for (let i = 0; i < 24; i += 1) {
+    // A chunk is several frames now — streets, the lot facades in slices, the
+    // extras, the merge (R5) — so nine chunks want more than the 24 this was.
+    // Every draw, the page's own included: a chunk takes several frames now
+    // (R5) and most of them finish on one of the page's draws, which a read
+    // after our own draw never saw — the first run counted 2 cold builds of 9.
+    const coldDraw = renderer.draw.bind(renderer);
+    renderer.draw = (options = {}) => {
+      const out = coldDraw(options);
+      const s = renderer.stats.streets;
+      if (s?.built) { builds.push(s.buildMs); cold.push(`${s.lastBuilt}: ${s.buildMs} [${s.phases?.join(", ")}]`); }
+      return out;
+    };
+    for (let i = 0; i < 48; i += 1) {
       now = Date.now();
       renderer.draw({ now });
       await frame();
-      const s = renderer.stats.streets;
-      if (s?.built) { builds.push(s.buildMs); cold.push(`${s.lastBuilt}: ${s.buildMs}`); }
     }
+    renderer.draw = coldDraw;
     const after = renderer.stats.streets;
 
     // A second pass over an unchanged city: the cache must build nothing.
@@ -358,7 +369,7 @@ try {
       renderer.draw = (options = {}) => {
         const out = realDraw({ ...options, territory });
         const s = renderer.stats.streets;
-        if (s?.built) warm.push(`${s.lastBuilt}: ${s.buildMs}`);
+        if (s?.built) { warmMs.push(s.buildMs); warm.push(`${s.lastBuilt}: ${s.buildMs} [${s.phases?.join(", ")}]`); }
         if (label === "stayed on") {
           draws.push(`${s?.total} ${s?.built ? `+ ${s?.lastBuilt}` : "  "} [${s?.keys ?? ""}] "${renderer.stats.lod}" `
             + `est ${Math.round(renderer.stats.estimate)} tri ${renderer.stats.triangles} `
@@ -368,7 +379,7 @@ try {
       };
       const before = renderer.stats.streets?.total ?? 0;
       let seen = before;
-      for (let i = 0; i < 24; i += 1) {
+      for (let i = 0; i < 48; i += 1) {
         await frame();
         const s = renderer.stats.streets;
         const total = s?.total ?? seen;
@@ -389,7 +400,7 @@ try {
 
     return {
       builds, live: after?.live ?? 0, triangles: after?.triangles ?? 0, rebuilt, groups, meshes,
-      onToggle, settled, offToggle, trail, draws, cold, warm,
+      onToggle, settled, offToggle, trail, draws, cold, warm, warmMs,
     };
   });
 
@@ -406,22 +417,28 @@ try {
   check("and turning it off rebakes them back", streets.offToggle >= streets.live,
     `${streets.offToggle} rebakes for ${streets.live} live chunks`);
 
-  // The FIRST bake apart from the rest. Over nine builds the 95th percentile is
-  // the slowest one, and the slowest is always the first — it pays once for
-  // the baker's code warming up. After S2 and S6 the builds read
-  // [9, 6, 4, 3, 4, 4, 3, 4, 3]: a steady bake of 3–6 ms, and a check failing
-  // on a one-off it could not tell from the steady state (and failing only
-  // sometimes, which is how it went uncaptured after S2).
-  const first = streets.builds[0] ?? 0;
-  const sorted = [...streets.builds.slice(1)].sort((a, b) => a - b);
-  const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 0;
+  // A78: the chunk's cost is its WORST PHASE (`street-chunks.js` times every
+  // one; until R5 only the merge was timed, and the lot phase — the heaviest —
+  // was read by nothing), and the check reads the WARM rebuilds: the territory
+  // toggle merges every live chunk twice more, and one cold stall over eight
+  // builds failed a check whose p95 was the maximum (S5: the same geometry read
+  // 7, 10 and 13 ms while every chunk rebuilt warm in 3–5). The cold builds keep
+  // a looser bound: one frame.
+  const pct = (xs) => {
+    const sorted = [...xs].sort((a, b) => a - b);
+    return sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 0;
+  };
+  const warmP95 = pct(streets.warmMs);
+  const coldWorst = streets.builds.length ? Math.max(...streets.builds) : 0;
   console.log(`      street chunks: ${streets.live} live, ${streets.groups} groups / ${streets.meshes} meshes, `
-    + `${streets.triangles} triangles, build p95 ${p95} ms over ${sorted.length} steady builds, first ${first} ms`);
+    + `${streets.triangles} triangles, warm p95 ${warmP95} ms over ${streets.warmMs.length} rebuilds, `
+    + `cold worst ${coldWorst} ms over ${streets.builds.length} builds (the worst phase of each)`);
   console.log(`      cold builds: ${streets.cold.join(" | ")}`);
   console.log(`      warm rebuilds: ${streets.warm.join(" | ")}`);
   check("street chunks are baked at all", streets.live > 0, JSON.stringify(streets));
-  check("a chunk bakes inside its frame budget", p95 <= 8, `p95 ${p95} ms over ${sorted.length} steady builds`);
-  check("and the first bake, warming up, inside a frame", first <= 16, `first build ${first} ms`);
+  check("a chunk bakes inside its frame budget, warm (A78)", streets.warmMs.length > 0 && warmP95 <= 8,
+    `warm p95 ${warmP95} ms over ${streets.warmMs.length} rebuilds`);
+  check("and a cold build inside a frame", coldWorst <= 16, `cold worst ${coldWorst} ms`);
   check("a baked chunk is one draw call per material",
     streets.groups > 0 && streets.meshes / streets.groups <= 4,
     `${streets.meshes} meshes over ${streets.groups} groups`);

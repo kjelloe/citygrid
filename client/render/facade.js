@@ -132,6 +132,28 @@ function doorHole(spec, edge) {
  * merges, `options` its shading signature. Nothing here knows what a material
  * is (spec §7.1).
  */
+/** A colour scaled towards black by `k`. */
+function shadeHex(hex, k) {
+  const r = Math.round(((hex >> 16) & 255) * k);
+  const g = Math.round(((hex >> 8) & 255) * k);
+  const b = Math.round((hex & 255) * k);
+  return (r << 16) | (g << 8) | b;
+}
+
+/**
+ * The band at the top of the ground floor: its colour, overhang and depth.
+ *
+ * On a house it is a COURSE — a shade of its own wall, barely proud (R5). In
+ * the trim's pale cream, 0.18 m deep and 0.1 m out, it read from the pavement
+ * as a pale strip across every house in the street (`smoke-S10-street.png`),
+ * which the review took for the lawn or the plinth. A shop or an office keeps
+ * the trim line: there it is the fascia's shelf.
+ */
+export function floorBand(spec, trim) {
+  if (spec.kind === "residential") return { colour: shadeHex(spec.wall, 0.82), overhang: 0.04, h: 0.1 };
+  return { colour: trim, overhang: 0.1, h: 0.18 };
+}
+
 export function buildFacade(spec) {
   const out = [];
   const groundTop = spec.seat + spec.groundH;
@@ -203,9 +225,11 @@ export function buildFacade(spec) {
   // A ground band and a cornice: the two horizontal lines that stop a wall
   // reading as one flat sheet from the pavement.
   const bands = sink();
-  const overhang = 0.1;
-  bands.box(spec.x0 - overhang, groundTop - 0.18, spec.z0 - overhang,
-    spec.x1 + overhang, groundTop, spec.z1 + overhang);
+  const band = floorBand(spec, trim);
+  const floorLine = sink();
+  floorLine.box(spec.x0 - band.overhang, groundTop - band.h, spec.z0 - band.overhang,
+    spec.x1 + band.overhang, groundTop, spec.z1 + band.overhang);
+  out.push({ part: floorLine.done(), colour: band.colour });
   if (spec.roof.kind === "flat") {
     bands.box(spec.x0 - 0.16, wallTop - 0.3, spec.z0 - 0.16, spec.x1 + 0.16, wallTop, spec.z1 + 0.16);
   }

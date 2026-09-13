@@ -125,7 +125,20 @@ function corridorsIn(model, cx, cy, chunkTiles, tileM, junction) {
  * caller scales it. Everything samples `model.heightAt`, which is what makes a
  * kerb follow a hill instead of cutting into it.
  */
-export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
+/** The corridors a chunk's streets are baked from, in order. */
+export function streetCorridors(model, cx, cy) {
+  const cfg = getConfig();
+  return corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM, cfg.road.width / 2 + cfg.road.sidewalk);
+}
+
+/**
+ * The carriageway, kerbs, pavements, verges and centre line of
+ * `corridors[from…]`, until `stop()` says the frame is spent; returns where it
+ * stopped (R5). Once the lot phase ran in slices, the street phase was the
+ * frame A78's check read over budget — 5.6–10.2 ms warm. At least one corridor
+ * per call.
+ */
+export function bakeStreetCorridors(baker, state, model, corridors, from, stop, palette, ground) {
   const cfg = getConfig();
   const { width: roadW, sidewalk, kerb, camber, lift } = cfg.road;
   const half = roadW / 2;
@@ -140,7 +153,10 @@ export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
   // the corner of the junction box.
   const junction = half + sidewalk;
   const vergeHalf = (cfg.tileM / 2 - junction) / 2;
-  for (const { runs, kerbside } of corridorsIn(model, cx, cy, chunkTiles, cfg.tileM, junction)) {
+  let i = from;
+  while (i < corridors.length) {
+    const { runs, kerbside } = corridors[i];
+    i += 1;
     for (const pts of runs) {
       // The height field ONCE per point on the centre line, shared by every
       // part of the cross-section. Inside a corridor `heightAt` returns the
@@ -182,8 +198,19 @@ export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
         addStrip(baker, ribbon(dash, MARK_HALF, height, { lift: lift + MARK_LIFT }), kerbColour);
       }
     }
+      if (stop()) break;
   }
+  return i;
+}
 
+/** The junction boxes, the connectors, the signals and the wires of a chunk. */
+export function bakeStreetJoints(baker, state, model, cx, cy, palette) {
+  const cfg = getConfig();
+  const half = cfg.road.width / 2;
+  const { lift } = cfg.road;
+  const height = model.heightAt;
+  const chunkTiles = cfg.chunkTiles;
+  const asphalt = palette.road;
   // Junction boxes: a square of carriageway at the node so the four approaches
   // meet in a surface rather than four ribbons ending in mid-air.
   for (const node of model.nodes) {
@@ -210,6 +237,12 @@ export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
   bakeWires(baker, state, model, cx, cy, palette);
 }
 
+/** A chunk's streets at once: the corridors, then the joints. */
+export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
+  bakeStreetCorridors(baker, state, model, streetCorridors(model, cx, cy), 0, () => false, palette, ground);
+  bakeStreetJoints(baker, state, model, cx, cy, palette);
+}
+
 /**
  * Every lot whose centre is in this chunk, built at its real size on its real
  * lot from the generated facade spec (slice E5, spec §6.2).
@@ -218,17 +251,29 @@ export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
  * built once — a building drawn twice is a building with z-fighting on every
  * face, which at street level is the most obvious artefact there is.
  */
-export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false, buildingName = undefined) {
-  const cfg = getConfig();
-  const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
-  const fronts = [];
-  const specs = [];
-  for (const lot of model.lots) {
-    // ONE rule, shared with the instanced pass (R2): a lot belongs to the chunk
-    // its centre is in. Comparing against this chunk's box here and against the
-    // anchor TILE there drew a straddling building twice or not at all.
+/** The lots a chunk bakes, in the model's order. ONE rule, shared with the
+ * instanced pass (R2): a lot belongs to the chunk its centre is in. Comparing
+ * against this chunk's box here and against the anchor TILE there drew a
+ * straddling building twice or not at all. */
+export function lotsOfChunk(model, cx, cy) {
+  return model.lots.filter((lot) => {
     const owner = chunkOfLot(lot);
-    if (owner.cx !== cx || owner.cy !== cy) continue;
+    return owner.cx === cx && owner.cy === cy;
+  });
+}
+
+/**
+ * The facades of `lots[from…]`, until `stop()` says the frame is spent; returns
+ * the index it stopped at (R5). The lot phase is the heaviest part of a bake —
+ * a furnished chunk's was 10–24 ms, which A78's check read the first time it
+ * timed it — so the cache runs it a slice a frame. At least one lot per call.
+ * `acc` collects the specs and fronts the extras need.
+ */
+export function bakeLotFacades(baker, state, lots, from, stop, acc, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false, buildingName = undefined) {
+  let i = from;
+  while (i < lots.length) {
+    const lot = lots[i];
+    i += 1;
     // The SAME family colour the instanced kit uses, from the same function, so
     // the L2 box and the L3 facade are the same house (ruling 032, spec §6.1).
     // With the territory overlay on it is the OWNER's colour, exactly as the
@@ -247,11 +292,20 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
       const spec = facadeSpec(part, params, locale, furniture, {
         palette, name: styleName, nameFor: buildingName ?? defaultName,
       });
-      specs.push(spec);
+      acc.specs.push(spec);
       for (const piece of buildFacade(spec)) baker.addPart(piece.part, piece.colour, piece.options);
     }
-    fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind, fence: fenceOf(lot.building) });
+    acc.fronts.push({ lot: frontEdgeOf(lot), out: OUTWARD[lot.frontage], kind: params.kind, fence: fenceOf(lot.building) });
+    if (stop()) break;
   }
+  return i;
+}
+
+/** What a chunk's lots share once their facades are done: the props, the
+ * trees, the lamps and the signs (R5: its own frame). */
+export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName = "plain") {
+  const cfg = getConfig();
+  const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
   // The prop pass, which is the difference between a street and a diagram
   // (spec §6.6). Lamps come from the corridors, hedges and paths from the lots.
   const props = buildProps({
@@ -261,7 +315,7 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
     // the lamps in that slice's screenshots were the L2 instanced poles.
     corridors: corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM, cfg.road.width / 2 + cfg.road.sidewalk)
       .flatMap((c) => c.kerbside),
-    lots: fronts, cfg, heightAt: model.heightAt, palette,
+    lots: acc.fronts, cfg, heightAt: model.heightAt, palette,
     chunk: cy * 4096 + cx,
   });
   for (const piece of props.pieces) baker.addPart(piece.part, piece.colour, piece.options);
@@ -278,7 +332,15 @@ export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plai
   // The fascias, which cannot go through the vertex-colour baker because they
   // carry a texture. One mesh per distinct NAME, added to the same group, so a
   // high street of forty shops is eighteen draw calls at worst (spec §6.5).
-  baker.extra(buildSigns(specs, styleName));
+  baker.extra(buildSigns(acc.specs, styleName));
+}
+
+/** Every lot of a chunk at once: the facades, then the extras. */
+export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false, buildingName = undefined) {
+  const acc = { specs: [], fronts: [] };
+  bakeLotFacades(baker, state, lotsOfChunk(model, cx, cy), 0, () => false, acc,
+    palette, styleName, locale, showOwner, furniture, buildingName);
+  bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName);
 }
 
 /**

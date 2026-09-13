@@ -85,11 +85,13 @@ export function buildSigns(specs, styleName = "plain") {
     // canvas the shopfronts use, localised the same way — a coal plant that
     // says "Coal plant" is a coal plant before you read the inspector.
     if (spec.civicSign) {
-      const list = byText.get(spec.civicSign) ?? [];
-      const middle = front.length / 2;
-      const half = Math.min(6, front.length * 0.32);
-      list.push(fasciaQuad(spec, front, middle - half, middle + half, spec.groundH * 0.9));
-      byText.set(spec.civicSign, list);
+      // On the building, where `facade-spec.js` put it (R5) — not on the lot's
+      // street edge, which for a civic building is the front garden.
+      if (spec.civicSignQuad) {
+        const list = byText.get(spec.civicSign) ?? [];
+        list.push(spec.civicSignQuad);
+        byText.set(spec.civicSign, list);
+      }
     }
     if (spec.storefronts.length === 0) continue;
     for (const shop of spec.storefronts) {
@@ -134,6 +136,12 @@ export function buildSigns(specs, styleName = "plain") {
     geometry.setAttribute("position", new THREE.BufferAttribute(position, 3));
     geometry.setAttribute("normal", new THREE.BufferAttribute(normal, 3));
     geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    // White vertex colours (R5). The style's material multiplies by them —
+    // `makeMaterial` turns `vertexColors` on for everything, because the baker
+    // bakes colour into vertices — and a geometry with no colour attribute is
+    // multiplied by black: every fascia and every civic board in the city was
+    // a black rectangle with its name painted on it in black.
+    geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(quads.length * 18).fill(1), 3));
     geometry.computeBoundingSphere();
     // The STYLE's material, not a Lambert one whatever the style (R2). A
     // fascia in `painted` was the one surface on the street that was not

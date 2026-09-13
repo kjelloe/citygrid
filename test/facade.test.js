@@ -173,3 +173,19 @@ test("every triangle is wound the way its normal points", () => {
     }
   }
 });
+
+test("a house's floor band is a course of its own wall, not a pale strip across it (R5)", async () => {
+  // In the trim's cream, 0.18 m deep and 0.1 m proud, it read as a pale band
+  // across every house in `smoke-S10-street.png`.
+  const { floorBand } = await import("../client/render/facade.js");
+  const lum = (c) => ((c >> 16) & 255) * 0.3 + ((c >> 8) & 255) * 0.59 + (c & 255) * 0.11;
+  for (const id of [1, 2, 3, 4, 5, 6]) {
+    const { spec } = built({ zone: 1, level: 1, id });
+    const band = floorBand(spec, 0xe8e4da);
+    assert.ok(lum(band.colour) <= lum(spec.wall), `house ${id}: the band is paler than its wall`);
+    assert.ok(lum(spec.wall) - lum(band.colour) < 50, `house ${id}: the band is a dark stripe, not a course`);
+    assert.ok(band.overhang <= 0.05, `house ${id}: the band stands ${band.overhang} m proud`);
+  }
+  const shop = built({ zone: 2, level: 2 }).spec;
+  assert.equal(floorBand(shop, 0x123456).colour, 0x123456, "a shopfront lost its fascia shelf");
+});

@@ -236,6 +236,46 @@ which chunk KEYS are live rather than only how many.
 Measured: street chunks 275,248 → 226,232 over 8 live with 9 groups; the crowd frame 329,464 →
 310,885 of 400,000; bake p95 5 ms.
 
+## 6.1e The board on the building (R5, 2026-09-13)
+
+**The name board is on the building.** S1b hung it on the LOT's street edge at `groundH × 0.9`,
+and a civic building is set back inside its lot — so it stood in the front garden, edge-on and
+unlit, a black bar in the air. `civicSignFace(def, ux, uz, heightM)` in `civic-spec.js` chooses,
+in unit space, the street face (+z) of the mass nearest the frontage — a wall at least 3 m wide,
+in the front of the lot (z ≥ 0.3: a water works' control building behind its tanks held a board
+that was unhidden straight on and hidden from anywhere a person stands), not a drum, a door or a
+lawn — and puts a board up to 4 m by 1 m near its top, above anything that
+stands in front of it (a fire station's doors). Where no wall faces the street — a park, a turbine,
+a water tower, a solar plant's yard — it is on a post beside the entrance, the post a mass added to
+the baked building. `facade-spec.js` maps it into metres through `civicPointOnLot`, the function
+the rotor and the smoke are posed by, so it is on the wall the baker built at every quarter turn.
+
+**The stacks are on the halls.** Beside it, a drum is a silo from the pavement; the coal plant's two
+and the gas plant's one stand on their hall's roof now, and still clear it by its own height. The
+hospital's entrance is a glazed bay one bay wide (it was 1.1 of the unit — a 33 m strip of dark
+glass on a 3×3 hospital), and the fire station's bay is a little taller so the board fits over
+the doors.
+
+**Every board was black.** `makeMaterial` turns `vertexColors` on for every style — the baker
+bakes colour into vertices — and the sign geometry had no colour attribute, so each fascia and each
+civic board was multiplied by black: a dark rectangle with its name painted on it in dark. Since R2
+made signs use the style's material, no shop in the city had a readable name. The sign geometry
+carries white vertex colours now.
+
+**The pale band across every house was the ground-floor band**, not the plinth or the lawn quad
+the review guessed: `buildFacade` rings every building at the top of its ground floor with a box in
+the trim's cream, 0.18 m deep and 0.1 m proud, and on a house that is a pale strip from the
+pavement. `floorBand(spec, trim)` makes it a course on a house — a shade of its own wall, 0.1 m
+deep, 0.04 m proud — and keeps the trim line on a shop, where it is the fascia's shelf.
+
+**The lawn quad is not drawn on a baked lot** either: its lift is 0.055 of a tile, at street scale
+1.1 m, and it lay over a baked park's own lawn and path. What S5 stood on it (benches, a pond, beds,
+sheds) comes down to the ground there.
+
+**And the porch stood inside the house.** `atEdge` moves INWARD for a positive depth, and S9 placed
+the canopy and its post at `+depth`: half of each was inside the wall. Outward now, and turned with
+the wall it is on (`upright` is axis-aligned).
+
 ## 6.6b Trees at eye height (V8, 2026-09-07)
 
 The instanced kit is a trunk and a four-sided cone, and at eighteen pixels a tile that is right.
@@ -297,7 +337,17 @@ baked (31.3k against S6's 28.3k), and the bake check's worst steady build read 9
 That check times only the frame that MERGES a chunk (`buildMs` is recorded on the finishing
 frame), and its p95 over eight builds is the maximum: the same geometry read 7, 10 and 13 ms on
 three runs while every chunk rebuilt warm in 3–5 ms. `budget_gate` logs each build's chunk, cold
-and warm, so a red can be told from a stall.
+and warm, so a red can be told from a stall. **Since R5 (A78)** `street-chunks.js` times every
+phase, a chunk's cost is its worst phase, and the check bounds the warm rebuilds at p95 ≤ 8 ms and
+the cold builds at 16 ms. The first run of it read what nobody had timed: the lot phase of a
+furnished chunk at 9.7–11.6 ms warm and 17.5–23.9 ms cold (streets ≤ 11 ms, the merge ≤ 5). So the
+lot phase runs **in slices**: `bakeLotFacades` builds facades until `LOT_SLICE_MS` (4 ms) is spent
+and resumes on the next frame, and `bakeLotExtras` — props, trees, lamps, signs — has a frame of
+its own. With the lots sliced the STREET phase was the worst frame (5.6–10.2 ms warm), so it goes
+the same way: `bakeStreetCorridors` in slices, then `bakeStreetJoints` (junction boxes,
+connectors, signals, wires). The geometry is the same; a chunk takes a few more frames to arrive.
+The gate reads every draw for its cold builds too — most chunks now finish on one of the page's own
+draws, and the first run counted 2 cold builds of 9.
 
 **A park** has two benches beside its path, a pond on half of them (`parkHasPond` — the item said
 "a big one" and every park in the catalogue is one tile, so a rule on size alone was a pond

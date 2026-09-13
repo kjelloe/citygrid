@@ -50,25 +50,26 @@ export const CIVIC_SHAPES = Object.freeze({
       box(-1, 0, -0.55, 0.35, 0.62, 1, "brick"),            // turbine hall
       // The stacks are DRUMS and stand proud of the hall by more than its own
       // height: the thing that says "power station" from across a river has to
-      // be the thing you can see from there (S1b).
-      box(0.4, 0, -0.26, 0.82, 1.85, 0.16, "steel", true),
-      box(0.4, 0, 0.28, 0.82, 1.5, 0.7, "steel", true),
+      // be the thing you can see from there (S1b). ON the hall's roof (R5):
+      // beside it, from the pavement, a drum is a silo.
+      box(-0.5, 0.68, -0.35, -0.08, 1.85, 0.07, "steel", true),
+      box(-0.5, 0.68, 0.2, -0.08, 1.5, 0.62, "steel", true),
       box(-0.9, 0, -1, 0.2, 0.26, -0.62, "dark"),           // coal heap
       box(-1, 0.62, -0.55, 0.35, 0.68, 1, "dark"),          // the hall's roof
     ],
     // Where the smoke comes out (S6): the tops of the two stacks.
-    emits: [{ x: 0.61, y: 1.85, z: -0.05 }, { x: 0.61, y: 1.5, z: 0.49 }],
+    emits: [{ x: -0.29, y: 1.85, z: -0.14 }, { x: -0.29, y: 1.5, z: 0.41 }],
   },
   gasPlant: {
     tall: true,
     masses: [
       box(-1, 0, -0.5, 0.3, 0.55, 1, "brick"),
-      box(0.38, 0, -0.14, 0.76, 1.45, 0.24, "steel", true), // one stack
+      box(-0.55, 0.6, 0.1, -0.17, 1.45, 0.48, "steel", true), // one stack, on the roof (R5)
       box(-0.8, 0, -1, -0.3, 0.42, -0.55, "tank", true),
       box(-0.1, 0, -1, 0.4, 0.42, -0.55, "tank", true),
       box(-1, 0.55, -0.5, 0.3, 0.6, 1, "dark"),
     ],
-    emits: [{ x: 0.57, y: 1.45, z: 0.05 }],
+    emits: [{ x: -0.36, y: 1.45, z: 0.29 }],
   },
   windTurbine: {
     tall: true,
@@ -139,8 +140,9 @@ export const CIVIC_SHAPES = Object.freeze({
     flag: true,
     tall: true,
     masses: [
-      box(-1, 0, -0.7, 1, 0.5, 0.8, "brick"),               // appliance bay
-      box(-1, 0.5, -0.7, 1, 0.56, 0.8, "dark"),
+      // Tall enough over the doors for the name board to sit above them (R5).
+      box(-1, 0, -0.7, 1, 0.62, 0.8, "brick"),              // appliance bay
+      box(-1, 0.62, -0.7, 1, 0.68, 0.8, "dark"),
       // The doors are the thing that says fire station, so they are the height
       // of the bay and half its width, in red (S1b).
       box(-0.88, 0.02, 0.8, -0.12, 0.46, 0.9, "red"),
@@ -166,7 +168,9 @@ export const CIVIC_SHAPES = Object.freeze({
     masses: [
       box(-1, 0, -0.9, 1, 1.15, 0.5, "white"),              // the ward block
       box(-1, 1.15, -0.9, 1, 1.21, 0.5, "dark"),
-      box(-0.55, 0, 0.5, 0.55, 0.4, 1, "glass"),            // the entrance
+      // The entrance: a glazed bay ONE bay wide (R5). It was 1.1 of the unit —
+      // on a 3×3 hospital a 33 m strip of dark glass along the whole front.
+      box(-0.08, 0, 0.5, 0.08, 0.35, 0.76, "glass"),
       // A cross on the STREET FACE. Sized in the LOT's units, which on a 3×3
       // hospital is 30 m to the unit — the first version was 0.36 wide and came
       // out a 21 m plus sign lying across the whole frontage. About a metre
@@ -262,6 +266,70 @@ export function civicSpin(frontage) {
  * the rotation to give anything posed there, and `scale` the lot's half-width,
  * the length a unit across is worth.
  */
+/** What one unit of a civic mass's y is worth, in metres, on this lot: the
+ * baked masses, the posed extras and the name board all read it. */
+export function civicHeightM(lot, params) {
+  const storeys = lot.storeys ?? params.storeys ?? 1;
+  return (params.groundH + (storeys - 1) * params.floorH) * (params.state?.progress ?? 1);
+}
+
+/** The name board's size and clearances, in metres (R5). */
+const SIGN = Object.freeze({ w: 4, h: 1, top: 0.4, gap: 0.15, faceW: 3, depth: 0.12, post: 0.06, postH: 2.2, front: 0.3 });
+
+/**
+ * Where a civic building's name board goes (R5), in UNIT space: on the street
+ * face (+z) of the mass nearest the frontage, near its top and clear of what
+ * stands in front of it (a fire station's doors) — or, where no wall faces the
+ * street (a park, a turbine, a water tower), on a post at the entrance.
+ *
+ * S1b put the board on the LOT's street edge, and a civic building is set back
+ * inside its lot: it stood in the garden, edge-on and unlit. `ux` and `uz` are
+ * the metres one unit of x and z is worth on this lot, `heightM` one unit of y
+ * (`civicHeightM`): the board is a size in metres, the answer is in the units
+ * the masses are. Returns `{ x0, x1, y0, y1, z, face }`, or with `post` — a
+ * mass to add — instead of `face`.
+ */
+export function civicSignFace(def, ux, uz, heightM) {
+  const masses = civicShape(def).masses;
+  // A wall in the FRONT of the lot. Set back behind its tanks, a water works'
+  // control building held a board that was unhidden straight on and behind
+  // the tanks from anywhere a person stands (R5's shots).
+  const walls = masses.filter((m) => !m.rotor && !m.round && m.mat !== "lawn" && m.z1 >= SIGN.front
+    && m.y1 - m.y0 >= 0.25 && m.z1 - m.z0 >= SIGN.depth && (m.x1 - m.x0) * ux >= SIGN.faceW);
+  let face;
+  for (const m of walls) {
+    if (!face || m.z1 > face.z1 + 1e-9
+      || (Math.abs(m.z1 - face.z1) <= 1e-9 && m.x1 - m.x0 > face.x1 - face.x0)) face = m;
+  }
+  if (face) {
+    const wM = Math.min(SIGN.w, (face.x1 - face.x0) * ux * 0.6);
+    const w = wM / ux;
+    const h = Math.min(SIGN.h, wM / 4) / heightM;
+    const xc = (face.x0 + face.x1) / 2;
+    const x0 = xc - w / 2;
+    const x1 = xc + w / 2;
+    // Anything standing in front of the face, across the board and below the
+    // face's top: the board goes above it.
+    const blockers = masses.filter((m) => m !== face && m.z1 > face.z1 - 1e-9
+      && m.x0 < x1 && m.x1 > x0 && m.y0 < face.y1);
+    let y1 = face.y1 - SIGN.top / heightM;
+    let y0 = y1 - h;
+    const clear = blockers.length > 0 ? Math.max(...blockers.map((m) => m.y1)) + SIGN.gap / heightM : face.y0;
+    if (y0 < clear) {
+      y0 = clear;
+      y1 = Math.min(face.y1, y0 + h);
+    }
+    if (y1 - y0 >= h / 2) return { x0, x1, y0, y1, z: face.z1, face };
+  }
+  const px = 0.4;
+  const pz = 0.9;
+  const pd = SIGN.post / uz;
+  return {
+    x0: px - 1 / ux, x1: px + 1 / ux, y0: 1.3 / heightM, y1: 2.1 / heightM, z: pz + pd,
+    post: { ...box(px - SIGN.post / ux, 0, pz - pd, px + SIGN.post / ux, SIGN.postH / heightM, pz + pd, "steel") },
+  };
+}
+
 export function civicPointOnLot(lot, params, point) {
   const quarters = ((civicSpin(lot.frontage) % 4) + 4) % 4;
   let x = point.x;
@@ -271,9 +339,7 @@ export function civicPointOnLot(lot, params, point) {
     z = x;
     x = nx;
   }
-  const progress = params.state?.progress ?? 1;
-  const storeys = lot.storeys ?? params.storeys ?? 1;
-  const height = (params.groundH + (storeys - 1) * params.floorH) * progress;
+  const height = civicHeightM(lot, params);
   const hx = (lot.x1 - lot.x0) / 2;
   const hz = (lot.z1 - lot.z0) / 2;
   return {

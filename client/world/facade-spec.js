@@ -20,7 +20,7 @@
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
 import { houseParts } from "./house-spec.js";
-import { civicShape, civicSpin, turnMass } from "./civic-spec.js";
+import { civicShape, civicSpin, turnMass, civicSignFace, civicPointOnLot, civicHeightM } from "./civic-spec.js";
 /**
  * The names over the shops — a mirror of `data/names.json`, one list per locale.
  *
@@ -266,6 +266,32 @@ export function facadeSpec(lot, params, locale = "en", furniture = true, style =
     spec.civic = {
       def: params.def,
       masses: civicShape(params.def).masses.map((m) => turnMass(m, quarters)),
+    };
+    // The name board ON the building (R5): the street face of the mass nearest
+    // the frontage, or a post at the entrance, mapped into metres by the same
+    // function that poses the rotor and the smoke — so it is on the wall the
+    // baker built, at every quarter turn. The unit x axis is the lot's x or z
+    // depending on the turn.
+    const halfX = (lot.x1 - lot.x0) / 2;
+    const halfZ = (lot.z1 - lot.z0) / 2;
+    const [ux, uz] = quarters % 2 === 0 ? [halfX, halfZ] : [halfZ, halfX];
+    const sign = civicSignFace(params.def, ux, uz, civicHeightM(lot, params));
+    if (sign.post) spec.civic.masses.push(turnMass(sign.post, quarters));
+    const at = (x, y, z) => civicPointOnLot(lot, params, { x, y, z });
+    const inner = at(0, 0, sign.z);
+    const outer = at(0, 0, sign.z + 0.01);
+    const run = Math.hypot(outer.x - inner.x, outer.z - inner.z) || 1;
+    const out = [(outer.x - inner.x) / run, (outer.z - inner.z) / run];
+    // A hair proud of the wall, as a fascia is, or it z-fights.
+    const corner = (x, y) => {
+      const p = at(x, y, sign.z);
+      return [p.x + out[0] * 0.06, p.y, p.z + out[1] * 0.06];
+    };
+    // Bottom-RIGHT first, as a reader outside sees it: that is the corner
+    // `buildSigns` gives u = 1 (seen from +z, +x is to the right).
+    spec.civicSignQuad = {
+      corners: [corner(sign.x1, sign.y0), corner(sign.x0, sign.y0), corner(sign.x0, sign.y1), corner(sign.x1, sign.y1)],
+      out,
     };
   }
   // What the record says about how it looks (B2). Every category, because a

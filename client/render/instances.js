@@ -747,9 +747,12 @@ export function updateInstances(state, pools, options = {}) {
     // buried and that is what a plinth looks like from above (spec §5.6).
     // Scaled (w, 1, h): the quad's DEPTH is its z. It was (w, h, 1), which on
     // a two-deep lot drew the lawn one tile deep and at twice its lift — over
-    // the back garden's bed and shed (S5). Not under a BAKED park, whose own
-    // lawn and path it lay over; an instanced park needs it, its kit is grey.
-    if (p.lawn && !(building.def === "park" && lotIsBaked(lot))) {
+    // the back garden's bed and shed (S5). And not on a BAKED lot (R5): its
+    // lift is 0.055 of a tile, which at street scale is 1.1 m, and it showed
+    // as a pale band through every house's ground floor and over a baked
+    // park's own lawn and path. A baked lot stands on the ground the chunk
+    // draws. An instanced park keeps it: its one-colour kit is a grey slab.
+    if (p.lawn && !lotIsBaked(lot)) {
       push(pools.lawn, cx, h, cz, building.w, 1, building.h, p.lawn);
     }
     // The rest of the front garden (slice V6): a boundary and a way in. Both
@@ -773,6 +776,10 @@ export function updateInstances(state, pools, options = {}) {
     if (planAt(building.x, building.y).props !== false) {
       const baked = lotIsBaked(lot);
       const tileM = getConfig().tileM;
+      // What a bench, a shed or a bed stands on: the lawn quad where there is
+      // one, the ground on a baked lot — where the quad is not drawn and its
+      // 1.1 m would leave them floating (R5).
+      const standOn = baked ? 0 : LAWN_TOP;
       const depthL2 = (building.h - p.setback) * 0.98;
       const bzL2 = cz - p.setback / 2;
       const c = Math.cos(spin);
@@ -807,7 +814,7 @@ export function updateInstances(state, pools, options = {}) {
       if (building.def === "park" && p.state.phase === "standing") {
         for (const [ux, uz] of [[-0.24, -0.35], [0.24, 0.35]]) {
           const at = civicAt({ x: ux, y: 0, z: uz });
-          push(pools.bench, at.x, h + LAWN_TOP, at.z, 1, 1, 1, 0x7a5a3c, at.turn + (ux < 0 ? Math.PI / 2 : -Math.PI / 2));
+          push(pools.bench, at.x, h + standOn, at.z, 1, 1, 1, 0x7a5a3c, at.turn + (ux < 0 ? Math.PI / 2 : -Math.PI / 2));
         }
         // Its path, in path colour. The L2 civic mesh takes ONE instance
         // colour and every part is a shade of it, so a park's path was a shade
@@ -819,7 +826,7 @@ export function updateInstances(state, pools, options = {}) {
         if (parkHasPond(building)) {
           const at = civicAt({ x: 0.45, y: 0, z: -0.42 });
           const r = 0.55 * CIVIC_W * at.scale;
-          push(pools.pond, at.x, h + LAWN_TOP, at.z, r, 1, r, 0x5b8fa8, 0);
+          push(pools.pond, at.x, h + standOn, at.z, r, 1, r, 0x5b8fa8, 0);
         }
       }
       // A back garden (S5): a bed along the house and a shed in the far
@@ -829,12 +836,13 @@ export function updateInstances(state, pools, options = {}) {
           // Clear of the eaves — 1.6 m off the back wall, or the middle of a
           // narrow strip; at a metre the roof hid it from every city camera.
           const bed = g.at(0.35, Math.min(1.6, g.depth / 2) / g.depth);
-          push(pools.bed, bed.x / tileM, h, bed.z / tileM, (g.width * 0.45) / tileM, 1, 1.2 / tileM,
+          // Its lift is in the geometry; on a baked lot a tenth of it.
+          push(pools.bed, bed.x / tileM, h, bed.z / tileM, (g.width * 0.45) / tileM, baked ? 0.1 : 1, 1.2 / tileM,
             BEDS[g.id % BEDS.length], g.turn);
           if (g.shed) {
             // The middle of a narrow strip; towards the back of a deep one.
             const shed = g.at(0.82, g.depth < 3.5 ? 0.5 : 0.72);
-            push(pools.shed, shed.x / tileM, h + LAWN_TOP, shed.z / tileM, 1, 1, 1, 0x8a6e52, g.turn);
+            push(pools.shed, shed.x / tileM, h + standOn, shed.z / tileM, 1, 1, 1, 0x8a6e52, g.turn);
           }
         }
       }

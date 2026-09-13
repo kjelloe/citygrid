@@ -183,3 +183,21 @@ test("a house is still a house when the renderer draws it", () => {
   const furniture = buildHouseParts(spec, { groundTop: 3, wallTop: 9, trim: 0xffffff, glass: 0x334455 });
   assert.ok(furniture.length > 0, "the house has no furniture at all");
 });
+
+test("a porch stands in front of its house, not inside it (R5)", () => {
+  // `atEdge` moves INWARD for a positive depth; the canopy and its post were
+  // placed at +depth and stood half inside the wall from S9 until R5.
+  let porches = 0;
+  for (let id = 1; id <= 40; id += 1) {
+    const spec = house({ id, level: 1 });
+    if (!houseParts(spec).some((p) => p.kind === "porch")) continue;
+    porches += 1;
+    const pieces = buildHouseParts(spec, { groundTop: spec.seat + 3, wallTop: spec.seat + 6, trim: 0xabcdef, glass: 0x334455 });
+    const wood = pieces.find((p) => p.colour === 0xabcdef).part;
+    let outmost = Infinity;
+    for (let i = 0; i < wood.triangles * 3; i += 1) outmost = Math.min(outmost, wood.position[i * 3 + 2]);
+    // The street is to the north (−z): the front wall is at z0.
+    assert.ok(outmost < spec.z0 - 0.8, `house ${id}: the porch reaches only ${(spec.z0 - outmost).toFixed(2)} m out of the wall`);
+  }
+  assert.ok(porches >= 5, `${porches} porches in 40 houses`);
+});

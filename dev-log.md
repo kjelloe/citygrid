@@ -6199,3 +6199,62 @@ the back walls, drawn and small at that zoom. `smoke-S5-street-trees.png` — fr
 street tree in its dark pit in front of a shop, crown in frame, the street and its crowd beyond.
 
 **Next:** S3, per the world lane's order.
+
+## slice-R5 — review fixes after S5 (2026-09-13)
+
+**What it is.** The five items the review after S5 wrote (P68, `workitems-world.md` R5), and two
+defects found while doing them. Order from here (P70): S3 → B5 → B9 → S4 → B1 → S7 → B3 → S8.
+
+- **The civic board is on the building.** `civicSignFace` (`civic-spec.js`) chooses the street
+  face of the wall nearest the frontage — at least 3 m wide, not a drum, a door or a lawn — and a
+  board up to 4 m × 1 m near its top, above anything standing in front of it; where no wall faces
+  the street it is on a post by the entrance. `facade-spec.js` maps it through `civicPointOnLot`,
+  so it is on the wall the baker built at every turn. Tested on a face and unhidden for all twelve
+  at three lot sizes.
+- **The stacks stand on their halls**; the hospital's entrance is one glazed bay (it was a 33 m
+  strip on a 3×3); the fire station's bay is taller so the board clears the doors.
+- **The pale band was neither guess.** The review took it for the plinth or the lawn quad; the
+  enlarged crop showed a strip at the TOP of the ground floor, and `buildFacade` rings every
+  building there with a box in the trim's cream, 0.18 m deep and 0.1 m proud. On a house it is now
+  a course: a shade of its own wall, 0.1 m, 0.04 m proud (`floorBand`). The lawn quad was a real
+  defect too and goes as well: 1.1 m up at street scale on baked lots. S5's benches, pond, beds and
+  sheds come down to the ground on a baked lot.
+- **A78.** `street-chunks.js` times every phase; a chunk's cost is its worst phase; the check reads
+  the warm rebuilds (p95 ≤ 8 ms) and bounds the cold builds at 16 ms. **Its first honest reading
+  was red**, and said where: the lot phase of a furnished chunk at 9.7–11.6 ms warm and 17.5–23.9 ms
+  cold — the phase no check had ever timed. So the lot facades run in 4 ms slices across frames and
+  the props, trees and signs have a frame of their own; then the street phase was the worst frame
+  (5.6–10.2 ms warm) and went the same way — corridors in slices, then junctions, signals and
+  wires. The same geometry, a few more frames a chunk. And the gate was counting 2 cold builds of 9:
+  most chunks finish on one of the page's own draws now, so it reads every draw. After:
+  **warm p95 6.1 ms over 18, cold worst 7.6 ms over 9** — the merge is the heaviest frame left.
+- **Docs.** Q99 was already closed by the reviewer; `node --test test/docs.test.js` green.
+
+**Found on the way.**
+- **Every sign in the city was black.** The boards were on the right faces and still solid black,
+  even the park's, close and face-on. `makeMaterial` turns `vertexColors` on for every style and the
+  sign geometry had no colour attribute: multiplied by black. Since R2 moved signs onto the style
+  material, no shop in the city has shown its name; the review read the civic board as "unlit,
+  edge-on". White vertex colours; "Coal plant", "Park", "Fire station" read in the shots.
+- **S9's porch stood half inside the house.** `atEdge` moves inward for a positive depth and the
+  canopy and post were placed at +depth; outward now, and turned with an east or west wall.
+  Tested: every porch reaches 0.8 m out of its wall.
+
+**Measured.** Suite green twice, **1,335 tests**; `node --test test/docs.test.js` 24 of 24.
+`gates.mjs render` 4 of 4 in **287 s of 300** (budget_gate 232 s — thirteen seconds of headroom:
+M2's rule applies to the next slice that pushes it over, which splits `budget_gate` into its own
+set); `quick` 11 of 11 in 397 s of 480. The bake check on its final run: warm p95 **5.6 ms** over
+18, cold worst **10.6 ms** over 9; the estimate at city span 10 is 0% out.
+
+**What the pictures say**, looked at: the twelve civic shots have their names on them — "Coal
+plant" on the hall under a stack that stands on its roof, "Fire station" over the doors, "Solar
+plant" on the hut, "Hospital" on its one-bay entrance under the cross, "Park", "Wind turbine" and
+"Water treatment" on posts by the entrance (the water works' first cut was on the control building
+behind its tanks: unhidden straight on in the test, hidden from the street in the shot, so a board
+now has to be on a wall in the front of the lot). `smoke-S10-street.png`: the band across the
+houses is a darker course of the wall, and the porches stand out from the doors on their posts.
+
+**Still open:** a baked park's lawn is under the ground on a sloping lot (the masses sit on the
+lot's LOWEST corner and the lawn is centimetres thick) — the path shows now, the lawn does not.
+
+**Next:** S3.

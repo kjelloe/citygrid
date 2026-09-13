@@ -186,3 +186,60 @@ test("a point on a baked lot lands where the baked masses land, at every quarter
     assert.equal(at.scale, 10);
   }
 });
+
+// --- review fixes after S5 (R5) ----------------------------------------------
+
+test("a civic name board is on the building's street face, or on a post at its entrance", async () => {
+  // S1b put it on the LOT's street edge, and a civic building is set back in
+  // its lot: the board stood in the garden, edge-on, over nothing.
+  const { civicSignFace } = await import("../client/world/civic-spec.js");
+  for (const def of CIVIC_DEFS) {
+    for (const [ux, uz, hM] of [[7, 7, 8], [10, 10, 10], [30, 30, 13]]) {
+      const s = civicSignFace(def, ux, uz, hM);
+      const where = `${def} at ${ux} m a unit`;
+      assert.ok(s.x1 > s.x0 && s.y1 > s.y0, `${where}: an inside-out board`);
+      assert.ok(s.x0 >= -1 && s.x1 <= 1 && s.z >= -1 && s.z <= 1, `${where}: a board off the lot`);
+      assert.ok((s.x1 - s.x0) * ux >= 1.5 && (s.y1 - s.y0) * hM >= 0.4, `${where}: a board too small to read`);
+      if (s.post) {
+        assert.ok(Math.abs(s.z - s.post.z1) < 1e-9, `${where}: the board is not on its post`);
+        assert.ok(s.post.y1 >= s.y1 && s.y0 * hM >= 1, `${where}: a board below head height or above its post`);
+        continue;
+      }
+      const f = s.face;
+      assert.ok(Math.abs(s.z - f.z1) < 1e-9, `${where}: the board is not on the face`);
+      // In the front of the lot: behind the tanks it is unhidden only straight on.
+      assert.ok(s.z >= 0.3, `${where}: the board is on a wall ${s.z} back from the frontage`);
+      assert.ok(s.x0 >= f.x0 - 1e-9 && s.x1 <= f.x1 + 1e-9 && s.y0 >= f.y0 - 1e-9 && s.y1 <= f.y1 + 1e-9,
+        `${where}: the board overhangs its wall`);
+      // Nothing stands in front of it: a fire station's board above its doors.
+      for (const m of civicShape(def).masses) {
+        if (m === f || m.z1 <= f.z1 - 1e-9) continue;
+        const hides = m.x0 < s.x1 && m.x1 > s.x0 && m.y0 < s.y1 && m.y1 > s.y0;
+        assert.equal(hides, false, `${where}: a ${m.mat} mass stands in front of the board`);
+      }
+    }
+  }
+  for (const def of ["coalPlant", "gasPlant", "fireStation", "policeStation", "hospital", "waterPump"]) {
+    assert.equal(civicSignFace(def, 10, 10, 10).post, undefined, `${def} has a wall to the street and a board on a post`);
+  }
+  assert.ok(civicSignFace("park", 7, 7, 4).post, "a park's name is on a post");
+  assert.ok(civicSignFace("waterTreatment", 10, 10, 10).post, "a water works' name is behind its tanks");
+});
+
+test("a plant's stacks stand on its hall, and the hospital's entrance is one bay", () => {
+  // From the pavement a drum beside a hall is a silo; on it, a power station.
+  for (const def of ["coalPlant", "gasPlant"]) {
+    const shape = civicShape(def);
+    const hall = shape.masses.find((m) => m.mat === "brick");
+    const stacks = shape.masses.filter((m) => m.mat === "steel" && m.round);
+    assert.ok(stacks.length > 0, `${def} has no stack`);
+    for (const s of stacks) {
+      assert.ok(s.x0 >= hall.x0 && s.x1 <= hall.x1 && s.z0 >= hall.z0 && s.z1 <= hall.z1,
+        `${def}: a stack stands beside its hall`);
+      assert.ok(s.y0 >= hall.y1, `${def}: a stack starts inside the hall`);
+    }
+  }
+  const entrance = civicShape("hospital").masses.find((m) => m.mat === "glass");
+  // A 3×3 hospital is 30 m to the unit: one bay is under six metres.
+  assert.ok((entrance.x1 - entrance.x0) * 30 <= 6, `the entrance is ${((entrance.x1 - entrance.x0) * 30).toFixed(0)} m of glass`);
+});

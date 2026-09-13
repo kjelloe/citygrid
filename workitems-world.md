@@ -391,9 +391,25 @@ the next slice that pushes it over splits `budget_gate` into its own `budget` se
 raising the number — and `motion_shots` and `foliage_shots` stay out of any set, as the ally
 decided.
 
-### R5 — Review fixes after S5 (S)
+### R5 — Review fixes after S5 (S) — **built 2026-09-13** (`specs/engine/06-buildings-and-kit.md` §6.1e)
 
 Each names its test. Commit as `slice-R5`.
+
+**As built.** (1) `civicSignFace` in `civic-spec.js` puts the board on the street face of the
+nearest wall at least 3 m wide and in the front of the lot, above anything in front of it, or on a
+post at the entrance (park, turbine, water tower, water works — whose control building is behind
+its tanks, found in the shots); `test/civic-spec.test.js` holds it on a face and unhidden for all twelve at
+three lot sizes. (2) The stacks stand on their halls, the hospital's entrance is one bay, the fire
+station's bay is taller so the board clears the doors; tested. (3) The pale band was **neither**
+guess: it was the facade's ground-floor band in the trim's cream, on every house — `floorBand`
+makes it a course of the wall on a house (`test/facade.test.js`). The lawn quad is also no longer
+drawn on baked lots (1.1 m up at street scale). (4) A78 as written — and its first reading was
+red on the phase nothing had timed (a furnished chunk's lot phase at 10–24 ms), so the lot facades
+and the street corridors now bake in 4 ms slices across frames: warm p95 **6.1 ms**, cold worst
+**7.6 ms**. (5) Q99 was already closed.
+**Found on the way:** every sign in the city was black — `makeMaterial` sets `vertexColors` and the
+sign geometry had no colour attribute, since R2; and S9's porch stood half inside the house
+(`atEdge`'s sign), tested in `test/house-spec.test.js`.
 
 1. **The civic sign on the building, not on the lot.** Place the board on the street face of the
    mass nearest the frontage (`civic-spec.js` knows the masses; the nearest face at `groundH ×

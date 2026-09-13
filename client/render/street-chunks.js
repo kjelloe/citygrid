@@ -22,7 +22,9 @@ import { chunkHash, chunksNear, CHUNK } from "../world/chunks.js";
  * triangles over a 320,000 frame. */
 export const FURNISHED = 3;
 import { PALETTES } from "./palettes.js";
-import { bakeStreets, bakeLots } from "./streets-l3.js";
+import {
+  streetCorridors, bakeStreetCorridors, bakeStreetJoints, lotsOfChunk, bakeLotFacades, bakeLotExtras,
+} from "./streets-l3.js";
 import { createGroundColour } from "../world/ground-colour.js";
 import { getConfig } from "../world/config.js";
 import { nextBuild, expired } from "./streaming.js";
@@ -69,6 +71,11 @@ function inView(chunk, bounds) {
     || test(x0, z0 + CHUNK) || test(x0 + CHUNK, z0 + CHUNK);
 }
 
+/** How long one frame may spend on street corridors or lot facades before
+ * handing the rest to the next (R5). Under A78's 8 ms, with room for the one
+ * that crosses the line. */
+const LOT_SLICE_MS = 4;
+
 export function createStreetChunks(scene, options = {}) {
   const styleName = options.style ?? "plain";
   const palette = PALETTES[styleName] ?? PALETTES.plain;
@@ -76,6 +83,8 @@ export function createStreetChunks(scene, options = {}) {
   const live = new Map();
   let built = 0;
   let lastBuildMs = 0;
+  /** Each phase of the last finished chunk, in ms (A78). */
+  let lastPhases = [];
 
   /** A bake in progress. One PHASE a frame, not one chunk a frame.
    *
@@ -103,11 +112,36 @@ export function createStreetChunks(scene, options = {}) {
    * `natural()` reads the terrain layer, which a build action does not move. */
   let ground;
 
+  // Each phase is a frame's work and says when it is done. The lot facades
+  // run in slices of `LOT_SLICE_MS` (R5): the lot phase was the heaviest part
+  // of a bake — 10–24 ms on a furnished chunk — and A78's check, the first to
+  // time it, read it over the frame.
   const PHASES = [
-    (baker, state, model, cx, cy) => bakeStreets(baker, state, model, cx, cy, palette, ground),
-    (baker, state, model, cx, cy) =>
-      bakeLots(baker, state, model, cx, cy, palette, styleName, options.locale ?? "en", territory,
-        furnished.has(`${cx},${cy}`), options.buildingName),
+    (job, state, model) => {
+      job.corridors ??= streetCorridors(model, job.chunk.cx, job.chunk.cy);
+      const t0 = performance.now();
+      job.street = bakeStreetCorridors(job.baker, state, model, job.corridors, job.street ?? 0,
+        () => performance.now() - t0 > LOT_SLICE_MS, palette, ground);
+      return job.street >= job.corridors.length;
+    },
+    (job, state, model) => {
+      bakeStreetJoints(job.baker, state, model, job.chunk.cx, job.chunk.cy, palette);
+      return true;
+    },
+    (job, state, model) => {
+      const { cx, cy } = job.chunk;
+      job.lots ??= lotsOfChunk(model, cx, cy);
+      job.acc ??= { specs: [], fronts: [] };
+      const t0 = performance.now();
+      job.cursor = bakeLotFacades(job.baker, state, job.lots, job.cursor ?? 0,
+        () => performance.now() - t0 > LOT_SLICE_MS, job.acc, palette, styleName, options.locale ?? "en",
+        territory, furnished.has(`${cx},${cy}`), options.buildingName);
+      return job.cursor >= job.lots.length;
+    },
+    (job, state, model) => {
+      bakeLotExtras(job.baker, state, model, job.chunk.cx, job.chunk.cy, job.acc, palette, styleName);
+      return true;
+    },
   ];
 
   return {
@@ -175,10 +209,10 @@ export function createStreetChunks(scene, options = {}) {
         if (next) pending = { ...next, baker: createBaker(styleName), phase: 0 };
       }
       if (pending) {
-        const started = Date.now();
+        const job = pending;
+        const started = performance.now();
         if (pending.phase < PHASES.length) {
-          PHASES[pending.phase](pending.baker, state, model, pending.chunk.cx, pending.chunk.cy);
-          pending.phase += 1;
+          if (PHASES[pending.phase](pending, state, model)) pending.phase += 1;
         } else {
           const { chunk, hash, baker } = pending;
           const group = baker.build();
@@ -200,7 +234,15 @@ export function createStreetChunks(scene, options = {}) {
           didBuild = 1;
           pending = undefined;
         }
-        lastBuildMs = Date.now() - started;
+        // Every PHASE is a frame's work, and the chunk's cost is its worst
+        // one (A78). Only the merge was timed until R5 — the frame that
+        // finishes a chunk — and the lot phase, the heaviest, was read by
+        // nothing.
+        job.times = [...(job.times ?? []), performance.now() - started];
+        if (didBuild) {
+          lastPhases = job.times.map((t) => Math.round(t * 10) / 10);
+          lastBuildMs = Math.max(...lastPhases);
+        }
       }
 
       for (const key of expired(live, wantedKeys, now, GRACE_MS)) {
@@ -217,7 +259,7 @@ export function createStreetChunks(scene, options = {}) {
       // and "3 live" could not tell anyone whether the building in front of the
       // camera was one of the three (S1b).
       return {
-        built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, total: built, lastBuilt,
+        built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, phases: lastPhases, total: built, lastBuilt,
         keys: [...live.values()].map((e) => `${e.cx},${e.cy}`).sort().join(" "),
       };
     },
