@@ -10,12 +10,17 @@ life — cars, people — behaviour that reads as a city rather than a screensav
 is derived from `state` and renderer-local (ruling 037): **nothing in this lane touches
 `engine/`, and no fixture hash moves.** Engine-side realism that would (road hierarchy, transit,
 parking as state) is listed at the end as questions, not items. Same rules as
-`workitems-cityviewer.md` §0.*
+`workitems-cityviewer.md` §0.* *B9 (A81) is the exception: it is the deputy's, in `engine/`, and
+it opened era 3.*
 
 **Two invariants from D7, kept by test:** life fills and moves at a rate per second scaled by
 `dt`, never per frame; and the population of cars and people is never a function of the camera.
 
-## B9 — The deputy lays roads near the town (S, engine) — A81
+## B9 — The deputy lays roads near the town (S, engine) — A81 — **built 2026-09-14** (era 3, `deputy.roadReach`)
+
+*As built: reach is `data/balance.json` `deputy.roadReach` (expand 4, the others 3), and a blocked
+deputy hops to the town's fringe, fresh land two to `roadReach` tiles out. The hop is what keeps
+the town growing; two "fresh land" rules tried on the way halved it (dev-log).*
 
 **Goal.** A played city has an edge. The deputy paves only where the town is.
 

@@ -64,7 +64,8 @@ true at that commit and carries the measured numbers; this file stays the plan.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
-is pinned (`reports/balance-era1.md`, 200 games × 4 configurations).
+was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); since B9 the balance is
+**era 3** (`reports/balance-era3.md` — the deputy's road reach, A81; era 2 is left to T1/T2).
 
 **The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as an automated
 script on desktop and on a 390×844 phone.
@@ -380,7 +381,7 @@ land first. Nothing here is scheduled.*
 | worker | `workitems-worker.md` | W1 the session seam on one thread; W2 the reducer in a Web Worker behind a mirror; W3 the model off the tick; W4 the seam proven against an echo transport, the door to Wave 5 |
 | navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
 | world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row |
-| behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather |
+| behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather; B7 cars and people from the city camera; B8 cars stop at a junction; B9 the deputy lays roads near the town (engine, era 3) |
 | transport | `workitems-transport.md` | T1 the avenue; T2 rail and the station in the engine; T3 rail drawn; T4 water bodies, marina, ferry, port; T5 unlock ranks, city hall, airport; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
 
 ## Open questions

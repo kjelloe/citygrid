@@ -765,7 +765,11 @@ need it.
    `expand`, `balance the books`, `green first`) that run a departed player's city and answer
    requests by policy. It is also the headless test instrument — the AI mayors play the soak and
    sweep cities and crew every seat in multiplayer scale tests, so doctrine is gated like gameplay
-   code because it *is* the measurement instrument.
+   code because it *is* the measurement instrument. **Since B9 (A81, era 3) it lays a road only
+   within `deputy.roadReach` tiles of a lot that is built, or zoned and supplied** — the town grows
+   outward instead of being paved ahead of, so a played city has an edge; the first street of a new
+   city is the one exception. A blocked deputy hops to the town's fringe — fresh land two to
+   `roadReach` tiles out — so it grows outward rather than paving itself in.
 2. **Seeded situations with identity.** A seed produces a recognisable strategic map ("the delta
    with three islands", "the valley with one pass"), named, previewed in the lobby, and shareable
    as a code that reproduces terrain, options and sector layout exactly.

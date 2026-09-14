@@ -12,6 +12,8 @@
 import { apply } from "./reducer.js";
 import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_BUILDING } from "./commands.js";
 import { definition } from "./catalogue.js";
+import { rules } from "./rules.js";
+import { i32 } from "../shared/arrays.js";
 import { budgetFor } from "./economy.js";
 import { RESULT } from "../shared/protocol.js";
 import { tileAt, xOf, yOf, encodeRuns, inBounds, DIR4, neighbour } from "../shared/grid.js";
@@ -21,6 +23,7 @@ import { idiv, clamp } from "../shared/idiv.js";
 import { nextInt, chance } from "../shared/prng.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, OWNER_NATURE,
+  FLAG_POWERED, FLAG_WATERED,
 } from "./constants.js";
 
 export var DOCTRINE_EXPAND = "expand";
@@ -85,11 +88,81 @@ function findStart(state, seat) {
   return bestIndex;
 }
 
+/** How far from its town this deputy may lay a road (A81, B9): the doctrine's
+ * `roadReach`, from the data. */
+function reachOf(deputy) {
+  var table = rules().deputy.roadReach;
+  var reach = table[deputy.doctrine];
+  return reach === undefined ? table.balance : reach;
+}
+
+/** Steps from every tile to the nearest lot of this seat that is BUILT, or
+ * zoned with power and water — over the four neighbours — and how many such
+ * lots there are. A road is laid only within reach of one (A81): the grid grows
+ * outward with the town instead of ahead of it, which is what gave the played
+ * city a grid of empty roads across the river and no edge (D4 finding 2). */
+function townReach(state, seat, reach) {
+  var w = state.width;
+  var h = state.height;
+  var dist = i32(w * h);
+  var queue = i32(w * h);
+  var fringe = i32(w * h);
+  var fringeCount = 0;
+  var tail = 0;
+  for (var i = 0; i < w * h; i += 1) {
+    dist[i] = -1;
+    if (state.tiles.owner[i] !== seat) continue;
+    var built = state.tiles.buildingId[i] !== 0;
+    var flags = state.tiles.flags[i];
+    var supplied = state.tiles.zone[i] !== ZONE_NONE
+      && (flags & FLAG_POWERED) !== 0 && (flags & FLAG_WATERED) !== 0;
+    if (built || supplied) {
+      dist[i] = 0;
+      queue[tail] = i;
+      tail += 1;
+    }
+  }
+  var lots = tail;
+  for (var head = 0; head < tail; head += 1) {
+    var at = queue[head];
+    var x = xOf(w, at);
+    var y = yOf(w, at);
+    for (var d = 0; d < 4; d += 1) {
+      var nx = x + DIR4[d].dx;
+      var ny = y + DIR4[d].dy;
+      if (!inBounds(w, h, nx, ny)) continue;
+      var j = tileAt(w, nx, ny);
+      if (dist[j] >= 0) continue;
+      dist[j] = dist[at] + 1;
+      queue[tail] = j;
+      tail += 1;
+    }
+  }
+  // The FRINGE: fresh land two to `reach` steps out from the town — buildable,
+  // unzoned, unpaved, unbuilt and ours to build on. A blocked deputy hops here,
+  // so the town grows outward; hopped to a lot instead, it laid its next block
+  // INSIDE the town, and the first cut of B9 turned every town into a mesh of
+  // empty streets. Refusing zoned land and parallel roads instead cut the
+  // sweep's population by half: crossing a zoned strip is how blocks join.
+  for (var k = 0; k < tail; k += 1) {
+    var f = queue[k];
+    if (dist[f] < 2 || dist[f] > reach) continue;
+    if (state.tiles.zone[f] !== ZONE_NONE || hasNet(state.tiles.road[f]) || state.tiles.buildingId[f] !== 0) continue;
+    if (!isBuildable(state.tiles.terrain[f])) continue;
+    var fo = state.tiles.owner[f];
+    if (fo !== OWNER_NATURE && fo !== seat) continue;
+    fringe[fringeCount] = f;
+    fringeCount += 1;
+  }
+  return { dist: dist, lots: lots, queue: queue, fringe: fringe, fringeCount: fringeCount };
+}
+
 /** Lays a road segment and zones the strip on both sides of it — the pattern a
  * person actually uses, and the reason growth follows roads rather than
  * appearing in fields. */
-function buildBlock(state, deputy) {
+function buildBlock(state, deputy, town) {
   var seat = deputy.seat;
+  var reach = reachOf(deputy);
   var horizontal = chance(state.rng, 2);
   var length = 6 + nextInt(state.rng, 6);
   var x = deputy.cursorX;
@@ -105,6 +178,10 @@ function buildBlock(state, deputy) {
     var owner = state.tiles.owner[index];
     if (owner !== OWNER_NATURE && owner !== seat) break;
     if (state.tiles.buildingId[index] !== 0) break;
+    // Within reach of the town (A81). With nothing that qualifies yet — the
+    // first street of a new city — there is no town to be near, and a rule with
+    // no exception for it is a deputy that never lays one.
+    if (town.lots > 0 && (town.dist[index] < 0 || town.dist[index] > reach)) break;
     roadCells.push(index);
   }
   if (roadCells.length < 3) return false;
@@ -415,12 +492,26 @@ export function deputyTurn(state, deputy, sink) {
   // no expansion, no residents, no income, no expansion.
   if (funds < 6000 && budgetFor(state, deputy.seat).net < 0) return false;
 
+  var town = townReach(state, deputy.seat, reachOf(deputy));
   var attempts = 0;
   while (attempts < 6) {
-    if (buildBlock(state, deputy)) return true;
-    // Blocked: hop somewhere else rather than grinding against the same rock.
-    deputy.cursorX = 1 + nextInt(state.rng, state.width - 2);
-    deputy.cursorY = 1 + nextInt(state.rng, state.height - 2);
+    if (buildBlock(state, deputy, town)) return true;
+    // Blocked: hop somewhere else rather than grinding against the same rock —
+    // near the town when there is one (B9): a hop to anywhere on the map is a
+    // hop the reach rule refuses, and six of them are a turn wasted.
+    if (town.fringeCount > 0) {
+      var spot = town.fringe[nextInt(state.rng, town.fringeCount)];
+      deputy.cursorX = clamp(xOf(state.width, spot), 1, state.width - 2);
+      deputy.cursorY = clamp(yOf(state.width, spot), 1, state.height - 2);
+    } else if (town.lots > 0) {
+      var reach = reachOf(deputy);
+      var lot = town.queue[nextInt(state.rng, town.lots)];
+      deputy.cursorX = clamp(xOf(state.width, lot) + nextInt(state.rng, reach * 2 + 1) - reach, 1, state.width - 2);
+      deputy.cursorY = clamp(yOf(state.width, lot) + nextInt(state.rng, reach * 2 + 1) - reach, 1, state.height - 2);
+    } else {
+      deputy.cursorX = 1 + nextInt(state.rng, state.width - 2);
+      deputy.cursorY = 1 + nextInt(state.rng, state.height - 2);
+    }
     attempts += 1;
   }
   return false;

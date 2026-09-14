@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 1,
+  era: 3,
   build: {
     road: 10, roadOverWater: 50, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -87,6 +87,10 @@ var RULES = {
     radiusHigh: 7,
     reliefFloor: 3000,
     reliefCap: 6000,
+  },
+  deputy: {
+    _comment: "A81 (B9): the deputy lays a road only within roadReach tiles of a lot that is built, or zoned and supplied; expand reaches a little further than the doctrines that hold back. Era 3.",
+    roadReach: { expand: 4, balance: 3, green: 3, hold: 3 },
   },
   traffic: {
     _comment: "era 0, untuned. roadCapacity is load units per tile before a street reads as full.",

@@ -6421,3 +6421,95 @@ say who it is. The first pair had nobody in it: filmed three seconds after load 
 street whose pavements ask for nobody, before any shopper had walked there.
 
 **Next:** B9.
+
+## slice-B9 — the deputy lays roads near the town (2026-09-14)
+
+**What it is.** A81 (Kjell, P69, option B), in `engine/deputy.js`: a road cell is laid only within
+`deputy.roadReach` tiles (data: expand 4, balance, green and hold 3) of a lot of the seat's that is
+built, or zoned with power and water — a flood from those lots once per expansion turn
+(`townReach`, typed arrays through `shared/arrays.js` — `engine/` may not say `new`). The grid the
+doctrine plans is the same shape; it grows outward with the town instead of ahead of it. Nothing is
+ever unpaved. A new city has nothing that qualifies, so its first street has no limit, and a
+blocked deputy hops to the town's FRINGE — fresh land two to `reach` tiles out — rather than
+anywhere on the map: a hop to anywhere is a hop the rule refuses. **Era 3** (era 2 is left to
+T1/T2's re-pin, A79): the note says so and `reports/balance-era3.md` is the evidence. No pinned
+fixture moves — `empty`, `founding` and `two_player` are built without the deputy; every
+deputy-built city in the tools and in `tools/shoot.html` does.
+
+**Tests** (`test/deputy.test.js`, new — the deputy had none): the reach is data and expand reaches
+further; on three seeds over ten years no road tile is beyond reach (+2 for a lot lost since) of a
+zoned or built lot; a new city still lays its first street and builds in two years; a city still
+grows past 150 residents in twelve.
+
+**What went wrong on the way.**
+- **The first cut gave every town an edge and made every town a mesh of empty streets.** The far
+  bank was country at last, and the town itself was grey: a blocked deputy hopped to a LOT, so its
+  next block landed inside the town. The sweep said so in one row (steady without disasters, median
+  1,364 → 1,009, −26%, against the item's 10%), `traffic_gate` said congestion tracked neither
+  density nor population, and `a11y_smoke`'s worst overlay bands lost their separation.
+- **The second cut halved every city.** It changed three things at once: a hop to the fringe, and two
+  "fresh land" rules — no road over zoned land, none beside a parallel street. The sweep: relaxed
+  1,339 → 545, steady 1,179 → 507, demanding 766 → 88 with 25 of 200 cities emptied, and
+  `a11y_smoke` still red. A node probe of each rule alone on 30 seeds (steady, no disasters, 25
+  years; the old deputy 1,473): refusing zoned land alone, with NO reach rule, gave 726 — crossing a
+  zoned strip is how the blocks join into one network; the parallel rule alone cost a fifth more; the
+  fringe hop with neither rule gave 1,356, and demanding 941 against the old deputy's 680. The hop
+  was the fix; the two rules are gone. Reach 5 and 6 grew bigger still (steady 2,011 and 1,652), but
+  reach is A81's number, not a tuning knob, and 4 is inside the item's 10%.
+- **A test that could not tell good from bad.** The second cut came with "at most two tiles in
+  five inside the town are road". Measured on six seeds, the old deputy's towns are 41–45% road,
+  the first cut's 41–53%, the final rule's 43–54%: a deputy town is always this dense, and the mesh
+  was empty lots, not more road. The test is deleted, not loosened; the sweep's population row is
+  what separates them.
+- **`traffic_gate` stayed red on the final rule — and the traffic model was not the cause.**
+  Congestion against people-per-road fell from r 0.55 to 0.07, against population from 0.55 to 0.24.
+  The seed stayed at 0.07, so this is not noise. Four probes over the gate's own 200 seeds, old
+  deputy against new, before touching the gate:
+  - The spread did not narrow: the coefficient of variation in people-per-road is 0.60 before and
+    0.62 after.
+  - Choke points are not the answer: 12% of congested tiles sit on a cut vertex of the road network,
+    against 21% before. The network is better joined, with 91% of road in its largest piece against 66%.
+  - Outliers are not the answer: rank correlation is as weak (0.18).
+  - Congestion against driving (cars × routed commute) is r 0.87 before and 0.92 after.
+
+  The old deputy paved about 2,060 tiles in every game (cv 0.13), so people-per-road was population
+  over a constant. Under B9 the road grows with the town, and in a model with no rerouting more road
+  for the same people means a longer drive, not relief. The gate now reads driving demand as a third
+  measure (`state.traffic.commuters × averageCommute`, the engine's own routing, not the capped
+  traffic layer). The two old readings and the seed check stand, and the header says why.
+  **For Kjell:** this is a change to a gate's criterion, made on this evidence. Reverting
+  it means finding another way to make congestion follow road density.
+- **The reach test measured supply at the end.** A zone can lose power long after its road was
+  laid: fifty roads on one seed "beyond reach" were laid by the rule. The end-state question is a
+  road beyond reach of any zoned or built lot.
+- Writing the patch against `new Int32Array` — the subset test bans `new` in `engine/`, and
+  `shared/arrays.js`'s `i32` is how the engine allocates.
+
+**Measured** (era 3, the B9 working tree on 756507d). `sim_sweep`, 200 games × 25 years per
+configuration, population median against era 1:
+
+| configuration | era 1 | era 3 |
+| --- | --- | --- |
+| relaxed | 1,339 | 1,651 |
+| steady | 1,179 | 1,490 |
+| demanding | 766 | 1,203 |
+| steady, no disasters | 1,364 | 1,395 |
+
+Every row is inside the item's 10%, and three are above it. The deputy lays about 1,590 road
+tiles on a 64×64 in 25 years, against 2,060. Gates:
+- sim: `disaster_soak` ok (81 s); `traffic_gate` ok after the change (driving 0.918, seed 0.069,
+  86 s); `sim_sweep` ok (337 s).
+- render: ok, 288 s of 300 (`budget_gate` 233 s).
+- quick: 11 of 11 ok, `a11y_smoke` green again, 397 s of 480.
+- Suite green twice.
+
+**What the pictures say**, looked at. `compare-before-B9.png` (ba6625a, before the change): in
+all three rows the far bank of the river is a grey grid of empty streets with a few green plots on
+it, the deputy's roads laid ahead of any town, and the town runs to the map's edge.
+`compare-after-B9.png` (stamped 756507d, drawn from the B9 tree): the far bank is country, pine
+forest on green in the town and terrace rows and green hills in the lakeside row, and the town stops
+at the river. That is D4's finding 2, the edge, and it is there. The town itself is still a dense
+grid with green plots between its blocks; it now has more built lots, but it is no less a grid. The
+reference's curving streets and lots are S-lane work, not the deputy's.
+
+**Next:** S4, per P70's order.

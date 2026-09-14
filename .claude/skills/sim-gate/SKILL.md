@@ -23,7 +23,7 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Save gate** | `node tools/save_smoke.mjs` | Does a city survive a closed tab, hash for hash? |
 | **MVP acceptance** | `node tools/mvp_acceptance.mjs` | All thirteen §24 criteria, desktop and phone |
 | **Disaster soak** | `node tools/disaster_soak.mjs [games] [years]` | Does every disaster fire, and leave a repairable city? |
-| **Traffic gate** | `node tools/traffic_gate.mjs [games] [years]` | Does routing fit the month tick? Does congestion track the city or the dice? |
+| **Traffic gate** | `node tools/traffic_gate.mjs [games] [years]` | Does routing fit the month tick? Does congestion track the city (people-per-road, population or driving demand) or the dice? |
 | **Balance sweep** | `node tools/sim_sweep.mjs [games] [years]` | 200 games × 4 configurations; writes reports/balance-eraN.md |
 | **Play shot** | `node tools/play_shot.mjs` | What does the real page look like, both viewports? |
 | **Style sheet** | `MODE=city node tools/style-sheet.mjs` | All three styles from one city, side by side. `MODE=city` shoots them through the perspective camera: a style is geometry, shading and palette, and none of those should change with the projection |
@@ -171,6 +171,14 @@ Before believing a gate's red, ask what the gate did to the game.
 heuristic that will not rebuild a lost power plant. Say whose competence a
 measurement is about, and when a slow decline follows a shock, run the same seed
 with the shock switched OFF before blaming it (ruling 025).
+
+**And a gate's proxy can lean on how the deputy plays.** B9 changed only the deputy's road rule and
+`traffic_gate` went red: congestion against people-per-road fell from r 0.55 to 0.07. The traffic
+model was untouched. The old deputy paved about 2,060 tiles in every game, so people-per-road was
+population over a constant. Congestion against driving demand (cars × routed commute) was 0.87
+before and 0.92 after, and the gate reads that now, alongside the old two. When a deputy change turns
+a gate red, ask what the gate's measure divides by, and whether the old deputy held it fixed, before
+blaming the system.
 
 Frame the shot with `tools/where.mjs` first. Four screenshots were once taken at
 spots with no buildings in them, which proves nothing and wastes a round.

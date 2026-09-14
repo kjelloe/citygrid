@@ -3,6 +3,10 @@
 // "Assignment fits the month-tick budget on a saturated 128×128; congestion
 // correlates with density rather than with seed luck across 200 games."
 //
+// Since B9 (era 3) a third reading passes it: congestion against DRIVING
+// demand, cars times the routed commute. Density was a stand-in for it while the
+// deputy paved the same area in every game (see `driving` below).
+//
 // Two measurements. The budget one is a stopwatch on the real pass over a real
 // saturated region. The correlation one is the interesting half: if congestion
 // tracks the seed rather than the city, then the traffic model is noise wearing
@@ -106,6 +110,12 @@ for (let game = 0; game < GAMES; game += 1) {
     roads: roadTiles,
     // Density is what the gate says congestion should track: people per road.
     density: roadTiles > 0 ? state.population / roadTiles : 0,
+    // How much the city drives: cars times the routed commute. B9 is why this is
+    // here. The old deputy paved ~2,060 tiles in every game, so people-per-road
+    // was population over a constant; since B9 the road grows with the town, and
+    // in a model with no rerouting more road for the same people is a longer
+    // drive, not relief — density fell to r 0.07; driving was 0.87 and is 0.92.
+    driving: state.traffic.commuters * state.traffic.averageCommute,
   });
 }
 
@@ -133,11 +143,13 @@ function correlation(xs, ys) {
 const live = rows.filter((r) => r.population > 0);
 const rDensity = correlation(live.map((r) => r.density), live.map((r) => r.congested));
 const rPopulation = correlation(live.map((r) => r.population), live.map((r) => r.congested));
+const rDriving = correlation(live.map((r) => r.driving), live.map((r) => r.congested));
 const rSeed = correlation(live.map((r) => r.seed), live.map((r) => r.congested));
 
 console.log(`\n${live.length} games with a living city`);
 console.log(`congestion vs people-per-road : r = ${rDensity.toFixed(3)}`);
 console.log(`congestion vs population      : r = ${rPopulation.toFixed(3)}`);
+console.log(`congestion vs driving demand  : r = ${rDriving.toFixed(3)}   (cars × routed commute)`);
 console.log(`congestion vs SEED            : r = ${rSeed.toFixed(3)}   (should be ~0)`);
 
 const congestedGames = live.filter((r) => r.congested > 0).length;
@@ -147,8 +159,8 @@ if (Math.abs(rSeed) > 0.2) {
   console.error(`\nFAIL — congestion correlates with the SEED (r=${rSeed.toFixed(3)}). That is seed luck, not a system.`);
   failed = true;
 }
-if (rDensity < 0.3 && rPopulation < 0.3) {
-  console.error(`\nFAIL — congestion tracks neither density (${rDensity.toFixed(3)}) nor population (${rPopulation.toFixed(3)}).`);
+if (rDensity < 0.3 && rPopulation < 0.3 && rDriving < 0.3) {
+  console.error(`\nFAIL — congestion tracks neither density (${rDensity.toFixed(3)}), population (${rPopulation.toFixed(3)}) nor driving (${rDriving.toFixed(3)}).`);
   console.error("If roads jam for no reason the player can see, every decision about roads is meaningless.");
   failed = true;
 }
