@@ -219,7 +219,7 @@ lands here as a palette amendment with §3.1 updated in the same slice.
 **Done when** every row of the sheet has moved toward the reference by Kjell's eye, and the
 budgets in ruling 040 carry the re-measured numbers.
 
-## Q80 answered: `hilly` is playable (A57, 2026-09-10) — a slice for this lane
+## S11 — Steep ground you can play on — Q80 (A57), and it settles Q64/Q74
 
 Kjell: *"whichever is easiest, allow steep ground."* So `hilly` stops being scenery and the cheap
 route is the renderer's: **a junction's height may move within the grade limit**, iterated in
@@ -519,3 +519,25 @@ so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by
 screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every
 later screenshot alive.
+
+## S12 — A bank, not a quay (S) — found in S4, 2026-09-17
+
+**Goal.** Where the land is high, the shore rises out of the water instead of dropping into it.
+
+**Why.** S4 capped the water at its bank and cut a channel under it, which ended the river painted
+across a hillside (159 flooded tiles on seed 1003 → 0). What it did not do is widen the cut: the
+bank is ONE tile, so where the land stands high it falls **7.44 m over 20 m** — 37%, which reads as
+a quay wall in `reports/smoke-S4-shore.png` and is a cliff the walker cannot climb. A river in the
+reference row has a shore you can walk down.
+
+**Do.** The bank is R3's `gradeProfile` pointed at the water layer (A50's own description of a cut):
+blend the land down toward the water's level over `water.bank` tiles rather than one, in
+`client/world/ground.js` where the water clamp already is. Data, not a constant. The wet-sand band
+and the reeds (S2) follow the new waterline for free.
+
+**Tests first.** `test/water.test.js`: the slope from dry land to the waterline is under
+`road.maxGrade` on a generated region, on the seeds S4 measures; the bed stays below both banks;
+the surface is unchanged (the sheet is a separate thing from the ground under it).
+**Gate.** `walkthrough` on a river map — no cliff at a shore — and `reports/smoke-S4-shore.png`
+re-shot beside the S4 one, looked at.
+

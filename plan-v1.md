@@ -79,7 +79,7 @@ the file to open first.
 
 | Lane | What it is | Where it stands |
 |---|---|---|
-| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **finished 2026-09-08** — merged and pushed, the runner and the checklist built, the Norwegian read and passed |
+| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **M1–M5 finished 2026-09-08/09** — merged and pushed, the runner and the checklist built, the Norwegian read and passed. **M6 is open**: the tidy-up the omissions sweep asked for, including a save slot the player cannot delete |
 | `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6, D7, D8 done**, plus the desktop halves of D2 and D5. The first real card found the governor giving up its whole ladder at 60 fps. **What is left needs a phone**: D3 and the last of D5 are blocked on that card |
 | `workitems-film.md` | photo mode, tours, a demo film | not started; unblocked — the measurement lane's buildable half is done, so F1 follows D8 |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
@@ -375,12 +375,12 @@ land first. Nothing here is scheduled.*
 
 | Lane | File | What it is for |
 |---|---|---|
-| mainline | `workitems-mainline.md` | M1 merge `dev_night` into `main`; M2 a gate runner with a time budget; M3 the release page; M4 the Norwegian pass |
+| mainline | `workitems-mainline.md` | M1 merge `dev_night` into `main`; M2 a gate runner with a time budget; M3 the release page; M4 the Norwegian pass; M5 review fixes after the measurement lane; M6 the tidy-up the omissions sweep asked for |
 | measurement | `workitems-measurement.md` | D1 a performance card (`?perf=1`); D2 real devices; D3 the tiers re-tuned from them; D4 the reference-compare sheet against the Transport Worlds shots; D5 the governor validated; D6 the big and steep maps; D7 traffic per second; D8 a viewport that can see a street chunk |
 | film | `workitems-film.md` | F1 photo mode (plan.md §10 bonus 4); F2 a shot list and storyboard tool; F3 encode and lead the README with it |
 | worker | `workitems-worker.md` | W1 the session seam on one thread; W2 the reducer in a Web Worker behind a mirror; W3 the model off the tick; W4 the seam proven against an echo transport, the door to Wave 5 |
 | navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
-| world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row |
+| world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row; S11 steep ground you can play on (Q80/A57); S12 a bank, not a quay (found in S4) |
 | behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather; B7 cars and people from the city camera; B8 cars stop at a junction; B9 the deputy lays roads near the town (engine, era 3) |
 | transport | `workitems-transport.md` | T1 the avenue; T2 rail and the station in the engine; T3 rail drawn; T4 water bodies, marina, ferry, port; T5 unlock ranks, city hall, airport; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
 
@@ -409,6 +409,8 @@ by number from the code they create.
 | Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
 | Q103 | `traffic_gate` read congestion against people-per-road; B9's deputy broke that proxy (r 0.55 → 0.07) and the gate now also reads driving demand (r 0.92) | Kjell — a gate criterion, a one-line revert either way |
 | Q104 | No road can cross water — `isBuildable` refuses it, and five played cities had zero — so neither a bridge nor Q58's causeway exists in the game | Kjell — an engine decision (cost, span, which command); S4 built the water and stopped there |
+| Q105 | Era 4's demanding cities are 14% smaller (1,203 → 1,039) because fire now costs something; the other three configurations are flat or better | Kjell — a balance call, nothing blocks on it |
+| Q106 | `a11y_smoke`'s hillside check moved because the city did, twice; it shoots bare hillside now and its floors are re-derived (median 45, tail 25) | Kjell, with Q103 — a gate re-aimed, a one-line revert |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

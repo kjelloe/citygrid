@@ -153,6 +153,27 @@ night 130,936, equal to its own day frame) and carries D6's three rebuild times.
 commits behind and all three are documents, which the page says rather than the push fixing.
 `lanes_dump` unchanged at 400 cars, 76% moving — `busyAt` has one reader and it is the crowd.
 
+## M6 — The tidy-up the omissions sweep asked for (S) — found 2026-09-17/18
+
+**Goal.** Three things the export sweep turned up, one of which is a capability with no control.
+
+**Do.**
+- **A save slot cannot be deleted.** `deleteSave(slot)` in `client/storage/db.js` has no caller and
+  nothing in the interface offers it: three manual slots, and the only way past a full one is to
+  overwrite it. By ruling 026's standard that is a capability with no control. Either give the save
+  panel a delete (with a confirm, and a `save_smoke` row that drives it) or delete the function and
+  say in `saves.js` that overwriting is the only way — a decision, either way, not an omission.
+- **`clearRuin` in `engine/fire.js` has no caller.** Clearing a ruin is what the player's bulldoze
+  does inline (`build-commands.js`), so the rule exists twice and only one copy is reachable. B1a's
+  deputy uses the command, not this. Delete it, or make bulldoze call it so there is one copy.
+- **`setLocale` in `client/i18n.js` is redundant** with `loadLocale`, which sets the active
+  catalogue itself. Nothing calls it.
+
+**Tests first.** Whatever the save decision is, `test/reachability.test.js` or `save_smoke` has to
+be able to see it — a control that exists and a function that does not, or neither.
+**Gate.** `node --test test/omissions.test.js test/reachability.test.js`, and the export sweep in
+the review-round skill comes back without these three.
+
 ## Order
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after

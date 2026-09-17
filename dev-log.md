@@ -6665,3 +6665,28 @@ traffic_gate, sim_sweep all ok), suite **1,370 green twice**, quick **11 of 11, 
   sweep is the instrument, and the probe's job was ruins, which it measured honestly.
 
 **Next:** B1b — the renderer half: burning, ruined and wrecked drawn in the world.
+
+## docs — the unplanned filed (P74, 2026-09-18)
+
+Everything the last two rounds turned up that was not on a list is on one now.
+
+- **`workitems-world.md` S11** — the `hilly` item had no number for eight days ("Q80 answered: hilly
+  is playable"), so nothing could reference it. It is S11, and it still settles Q64/Q74.
+- **`workitems-world.md` S12 — a bank, not a quay.** S4's own debt, measured: the cut is one tile
+  wide, so where the land is high the shore falls 7.44 m over 20 m (37%) and reads as a quay wall in
+  `smoke-S4-shore.png`. The fix is A50's own description — `gradeProfile` pointed at the water layer
+  over `water.bank` tiles instead of one.
+- **`workitems-mainline.md` M6 — the tidy-up.** Three from the export sweep: `deleteSave` has no
+  caller and no control, so **a save slot cannot be deleted** (ruling 026); `clearRuin` has no
+  caller and duplicates what bulldoze does inline; `setLocale` is redundant with `loadLocale`. The
+  lane was marked "finished 2026-09-08" in `plan-v1.md` and is not, which that row now says.
+- **Q105** — era 4's demanding cities are 14% smaller (1,203 → 1,039) while the other three
+  configurations are flat or better. Kept as measured, with the three levers named.
+- **Q106** — `a11y_smoke`'s hillside floors, re-derived on bare ground after the check moved twice
+  for the same reason (S1 and B1a), with the before and after numbers and the file's own perceptual
+  limit of 30 as the anchor. Paired with **Q103** in the list: both are gates re-aimed rather than
+  lowered, and both are a one-line revert.
+
+Nineteen open questions now (`RELEASE.md`, `plan-v1.md`).
+
+**Next:** B1b — the renderer half of B1, per P70's order.
