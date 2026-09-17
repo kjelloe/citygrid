@@ -554,6 +554,16 @@ When a fire begins:
 6. Damage depends on response speed and building resistance.
 7. The player may need to demolish ruins or rebuild utilities.
 
+**As built (B1a, era 4, 2026-09-18).** Step 5 was a sentence for the life of the project: measured on
+three played 64x64 cities, a fire in the least covered building peaked at ONE tile alight, spread
+zero times and took exactly the building it started in. A fire is unaddressed when at least
+`fire.unfoughtPercent` of a building's own fire risk is still there after coverage — no station in
+range — and it then spreads `fire.unfoughtSpread` times as readily while consuming its host at
+`fire.unfoughtDamage` rather than `fire.damagePerTick`, so it outlives the house it started in.
+Measured after: 44 tiles alight, 198 ticks, 20 buildings lost, against a covered fire that is out in
+two. Step 7 is the deputy's too — it clears the burnt ground inside its town and zones it again,
+because nothing had ever cleared a ruin in a headless city (36 dead tiles per city by year 25).
+
 #### 8.8 Healthcare
 
 Health is influenced by:

@@ -12,6 +12,7 @@ import { idiv, clamp } from "../shared/idiv.js";
 import { tileAt, xOf, yOf, DIR4, neighbour } from "../shared/grid.js";
 import { nextInt, chance, chanceIn } from "../shared/prng.js";
 import { isWater } from "./terrain.js";
+import { baseFireRisk } from "./civic.js";
 import {
   FLAG_BURNING, FLAG_RUINED, TERRAIN_FOREST, TERRAIN_GRASS, ZONE_NONE,
 } from "./constants.js";
@@ -104,6 +105,23 @@ export function firePass(state) {
       continue;
     }
 
+    // Unaddressed: no station in range, so `fireRisk` here is still most of
+    // what the building's own definition says it is (A62, B1a). A fire nobody
+    // fights spreads harder AND eats its own house more slowly, which is what
+    // lets it outlive the thing it is standing on — measured before the change,
+    // a fire in the least covered building in a played city peaked at one tile
+    // and took exactly that building.
+    // "Not available, or none within range" (A62) read from the one layer that
+    // knows: `fireRisk` is the building's own risk with coverage subtracted, so
+    // a tile still carrying most of its own risk is a tile no station reaches.
+    // A threshold on the risk ITSELF cannot say this — an uncovered house is 16
+    // and an uncovered factory 50 — but the fraction left of its own can.
+    var host = buildingAt(state, index);
+    var base = host ? baseFireRisk(host) : 0;
+    var unfought = base > 0
+      ? state.tiles.fireRisk[index] * 100 >= base * fire.unfoughtPercent
+      : true;   // woodland, and rubble: nobody is coming
+
     // Spread before damage, so a fire that is about to consume its building
     // has already had the chance to reach the next one.
     var x = xOf(state.width, index);
@@ -115,6 +133,7 @@ export function firePass(state) {
         ? state.tiles.fireRisk[n] + fire.buildingFuel
         : state.tiles.terrain[n] === TERRAIN_FOREST ? fire.forestFuel : 0;
       if (fuel <= 0) continue;
+      if (unfought) fuel = fuel * fire.unfoughtSpread;
       if (chanceIn(state.rng, fuel, fire.spreadDivisor)) {
         if (ignite(state, n)) {
           events.push({ kind: "fireSpread", x: xOf(state.width, n), y: yOf(state.width, n) });
@@ -122,7 +141,8 @@ export function firePass(state) {
       }
     }
 
-    if (chanceIn(state.rng, fire.damagePerTick, 100)) destroy(state, index, events);
+    var damage = unfought ? fire.unfoughtDamage : fire.damagePerTick;
+    if (chanceIn(state.rng, damage, 100)) destroy(state, index, events);
   }
   return events;
 }

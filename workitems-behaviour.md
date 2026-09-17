@@ -36,7 +36,14 @@ from a qualifying lot; a city still grows to within 10% of era 1's population on
 else its own row), `disaster_soak` green; `tools/compare_sheet.mjs` re-run — D4's finding 2, the
 town with no edge, before and after in one image, and the dev-log says what the eye sees.
 
-## B1 — Damage you can see (M) — **Q85 answered 2026-09-10 (A62), and it is bigger than a picture**
+## B1 — Damage you can see (M) — **Q85 answered 2026-09-10 (A62), and it is bigger than a picture** — the engine half **built 2026-09-18** as `slice-B1a` (era 4)
+
+*As built: `fire.unfoughtPercent/unfoughtSpread/unfoughtDamage` — a fire nobody fights spreads and
+burns slowly instead of dying with its house — plus the two things that had to exist for "addressed"
+to mean anything: the deputy builds a fire station per `deputy.buildingsPerStation` buildings (it
+built none, ever, so no gate city in the project has had a fire service), and it clears the burnt
+ground inside its town and zones it again (nothing had ever cleared a ruin). **The renderer half —
+burning, ruined and wrecked drawn in the world — is below and is not built.**
 
 Kjell: *"add fire that expands if not addressed by firedepartement, i.e not available or none
 within range."* Q85 asked how restrained the fire should LOOK; the answer is about what it should

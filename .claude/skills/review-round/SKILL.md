@@ -490,6 +490,14 @@ again. B5's journeys made it obvious — 24 became 47 in a minute on the test to
 on the played city's night. Count each agent against the source that asked for it, everywhere that
 count is read, and write the invariant as a test over time.
 
+**A hazard needs somebody who can answer it — and in a headless city that is the deputy.** B1a made
+fire spread where no station is in range, and the first sweep row collapsed: the deputy has never
+built a fire station, so no gate city in this project has ever had a fire service. The same slice's
+omissions sweep found that nothing had ever cleared a ruin either (`clearRuin` has no caller;
+bulldozing is the player's command), leaving 36 dead tiles per city. Before measuring a new threat,
+ask whether the deputy can prevent it, respond to it and clean up after it — a repair function with
+no importer is the shape of the gap.
+
 **A per-tile quantity cannot describe a feature one tile wide.** Water depth was per tile and zero
 for any tile touching land, so a river two tiles wide had no bed and was drawn as a blue strip at the
 height of its banks; the first replacement field was per tile CORNER and read zero down a one-tile

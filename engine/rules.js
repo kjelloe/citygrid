@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 3,
+  era: 4,
   build: {
     road: 10, roadOverWater: 50, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -74,6 +74,8 @@ var RULES = {
   fire: {
     attemptsPerMonth: 2, ignitionDivisor: 9000, baseExtinguish: 2, riskReference: 22,
     damagePerTick: 14, spreadDivisor: 900, buildingFuel: 10, forestFuel: 26,
+    _unfought: "B1a (A62): a fire is unaddressed when at least unfoughtPercent of the building's own fire risk is left after coverage - no station in range - and it then spreads unfoughtSpread times as readily while consuming its house more slowly, so it outlives what it is standing on and reaches the next one.",
+    unfoughtPercent: 80, unfoughtSpread: 4, unfoughtDamage: 5,
   },
   economy: { residentialDivisor: 150, commercialDivisor: 120, industrialDivisor: 140 },
   population: { workingAgePercent: 55, shoppersPerCommercialJob: 12, industryPerWorkerPercent: 45 },
@@ -90,6 +92,7 @@ var RULES = {
   },
   deputy: {
     _comment: "A81 (B9): the deputy lays a road only within roadReach tiles of a lot that is built, or zoned and supplied; expand reaches a little further than the doctrines that hold back. Era 3.",
+    buildingsPerStation: 40,
     roadReach: { expand: 4, balance: 3, green: 3, hold: 3 },
   },
   traffic: {

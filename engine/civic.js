@@ -215,6 +215,24 @@ export function healthPass(state, coverage, density) {
 
 // --- fire risk -------------------------------------------------------------
 
+/** A building's own fire risk, before any station is subtracted from it.
+ *
+ * Exported because `engine/fire.js` asks the same question from the other end —
+ * "is this fire being fought?" is "how much of this building's own risk is left
+ * after coverage" — and the formula existing twice is the defect that waits for
+ * the next edit to one of them (B1a).
+ */
+export function baseFireRisk(building) {
+  var civic = rules().civic;
+  var risk;
+  if (building.zone === ZONE_INDUSTRIAL) risk = civic.industrialFireRisk;
+  else if (building.zone === ZONE_NONE) {
+    var def = definition(building.def);
+    risk = def ? def.fireRisk : 0;
+  } else risk = civic.buildingFireRisk;
+  return risk + building.level * 2;
+}
+
 export function fireRiskPass(state, coverage) {
   var civic = rules().civic;
   var total = state.width * state.height;
@@ -223,13 +241,7 @@ export function fireRiskPass(state, coverage) {
 
   for (i = 0; i < state.buildings.length; i += 1) {
     var building = state.buildings[i];
-    var risk;
-    if (building.zone === ZONE_INDUSTRIAL) risk = civic.industrialFireRisk;
-    else if (building.zone === ZONE_NONE) {
-      var def = definition(building.def);
-      risk = def ? def.fireRisk : 0;
-    } else risk = civic.buildingFireRisk;
-    risk += building.level * 2;
+    var risk = baseFireRisk(building);
 
     for (var dy = 0; dy < building.h; dy += 1) {
       for (var dx = 0; dx < building.w; dx += 1) {

@@ -14,7 +14,7 @@ import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
-import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL } from "../engine/constants.js";
+import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
 import { rules } from "../engine/rules.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -113,4 +113,31 @@ test("a city still grows", () => {
     for (const b of state.buildings) if (b.zone === ZONE_RESIDENTIAL) residents += b.occupancy;
     assert.ok(residents > 150, `seed ${seed}: ${residents} residents after twelve years`);
   }
+});
+
+test("the deputy clears burnt ground inside its town, and zones it again", () => {
+  // Nothing in a headless city had ever cleared a ruin — `clearRuin` has no
+  // caller and bulldozing is the player's command — which cost nothing while a
+  // fire took one house. With B1a's fire it is dead ground that development
+  // skips forever: 36 tiles per city by year 25, before this.
+  const { state, deputy } = play(1003, 48, 8);
+  const ruined = [];
+  // Burn a row of the town's own lots.
+  for (let i = 0; i < state.tiles.flags.length; i += 1) {
+    if (state.tiles.zone[i] === ZONE_NONE) continue;
+    if (state.tiles.owner[i] !== 1) continue;
+    state.tiles.buildingId[i] = 0;
+    state.tiles.flags[i] |= FLAG_RUINED;
+    ruined.push(i);
+    if (ruined.length === 6) break;
+  }
+  assert.equal(ruined.length, 6, "the deputy's town has no zoned ground to burn");
+  const zonesBefore = ruined.map((i) => state.tiles.zone[i]);
+
+  for (let turn = 0; turn < 6; turn += 1) deputyTurn(state, deputy);
+
+  const left = ruined.filter((i) => (state.tiles.flags[i] & FLAG_RUINED) !== 0);
+  assert.equal(left.length, 0, `${left.length} of 6 burnt tiles are still ruins`);
+  const rezoned = ruined.filter((i, k) => state.tiles.zone[i] === zonesBefore[k]);
+  assert.ok(rezoned.length >= 5, `only ${rezoned.length} of 6 cleared tiles were zoned again`);
 });

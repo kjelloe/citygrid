@@ -10,7 +10,7 @@
 // come back.
 
 import { apply } from "./reducer.js";
-import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_BUILDING } from "./commands.js";
+import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_BUILDING, CMD_BULLDOZE } from "./commands.js";
 import { definition } from "./catalogue.js";
 import { rules } from "./rules.js";
 import { i32 } from "../shared/arrays.js";
@@ -23,7 +23,7 @@ import { idiv, clamp } from "../shared/idiv.js";
 import { nextInt, chance } from "../shared/prng.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, OWNER_NATURE,
-  FLAG_POWERED, FLAG_WATERED,
+  FLAG_POWERED, FLAG_WATERED, FLAG_RUINED,
 } from "./constants.js";
 
 export var DOCTRINE_EXPAND = "expand";
@@ -323,6 +323,71 @@ function pickPump(state, deputy) {
 
 /** Somewhere clear, owned or ownable, and near where this deputy has been
  * building. Surface pumps additionally need a shore. */
+/** A fire station for every `deputy.buildingsPerStation` buildings standing
+ * (B1a, A62).
+ *
+ * The deputy has never built one. Until B1a that cost nothing — a fire took the
+ * house it started in and went out — and every gate city in the project has
+ * been played with no fire service at all. A fire nobody fights now takes the
+ * block, so a mayor that never builds a station is a mayor whose city burns,
+ * and the deputy is the mayor in every headless game.
+ */
+function keepCovered(state, deputy) {
+  if (deputy.zoned === 0) return false;
+  var per = rules().deputy.buildingsPerStation;
+  var stations = 0;
+  var others = 0;
+  for (var i = 0; i < state.buildings.length; i += 1) {
+    var b = state.buildings[i];
+    if (b.owner !== deputy.seat) continue;
+    if (b.def === "fireStation") stations += 1;
+    else others += 1;
+  }
+  if (stations * per >= others) return false;
+  return placeUtility(state, deputy, "fireStation");
+}
+
+/** Clears the burnt-out ground inside the town, and puts its zoning back (B1a).
+ *
+ * Nothing in a headless city has ever cleared a ruin: `clearRuin` had no caller
+ * and the bulldoze command is the player's. That cost nothing while a fire took
+ * one house every few years; with a fire that spreads it is 36 tiles of dead
+ * ground per city by year 25, which development skips forever. Bulldozing also
+ * clears the ZONE — it is one command for "give me back the bare ground" — so
+ * the zoning goes back on in the same turn, or the deputy tidies its town into
+ * a field.
+ */
+function clearRuins(state, deputy, town) {
+  var reach = reachOf(deputy);
+  var ruined = [];
+  var zones = [];
+  for (var i = 0; i < state.width * state.height; i += 1) {
+    if ((state.tiles.flags[i] & FLAG_RUINED) === 0) continue;
+    var owner = state.tiles.owner[i];
+    if (owner !== deputy.seat && owner !== OWNER_NATURE) continue;
+    if (town.lots > 0 && (town.dist[i] < 0 || town.dist[i] > reach)) continue;
+    ruined.push(i);
+    zones.push(state.tiles.zone[i]);
+  }
+  if (ruined.length === 0) return false;
+
+  var cleared = issue(state, deputy, { type: CMD_BULLDOZE, actor: deputy.seat, runs: encodeRuns(ruined) });
+  if (cleared.result !== RESULT.OK) {
+    deputy.refusals += 1;
+    return false;
+  }
+  // Back to what it was zoned for, one command per zone.
+  var kinds = [ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL];
+  for (var k = 0; k < kinds.length; k += 1) {
+    var again = [];
+    for (var j = 0; j < ruined.length; j += 1) if (zones[j] === kinds[k]) again.push(ruined[j]);
+    if (again.length === 0) continue;
+    issue(state, deputy, { type: CMD_PAINT_ZONE, actor: deputy.seat, runs: encodeRuns(again), zone: kinds[k] });
+  }
+  deputy.cleared = (deputy.cleared || 0) + ruined.length;
+  return true;
+}
+
 function findSpotFor(state, deputy, defId) {
   var def = definition(defId);
   if (!def) return -1;
@@ -484,6 +549,9 @@ export function deputyTurn(state, deputy, sink) {
   // Supply first, expansion second — but only after the cursor exists, since
   // the carrier line is run toward it.
   if (keepSupplied(state, deputy)) return true;
+  // Then the fire service, before more streets: a block that burns down is
+  // worth more than a block that was never built (B1a).
+  if (keepCovered(state, deputy)) return true;
 
   // Stop expanding when a deficit is actually running the treasury down —
   // not merely because the books are negative. A new city runs a deficit by
@@ -493,6 +561,10 @@ export function deputyTurn(state, deputy, sink) {
   if (funds < 6000 && budgetFor(state, deputy.seat).net < 0) return false;
 
   var town = townReach(state, deputy.seat, reachOf(deputy));
+  // Burnt ground before new ground: a plot that already has streets and
+  // services beside it is the cheapest place in the city to build (B1a).
+  if (clearRuins(state, deputy, town)) return true;
+
   var attempts = 0;
   while (attempts < 6) {
     if (buildBlock(state, deputy, town)) return true;

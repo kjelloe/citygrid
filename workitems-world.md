@@ -93,7 +93,11 @@ tile is not the paved colour. **Gate.** `tools/compare_sheet.mjs` re-run: rows 1
 after in one image, and the dev-log says what the eye sees. Budget re-measured (a new kind of
 geometry on every grass tile).
 
-## S3 — Streets with detail (M) — D4 finding 4
+## S3 — Streets with detail (M) — D4 finding 4 — **built 2026-09-13/14** as `slice-S3a` and `slice-S3b`
+
+*S3a: crossings only where a signal or a door demand is, pipes drawn only with the water overlay,
+wires thinner (A80). S3b: the street's furniture, name signs, bays, wear and the props. Widths are
+**Q102**, which is Kjell's and moves every house and street shot.*
 
 **Amended 2026-09-13 (review after S5).** Two things from the pictures join this item: **crossing
 bars only where a signal or a door demand is** — T1 kept them at every junction and from the air a

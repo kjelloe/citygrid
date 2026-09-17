@@ -6602,3 +6602,66 @@ reach it, which is ruling 026's "a capability with no control". A crossing is an
 (cost, span, which command), so S4 built the water and stopped at the bank.
 
 **Next:** B1 — damage you can see, per P70's order.
+
+## slice-B1a — fire that expands when nobody comes (2026-09-18)
+
+**What it is.** A62 (Kjell, Q85): *"add fire that expands if not addressed by firedepartement, i.e
+not available or none within range."* The engine half of B1. **Era 4.**
+
+A fire is **unaddressed** when at least `fire.unfoughtPercent` (80) of a building's own fire risk is
+still there after coverage — which is the one signal the tile layer carries, since `fireRisk` is the
+building's base risk with the station's cover subtracted. A threshold on the risk itself cannot say
+this: an uncovered house is 16 and an uncovered factory 50. The base comes from `baseFireRisk()`,
+now exported from `civic.js` and used by both passes, rather than the formula existing twice. An
+unaddressed fire spreads `fire.unfoughtSpread` (4) times as readily and consumes its host at
+`fire.unfoughtDamage` (5) a tick rather than `damagePerTick` (14), so it outlives the house it
+started in — which is what it never did.
+
+**Measured, the same city before and after** (seed 1003, a played 64×64, the least covered building
+in town): **peak 1 tile alight, 0 spreads, 1 building lost, out in 7 ticks** → **peak 44 alight, 280
+spreads, 20 buildings lost, 198 ticks**. A covered fire is out in 2 ticks and takes nothing, before
+and after. The item's own note said four tiles and twenty-five ticks; measured again for this slice
+it was one tile, and the constant was read rather than assumed (`FLAG_BURNING` is 4).
+
+**And then two things that had never existed.**
+- **The deputy has never built a fire station.** Not once, in any city, in the life of the project —
+  so every gate city has been played with no fire service at all, and nothing noticed because a fire
+  took one house and went out. It builds one per `deputy.buildingsPerStation` (40) buildings now.
+  Without it the change was carnage: one sweep seed went 1,738 → 541.
+- **Nothing had ever cleared a ruin.** `clearRuin` in `engine/fire.js` has no caller; clearing is
+  what the player's bulldoze does inline. With a fire that spreads that is **36 dead tiles per city
+  by year 25** (median of twelve games), which development skips forever. The deputy now clears the
+  burnt ground inside its town and zones it again — bulldozing takes the zone with it — and the
+  median goes to **0 ruined tiles**, with the same twelve games at 1,646 people against 1,211.
+
+**Measured** (era 4, 200 games × 25 years per configuration, against era 3):
+
+| configuration | era 3 | era 4 |
+| --- | --- | --- |
+| relaxed | 1,651 | 1,654 |
+| steady | 1,490 | 1,671 |
+| demanding | 1,203 | 1,039 |
+| steady, no disasters | 1,395 | 1,394 |
+
+Three configurations are flat or better — the fire service pays for itself in land value and in
+houses that do not burn. **Demanding is 14% smaller**, which is where a tight treasury buys stations
+late, and is the difficulty behaving as a difficulty. Gates: sim **541 s of 900** (disaster_soak,
+traffic_gate, sim_sweep all ok), suite **1,370 green twice**, quick **11 of 11, 394 s of 480**.
+
+**What went wrong on the way.**
+- **`a11y_smoke`'s hillside check went red at (96, 58) against a floor of 60 — and the shader was
+  untouched.** Measured by stashing the slice: the same city was (102, 67) before and (96, 58)
+  after, with the washed-pixel count falling 2,212 → 1,935. Era-4 cities are denser (fire stations,
+  more buildings), so less bare ground is visible and what is left is more shaded. The sample moved,
+  not the wash. That is the second time this number has moved for that reason — S1's civic
+  footprints took the tail 31 → 29 — so the SUBJECT changed: the three wash shots are taken on bare
+  hillside (`years=0`) where the sample is the hillside itself, 2,898 pixels of it. The floors are
+  re-derived there: the file's own perceptual limit is 30 ("where two flat washes read as one",
+  which the palette check uses), so the median floor is **45** with room for the slope, and the tail
+  floor stays 25. Measured on bare ground: **97 and 57 at the median, 69 and 33 in the darkest
+  twentieth**. This is a gate criterion changed on evidence, like Q103's; it is in the gate's header.
+- **A twelve-seed probe disagreed with the sweep** — it had the fire service costing population
+  where the 200-game sweep has it paying for itself. Twelve seeds tell you a system fires. The
+  sweep is the instrument, and the probe's job was ruins, which it measured honestly.
+
+**Next:** B1b — the renderer half: burning, ruined and wrecked drawn in the world.
