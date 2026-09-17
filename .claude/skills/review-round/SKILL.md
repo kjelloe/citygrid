@@ -490,6 +490,17 @@ again. B5's journeys made it obvious — 24 became 47 in a minute on the test to
 on the played city's night. Count each agent against the source that asked for it, everywhere that
 count is read, and write the invariant as a test over time.
 
+**A per-tile quantity cannot describe a feature one tile wide.** Water depth was per tile and zero
+for any tile touching land, so a river two tiles wide had no bed and was drawn as a blue strip at the
+height of its banks; the first replacement field was per tile CORNER and read zero down a one-tile
+channel for the same reason, since every one of those corners touches dry land (S4). Ask how narrow
+the thing gets before choosing the lattice, and test the narrow case — the wide one passes either way.
+
+**A shot probe has to sample the subject, not near it.** `water_shots.mjs` measured "the bank" 0.6 of
+a tile from the channel's MIDDLE, which on the ten-tile river it had just found is open water, and
+failed three perfectly good pictures with "the bank is 0.4 m under the water". The instrument was
+wrong, not the slice.
+
 **A percentile of eighteen samples is the maximum.** A78's bake check took a p95 over eighteen
 chunks' worst frames, and the nearest-rank p95 of eighteen is the eighteenth: one stall failed it,
 which was the very thing A78 set out to end. Before trusting a percentile, count what it is over.

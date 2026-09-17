@@ -72,15 +72,26 @@ export function createWater(state, model, styleName = "plain") {
       // coplanar with the sand under it: the two z-fight, and at night — when
       // the water is dark and the shallows are the palette's palest colour —
       // it showed as a river glowing through a black city.
-      const h = (water.levelOf(tile) + cfg.water.lift) / tileM;
+      // A height per CORNER, shared with whatever water meets there (S4). A
+      // quad at the tile's own level steps at every tile boundary, and a
+      // transparent sheet of steps reads as seams and a cross-hatch from the
+      // air — which is what `smoke-S2-edge.png` showed. The corners are the
+      // mean of the water that meets at them, so a lake is one plane and a
+      // river still falls along its length.
+      const lift = cfg.water.lift;
+      const cornerY = (cx, cy) => (water.cornerLevelAt(cx, cy) + lift) / tileM;
+      const h00 = cornerY(x, y);
+      const h10 = cornerY(x + 1, y);
+      const h01 = cornerY(x, y + 1);
+      const h11 = cornerY(x + 1, y + 1);
       // Counter-clockwise from +Y so the normal points up, the same winding the
       // terrain uses — a surface culled from above is a lake that is not there.
       const quad = [
-        [x, y], [x + 1, y + 1], [x + 1, y],
-        [x, y], [x, y + 1], [x + 1, y + 1],
+        [x, h00, y], [x + 1, h11, y + 1], [x + 1, h10, y],
+        [x, h00, y], [x, h01, y + 1], [x + 1, h11, y + 1],
       ];
-      for (const [vx, vz] of quad) {
-        positions[p] = vx; positions[p + 1] = h; positions[p + 2] = vz;
+      for (const [vx, vy, vz] of quad) {
+        positions[p] = vx; positions[p + 1] = vy; positions[p + 2] = vz;
         p += 3;
       }
     }

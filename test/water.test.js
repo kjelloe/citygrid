@@ -20,6 +20,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
+import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt } from "../shared/grid.js";
 import { NET_PRESENT } from "../client/constants-mirror.js";
@@ -221,4 +222,129 @@ test("the water is a function of the state and nothing else", () => {
   assert.deepEqual(a.tiles, b.tiles);
   assert.deepEqual(a.tiles.map((t) => [a.levelOf(t), a.depthOf(t)]),
     b.tiles.map((t) => [b.levelOf(t), b.depthOf(t)]));
+});
+
+// --- the trough (slice S4, A50) --------------------------------------------------------
+
+/** A real generated region, which is where the defect lives: `pond()` digs its
+ * water below the land around it by construction, and a generated map does not.
+ * On five seeds about half of every shore pair had the water at or ABOVE the dry
+ * land beside it — a river painted across a hillside. */
+function region(seed = 1003, size = 48) {
+  const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats: 1, waterStyle: "river" }));
+  assert.ok(world.ok, `seed ${seed} did not generate`);
+  return world.state;
+}
+
+const dryNeighbours = (state, tile) => {
+  const x = tile % state.width;
+  const y = (tile - x) / state.width;
+  const out = [];
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+    const j = tileAt(state.width, nx, ny);
+    const t = state.tiles.terrain[j];
+    if (t !== WATER && t !== SHALLOW) out.push(j);
+  }
+  return out;
+};
+
+test("water never sits above the bank beside it", () => {
+  // The surface is the land the water stands on — and where the land beside it
+  // is LOWER, that surface is a river perched on a hillside. It is capped at
+  // the lowest dry neighbour, so the bank always rises out of the water.
+  for (const seed of [1003, 2026, 77]) {
+    const state = region(seed);
+    const w = waterOf(state);
+    let worst = 0;
+    for (const tile of w.tiles) {
+      for (const dry of dryNeighbours(state, tile)) {
+        const bank = state.tiles.elevation[dry] * R;
+        worst = Math.max(worst, w.levelOf(tile) - bank);
+      }
+    }
+    assert.ok(worst <= 1e-9, `seed ${seed}: the water stands ${worst.toFixed(2)} m above its bank`);
+  }
+});
+
+test("the bed under a river is below both banks", () => {
+  // S4's own test. A channel, not a blue ribbon at land height: measured at the
+  // middle of every water tile, the bed is under the land on both sides.
+  for (const seed of [1003, 2026, 77]) {
+    const state = region(seed);
+    const m = createModel(state);
+    const w = m.water;
+    let shallowest = Infinity;
+    let counted = 0;
+    for (const tile of w.tiles) {
+      const banks = dryNeighbours(state, tile);
+      if (banks.length === 0) continue;
+      const x = tile % state.width;
+      const y = (tile - x) / state.width;
+      const bed = m.heightAt((x + 0.5) * T, (y + 0.5) * T);
+      const lowestBank = Math.min(...banks.map((b) => state.tiles.elevation[b] * R));
+      shallowest = Math.min(shallowest, lowestBank - bed);
+      counted += 1;
+    }
+    assert.ok(counted > 20, `seed ${seed}: only ${counted} water tiles have a bank`);
+    assert.ok(shallowest > 0, `seed ${seed}: a bed sits ${(-shallowest).toFixed(2)} m ABOVE its bank`);
+  }
+});
+
+test("a river two tiles wide still has a channel", () => {
+  // The defect the per-tile depth could not see: every tile of a narrow river
+  // touches land, `depthOf` is 0 at both, and the river is a flat blue strip at
+  // the height of its banks. Depth is a field now — how far from dry land the
+  // POINT is — so the middle of the channel is deep and the shoreline is not.
+  const state = blank(16);
+  for (let y = 0; y < 16; y += 1) {
+    for (const x of [7, 8]) {
+      const i = tileAt(state.width, x, y);
+      state.tiles.terrain[i] = WATER;
+      state.tiles.elevation[i] = 30;
+    }
+  }
+  const w = waterOf(state);
+  const mid = w.depthAt(8 * T, 8 * T);
+  const edge = w.depthAt(7.02 * T, 8 * T);
+  assert.ok(mid > DEFAULTS.water.depth * 0.4, `the middle of the channel is ${mid.toFixed(2)} m deep`);
+  assert.ok(edge < 0.2, `the shoreline is ${edge.toFixed(2)} m deep, which is a step and not a beach`);
+  assert.equal(w.depthOf(tileAt(state.width, 7, 8)), 0, "the per-tile depth is unchanged (E8, Q58)");
+});
+
+test("the surface is one sheet: neighbouring tiles share a corner height", () => {
+  // The amendment (2026-09-13): the quad-per-tile surface showed its tiles as
+  // seams and a cross-hatch, because each quad sat at its own level. The corners
+  // are shared now, so a lake is one sheet.
+  const state = blank(16);
+  pond(state, 4, 4, 11, 11, 30);
+  const w = waterOf(state);
+  const level = 30 * R;
+  for (let cy = 5; cy <= 11; cy += 1) {
+    for (let cx = 5; cx <= 11; cx += 1) {
+      assert.ok(Math.abs(w.cornerLevelAt(cx, cy) - level) < 1e-9,
+        `corner ${cx},${cy} is at ${w.cornerLevelAt(cx, cy)} against ${level}`);
+    }
+  }
+});
+
+test("a river still steps down its valley", () => {
+  // And sharing corners must not flatten it: E8's finding was a river drawn as a
+  // plateau at the height of its highest tile.
+  const state = blank(16);
+  for (let y = 0; y < 16; y += 1) {
+    for (const x of [7, 8]) {
+      const i = tileAt(state.width, x, y);
+      state.tiles.terrain[i] = WATER;
+      state.tiles.elevation[i] = 40 - y;
+    }
+  }
+  const w = waterOf(state);
+  const top = w.cornerLevelAt(8, 1);
+  const bottom = w.cornerLevelAt(8, 15);
+  assert.ok(top - bottom > 5, `the river falls ${(top - bottom).toFixed(2)} m from end to end`);
+  // Level ACROSS the channel at any one point, which is what water does.
+  assert.equal(w.cornerLevelAt(7, 8), w.cornerLevelAt(9, 8));
 });

@@ -134,7 +134,14 @@ with the collider derived from the same one (A43); a bay never overlaps a drivew
 `walkthrough` and `passability` re-baselined with the new widths; `reports/smoke-S3-street.png`
 beside D4's reference row 3; the chunk triangle count before and after (V8: 33.7k a chunk).
 
-## S4 — Water, banks and bridges (S) — Q65 (A50), A46
+## S4 — Water, banks and bridges (S) — Q65 (A50), A46 — **built 2026-09-14** (`specs/engine/05-ground-and-streets.md` §5.5)
+
+*As built: the surface capped at its bank (159 flooded tiles on seed 1003 → 0), depth as a field so a
+narrow river has a channel, and one sheet with shared corners so the seams and the cross-hatch are
+gone. **Not** in it: the bridge, because no road can cross water — `isBuildable` refuses it and five
+played cities had zero road tiles on water, so the causeway path of Q58 is unreachable too (**Q104**).
+And the bank is one tile wide, so where the land is high it drops steeply — a quay rather than a
+graded slope; a wider cut is a picture decision if a shot ever needs one.*
 
 **Amended 2026-09-13.** The surface shows its tiles — seams and a cross-hatch in `smoke-S2-edge.png`.
 One mesh with shared vertices and a per-vertex level blended across a tile's corners, the way the

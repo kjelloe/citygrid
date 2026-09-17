@@ -185,7 +185,10 @@ export function createGround(state, network) {
       const level = water.levelOf(tile);
       h = Math.min(h, level);
       const loose = Math.exp(-6 * wsum);   // 1 in open water, ~0 under a road
-      h = Math.min(h, level - water.depthOf(tile) * loose);
+      // The depth at the POINT, not at the tile (S4). Per tile it is 0 wherever
+      // the tile touches land, so a river two tiles wide — every tile of which
+      // touches land — had no bed at all and was a blue strip at bank height.
+      h = Math.min(h, level - water.depthAt(x, z) * loose);
     }
     return h;
   }

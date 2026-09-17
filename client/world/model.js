@@ -45,7 +45,8 @@ export function createModel(state) {
       return {
         kind: "water", dist: 0,
         y: ground.waterLevelAt(x, z) ?? base,
-        depth: ground.water.depthOf(tile),
+        // The point's depth, which is what the walker is standing in (S4).
+        depth: ground.water.depthAt(x, z),
       };
     }
     const lot = lots.lotAt(x, z);

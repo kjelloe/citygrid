@@ -6541,3 +6541,64 @@ deletions (75 draws, 89,679 triangles at span 9, two frozen shots byte-identical
 regenerated, 170 files.
 
 **Next:** S4 — water, banks and bridges, per P70's order.
+
+## slice-S4 — water, banks and a channel (2026-09-17)
+
+**What it is.** The amended S4 (`workitems-world.md`, 2026-09-13) — three changes to the water, all
+in `client/world/water.js` and all measured on generated regions rather than on the hand-dug pond
+the E8 tests use, because a pond digs itself below its banks by construction and a real map does not.
+
+1. **The surface is capped at its bank.** A tile's level was its own land height (E8), which on a
+   generated map puts the water *above* the land beside it: **159 dry tiles on seed 1003, 76 on
+   2026, 61 on 77** had the surface standing over them. A level is now at most the lowest of the
+   eight land tiles it touches, then the lowest of that over its own neighbours — which levels a
+   channel across its width without flattening the fall along its length. After: **0, 0, 0**, mean
+   level drop 1.8 m. Four neighbours left one tile of seed 1003's river over dry ground; eight took
+   it to none.
+2. **Depth is a field, not a tile.** `depthOf(tile)` is 0 for any tile touching land, so a river two
+   tiles wide — every tile of which touches land — had no bed and was drawn as a blue strip at the
+   height of its banks. `depthAt(x, z)` reads a distance-to-dry-land field on a **half-tile**
+   lattice. A lattice of tile CORNERS cannot hold this: every corner of a one-tile channel touches
+   dry land, so the whole channel reads zero. `depthOf` is untouched and still what the beach and
+   Q58's paddle are keyed on.
+3. **One sheet.** The surface was a quad per tile at that tile's own level, so it showed its tiles as
+   seams and a cross-hatch from the air (`smoke-S2-edge.png`, the amendment). A corner's height is
+   the mean of the water meeting there, shared by every tile at that corner.
+
+**Tests.** Five new in `test/water.test.js` on generated regions — the water never sits above the
+bank beside it; the bed under a river is below both banks; a river two tiles wide still has a
+channel; the surface is one sheet; a river still steps down its valley. `test/collision.test.js`'s
+wading test was rewritten: it stood at a shore tile's MIDDLE, ten metres out, which the per-tile
+depth made wadeable and the field does not. It now walks out from the bank and asserts the waterline
+is crossed exactly once — the paddle is the water's edge, and a two-tile river is no longer forded.
+
+**What went wrong on the way.**
+- **The shot probe measured the bank from inside the river.** `water_shots.mjs` sampled "the bank"
+  0.6 of a tile from the channel's MIDDLE; the channel it found is ten tiles wide, so that point is
+  open water and the tool reported the bank 0.4 m UNDER the surface and failed three good shots.
+  Aim a probe at the thing, not near the thing.
+- **A corner lattice could not hold the channel.** The first depth field was per tile corner, which
+  is where every other field in `client/world/` lives — and it reads zero down the whole of a
+  one-tile river, because each of those corners touches dry land. Half a tile is the coarsest
+  lattice that can hold a feature one tile wide.
+
+**Measured.** Suite 1,364 green twice. `node tools/water_shots.mjs`: at the channel it finds on seed
+1003 (ten tiles wide, at 15,27) the trough is **1.4 m** under the surface and the bank stands
+**7.44 m** above it; 785 water tiles. Gates: render **289 s of 300** (walkthrough 2.4, passability
+0.2, lanes_dump 52.8, budget_gate 233.2 — all ok, and `walkthrough` still walks a city with no
+bridge in it because there is none to walk); quick **11 of 11, 400 s of 480**. `docs.test.js` green.
+
+**What the pictures say**, looked at. `smoke-S4-sheet.png` — from the air the water is one smooth
+sheet; the seams and the cross-hatch are gone, the sand shelf reads as a beach, and the far bank is
+forest. `smoke-S4-river.png` — the channel from the bank: a sandy shelf at the waterline, the town
+on the far side, country on the near one. `smoke-S4-shore.png` — the waterline close up, and the
+honest debt: where the land is high the bank drops **7.44 m in one tile**, which reads as a quay
+rather than a graded slope. A wider cut is a picture decision and the item now says so.
+
+**Q104 opened.** No road can cross water — `isBuildable` admits grass, forest, dirt and sand, and
+five played 64×64 cities had **0** road tiles on water — so neither a bridge nor the causeway Q58
+accepted exists in the game. The causeway's renderer half is real code with a test and nothing can
+reach it, which is ruling 026's "a capability with no control". A crossing is an engine decision
+(cost, span, which command), so S4 built the water and stopped at the bank.
+
+**Next:** B1 — damage you can see, per P70's order.

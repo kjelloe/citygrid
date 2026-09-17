@@ -231,6 +231,31 @@ shore over `water.shelf` tiles, so a beach is a beach and not a step the height 
 drawn surface sits `water.lift` (6 cm) above the level, because at the waterline the bed IS the
 surface and a plane at exactly the level z-fights with the sand under it.
 
+**Built again (S4, 2026-09-14), three changes, each measured.**
+
+1. **The surface is capped at the bank.** E8's level is a tile's own land height, which is right for
+   a lake and wrong wherever the land beside it is lower: on three generated seeds **159, 76 and 61
+   dry tiles** had the water surface standing over them — a river painted across a hillside. A
+   tile's surface is now at most the lowest of the eight land tiles it touches, and then the lowest
+   of that over its neighbours, which levels a channel across its width without flattening its fall.
+   After: **0, 0, 0**, for a mean level drop of 1.8 m.
+2. **Depth is a field, not a tile.** `depthOf(tile)` is 0 for any tile that touches land, so a river
+   two tiles wide — every tile of which touches land — had no bed at all and was a blue strip at the
+   height of its banks. `depthAt(x, z)` reads a distance-to-dry-land field on a HALF-tile lattice:
+   a lattice of tile corners cannot hold it, because every corner of a one-tile channel touches dry
+   land. `heightAt` and `surfaceAt` read it; `depthOf` is unchanged and still what the beach and the
+   walker's paddle are keyed on. The walker's wall moved with it — the paddle is the water's edge
+   now, not the whole of a shore tile, and a two-tile river is no longer crossed on foot.
+3. **One sheet, not a quad a tile.** Each quad sat at its own level, so the surface showed its tiles
+   as seams and a cross-hatch (`smoke-S2-edge.png`). A corner's height is the mean of the water that
+   meets there, so neighbouring tiles share it: a lake is one plane and a river still steps down.
+
+**No bridge, and no causeway either.** `isBuildable` refuses water, so no road can be placed on a
+water tile: over five played cities there were **0** road tiles on water. The causeway of Q58 —
+`surfaceAt` returning the road, `heightAt` holding the carriageway at the surface — is real code with
+a test behind it and nothing in the game can reach it (ruling 026's standard). **Q104** asks whether
+a road may cross water at all; until it is answered a bridge deck has nothing to stand on.
+
 **The walker stays out** (Q58). `collision.floorAt` refuses a water tile deeper than `water.wade`,
 so the edge is a paddle and open water is a wall. A causeway is exempt: `surfaceAt` returns the
 road rather than the water where a corridor crosses it, and `heightAt` holds the carriageway at the

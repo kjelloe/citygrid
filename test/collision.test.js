@@ -271,9 +271,15 @@ test("a walker cannot walk into deep water", () => {
 });
 
 test("the very edge of the water can be waded", () => {
-  // Not a wall at the shoreline: a tile that touches land is at the surface, so
-  // it is ankle-deep and a walker may stand in it. The wall is where it gets
-  // deeper than `water.wade`.
+  // Not a wall at the shoreline: the bed meets the surface where the water
+  // meets the land, so the first step in is ankle-deep and a walker may stand
+  // in it. The wall is where it gets deeper than `water.wade`.
+  //
+  // S4 moved where that wall is. Depth used to be per TILE — 0 for any tile
+  // touching land — so the whole of a shore tile was wadeable, twenty metres of
+  // it, and a river two tiles wide could be crossed on foot. It is a field now,
+  // so the paddle is the water's edge and the crossing is a swim. The test
+  // walks out from the bank instead of standing at the tile's middle.
   const state = blank(16);
   state.tiles.elevation.fill(40);
   for (let y = 5; y <= 10; y += 1) {
@@ -283,8 +289,20 @@ test("the very edge of the water can be waded", () => {
     }
   }
   const collision = createCollision(createModel(state));
-  assert.notEqual(collision.floorAt(5.5 * T, 5.5 * T, 15), undefined,
-    "the shore tile is a wall rather than a paddle");
+  assert.notEqual(collision.floorAt(5.05 * T, 7.5 * T, 15), undefined,
+    "the water's edge is a wall rather than a paddle");
+  assert.equal(collision.floorAt(7.5 * T, 7.5 * T, 15), undefined,
+    "the middle of the lake can be walked across");
+  // And the wall is crossed exactly once on the way out, so there is no island
+  // of standable water further in.
+  let walls = 0;
+  let standing = true;
+  for (let x = 5; x <= 8; x += 0.1) {
+    const now = collision.floorAt(x * T, 7.5 * T, 15) !== undefined;
+    if (now !== standing) walls += 1;
+    standing = now;
+  }
+  assert.equal(walls, 1, `the walker crosses the waterline ${walls} times`);
 });
 
 test("a causeway over water is walkable, and stepping off it is not", () => {
