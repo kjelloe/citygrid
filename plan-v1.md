@@ -407,6 +407,7 @@ by number from the code they create.
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
+| Q103 | `traffic_gate` read congestion against people-per-road; B9's deputy broke that proxy (r 0.55 → 0.07) and the gate now also reads driving demand (r 0.92) | Kjell — a gate criterion, a one-line revert either way |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

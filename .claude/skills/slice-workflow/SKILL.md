@@ -107,6 +107,10 @@ node tools/gates.mjs render    # a renderer slice as well: walkthrough, passabil
 node tools/gates.mjs sim       # a gameplay slice as well: the three soaks
 ```
 
+**`node --test test/docs.test.js` before EVERY commit** (Kjell, P70). It is seconds, and it is the
+only thing that catches a question added to `dev-questions.md` and nowhere else, a renderer slice
+with no row in `plan-v1.md`, or a palette value the art direction still quotes the old way.
+
 A slice that changes what a frame costs also runs `node tools/perf_card.mjs` (70 s) and puts the
 table in the dev-log. It is not a gate — it produces numbers, not a pass — and its frame times are
 SwiftShader, so quote them as such; the triangles, draw calls and ladder decisions in the same file

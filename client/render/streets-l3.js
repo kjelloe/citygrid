@@ -257,12 +257,6 @@ export function bakeStreetJoints(baker, state, model, cx, cy, palette) {
   bakeWires(baker, state, model, cx, cy, palette);
 }
 
-/** A chunk's streets at once: the corridors, then the joints. */
-export function bakeStreets(baker, state, model, cx, cy, palette, ground) {
-  bakeStreetCorridors(baker, state, model, streetCorridors(model, cx, cy), 0, () => false, palette, ground);
-  bakeStreetJoints(baker, state, model, cx, cy, palette);
-}
-
 /**
  * Every lot whose centre is in this chunk, built at its real size on its real
  * lot from the generated facade spec (slice E5, spec §6.2).

@@ -125,12 +125,6 @@ export function buildNameBoards(boards, names, styleName = "plain") {
   return [mesh];
 }
 
-/** How many distinct fascias have been drawn. Read by the gate: a cache that
- * never hits is a texture per shop, which is a draw call per shop. */
-export function signCacheSize() {
-  return CACHE.size;
-}
-
 /** The four corners of one fascia, in world metres, on the lot's street edge. */
 function fasciaQuad(spec, front, from, to, lift = 0) {
   const geom = EDGES[front.side];

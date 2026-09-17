@@ -6513,3 +6513,31 @@ grid with green plots between its blocks; it now has more built lots, but it is 
 reference's curving streets and lots are S-lane work, not the deputy's.
 
 **Next:** S4, per P70's order.
+
+## review round — P72 (2026-09-17)
+
+After B9. The four reachability directions: `test/omissions.test.js` and `test/reachability.test.js`
+13 green; every key in `data/balance.json` is read by `engine/` except the prose `note`; the
+exported-function sweep found **two dead exports** and they are deleted — `bakeStreets`
+(`streets-l3.js`), a three-line wrapper orphaned when R5 sliced the street bake into phases, and
+`signCacheSize` (`signs.js`), whose comment said "read by the gate" and no gate has ever read it.
+A model of the code is not the code, and that comment was the model.
+
+**Q103 opened**: `traffic_gate`'s congestion criterion. B9 changed the deputy, not the traffic model,
+and "congestion tracks people-per-road" fell from r 0.55 to 0.07 — the old deputy paved ~2,060 road
+tiles in every game, so the proxy was population over a constant. The gate now also accepts driving
+demand (cars × routed commute, 0.87 in era 1 and 0.92 in era 3). It is a gate's criterion and it is
+Kjell's to keep or revert; `dev-questions.md` carries what was ruled out first.
+
+**Docs and skills.** `slice-workflow` gained P70's standing rule — `node --test test/docs.test.js`
+before every commit. `review-round` gained three lessons from B9: a constraint moves an agent onto
+untested ground, a test written for a defect must separate it from health, and a gate's proxy can
+lean on how the deputy plays. `sim-gate` took the last one with the gate change in B9's commit.
+Memories: `constraint-concentrates-the-agent` rewritten (the first diagnosis was wrong), and
+`proxy-assumes-the-instrument` added.
+
+**Measured.** Suite 1,359 green twice; `docs.test.js` 24 green; `client_smoke` ok after the two
+deletions (75 draws, 89,679 triangles at span 9, two frozen shots byte-identical). Precache
+regenerated, 170 files.
+
+**Next:** S4 — water, banks and bridges, per P70's order.

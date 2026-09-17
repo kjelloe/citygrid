@@ -459,6 +459,31 @@ any of them. Found when the next slice's shot tool asked the page for an occupie
 of forty. Before a rule keys on a state field, ask a played city what that field holds, and build
 the fixture from what it says.
 
+**A constraint moves an agent onto ground nothing has tested.** B9 kept the deputy's roads within
+reach of its town and hopped a blocked deputy to one of its lots: the far bank became country and
+every town became a mesh of empty streets, because random hops had almost always landed on fresh
+ground and the randomness had been doing the protecting. The second cut then added two "fresh land"
+rules AND a better hop target in one go, and **halved every city** (demanding 766 → 88). One probe
+per rule, on 30 seeds against the old baseline, said the hop was the whole fix and both rules were
+harmful — refusing zoned land alone halved the sweep, because crossing a zoned strip is how blocks
+join into one network. Change WHERE the agent lands before adding rules about what it may do, and
+A/B each rule alone before the 200-game sweep.
+
+**A test written for a defect has to separate it from health.** That same cut came with "at most two
+tiles in five inside the town are road". Measured afterwards on six seeds: the old deputy 41–45%,
+the mesh 41–53%, the final rule 43–54%. It could not tell any of them apart — the mesh was empty
+lots, not more road — so it was deleted rather than loosened. Measure the bad state AND the good one
+before trusting a bound.
+
+**A gate's proxy can lean on how the deputy plays.** `traffic_gate` held "congestion tracks
+people-per-road" at r 0.55 for two eras and fell to 0.07 when B9 changed only the deputy. The old
+deputy paved ~2,060 tiles in every game, so people-per-road was population over a constant. Four
+probes ruled out the alternatives (spread, choke points, outliers) before the gate was touched, and
+congestion against driving demand — cars × `state.traffic.averageCommute`, the engine's own routing
+rather than the capped traffic layer — was 0.87 before and 0.92 after. When a change to the
+INSTRUMENT turns a gate red, ask what the gate's measure divides by, and whether the old instrument
+held it fixed. Add the direct measure beside the old ones; never quietly replace them.
+
 **A fill that counts presence leaks while things move.** E7 topped each pavement up to its doors'
 demand by counting who stood on it; a person who walked away left it looking empty and it spawned
 again. B5's journeys made it obvious — 24 became 47 in a minute on the test town, 259 for about 90
