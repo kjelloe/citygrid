@@ -9,6 +9,7 @@
 import * as THREE from "three";
 import { buildingColour, familyColour, PLAYER_COLOURS } from "./palette.js";
 import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
+import { isBurning, ruinPlots, ruinWalls, rubbleOf, emberTint, charTint } from "../world/damage.js";
 // CHUNK from the DATA, not a fourth copy of 16 (E2 put it in
 // `data/cityviewer.json` because three things had three copies; this was the
 // fourth, found in R2).
@@ -115,7 +116,15 @@ export function createInstances(scene, styleName = "plain") {
   // piped tile, supplied or dry.
   make("wireHub", flatGeometry(styleName, 0.09, 0.09, 0), 0xffffff, 40000);
   make("wireArm", flatGeometry(styleName, 0.09, 0.56, 0), 0xffffff, 80000);
-  make("ruin", slabGeometry(styleName, 0.7, 0.14, 0.7), 0xffffff, 6000);
+  // Burnt GROUND: flat, like the lawn quad. It was a 0.14-tile slab — a solid
+  // block 2.8 m tall covering most of the tile — which is why a ruin has always
+  // read as a dark box, and which buried B1b's walls and rubble inside it.
+  make("ruin", flatGeometry(styleName, 1, 1, 0.05), 0xffffff, 6000);
+  // What is left standing of a burnt-out building (B1b): one tile of wall, and
+  // rubble on the plot. Scaled per instance — a segment's height is what the
+  // fire left of it, which is the difference between a ruin and a roofless box.
+  make("ruinWall", slabGeometry(styleName, 1, 1, 0.02), 0xffffff, 8000);
+  make("rubble", slabGeometry(styleName, 0.1, 1, 0.1), 0xffffff, 12000);
   // A garden plot under every house. In the reference this is doing far more
   // work than it looks: it is what stops a suburb reading as buildings dropped
   // onto a road surface, and it is why the green there is foreground rather
@@ -613,7 +622,10 @@ export function updateInstances(state, pools, options = {}) {
         }
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
-        push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, 0x5a5048);
+        // The burnt ground itself. The walls and the rubble that stand on it
+        // are drawn per PLOT below, because a ruin is what is left of one
+        // building and four slabs in a square are not that (B1b).
+        push(pools.ruin, x + 0.5, h, y + 0.5, 1, 1, 1, charTint(0x6b625a));
       }
 
       const paved = (state.tiles.road[index] & NET_PRESENT) !== 0;
@@ -750,6 +762,31 @@ export function updateInstances(state, pools, options = {}) {
       t.scale, t.scale, t.scale, TREE_COLOURS[t.kind] ?? palette.tree ?? palette.terrain[TERRAIN_FOREST], t.spin);
   }
 
+  // --- what the fire left (B1b) ---------------------------------------------
+  //
+  // Per PLOT, not per tile: the engine removes the building and flags the
+  // ground it stood on, so the burnt footprint is all that is left to read, and
+  // four ruined tiles of one house are one ruin. Walls around the plot's own
+  // outline, broken where the fire took them, with rubble inside.
+  for (const plot of ruinPlots(state, x0, y0, x1 + 1, y1 + 1)) {
+    // A baked chunk builds its own ruin (`bakeRuins`), and drawing this one as
+    // well is the same wall twice with z-fighting down every face — the rule
+    // the lots have followed since E5.
+    if (isBaked(plot.x0, plot.y0)) continue;
+    for (const wall of ruinWalls(plot)) {
+      const wx = (wall.x0 + wall.x1) / 2;
+      const wz = (wall.y0 + wall.y1) / 2;
+      const along = wall.x1 - wall.x0 > 0;
+      push(pools.ruinWall, wx, at(wx, wz), wz,
+        1, wall.height / tileM, 1, charTint(palette.terrain[TERRAIN_DIRT] ?? 0x8b7d6b, 0.35),
+        along ? 0 : Math.PI / 2);
+    }
+    for (const piece of rubbleOf(plot)) {
+      push(pools.rubble, piece.x, at(piece.x, piece.y), piece.y,
+        1, piece.h / tileM, 1, charTint(0xa4998c, 0.45), piece.turn);
+    }
+  }
+
   for (const building of state.buildings) {
     if (!inBounds(bounds, building.x, building.y)) continue;
     const cx = building.x + building.w / 2;
@@ -770,6 +807,13 @@ export function updateInstances(state, pools, options = {}) {
     // WITH the clock: a building's age decides whether it is a shell with a
     // scaffold round it (B2), and `state.tick` is the only place that lives.
     const p = buildingParams(building, palette, family, showOwner, state.tick);
+    // A building with fire behind its walls (B1b). The colour is the building's
+    // own pushed toward ember, so a burning brick house is still a brick house.
+    const alight = isBurning(state, building);
+    if (alight) {
+      p.colour = emberTint(p.colour);
+      p.roof = emberTint(p.roof);
+    }
     // A civic box turns to face its street, like the facade it stands in for
     // (S1). Every other category keeps the hashed spin: a house has a front
     // door on its frontage already, and a shop's sign is on its own edge.
@@ -826,8 +870,15 @@ export function updateInstances(state, pools, options = {}) {
         return { x: cx + lx * c + lz * s, y: h + m.y * CIVIC_W * 2 * p.height, z: bzL2 - lx * s + lz * c,
           turn: spin, scale: building.w * 0.98 };
       };
-      const puffs = (at, colour) => {
-        for (let k = 0; k < MOTION.smoke.puffs; k += 1) push(pools.smoke, at.x, at.y, at.z, 1, 1, 1, colour, 0);
+      // `scale` because a building on fire is not a chimney (B1b). A puff is
+      // `SMOKE_HALF` — 1.6 m across, about four pixels at city zoom — which is
+      // why neither this smoke nor the coal plant's has ever been visible in a
+      // shot: `smoke-S6-smoke-t2.png` has the plant dead centre and nothing
+      // above it. The gate counted instances; nobody had looked.
+      const puffs = (at, colour, scale = 1) => {
+        for (let k = 0; k < MOTION.smoke.puffs; k += 1) {
+          push(pools.smoke, at.x, at.y, at.z, scale, scale, scale, colour, 0);
+        }
       };
       if (p.kind === "civic" && p.state.phase === "standing") {
         const shape = civicShape(building.def);
@@ -882,12 +933,26 @@ export function updateInstances(state, pools, options = {}) {
         push(pools.crane, building.x + 0.18, h, building.y + 0.18, 1, 1, 1, 0xe8b830,
           jitter(building.id, 211) * Math.PI * 2);
       }
-      if ((building.flags & FLAG_BURNING) !== 0) {
-        // From the roof the building was drawn with.
-        const roof = baked
-          ? (lot.seat + (p.groundH + ((lot.storeys ?? p.storeys ?? 1) - 1) * p.floorH) * (p.state.progress ?? 1)) / tileM
-          : h + p.height;
-        puffs({ x: cx, y: roof, z: cz }, 0x4a4a4a);
+      // From the TILES, not from the record: `building.flags` is created as 0
+      // by `development.js` and written by nothing in the engine, so this test
+      // has been false since S6 and the smoke §9.4b describes has never drawn
+      // (B1b). The lane may not touch `engine/` (ruling 037).
+      if (isBurning(state, building)) {
+        // From the roof, in METRES, both ways round (B1b).
+        //
+        // The instanced branch was `h + p.height`, which adds a geometry SCALE
+        // to a height in tile units: on a two-storey house that put the column
+        // 28 m above its roof, off the top of the frame. It has been wrong since
+        // S6 and nobody saw it, because a puff is 1.6 m across and the gate
+        // counted instances. The baked branch already did the metre arithmetic,
+        // so now both do, from the same fields the facade is built from.
+        const storeys = (baked ? lot.storeys ?? p.storeys : p.storeys) ?? 1;
+        const wallTop = (p.groundH + (storeys - 1) * p.floorH) * (p.state.progress ?? 1);
+        const roof = baked ? (lot.seat + wallTop) / tileM : h + wallTop / tileM;
+        // 1.6, not 3.5: the shader's rise and drift are in LOCAL units, so the
+        // instance scale multiplies them too — at 3.5 the column stood a
+        // hundred metres up and drifted across the river.
+        puffs({ x: cx, y: roof, z: cz }, 0x3a3632, 1.6);
       }
     }
 

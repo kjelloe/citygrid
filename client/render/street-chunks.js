@@ -24,6 +24,7 @@ export const FURNISHED = 3;
 import { PALETTES } from "./palettes.js";
 import {
   streetCorridors, bakeStreetCorridors, bakeStreetJoints, lotsOfChunk, bakeLotFacades, bakeLotExtras,
+  bakeRuins,
 } from "./streets-l3.js";
 import { createGroundColour } from "../world/ground-colour.js";
 import { getConfig } from "../world/config.js";
@@ -143,6 +144,12 @@ export function createStreetChunks(scene, options = {}) {
         options.locale ?? "en");
       return true;
     },
+    // What the fire left (B1b). Its own phase, so the bake check times it like
+    // every other one and a city full of ruins cannot hide inside the lot pass.
+    (job, state, model) => {
+      job.ruins = bakeRuins(job.baker, state, model, job.chunk.cx, job.chunk.cy, palette);
+      return true;
+    },
   ];
 
   return {
@@ -230,6 +237,10 @@ export function createStreetChunks(scene, options = {}) {
           live.set(chunk.key, {
             hash, group, cx: chunk.cx, cy: chunk.cy, seen: now,
             triangles: baker.triangles, lamps: baker.lamps, signals: baker.signals,
+            // What the fire left in this chunk (B1b). Merged geometry is
+            // invisible to a pool count, so a gate that reads the instanced
+            // ruin sees ZERO on exactly the chunks that draw the real one.
+            ruins: pending.ruins ?? 0,
           });
           built += 1;
           didBuild = 1;
@@ -261,6 +272,9 @@ export function createStreetChunks(scene, options = {}) {
       // camera was one of the three (S1b).
       return {
         built: didBuild, live: live.size, triangles, buildMs: lastBuildMs, phases: lastPhases, total: built, lastBuilt,
+        // Ruins standing in the baked chunks (B1b), so a gate can count what a
+        // merged mesh will not show it.
+        ruins: [...live.values()].reduce((n, e) => n + (e.ruins ?? 0), 0),
         keys: [...live.values()].map((e) => `${e.cx},${e.cy}`).sort().join(" "),
       };
     },

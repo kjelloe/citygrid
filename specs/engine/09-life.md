@@ -299,6 +299,17 @@ Restrained movement where the eye expects it, all on one clock and all still whe
   lot (`civicPointOnLot`), the instanced kit's otherwise — so the rotor sits on its nacelle at every
   zoom. The first version posed only instanced lots, and at a close city view, where the lots are
   baked, the gate found no rotor and no smoke at all.
+- **Corrected (B1b, 2026-09-18): the smoke had never drawn a visible pixel.** Two defects, both
+  invisible to a gate that counts instances. (1) The shader's `vMotionRound` was a LENGTH per
+  vertex, and every vertex of the two crossed quads is a corner, so all four carried 1.41, the
+  fragment interpolated 1.41 everywhere and `smoothstep(0.35, 1.0, 1.41)` took alpha to zero across
+  the whole puff — the coal plant's column included, which is why `smoke-S6-smoke-t2.png` has the
+  plant dead centre with nothing above it. It carries the VECTOR now and the fragment takes its
+  length. (2) A burning building's column was placed at `h + p.height`, which adds a geometry SCALE
+  to a height in tile units: 28 m above the roof of a two-storey house, off the top of the frame.
+  Both renderers now compute the roof in metres from the same fields the facade is built from. The
+  instance scale multiplies the shader's rise and drift as well as the puff, so a fire's column is
+  1.6 and not more — 3.5 stood a hundred metres up and drifted over the river.
 - **Not moving:** the trees baked into street chunks. They are merged meshes with no per-vertex
   height above their trunk, and giving them one is a baker change the item did not ask for.
 

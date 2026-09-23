@@ -22,6 +22,7 @@ import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
 import { treesIn } from "../world/foliage.js";
+import { ruinPlots, ruinWalls, rubbleOf, charTint } from "../world/damage.js";
 import { signalHeads, crossingBars, stopMarks } from "../world/signals.js";
 import { streetProps, streetNameIndex, STREET_NAMES } from "../world/street-furniture.js";
 import { jitter } from "../world/hash.js";
@@ -503,4 +504,57 @@ function pointAlong(points, distance) {
     run += seg;
   }
   return points[points.length - 1];
+}
+
+/**
+ * What the fire left, at street level (slice B1b).
+ *
+ * A ruin was one flat grey slab a tile at city zoom and NOTHING here — the
+ * lane's own opening paragraph says so. The engine removes the building and
+ * flags the ground, so there is no lot to read: the shape comes from the burnt
+ * tiles themselves (`client/world/damage.js`, pure and tested), which is also
+ * what makes the instanced ruin and this one the same ruin.
+ */
+export function bakeRuins(baker, state, model, cx, cy, palette) {
+  const cfg = getConfig();
+  const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
+  const t = cfg.tileM;
+  const plots = ruinPlots(state,
+    Math.floor(box.x0 / t), Math.floor(box.z0 / t),
+    Math.ceil(box.x1 / t), Math.ceil(box.z1 / t));
+  if (plots.length === 0) return 0;
+
+  const walls = sink();
+  const rubble = sink();
+  const THICK = 0.35;
+  for (const plot of plots) {
+    for (const w of ruinWalls(plot)) {
+      // Metres, and seated on the ground the wall stands on rather than on the
+      // plot's first corner: a ruin on a slope follows it, like everything else
+      // that stands on the field (spec §5.6).
+      const x0 = Math.min(w.x0, w.x1) * t;
+      const z0 = Math.min(w.y0, w.y1) * t;
+      const x1 = Math.max(w.x0, w.x1) * t;
+      const z1 = Math.max(w.y0, w.y1) * t;
+      const y = model.heightAt((x0 + x1) / 2, (z0 + z1) / 2);
+      const along = x1 - x0 > 0;
+      walls.box(
+        along ? x0 : x0 - THICK / 2, y, along ? z0 - THICK / 2 : z0,
+        along ? x1 : x0 + THICK / 2, y + w.height, along ? z0 + THICK / 2 : z1,
+      );
+    }
+    for (const piece of rubbleOf(plot)) {
+      const px = piece.x * t;
+      const pz = piece.y * t;
+      const y = model.heightAt(px, pz);
+      const r = 0.6 + piece.h * 0.8;
+      rubble.box(px - r, y, pz - r, px + r, y + piece.h, pz + r);
+    }
+  }
+  // Charred against the ground's own colour, so a ruin reads as burnt rather
+  // than as a grey block dropped on the grass.
+  // Grey masonry on black ground, not black on black (B1b).
+  baker.addPart(walls.done(), charTint(palette.terrain?.[1] ?? 0x8b7d6b, 0.35));
+  baker.addPart(rubble.done(), charTint(0xa4998c, 0.45));
+  return plots.length;
 }

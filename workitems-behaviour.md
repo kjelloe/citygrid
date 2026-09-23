@@ -60,7 +60,13 @@ assuming `FLAG_BURNING` rather than reading it (it is 4; 1 is `FLAG_POWERED`, so
 counted powered tiles and reported a third of the map alight) and once by comparing two cities that
 were not the same city. Read the constant, and print the city beside the number.
 
-## B1 — Damage you can see (M)
+## B1 — Damage you can see (M) — the renderer half **built 2026-09-18** as `slice-B1b` (`specs/engine/06-buildings-and-kit.md` §6.7)
+
+*As built: burning (the wall pushed toward ember, and S6's smoke column, which had never drawn a
+visible pixel — see §9.4b) and ruined (plots grouped from the burnt tiles, broken walls on the
+outline, rubble, charred FLAT ground), at both zooms, from the TILE flags because a building record's
+`flags` has never carried them (**Q108**). `tools/disaster_shot.mjs` is the gate. **Not in it:**
+wrecked, storm wires and flood water, which have no state to read — **Q109**.*
 
 **Goal.** Every disaster and every fire leaves a mark in the world for as long as the state says
 it is there.

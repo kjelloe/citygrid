@@ -6690,3 +6690,71 @@ Everything the last two rounds turned up that was not on a list is on one now.
 Nineteen open questions now (`RELEASE.md`, `plan-v1.md`).
 
 **Next:** B1b — the renderer half of B1, per P70's order.
+
+## slice-B1b — damage you can see (2026-09-18)
+
+**What it is.** The renderer half of B1. Two states the engine has made since Wave 1 and the world
+showed neither: **burning** (the wall pushed toward ember, 45%, plus S6's smoke column) and
+**ruined** (the burnt plot, its broken walls and its rubble), at both zooms. The judgements are in
+`client/world/damage.js` — pure, node-tested, read by the instanced pass and the baker alike, so the
+box from the air and the walls from the pavement are the same ruin.
+
+**Read from the TILE flags, and that is the finding the module was written around.** A building
+record carries a `flags` field: `development.js` creates it as 0, `state.js` hashes it, and
+**nothing in the engine has ever written to it**. `instances.js`'s `building.flags & FLAG_BURNING`
+has therefore been false since S6, and the same test in `signals.js` and `street-furniture.js` has
+never excluded a thing. This lane may not touch `engine/` (ruling 037), so the renderer reads the
+layer `fire.js` actually writes. **Q108** asks what to do about the field.
+
+**A ruin is a plot, not a tile.** The engine removes the building and flags the ground, so the
+footprint is all that is left to read: `ruinPlots` groups burnt tiles into connected plots, walls
+follow the plot's own outline broken where the fire took them (28% gone, the rest between a stump
+and one storey, from the tile hash so both renderers agree), and two pieces of rubble a tile sit
+inside. `bakeRuins` is its own phase of the street bake, and the instanced pass skips a plot whose
+chunk is baked — E5's rule.
+
+**Tests.** `test/damage.test.js`, 9: burning comes from the ground and not from the record (with the
+record's `flags` asserted to be 0, which is the defect stated as a test); one tile of a big building
+is the building; plots group and clip to the window; walls stand on the outline, under one storey,
+broken, and the same twice; rubble is inside the plot; a burning wall keeps its own colour.
+
+**What went wrong on the way — four, and the last one is not this slice's.**
+- **The ruin was a dark box.** I recoloured the old `ruin` pool and left its geometry: a 0.14-tile
+  slab is a solid block 2.8 m tall covering most of the tile, which buried the new walls inside it.
+  Burnt ground is flat now, like the lawn quad.
+- **Black on black.** Walls charred as hard as the ground were invisible against it. A magenta test
+  shot proved they were there and in the right place; masonry that survives a fire is grey, so
+  `charTint` took a strength and the walls use 0.35 against the ground's 0.75.
+- **The gate could not see the baked ruin.** Merged geometry is not a pool, so counting
+  `pools.ruinWall` read ZERO on exactly the chunks that draw the real thing. The chunk cache reports
+  `ruins` now, and the gate counts both.
+- **The smoke has never drawn a visible pixel — the coal plant's included.** Three defects, none of
+  which a gate could see because S6's gate counts instances:
+  1. `vMotionRound` was a LENGTH computed per vertex. Every vertex of the two crossed quads is a
+     corner, so all four carried 1.41, the fragment interpolated 1.41 everywhere, and
+     `smoothstep(0.35, 1.0, 1.41)` is 1 — alpha zero across the whole puff, always. It carries the
+     vector now and the fragment takes its length. `smoke-S6-smoke-t2.png` has the plant dead centre
+     with nothing above it, which is what this predicts.
+  2. A burning building's column was placed at `h + p.height` — a geometry SCALE added to a height in
+     tile units, 28 m above the roof of a two-storey house. Both branches compute the roof in metres
+     now, from the fields the facade is built from.
+  3. The instance scale multiplies the shader's rise and drift as well as the puff, so my first
+     attempt at a bigger fire column (3.5) stood a hundred metres up and drifted across the river.
+     1.6.
+
+  What found all three: pushing the puffs magenta at twenty times size and STILL seeing nothing,
+  which ruled out size and position and left the material.
+
+**Measured.** `tools/disaster_shot.mjs` (new): three shots, each aimed at its own subject and
+counted before it is called damage — burning 18 puffs over the fire, 0 burnt ground; ruined 0 smoke,
+5 burnt tiles, 2 baked ruins; both together 18 puffs and 2 ruins at street zoom. Smoke is counted
+**near the fire**, out of the instance matrices, because the plants smoke too: the ruin shot came
+back with twelve puffs from two chimneys before that. Suite **1,379 green twice**.
+
+**What the pictures say**, looked at — six times, which is what this slice cost.
+`smoke-B1-burning.png`: two ember-tinted houses with a thin column off one roof, drifting downwind,
+restrained the way §9.4 asks. `smoke-B1-ruin.png`: two burnt plots as flat charred ground with low
+broken walls on their outlines — from the air it reads as a dark patch with something standing in
+it. `smoke-B1-street.png`: both, at the zoom where a ruin used to be nothing at all.
+
+**Next:** S7 — windows with something behind them, per P70's order.

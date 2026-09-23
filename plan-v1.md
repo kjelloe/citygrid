@@ -411,6 +411,9 @@ by number from the code they create.
 | Q104 | No road can cross water — `isBuildable` refuses it, and five played cities had zero — so neither a bridge nor Q58's causeway exists in the game | Kjell — an engine decision (cost, span, which command); S4 built the water and stopped there |
 | Q105 | Era 4's demanding cities are 14% smaller (1,203 → 1,039) because fire now costs something; the other three configurations are flat or better | Kjell — a balance call, nothing blocks on it |
 | Q106 | `a11y_smoke`'s hillside check moved because the city did, twice; it shoots bare hillside now and its floors are re-derived (median 45, tail 25) | Kjell, with Q103 — a gate re-aimed, a one-line revert |
+| Q107 | The smoke has never drawn a visible pixel (a varying carried a length, not a vector); fixed in B1b — is the column enough of a fire? | Kjell — an art call, now judgeable for the first time |
+| Q108 | `building.flags` is hashed state nothing writes; three client modules read it and always got 0 | Kjell — remove it or write it; an engine decision |
+| Q109 | Wrecked, storm and flood damage have no state to read, so B1b drew burning and ruined and stopped | Kjell — engine state and a schema change, a slice of its own |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

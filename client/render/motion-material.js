@@ -51,9 +51,15 @@ export const MOTION_GLSL = {
   transformed.z += ${n(MOTION.flag.amp)} * ${n(length)} * flagU
     * sin(${n(MOTION.flag.speed)} * uTime - flagU * ${n(MOTION.flag.wave)} + motionPhase);`,
   smoke: (radius) => `
-  // How far from the puff's centre, as a share of its half-size: one of x and
-  // z is zero on each of the two crossed quads.
-  vMotionRound = length(vec2(position.x + position.z, position.y)) / ${n(radius)};
+  // Where on the puff this vertex is, as a share of its half-size — the VECTOR,
+  // not its length (B1b). Taking the length here made the varying constant:
+  // every vertex of the two crossed quads is a CORNER, so all four carried
+  // 1.41, the fragment shader interpolated 1.41 everywhere, and
+  // \`smoothstep(0.35, 1.0, 1.41)\` is 1 — alpha zero across the whole puff.
+  // Smoke has never drawn a visible pixel, the coal plant's included: S6's gate
+  // counts instances and \`smoke-S6-smoke-t2.png\` has the plant dead centre with
+  // nothing above it. Interpolating the vector puts the centre back at zero.
+  vMotionRound = vec2(position.x + position.z, position.y) / ${n(radius)};
   float puffK = float(gl_InstanceID % ${MOTION.smoke.puffs});
   float puffF = fract(uTime / ${n(MOTION.smoke.period)} + puffK / ${n(MOTION.smoke.puffs)});
   transformed *= 0.5 + puffF * ${n(MOTION.smoke.grow)};
@@ -73,15 +79,15 @@ export function addMotion(material, kind, size = 1) {
     if (typeof already === "function") already(shader, renderer);
     shader.uniforms.uTime = motionUniforms.uTime;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\nuniform float uTime;\n${fades ? "varying float vMotionFade;\nvarying float vMotionRound;" : ""}`)
+      .replace("#include <common>", `#include <common>\nuniform float uTime;\n${fades ? "varying float vMotionFade;\nvarying vec2 vMotionRound;" : ""}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${body(size)}`);
     if (fades) {
       shader.fragmentShader = shader.fragmentShader
-        .replace("#include <common>", "#include <common>\nvarying float vMotionFade;\nvarying float vMotionRound;")
+        .replace("#include <common>", "#include <common>\nvarying float vMotionFade;\nvarying vec2 vMotionRound;")
         // Round and soft, not a square: a flat quad of one alpha read as a
         // grey cardboard panel near the camera (S6, looked at).
         .replace("#include <dithering_fragment>", `#include <dithering_fragment>
-  gl_FragColor.a *= vMotionFade * ${n(MOTION.smoke.opacity)} * (1.0 - smoothstep(0.35, 1.0, vMotionRound));`);
+  gl_FragColor.a *= vMotionFade * ${n(MOTION.smoke.opacity)} * (1.0 - smoothstep(0.35, 1.0, length(vMotionRound)));`);
     }
   };
   // Every patched material's `onBeforeCompile` is the same closure text, and

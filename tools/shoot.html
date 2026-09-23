@@ -127,6 +127,51 @@ if (wear >= 0) for (const b of state.buildings) b.condition = wear;
 // "are the bands still told apart once the ground shades them" measurable.
 const pollute = Number(params.get("pollute") ?? -1);
 if (pollute >= 0) state.tiles.pollution.fill(pollute);
+
+// `damage=burn|ruin|both` sets fire to the middle of the town, or burns it out
+// (slice B1b). The engine's own states, written the way `engine/fire.js` writes
+// them — the TILE flags — because that is what the renderer reads and what a
+// building record has never carried. Without this a shot of damage needs a city
+// that happens to be alight, which is a city nobody can aim at.
+const damage = params.get("damage") ?? "";
+if (damage) {
+  const BURNING = 4;
+  const RUINED = 8;
+  const middle = [...state.buildings]
+    .sort((a, b) => Math.hypot(a.x - state.width / 2, a.y - state.height / 2)
+      - Math.hypot(b.x - state.width / 2, b.y - state.height / 2));
+  const alight = [];
+  const burnt = [];
+  for (const b of middle) {
+    const wantBurn = damage !== "ruin" && alight.length < 3;
+    const wantRuin = damage !== "burn" && burnt.length < 3;
+    if (!wantBurn && !wantRuin) break;
+    const target = wantBurn ? alight : burnt;
+    const flag = wantBurn ? BURNING : RUINED;
+    for (let dy = 0; dy < b.h; dy += 1) {
+      for (let dx = 0; dx < b.w; dx += 1) {
+        state.tiles.flags[(b.y + dy) * state.width + b.x + dx] |= flag;
+      }
+    }
+    target.push(b);
+    // A ruin has no building on it: the fire removes it and leaves the ground
+    // flagged, so a shot that leaves the house standing is not a ruin at all.
+    if (!wantBurn) {
+      for (let dy = 0; dy < b.h; dy += 1) {
+        for (let dx = 0; dx < b.w; dx += 1) state.tiles.buildingId[(b.y + dy) * state.width + b.x + dx] = 0;
+      }
+      state.buildings.splice(state.buildings.indexOf(b), 1);
+    }
+  }
+  // BOTH places, because they are different buildings: a shot aimed at the
+  // ruin has the fire off screen, which is how the first run of
+  // `disaster_shot.mjs` photographed eighteen puffs of smoke nobody could see.
+  const spot = (b) => (b ? { x: b.x, y: b.y } : undefined);
+  globalThis.SHOT_DAMAGE = {
+    burning: alight.length, ruined: burnt.length,
+    at: spot(burnt[0] ?? alight[0]), fire: spot(alight[0]), ruin: spot(burnt[0]),
+  };
+}
 // `sand=1` turns every dry tile to sand AFTER the city is grown, so the streets
 // are where they were and the ground under them is not grass. The verge takes
 // the ground's own colour (slice V7, A38) and green grass beside a road through

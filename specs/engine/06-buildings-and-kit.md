@@ -434,3 +434,36 @@ grows into a declared list the model produces per corridor and lot - lamp every 
 alternating sides, hydrant, bin, bench, meter, tree pit, bollard - the way Union Square's
 `Props.build` walks the street specs. At L2 they stay instanced pools; at L3 they go through the
 chunk baker so a lamp can also be a light position for the night rig (07).
+
+## 6.7 Damage you can see (B1b, 2026-09-18)
+
+The engine has made two damage states since Wave 1 and the world showed neither: a building on fire
+looked like its neighbours, and the burnt ground it leaves was one flat grey slab a tile at city
+zoom and **nothing at all** at street level.
+
+**Both are read from the TILE flags** (`client/world/damage.js`, pure and tested), and that is the
+finding the module was written around: a building record carries a `flags` field — `development.js`
+creates it as 0 and `state.js` hashes it — and **nothing in the engine has ever written to it**. So
+`instances.js`'s `building.flags & FLAG_BURNING` has been false since S6, and the same test in
+`signals.js` and `street-furniture.js` has never excluded anything. This lane may not touch
+`engine/` (ruling 037), so the renderer reads the layer `engine/fire.js` actually writes. **Q108**
+asks what to do about the field itself.
+
+- **Burning.** The building's own colour pushed toward ember (`emberTint`, 45%) — a burning brick
+  house is still a brick house — and S6's smoke column, which now draws (§9.4b).
+- **Ruined.** A ruin is what is left of a BUILDING, so the shape is the footprint it stood on: the
+  engine removes the building and flags its tiles, so `ruinPlots` groups the burnt tiles into
+  connected plots and four tiles of one house are one ruin rather than four slabs. Walls follow the
+  plot's own outline, broken where the fire took them (28% of segments gone, the rest between a
+  stump and one storey, all from the tile hash so both renderers draw the same ruin), with two
+  pieces of rubble a tile inside. The ground itself is charred and FLAT — it was a 0.14-tile slab,
+  a solid block 2.8 m tall, which is why a ruin has always read as a dark box.
+- **Grey masonry on black ground.** The first cut charred the walls as hard as the ground and drew
+  a black shape on a black patch; a magenta test shot is what proved the walls were there at all.
+- **Drawn at both zooms, once.** `bakeRuins` is a phase of the street-chunk bake, and the instanced
+  pass skips a plot whose chunk is baked — the rule the lots have followed since E5.
+
+**Not in it:** wrecked (a collapsed corner, a tilted roof), a storm's fallen wires and a flood's
+risen water. All three need engine state that does not exist — there is no `FLAG_WRECKED`, and a
+disaster ruins a building rather than damaging it. **Q109.**
+

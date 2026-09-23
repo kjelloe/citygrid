@@ -1,6 +1,6 @@
 {
- "version": "68ff6eaad108",
- "generated": "2026-09-17",
+ "version": "1ca6cc2e0055",
+ "generated": "2026-09-23",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -101,6 +101,7 @@
   "./client/world/config.js",
   "./client/world/corridors.js",
   "./client/world/countryside.js",
+  "./client/world/damage.js",
   "./client/world/facade-spec.js",
   "./client/world/figure.js",
   "./client/world/fit.js",
