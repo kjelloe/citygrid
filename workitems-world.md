@@ -194,7 +194,14 @@ buildings, a crane that turns on a construction site (B2). Reduced motion stills
 under reduced motion; the sway amplitude is bounded. **Gate.** two `screenshot.mjs` runs under
 `?life=0` byte-identical (V1's gate, kept); `reports/smoke-S6-{wind,smoke}.png` at two times.
 
-## S7 — Windows with something behind them (S)
+## S7 — Windows with something behind them (S) — **built 2026-09-24** (`specs/engine/06-buildings-and-kit.md` §6.8)
+
+*As built: `client/world/windows.js` decides per opening — a curtain in one of three tones taken
+from the wall's own colour, a blind part way down, or the room behind it — and which windows are
+lit, moved out of the baker so the light and the dressing agree. A storefront gets a back wall and
+a shelf. About +2,200 triangles a chunk (23,930 → 26,107 per chunk), `budget_gate` green at 288 s
+of 300. **Not in it:** the painted Canvas2D interior card the item mentions; the shop is geometry,
+which suits the style and costs no texture.*
 
 **Goal.** A facade at eye height is not a grid of flat rectangles.
 

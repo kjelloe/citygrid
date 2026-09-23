@@ -6758,3 +6758,42 @@ broken walls on their outlines — from the air it reads as a dark patch with so
 it. `smoke-B1-street.png`: both, at the zoom where a ruin used to be nothing at all.
 
 **Next:** S7 — windows with something behind them, per P70's order.
+
+## slice-S7 — windows with something behind them (2026-09-24)
+
+**What it is.** A facade at eye height was a grid of flat rectangles. `client/world/windows.js`
+(pure, 7 tests) decides per opening, from the building's id and the opening's floor and bay: a
+curtain in one of three tones, a blind part way down, or the room behind it — and a storefront gets
+a back wall and a shelf across its bottom third. Two triangles a window, drawn inside the reveal
+E5's facade grammar already cuts, one bucket a tone so the baker merges a chunk's worth into three
+parts.
+
+**And which windows are lit moved out of the baker.** It was the same arithmetic in a module node
+cannot load; it is `windowLit(id, hole, share)` now, tested for monotonicity in occupancy, so the
+light and the dressing agree — a lit window with a curtain across it is a glow, not a pane.
+
+**Measured.** +2,177 triangles a chunk: **23,930 → 26,107**, by stashing the change and re-shooting
+the same street. **Per chunk, not per frame** — the before frame had 167,508 street triangles over
+7 baked chunks and the after 156,640 over 6, so the frame totals say the opposite of the truth.
+`budget_gate` green, render **288 s of 300**, quick **11 of 11, 392 s of 480**, suite **1,386 green
+twice**.
+
+**What went wrong on the way — all of it framing, and all of it mine.**
+- **`client_smoke` could not see the slice at all.** It reported 87,023 triangles with and without
+  the dressing, because at span 9 the facades are instanced boxes and the dressing exists only in a
+  baked chunk. A measurement that cannot see the change is not a baseline.
+- **Span 3 is span 8.** The city camera floors there, so the first "from the pavement" shot was the
+  town from the air. Street mode is the pavement, and it needs a yaw: `(frontage + 2) % 4` faces
+  the building, which `street_shots.mjs` had already worked out.
+- **A curtain is four pixels at 1280.** The subject is 1.2 m wide across a 20 m street. At
+  1920×1080 it reads without moving the camera.
+- **And the first house it found was one the camera stood underneath** — a level-2 lot at the
+  water's edge with a canopy over the kerb. The shop's street is the shot.
+
+**What the pictures say**, looked at. `smoke-S7-day.png`: the houses along Mill Lane show windows
+that differ — some dark rooms, some pale with a curtain, some half covered by a blind — which is
+the point, and it is restrained enough that you notice the street rather than the trick.
+`smoke-S7-night.png`: warm lit windows scattered across the dark houses, a lamp pooling on the
+pavement, and the lit ones are not the same ones on every house.
+
+**Next:** B3 — service vehicles, per P70's order.

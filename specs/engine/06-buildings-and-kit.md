@@ -467,3 +467,24 @@ asks what to do about the field itself.
 risen water. All three need engine state that does not exist — there is no `FLAG_WRECKED`, and a
 disaster ruins a building rather than damaging it. **Q109.**
 
+## 6.8 What is behind a window (S7, 2026-09-24)
+
+A facade at eye height was a grid of flat rectangles: one backing panel an opening, in glass or in
+lamplight. `client/world/windows.js` (pure, tested) decides what stands in front of that panel, per
+opening, from the building's id and the opening's floor and bay:
+
+- **A curtain** (45%), in one of three tones — the wall's own colour lifted toward a warm cream, so
+  a street's curtains belong to their houses rather than to a palette.
+- **A blind** (23%), down between a quarter and four fifths of the opening.
+- **The room** (32%), which is what makes the other two read.
+- **A storefront** is a back wall and a shelf across its bottom third: a room, not a pane.
+
+**And which windows are lit moved here** from the baker. It was the same arithmetic, in a module
+node cannot load; now the light and the dressing come from one place, which is what makes a lit
+window with a curtain across it a glow rather than a pane. The share is still the building's
+occupancy (B2).
+
+Two triangles a window, one bucket a tone so the baker merges them: **+2,177 triangles a chunk**
+(23,930 → 26,107), measured by stashing the change and re-shooting — per CHUNK, because the ladder
+bakes a different number of chunks each run and the frame totals said the opposite.
+

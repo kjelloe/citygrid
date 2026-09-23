@@ -18,6 +18,7 @@ import { EDGES, originOf } from "./edges.js";
 import { roof } from "./roof-kit.js";
 import { buildHouseParts } from "./house-parts.js";
 import { buildCivic, buildAge } from "./civic-parts.js";
+import { windowTreatment, windowLit, CURTAIN_TONES, INSET } from "../world/windows.js";
 // Re-exported so `signs.js` and anything else that draws on a wall keeps one
 // import for "where the walls are".
 export { EDGES, originOf } from "./edges.js";
@@ -87,6 +88,37 @@ function reveal(s, edge, origin, hole, depth) {
   s.quad(f[1], f[2], b[2], b[1]);   // jamb, facing back along the wall
   s.quad(f[3], f[0], b[0], b[3]);   // jamb, the other way
   return b;
+}
+
+/** A curtain's colour: the wall's own, lifted toward a warm cream (S7).
+ *
+ * So a street's curtains belong to their houses rather than to a palette — the
+ * same reason a burning wall keeps its own colour (B1b). */
+function curtainTone(wall, tone) {
+  const lift = [0.55, 0.42, 0.68][tone % 3];
+  const cream = [0xef, 0xe3, 0xcd];
+  const r = Math.round(((wall >> 16) & 255) + (cream[0] - ((wall >> 16) & 255)) * lift);
+  const g = Math.round(((wall >> 8) & 255) + (cream[1] - ((wall >> 8) & 255)) * lift);
+  const b = Math.round((wall & 255) + (cream[2] - (wall & 255)) * lift);
+  return (r << 16) | (g << 8) | b;
+}
+
+/** A quad inside an opening, `depth` back from the wall face (S7).
+ *
+ * `share` clips it to the TOP of the opening, which is what a blind is. The
+ * dressing sits in front of the backing panel, not on it: coplanar quads
+ * z-fight, and at eye height that is a window that flickers as you walk.
+ */
+function dressing(s, edge, origin, hole, depth, share = 1) {
+  const [ox, oz] = origin;
+  const [ax, az] = edge.along;
+  const [nx, nz] = edge.out;
+  const at = (u, y) => [ox + ax * u - nx * depth, y, oz + az * u - nz * depth];
+  const { u0, u1, y1 } = hole;
+  const y0 = y1 - (y1 - hole.y0) * Math.max(0, Math.min(1, share));
+  // Wound to face out of the opening, the way the backing panel is.
+  if (edge.out[0] + edge.out[1] > 0) s.quad(at(u0, y0), at(u1, y0), at(u1, y1), at(u0, y1));
+  else s.quad(at(u0, y1), at(u1, y1), at(u1, y0), at(u0, y0));
 }
 
 /** Where the windows go on one edge: one per bay, per storey. */
@@ -178,6 +210,14 @@ export function buildFacade(spec) {
   const reveals = sink();
   const glazing = sink();
   const lit = sink();
+  // What is behind the glass (S7). A bucket a tone, because the baker merges
+  // by colour: a street of one curtain colour is a hotel, and three tones is
+  // three parts a chunk rather than one part a window.
+  const curtains = [];
+  for (let i = 0; i < CURTAIN_TONES; i += 1) curtains.push(sink());
+  const blinds = sink();
+  const shopBack = sink();
+  const shopShelf = sink();
 
   for (const edge of spec.edges) {
     const geom = EDGES[edge.side];
@@ -205,19 +245,45 @@ export function buildFacade(spec) {
       // and the choice stays deterministic from the id so the same windows are
       // lit between frames and between two players' cities.
       const share = spec.state?.lit ?? 1 / 3;
-      const pick = ((spec.id * 7 + (hole.floor ?? 0) * 13 + (hole.bay ?? 0) * 5) % 100) / 100;
-      const target = hole.door ? glazing
-        : hole.shop ? lit
-          : (pick < share ? lit : glazing);
+      // Which windows are lit is a decision, and it lives with the rest of them
+      // in `client/world/windows.js` now (S7) — so the light and the dressing
+      // agree: a lit window with a curtain across it is a glow, not a pane.
+      const alight = windowLit(spec.id, hole, share);
+      const target = hole.door ? glazing : alight ? lit : glazing;
       // One face, pointing out through the opening.
       if (geom.out[0] + geom.out[1] > 0) target.quad(back[0], back[1], back[2], back[3]);
       else target.quad(back[3], back[2], back[1], back[0]);
+
+      // And what stands in front of it (S7): a curtain, a blind pulled part of
+      // the way down, a shop's back wall and its shelf. Two triangles each, in
+      // the opening the reveal already cut.
+      const dress = windowTreatment(spec.id, hole);
+      const face = { ...geom, length: edge.length };
+      if (dress.kind === "curtain") {
+        dressing(curtains[dress.tone], face, origin, hole, DEPTH - INSET);
+      } else if (dress.kind === "blind") {
+        dressing(blinds, face, origin, hole, DEPTH - INSET, dress.drop);
+      } else if (dress.kind === "shop") {
+        // A room, not a pane: the back wall set further in than the glass, with
+        // a shelf across the bottom third of it.
+        dressing(shopBack, face, origin, hole, DEPTH - INSET);
+        dressing(shopShelf, face, origin,
+          { ...hole, y1: hole.y0 + (hole.y1 - hole.y0) * 0.38 }, DEPTH - INSET - 0.02);
+      }
     }
   }
 
   out.push({ part: walls.done(), colour: spec.wall });
   out.push({ part: reveals.done(), colour: trim });
   out.push({ part: glazing.done(), colour: glass });
+  // The dressing, behind the glass. Curtain tones are the wall's own colour
+  // lifted toward a warm cream, so a street's curtains belong to their houses.
+  for (let i = 0; i < CURTAIN_TONES; i += 1) {
+    out.push({ part: curtains[i].done(), colour: curtainTone(spec.wall, i) });
+  }
+  out.push({ part: blinds.done(), colour: 0xcfc8ba });
+  out.push({ part: shopBack.done(), colour: 0x4a4038 });
+  out.push({ part: shopShelf.done(), colour: 0x8d7f6d });
   // `emissive` puts these in their own bucket with their own material, whose
   // intensity is zero until the night rig turns it up (E6).
   out.push({ part: lit.done(), colour: glass, options: { emissive: 0xffdca8 } });
