@@ -853,7 +853,10 @@ export function createRenderer(canvas, state, options = {}) {
       // a car costs one instance whether it is driving or parked, and the
       // budget's measurement loop sees it either way.
       if (plan.cars !== false && drawOptions.life !== false) {
-        traffic.pose(pools, pushInstance, CAR_COLOURS, bounds);
+        // `near` when a tile is wide enough on screen for a car to be more
+        // than a smear: the same threshold the ladder uses to decide that
+        // street detail is resolvable at all (B3a).
+        traffic.pose(pools, pushInstance, CAR_COLOURS, bounds, tilePixels(view, canvas.height) >= 60);
         // Settle the pools AGAIN. The moving cars go into the same pools as the
         // parked ones and they go in after `updateInstances` has already
         // written `visible = mesh.count > 0` — so on a street with no parked

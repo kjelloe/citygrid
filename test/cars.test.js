@@ -18,6 +18,10 @@
 // screenshot's job.
 
 import test from "node:test";
+// One pool per BODY, from the list the kit builds them from (B3a): naming
+// `car0` and `car1` here is the variant count written down a third time, and
+// a car whose pool is missing is posed and not counted.
+import { BODY_NAMES } from "../client/world/vehicle-spec.js";
 import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
@@ -355,7 +359,7 @@ test("only the cars on screen are posed, and the count agrees with the pose", ()
   assert.ok(near > 0 && near < all, `${near} of ${all} cars are in the box`);
 
   const posed = [];
-  const pools = { car0: {}, car1: {} };
+  const pools = Object.fromEntries(BODY_NAMES.map((_, i) => [`car${i}`, {}]));
   const push = (pool, x, y, z) => posed.push({ x, y, z });
   assert.equal(traffic.pose(pools, push, [0xffffff], bounds), near,
     "the pose and the count disagree, which is what makes the budget wrong");
@@ -369,7 +373,7 @@ test("no bounds means the whole city, so nothing else has to know about this", (
   const { state, model } = highway(200);
   const traffic = createTraffic(state, model, { cap: 200 });
   run(traffic, 20);
-  const pools = { car0: {}, car1: {} };
+  const pools = Object.fromEntries(BODY_NAMES.map((_, i) => [`car${i}`, {}]));
   let posed = 0;
   assert.equal(traffic.pose(pools, () => { posed += 1; }, [0xffffff]), traffic.count());
   assert.equal(posed, traffic.count());
@@ -833,7 +837,7 @@ test("the traffic is the same city whatever the camera is doing", () => {
   const { state, model } = tee(28);
   const a = createTraffic(state, model, { cap: 600 });
   const b = createTraffic(state, model, { cap: 600 });
-  const pools = { car0: fakePool(), car1: fakePool() };
+  const pools = Object.fromEntries(BODY_NAMES.map((_, i) => [`car${i}`, fakePool()]));
   const tiny = { x0: 0, y0: 0, x1: 1, y1: 1 };
   const whole = { x0: 0, y0: 0, x1: 27, y1: 27 };
   for (let step = 0; step < 30 * 30; step += 1) {
@@ -902,7 +906,7 @@ test("a phase nobody set is an ordinary day", () => {
 /** Poses one frame and returns where each pool's instances went. */
 function lamps(traffic, bounds) {
   const seen = { body: [], carBrake: [], carTurn: [] };
-  const pools = { car0: "car0", car1: "car1", carBrake: "carBrake", carTurn: "carTurn" };
+  const pools = { ...Object.fromEntries(BODY_NAMES.map((_, i) => [`car${i}`, `car${i}`])), carBrake: "carBrake", carTurn: "carTurn" };
   traffic.pose(pools, (pool, x, y, z) => {
     if (pool === "carBrake" || pool === "carTurn") seen[pool].push({ x, y, z });
     else seen.body.push({ x, y, z });
@@ -937,7 +941,7 @@ test("the pools are optional, so a caller that has not made them still poses", (
   const { state, model } = tee(28);
   const traffic = createTraffic(state, model, { cap: 200 });
   run(traffic, 20);
-  const pools = { car0: fakePool(), car1: fakePool() };
+  const pools = Object.fromEntries(BODY_NAMES.map((_, i) => [`car${i}`, fakePool()]));
   assert.equal(traffic.pose(pools, fakePush, [0xffffff]), traffic.count());
 });
 

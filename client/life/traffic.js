@@ -16,6 +16,7 @@
 // `client/world/`.
 
 import { jitter } from "../world/hash.js";
+import { BODY_NAMES } from "../world/vehicle-spec.js";
 import { getConfig } from "../world/config.js";
 import { rushScale, tideAt } from "../world/rush.js";
 import { doorPoint } from "../world/street-furniture.js";
@@ -389,7 +390,10 @@ export function createTraffic(state, model, options = {}) {
     nextId += 1;
     const car = {
       id, link: link.id, s: at.s, v: at.v, v0,
-      variant: jitter(id, 23) > 0.5 ? 1 : 0,
+      // From the same list the kit builds its pools from (B3a). It was
+      // `> 0.5 ? 1 : 0` — two variants written down twice, so the third body
+      // would have been a pool nothing ever drew (V6's lesson).
+      variant: Math.floor(jitter(id, 23) * BODY_NAMES.length) % BODY_NAMES.length,
       colour: Math.floor(jitter(id, 29) * 6),
     };
     cars.push(car);
@@ -883,7 +887,7 @@ export function createTraffic(state, model, options = {}) {
 
     /** Writes every car into the instanced pools, in TILE units — the pools are
      * still in tiles until V5 moves the camera to metres. */
-    pose(pools, push, colours, bounds) {
+    pose(pools, push, colours, bounds, near = false) {
       const tileM = model.tileM;
       let posed = 0;
       const brakePool = pools.carBrake;
@@ -903,7 +907,10 @@ export function createTraffic(state, model, options = {}) {
         if (!link) continue;
         if (!onScreen(link, bounds)) continue;
         lanes.sample(link, car.s, out);
-        const pool = pools[`car${car.variant}`];
+        // The near kit where a car is more than a few pixels, the silhouette
+        // otherwise (B3a): one pool a body either way, so the cap and the
+        // count are unchanged.
+        const pool = (near && pools[`car${car.variant}_near`]) || pools[`car${car.variant}`];
         if (!pool) continue;
         // Local +x runs along the car; rotating by θ about Y sends it to
         // (cos θ, −sin θ) in world x, z.

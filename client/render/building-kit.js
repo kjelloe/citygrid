@@ -21,6 +21,7 @@ import {
 import { variantFor, VARIANTS } from "../world/params.js";
 import { civicShape, civicHeight, shadeOf, CIVIC_DEFS } from "../world/civic-spec.js";
 import { hasPorchAtL2 } from "../world/house-spec.js";
+import { vehicleSpec, BODY_NAMES } from "../world/vehicle-spec.js";
 import { cityFigure } from "../world/figure.js";
 import { TREE_KINDS } from "../world/foliage.js";
 
@@ -567,18 +568,64 @@ function lamp() {
 
 /** A parked car: body, cabin and a colour flash on the roof, which is exactly
  * what the transport-world reference does to make traffic readable. */
+/** A wheel: a drum lying on its side, its axle along z (B3a).
+ *
+ * The OUTER face only — the inside of a wheel is never seen from a pavement,
+ * and at six sides a cap is a sixth of the car's whole budget.
+ */
+function addWheel(parts, cx, cy, cz, radius, width, sides, tint = 0.3) {
+  const outward = cz >= 0 ? 1 : -1;
+  const z0 = cz - (width / 2) * outward;
+  const z1 = cz + (width / 2) * outward;
+  for (let i = 0; i < sides; i += 1) {
+    const a = (i / sides) * Math.PI * 2;
+    const b = ((i + 1) / sides) * Math.PI * 2;
+    const x0 = cx + Math.cos(a) * radius;
+    const y0 = cy + Math.sin(a) * radius;
+    const x1 = cx + Math.cos(b) * radius;
+    const y1 = cy + Math.sin(b) * radius;
+    // The tread, shaded by angle the way `addCylinder` does it — what gives a
+    // flat-shaded drum its roundness without a normal per vertex.
+    const face = tint * (0.7 + 0.3 * (0.5 + 0.5 * Math.sin(a)));
+    pushQuad(parts, [x0, y0, z0], [x1, y1, z0], [x1, y1, z1], [x0, y0, z1], face);
+    pushTri(parts, [cx, cy, z1], [x0, y0, z1], [x1, y1, z1], tint * 1.15);
+  }
+}
+
+/** A car, from `client/world/vehicle-spec.js` (B3a).
+ *
+ * Three bodies — hatchback, saloon, van — a cabin set in from the body with
+ * glass on both sides, and wheels that are round. 100 triangles against the
+ * item's 120 and the 76 of the two boxes this replaces; `triangleCost` in the
+ * spec is the same arithmetic, because node cannot load this file to count.
+ *
+ * At `detail` 1 it is the two-box silhouette it always was: from the air a car
+ * is four pixels, and V8's lesson is that detail nobody can see is a rung off
+ * the ladder for everybody else.
+ */
 function car(variant, detail = 2) {
   const parts = makeParts();
-  addBox(parts, -0.11, 0.012, -0.055, 0.11, 0.062, 0.055, 0.9);
-  addBox(parts, -0.045, 0.062, -0.048, 0.06, 0.098, 0.048, 0.78);
-  if (detail > 1) addPanel(parts, 2, 0.048, -0.04, 0.068, 0.055, 0.092, 0.3);
-  if (detail > 1) addPanel(parts, 0, 0.048, -0.04, 0.068, 0.055, 0.092, 0.3);
-  if (variant === 1) addBox(parts, -0.03, 0.098, -0.04, 0.045, 0.112, 0.04, 1.4);
-  // Wheels, dark and low.
-  for (const x of [-0.072, 0.072]) {
-    for (const z of [-0.058, 0.058]) {
-      addBox(parts, x - 0.022, 0, z - 0.012, x + 0.022, 0.026, z + 0.012, 0.3);
-    }
+  const spec = vehicleSpec(variant, BODY_NAMES[variant % BODY_NAMES.length]);
+  const M = 1 / 20;   // metres to tile units; `tileM` is 20 (data/cityviewer.json)
+  const hull = spec.hull;
+  if (detail <= 1) {
+    addBox(parts, hull.x0 * M, 0.012, -hull.halfW * M, hull.x1 * M, hull.y1 * M, hull.halfW * M, 0.9);
+    addBox(parts, spec.cabin.x0 * M, hull.y1 * M, -spec.cabin.halfW * M,
+      spec.cabin.x1 * M, spec.cabin.y1 * M, spec.cabin.halfW * M, 0.78);
+    return finish(parts);
+  }
+  addBox(parts, hull.x0 * M, hull.y0 * M, -hull.halfW * M,
+    hull.x1 * M, hull.y1 * M, hull.halfW * M, 0.9);
+  addBox(parts, spec.cabin.x0 * M, spec.cabin.y0 * M, -spec.cabin.halfW * M,
+    spec.cabin.x1 * M, spec.cabin.y1 * M, spec.cabin.halfW * M, 0.78);
+  // Glass, dark, on both flanks of the cabin.
+  for (const side of [0, 2]) {
+    addPanel(parts, side, spec.cabin.halfW * M,
+      (spec.cabin.x0 + 0.15) * M, (spec.cabin.y0 + 0.08) * M,
+      (spec.cabin.x1 - 0.15) * M, (spec.cabin.y1 - 0.1) * M, 0.3);
+  }
+  for (const w of spec.wheels) {
+    addWheel(parts, w.x * M, w.radius * M, w.z * M, w.radius * M, w.width * M, w.sides);
   }
   return finish(parts);
 }
@@ -638,7 +685,7 @@ export { VARIANTS };
 /** One pool per species, and the species are foliage.js's list — a second
  * copy of the number is a species nothing draws (V6's lesson, S5). */
 export const TREE_VARIANTS = TREE_KINDS.length;
-export const CAR_VARIANTS = 2;
+export const CAR_VARIANTS = BODY_NAMES.length;
 export const PED_VARIANTS = 2;
 export const TUFT_VARIANTS = 2;
 
@@ -687,9 +734,11 @@ export function carLampGeometry(kind) {
   return finish(parts);
 }
 
-export function carVariants() {
+/** One pool a body. `detail` 1 is the two-box silhouette the city camera has
+ * always drawn; 2 is B3a's kit, for the cars close enough to see. */
+export function carVariants(detail = 1) {
   const list = [];
-  for (let i = 0; i < CAR_VARIANTS; i += 1) list.push(car(i));
+  for (let i = 0; i < CAR_VARIANTS; i += 1) list.push(car(i, detail));
   return list;
 }
 

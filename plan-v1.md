@@ -414,6 +414,7 @@ by number from the code they create.
 | Q107 | The smoke has never drawn a visible pixel (a varying carried a length, not a vector); fixed in B1b — is the column enough of a fire? | Kjell — an art call, now judgeable for the first time |
 | Q108 | `building.flags` is hashed state nothing writes; three client modules read it and always got 0 | Kjell — remove it or write it; an engine decision |
 | Q109 | Wrecked, storm and flood damage have no state to read, so B1b drew burning and ruined and stopped | Kjell — engine state and a schema change, a slice of its own |
+| Q110 | The frame's estimate prices every car on a visible link, not the cars actually posed — a 21% over-estimate that B3a exposed | Kjell — a measurement-lane slice; an over-charging estimate sacrifices detail silently |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

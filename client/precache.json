@@ -1,6 +1,6 @@
 {
- "version": "d96b30e5bf10",
- "generated": "2026-09-23",
+ "version": "08ec5b7ddc99",
+ "generated": "2026-09-24",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -125,6 +125,7 @@
   "./client/world/rush.js",
   "./client/world/signals.js",
   "./client/world/street-furniture.js",
+  "./client/world/vehicle-spec.js",
   "./client/world/water.js",
   "./client/world/windows.js",
   "./data/balance.json",

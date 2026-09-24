@@ -473,7 +473,11 @@ test("the cars are posed into the pools the parked ones use", () => {
   // One instance per car whether it is driving or parked, so the measured
   // budget sees it either way (ruling 019).
   const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
-  assert.match(scene, /traffic\.pose\(pools, pushInstance, CAR_COLOURS, bounds\)/);
+  // What the line has to be TRUE about, not the characters it is spelled with
+  // (K3's lesson): the cars are posed through the traffic module, into the same
+  // pools and with the same instance pusher the parked ones use, and against
+  // the camera's bounds. B3a added a fifth argument and this went red for it.
+  assert.match(scene, /traffic\.pose\(\s*pools,\s*pushInstance,\s*CAR_COLOURS,\s*bounds/);
   assert.match(instances, /export function pushInstance\(/, "there is no way to add an instance");
   assert.match(scene, /plan\.cars !== false/, "the cars ignore the LOD plan");
 });

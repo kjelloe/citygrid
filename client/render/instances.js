@@ -196,10 +196,17 @@ export function createInstances(scene, styleName = "plain") {
     measured.tree[tier] = Math.round(treeSample / trees.length);
   }
   const cars = carVariants();
+  // The near kit, one pool a body (B3a). The item's own rule: "the L2 pool
+  // keeps its two-box silhouette" — a car from the air is four pixels, and a
+  // hundred triangles each puts the frame's ESTIMATE 28% over what it draws,
+  // which costs the whole city a rung of the ladder (the over-charging half of
+  // ruling 019's amendment).
+  const nearCars = carVariants(2);
   // Twice what the parked cars ever needed: the moving ones (V1) share these
   // pools, and the High tier does not cap them. A pool that overflows drops
   // instances silently, which reads as cars vanishing at the edge of a jam.
   for (let v = 0; v < cars.length; v += 1) make(`car${v}`, cars[v], 0xffffff, 12000);
+  for (let v = 0; v < nearCars.length; v += 1) make(`car${v}_near`, nearCars[v], 0xffffff, 2000);
   // People (E7). A quarter of the cars' capacity: the tier caps them at 120 at
   // High and the pool is shared by nothing else, but a pool that overflows
   // drops instances silently — which reads as pedestrians blinking out of a
@@ -292,6 +299,8 @@ export function createInstances(scene, styleName = "plain") {
   ];
   setCosts({
     ...measured,
+    // The SILHOUETTE's cost, because that is what the far cars are drawn with
+    // and the far cars are what a frame is full of (B3a).
     car: Math.round(propSample.slice(1, 1 + cars.length).reduce((a, b) => a + b, 0) / cars.length),
     ped: Math.round(peds.map(triangleCount).reduce((a, b) => a + b, 0) / peds.length),
     pedCity: triangleCount(pools.pedCity.geometry),

@@ -6797,3 +6797,53 @@ the point, and it is restrained enough that you notice the street rather than th
 pavement, and the lit ones are not the same ones on every house.
 
 **Next:** B3 — service vehicles, per P70's order.
+
+## slice-B3a — a car you can look at (2026-09-24)
+
+**What it is.** B3's amendment, which asks for a car kit before the service vehicles: "from the
+pavement a car is two boxes and the least detailed thing in a frame that now has chimneys, shutters
+and zebra bars". `client/world/vehicle-spec.js` (pure, 6 tests) is three bodies — hatchback, saloon
+and van — in metres: a hull sitting on its wheels, a cabin set into it with glass on both flanks,
+and four six-sided wheels. **100 triangles**, against the item's ceiling of 120 and the 76 of the
+two boxes it replaces; `triangleCost` is the same arithmetic the kit spends, because the kit imports
+three and node cannot load it to count for itself.
+
+**Six sides, not the item's eight.** Eight with an outer cap is 24 triangles a wheel and puts a car
+at 124 — over the item's own budget. The arithmetic is in the spec beside the number.
+
+**Two pools a body, and that is the interesting half.** With the kit in every pool the frame's
+estimate went **28% over** what it actually drew at ortho span 10 and `budget_gate` failed. The
+item had already said why: *"the L2 pool keeps its two-box silhouette"*. So `car{v}` is the
+silhouette and `car{v}_near` is the kit, chosen at 60 px a tile — the same threshold the ladder uses
+to decide street detail is resolvable at all. The estimate then reads **0% out** at that span.
+
+**And that number says something the gate had never noticed.** Before B3a the same estimate was
+**21% out** — inside the 25% tolerance, so nothing reported it. The cause is not the car's cost but
+the car's COUNT: `traffic.count(bounds)` prices every car whose link is on screen while the poser
+draws the ones in view. A cheaper car made the same counting error affordable. **Q110**, for the
+measurement lane, because an over-charging estimate is not harmless — the correction loop only steps
+down, so it sacrifices detail the frame had room for.
+
+**Two numbers written down twice, found on the way.**
+- `client/life/traffic.js` picked a variant with `jitter(id, 23) > 0.5 ? 1 : 0` — two bodies, hard
+  coded, so the third would have been a pool nothing ever drew (V6's lesson). It reads `BODY_NAMES`
+  now, which is also where the kit's `CAR_VARIANTS` comes from.
+- `test/cars.test.js` built its fake pools as `{ car0, car1 }`, a third copy of the same number, and
+  three tests went red because a car with the new body had no pool to be posed into. The fixture
+  derives them from `BODY_NAMES` too.
+
+**And a test that transcribed a line.** `test/render.test.js` asserted the exact text
+`traffic.pose(pools, pushInstance, CAR_COLOURS, bounds)`, so adding a fifth argument broke it. It
+asserts what the line has to be true ABOUT now — posed through the traffic module, into the same
+pools, with the same pusher, against the camera's bounds (K3's lesson, again).
+
+**Measured.** Suite **1,392 green twice**. Render **298 s of 300** (`budget_gate` 235 s, and the set
+is now two seconds under its budget — M2's rule says the next slice that pushes it over splits
+`budget_gate` into a set of its own). Quick **11 of 11, 394 s of 480**.
+
+**What the pictures say**, looked at: `smoke-B4-morning.png` and `smoke-B4-night.png`, re-shot with
+the kit — at the twenty metres a street camera stands from the nearest car, a car reads as a car
+with a cabin and a windscreen, and the wheels are a couple of pixels. The kit earns its triangles
+inside about ten metres, which is where a player walking a pavement meets one.
+
+**Next:** S8 — the compare sheet row by row, per P70's order, and then B3b's service vehicles.
