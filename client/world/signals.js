@@ -155,7 +155,7 @@ function armsOf(model, node) {
  */
 export function signalHeads(model, node, cfg = getConfig()) {
   if (!node || !model.lanes.signals.has(node.id)) return [];
-  const half = cfg.road.width / 2;
+  const half = node.half ?? cfg.road.width / 2;
   const box = half + cfg.road.sidewalk;
   const kerb = half + cfg.road.sidewalk / 2;
   const out = [];
@@ -263,7 +263,7 @@ export function crossingBars(model, node, cfg = getConfig()) {
   // Where a signal or a door demand is (S3): T1 kept the bars at every
   // junction, and the review after S5 saw a grid of white bars from the air.
   if (!crossingWanted(model, node, cfg)) return [];
-  const half = cfg.road.width / 2;
+  const half = node.half ?? cfg.road.width / 2;
   const box = half + cfg.road.sidewalk;
   const out = [];
   for (const arm of armsOf(model, node)) {
@@ -298,11 +298,14 @@ export function crossingBars(model, node, cfg = getConfig()) {
  */
 export function stopMarks(model, node, cfg = getConfig()) {
   if (!node || !isSignalled(node, model.corridors, cfg)) return [];
-  const laneHalf = cfg.road.width / 4;
   const behindZebra = BARS * BAR_W * 2.2 / 2 + BAR_W + 0.4;
   const out = [];
   for (const link of model.lanes?.links ?? []) {
     if (link.kind !== "block" || link.to !== node.id) continue;
+    // Across the one LANE that arrives, which on an avenue is a third of the
+    // carriageway rather than half of it (T1b).
+    const street = model.corridors[link.corridor];
+    const laneHalf = street ? (street.half - street.median / 2) / (2 * street.lanes) : cfg.road.width / 4;
     const n = link.pts.length / 3;
     if (n < 2) continue;
     const px = link.pts[(n - 1) * 3];

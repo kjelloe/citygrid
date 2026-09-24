@@ -9,16 +9,25 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { tileIndex, lineTiles, rectTiles, toRuns, runsLength } from "../client/input/runs.js";
 import { createGestures, down, move, up, cancel } from "../client/input/gestures.js";
-import { TOOLS, toolCommand, isAreaTool } from "../client/input/tools.js";
+import { TOOLS, toolCommand, isAreaTool, buildCommand } from "../client/input/tools.js";
+import { createState } from "../engine/state.js";
+import { defaultOptions } from "../engine/options.js";
+import { apply } from "../engine/reducer.js";
+import { price } from "../engine/build-commands.js";
+import { buildCost } from "../engine/rules.js";
+import { RESULT } from "../shared/protocol.js";
+import { NET_AVENUE } from "../client/constants-mirror.js";
+import "../engine/build-commands.js";
 import {
   HELD_KEYS, heldFor, panStep, turnStep, zoomFactor, turnMode, nearestYawStep,
   FAST_MULTIPLIER, FREE_TURN_SECONDS,
 } from "../client/input/held.js";
 import { CAMERA_BUTTONS, PAN_SECONDS, TURN_PER_SECOND } from "../client/ui/camera-model.js";
-import { AREA_COMMANDS, isAreaCommand } from "../engine/commands.js";
+import { AREA_COMMANDS, isAreaCommand, CMD_JOIN } from "../engine/commands.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
+import { tileAt, encodeRuns } from "../shared/grid.js";
 
 // --- tile trails ------------------------------------------------------------
 
@@ -533,4 +542,30 @@ test("case does not decide whether a key works", () => {
   assert.equal(heldFor("q").id, "rotate-left");
   assert.equal(heldFor("E").id, "rotate-right");
   assert.equal(heldFor("k"), undefined);
+});
+
+// --- the avenue tool (T1b) ---------------------------------------------------
+
+test("the avenue tool sends the same command with a kind, and the reducer widens for it", () => {
+  // Ruling 026: a capability with no control is not a feature. T1a gave the
+  // engine a second road kind and only the deputy could ask for one.
+  const cells = [tileAt(8, 1, 1), tileAt(8, 2, 1), tileAt(8, 3, 1)];
+  const command = buildCommand("avenue", 1, { runs: encodeRuns(cells) });
+  assert.equal(command.type, toolCommand("road"), "the avenue is not a second command");
+  assert.equal(command.kind, "avenue");
+  assert.equal(buildCommand("road", 1, { runs: encodeRuns(cells) }).kind, undefined,
+    "a plain road carries a kind it did not ask for");
+
+  const state = createState(defaultOptions({ width: 8, height: 8, seed: 3 }));
+  apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "One" });
+  assert.equal(apply(state, command).result, RESULT.OK);
+  for (const i of cells) {
+    assert.ok((state.tiles.road[i] & NET_AVENUE) !== 0, `tile ${i} is a plain road`);
+  }
+  // And it is quoted at the avenue's price before it is issued, which is what
+  // the toolbar shows while the pointer is down.
+  const fresh = encodeRuns([tileAt(8, 1, 3), tileAt(8, 2, 3), tileAt(8, 3, 3)]);
+  const quote = price(state, { type: command.type, actor: 1, runs: fresh }, TOOLS.avenue.priceKind);
+  assert.equal(quote.cost, 3 * buildCost(state, "avenue"));
+  assert.ok(quote.cost > 3 * buildCost(state, "road"), "an avenue quoted at a road's price");
 });

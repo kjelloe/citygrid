@@ -132,7 +132,7 @@ export function createGround(state, network) {
         // `maxGrade` at or below zero turns the whole thing off, junction boxes
         // included, which is what lets a gate shoot the before and the after
         // from one harness (R3).
-        flatEnds: maxGrade > 0 ? cfg.road.width / 2 + cfg.road.sidewalk : 0,
+        flatEnds: maxGrade > 0 ? c.frontage : 0,
         ends: [nodeHeight.get(c.from) ?? landAt(c.points[0].x, c.points[0].z),
           nodeHeight.get(c.to) ?? landAt(c.points[c.points.length - 1].x, c.points[c.points.length - 1].z)],
       });
@@ -166,8 +166,9 @@ export function createGround(state, network) {
       for (const n of network.nodes) {
         if (n.corridors.length > 0 && n.kind !== "isolated") continue;
         const d = Math.max(Math.abs(x - n.x), Math.abs(z - n.z));
-        if (d > network.half + blend) continue;
-        const w0 = 1 - sstep(network.half, network.half + blend, d);
+        const half = n.half ?? network.half;
+        if (d > half + blend) continue;
+        const w0 = 1 - sstep(half, half + blend, d);
         wsum += w0 * w0;
         hsum += w0 * w0 * landAt(n.x, n.z);
       }

@@ -74,11 +74,10 @@ function pushOut(b, x, z, r) {
  */
 function furnitureOf(model) {
   const cfg = getConfig();
-  const offset = lampOffset(cfg);
   const lamps = [];
   for (const corridor of model.corridors) {
     for (const lamp of lampsAlong(
-      corridor.points, offset, cfg.props.lampSpacing, cfg.props.lampH, model.heightAt,
+      corridor.points, lampOffset(cfg, corridor.half), cfg.props.lampSpacing, cfg.props.lampH, model.heightAt,
     )) lamps.push(lamp);
   }
   const fronts = model.lots

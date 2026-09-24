@@ -25,7 +25,7 @@ import { repoRoot } from "./helpers/sources.js";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { TICKS_PER_YEAR, ZONE_RESIDENTIAL, FLAG_POWERED, TERRAIN_WATER } from "../engine/constants.js";
-import { NET_PRESENT } from "../engine/network.js";
+import { NET_PRESENT, NET_AVENUE } from "../engine/network.js";
 
 function blank() {
   const state = createState(defaultOptions({ seed: 3, width: 8, height: 8, seats: 1 }));
@@ -173,6 +173,21 @@ test("the inspector describes the tile it was asked about", () => {
   assert.equal(report.powered, true);
   assert.equal(report.watered, false);
   assert.ok(report.rows.some((r) => r.labelKey === "inspect.landValue"), "land value should be reported");
+});
+
+test("the inspector tells a road from an avenue (T1)", () => {
+  // The kind bit costs more, carries more and is drawn wider. A player who
+  // cannot find out which one they are looking at has to count lanes.
+  const state = blank();
+  const street = 3 * state.width + 2;
+  const avenue = 3 * state.width + 3;
+  state.tiles.road[street] = NET_PRESENT;
+  state.tiles.road[avenue] = NET_PRESENT | NET_AVENUE;
+  assert.equal(inspect(state, 2, 3).road, true);
+  assert.equal(inspect(state, 2, 3).avenue, false);
+  assert.equal(inspect(state, 3, 3).avenue, true);
+  assert.equal(inspect(state, 4, 3).road, false);
+  assert.equal(inspect(state, 4, 3).avenue, false);
 });
 
 test("the inspector refuses a tile off the map rather than reading past the array", () => {

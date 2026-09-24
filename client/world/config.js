@@ -25,6 +25,13 @@ export const DEFAULTS = Object.freeze({
     // L3 only (E3): how far the kerb steps up from the carriageway, how much
     // the road is crowned, and how far the carriageway sits above the ground.
     kerb: 0.15, camber: 0.035, lift: 0.02,
+    // The second road kind (T1). `width` is the whole carriageway, `median`
+    // the strip down the middle of it, so a lane is (width - median) / (2 ×
+    // lanes) = 3 m. Fourteen and not more: the pavement and the verge live in
+    // the same twenty-metre tile, and 14 + 2 × 2.5 leaves half a metre of
+    // verge either side. `median: 0` would be a dual carriageway with nothing
+    // between the two halves, which is a wide road, not an avenue.
+    avenue: { width: 14, lanes: 2, median: 2 },
   },
   // Poles and their sagging spans at L3 (E3, spec §5.4).
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },

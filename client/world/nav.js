@@ -37,8 +37,8 @@ import { doorPoint } from "./street-furniture.js";
 const AXIS = ["ns", "ew", "ns", "ew"];   // DIR4 order: N, E, S, W
 
 /** How far from the centre line a pavement runs: the middle of the footway. */
-export function WALK_OFFSET(cfg = getConfig()) {
-  return cfg.road.width / 2 + cfg.road.sidewalk / 2;
+export function WALK_OFFSET(cfg = getConfig(), half = cfg.road.width / 2) {
+  return half + cfg.road.sidewalk / 2;
 }
 
 /** Which arm of a node a point lies on, in DIR4 order. */
@@ -57,12 +57,12 @@ function armOf(node, x, z) {
 
 export function deriveNav(state, model) {
   const cfg = getConfig();
-  const offset = WALK_OFFSET(cfg);
+
   // The pavement's surface, not the ground: E3 lays the carriageway a `lift`
   // above the height field and the footway a kerb above that, so a person
   // reading `heightAt` would walk with their ankles in the pavement.
   const surface = (x, z) => model.heightAt(x, z) + cfg.road.lift + cfg.road.kerb;
-  const clear = cfg.road.width / 2 + cfg.road.sidewalk;
+  const clearAt = (corridor) => corridor.half + cfg.road.sidewalk;
 
   const nodes = [];
   const edges = [];
@@ -97,8 +97,11 @@ export function deriveNav(state, model) {
   // --- the pavements ----------------------------------------------------------
   for (const corridor of model.corridors) {
     for (const side of [-1, 1]) {
-      const line = offsetPolyline(corridor.points, offset * side);
-      const cut = trim(line, clear, clear);
+      // The pavement of THIS street: an avenue's is three metres further out
+      // than a street's, and a nav graph that does not know it walks people up
+      // the outside lane (T1b).
+      const line = offsetPolyline(corridor.points, WALK_OFFSET(cfg, corridor.half) * side);
+      const cut = trim(line, clearAt(corridor), clearAt(corridor));
       if (cut.length < 2) continue;
       const packed = packWithHeight(cut, surface);
       if (packed.len < 1e-6) continue;
@@ -144,14 +147,18 @@ export function deriveNav(state, model) {
   // north up one street and turning east walks over the corner, not across two
   // roads. The distance test is what keeps it from joining opposite corners of
   // a crossroads, which would be a diagonal through the traffic.
-  const cornerReach = (cfg.road.width / 2 + cfg.road.sidewalk) * 1.6;
+  // PER NODE since T1: a fixed reach taken from the avenue's width joins the
+  // opposite corners of an eight-metre crossroads, which is a pavement edge
+  // diagonally through the traffic.
+  const reachAt = (id) => ((model.nodes[id]?.half ?? cfg.road.width / 2) + cfg.road.sidewalk) * 1.6;
   const byNode = new Map();
   for (const [key, id] of corners) {
     const at = Number(key.split(":")[0]);
     const list = byNode.get(at);
     if (list) list.push({ key, id }); else byNode.set(at, [{ key, id }]);
   }
-  for (const list of byNode.values()) {
+  for (const [at, list] of byNode) {
+    const cornerReach = reachAt(at);
     for (let i = 0; i < list.length; i += 1) {
       for (let j = i + 1; j < list.length; j += 1) {
         const [, ci] = list[i].key.split(":");

@@ -97,6 +97,16 @@ A corridor is a road run turned into a polyline with a width. From the road mask
 - Kinds: `road` now; `rail`, `path`, `pipe`/`wire` later share the structure with their own
   widths and surfaces (ruling 030: draw a hub and arms from the mask, never a tile patch).
 
+**Amended T1b (2026-09-24), the second road kind.** `half`, `frontage`, `lanes` and `median` are
+the CORRIDOR's, read from `road.avenue` in `data/cityviewer.json` when the run carries
+`NET_AVENUE` and from `road` when it does not — a corridor has one cross-section from end to end,
+because it is what the ribbon is built at, what a lot fronts, what the ground flattens under and
+what the lane offsets are measured from. A run that changes kind mid-street therefore becomes two
+corridors with a **seam** node between them, at the first avenue tile, and a node carries the half
+and frontage of the widest corridor at it (the junction box, the signal heads and the flatten all
+step out from a node's middle). Anything that measured the road from `cfg.road.width` measured a
+street and put something in an avenue's carriageway; the list is in `workitems-transport.md` §T1.
+
 Corridors are what `surfaceAt` answers with, what plots are laid along, what the lane graph is
 built on, and what the walkthrough gate steers by. One definition, four consumers.
 
@@ -145,6 +155,17 @@ Both derived from corridors and lots, both in `client/world/`, both plain data:
 `client/world/lanes.js`. One lane each way per corridor at `width / (2 × lanes)` offset to the
 **right** of the centreline (travelling north the lane is on the east side), trimmed short at
 each end, and every legal manoeuvre through a node as a curve.
+
+**Amended T1b:** `lanes` and the offset are the corridor's, so an avenue is `lanes` links each way
+at `median / 2 + laneW × (k + ½)`, counted from the middle of the road outward — lane 0 is beside
+the median and lane `of − 1` is at the kerb. At a JUNCTION the kerbside lane turns right and the
+inner one turns left; going straight on you keep your lane, mapped to the nearest lane the far
+side has. Anywhere that is not a junction — a bend, a seam — only the mapping applies, because a
+bend's turn is labelled left or right and refusing it would dead-end the outer lane. A lane the far
+side has spare is fed by the nearest lane on this one, or it would start mid-street with nothing
+behind it. On a one-lane street every lane is both the inner and the kerbside one, so the rule is
+vacuous and the graph is the one E1 built. A seam's connector is a TAPER of `corridor.half`, long
+enough that a merging lane moves across rather than stepping sideways.
 
 Three things the implementation settled that the paragraph above did not:
 

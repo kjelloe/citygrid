@@ -181,60 +181,79 @@ const AMBER = 3;
 
 export function deriveLanes(state, network, ground) {
   const cfg = getConfig();
-  const { lanes: perDir, stopLine } = cfg.road;
-  const laneW = cfg.road.width / (2 * perDir);
+  const { stopLine } = cfg.road;
   const nodeById = new Map(network.nodes.map((n) => [n.id, n]));
 
   const links = [];
   const lanes = [];
 
-  // --- one lane each way along every corridor --------------------------------
+  // --- a lane per direction per kind along every corridor ---------------------
   for (const corridor of network.corridors) {
     // Once per corridor, shared by both directions.
     const profile = profileOf(corridor, ground);
     const corridorLen = lengthOf(corridor.points);
+    // The carriageway on ONE side of the median, split into lanes (T1). A
+    // street has no median and one lane, so this is the old `width / 2` and
+    // an offset of half a lane; an avenue's inner lane starts at the median's
+    // edge, which is what keeps the two halves apart in the picture and in
+    // the graph at once.
+    const perDir = corridor.lanes;
+    const laneW = (corridor.half - corridor.median / 2) / perDir;
     for (const dir of [0, 1]) {
       const along = dir === 0 ? corridor.points : [...corridor.points].reverse();
       if (along.length < 2) continue;
       const from = dir === 0 ? corridor.from : corridor.to;
       const to = dir === 0 ? corridor.to : corridor.from;
-      const centre = offsetPolyline(along, laneW / 2);
-      // Short of the junction BOX, not of the node's centre point. With a 4 m
-      // lane offset and a 2 m stop line the two are the same distance, so a
-      // right turn's two endpoints coincided and the connector came out zero
-      // metres long — a car would have teleported round every corner, and the
-      // only symptom was six connectors at a T arriving as two.
-      //
-      // An `end` node has no box to keep clear: the road simply stops there.
-      const clear = (nodeId) => {
-        const kind = nodeById.get(nodeId)?.kind;
-        return (kind === "junction" || kind === "bend") ? corridor.half + stopLine : stopLine;
-      };
-      const cut = trim(centre, clear(from), clear(to));
-      if (cut.length < 2) continue;
-      // Where this lane starts on its corridor, and how much of it the lane
-      // covers between the two stop lines (R4). Computed here rather than in
-      // the link literal below, because `packAlong` needs them too — and a
-      // second copy of "where does this lane start" is exactly the arithmetic
-      // that went wrong.
-      const s0 = dir === 0 ? clear(from) : corridorLen - clear(from);
-      const dirSign = dir === 0 ? 1 : -1;
-      const covers = Math.max(0, corridorLen - clear(from) - clear(to));
-      const packed = packAlong(cut, profile, { s0, dirSign, run: covers });
-      if (packed.len < 1e-6) continue;
-      const lane = { id: lanes.length, corridor: corridor.id, dir, from, to };
-      lanes.push(lane);
-      links.push({
-        id: links.length, kind: "block", lane: lane.id, corridor: corridor.id, dir,
-        from, to, tiles: dir === 0 ? corridor.tiles : [...corridor.tiles].reverse(),
-        // Where this link starts on its CORRIDOR, and which way it runs along
-        // it. Recorded here because the derivation knows it and nothing else
-        // does: E7 has to turn "somebody is standing at this point" into "stop
-        // at this distance along this link", and the alternative is searching
-        // back through a polyline for a number that was in hand (A45).
-        s0, dirSign,
-        ...packed, next: [], preds: [], entry: false, exit: false, turn: "",
-      });
+      for (let k = 0; k < perDir; k += 1) {
+        const centre = offsetPolyline(along, corridor.median / 2 + laneW * (k + 0.5));
+        // Short of the junction BOX, not of the node's centre point. With a 4 m
+        // lane offset and a 2 m stop line the two are the same distance, so a
+        // right turn's two endpoints coincided and the connector came out zero
+        // metres long — a car would have teleported round every corner, and the
+        // only symptom was six connectors at a T arriving as two.
+        //
+        // An `end` node has no box to keep clear: the road simply stops there.
+        const clear = (nodeId) => {
+          const kind = nodeById.get(nodeId)?.kind;
+          if (kind === "junction" || kind === "bend") return corridor.half + stopLine;
+          // A seam is not a junction — the street runs straight through it — but
+          // the lane it runs into may be somewhere else across the width of the
+          // road, so the connector has to be long enough to be a TAPER rather
+          // than a step sideways. Half a carriageway is about twice the furthest
+          // a lane ever has to move, which is the shape a lane drop is (T1b).
+          if (kind === "seam") return corridor.half;
+          return stopLine;
+        };
+        const cut = trim(centre, clear(from), clear(to));
+        if (cut.length < 2) continue;
+        // Where this lane starts on its corridor, and how much of it the lane
+        // covers between the two stop lines (R4). Computed here rather than in
+        // the link literal below, because `packAlong` needs them too — and a
+        // second copy of "where does this lane start" is exactly the arithmetic
+        // that went wrong.
+        const s0 = dir === 0 ? clear(from) : corridorLen - clear(from);
+        const dirSign = dir === 0 ? 1 : -1;
+        const covers = Math.max(0, corridorLen - clear(from) - clear(to));
+        const packed = packAlong(cut, profile, { s0, dirSign, run: covers });
+        if (packed.len < 1e-6) continue;
+        const lane = { id: lanes.length, corridor: corridor.id, dir, index: k, of: perDir, from, to };
+        lanes.push(lane);
+        links.push({
+          id: links.length, kind: "block", lane: lane.id, corridor: corridor.id, dir,
+          // Which lane of how many, counted from the middle of the road outward
+          // — the rule at a junction is "the kerbside lane turns right, the
+          // inner one turns left", and it needs both numbers (T1b).
+          index: k, of: perDir,
+          from, to, tiles: dir === 0 ? corridor.tiles : [...corridor.tiles].reverse(),
+          // Where this link starts on its CORRIDOR, and which way it runs along
+          // it. Recorded here because the derivation knows it and nothing else
+          // does: E7 has to turn "somebody is standing at this point" into "stop
+          // at this distance along this link", and the alternative is searching
+          // back through a polyline for a number that was in hand (A45).
+          s0, dirSign,
+          ...packed, next: [], preds: [], entry: false, exit: false, turn: "",
+        });
+      }
     }
   }
 
@@ -278,6 +297,7 @@ export function deriveLanes(state, network, ground) {
         const fout = headingOut(out);
         const turn = turnOf(fin.x, fin.z, fout.x, fout.z);
         if (turn === "u") continue;
+        if (!lanesJoin(node, into, out, turn)) continue;
         const n = into.pts.length;
         const a = { x: into.pts[n - 3], z: into.pts[n - 1] };
         const b = { x: out.pts[0], z: out.pts[2] };
@@ -293,6 +313,31 @@ export function deriveLanes(state, network, ground) {
         into.next.push({ link: link.id, turn });
       }
     }
+  }
+
+  /**
+   * May a car in THIS lane make this manoeuvre? (T1b.)
+   *
+   * On a one-lane street every lane is both the inner one and the kerbside
+   * one, so this is true for everything and the graph is the one E1 built.
+   * With two lanes each way it is the rule a driver knows: the kerbside lane
+   * turns right, the inner lane turns left, and going straight on you keep
+   * your lane — mapped to the nearest lane the far side has when the two
+   * streets are not the same width.
+   *
+   * Everywhere that is NOT a junction — a bend, a seam where an avenue becomes
+   * a street — the road simply continues, so the turn's LABEL is meaningless
+   * (a bend is a left or a right) and only the lane mapping applies. A lane
+   * the far side has spare is fed by the nearest lane on this one, or a car
+   * would appear halfway down an avenue with nothing behind it.
+   */
+  function lanesJoin(node, into, out, turn) {
+    const keepLane = out.index === Math.min(into.index, out.of - 1)
+      || (out.index > into.of - 1 && into.index === into.of - 1);
+    if (node.kind !== "junction") return keepLane;
+    if (turn === "right") return into.index === into.of - 1 && out.index === out.of - 1;
+    if (turn === "left") return into.index === 0 && out.index === 0;
+    return keepLane;
   }
 
   /** Which arm of a node a link arrives by, as a DIR4 index. Taken from the

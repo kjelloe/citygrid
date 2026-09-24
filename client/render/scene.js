@@ -514,11 +514,15 @@ export function createRenderer(canvas, state, options = {}) {
     // the tile you picked IS the road tile, because the offset is then zero),
     // and facing across the street into a wall.
     const cfg = getConfig();
-    const kerbside = cfg.road.width / 2 + cfg.road.sidewalk / 2;
+    // This street's pavement, not a default one: on an avenue `width / 2` is
+    // the middle of the outside lane, and the walker arrived standing in the
+    // traffic with the median three metres away (T1b).
+    const half = near.corridor?.half ?? near.node?.half ?? cfg.road.width / 2;
+    const kerbside = half + cfg.road.sidewalk / 2;
     const tangent = tangentAt(near);
     let dx = x - near.x;
     let dz = z - near.z;
-    if (Math.hypot(dx, dz) < cfg.road.width / 2) {
+    if (Math.hypot(dx, dz) < half) {
       // Already over the carriageway: step onto the pavement on the side the
       // camera is coming from.
       const side = Math.sign(-Math.sin(view.yaw) * tangent.z + Math.cos(view.yaw) * tangent.x) || 1;

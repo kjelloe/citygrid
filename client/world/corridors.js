@@ -9,7 +9,7 @@
 // definition, four consumers.
 
 import { DIR4, tileAt } from "../../shared/grid.js";
-import { NET_PRESENT } from "../constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../constants-mirror.js";
 import { getConfig } from "./config.js";
 
 const OPPOSITE = [2, 3, 0, 1];
@@ -29,6 +29,23 @@ export function nodeKind(mask) {
   if (bits === 1) return "end";
   if (bits === 2) return STRAIGHT.includes(mask) ? "" : "bend";
   return "junction";
+}
+
+/** The cross-section of a corridor of this kind: half a carriageway, how far
+ * the frontage line stands from the centre, how many lanes each way and how
+ * wide the median between them (T1). One place, because the ribbon, the lane
+ * offsets, the junction box and the ground's flatten all have to agree about
+ * where the kerb is. */
+export function sectionOf(cfg, avenue) {
+  const spec = avenue ? cfg.road.avenue : cfg.road;
+  const half = spec.width / 2;
+  return {
+    avenue,
+    half,
+    frontage: half + cfg.road.sidewalk,
+    lanes: spec.lanes,
+    median: avenue ? spec.median : 0,
+  };
 }
 
 function centreOf(width, index, tileM) {
@@ -90,12 +107,15 @@ export function closestOnPolyline(points, x, z) {
 export function deriveCorridors(state, kindOfTile = "road") {
   const cfg = getConfig();
   const tileM = cfg.tileM;
-  const half = cfg.road.width / 2;
-  const frontage = half + cfg.road.sidewalk;
+  const street = sectionOf(cfg, false);
+  const avenueSection = sectionOf(cfg, true);
+  const { half, frontage } = street;
   const { width, height } = state;
   const layer = state.tiles[kindOfTile];
   const present = (i) => (layer[i] & NET_PRESENT) !== 0;
   const maskOf = (i) => layer[i] & 15;
+  // Only the road layer has a kind (T1); rail and the rest are one width.
+  const avenueAt = kindOfTile === "road" ? (i) => (layer[i] & NET_AVENUE) !== 0 : () => false;
 
   const nodes = [];
   const nodeAt = new Map();
@@ -107,6 +127,39 @@ export function deriveCorridors(state, kindOfTile = "road") {
     nodes.push(node);
     nodeAt.set(i, node);
   }
+
+  // A SEAM: where a run changes kind mid-street. A corridor has one width from
+  // end to end — it is what the ribbon is built at, what a lot fronts and what
+  // the lane offsets are measured from — so an avenue that starts halfway along
+  // a street has to end one corridor and begin another. The node is the first
+  // AVENUE tile, so the wider half owns the transition, and the lane graph
+  // tapers across it rather than stepping sideways (T1b).
+  for (let i = 0; i < layer.length; i += 1) {
+    if (!present(i) || nodeAt.has(i) || !avenueAt(i)) continue;
+    const mask = maskOf(i);
+    const x = i % width;
+    const y = (i - x) / width;
+    let seam = false;
+    for (let d = 0; d < 4; d += 1) {
+      if (!(mask & (1 << d))) continue;
+      const j = tileAt(width, x + DIR4[d].dx, y + DIR4[d].dy);
+      if (!avenueAt(j)) seam = true;
+    }
+    if (!seam) continue;
+    const node = { id: nodes.length, tile: i, ...centreOf(width, i, tileM), mask, degree: degree(mask), kind: "seam", corridors: [] };
+    nodes.push(node);
+    nodeAt.set(i, node);
+  }
+
+  /** A run's kind, from the tiles that are only its own: the tiles at either
+   * end are shared with the nodes there, and at a seam one of them is of the
+   * other kind by construction. */
+  const sectionFor = (tiles) => {
+    const inner = tiles.length > 2 ? tiles.slice(1, -1) : tiles;
+    let avenues = 0;
+    for (const t of inner) if (avenueAt(t)) avenues += 1;
+    return avenues * 2 > inner.length ? avenueSection : street;
+  };
 
   const corridors = [];
   const taken = new Set();   // "tile:dir" already walked from
@@ -144,7 +197,7 @@ export function deriveCorridors(state, kindOfTile = "road") {
       const { points, tiles, end } = walk(node, d);
       const corridor = {
         id: corridors.length, kind: kindOfTile, points, tiles,
-        half, frontage, length: polyLength(points), from: node.id, to: end.id,
+        ...sectionFor(tiles), length: polyLength(points), from: node.id, to: end.id,
       };
       corridors.push(corridor);
       node.corridors.push(corridor.id);
@@ -165,10 +218,20 @@ export function deriveCorridors(state, kindOfTile = "road") {
     const d = (mask & 1) ? 0 : 1;
     taken.add(`${i}:${d}`);
     const { points, tiles } = walk(node, d);
-    const corridor = { id: corridors.length, kind: kindOfTile, points, tiles, half, frontage, length: polyLength(points), from: node.id, to: node.id };
+    const corridor = { id: corridors.length, kind: kindOfTile, points, tiles, ...sectionFor(tiles), length: polyLength(points), from: node.id, to: node.id };
     corridors.push(corridor);
     node.corridors.push(corridor.id);
     for (const t of tiles) covered.add(t);
+  }
+
+  // A node is as wide as the widest street at it: the junction box, the signal
+  // heads and the ground's flatten all step out from the middle of it, and at a
+  // corner where an avenue meets a street the box has to cover the avenue.
+  for (const node of nodes) {
+    let widest = street;
+    for (const id of node.corridors) if (corridors[id].half > widest.half) widest = corridors[id];
+    node.half = widest.half;
+    node.frontage = widest.frontage;
   }
 
   // Bends: a curve joining the two corridors that meet there.
@@ -189,7 +252,7 @@ export function deriveCorridors(state, kindOfTile = "road") {
       if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
       if (p.z < z0) z0 = p.z; if (p.z > z1) z1 = p.z;
     }
-    const pad = frontage + cfg.road.blend + 1;
+    const pad = c.frontage + cfg.road.blend + 1;
     c.box = { x0: x0 - pad, x1: x1 + pad, z0: z0 - pad, z1: z1 + pad };
   }
 

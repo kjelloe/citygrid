@@ -32,6 +32,10 @@ export const DRAG = { LINE: "line", RECT: "rect", POINT: "point" };
 // because R, C and I are already the demand bars and would read as those.
 export const TOOLS = {
   road: { command: CMD_PLACE_ROAD, drag: DRAG.LINE, priceKind: "road", icon: "road", key: "r" },
+  // The same command with a `kind` (T1). One command, one permission row, two
+  // tools — because a capability with no control is not a feature (ruling 026),
+  // and until now only the deputy could widen a street.
+  avenue: { command: CMD_PLACE_ROAD, drag: DRAG.LINE, kind: "avenue", priceKind: "avenue", icon: "avenue", key: "a" },
   wire: { command: CMD_PLACE_WIRE, drag: DRAG.LINE, priceKind: "wire", icon: "wire", key: "w" },
   pipe: { command: CMD_PLACE_PIPE, drag: DRAG.LINE, priceKind: "pipe", icon: "pipe", key: "p" },
 
@@ -79,6 +83,7 @@ export function buildCommand(name, actor, { runs, x, y, def } = {}) {
     command.def = def;
   }
   if (tool.zone !== undefined) command.zone = tool.zone;
+  if (tool.kind !== undefined) command.kind = tool.kind;
   return command;
 }
 

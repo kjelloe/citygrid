@@ -26,6 +26,9 @@ export const FLAG_BURNING = 4;
 export const FLAG_RUINED = 8;
 
 export const NET_PRESENT = 16;
+// The road layer's kind bit (T1): a road tile with it set is an avenue — two
+// lanes each way round a median, and twice the capacity in the engine.
+export const NET_AVENUE = 32;
 
 // The HUD's clock. The engine decides what a tick means; the top bar only has
 // to turn a count of them into a date a person recognises.

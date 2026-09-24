@@ -178,11 +178,10 @@ export function buildProps({ corridors, lots, cfg, heightAt, palette, chunk = 0,
   for (const prop of street.props) streetPropGeometry({ metal, dark, red, wood }, prop, cfg, heightAt);
   for (const bay of street.bays) bayGeometry(baySurface, bayLines, bay, heightAt);
   const all = [];
-  const offset = lampOffset(cfg);
   const placed_ = [];
   let placed = 0;
-  for (const points of corridors) {
-    for (const lamp of lampsAlong(points, offset, cfg.props.lampSpacing, cfg.props.lampH, heightAt)) {
+  for (const { points, half } of corridors) {
+    for (const lamp of lampsAlong(points, lampOffset(cfg, half), cfg.props.lampSpacing, cfg.props.lampH, heightAt)) {
       lampGeometry(metal, lamp);
       // Where the light hangs: the head, on the end of the bracket.
       placed_.push({

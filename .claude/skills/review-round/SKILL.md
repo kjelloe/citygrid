@@ -493,8 +493,9 @@ count is read, and write the invariant as a test over time.
 **A tool that checks itself is a gate nobody runs.** Five picture tools — water, damage, services,
 windows, rain — each count what they photographed and exit non-zero when the count is wrong, and
 none of them was in a gate set: they were run by hand in the slice that wrote them and never again.
-`gates.mjs shots` runs all five in 166 s. When a slice writes a tool that can fail, ask what runs it
-next month.
+`gates.mjs shots` ran all five in 166 s, and six with T1b's `avenue_shots` in 306 s of a 360 s
+budget — the next picture tool has to earn its place or the set needs splitting. When a slice
+writes a tool that can fail, ask what runs it next month.
 
 **And the sweep's third direction catches your own hour-old work.** P75 found a `rain` block in
 `data/cityviewer.json` and its config mirror that nothing read any more — B6a had removed the pool

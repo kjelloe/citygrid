@@ -13,7 +13,7 @@ import { repoRoot } from "./helpers/sources.js";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt, DIR4 } from "../shared/grid.js";
-import { NET_PRESENT } from "../client/constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 import { TERRAIN_WATER } from "../client/constants-mirror.js";
 import { DEFAULTS, getConfig, setConfig } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
@@ -123,6 +123,66 @@ test("a ring of road with no node still becomes a corridor", () => {
   assert.equal(l.nodes.length, 1);
   assert.equal(l.nodes[0].kind, "loop");
   assert.equal(l.corridors.length, 1);
+});
+
+test("an avenue is a wider corridor, and a run that changes kind is two of them", () => {
+  // The kind bit is the engine's (T1a); what the renderer does with it is the
+  // cross-section — and a corridor has ONE width from end to end, because it
+  // is what the ribbon is built at, what a lot fronts and what the lane
+  // offsets are measured from. So an avenue that stops halfway along a street
+  // has to end one corridor and start another (T1b).
+  const state = blank(10);
+  pave(state, column(4, 1, 8));
+  for (const [x, y] of column(4, 1, 4)) state.tiles.road[tileAt(state.width, x, y)] |= NET_AVENUE;
+  const m = createModel(state);
+  assert.equal(m.corridors.length, 2);
+  const avenue = m.corridors.find((c) => c.avenue);
+  const street = m.corridors.find((c) => !c.avenue);
+  assert.ok(avenue && street, "the two kinds did not come out as two corridors");
+  assert.equal(avenue.half, DEFAULTS.road.avenue.width / 2);
+  assert.equal(avenue.lanes, DEFAULTS.road.avenue.lanes);
+  assert.equal(avenue.median, DEFAULTS.road.avenue.median);
+  assert.equal(street.half, DEFAULTS.road.width / 2);
+  assert.equal(street.lanes, DEFAULTS.road.lanes);
+  assert.equal(street.median, 0);
+  assert.ok(avenue.frontage > street.frontage, "a wider road has a further frontage");
+  // The pavement and the verge live in the same twenty-metre tile as the
+  // carriageway: an avenue that does not fit is one drawn over its own lots.
+  assert.ok(avenue.frontage <= T / 2, `an avenue's frontage is ${avenue.frontage} m of a ${T / 2} m half tile`);
+
+  // The seam is the first AVENUE tile, and the node there is as wide as the
+  // widest street at it — the junction box, the heads and the ground's flatten
+  // all step out from the middle of a node.
+  const seam = m.nodes.find((n) => n.kind === "seam");
+  assert.ok(seam, "no seam where the avenue ends");
+  assert.equal(seam.tile, tileAt(state.width, 4, 4));
+  assert.equal(seam.half, avenue.half);
+  assert.equal(seam.degree, 2);
+  for (const node of m.nodes) assert.ok(node.half > 0, `node ${node.id} has no width`);
+
+  // And a street with no kind bit anywhere is exactly what it was before T1.
+  const plain = blank(10);
+  pave(plain, column(4, 1, 8));
+  const p = createModel(plain);
+  assert.equal(p.corridors.length, 1);
+  assert.equal(p.corridors[0].half, DEFAULTS.road.width / 2);
+  assert.equal(p.nodes.filter((n) => n.kind === "seam").length, 0);
+});
+
+test("a walker on an avenue is on the carriageway where a street's pavement would be", () => {
+  // `surfaceAt` used one global half-width. On a fourteen-metre avenue that
+  // puts the kerb four metres from the middle of the road, which is a walker
+  // standing on the pavement in the second lane (T1b).
+  const state = blank(10);
+  pave(state, column(4, 1, 8));
+  for (const [x, y] of column(4, 1, 8)) state.tiles.road[tileAt(state.width, x, y)] |= NET_AVENUE;
+  const m = createModel(state);
+  const cx = 4.5 * T;
+  const cz = 4.5 * T;
+  assert.equal(m.surfaceAt(cx + 5, cz).kind, "road", "five metres out is still the carriageway");
+  assert.equal(m.surfaceAt(cx + 8, cz).kind, "sidewalk");
+  assert.equal(m.surfaceAt(cx + 9.4, cz).kind, "sidewalk", "the pavement reaches to nine and a half metres");
+  assert.equal(m.surfaceAt(cx + 9.6, cz).kind, "ground", "and stops there, inside the tile");
 });
 
 test("nodeKind reads a mask the way the road renderer does", () => {

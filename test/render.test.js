@@ -19,7 +19,7 @@ import { PALETTES } from "../client/render/palettes.js";
 import { pseudo, setFaceContrast, shade } from "../client/render/detail-kit.js";
 import { faceContrastFor, lightingFor } from "../client/render/style-light.js";
 import { zoneTint } from "../client/world/params.js";
-import { NET_PRESENT } from "../engine/network.js";
+import { NET_PRESENT, NET_AVENUE } from "../engine/network.js";
 import { simulate, distance } from "./helpers/colour-vision.js";
 
 test("the renderer's constants mirror matches the engine exactly", () => {
@@ -27,17 +27,18 @@ test("the renderer's constants mirror matches the engine exactly", () => {
   // participate in the rules — so the handful of constants it needs are
   // mirrored. A drifted mirror draws the wrong thing and nothing complains.
   for (const name of Object.keys(mirror)) {
-    if (name === "NET_PRESENT") continue;
+    if (name === "NET_PRESENT" || name === "NET_AVENUE") continue;
     assert.equal(mirror[name], engine[name], `${name} has drifted from engine/constants.js`);
   }
   assert.equal(mirror.NET_PRESENT, NET_PRESENT, "NET_PRESENT has drifted from engine/network.js");
+  assert.equal(mirror.NET_AVENUE, NET_AVENUE, "NET_AVENUE has drifted from engine/network.js");
 });
 
 test("the mirror covers everything the renderer actually reads", () => {
   const needed = [
     "ZONE_NONE", "ZONE_RESIDENTIAL", "ZONE_COMMERCIAL", "ZONE_INDUSTRIAL",
     "TERRAIN_GRASS", "TERRAIN_FOREST", "TERRAIN_WATER", "TERRAIN_SHALLOW",
-    "FLAG_POWERED", "FLAG_WATERED", "FLAG_RUINED", "NET_PRESENT",
+    "FLAG_POWERED", "FLAG_WATERED", "FLAG_RUINED", "NET_PRESENT", "NET_AVENUE",
   ];
   for (const name of needed) {
     assert.ok(Object.hasOwn(mirror, name), `the mirror is missing ${name}`);

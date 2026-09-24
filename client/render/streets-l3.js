@@ -109,13 +109,19 @@ function chunkBox(cx, cy, chunkTiles, tileM) {
  * through the junctions at either end, and the kerbside run, which stops short
  * of them. Trimmed BEFORE clipping, or a corridor that crosses a chunk boundary
  * would lose its pavement at the seam instead of at the junction. */
-function corridorsIn(model, cx, cy, chunkTiles, tileM, junction) {
+function corridorsIn(model, cx, cy, chunkTiles, tileM) {
   const box = chunkBox(cx, cy, chunkTiles, tileM);
   const out = [];
   for (const corridor of model.corridors) {
     const runs = clip(corridor.points, box);
     if (runs.length === 0) continue;
-    out.push({ runs, kerbside: clip(trim(corridor.points, junction), box) });
+    // Per END, and per corridor since T1: an avenue's junction box is wider
+    // than a street's, and a SEAM is not a junction at all — trimming there
+    // would leave a tile-wide hole in the kerb and the pavement wherever an
+    // avenue becomes a street.
+    const clearAt = (id) => (model.nodes[id]?.kind === "seam" ? 0 : corridor.frontage);
+    const kerbside = clip(trim(corridor.points, clearAt(corridor.from), clearAt(corridor.to)), box);
+    out.push({ corridor, runs, kerbside });
   }
   return out;
 }
@@ -131,7 +137,7 @@ function corridorsIn(model, cx, cy, chunkTiles, tileM, junction) {
 /** The corridors a chunk's streets are baked from, in order. */
 export function streetCorridors(model, cx, cy) {
   const cfg = getConfig();
-  return corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM, cfg.road.width / 2 + cfg.road.sidewalk);
+  return corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM);
 }
 
 /**
@@ -143,8 +149,7 @@ export function streetCorridors(model, cx, cy) {
  */
 export function bakeStreetCorridors(baker, state, model, corridors, from, stop, palette, ground) {
   const cfg = getConfig();
-  const { width: roadW, sidewalk, kerb, camber, lift } = cfg.road;
-  const half = roadW / 2;
+  const { sidewalk, kerb, camber, lift } = cfg.road;
   const height = model.heightAt;
   const chunkTiles = cfg.chunkTiles;
 
@@ -154,14 +159,19 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
   const kerbColour = palette.roadMark ?? 0xd8d4c8;
   const concrete = palette.civic ?? 0xd0ccc4;
 
-  // Where the kerb has to stop: half a carriageway plus its pavement, which is
-  // the corner of the junction box.
-  const junction = half + sidewalk;
-  const vergeHalf = (cfg.tileM / 2 - junction) / 2;
   let i = from;
   while (i < corridors.length) {
-    const { runs, kerbside } = corridors[i];
+    const { corridor, runs, kerbside } = corridors[i];
     i += 1;
+    // The cross-section is the corridor's, not the config's (T1): an avenue is
+    // fourteen metres of carriageway round a two-metre median, a street eight
+    // with nothing in the middle of it.
+    const { half, median, lanes: perDir } = corridor;
+    const laneW = (half - median / 2) / perDir;
+    // Where the kerb has to stop: half a carriageway plus its pavement, which
+    // is the corner of the junction box.
+    const junction = half + sidewalk;
+    const vergeHalf = (cfg.tileM / 2 - junction) / 2;
     for (const pts of runs) {
       // The height field ONCE per point on the centre line, shared by every
       // part of the cross-section. Inside a corridor `heightAt` returns the
@@ -175,7 +185,10 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
       // lighter patch or two where the road was dug up — the road as a thing
       // that has been used, with no texture.
       for (const side of [-1, 1]) {
-        addStrip(baker, ribbon(shift(pts, side * half / 2), 0.55, height, { lift: lift + 0.004 }), wear);
+        for (let k = 0; k < perDir; k += 1) {
+          const at = median / 2 + laneW * (k + 0.5);
+          addStrip(baker, ribbon(shift(pts, side * at), 0.55, height, { lift: lift + 0.004 }), wear);
+        }
       }
       let runLen = 0;
       for (let i = 1; i < pts.length; i += 1) runLen += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
@@ -215,8 +228,27 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
           }
         }
       }
-      for (const dash of dashes(walk, cfg.road.stopLine * 1.5, cfg.road.stopLine * 4.5)) {
-        addStrip(baker, ribbon(dash, MARK_HALF, height, { lift: lift + MARK_LIFT }), kerbColour);
+      // The markings (T1). A street has one dashed line down the middle of it.
+      // An avenue has a raised median instead, and each of its two halves
+      // carries two lines: the dashed one between its lanes, and a continuous
+      // edge line at the kerb — which is what tells a driver, and a player
+      // looking down at the city, that this is two lanes and not one wide one.
+      if (median > 0) {
+        const hs = walk.map((p) => height(p.x, p.z));
+        addStrip(baker, skirt(walk, median / 2, height, kerb + lift, { lift: lift + kerb, heights: hs }), kerbColour);
+        addStrip(baker, ribbon(walk, median / 2, height, { lift: lift + kerb }), concrete);
+        for (const sign of [-1, 1]) {
+          for (let k = 1; k < perDir; k += 1) {
+            for (const dash of dashes(shift(walk, sign * (median / 2 + laneW * k)), cfg.road.stopLine * 1.5, cfg.road.stopLine * 4.5)) {
+              addStrip(baker, ribbon(dash, MARK_HALF, height, { lift: lift + MARK_LIFT }), kerbColour);
+            }
+          }
+          addStrip(baker, ribbon(shift(walk, sign * (half - MARK_HALF * 3)), MARK_HALF, height, { lift: lift + MARK_LIFT }), kerbColour);
+        }
+      } else {
+        for (const dash of dashes(walk, cfg.road.stopLine * 1.5, cfg.road.stopLine * 4.5)) {
+          addStrip(baker, ribbon(dash, MARK_HALF, height, { lift: lift + MARK_LIFT }), kerbColour);
+        }
       }
     }
       if (stop()) break;
@@ -227,7 +259,7 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
 /** The junction boxes, the connectors, the signals and the wires of a chunk. */
 export function bakeStreetJoints(baker, state, model, cx, cy, palette) {
   const cfg = getConfig();
-  const half = cfg.road.width / 2;
+  const fallbackHalf = cfg.road.width / 2;
   const { lift } = cfg.road;
   const height = model.heightAt;
   const chunkTiles = cfg.chunkTiles;
@@ -239,6 +271,10 @@ export function bakeStreetJoints(baker, state, model, cx, cy, palette) {
     const ty = (node.tile - tx) / state.width;
     if (tx < cx * chunkTiles || tx >= (cx + 1) * chunkTiles) continue;
     if (ty < cy * chunkTiles || ty >= (cy + 1) * chunkTiles) continue;
+    // As wide as the widest street at the node (T1): at a corner where an
+    // avenue meets a street the box has to cover the avenue, or the mouth of
+    // it is four metres of bare ground.
+    const half = node.half ?? fallbackHalf;
     const box = [{ x: node.x - half, z: node.z }, { x: node.x + half, z: node.z }];
     addStrip(baker, ribbon(box, half, height, { lift }), asphalt);
   }
@@ -251,7 +287,7 @@ export function bakeStreetJoints(baker, state, model, cx, cy, palette) {
     const ty = (node.tile - tx) / state.width;
     if (tx < cx * chunkTiles || tx >= (cx + 1) * chunkTiles) continue;
     if (ty < cy * chunkTiles || ty >= (cy + 1) * chunkTiles) continue;
-    addStrip(baker, ribbon(connector.points, half, height, { lift }), asphalt);
+    addStrip(baker, ribbon(connector.points, node.half ?? fallbackHalf, height, { lift }), asphalt);
   }
 
   bakeSignals(baker, model, cx, cy, chunkTiles, cfg, palette, state);
@@ -328,12 +364,15 @@ export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleNa
   // The prop pass, which is the difference between a street and a diagram
   // (spec §6.6). Lamps come from the corridors, hedges and paths from the lots.
   const props = buildProps({
-    // WITH the junction distance. Called without it, `trim` was handed
-    // `undefined`, every kerbside point came out NaN, `clip` dropped all of
-    // them, and the prop pass has been silently building nothing since E5 —
-    // the lamps in that slice's screenshots were the L2 instanced poles.
-    corridors: corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM, cfg.road.width / 2 + cfg.road.sidewalk)
-      .flatMap((c) => c.kerbside),
+    // The KERBSIDE runs, which stop short of the junctions. E5 called
+    // `corridorsIn` without the junction distance it took then, `trim` was
+    // handed `undefined`, every kerbside point came out NaN, `clip` dropped
+    // all of them, and the prop pass silently built nothing for two slices —
+    // the lamps in E5's screenshots were the L2 instanced poles.
+    corridors: corridorsIn(model, cx, cy, cfg.chunkTiles, cfg.tileM)
+      // WITH the corridor's half-width: a lamp is `lampInset` out from the
+      // KERB, and an avenue's kerb is three metres further out (T1).
+      .flatMap((c) => c.kerbside.map((points) => ({ points, half: c.corridor.half }))),
     lots: acc.fronts, cfg, heightAt: model.heightAt, palette,
     chunk: cy * 4096 + cx, street,
   });

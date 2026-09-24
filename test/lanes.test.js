@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt } from "../shared/grid.js";
-import { NET_PRESENT } from "../client/constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 import { DEFAULTS, getConfig } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
 import { isSignalled } from "../client/world/signals.js";
@@ -485,4 +485,121 @@ test("the trimmed lane maps onto the part of the corridor it actually covers", (
   const errors = laneErrors(model).filter((e) => e.link.dir === 0);
   const worst = errors.reduce((a, b) => (b.error > a.error ? b : a));
   assert.ok(worst.error < 0.1, `dir 0 is still ${worst.error.toFixed(2)} m out`);
+});
+
+// --- the avenue (T1b) --------------------------------------------------------
+//
+// A second road kind with two lanes each way round a median. Every number here
+// is arithmetic a screenshot cannot check: a lane inside the median, a lane
+// index that lets the kerbside car turn left across the one beside it, or a
+// taper at the seam that steps sideways instead of merging.
+
+/** Sets the kind bit on tiles that are already paved. After `pave`, never
+ * before: recomputing the masks writes `NET_PRESENT | mask` over the tile. */
+function widen(state, ...groups) {
+  for (const [x, y] of groups.flat()) state.tiles.road[tileAt(state.width, x, y)] |= NET_AVENUE;
+}
+
+const AVENUE = DEFAULTS.road.avenue;
+const LANE_W = (AVENUE.width / 2 - AVENUE.median / 2) / AVENUE.lanes;
+
+test("an avenue corridor is two lanes each way, offset round its median", () => {
+  const state = blank();
+  pave(state, column(4, 2, 7));
+  widen(state, column(4, 2, 7));
+  const lanes = createModel(state).lanes;
+  assert.equal(blocks(lanes).length, 4, "two lanes each way is four block links");
+  const centreX = (4 + 0.5) * T;
+  const seen = new Map();
+  for (const link of blocks(lanes)) {
+    const northbound = link.pts[link.pts.length - 1] < link.pts[2];
+    const offset = (link.pts[0] - centreX) * (northbound ? 1 : -1);
+    // Right-hand traffic: the offset is to the right whichever way you drive.
+    assert.ok(offset > 0, `a lane ${offset.toFixed(2)} m to the LEFT of the centre line`);
+    const want = AVENUE.median / 2 + LANE_W * (link.index + 0.5);
+    assert.ok(Math.abs(offset - want) < 1e-6,
+      `lane ${link.index} at ${offset.toFixed(2)} m, expected ${want}`);
+    assert.equal(link.of, 2);
+    seen.set(`${northbound}:${link.index}`, true);
+  }
+  assert.equal(seen.size, 4, "the four lanes are not two lanes drawn twice");
+  // Nothing is inside the median, and nothing is over the kerb.
+  assert.ok(AVENUE.median / 2 + LANE_W * 0.5 > AVENUE.median / 2);
+  assert.ok(AVENUE.median / 2 + LANE_W * 1.5 + LANE_W / 2 <= AVENUE.width / 2 + 1e-9);
+});
+
+test("at a junction the kerbside lane turns right and the inner one turns left", () => {
+  // The rule a driver knows. Without it a car in the outer lane cuts across
+  // the one beside it to make a left, which is the manoeuvre the conflict
+  // table cannot save anyone from.
+  const state = blank(12);
+  pave(state, column(4, 2, 9), row(5, 2, 7));
+  widen(state, column(4, 2, 9));
+  const lanes = createModel(state).lanes;
+  const node = lanes.nodes.find((n) => n.kind === "junction");
+  assert.ok(node, "no junction");
+  const byId = new Map(lanes.links.map((l) => [l.id, l]));
+  const arriving = blocks(lanes).filter((l) => l.to === node.id && l.of === 2);
+  assert.equal(arriving.length, 4, "an avenue arrives on two arms, two lanes each");
+  for (const link of arriving) {
+    const turns = link.next.map((step) => byId.get(step.link).turn);
+    assert.ok(turns.includes("straight"), `lane ${link.index} cannot go straight on`);
+    if (link.index === 0) {
+      assert.ok(turns.includes("left"), "the inner lane cannot turn left");
+      assert.ok(!turns.includes("right"), "the inner lane turns right across the kerbside one");
+    } else {
+      assert.ok(turns.includes("right"), "the kerbside lane cannot turn right");
+      assert.ok(!turns.includes("left"), "the kerbside lane turns left across the inner one");
+    }
+  }
+  // And a car turning INTO the avenue arrives in the right half of it: a right
+  // turn into the kerbside lane, a left into the inner one.
+  for (const link of blocks(lanes).filter((l) => l.to === node.id && l.of === 1)) {
+    for (const step of link.next) {
+      const turn = byId.get(step.link);
+      const into = byId.get(turn.next[0].link);
+      if (into.of !== 2) continue;
+      assert.equal(into.index, turn.turn === "right" ? 1 : 0,
+        `a ${turn.turn} arrived in lane ${into.index}`);
+    }
+  }
+});
+
+test("where an avenue becomes a street the lanes taper rather than step sideways", () => {
+  const state = blank(12);
+  pave(state, column(4, 2, 9));
+  widen(state, column(4, 2, 5));
+  const model = createModel(state);
+  assert.equal(model.corridors.length, 2, "a run that changes kind is two corridors");
+  const seam = model.nodes.find((n) => n.kind === "seam");
+  assert.ok(seam, "no seam node where the avenue ends");
+  assert.equal(seam.tile % state.width, 4);
+  const lanes = model.lanes;
+  const byId = new Map(lanes.links.map((l) => [l.id, l]));
+  // Every lane on either side of the seam leads somewhere, and the kerbside
+  // one crosses the width of a lane to get there over a taper, not a step.
+  const into = blocks(lanes).filter((l) => l.to === seam.id);
+  assert.equal(into.length, 3, "two avenue lanes and one street lane arrive at the seam");
+  for (const link of into) {
+    // Two avenue lanes MERGE into the one street lane; the one street lane
+    // DIVERGES into two. Either way nothing arrives at the seam and stops.
+    assert.equal(link.next.length, link.of === 2 ? 1 : 2,
+      `lane ${link.index} of ${link.of} at the seam leads ${link.next.length} ways`);
+    for (const step of link.next) {
+      const connector = byId.get(step.link);
+      assert.ok(connector.len > T / 2, `a ${connector.len.toFixed(1)} m taper is a step sideways`);
+      const sideways = Math.abs(connector.pts[connector.pts.length - 3] - connector.pts[0]);
+      const other = byId.get(connector.next[0].link);
+      if (Math.max(link.index, other.index) === 1) {
+        assert.ok(sideways > LANE_W / 2, "the kerbside lane did not merge at all");
+      }
+    }
+  }
+  // And the single street lane feeds BOTH avenue lanes, or one of them would
+  // start in the middle of the street with nothing behind it.
+  const street = blocks(lanes).find((l) => l.of === 1 && l.from === seam.id);
+  assert.ok(street, "no street lane leaves the seam");
+  const fed = blocks(lanes).filter((l) => l.of === 2 && l.from === seam.id);
+  assert.equal(fed.length, 2);
+  for (const lane of fed) assert.ok(lane.preds.length > 0, `avenue lane ${lane.index} has nothing behind it`);
 });

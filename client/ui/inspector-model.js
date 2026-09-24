@@ -9,7 +9,7 @@ import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
   FLAG_POWERED, FLAG_WATERED, FLAG_BURNING, FLAG_RUINED,
   TERRAIN_GRASS, TERRAIN_FOREST, TERRAIN_WATER, TERRAIN_SHALLOW,
-  NET_PRESENT,
+  NET_PRESENT, NET_AVENUE,
 } from "../constants-mirror.js";
 import { OVERLAY_NAMES, labelKeyFor, bandAt, BAND } from "./overlays.js";
 
@@ -64,6 +64,9 @@ export function inspect(state, x, y) {
     zoneKey: ZONE_KEYS[state.tiles.zone[index]],
     owner: state.tiles.owner[index],
     road: (state.tiles.road[index] & NET_PRESENT) !== 0,
+    // Which KIND of road (T1): the inspector is where a player finds out what
+    // they are standing on, and an avenue costs and carries differently.
+    avenue: (state.tiles.road[index] & NET_AVENUE) !== 0,
     wire: (state.tiles.wire[index] & NET_PRESENT) !== 0,
     pipe: (state.tiles.pipe[index] & NET_PRESENT) !== 0,
     powered: (flags & FLAG_POWERED) !== 0,

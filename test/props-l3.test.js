@@ -49,7 +49,7 @@ test("a street with no length gets no lamps and does not throw", () => {
 test("the pass builds something, and its pieces are never empty", () => {
   const lot = { x0: 20, z0: 12, x1: 34, z1: 12 };
   const { pieces } = buildProps({
-    corridors: [STREET],
+    corridors: [{ points: STREET, half: HALF }],
     lots: [{ lot, out: { x: 0, z: -1 }, kind: "residential" }],
     cfg: DEFAULTS,
     heightAt: flat,
@@ -82,7 +82,7 @@ test("the hedge leaves a gap for the path, and the path crosses it", () => {
 
 test("a lamp reports where its light hangs, and every id is its own", () => {
   const { lamps: placed } = buildProps({
-    corridors: [STREET],
+    corridors: [{ points: STREET, half: HALF }],
     lots: [],
     cfg: DEFAULTS,
     heightAt: flat,

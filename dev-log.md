@@ -7084,3 +7084,74 @@ seed −0.096). Suite **1,420 green twice**. No fixture re-pin: the pinned fixtu
 deputy laid, and adding a bit nothing sets leaves every hash where it was.
 
 **Next:** T1b — the picture: the wider ribbon, the median, two lanes each way, `road.width` per kind.
+
+## slice-T1b — the avenue, in the picture (2026-09-24)
+
+**What it is.** The other half of T1: fourteen metres of carriageway, a two-metre median, two lanes
+each way, and a toolbar button, so the kind bit T1a set is something a player can build and see.
+
+- **A corridor carries its own cross-section.** `sectionOf(cfg, avenue)` gives `half`, `frontage`,
+  `lanes` and `median` from `road.avenue` in `data/cityviewer.json` or from `road`, and
+  `deriveCorridors` puts them on the corridor rather than leaving everyone to read the config.
+- **A run that changes kind is two corridors**, with a **seam** node at the first avenue tile. A
+  corridor has one width from end to end — it is what the ribbon is built at, what a lot fronts,
+  what the ground flattens under and what the lane offsets are measured from — so there is nowhere
+  for a width to change except at a node. A node carries the half-width of the widest corridor at
+  it, which is what makes the junction box at an avenue's corner cover the avenue.
+- **Lanes are indexed from the middle out.** Lane 0 sits against the median, lane `of − 1` at the
+  kerb. At a junction the kerbside lane turns right and the inner one turns left; straight on you
+  keep your lane. On a one-lane street every lane is both, so the rule is vacuous and the graph is
+  the one E1 built — 1,425 tests agree it is byte-for-byte the old one on a street.
+- **A seam is a taper, not a step.** Its connector is `corridor.half` long, so the outside lane
+  merges across three and a half metres instead of teleporting.
+- **L3**: a kerbed median, a dashed lane line and a continuous edge line per side, wear per lane.
+  **L2**: a straight avenue is two dashes at the median's edges, which is where L3's kerbs are.
+- **And a tool** (ruling 026). `TOOLS.avenue` is `CMD_PLACE_ROAD` with `kind: "avenue"` — one
+  command, one permission row, two buttons — quoted at `build.avenue`, key `a`, with `tool.avenue`
+  in both catalogues and an inspector row that names the kind. Until now only the deputy could
+  widen a street, which is a capability, not a feature.
+
+**What a global width cost.** Nine things measured the road from `cfg.road.width`, and **every one
+of them put something inside the avenue's carriageway**: `enterStreet` (the walker arrived standing
+in the outside lane — the first pavement shot is a car's view), `nav.js`'s pavements, `lampOffset`,
+`junctionProps`' bollards, the signal heads, the crossing bars, the stop line's length, `ground.js`'s
+flatten and its `flatEnds`, and `corridorsIn`'s kerbside trim. The suite was green through all of it.
+Memory: `one-width-assumed-everywhere` — grep the constant before writing the feature.
+
+**Found by looking, not by a test.** The median was invisible in three screenshots in a row. Painting
+it red and shooting straight down showed it drawn correctly, far to the side of where the camera was
+standing — which is how `enterStreet` came out. A gate that counts corridors would never have said so.
+
+**Tests.** `test/lanes.test.js` +3 (two lanes each way with the offsets round the median; the
+kerbside-right / inner-left rule, and that a turn INTO an avenue lands in the right half of it; the
+seam's taper, the merge and the diverge). `test/world.test.js` +2 (an avenue is a wider corridor and
+a kind change is two of them, with the seam node and the node half-widths; a walker five metres out
+is on the carriageway and nine and a half on the pavement). `test/input.test.js` +1 (the tool sends
+one command with a kind, the reducer widens for it, and it is quoted at the avenue's price).
+`test/hud.test.js` +1 (the inspector tells a road from an avenue). `test/render.test.js`: `NET_AVENUE`
+joins the mirror check.
+
+**A new picture gate.** `tools/avenue_shots.mjs` finds the longest avenue run in a played city
+(seed 1003, 64×64, 20 years — the deputy builds a seven-tile one) and takes three shots, each
+counting the avenue corridors, the two-lane links, the baked chunk and whether any avenue is longer
+than its own two junction boxes before it calls the picture an avenue:
+
+- `reports/smoke-T1-avenue.png` — from above and along at span 8. **This is the one that reads.**
+- `reports/smoke-T1-street.png` — its markings and its kerb from the pavement.
+- `reports/smoke-T1-junction.png` — up the avenue from the junction, at eye height.
+
+The item asked for a `city 20t` frame and it was dropped: at that zoom the median is under a pixel
+and the shot proved nothing. Span 8 is the camera's floor. And on a deputy grid the junctions are two
+tiles apart, so an avenue is 40 m of carriageway with 21 m of median in the middle of it — most of
+which is behind you at eye height. That is the honest picture, not a framing failure.
+
+**Measured.** Suite **1,425 green twice**. `render` 56 s of 120, `budget` 235 s of 360, `quick`
+401 s of 480, `shots` **306 s of 360** with `avenue_shots` added at 39 s — the next picture tool has
+to earn its place or the set needs splitting. No fixture re-pin and no era: nothing here touches
+state, and the tool issues a command T1a already allowed.
+
+**Filed:** **Q114** (a shop's parking bays collapse on an avenue — a lot does not know which corridor
+it fronts) and **Q115** (the minimap draws an avenue as a road).
+
+**Next:** T2 — rail and the station in the engine, which shares T1's re-pin with worldgen's rock and
+marsh (A79).

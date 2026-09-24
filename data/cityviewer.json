@@ -15,7 +15,12 @@
     "dip": 0.16,
     "kerb": 0.15,
     "camber": 0.035,
-    "lift": 0.02
+    "lift": 0.02,
+    "avenue": {
+      "width": 14,
+      "lanes": 2,
+      "median": 2
+    }
   },
   "ground": {
     "blend": 1,

@@ -56,7 +56,7 @@ const REED = 0x8f9f58;
 import { getConfig } from "../world/config.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
-  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, FLAG_RUINED, FLAG_BURNING, NET_PRESENT,
+  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, FLAG_RUINED, FLAG_BURNING, NET_PRESENT, NET_AVENUE,
 } from "../constants-mirror.js";
 
 /** Parked cars and flowers carry the only strong accent colours in the scene,
@@ -449,8 +449,13 @@ const JUNCTION_GAP = 0.22;
  *
  * A stub with one connection or none gets nothing: there is no lane to divide,
  * and a lone dash on the end of a road reads as a mistake.
+ *
+ * An AVENUE's straight is two dashes at the edges of its median (T1), which is
+ * where L3 puts the median's kerbs — so the two levels agree, and from the air
+ * the avenue is the heavier line through the grid. Its corners and junctions
+ * are the same arms as a street's: the median stops at the junction mouth.
  */
-function roadMarkings(pool, mask, x, y, lift, colour, at) {
+function roadMarkings(pool, mask, x, y, lift, colour, at, medianTiles = 0) {
   const cx = x + 0.5;
   const cy = y + 0.5;
   let bits = 0;
@@ -460,7 +465,14 @@ function roadMarkings(pool, mask, x, y, lift, colour, at) {
   // North and south, or east and west: a road running through.
   const straight = mask === 5 || mask === 10;
   if (straight) {
-    push(pool, cx, at(cx, cy) + lift, cy, 1, 1, 0.34, colour, (mask & 10) !== 0 ? Math.PI / 2 : 0);
+    const eastWest = (mask & 10) !== 0;
+    const spin = eastWest ? Math.PI / 2 : 0;
+    for (const side of medianTiles > 0 ? [-1, 1] : [0]) {
+      const off = side * medianTiles / 2;
+      const mx = cx + (eastWest ? 0 : off);
+      const mz = cy + (eastWest ? off : 0);
+      push(pool, mx, at(mx, mz) + lift, mz, 1, 1, 0.34, colour, spin);
+    }
     return;
   }
 
@@ -610,7 +622,8 @@ export function updateInstances(state, pools, options = {}) {
         // markings are instanced. Below a few pixels a tile they are invisible
         // and there are thousands of them.
         if (markings) {
-          roadMarkings(pools.mark, state.tiles.road[index] & 15, x, y, MARK_LIFT, palette.roadMark, at);
+          roadMarkings(pools.mark, state.tiles.road[index] & 15, x, y, MARK_LIFT, palette.roadMark, at,
+            (state.tiles.road[index] & NET_AVENUE) !== 0 ? getConfig().road.avenue.median / getConfig().tileM : 0);
         }
       }
       // Zoned ground is a COLOUR of the terrain mesh since V4, not a quad on

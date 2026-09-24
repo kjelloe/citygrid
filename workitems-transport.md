@@ -15,7 +15,7 @@ deputy places every new building (plan §10 bonus 1) or the soak never measures 
 renderer-local (ruling 037); the permission matrix gains a row per command; every new string has
 both catalogue entries and a screen (ruling 027); the inspector says why a dead gate is dead.
 
-## T1 — The avenue (L) — A60 — the ENGINE half **built 2026-09-24** as `slice-T1a` (era 5)
+## T1 — The avenue (L) — A60 — **BUILT 2026-09-24**: `slice-T1a` (engine, era 5), `slice-T1b` (picture)
 
 *As built: `NET_AVENUE` on the road layer (a `u8`, so 64 and 128 are still free), carried through
 `reshape` — a kind bit that is not carried vanishes the moment a neighbour is laid. `CMD_PLACE_ROAD`
@@ -26,8 +26,26 @@ field prefer one. The deputy widens its busiest street once the town passes
 `deputy.avenueAtPopulation` — its first cut laid a NEW avenue at the town's edge, where four played
 cities gave it a mean load of exactly zero.*
 
-*Not in it: the picture — the wider ribbon, the median, two lanes each way, `road.width` per kind.
-That is T1b.*
+*T1b as built: `road.avenue` in `data/cityviewer.json` — 14 m of carriageway, a 2 m median, two
+lanes a side — and a corridor that carries its own cross-section rather than reading the config.
+A run that changes kind mid-street becomes TWO corridors with a `seam` node between them, because a
+corridor has one width from end to end; the lane graph tapers across the seam rather than stepping
+sideways, and at a junction the kerbside lane turns right and the inner one turns left. The L3
+ribbon gains a kerbed median, a dashed lane line and a continuous edge line per side; L2's straight
+is two dashes at the median's edges.*
+
+*And the tool, which the item did not ask for and ruling 026 does: `TOOLS.avenue` is
+`CMD_PLACE_ROAD` with `kind: "avenue"` — one command, one permission row, two buttons — quoted at
+`build.avenue`, with a `tool.avenue` catalogue entry and an inspector row that names the kind.
+Until T1b only the deputy could widen a street.*
+
+*What a global width cost: `enterStreet`, the nav graph's pavements, the lamp offset, the junction
+bollards, the signal heads, the crossing bars, the stop-line length, the ground's flatten and the
+kerbside trim all measured from `cfg.road.width`, and every one of them put something in an
+avenue's carriageway. See the memory `one-width-assumed-everywhere`.*
+
+*Not in it: a shop's parking bays still measure from the config's pavement edge, so bays on an
+avenue collapse to a quarter of a metre (Q114); the minimap draws an avenue as a road (Q115).*
 
 **Goal.** A second road kind: two lanes each way, a median, higher capacity.
 
@@ -49,6 +67,13 @@ before congestion; the field routes onto it. `test/permissions.test.js`: the com
 mode row. `test/lanes.test.js`: two lanes each way on an avenue corridor. **Gate.** `sim` set on a
 new era (`reports/balance-era2.md`); `traffic_gate 200 25` re-baselined and the dev-log carries
 both; `render` set; `reports/smoke-T1-{avenue,junction}.png` from the pavement and from `city 20t`.
+
+*As gated: T1a ran `sim` on era 5 (`reports/balance-era5.md`) and the engine's tests live in
+`test/avenue.test.js` rather than `test/traffic.test.js`. T1b ran `render` (56 s), `budget` (235 s),
+`quick` (401 s) and a new `avenue_shots` gate in the `shots` set — three pictures, each counting the
+avenue corridors, the two-lane links and the baked chunk before it is called an avenue. The city-20
+frame was dropped: at that zoom the median is under a pixel and the shot proved nothing. What reads
+is the oblique at span 8, which is the camera's floor (`shot-camera-limits`).*
 
 ## T2 — Rail and the station, in the engine (L) — A65, A66
 

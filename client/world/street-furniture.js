@@ -29,8 +29,8 @@ export const HEDGE_HALF = 0.22;
  * pavement and therefore exactly the line a person walks down; with the posts
  * made solid, `walkthrough` stopped dead on one every 24 m (A43).
  */
-export function lampOffset(cfg = getConfig()) {
-  return cfg.road.width / 2 + cfg.props.lampInset;
+export function lampOffset(cfg = getConfig(), half = cfg.road.width / 2) {
+  return half + cfg.props.lampInset;
 }
 
 /** Lamps along one corridor, alternating sides.
@@ -286,7 +286,9 @@ function armsAt(model, node) {
  */
 export function junctionProps(model, node, cfg = getConfig()) {
   if (!node || node.kind !== "junction") return [];
-  const half = cfg.road.width / 2;
+  // The widest street at the node (T1): a bollard placed by a street's kerb on
+  // the corner of an avenue stands in the carriageway.
+  const half = node.half ?? cfg.road.width / 2;
   // On the KERB corner, and the sign at the back of the pavement: mid-pavement
   // is exactly the line a person walks, and `walkthrough` stopped dead on a
   // bollard at every junction corner (S3b).
@@ -324,7 +326,7 @@ export function junctionProps(model, node, cfg = getConfig()) {
  * Nothing inside a junction box.
  */
 export function corridorProps(corridor, cfg = getConfig()) {
-  const half = cfg.road.width / 2;
+  const half = corridor.half ?? cfg.road.width / 2;
   const clear = half + cfg.road.sidewalk + 2;
   const { len, at } = walker(corridor.points);
   const out = [];

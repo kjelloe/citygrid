@@ -35,7 +35,10 @@ export function createModel(state) {
   function surfaceAt(x, z) {
     const tile = ground.tileOf(x, z);
     const near = network.nearest(x, z);
-    const onWalk = near !== undefined && near.dist <= network.frontage;
+    // How wide the road under the query is: an avenue's carriageway and its
+    // pavement stand further out than a street's (T1b).
+    const reach = near?.corridor ?? near?.node ?? network;
+    const onWalk = near !== undefined && near.dist <= reach.frontage;
     const base = ground.heightAt(x, z);
     // Water first, UNLESS a road crosses it: a causeway is a road at the
     // water's surface, not a river with tarmac at the bottom of it (E8, Q58).
@@ -51,7 +54,7 @@ export function createModel(state) {
     }
     const lot = lots.lotAt(x, z);
     if (lot) return { kind: "lot", y: base, lot, dist: 0 };
-    if (near && near.dist <= network.half) return { ...near, kind: "road", y: base + cfg.road.lift };
+    if (near && near.dist <= reach.half) return { ...near, kind: "road", y: base + cfg.road.lift };
     if (onWalk) return { ...near, kind: "sidewalk", y: base + cfg.road.lift + cfg.road.kerb };
     return { kind: "ground", y: base, dist: near ? near.dist : Infinity };
   }
