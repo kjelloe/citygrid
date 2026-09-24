@@ -68,10 +68,16 @@ export const SETS = {
   // other renderer measurements rather than in the set every slice runs. It
   // was 102 s when M2 set the budgets and 151 s after D8; leaving it in `quick`
   // put that set at 477 s of 480, where the next slice to add a check trips it.
-  render: ["walkthrough", "passability", "lanes_dump", "budget_gate"],
+  // `budget_gate` moved OUT again in B3a, which is M2's own rule doing what it
+  // was written for: the `render` set reached **298 s of its 300 s budget**
+  // (budget_gate 235, lanes_dump 60), so the next slice would have had to
+  // raise the budget to fit — which the rule forbids. It is a set of its own
+  // now, and `render` is restated from what is left in it.
+  render: ["walkthrough", "passability", "lanes_dump"],
+  budget: ["budget_gate"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
 };
-SETS.all = [...SETS.quick, ...SETS.render, ...SETS.sim];
+SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -101,9 +107,13 @@ SETS.all = [...SETS.quick, ...SETS.render, ...SETS.sim];
  */
 export const BUDGET_MS = {
   quick: 8 * 60 * 1000,
-  render: 5 * 60 * 1000,
+  // Measured after the split (B3a): walkthrough 2, passability 0, lanes_dump 60.
+  render: 2 * 60 * 1000,
+  // `budget_gate` alone, 235 s at B3a with three tiers, two projections, four
+  // spans and the desktop viewport D8 added.
+  budget: 6 * 60 * 1000,
   sim: 15 * 60 * 1000,
-  all: 25 * 60 * 1000,
+  all: 27 * 60 * 1000,
 };
 
 export function gatesIn(set) {

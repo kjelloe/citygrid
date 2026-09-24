@@ -44,6 +44,11 @@ review's three stray chromium trees to a FAILURE path.
 
 **Goal.** One command runs the gates a slice needs, and the full set has a known cost.
 
+*Sets as they stand (B3a, 2026-09-24): `quick` 11 browser smokes (394 s of 480), `render`
+walkthrough + passability + lanes_dump (55 s of 120), **`budget` on its own** (231 s of 360), `sim`
+the three soaks (541 s of 900). `budget_gate` left `quick` in K1 (A64) and left `render` in B3a,
+both times because the set reached its budget — which is the rule below working, not failing.*
+
 **Do.**
 - `tools/gates.mjs [quick|render|sim|all]`: `quick` is the ten browser smokes (`a11y`, `client`,
   `lobby`, `offline`, `play`, `reach`, `save`, `serve`, `ui`, `update`) plus `budget_gate`; `render`

@@ -103,7 +103,8 @@ time and writes it to `reports/gates-<date>.json`:
 
 ```sh
 node tools/gates.mjs quick     # after ANY change — 11 gates, ~5.5 min on SwiftShader
-node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump, budget_gate
+node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump
+node tools/gates.mjs budget    # and the triangle budget — its own set since B3a, ~4 min
 node tools/gates.mjs sim       # a gameplay slice as well: the three soaks
 ```
 

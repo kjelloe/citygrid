@@ -34,7 +34,7 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Lobby gate** | `node tools/lobby_smoke.mjs` | New game, settings, Continue — hash for hash |
 | **Offline gate** | `node tools/offline_smoke.mjs` | Network off: does it open, start, build and save? |
 | **Update gate** | `node tools/update_smoke.mjs` | Does a NEW build ever reach a player who already has the app? |
-| **Budget gate** | `node tools/budget_gate.mjs [--tier=low\|medium\|high]` | Is the frame inside its triangle budget on a SATURATED city, at **both projections**, every tier and the opening span — and does the planner's estimate still match what three drew? |
+| **Budget gate** | `node tools/gates.mjs budget` — a set of its own since B3a, when `render` reached 298 s of its 300 s budget and M2's rule says split rather than raise. `render` is walkthrough, passability and lanes_dump now (55 s of 120); `budget` is 231 s of 360 | Is the frame inside its triangle budget on a SATURATED city, at **both projections**, every tier and the opening span — and does the planner's estimate still match what three drew? |
 | **Lane dump** | `node tools/lanes_dump.mjs [size]` | What did the lane graph come out as? Link, node, turn and signal counts, and the shortest link against a car's length. No browser: the model is pure |
 
 **Twelve browser gates, and they are cheap to run all of them.** Do:

@@ -6847,3 +6847,12 @@ with a cabin and a windscreen, and the wheels are a couple of pixels. The kit ea
 inside about ten metres, which is where a player walking a pavement meets one.
 
 **Next:** S8 — the compare sheet row by row, per P70's order, and then B3b's service vehicles.
+
+## tools — `budget_gate` is a set of its own (2026-09-24)
+
+M2's rule, doing what it was written for. The `render` set reached **298 s of its 300 s budget** in
+B3a (budget_gate 235, lanes_dump 60, walkthrough 2), and the rule says a set that grows past its
+share is a finding rather than a reason to raise the number. So `budget_gate` is
+`node tools/gates.mjs budget`, measured at **231 s of a 360 s budget**, and `render` is restated
+from what is left in it: **55 s of 120**. `SETS.all` picks both up; the `slice-workflow` and
+`sim-gate` skills say so.
