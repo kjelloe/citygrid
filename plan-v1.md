@@ -69,19 +69,26 @@ was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balan
 road reach, A81; era 2 is left to T1/T2).
 
 **Where the night's work got to (P70's order, 2026-09-14 → 24).** R5, S3a, S3b, B5, B9, S4, B1a,
-B1b, S7 and B3a are built and committed, each with its gate and its dev-log entry. What is left of
-P70's list is **S8** (the compare sheet row by row) and **B3b** (the service vehicles proper — the
-fire engine, the patrol car and the truck, which are B3a's kit with a body and a colour, plus the
-planner they need). Four of those slices found a defect older than themselves, and each is a
-question below rather than a silent fix: the smoke that had never drawn a visible pixel (Q107), a
-hashed field nothing writes (Q108), damage states with no state to read (Q109) and an estimate that
-prices cars it never draws (Q110).
+B1b, S7, B3a, B3b and S8a are built and committed, each with its gate and its dev-log entry, and so
+are **M6** (the omissions tidy-up) and **B6a** (the overcast hour). **P70's list is finished** apart
+from S8's verdict, which is your eye and waits on Q102.
 
-**Twenty-three open questions**, and the ones that block work rather than merely waiting are
-**Q102** (street widths — S8's compare sheet is dishonest until it is settled), **Q104** (no road
-can cross water, so bridges cannot exist) and **Q64/Q74** (is `hilly` playable — it blocks S11).
-Three are gate criteria I re-aimed on evidence and that a line of yours can revert: **Q103**,
-**Q106** and, in effect, **Q110**.
+**Six of those slices found a defect older than themselves**, and each is a question below rather
+than a silent fix: the smoke that had never drawn a visible pixel (Q107), a hashed field nothing
+writes (Q108), damage states with no state to read (Q109), an estimate that prices cars it never
+draws (Q110), a deputy that builds no police station (Q111) and a pool that counts 1,140 instances
+nobody can see (Q112).
+
+**Twenty-five open questions.** The ones that block work rather than merely waiting: **Q102**
+(street widths — S8's compare sheet is dishonest until it is settled), **Q104** (no road can cross
+water, so bridges cannot exist) and **Q64/Q74** (is `hilly` playable — it blocks S11). Three are
+gate criteria re-aimed on evidence, each a one-line revert: **Q103**, **Q106** and, in effect,
+**Q110**. The balance ones are **Q105** (era 4's demanding row) and **Q111**.
+
+**What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
+yielding to an engine), the **transport lane** (T1–T7, nothing built), the **worker lane** (W1–W4,
+the door to Wave 5), **F2/F3** in the film lane, and **Q84's** weather coupling. The measurement
+lane (D2/D3/D5) still waits on your phone.
 
 **The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as an automated
 script on desktop and on a 390×844 phone.
