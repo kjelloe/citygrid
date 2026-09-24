@@ -93,7 +93,50 @@ async function referenceAspect(page, file) {
   }, src);
 }
 
-export async function compareSheet({ out = "reports/compare-transport-worlds.png", width = 1100 } = {}) {
+/**
+ * The same views, shot from a worktree at another commit (S8's `--before`).
+ *
+ * A worktree and the OLD tree's own harness, not this one pointed at old
+ * files: the renderer, the kit and the world model all moved, and a sheet that
+ * mixes today's `screenshot.mjs` with yesterday's `instances.js` is a
+ * comparison of neither. R3 spent an hour on exactly that mistake.
+ */
+async function shootBefore(sha, views, width) {
+  const dir = join(root, "reports", `.before-${sha}`);
+  const shots = join(root, "reports", `.before-shots-${sha}`);
+  execFileSync("git", ["worktree", "add", "--detach", "--force", dir, sha], { cwd: root, stdio: "pipe" });
+  try {
+    await mkdir(shots, { recursive: true });
+    // RELATIVE to the worktree: the old harness joins `out` onto its own root,
+    // and an absolute path joined onto a base lands inside the worktree with
+    // the whole path repeated under it.
+    const plan = views.map((view, i) => ({
+      out: `reports/.before-${view.id}.png`,
+      seed: 1003, years: view.years, size: view.size, style: view.style, mode: view.mode,
+      span: view.span, pitch: view.pitch, yaw: view.yaw, fx: view.fx, fy: view.fy,
+      time: view.time, life: true, frames: view.frames, width, height: view.height ?? 619, index: i,
+    }));
+    const runner = join(dir, "tools", ".compare-before.mjs");
+    await writeFile(runner, `import { shoot } from "./screenshot.mjs";
+const plan = ${JSON.stringify(plan)};
+for (const shot of plan) {
+  const r = await shoot(shot);
+  console.log(JSON.stringify({ id: shot.out, ok: r.ok, report: r.report ?? {} }));
+}
+`);
+    execFileSync("node", [runner], { cwd: dir, stdio: "inherit", timeout: 20 * 60 * 1000 });
+    const out = new Map();
+    for (const view of views) {
+      const file = join(dir, "reports", `.before-${view.id}.png`);
+      out.set(view.id, `data:image/png;base64,${(await readFile(file)).toString("base64")}`);
+    }
+    return out;
+  } finally {
+    execFileSync("git", ["worktree", "remove", "--force", dir], { cwd: root, stdio: "pipe" });
+  }
+}
+
+export async function compareSheet({ out = "reports/compare-transport-worlds.png", width = 1100, before = undefined } = {}) {
   const browser = await chromium.launch({ args: ["--no-sandbox"] });
   const sha = commit();
   try {
@@ -115,12 +158,18 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
         life: true, frames: view.frames, width, height,
       });
       rows.push({
-        view,
+        view: { ...view, height },
         reference,
         shot: `data:image/png;base64,${(await readFile(join(root, file))).toString("base64")}`,
         report: result.report ?? {},
         problems: result.problems ?? [],
       });
+    }
+
+    // The same views at another commit, as a middle column (S8).
+    if (before) {
+      const shots = await shootBefore(before, rows.map((r) => r.view), width);
+      for (const row of rows) row.before = shots.get(row.view.id);
     }
 
     const png = await page.evaluate(async ({ rows: data, sha: head }) => {
@@ -134,11 +183,16 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
       const bar = 62;
       const cellW = 1100;
       const loaded = [];
-      for (const row of data) loaded.push([await load(row.reference.src), await load(row.shot)]);
+      const hasBefore = data.some((row) => row.before);
+      for (const row of data) {
+        loaded.push([await load(row.reference.src), await load(row.shot),
+          row.before ? await load(row.before) : undefined]);
+      }
 
       const heights = loaded.map(([reference]) => Math.round(cellW * reference.height / reference.width));
       const canvas = document.createElement("canvas");
-      canvas.width = 2 * cellW + 3 * pad;
+      const columns = hasBefore ? 3 : 2;
+      canvas.width = columns * cellW + (columns + 1) * pad;
       canvas.height = heights.reduce((total, h) => total + h + bar + pad, pad) + 40;
       const c = canvas.getContext("2d");
       c.fillStyle = "#14161a";
@@ -146,13 +200,15 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
       c.textBaseline = "middle";
 
       let y = pad;
-      loaded.forEach(([reference, shot], i) => {
+      loaded.forEach(([reference, shot, earlier], i) => {
         const h = heights[i];
         const row = data[i];
         c.fillStyle = "#e8e6e1";
         c.font = "600 20px system-ui, sans-serif";
+        const afterX = (columns - 1) * (cellW + pad) + pad;
         c.fillText(`${row.view.id.toUpperCase()} — reference`, pad, y + bar / 2 - 10);
-        c.fillText("City Grid", cellW + 2 * pad, y + bar / 2 - 10);
+        if (earlier) c.fillText(`before — ${row.beforeSha}`, cellW + 2 * pad, y + bar / 2 - 10);
+        c.fillText(earlier ? "after — this tree" : "City Grid", afterX, y + bar / 2 - 10);
         c.fillStyle = "#8f9299";
         c.font = "400 14px system-ui, sans-serif";
         c.fillText(row.view.note, pad, y + bar / 2 + 14);
@@ -160,10 +216,11 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
         c.fillText(
           `${row.view.mode} · span ${row.view.span} · pitch ${row.view.pitch}° · ${row.view.style} · `
           + `${r.triangles ?? "?"} triangles · ${r.drawCalls ?? "?"} draw calls · ${head}`,
-          cellW + 2 * pad, y + bar / 2 + 14,
+          afterX, y + bar / 2 + 14,
         );
         c.drawImage(reference, pad, y + bar, cellW, h);
-        c.drawImage(shot, cellW + 2 * pad, y + bar, cellW, h);
+        if (earlier) c.drawImage(earlier, cellW + 2 * pad, y + bar, cellW, h);
+        c.drawImage(shot, afterX, y + bar, cellW, h);
         y += bar + h + pad;
       });
 
@@ -172,7 +229,8 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
       c.fillText("Judged by eye. The references are behavioural targets, never a source of code or constants "
         + "(CLAUDE.md, specs/referencedata.md).", pad, canvas.height - 22);
       return canvas.toDataURL("image/png");
-    }, { rows: rows.map((r) => ({ view: r.view, reference: r.reference, shot: r.shot, report: r.report })), sha });
+    }, { rows: rows.map((r) => ({ view: r.view, reference: r.reference, shot: r.shot,
+      before: r.before, beforeSha: before ?? "", report: r.report })), sha });
 
     await mkdir(dirname(join(root, out)), { recursive: true });
     await writeFile(join(root, out), Buffer.from(png.split(",")[1], "base64"));
@@ -192,5 +250,12 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  await compareSheet({ out: process.argv[2] ?? "reports/compare-transport-worlds.png" });
+  // `--before <sha>` adds a middle column shot from a worktree at that commit
+  // (S8), so a row says what MOVED rather than only what it is.
+  const args = process.argv.slice(2);
+  const at = args.indexOf("--before");
+  const before = at >= 0 ? args[at + 1] : undefined;
+  const out = args.filter((a, i) => !a.startsWith("--") && i !== at + 1)[0]
+    ?? "reports/compare-transport-worlds.png";
+  await compareSheet({ out, before });
 }

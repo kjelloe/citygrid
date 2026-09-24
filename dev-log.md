@@ -6856,3 +6856,27 @@ share is a finding rather than a reason to raise the number. So `budget_gate` is
 `node tools/gates.mjs budget`, measured at **231 s of a 360 s budget**, and `render` is restated
 from what is left in it: **55 s of 120**. `SETS.all` picks both up; the `slice-workflow` and
 `sim-gate` skills say so.
+
+## slice-S8a — the compare sheet grows a before column (2026-09-24)
+
+**What it is.** S8's mechanical half: `tools/compare_sheet.mjs` takes `--before <sha>` and adds a
+middle column shot from a **git worktree at that commit, with that commit's own harness**. A sheet
+that mixes today's `screenshot.mjs` with yesterday's `instances.js` compares neither — R3 spent an
+hour on exactly that mistake, and the tool now says so in its own comment.
+
+**What the first sheet says** (`reports/compare-S8.png`, reference | `756507d` | this tree, looked
+at): **S4 moved two of the three rows a long way.** In the before column the lake and the river are
+a **dark grey grid** — the quad-per-tile surface at a shallow angle, which is what `smoke-S2-edge.png`
+had been showing all along; in the after column they are water, with the far bank wooded and the
+town stopping at its edge. The terrace row is the same story at street height. The town row is
+mostly unchanged in the picture and changed in the city: 294 buildings and 2,873 residents before,
+**233 and 1,864 after**.
+
+**That last number is a finding, not a caption.** It is one seed at forty years, where the sweep is
+200 games at twenty-five, and it says era 4's fire keeps biting as a city ages: −21% buildings on
+this seed. It belongs to **Q105** (demanding was −14% on the sweep) and it is the kind of thing a
+single-seed picture is good for — noticing, not deciding.
+
+**Not built:** the roof-chroma amendment (D4's finding 3) with `specs/art-direction.md` §3.1, and
+the row-by-row verdict the item's "done when" asks for, which is Kjell's eye and waits on **Q102**
+— street widths move every house and street shot on the sheet.

@@ -214,7 +214,16 @@ photographs). The E5 facade grammar already has the module; this is what it draw
 id and window index; the lit ratio is monotone in occupancy. **Gate.** chunk triangle count before
 and after; `reports/smoke-S7-{day,night}.png` from the pavement outside a shop.
 
-## S8 — The compare sheet, row by row (S)
+## S8 — The compare sheet, row by row (S) — the TOOL **built 2026-09-24**; the judgement is Kjell's
+
+*As built: `node tools/compare_sheet.mjs <out.png> --before <sha>` adds a middle column shot from a
+git worktree at that commit, with the OLD tree's own harness — a sheet that mixes today's
+`screenshot.mjs` with yesterday's renderer compares neither (R3's lesson). `reports/compare-S8.png`
+is the first one: reference | 756507d | this tree. **What it shows:** S4's water moved rows 1 and 3
+a long way — the before column draws the river and the lake as a dark grey grid, the after as water
+with a wooded far bank. **Still open:** the roof-chroma amendment (finding 3) and the §3.1 update,
+and the "every row has moved by Kjell's eye" verdict, which is **Q102**'s to unblock — street widths
+move every house and street shot in the sheet.*
 
 **Goal.** The lane's own gate: D4's five findings each have a before and an after in one image.
 
