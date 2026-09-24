@@ -29,7 +29,7 @@ import { registerMonthly } from "./reducer.js";
 import { rules } from "./rules.js";
 import { idiv, clamp } from "../shared/idiv.js";
 import { tileAt, xOf, yOf, DIR4 } from "../shared/grid.js";
-import { hasNet } from "./network.js";
+import { hasNet, isAvenue } from "./network.js";
 // `new` is not allowed in engine/ (ruling 004); scratch arrays come from here.
 import { i32 } from "../shared/arrays.js";
 import { ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL } from "./constants.js";
@@ -74,18 +74,57 @@ function seedJobs(state, distance, queue) {
   return count;
 }
 
-/** One sweep outward from every job at once. This is the whole cost of routing. */
-function sweep(state, distance, queue, seeded) {
-  var head = 0;
-  var tail = seeded;
+/** What one tile costs to cross (T1a). An avenue is quicker, which is the
+ * whole of "the field prefers avenues": the same sweep, two step sizes. */
+function stepOf(state, index) {
+  var traffic = rules().traffic;
+  return isAvenue(state.tiles.road[index]) ? traffic.avenueStep : traffic.roadStep;
+}
+
+/** One sweep outward from every job at once. This is the whole cost of routing.
+ *
+ * A DIAL, not a queue (T1a). The step used to be 1 everywhere and a plain FIFO
+ * settled every tile in order; with two step sizes it is a shortest-path
+ * problem, and the costs are small integers, so a ring of buckets indexed by
+ * distance settles each tile once without a heap. The ring is one wider than
+ * the largest step, which is all a Dijkstra needs when every edge is under it.
+ */
+function sweep(state, distance, queue, seeded, bucketHead, nextIn) {
+  var traffic = rules().traffic;
+  var ring = (traffic.roadStep > traffic.avenueStep ? traffic.roadStep : traffic.avenueStep) + 1;
   var width = state.width;
   var height = state.height;
-  while (head < tail) {
-    var index = queue[head];
-    head += 1;
+  var total = width * height;
+  var i;
+  for (i = 0; i < ring; i += 1) bucketHead[i] = -1;
+  for (i = 0; i < total; i += 1) nextIn[i] = -1;
+
+  var pending = 0;
+  for (i = 0; i < seeded; i += 1) {
+    var seed = queue[i];
+    nextIn[seed] = bucketHead[0];
+    bucketHead[0] = seed;
+    pending += 1;
+  }
+
+  var at = 0;
+  var scanned = 0;
+  // `scanned` bounds the walk: every tile is settled at most once per distance
+  // it can hold, and the field is never deeper than the map's own perimeter.
+  var limit = total * ring + ring;
+  while (pending > 0 && scanned < limit) {
+    var b = at % ring;
+    var index = bucketHead[b];
+    if (index < 0) { at += 1; scanned += 1; continue; }
+    bucketHead[b] = nextIn[index];
+    nextIn[index] = -1;
+    pending -= 1;
+    scanned += 1;
+    // Stale: this tile was improved after it went into this bucket.
+    if (distance[index] !== at) continue;
+
     var x = xOf(width, index);
     var y = yOf(width, index);
-    var next = distance[index] + 1;
     var d;
     for (d = 0; d < 4; d += 1) {
       var nx = x + DIR4[d].dx;
@@ -93,10 +132,13 @@ function sweep(state, distance, queue, seeded) {
       if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
       var neighbourIndex = tileAt(width, nx, ny);
       if (!isRoad(state, neighbourIndex)) continue;
-      if (distance[neighbourIndex] <= next) continue;
-      distance[neighbourIndex] = next;
-      queue[tail] = neighbourIndex;
-      tail += 1;
+      var through = at + stepOf(state, neighbourIndex);
+      if (distance[neighbourIndex] <= through) continue;
+      distance[neighbourIndex] = through;
+      var slot = through % ring;
+      nextIn[neighbourIndex] = bucketHead[slot];
+      bucketHead[slot] = neighbourIndex;
+      pending += 1;
     }
   }
 }
@@ -173,7 +215,10 @@ export function trafficPass(state) {
   var queue = i32(count);
   var seeded = seedJobs(state, distance, queue);
   if (seeded === 0) return events;
-  sweep(state, distance, queue, seeded);
+  // The dial's scratch: one head a bucket, one link a tile.
+  var bucketHead = i32(8);
+  var nextIn = i32(count);
+  sweep(state, distance, queue, seeded, bucketHead, nextIn);
 
   var load = i32(count);
   var commuters = 0;
@@ -205,7 +250,12 @@ export function trafficPass(state) {
   var congested = 0;
   for (i = 0; i < count; i += 1) {
     if (load[i] === 0) continue;
-    var level = clamp(idiv(load[i] * 255, config.roadCapacity), 0, 255);
+    // Capacity by KIND (T1a): an avenue holds `avenueCapacity` times a road's
+    // load before it reads as full, which is what makes one worth its price.
+    var capacity = isAvenue(state.tiles.road[i])
+      ? config.roadCapacity * config.avenueCapacity
+      : config.roadCapacity;
+    var level = clamp(idiv(load[i] * 255, capacity), 0, 255);
     if (level > state.tiles.traffic[i]) state.tiles.traffic[i] = level;
     if (level >= config.congestedAt) {
       congested += 1;

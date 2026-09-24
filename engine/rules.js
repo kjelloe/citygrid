@@ -11,9 +11,9 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 4,
+  era: 5,
   build: {
-    road: 10, roadOverWater: 50, wire: 5, wireOverWater: 25, pipe: 8,
+    road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
     clearForest: 3,
   },
@@ -93,6 +93,12 @@ var RULES = {
   deputy: {
     _comment: "A81 (B9): the deputy lays a road only within roadReach tiles of a lot that is built, or zoned and supplied; expand reaches a little further than the doctrines that hold back. Era 3.",
     buildingsPerStation: 40,
+    // T1a (A60): the size at which the deputy's next block is an avenue. One,
+    // so a returning player finds a main road rather than a grid of identical
+    // streets.
+    avenueAtPopulation: 800,
+    // How far either way along the busiest street the upgrade runs.
+    avenueTiles: 7,
     roadReach: { expand: 4, balance: 3, green: 3, hold: 3 },
   },
   traffic: {
@@ -104,6 +110,11 @@ var RULES = {
     congestionPollution: 6,
     congestionAlertTiles: 60,
     maxCommute: 220,
+    // T1a (A60): a second road kind. An avenue holds `avenueCapacity` times a
+    // road's load before it reads as full, and the commuter field crosses it at
+    // `avenueStep` against a road's `roadStep` — so a grid with one avenue
+    // routes onto it even when the avenue is the longer way round.
+    avenueCapacity: 2, roadStep: 3, avenueStep: 2,
   },
 };
 

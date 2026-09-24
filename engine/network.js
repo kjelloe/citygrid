@@ -16,6 +16,22 @@ import { TERRAIN_FOREST, TERRAIN_ROCK, OWNER_NATURE } from "./constants.js";
  * connects to nothing, which is why presence is not just mask != 0. */
 export var NET_PRESENT = 16;
 
+/** The road's KIND, above the presence bit (T1a, A60). A road layer value is
+ * four adjacency bits, `NET_PRESENT`, and this — so everything that reads
+ * `hasNet` is unchanged and an avenue is a road that happens to be wider.
+ *
+ * The layer is a `u8`, so 64 and 128 are still free for whatever T2 needs. */
+export var NET_AVENUE = 32;
+
+/** Bits above the mask that belong to the TILE rather than to its shape, and
+ * which `reshape` must therefore carry: the kind. Without this an avenue
+ * forgets what it is the moment a neighbour is laid beside it. */
+var NET_KEEP = NET_AVENUE;
+
+export function isAvenue(value) {
+  return (value & NET_AVENUE) !== 0;
+}
+
 export function hasNet(value) {
   return (value & NET_PRESENT) !== 0;
 }
@@ -27,6 +43,9 @@ export function maskOf(value) {
 /** The layer a network command writes, and what it costs. */
 export var NETWORKS = {
   road: { layer: "road", cost: "road", waterCost: "roadOverWater" },
+  // A second road kind, and a second price (T1a). Same layer, same shape rule,
+  // same permission — a bit and a cost is the whole of it in the engine.
+  avenue: { layer: "road", cost: "avenue", waterCost: "avenueOverWater", bits: NET_AVENUE },
   wire: { layer: "wire", cost: "wire", waterCost: "wireOverWater" },
   pipe: { layer: "pipe", cost: "pipe", waterCost: "pipeOverWater" },
 };
@@ -44,7 +63,9 @@ function reshape(tx, index, layer) {
     if (n < 0) continue;
     if (hasNet(peek(tx, n, layer))) mask |= 1 << d;
   }
-  stage(tx, index, layer, NET_PRESENT | mask);
+  // The kind is the tile's own and survives every reshape; the mask is not.
+  var keep = peek(tx, index, layer) & NET_KEEP;
+  stage(tx, index, layer, NET_PRESENT | mask | keep);
 }
 
 /** After a tile changes, its four neighbours must re-examine themselves — this
@@ -90,7 +111,24 @@ export function placeNetwork(tx, kind, indices) {
       return;
     }
 
-    if (hasNet(peek(tx, index, spec.layer))) continue; // already there: free
+    var already = peek(tx, index, spec.layer);
+    if (hasNet(already)) {
+      // Already there: free — UNLESS this is a wider kind over a plain one
+      // (T1a). Upgrading a street to an avenue is the gesture a player reaches
+      // for on the road their traffic is actually using, and it is what makes
+      // the kind worth having: the deputy's first avenue, laid on fresh ground
+      // at the town's edge, carried exactly zero commuters on four played
+      // cities. It costs the avenue's own price, because it is a rebuild.
+      if (spec.bits && (already & spec.bits) !== spec.bits) {
+        charge(tx, buildCost(state, spec.cost));
+        stage(tx, index, spec.layer, already | spec.bits);
+        placed.push(index);
+      }
+      continue;
+    }
+
+    // The kind goes on before the shape does, so `reshape` has it to carry.
+    if (spec.bits) stage(tx, index, spec.layer, peek(tx, index, spec.layer) | spec.bits);
 
     var water = isWater(terrain);
     charge(tx, buildCost(state, water ? spec.waterCost : spec.cost));

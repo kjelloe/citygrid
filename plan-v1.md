@@ -440,6 +440,7 @@ by number from the code they create.
 | Q110 | The frame's estimate prices every car on a visible link, not the cars actually posed — a 21% over-estimate that B3a exposed | Kjell — a measurement-lane slice; an over-charging estimate sacrifices detail silently |
 | Q111 | The deputy builds no police station (6 fire stations, 0 police on the played city), so B3b's patrols never appear in a headless city | Kjell — a deputy change, a new era and a sweep; crime already feeds land value |
 | Q112 | B6's rain streaks draw nothing — 1,140 instances counted, never seen; seven causes ruled out, pool removed, overcast light shipped | Kjell — same class as Q107's smoke; the cause is in the pool lifecycle |
+| Q113 | One deputy turn is worth 26% of the sweep's median — skipping a turn and issuing nothing gives numbers identical to T1a's avenue | Kjell — the measurement lane's; it changes how every balance number here is read, Q105 included |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

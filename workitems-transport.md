@@ -15,7 +15,19 @@ deputy places every new building (plan §10 bonus 1) or the soak never measures 
 renderer-local (ruling 037); the permission matrix gains a row per command; every new string has
 both catalogue entries and a screen (ruling 027); the inspector says why a dead gate is dead.
 
-## T1 — The avenue (L) — A60
+## T1 — The avenue (L) — A60 — the ENGINE half **built 2026-09-24** as `slice-T1a` (era 5)
+
+*As built: `NET_AVENUE` on the road layer (a `u8`, so 64 and 128 are still free), carried through
+`reshape` — a kind bit that is not carried vanishes the moment a neighbour is laid. `CMD_PLACE_ROAD`
+takes `kind`, an unknown kind is refused rather than built as a road, and an avenue laid over a road
+UPGRADES it for the avenue's price (the gesture a player reaches for). `traffic.avenueCapacity` 2,
+and the commuter sweep is a dial rather than a FIFO so `avenueStep` 2 against `roadStep` 3 makes the
+field prefer one. The deputy widens its busiest street once the town passes
+`deputy.avenueAtPopulation` — its first cut laid a NEW avenue at the town's edge, where four played
+cities gave it a mean load of exactly zero.*
+
+*Not in it: the picture — the wider ribbon, the median, two lanes each way, `road.width` per kind.
+That is T1b.*
 
 **Goal.** A second road kind: two lanes each way, a median, higher capacity.
 

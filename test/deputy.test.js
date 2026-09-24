@@ -16,6 +16,7 @@ import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
 import { rules } from "../engine/rules.js";
+import { isAvenue, NET_PRESENT } from "../engine/network.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
@@ -140,4 +141,50 @@ test("the deputy clears burnt ground inside its town, and zones it again", () =>
   assert.equal(left.length, 0, `${left.length} of 6 burnt tiles are still ruins`);
   const rezoned = ruined.filter((i, k) => state.tiles.zone[i] === zonesBefore[k]);
   assert.ok(rezoned.length >= 5, `only ${rezoned.length} of 6 cleared tiles were zoned again`);
+});
+
+test("a town below the size has no avenue, and a grown city's is where the traffic is", () => {
+  // T1a (A60): "the deputy lays an avenue for its first trunk road once the
+  // city passes a size" — and a TRUNK road is the street the traffic is already
+  // on. The first cut laid the avenue as the next block, which lands on fresh
+  // ground at the edge of town by B9's fringe rule: measured on four played
+  // cities, those avenues carried a mean load of exactly zero.
+  const tiles = (state) => {
+    const out = [];
+    for (let i = 0; i < state.tiles.road.length; i += 1) if (isAvenue(state.tiles.road[i])) out.push(i);
+    return out;
+  };
+
+  const small = play(1003, 48, 1).state;
+  assert.ok(small.population < rules().deputy.avenueAtPopulation,
+    `the town reached ${small.population} in two years, which is already avenue size`);
+  assert.equal(tiles(small).length, 0, "a town below the size has a main road");
+
+  // Played until the upgrade fires, and measured THEN: the deputy picks the
+  // busiest street once, and a city that keeps growing moves its centre — at
+  // year eight this same avenue carries 12.8 against the streets' 13.8, which
+  // is the rule working and the city having moved on, not the rule failing.
+  const { state: grown, deputy } = play(1003, 48, 2);
+  for (let turn = 0; turn < 400 && tiles(grown).length === 0; turn += 1) {
+    apply(grown, { type: CMD_TICK });
+    if (turn % 6 === 0) deputyTurn(grown, deputy);
+  }
+  assert.ok(grown.population >= rules().deputy.avenueAtPopulation,
+    `the city only reached ${grown.population}`);
+  const avenue = tiles(grown);
+  assert.ok(avenue.length >= 4, `${avenue.length} avenue tiles in a city of ${grown.population}`);
+  assert.ok(avenue.length <= 2 * rules().deputy.avenueTiles + 1,
+    `${avenue.length} avenue tiles is a network, not a trunk road`);
+
+  // And it is a trunk road: busier than the average street.
+  let avenueLoad = 0;
+  let roadLoad = 0;
+  let roads = 0;
+  for (let i = 0; i < grown.tiles.road.length; i += 1) {
+    if ((grown.tiles.road[i] & NET_PRESENT) === 0) continue;
+    if (isAvenue(grown.tiles.road[i])) avenueLoad += grown.tiles.traffic[i];
+    else { roadLoad += grown.tiles.traffic[i]; roads += 1; }
+  }
+  assert.ok(avenueLoad / avenue.length > roadLoad / Math.max(1, roads),
+    `the avenue carries ${(avenueLoad / avenue.length).toFixed(1)} against the streets' ${(roadLoad / roads).toFixed(1)}`);
 });

@@ -54,16 +54,25 @@ export function price(state, command, kind) {
   return priceOnly(tx);
 }
 
-function registerNetwork(type, kind) {
+function registerNetwork(type, kind, kinds) {
   register(type, function place(state, command) {
     if (!isIntArray(command.runs, LIMITS.CELLS_PER_COMMAND)) return fail(RESULT.INVALID);
+    // `kind` on the command picks a SECOND kind of the same network (T1a): a
+    // road or an avenue, one command, one permission. A name nobody knows is
+    // refused rather than quietly built as the default — a player who asks for
+    // an avenue and is charged for a road has been lied to.
+    var wanted = kind;
+    if (command.kind !== undefined && command.kind !== kind) {
+      if (!kinds || kinds.indexOf(command.kind) < 0) return fail(RESULT.INVALID);
+      wanted = command.kind;
+    }
     return runArea(state, command, function body(tx, indices) {
-      placeNetwork(tx, kind, indices);
+      placeNetwork(tx, wanted, indices);
     });
   });
 }
 
-registerNetwork(CMD_PLACE_ROAD, "road");
+registerNetwork(CMD_PLACE_ROAD, "road", ["avenue"]);
 registerNetwork(CMD_PLACE_WIRE, "wire");
 registerNetwork(CMD_PLACE_PIPE, "pipe");
 

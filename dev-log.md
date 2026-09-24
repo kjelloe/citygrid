@@ -7027,3 +7027,60 @@ lessons — a tool that checks itself is a gate nobody runs, and the sweep's thi
 your own hour-old work.
 
 **Measured.** Suite 1,409 green twice, `docs.test.js` 24, `shots` 5 of 5.
+
+## slice-T1a — the avenue, in the engine (2026-09-24)
+
+**What it is.** A second road kind (A60), engine side. `NET_AVENUE` is a bit above `NET_PRESENT` on
+the road layer — a `u8`, so 64 and 128 are still free for T2 — and everything that reads `hasNet` is
+unchanged: an avenue is a road that happens to be wider. `CMD_PLACE_ROAD` takes a `kind`; a kind
+nobody knows is **refused** rather than quietly built as a road, because a player who asks for an
+avenue and is charged for a road has been lied to.
+
+- **The bit survives `reshape`.** That function rewrites `NET_PRESENT | mask` every time a neighbour
+  changes, so a kind that is not carried through it disappears the moment the road grows. It carries
+  `NET_KEEP` now, and a test lays the next tile and checks.
+- **An avenue over a road upgrades it**, for the avenue's price. That was not in the first cut and it
+  is the gesture that makes the kind worth having — see below.
+- **Capacity by kind** (`traffic.avenueCapacity` 2) and **a routing preference**: the commuter sweep
+  was a FIFO BFS with a step of 1, and is now a dial — a ring of buckets, one wider than the largest
+  step — so `avenueStep` 2 against `roadStep` 3 makes the field route onto an avenue even when it is
+  the longer way round. Small integer costs, no heap, same O(V+E).
+- **The deputy widens its busiest street** once the town passes `deputy.avenueAtPopulation` (800).
+
+**Tests** (`test/avenue.test.js`, 10, plus one in `test/deputy.test.js`): the kind bit and its
+survival; bulldoze clears it; the price; an unknown kind refused; the same ownership rule as a road
+(asserted against a road's own answer rather than a second copy of `permissions.js`); capacity;
+routing onto an avenue on two routes of EQUAL length — the first cut made the avenue one step longer
+and the tie went to whichever neighbour `drive` looked at first, a test that would have passed on a
+coin toss; the upgrade and its charge; and a road drawn across an avenue leaving it an avenue.
+
+**What went wrong on the way.**
+- **The deputy's first avenue carried nobody.** Laid as its next BLOCK, it lands wherever the cursor
+  is — on fresh ground at the town's edge, by B9's fringe rule. Measured on four played cities: mean
+  load **0.0** on the avenue against 10–15 on the roads. A trunk road is the street the traffic is
+  already on, so the deputy upgrades instead. After: **31.6 against 15.2** on seed 1003, and busier
+  than the average street on three of four seeds.
+- **And that first cut stalled the deputy.** Laying an avenue as a fresh block made `buildBlock` fail
+  where it used to succeed, and seed 1003 came out at 622 people against 1,852 after the fix.
+
+**Measured, and the measurement is the finding.** Era 5's sweep (200 games × 4 configurations)
+against era 4: relaxed 1,654 → 1,706, steady 1,671 → 1,343, demanding 1,039 → 1,118, no-disasters
+1,394 → 1,510. The steady row's −20% is **not the avenue**. Isolated on thirty seeds:
+
+| arm | median | p25 | p75 |
+| --- | --- | --- | --- |
+| no upgrade | 1,909 | 1,124 | 2,384 |
+| **one deputy turn skipped, nothing issued** | **1,410** | **1,059** | **2,333** |
+| the upgrade as built | 1,410 | 1,059 | 2,333 |
+
+Identical to the last digit. One turn shifts the deputy's cursor and every later roll, so a
+different — equally valid — city grows. The avenue itself is inert: the same command applied by hand
+to a played city changes nothing (3,544 people either way), and both knobs (capacity, routing) make
+no difference when there are only ten avenue tiles in two thousand. **Q113** carries it, and it puts
+**Q105**'s demanding row in the same class.
+
+Gates: `sim` **554 s of 900**, all three green, `traffic_gate` re-baselined (driving demand r 0.909,
+seed −0.096). Suite **1,420 green twice**. No fixture re-pin: the pinned fixtures carry no roads the
+deputy laid, and adding a bit nothing sets leaves every hash where it was.
+
+**Next:** T1b — the picture: the wider ribbon, the median, two lanes each way, `road.width` per kind.

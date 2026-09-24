@@ -42,7 +42,7 @@ export function makeDeputy(seat, doctrine) {
     cursorY: -1,
     hubX: -1,
     hubY: -1,
-    built: 0,
+    built: 0, avenues: 0,
     zoned: 0,
     utilities: 0,
     refusals: 0,
@@ -388,6 +388,60 @@ function clearRuins(state, deputy, town) {
   return true;
 }
 
+/** The town's first trunk road, once it has grown (T1a, A60).
+ *
+ * An UPGRADE, not a new street. The first cut laid the avenue as the deputy's
+ * next block, which lands wherever the cursor is — on fresh ground at the edge
+ * of town, by B9's fringe rule — and on four played cities those avenues
+ * carried a mean load of exactly **zero**. A trunk road is the street the
+ * traffic is already on, so this widens the busiest run the seat owns.
+ */
+function upgradeTrunk(state, deputy) {
+  if (deputy.avenues >= 1) return false;
+  if (state.population < rules().deputy.avenueAtPopulation) return false;
+
+  var width = state.width;
+  var total = width * state.height;
+  var best = -1;
+  var bestLoad = 0;
+  var i;
+  for (i = 0; i < total; i += 1) {
+    if (!hasNet(state.tiles.road[i])) continue;
+    if (state.tiles.owner[i] !== deputy.seat) continue;
+    if (state.tiles.traffic[i] <= bestLoad) continue;
+    bestLoad = state.tiles.traffic[i];
+    best = i;
+  }
+  if (best < 0 || bestLoad <= 0) return false;
+
+  // The longer of the two runs through that tile, so the avenue follows the
+  // street rather than crossing it.
+  var bx = xOf(width, best);
+  var by = yOf(width, best);
+  var span = rules().deputy.avenueTiles;
+  var alongX = [];
+  var alongY = [];
+  var step;
+  for (step = -span; step <= span; step += 1) {
+    var hx = bx + step;
+    if (hx >= 0 && hx < width && hasNet(state.tiles.road[tileAt(width, hx, by)])) alongX.push(tileAt(width, hx, by));
+    var hy = by + step;
+    if (hy >= 0 && hy < state.height && hasNet(state.tiles.road[tileAt(width, bx, hy)])) alongY.push(tileAt(width, bx, hy));
+  }
+  var run = alongX.length >= alongY.length ? alongX : alongY;
+  if (run.length < 4) return false;
+
+  var done = issue(state, deputy, {
+    type: CMD_PLACE_ROAD, actor: deputy.seat, kind: "avenue", runs: encodeRuns(run),
+  });
+  if (done.result !== RESULT.OK) {
+    deputy.refusals += 1;
+    return false;
+  }
+  deputy.avenues += 1;
+  return true;
+}
+
 function findSpotFor(state, deputy, defId) {
   var def = definition(defId);
   if (!def) return -1;
@@ -552,6 +606,8 @@ export function deputyTurn(state, deputy, sink) {
   // Then the fire service, before more streets: a block that burns down is
   // worth more than a block that was never built (B1a).
   if (keepCovered(state, deputy)) return true;
+  // And once the town is big enough, its busiest street becomes its main road.
+  if (upgradeTrunk(state, deputy)) return true;
 
   // Stop expanding when a deficit is actually running the treasury down —
   // not merely because the books are negative. A new city runs a deficit by
