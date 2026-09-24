@@ -223,12 +223,5 @@
       "ink": 0.8,
       "inkColour": 2240568
     }
-  },
-  "rain": {
-    "reach": 22,
-    "perTile": 300,
-    "fall": 9.5,
-    "streak": 1.1,
-    "drift": 0.35
   }
 }

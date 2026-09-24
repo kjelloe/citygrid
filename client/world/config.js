@@ -80,10 +80,6 @@ export const DEFAULTS = Object.freeze({
   // which of the three looks you chose (ruling 017); the colours are absolute,
   // because "the same blue, dimmer" is not what dusk looks like. `night` is
   // what the lit windows and the lamps are dialled by.
-  // B6: the streaks near the eye. `reach` is metres from the camera, `perTile`
-  // how many streaks a tile of that circle holds, `fall` metres a second,
-  // `streak` the length of one.
-  rain: { reach: 22, perTile: 300, fall: 9.5, streak: 1.1, drift: 0.35 },
   presets: {
     day: {
       key: 1, keyColour: 0xfffaf0, hemi: 1, hemiSky: 0xdcecff, hemiGround: 0x93aa78,

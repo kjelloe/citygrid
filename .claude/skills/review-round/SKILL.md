@@ -490,6 +490,18 @@ again. B5's journeys made it obvious — 24 became 47 in a minute on the test to
 on the played city's night. Count each agent against the source that asked for it, everywhere that
 count is read, and write the invariant as a test over time.
 
+**A tool that checks itself is a gate nobody runs.** Five picture tools — water, damage, services,
+windows, rain — each count what they photographed and exit non-zero when the count is wrong, and
+none of them was in a gate set: they were run by hand in the slice that wrote them and never again.
+`gates.mjs shots` runs all five in 166 s. When a slice writes a tool that can fail, ask what runs it
+next month.
+
+**And the sweep's third direction catches your own hour-old work.** P75 found a `rain` block in
+`data/cityviewer.json` and its config mirror that nothing read any more — B6a had removed the pool
+that read it the same session — plus an `idle` field on B3b's service kinds that nothing ever
+looked at. Run `grep -o '"[a-zA-Z]*"' data/*.json | sort -u` against the readers after every slice
+that removes code, not only after ones that add it.
+
 **A hazard needs somebody who can answer it — and in a headless city that is the deputy.** B1a made
 fire spread where no station is in range, and the first sweep row collapsed: the deputy has never
 built a fire station, so no gate city in this project has ever had a fire service. The same slice's

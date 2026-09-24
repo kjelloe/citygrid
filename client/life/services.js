@@ -16,10 +16,11 @@
 
 import { FLAG_BURNING } from "../constants-mirror.js";
 
-/** What each kind does when it has nothing to do. */
+/** The two kinds: which building sends them, what colour they are, and which
+ * of `vehicle-spec.js`'s bodies they wear. */
 export const KINDS = Object.freeze({
-  engine: { def: "fireStation", colour: 0xc03028, body: 2, idle: "home" },
-  patrol: { def: "policeStation", colour: 0x2b4c8c, body: 1, idle: "patrol" },
+  engine: { def: "fireStation", colour: 0xc03028, body: 2 },
+  patrol: { def: "policeStation", colour: 0x2b4c8c, body: 1 },
 });
 
 /** Metres a second. An engine is quicker than the traffic and a patrol is not. */

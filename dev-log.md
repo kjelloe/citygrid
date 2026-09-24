@@ -6994,3 +6994,36 @@ was renderer-only.
 
 **Next:** Q84's coupling (a storm starting a fire, a downpour flooding the sewers) is engine work
 and Kjell's to rule on; Q112 is the streaks.
+
+## review round — P75 (2026-09-24)
+
+After B3b, M6 and B6a.
+
+**The four reachability directions.** `omissions` and `reachability` 13 green. The export sweep
+turns up fourteen names with no caller, and all of them are deliberate: the Wave 5 protocol surface
+(`BUILD_HASH`, `C2S`, `S2C`, `compatible`), the permissions helpers multiplayer will need
+(`isCooperative`, `ownershipPartitions`), the validators (`isBool`, `isString`), and four seams a
+test or a future screen uses (`registerYearly`, `setCatalogue`, `clearAlerts`, `markDirty`,
+`tileCentre`, `isSystemCommand`). M6 took the three that were misleading rather than merely unused.
+
+**Two omissions, both an hour old, both mine.**
+- **`rain` in `data/cityviewer.json` and its config mirror was read by nothing.** B6a removed the
+  streak pool that read it in the same session and left the numbers behind — which is the sweep's
+  third direction catching work from the same afternoon. Removed; Q112 and this log carry the
+  numbers the next attempt needs.
+- **`KINDS.idle` on B3b's service kinds** was a field nothing ever looked at. Removed.
+
+**And one that was not mine but was overdue: nothing ran the picture tools.** Five of them —
+`water_shots`, `disaster_shot`, `service_shots`, `window_shots`, `rain_shots` — each count what they
+photographed and exit non-zero when the count is wrong, and each was run by hand in the slice that
+wrote it and never again. They are `node tools/gates.mjs shots` now: **166 s for all five** (water
+23, damage 29, services 50, windows 36, rain 28), and they are in `all`, whose budget is restated
+from measurement at 30 minutes. The first budget I wrote for the set was twenty minutes, from
+timings taken while probing interactively rather than from the tools themselves — a reminder that a
+budget is a measurement and not a memory.
+
+**Docs and skills.** `slice-workflow` and `sim-gate` gained the new set; `review-round` gained two
+lessons — a tool that checks itself is a gate nobody runs, and the sweep's third direction catches
+your own hour-old work.
+
+**Measured.** Suite 1,409 green twice, `docs.test.js` 24, `shots` 5 of 5.

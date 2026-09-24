@@ -45,6 +45,16 @@ export const GATES = {
   mvp_acceptance: { args: ["tools/mvp_acceptance.mjs"], what: "all thirteen §24 criteria, desktop and phone" },
   budget_gate: { args: ["tools/budget_gate.mjs"], what: "3 tiers × 2 projections × 4 spans, plus every added row" },
 
+  // The picture tools that check themselves (P75). Each counts what it
+  // photographed — smoke over the fire, walls on the burnt plot, streaks, an
+  // engine out — and exits non-zero when the count is wrong, which is what
+  // makes them gates rather than screenshots.
+  water_shots: { args: ["tools/water_shots.mjs"], what: "the river's trough and its bank, measured before they are called a river" },
+  disaster_shot: { args: ["tools/disaster_shot.mjs"], what: "a building alight and the ground it leaves, at both zooms" },
+  service_shots: { args: ["tools/service_shots.mjs"], what: "an engine answering a fire, a patrol on its beat, vans off the industry" },
+  window_shots: { args: ["tools/window_shots.mjs"], what: "what is behind a window, day and night, from the pavement" },
+  rain_shots: { args: ["tools/rain_shots.mjs"], what: "the overcast hour, from the street and from the air" },
+
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
   passability: { args: ["tools/passability.mjs"], what: "a lane wide enough for a walker, everywhere" },
   lanes_dump: { args: ["tools/lanes_dump.mjs"], what: "the lane graph, its height error and its step time" },
@@ -75,9 +85,14 @@ export const SETS = {
   // now, and `render` is restated from what is left in it.
   render: ["walkthrough", "passability", "lanes_dump"],
   budget: ["budget_gate"],
+  // The picture tools that CHECK themselves (P75's omissions round): each one
+  // counts what it photographed and exits non-zero when the count is wrong, and
+  // until now nothing ran them. They are slow and they are pictures, so they
+  // are a set of their own rather than part of `render`.
+  shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
 };
-SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim];
+SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -112,8 +127,13 @@ export const BUDGET_MS = {
   // `budget_gate` alone, 235 s at B3a with three tiers, two projections, four
   // spans and the desktop viewport D8 added.
   budget: 6 * 60 * 1000,
+  // Measured at P75, all five in one run: water 23 s, damage 29, services 50,
+  // windows 36, rain 28 — 166 s. The first guess was 20 minutes, from timings
+  // taken while probing interactively rather than from the tools themselves.
+  shots: 6 * 60 * 1000,
   sim: 15 * 60 * 1000,
-  all: 27 * 60 * 1000,
+  // Measured at P75: quick 394 s, render 56, budget 232, sim 541, shots 166.
+  all: 30 * 60 * 1000,
 };
 
 export function gatesIn(set) {
