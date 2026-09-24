@@ -72,6 +72,8 @@ export function listSaves() {
   return run("readonly", (store) => store.getAll()).then((rows) => rows ?? []);
 }
 
-export function deleteSave(slot) {
-  return run("readwrite", (store) => store.delete(slot));
-}
+// There is no `deleteSave`. It existed here with no caller and nothing in the
+// interface to reach it, which by ruling 026's standard is not a feature — and
+// the save bar is four buttons in a row that a playtest already called crowded
+// (N24). A slot is freed by saving over it, which is the gesture that is there.
+// M6 took the decision rather than leaving the function as a promise.

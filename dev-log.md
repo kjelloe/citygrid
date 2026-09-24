@@ -6931,3 +6931,20 @@ station the harness placed, with its car out on the street. `smoke-B3-trucks.png
 street, and the vans in it are the ones that came off the industrial side.
 
 **Next:** P70's list is done except S8's verdict, which is Kjell's eye and waits on Q102.
+
+## slice-M6 — the tidy-up (2026-09-24)
+
+Three exports the omissions sweep found with no caller, and three decisions rather than three
+deletions on their own:
+
+- **No save-slot delete.** `db.js` had `deleteSave(slot)`, which nothing called and nothing in the
+  interface could reach — a capability with no control, by ruling 026's standard. The alternative
+  was a delete button per slot, and the save bar is already four buttons in a row that the P29
+  playtest called crowded (N24). A slot is freed by saving over it; `saves.js` says so where the
+  next reader will look.
+- **`clearRuin` is gone.** Clearing a ruin is the bulldoze command's job — `build-commands.js`
+  clears the flag inline, and B1a's deputy issues that command. The rule existed twice with only
+  one copy reachable.
+- **`setLocale` is gone.** `loadLocale` sets the active catalogue itself.
+
+Suite 1,407 green twice; `omissions` and `reachability` 13 green; precache regenerated.

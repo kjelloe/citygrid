@@ -158,7 +158,13 @@ night 130,936, equal to its own day frame) and carries D6's three rebuild times.
 commits behind and all three are documents, which the page says rather than the push fixing.
 `lanes_dump` unchanged at 400 cars, 76% moving — `busyAt` has one reader and it is the crowd.
 
-## M6 — The tidy-up the omissions sweep asked for (S) — found 2026-09-17/18
+## M6 — The tidy-up the omissions sweep asked for (S) — **done 2026-09-24 as `slice-M6`**
+
+*Three decisions, all "remove it and say so" rather than "leave it as a promise": there is **no
+save-slot delete** — a slot is freed by saving over it, and the save bar is four buttons a playtest
+already called crowded (N24); **`clearRuin` is gone** — clearing a ruin is the bulldoze command's
+job, which is what B1a's deputy issues; **`setLocale` is gone** — `loadLocale` sets the active
+catalogue itself. Each place carries the reason where the next reader will look.*
 
 **Goal.** Three things the export sweep turned up, one of which is a capability with no control.
 

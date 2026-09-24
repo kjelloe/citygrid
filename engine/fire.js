@@ -174,12 +174,12 @@ export function ignitionPass(state) {
   return events;
 }
 
-/** Ruins block building until they are cleared, and they drag the
- * neighbourhood down while they stand — which is what makes rebuilding after a
- * fire urgent rather than optional. */
-export function clearRuin(state, index) {
-  state.tiles.flags[index] &= ~FLAG_RUINED;
-}
+// Ruins block building until they are cleared, and they drag the neighbourhood
+// down while they stand — which is what makes rebuilding after a fire urgent
+// rather than optional. **Clearing one is the bulldoze command's job**
+// (`build-commands.js` clears the flag inline, and B1a's deputy issues that
+// command). `clearRuin` lived here with no caller, which made the rule exist
+// twice with only one copy reachable; M6 removed it.
 
 export function isRuined(state, index) {
   return (state.tiles.flags[index] & FLAG_RUINED) !== 0;

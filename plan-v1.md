@@ -95,7 +95,7 @@ the file to open first.
 
 | Lane | What it is | Where it stands |
 |---|---|---|
-| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **M1–M5 finished 2026-09-08/09** — merged and pushed, the runner and the checklist built, the Norwegian read and passed. **M6 is open**: the tidy-up the omissions sweep asked for, including a save slot the player cannot delete |
+| `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **M1–M5 finished 2026-09-08/09** — merged and pushed, the runner and the checklist built, the Norwegian read and passed. **M6 done 2026-09-24** |
 | `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6, D7, D8 done**, plus the desktop halves of D2 and D5. The first real card found the governor giving up its whole ladder at 60 fps. **What is left needs a phone**: D3 and the last of D5 are blocked on that card |
 | `workitems-film.md` | photo mode, tours, a demo film | not started; unblocked — the measurement lane's buildable half is done, so F1 follows D8 |
 | `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |

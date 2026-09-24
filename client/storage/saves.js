@@ -13,6 +13,9 @@ import { TICKS_PER_YEAR } from "../constants-mirror.js";
  * The autosave has its own slot and never touches a manual one. A game that
  * overwrites the city you saved deliberately, with the one you were idly
  * playing, has taken something from you that it cannot give back. */
+/** Three manual slots and an autosave — and **no delete**: a slot is freed by
+ * saving over it (M6). `db.js` had a `deleteSave` nothing called and nothing
+ * could reach. */
 export const SLOTS = {
   manual: ["slot1", "slot2", "slot3"],
   auto: "autosave",

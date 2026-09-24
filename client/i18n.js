@@ -18,9 +18,8 @@ export async function loadLocale(locale) {
   return name;
 }
 
-export function setLocale(locale) {
-  if (catalogues.has(locale)) active = locale;
-}
+// No `setLocale`: `loadLocale` sets the active catalogue itself, and the second
+// entry point had no caller (M6).
 
 export function locale() {
   return active;
