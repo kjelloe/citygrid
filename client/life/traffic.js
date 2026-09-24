@@ -16,13 +16,13 @@
 // `client/world/`.
 
 import { jitter } from "../world/hash.js";
-import { BODY_NAMES } from "../world/vehicle-spec.js";
+import { BODY_NAMES, VAN_SHARE } from "../world/vehicle-spec.js";
 import { getConfig } from "../world/config.js";
 import { rushScale, tideAt } from "../world/rush.js";
 import { doorPoint } from "../world/street-furniture.js";
 import { frontEdgeOf, OUTWARD } from "../world/lots.js";
 import { closestAlong } from "../world/polyline.js";
-import { NET_PRESENT } from "../constants-mirror.js";
+import { NET_PRESENT, ZONE_INDUSTRIAL } from "../constants-mirror.js";
 
 /** A car, in metres. The mesh is 0.22 tiles long and a tile is 20 m. */
 /** The longest step the simulation will take, whatever delta it is handed.
@@ -126,6 +126,43 @@ export function createTraffic(state, model, options = {}) {
   let phase = options.phase;
 
   const blocks = links.filter((l) => l.kind === "block");
+
+  /** How industrial the ground beside a link is, 0..1 (B3b).
+   *
+   * A van is a truck when it comes off an industrial street, so the body a car
+   * spawns with follows the zoning it spawns in: a lorry outside a factory and
+   * hatchbacks outside the houses, rather than a third of each everywhere.
+   * Computed once per link with the model, not per spawn.
+   */
+  const industrial = new Map();
+  for (const link of blocks) {
+    const n = link.pts.length / 3;
+    let ind = 0;
+    let seen = 0;
+    for (let i = 0; i < n; i += 1) {
+      const x = Math.floor(link.pts[i * 3] / cfg.tileM);
+      const z = Math.floor(link.pts[i * 3 + 2] / cfg.tileM);
+      for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const tx = x + dx;
+        const tz = z + dz;
+        if (tx < 0 || tz < 0 || tx >= state.width || tz >= state.height) continue;
+        seen += 1;
+        if (state.tiles.zone[tz * state.width + tx] === ZONE_INDUSTRIAL) ind += 1;
+      }
+    }
+    industrial.set(link.id, seen > 0 ? ind / seen : 0);
+  }
+
+  /** Which body a car spawning here has. The van's share rises with the
+   * industry around it; the other two split what is left. */
+  function bodyFor(id, link) {
+    const vans = VAN_SHARE.base + VAN_SHARE.industry * (industrial.get(link.id) ?? 0);
+    const roll = jitter(id, 23);
+    if (roll < vans) return BODY_NAMES.indexOf("van");
+    const rest = BODY_NAMES.filter((b) => b !== "van");
+    const pick = rest[Math.floor(((roll - vans) / Math.max(1e-6, 1 - vans)) * rest.length) % rest.length];
+    return BODY_NAMES.indexOf(pick);
+  }
 
   /** How fast a road fills or empties, in cars per second per link (D7).
    *
@@ -393,7 +430,7 @@ export function createTraffic(state, model, options = {}) {
       // From the same list the kit builds its pools from (B3a). It was
       // `> 0.5 ? 1 : 0` — two variants written down twice, so the third body
       // would have been a pool nothing ever drew (V6's lesson).
-      variant: Math.floor(jitter(id, 23) * BODY_NAMES.length) % BODY_NAMES.length,
+      variant: bodyFor(id, link),
       colour: Math.floor(jitter(id, 29) * 6),
     };
     cars.push(car);

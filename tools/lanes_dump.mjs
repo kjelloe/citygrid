@@ -272,6 +272,8 @@ if (worstLane > LANE_TOLERANCE) {
   const { deriveNav } = await import("../client/world/nav.js");
   const { createPedestrians, ROLES } = await import("../client/life/pedestrians.js");
   const townModel = createModel(town);
+  // The same played city, kept for the services block below.
+  globalThis.__townForServices = town;
   const townNav = deriveNav(town, townModel);
   const shops = town.buildings.filter((b) => b.zone === 2).length;
   console.log(`\nroles by hour   deputy 64x64, 20 years: ${town.buildings.length} buildings, ${shops} shops, cap 600, 60 s settled`);
@@ -295,4 +297,41 @@ if (orphans.length > 0) {
   console.error(`\nFAIL  ${orphans.length} link(s) lead nowhere and are not exits`);
   process.exit(1);
 }
+// --- the vehicles with an errand (B3b) ---------------------------------------
+//
+// On the deputy's own city, with a fire lit: how many engines turn out, how
+// many patrols are on a beat, and what share of the traffic is a van. A count
+// of zero here means a fleet nobody can see, which is the shape every defect in
+// this lane has had.
+{
+  const { createServices } = await import("../client/life/services.js");
+  const { createTraffic } = await import("../client/life/traffic.js");
+  const { BODY_NAMES } = await import("../client/world/vehicle-spec.js");
+  const { igniteAt } = await import("../engine/fire.js");
+  const townForServices = globalThis.__townForServices;
+  const stations = townForServices.buildings.filter((b) => b.def === "fireStation").length;
+  const police = townForServices.buildings.filter((b) => b.def === "policeStation").length;
+  // A fire, in the middle of the town rather than wherever the roll lands: the
+  // question is whether an engine answers one, not whether one starts.
+  const middle = [...townForServices.buildings]
+    .filter((b) => b.zone !== 0)
+    .sort((a, b) => Math.hypot(a.x - 32, a.y - 32) - Math.hypot(b.x - 32, b.y - 32))[0];
+  if (middle) igniteAt(townForServices, middle.y * townForServices.width + middle.x);
+  const servicesModel = createModel(townForServices);
+  const fleet = createServices(townForServices, servicesModel, { life: true });
+  for (let t = 0; t < 120; t += 1) fleet.update(0.25);
+  const st = fleet.stats();
+  const traffic = createTraffic(townForServices, servicesModel, { life: true, cap: 600 });
+  for (let t = 0; t < 400; t += 1) traffic.update(0.25);
+  const cars = traffic.cars();
+  const van = BODY_NAMES.indexOf("van");
+  const vans = cars.filter((c) => c.variant === van).length;
+  console.log(`\nservices        deputy 64x64: ${stations} fire station(s), ${police} police station(s), `
+    + `1 fire lit at ${middle ? `${middle.x},${middle.y}` : "nowhere"}`);
+  console.log(`                ${st.engines} engine(s) out, ${st.atTheFire} at the fire, ${st.patrols} patrol(s) on a beat`);
+  console.log(`                ${vans} of ${cars.length} cars are vans (${Math.round(100 * vans / Math.max(1, cars.length))}%)`);
+  if (stations > 0 && st.engines === 0) console.error("FAIL — a fire is burning and no engine turned out");
+  if (police > 0 && st.patrols === 0) console.error("FAIL — a police station with no patrol");
+}
+
 console.log("\nlanes dump ok");

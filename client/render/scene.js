@@ -37,6 +37,7 @@ import { createWalker } from "../life/walker.js";
 import { deriveNav } from "../world/nav.js";
 import { eyeOf, PITCH } from "../world/orbit.js";
 import { createPedestrians } from "../life/pedestrians.js";
+import { createServices } from "../life/services.js";
 
 /** What the device would give us, capped by the tier (ruling 040). A cap, not a
  * replacement: a tier must never make a 1× screen render at 2×. */
@@ -324,6 +325,10 @@ export function createRenderer(canvas, state, options = {}) {
   // road is and this decides what busy looks like. `life: false` freezes them
   // where they settled, so a screenshot is the same picture twice.
   let traffic = createTraffic(state, model, { cap: carCap(), life: options.life, phase: startPhase });
+  // The vehicles with an errand (B3b): a fire engine while a fire burns, a
+  // patrol while a police station stands. Outside the car cap, because a city
+  // that is full of traffic still has to be able to answer a fire.
+  let services = createServices(state, model, { life: options.life });
   // The nav graph and the people on it (slice E7, spec §9.3). Same contract as
   // the cars: derived, renderer-local, never state, frozen by `life: false`.
   let nav = deriveNav(state, model);
@@ -459,6 +464,7 @@ export function createRenderer(canvas, state, options = {}) {
     // the new one: a car holding a link id from a graph that no longer exists
     // is a car in a field.
     traffic = createTraffic(state, model, { cap: carCap(), life: options.life, phase: startPhase });
+    services = createServices(state, model, { life: options.life });
     // The nav graph is derived from the same corridors, so it goes the same
     // way: a person holding an edge id from a graph that no longer exists is a
     // person in a field (E7).
@@ -759,6 +765,7 @@ export function createRenderer(canvas, state, options = {}) {
       pedestrians.setPhase(drawOptions.dayPhase);
     }
     traffic.update(dt);
+    services.update(dt);
     if (drawOptions.frameMs > 0) {
       const before = governor.disabled().length;
       governor.sample(drawOptions.frameMs);
@@ -856,7 +863,11 @@ export function createRenderer(canvas, state, options = {}) {
         // `near` when a tile is wide enough on screen for a car to be more
         // than a smear: the same threshold the ladder uses to decide that
         // street detail is resolvable at all (B3a).
-        traffic.pose(pools, pushInstance, CAR_COLOURS, bounds, tilePixels(view, canvas.height) >= 60);
+        const near = tilePixels(view, canvas.height) >= 60;
+        traffic.pose(pools, pushInstance, CAR_COLOURS, bounds, near);
+        // After the traffic, into the same pools: a service vehicle is a car
+        // with an errand and a colour, and it is counted like one.
+        services.pose(pools, pushInstance, bounds, near);
         // Settle the pools AGAIN. The moving cars go into the same pools as the
         // parked ones and they go in after `updateInstances` has already
         // written `visible = mesh.count > 0` — so on a street with no parked
@@ -969,6 +980,7 @@ export function createRenderer(canvas, state, options = {}) {
     stats.lots = model.stats.lots;
     stats.tier = tierName;
     stats.cars = traffic.count();
+    stats.services = services.stats();
     // How long the traffic has lived, which is what its population is a
     // function of (D7). Two cards can only be compared row for row where their
     // rows have lived comparable amounts of time — the delta clamp means a slow
@@ -1112,5 +1124,5 @@ export function createRenderer(canvas, state, options = {}) {
   return { renderer, scene, view, terrain, pools, style, setTier, setProjection, setTime,
     get night() { return timeOfDay.current.night; },
     enterStreet, leaveStreet, enterPhoto, leavePhoto, flyPhoto, lookPhoto, capture,
-    get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get pedestrians() { return pedestrians; }, get crowd() { return crowd; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+    get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get services() { return services; }, get pedestrians() { return pedestrians; }, get crowd() { return crowd; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

@@ -6880,3 +6880,54 @@ single-seed picture is good for — noticing, not deciding.
 **Not built:** the roof-chroma amendment (D4's finding 3) with `specs/art-direction.md` §3.1, and
 the row-by-row verdict the item's "done when" asks for, which is Kjell's eye and waits on **Q102**
 — street widths move every house and street shot on the sheet.
+
+## slice-B3b — the vehicles with an errand (2026-09-24)
+
+**What it is.** `client/life/services.js`: a fire engine while a fire burns, a patrol while a police
+station stands, and vans that come off the industrial streets. The traffic of §9.1 is ambient — a
+car appears on a link in proportion to its load and leaves at the end of it — and none of it is
+going anywhere. These are.
+
+- **An engine a fire**, from the nearest station, along a Dijkstra route over `link.next`. Fires
+  group into connected calls, because B1a made them spread and four tiles of one fire is one errand.
+- **A patrol a station**, driving the worst crime it can reach within twelve tiles, then the next,
+  continuing from where it stands rather than teleporting back to the door.
+- **Vans by zoning** (`VAN_SHARE`, in `vehicle-spec.js`): 12% anywhere, up to 57% where the tiles
+  beside the lane are industrial. Measured on two identical highways, one through a factory estate
+  and one through housing — that difference is a test.
+
+**Tests** (`test/services.test.js`, 14): no fire, no engine; one fire, one engine, from the nearest
+station; a fire that has spread is one call; two fires beside one station are two engines; the route
+is link-by-link on the graph; a station on another network answers nothing; the fleet is not a
+function of the camera (D7); a frozen city still musters and never moves; and a beat the car cannot
+drive to is skipped for one it can.
+
+**What went wrong on the way — one thing, three times.** The patrol never turned out in a played
+city while every test passed. Three probes into the page, and the numbers are the finding:
+
+1. **`len`, not `length`.** A link's length is `len`; `length` is undefined, so every step was NaN
+   and the vehicle sat still while the count said it was there.
+2. **The three lanes nearest a station door are kerbside stubs** that reach only themselves. The
+   main network — 8,426 of 8,902 links — was the fourth-nearest, 72 m away. A start you cannot
+   drive off is not a start, so candidates are filtered by `next` and `preds` and tried nearest-first.
+3. **The worst crime in reach was on an island of road.** The graph has 5+ components; the patrol
+   wanted the one destination with no route from anywhere and gave up. The beat is a ranked list
+   now, and the car takes the worst one that actually routes.
+
+What found all three was printing the component sizes rather than re-reading the search.
+
+**Measured.** `lanes_dump` gained a services row on the deputy's own city with a fire lit: **6 fire
+stations, 0 police stations, 1 engine out, 18 of 106 cars are vans (17%)**. `tools/service_shots.mjs`
+counts before it shoots: engine 1, patrol 1, 13 vans of 82 cars. Suite **1,407 green twice**; render
+**57 s of 120**, budget **241 s of 360**, quick **11 of 11, 407 s of 480**.
+
+**Q111 filed.** Those zero police stations are the same shape as the fire service before B1a: the
+deputy has never built one, so a patrol is correct, tested and invisible in every headless city. The
+shot harness places one (`police=1`) rather than moving the balance twice in one night.
+
+**What the pictures say**, looked at. `smoke-B3-engine.png`: smoke drifting over the middle of the
+town and a red vehicle on the road beside it — the engine, on its way. `smoke-B3-patrol.png`: the
+station the harness placed, with its car out on the street. `smoke-B3-trucks.png`: an ordinary
+street, and the vans in it are the ones that came off the industrial side.
+
+**Next:** P70's list is done except S8's verdict, which is Kjell's eye and waits on Q102.

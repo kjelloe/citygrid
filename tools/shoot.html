@@ -133,6 +133,43 @@ if (pollute >= 0) state.tiles.pollution.fill(pollute);
 // them — the TILE flags — because that is what the renderer reads and what a
 // building record has never carried. Without this a shot of damage needs a city
 // that happens to be alight, which is a city nobody can aim at.
+// `police=1` puts a police station on the first clear ground beside a road near
+// the middle (B3b). The deputy builds fire stations since B1a and has never
+// built a police station, so a patrol cannot exist in a played city at all —
+// Q111. A shot of the thing has to place one.
+if (params.get("police") === "1") {
+  const W = state.width;
+  const road = (x, y) => x >= 0 && y >= 0 && x < W && y < state.height && (state.tiles.road[y * W + x] & 16) !== 0;
+  const clear = (x, y) => x >= 0 && y >= 0 && x + 1 < W && y + 1 < state.height
+    && [[0, 0], [1, 0], [0, 1], [1, 1]].every(([dx, dy]) =>
+      state.tiles.buildingId[(y + dy) * W + x + dx] === 0 && !road(x + dx, y + dy));
+  let best;
+  for (let y = 2; y < state.height - 3; y += 1) {
+    for (let x = 2; x < W - 3; x += 1) {
+      if (!clear(x, y)) continue;
+      if (![[x - 1, y], [x + 2, y], [x, y - 1], [x, y + 2]].some(([rx, ry]) => road(rx, ry))) continue;
+      const d = Math.hypot(x - W / 2, y - state.height / 2);
+      if (!best || d < best.d) best = { d, x, y };
+    }
+  }
+  if (best) {
+    const id = 9100;
+    state.buildings.push({ id, def: "policeStation", zone: 0, x: best.x, y: best.y, w: 2, h: 2,
+      level: 1, occupancy: 0, condition: 100, owner: 1, flags: 0, builtTick: 0 });
+    for (let dy = 0; dy < 2; dy += 1) {
+      for (let dx = 0; dx < 2; dx += 1) state.tiles.buildingId[(best.y + dy) * W + best.x + dx] = id;
+    }
+    // Something for it to patrol: crime is a tile layer, and a fixture with
+    // none sends the car nowhere.
+    for (let y = Math.max(0, best.y - 8); y < Math.min(state.height, best.y + 8); y += 1) {
+      for (let x = Math.max(0, best.x - 8); x < Math.min(W, best.x + 8); x += 1) {
+        if (road(x, y)) state.tiles.crime[y * W + x] = 60 + ((x * 7 + y * 13) % 120);
+      }
+    }
+    globalThis.SHOT_POLICE = { x: best.x, y: best.y };
+  }
+}
+
 const damage = params.get("damage") ?? "";
 if (damage) {
   const BURNING = 4;

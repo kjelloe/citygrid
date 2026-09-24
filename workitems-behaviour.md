@@ -129,7 +129,7 @@ and the baked facade dirty and shrink by the same amount.
   dirtying a city costs the overlays their readability, and the overlays are what a colour-blind
   player reads the city with (ruling 041).
 
-## B3 — Service vehicles (M) — the car kit **built 2026-09-24** as `slice-B3a`
+## B3 — Service vehicles (M) — **built 2026-09-24** as `slice-B3a` (the kit) and `slice-B3b` (the vehicles)
 
 *As built: `client/world/vehicle-spec.js` — three bodies (hatchback, saloon, van), a cabin set into
 the body with glass on both flanks, and six-sided wheels; 100 triangles against the item's 120 and
@@ -138,6 +138,15 @@ a body for each (`car{v}` and `car{v}_near`), chosen at 60 px a tile. That split
 with the near kit in every pool the frame's ESTIMATE went 28% over what it drew and `budget_gate`
 failed. **Not in it:** the fire engine, the police car and the truck, which are the same kit with a
 body and a colour, and the planner they need. **Q110** is the car count the estimate over-counts.*
+
+*B3b: `client/life/services.js` — a fire engine a fire (fires group into one call, B1a made them
+spread), from the nearest station, along a Dijkstra route on the lane graph; a patrol a police
+station, driving the worst crime it can REACH as a loop; vans spawned by the industry around a link
+(`VAN_SHARE`, 12% anywhere and up to 57% on a factory street). `lanes_dump` counts them and
+`tools/service_shots.mjs` photographs them. **Not in it:** ambulances (no hospital pressure asks for
+one), and cars yielding to an engine — A45's mechanism is for junctions and an engine is not at
+one. **Q111:** the deputy builds no police station, so a patrol exists only where a player puts a
+station; the shot harness places one with `police=1`.*
 
 **Amended 2026-09-13 (review after S5).** The item gains **a car kit** before the service
 vehicles: from the pavement a car is two boxes and the least detailed thing in a frame that now

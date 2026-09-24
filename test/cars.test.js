@@ -1376,3 +1376,32 @@ test("nobody is held at a box for ever, where junctions are a tile apart", () =>
   assert.ok(longest < 22, `somebody was held ${longest.toFixed(1)} s at a box (cleared ${traffic.cleared})`);
   assert.ok(traffic.cleared < 400, `${traffic.cleared} cars cleared from gridlock in 150 s`);
 });
+
+test("vans come off the industrial streets, not off the housing (B3b)", () => {
+  // The item: trucks "spawned in proportion to the industrial share of a
+  // link's tiles". Two identical highways, one through a factory estate and
+  // one through housing, and the van's share is what differs.
+  const vanShare = (zone) => {
+    const state = blank(24);
+    pave(state, row(6, 2, 21));
+    load(state, 255);
+    for (let x = 2; x <= 21; x += 1) {
+      for (const y of [5, 7]) state.tiles.zone[tileAt(state.width, x, y)] = zone;
+    }
+    const model = createModel(state);
+    const traffic = createTraffic(state, model, { life: true });
+    // Long enough for the road to fill: the spawn rate is per link per second
+    // and every car needs a following gap, so a highway takes a while.
+    for (let t = 0; t < 600; t += 1) traffic.update(0.2);
+    const cars = traffic.cars();
+    assert.ok(cars.length > 12, `${cars.length} cars on a full highway`);
+    const van = BODY_NAMES.indexOf("van");
+    return cars.filter((c) => c.variant === van).length / cars.length;
+  };
+  const factory = vanShare(3);
+  const houses = vanShare(1);
+  assert.ok(factory > houses + 0.15,
+    `vans are ${(factory * 100).toFixed(0)}% of the factory road and ${(houses * 100).toFixed(0)}% of the housing`);
+  assert.ok(houses > 0, "no van anywhere in a city");
+  assert.ok(factory < 0.8, "the factory road is nothing but vans");
+});

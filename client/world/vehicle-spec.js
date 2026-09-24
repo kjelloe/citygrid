@@ -35,6 +35,15 @@ const BODIES = {
 
 export const BODY_NAMES = Object.keys(BODIES);
 
+/** How many cars are vans (B3b).
+ *
+ * A van is a truck when it comes off an industrial street: one in eight
+ * anywhere, and up to five in eight where the ground around the link is all
+ * factory. The item asks for trucks "in proportion to the industrial share of a
+ * link's tiles", and this is that proportion.
+ */
+export const VAN_SHARE = Object.freeze({ base: 0.12, industry: 0.45 });
+
 /** Sides on a wheel. Six, not eight, and the arithmetic is in `triangleCost`:
  * eight with an outer cap is 24 triangles a wheel and puts a car at 124. */
 export const WHEEL_SIDES = 6;

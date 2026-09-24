@@ -345,3 +345,28 @@ city is a floor and the road under your feet is what changes. Both numbers are h
   junction"; despawning takes the car nearest the end. Both read as plausible at city zoom and
   will not at street level. E7-time question: spawn only on `entry` links and at the map edge
   of the view.
+
+## 9.5 The vehicles with an errand (B3b, 2026-09-24)
+
+The traffic of §9.1 is ambient: a car appears on a link in proportion to its load and leaves at the
+end of it, and none of them is going anywhere. `client/life/services.js` is the other kind.
+
+- **A fire engine a fire**, from the nearest station, along a Dijkstra route on the lane graph —
+  the one planner this lane builds, run once an errand rather than once a frame. Fires group into
+  connected calls: B1a made fires spread, and four tiles of one fire is one thing to drive to.
+- **A patrol a police station**, driving the worst crime it can REACH within twelve tiles, then the
+  next, as a loop. It continues from where it stands rather than from the station door.
+- **Vans by the ground around a link** (`VAN_SHARE`): one in eight anywhere, up to five in eight
+  where the tiles beside the lane are industrial. That is the item's "trucks in proportion to the
+  industrial share", and it is why a factory street reads differently from a terrace.
+
+**Routing on this graph needs three habits**, all learned the hard way on a played city: try the
+nearest FEW lanes at each end, because the graph is directed and the lane nearest a door may head
+away; keep only starts you can drive off (`next`) and ends you can arrive at (`preds`) — the three
+lanes nearest one station door were kerbside stubs reaching only themselves; and treat the
+destination as a ranked list, because the road network has more than one component (8,426 links in
+the main one, ~476 in stubs and islands) and the worst crime in reach may be on an island.
+
+Outside the car cap, and never a function of the camera (D7): what exists is the city's business
+and the bounds decide only what is drawn.
+
