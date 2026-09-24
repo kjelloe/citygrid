@@ -61,11 +61,19 @@ const failures = [];
 // without meeting a single building — lots are set back and the carriageway is
 // empty by construction — so a gate that only walks it proves the walker can
 // cross a field.
-const LANES = [0, DEFAULTS.road.width / 2 + DEFAULTS.road.sidewalk / 2, -(DEFAULTS.road.width / 2 + DEFAULTS.road.sidewalk / 2)];
+//
+// Per CORRIDOR since T1: the pavement of a fourteen-metre avenue is three
+// metres further out than a street's, and the fixed offset walked its outside
+// lane — a gate that walks the road instead of the pavement is not walking the
+// thing it says it is (ruling 043).
+const lanesOf = (corridor) => {
+  const walk = corridor.half + DEFAULTS.road.sidewalk / 2;
+  return [0, walk, -walk];
+};
 
 for (const corridor of model.corridors) {
   for (let i = 1; i < corridor.points.length; i += 1) {
-   for (const lane of LANES) {
+   for (const lane of lanesOf(corridor)) {
     const dx = corridor.points[i].x - corridor.points[i - 1].x;
     const dz = corridor.points[i].z - corridor.points[i - 1].z;
     const len = Math.hypot(dx, dz) || 1;

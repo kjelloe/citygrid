@@ -234,8 +234,12 @@ export function createTraffic(state, model, options = {}) {
    * A point that is not on a carriageway at all yields to nobody: somebody on
    * the pavement is not in anyone's road. */
   function placeYield(point) {
-    const near = model.nearestCorridor(point.x, point.z, cfg.road.width / 2);
-    if (!near || !near.corridor) return;
+    // Searched at the WIDEST road there can be and then tested against the one
+    // it found: at `road.width / 2` a person standing six metres out on a
+    // fourteen-metre avenue is inside the carriageway and outside the search,
+    // so nothing yielded to them (ruling 043's tenth reader of a global width).
+    const near = model.nearestCorridor(point.x, point.z, cfg.road.avenue.width / 2);
+    if (!near || !near.corridor || near.dist > near.corridor.half) return;
     for (const link of blocksByCorridor.get(near.corridor.id) ?? []) {
       // `s0` and `dirSign` are the link's own frame on its corridor, recorded
       // when the graph was derived — the alternative is a search back through

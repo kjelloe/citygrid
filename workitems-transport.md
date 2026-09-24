@@ -64,7 +64,9 @@ avenue collapse to a quarter of a metre (Q114); the minimap draws an avenue as a
 
 **Tests first.** `test/traffic.test.js` (the engine's): an avenue carries twice a road's load
 before congestion; the field routes onto it. `test/permissions.test.js`: the command × ownership ×
-mode row. `test/lanes.test.js`: two lanes each way on an avenue corridor. **Gate.** `sim` set on a
+mode row (there is no such file — the matrix lives in `test/build.test.js`, and since the avenue is
+`CMD_PLACE_ROAD` with a kind it needs no new row; `test/avenue.test.js` asserts the rule against a
+road's own answer instead of a second copy of it). `test/lanes.test.js`: two lanes each way on an avenue corridor. **Gate.** `sim` set on a
 new era (`reports/balance-era2.md`); `traffic_gate 200 25` re-baselined and the dev-log carries
 both; `render` set; `reports/smoke-T1-{avenue,junction}.png` from the pavement and from `city 20t`.
 

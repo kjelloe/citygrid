@@ -26,7 +26,7 @@ import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt } from "../shared/grid.js";
-import { NET_PRESENT } from "../client/constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 import { DEFAULTS } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
 import { readFileSync } from "node:fs";
@@ -1404,4 +1404,56 @@ test("vans come off the industrial streets, not off the housing (B3b)", () => {
     `vans are ${(factory * 100).toFixed(0)}% of the factory road and ${(houses * 100).toFixed(0)}% of the housing`);
   assert.ok(houses > 0, "no van anywhere in a city");
   assert.ok(factory < 0.8, "the factory road is nothing but vans");
+});
+
+// --- a yield on an avenue (T1b, ruling 043) ----------------------------------
+
+test("somebody six metres out on an avenue is in the road, and on a street is not", () => {
+  // `placeYield` searched at `road.width / 2` — four metres. On a fourteen-metre
+  // avenue a person standing six metres from the centre line is INSIDE the
+  // carriageway and outside the search, so nothing yielded to them: the tenth
+  // reader of a global width that T1b had to find.
+  //
+  // Measured as THROUGHPUT rather than as a stopped car. The first cut asserted
+  // "no car came within a metre of the person" and passed with the defect
+  // restored — on a loaded avenue no car happened to reach that metre either
+  // way, so the assertion was about the fixture's spacing, not about yielding.
+  // Car-metres over the run separates them: a point in the carriageway costs
+  // the same traffic as one on the centre line, and one on the pavement costs
+  // nothing at all.
+  const state = blank(24);
+  pave(state, row(6, 2, 21));
+  for (const [x, y] of row(6, 2, 21)) state.tiles.road[tileAt(state.width, x, y)] |= NET_AVENUE;
+  load(state, 255);
+  const model = createModel(state);
+  const avenue = model.corridors.find((c) => c.avenue);
+  assert.ok(avenue, "the fixture is not an avenue");
+  assert.ok(avenue.half > 6 && DEFAULTS.road.width / 2 < 6,
+    "the fixture no longer separates an avenue's carriageway from a street's");
+
+  const mid = 12.5 * DEFAULTS.tileM;
+  const centre = 6.5 * DEFAULTS.tileM;
+  /** Car-metres driven over twenty seconds with somebody standing `at` metres
+   * off the centre line, or nobody at all. */
+  const drive = (at) => {
+    const traffic = createTraffic(state, model, { cap: 400 });
+    run(traffic, 30);
+    let metres = 0;
+    for (let step = 0; step < 30 * 20; step += 1) {
+      traffic.yieldTo(at === undefined ? [] : [{ x: mid, z: centre + at }]);
+      traffic.update(1 / 30);
+      for (const car of traffic.cars()) metres += car.v / 30;
+    }
+    return metres;
+  };
+
+  const empty = drive();
+  const online = drive(0);
+  assert.ok(online < empty, `a person on the centre line cost nothing (${online} against ${empty})`);
+  // Six metres out is the kerbside lane: the same cost as the centre line.
+  assert.equal(Math.round(drive(6)), Math.round(online),
+    "somebody standing in the outside lane of an avenue was not in anybody's road");
+  // And the pavement is still nobody's road.
+  assert.equal(Math.round(drive(avenue.frontage)), Math.round(empty),
+    "somebody on the pavement stopped the traffic");
 });

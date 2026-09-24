@@ -17,6 +17,7 @@
 
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
+import { laneWidth, laneOffset } from "./corridors.js";
 import { jitter } from "./hash.js";
 import { isSignalled, givesWayAt } from "./signals.js";
 // Shared with the nav graph pedestrians walk on (E7): one copy of "offset a
@@ -192,20 +193,16 @@ export function deriveLanes(state, network, ground) {
     // Once per corridor, shared by both directions.
     const profile = profileOf(corridor, ground);
     const corridorLen = lengthOf(corridor.points);
-    // The carriageway on ONE side of the median, split into lanes (T1). A
-    // street has no median and one lane, so this is the old `width / 2` and
-    // an offset of half a lane; an avenue's inner lane starts at the median's
-    // edge, which is what keeps the two halves apart in the picture and in
-    // the graph at once.
+    // How many lanes this street has each way (T1): one on a street, and on an
+    // avenue two, offset round the median by `laneOffset`.
     const perDir = corridor.lanes;
-    const laneW = (corridor.half - corridor.median / 2) / perDir;
     for (const dir of [0, 1]) {
       const along = dir === 0 ? corridor.points : [...corridor.points].reverse();
       if (along.length < 2) continue;
       const from = dir === 0 ? corridor.from : corridor.to;
       const to = dir === 0 ? corridor.to : corridor.from;
       for (let k = 0; k < perDir; k += 1) {
-        const centre = offsetPolyline(along, corridor.median / 2 + laneW * (k + 0.5));
+        const centre = offsetPolyline(along, laneOffset(corridor, k));
         // Short of the junction BOX, not of the node's centre point. With a 4 m
         // lane offset and a 2 m stop line the two are the same distance, so a
         // right turn's two endpoints coincided and the connector came out zero
@@ -220,7 +217,7 @@ export function deriveLanes(state, network, ground) {
           // the lane it runs into may be somewhere else across the width of the
           // road, so the connector has to be long enough to be a TAPER rather
           // than a step sideways. Half a carriageway is about twice the furthest
-          // a lane ever has to move, which is the shape a lane drop is (T1b).
+          // a lane ever has to move, which is the shape a lane drop is (ruling 043).
           if (kind === "seam") return corridor.half;
           return stopLine;
         };

@@ -14,6 +14,7 @@ import * as THREE from "three";
 import { ribbon, skirt, sagCurve, dashes, clip, trim } from "./ribbon.js";
 import { getConfig } from "../world/config.js";
 import { chunkOfLot } from "../world/chunks.js";
+import { laneWidth, laneOffset } from "../world/corridors.js";
 import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
@@ -116,9 +117,9 @@ function corridorsIn(model, cx, cy, chunkTiles, tileM) {
     const runs = clip(corridor.points, box);
     if (runs.length === 0) continue;
     // Per END, and per corridor since T1: an avenue's junction box is wider
-    // than a street's, and a SEAM is not a junction at all — trimming there
-    // would leave a tile-wide hole in the kerb and the pavement wherever an
-    // avenue becomes a street.
+    // than a street's, and a SEAM is not a junction at all (ruling 043) —
+    // trimming there would leave a tile-wide hole in the kerb and the pavement
+    // wherever an avenue becomes a street.
     const clearAt = (id) => (model.nodes[id]?.kind === "seam" ? 0 : corridor.frontage);
     const kerbside = clip(trim(corridor.points, clearAt(corridor.from), clearAt(corridor.to)), box);
     out.push({ corridor, runs, kerbside });
@@ -167,7 +168,6 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
     // fourteen metres of carriageway round a two-metre median, a street eight
     // with nothing in the middle of it.
     const { half, median, lanes: perDir } = corridor;
-    const laneW = (half - median / 2) / perDir;
     // Where the kerb has to stop: half a carriageway plus its pavement, which
     // is the corner of the junction box.
     const junction = half + sidewalk;
@@ -186,8 +186,7 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
       // that has been used, with no texture.
       for (const side of [-1, 1]) {
         for (let k = 0; k < perDir; k += 1) {
-          const at = median / 2 + laneW * (k + 0.5);
-          addStrip(baker, ribbon(shift(pts, side * at), 0.55, height, { lift: lift + 0.004 }), wear);
+          addStrip(baker, ribbon(shift(pts, side * laneOffset(corridor, k)), 0.55, height, { lift: lift + 0.004 }), wear);
         }
       }
       let runLen = 0;
@@ -239,7 +238,9 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
         addStrip(baker, ribbon(walk, median / 2, height, { lift: lift + kerb }), concrete);
         for (const sign of [-1, 1]) {
           for (let k = 1; k < perDir; k += 1) {
-            for (const dash of dashes(shift(walk, sign * (median / 2 + laneW * k)), cfg.road.stopLine * 1.5, cfg.road.stopLine * 4.5)) {
+            // The line BETWEEN two lanes: half a lane in from the outer one's centre.
+            const between = laneOffset(corridor, k) - laneWidth(corridor) / 2;
+            for (const dash of dashes(shift(walk, sign * between), cfg.road.stopLine * 1.5, cfg.road.stopLine * 4.5)) {
               addStrip(baker, ribbon(dash, MARK_HALF, height, { lift: lift + MARK_LIFT }), kerbColour);
             }
           }

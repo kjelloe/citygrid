@@ -35,8 +35,8 @@ export function nodeKind(mask) {
  * the frontage line stands from the centre, how many lanes each way and how
  * wide the median between them (T1). One place, because the ribbon, the lane
  * offsets, the junction box and the ground's flatten all have to agree about
- * where the kerb is. */
-export function sectionOf(cfg, avenue) {
+ * where the kerb is. One per corridor, never per tile — ruling 043. */
+function sectionOf(cfg, avenue) {
   const spec = avenue ? cfg.road.avenue : cfg.road;
   const half = spec.width / 2;
   return {
@@ -46,6 +46,25 @@ export function sectionOf(cfg, avenue) {
     lanes: spec.lanes,
     median: avenue ? spec.median : 0,
   };
+}
+
+/** How wide one lane of a corridor is: the carriageway on one side of the
+ * median, split between that side's lanes. */
+export function laneWidth(corridor) {
+  return (corridor.half - corridor.median / 2) / corridor.lanes;
+}
+
+/** How far the centre of lane `index` sits from the centre line, counted from
+ * the middle of the road OUTWARD — lane 0 is against the median and lane
+ * `lanes - 1` is at the kerb.
+ *
+ * Here rather than in each of its three readers (T1b): the lane graph offsets
+ * a polyline by it, the L3 baker lays a wear band down it and paints the line
+ * between two of them, and the stop mark is drawn across one. A number written
+ * down three times is a defect waiting for the next edit.
+ */
+export function laneOffset(corridor, index) {
+  return corridor.median / 2 + laneWidth(corridor) * (index + 0.5);
 }
 
 function centreOf(width, index, tileM) {
@@ -133,7 +152,7 @@ export function deriveCorridors(state, kindOfTile = "road") {
   // the lane offsets are measured from — so an avenue that starts halfway along
   // a street has to end one corridor and begin another. The node is the first
   // AVENUE tile, so the wider half owns the transition, and the lane graph
-  // tapers across it rather than stepping sideways (T1b).
+  // tapers across it rather than stepping sideways (ruling 043).
   for (let i = 0; i < layer.length; i += 1) {
     if (!present(i) || nodeAt.has(i) || !avenueAt(i)) continue;
     const mask = maskOf(i);

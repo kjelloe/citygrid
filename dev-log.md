@@ -7155,3 +7155,63 @@ it fronts) and **Q115** (the minimap draws an avenue as a road).
 
 **Next:** T2 — rail and the station in the engine, which shares T1's re-pin with worldgen's rock and
 marsh (A79).
+
+## P77 — the review round after T1b (2026-09-24)
+
+Docs, rulings, skills, memory and the omissions sweep. Four findings, three of them in the slice's
+own hour-old work.
+
+**Ruling 043 — a corridor has one cross-section from end to end.** T1b made the decision and wrote
+it into `specs/engine/04-city-model.md` and the work item, and left it without a ruling file. It is
+the class of decision `specs/rulings/` exists for: the next kind (T2's rail) meets it immediately,
+and the alternatives — a width per tile, a width by majority — are both expressible and both wrong
+in ways that are worth having written down. Cited now in `corridors.js`, `lanes.js` and
+`streets-l3.js`.
+
+**The lane arithmetic was written down three times.** `(half − median/2) / lanes` was in `lanes.js`,
+in `streets-l3.js` and, with a stray factor of two, in `signals.js`; the lane OFFSET was in two of
+them. One home now — `laneWidth(corridor)` and `laneOffset(corridor, index)` in `corridors.js` —
+and `sectionOf` stopped being exported, because the no-importer sweep is only useful if it is clean.
+
+**`placeYield` searched four metres of a seven-metre carriageway.** The tenth reader of a global
+width, and the one T1b missed: somebody standing six metres from an avenue's centre line is in the
+outside lane and was in nobody's road, so the traffic drove through them. Found by the "grep the
+constant" step of the sweep rather than by anything going red.
+
+Its test took three attempts, and the first two are the finding. "No car came within a metre of the
+person" **passed with the defect restored** — on a loaded avenue no car happened to reach that metre
+either way, so the assertion was about the fixture's car spacing. Sampling every step instead of the
+last frame did not fix it. What discriminates is car-metres over the run:
+
+| where the person stands | car-metres, fixed | car-metres, defect restored |
+| --- | --- | --- |
+| nowhere | 3,096 | 3,096 |
+| on the centre line | 3,046 | 3,046 |
+| **six metres out, in the kerbside lane** | **3,046** | **3,096** |
+| on the pavement (9.5 m) | 3,096 | 3,096 |
+
+A point in the carriageway has to cost the same traffic as one on the centre line, and one on the
+pavement has to cost nothing. Both halves are asserted.
+
+**`walkthrough` was walking the road, not the pavement.** Its three lanes were the centre line and
+`±(road.width / 2 + sidewalk / 2)` from the config, so on an avenue the outer two ran in the
+carriageway — a gate walking the thing it is not testing. Per corridor now; still green
+(401,720 blocked steps, 0 refusals, 1,127 lots walked at and 0 walked into).
+
+**Also swept, and clean:** every `data/balance.json` and `data/cityviewer.json` key T1 added has a
+reader; the dynamic imports all resolve; `test/omissions.test.js` and `test/reachability.test.js`
+are 13 green; the avenue needs no permission-matrix row because it is `CMD_PLACE_ROAD` with a kind,
+and `test/build.test.js` already covers that command; `data/i18n/no.json`'s two new values are not
+their English (`Allé`). The LOD estimate prices a baked street chunk at what it MEASURED last frame,
+so an avenue's extra geometry needs no cost-table entry — the one place in this project where the
+"model of the code goes stale" defect was designed out rather than found.
+
+**Docs.** `specs/gamedesign.md` §7.3 — the avenue is built, and it is also the "road upgrade tool"
+the list had as a separate row, since an avenue over a road upgrades it in place. `RELEASE.md`'s
+gate table was two sets and three eras out of date: five sets now, with today's numbers and the era
+they belong to. `dev-prompts.md` gains P76 and P77. `workitems-transport.md` §T1 records that
+`test/permissions.test.js` does not exist. The `review-round` and `slice-workflow` skills carry the
+`shots` set's new size.
+
+**Measured.** Suite **1,428 green twice** (three new tests). `render` 57 s of 120, `quick` 404 s of
+480. No re-pin and no era: nothing here touches state.

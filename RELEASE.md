@@ -63,21 +63,26 @@ which is what made the governor spend its whole ladder on a machine hitting 60 f
 
 **The gates**, all green, through the runner (`node tools/gates.mjs <set>`):
 
-| Set | Gates | Time | What it is |
-|---|---|---|---|
-| `quick` | 11 | **326 s** | the ten browser smokes and the §24 acceptance script |
-| `render` | 4 | **166 s** | `walkthrough`, `passability`, `lanes_dump`, `budget_gate` |
-| `sim` | 3 | **595 s** | `disaster_soak`, `traffic_gate`, `sim_sweep` |
+Measured 2026-09-24 at `slice-T1b`, on SwiftShader. A gate time is only comparable within an era.
 
-The slowest single gate is `budget_gate` at **151 s**, then `ui_smoke` at 112 and `a11y_smoke` at 45.
-Each run writes `reports/gates-<date>.json`.
+| Set | Gates | Time | Budget | What it is |
+|---|---|---|---|---|
+| `quick` | 11 | **404 s** | 480 s | the ten browser smokes and the §24 acceptance script |
+| `render` | 3 | **57 s** | 120 s | `walkthrough`, `passability`, `lanes_dump` |
+| `budget` | 1 | **235 s** | 360 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
+| `shots` | 6 | **305 s** | 360 s | the picture gates that count what they photographed |
+| `sim` | 3 | **554 s** | 900 s | `disaster_soak`, `traffic_gate`, `sim_sweep` |
+
+The slowest single gate is `budget_gate` at **235 s**, then `ui_smoke` at 131 and `play_smoke` at
+88. Each run writes `reports/gates-<date>.json`.
 
 `quick` was 375 s when M2 measured it and set the budget as "the measurement plus room". By
 2026-09-10 it had reached **477 s of 480** — three seconds of headroom — because the measurement
 lane bought real coverage with time. M2's rule is that a gate which grows past its share is a
 finding rather than a fact of life, so the budget was not raised: **`budget_gate` moved to
-`render`**, where it belongs on its merits as a renderer measurement rather than a smoke test
-(**A64**). `quick` is 326 s of 480 again and `render` 166 s of a restated 300.
+`render`** (**A64**), and in B3a out of `render` too, into a set of its own — the same rule firing
+twice. `shots` is the newest set and the one to watch: five picture tools were 166 s, and T1b's
+`avenue_shots` took it to 305 of 360.
 
 **A frame at High** — and *which* frame is the whole of it, because two views of the same city
 differ by a factor of two. `budget_gate`'s street-zoom night row is **289,446 triangles of

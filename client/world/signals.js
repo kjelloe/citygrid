@@ -16,6 +16,7 @@
 
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
+import { laneWidth } from "./corridors.js";
 import { FLAG_RUINED } from "../constants-mirror.js";
 import { frontEdgeOf, OUTWARD } from "./lots.js";
 import { doorPoint } from "./street-furniture.js";
@@ -305,7 +306,7 @@ export function stopMarks(model, node, cfg = getConfig()) {
     // Across the one LANE that arrives, which on an avenue is a third of the
     // carriageway rather than half of it (T1b).
     const street = model.corridors[link.corridor];
-    const laneHalf = street ? (street.half - street.median / 2) / (2 * street.lanes) : cfg.road.width / 4;
+    const laneHalf = street ? laneWidth(street) / 2 : cfg.road.width / 4;
     const n = link.pts.length / 3;
     if (n < 2) continue;
     const px = link.pts[(n - 1) * 3];

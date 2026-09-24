@@ -278,14 +278,16 @@ MVP:
 
 Later additions:
 
-- Avenue.
+- ~~Avenue~~ — **built 2026-09-24** (T1): two lanes each way round a median, twice a road's
+  capacity, and the commuter field prefers it. It is also the **road upgrade tool**: an avenue
+  drawn over an existing road upgrades it in place for the avenue's price, which is the gesture a
+  player reaches for, so the two rows above are one button rather than two (ruling 043).
 - One-way road.
 - Bridge.
 - Pedestrian path.
 - Bus stop.
 - Rail.
 - Metro.
-- Road upgrade tool.
 
 Every developed building requires access to a road tile within a defined distance, normally directly adjacent.
 
