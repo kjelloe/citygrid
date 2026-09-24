@@ -42,6 +42,7 @@
   "settings.time.day": "Day",
   "settings.time.sunset": "Sunset",
   "settings.time.night": "Night",
+  "settings.time.rain": "Rain",
   "settings.time.auto": "Follow the clock",
   "settings.style.plain": "Plain",
   "settings.style.painted": "Illustrated",

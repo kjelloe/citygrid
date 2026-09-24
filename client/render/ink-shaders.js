@@ -17,7 +17,7 @@
 
 import { getConfig } from "../world/config.js";
 
-export const GRADE_NAMES = Object.freeze(["day", "sunset", "night"]);
+export const GRADE_NAMES = Object.freeze(["day", "sunset", "night", "rain"]);
 
 export function gradeFor(name) {
   const grades = getConfig().grades;

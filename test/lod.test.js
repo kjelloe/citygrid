@@ -9,6 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { DEFAULTS as CONFIG } from "../client/world/config.js";
 import { repoRoot } from "./helpers/sources.js";
 import {
   TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels, createChunkCeiling,
@@ -781,3 +782,4 @@ test("a baked chunk priced on its own is charged for none of what it bakes (S5)"
   assert.ok(Math.abs((loose - oneBaked) - (lone - roadsOnly)) < 1e-6,
     `a baked chunk still charged ${(lone - (loose - oneBaked)).toFixed(0)} beyond its road surface`);
 });
+

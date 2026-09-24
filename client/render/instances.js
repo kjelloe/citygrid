@@ -18,7 +18,8 @@ import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry, cityPersonGeometry,
   boulderVariants, BOULDER_VARIANTS, signGeometry,
-  rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
+  rotorGeometry, flagGeometry, craneGeometry, smokeGeometry,
+  FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
   carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
   benchGeometry, pondGeometry, shedGeometry,
@@ -771,6 +772,11 @@ export function updateInstances(state, pools, options = {}) {
       t.scale, t.scale, t.scale, TREE_COLOURS[t.kind] ?? palette.tree ?? palette.terrain[TERRAIN_FOREST], t.spin);
   }
 
+  // B6's rain streaks were here and are not: the pool drew 1,140 instances the
+  // frame counted and no camera ever saw, in magenta, with the motion shader
+  // off, crossed quads and every scale checked. The OVERCAST hour is built and
+  // shipped; the streaks are Q112, with the measurements in the dev-log. A pool
+  // that draws nothing still gets priced, which is Q110's defect exactly.
   // --- what the fire left (B1b) ---------------------------------------------
   //
   // Per PLOT, not per tile: the engine removes the building and flags the
@@ -1029,6 +1035,8 @@ export function updateInstances(state, pools, options = {}) {
   const settled = settlePools(pools);
   return {
     ...settled,
+    // Whether the frame thought it was raining (B6).
+    raining: options.raining === true,
 
     // How many chunks were planned separately. One under orthographic by
     // construction; more than one under perspective is the proof that the

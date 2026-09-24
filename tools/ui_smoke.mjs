@@ -428,8 +428,9 @@ try {
   // renderer is the failure ruling 026 is about, and this one is three clicks
   // from a picture that looks broken if it half-arrives.
   const timeRow = await page.locator('.settings-choice[data-field="time"]').count();
-  check("the settings panel offers a time of day", timeRow === 4, `${timeRow} choices`);
-  for (const hour of ["night", "sunset", "auto", "day"]) {
+  // Five since B6: day, sunset, night, the overcast hour and `auto`.
+  check("the settings panel offers a time of day", timeRow === 5, `${timeRow} choices`);
+  for (const hour of ["night", "sunset", "rain", "auto", "day"]) {
     await page.click(`.settings-choice[data-field="time"][data-value="${hour}"]`);
     const applied = await page.evaluate(async () => {
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));

@@ -241,7 +241,15 @@ disasters."* That is a smaller thing than §10 bonus 5's continuous modifiers on
 heating, and it reuses machinery that exists: weather **causes a disaster**, and `engine/disasters.js`
 already knows how to fire one. Not this item; noted so the shape is not reinvented.
 
-## B6 — Weather (M) — plan.md §10 bonus 5, Q84
+## B6 — Weather (M) — plan.md §10 bonus 5, Q84 — the OVERCAST hour **built 2026-09-24** as `slice-B6a`
+
+*As built: a fourth preset beside day, sunset and night — a low flat key, a grey dome, the fog
+closer in and `night` 0.25 so a few lamps come on — with its own ink grade (colour down, line
+softened), a place in the settings' Time row in both catalogues, and a tenth of the `auto` cycle
+taken out of the middle of the daylight. `ui_smoke` drives it (146 checks): choosing rain reaches
+the renderer. **Not in it:** the falling streaks, the wet-road specular and the puddles. The streak
+pool drew 1,140 instances the frame counted and no camera ever saw — **Q112** carries what was ruled
+out — and a pool that draws nothing still gets priced, which is Q110's defect.*
 
 **Goal.** A fourth hour: overcast and rain, in the renderer only, until the simulation wants it.
 

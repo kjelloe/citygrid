@@ -16,7 +16,7 @@
 
 import { getConfig } from "../world/config.js";
 
-export const PRESET_NAMES = Object.freeze(["day", "sunset", "night"]);
+export const PRESET_NAMES = Object.freeze(["day", "sunset", "night", "rain"]);
 
 /** How long a change takes. A second: long enough not to be a cut, short
  * enough that a player who picked "night" from the settings believes it. */
@@ -65,7 +65,12 @@ export function blendPresets(a, b, t) {
  */
 export function phaseOf(at, period) {
   const phase = ((at % period) + period) % period / period;
-  if (phase < 0.5) return "day";
+  // A TENTH of the day is overcast (B6's item). It comes out of the middle of
+  // the daylight rather than off the end of it: rain at dusk is a different
+  // picture from rain at noon, and the one the item asks for is the flat grey
+  // one. Day is still over half the cycle.
+  if (phase < 0.4) return "day";
+  if (phase < 0.5) return "rain";
   if (phase < 0.62) return "sunset";
   if (phase < 0.9) return "night";
   return "sunset";
@@ -126,5 +131,9 @@ export function createTimeOfDay(name = "day") {
     },
 
     applyTo(rig) { return applyTo(current, rig); },
+
+    /** Which preset is being walked towards, so the frame can ask whether it is
+     * raining without inspecting the numbers (B6). */
+    get name() { return target; },
   };
 }

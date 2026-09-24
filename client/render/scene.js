@@ -851,6 +851,8 @@ export function createRenderer(canvas, state, options = {}) {
     for (;;) {
       result = updateInstances(state, pools, {
         ...drawOptions, style: styleName, plan, bounds, model,
+        // Whether it is raining, which is a LOOK and not an hour (B6).
+        raining: timeOfDay.name === "rain",
         // The baked chunks draw their own markings, poles and wires (slice E3).
         bakedChunks: streets.keys,
         // For the per-chunk plan (V5): under orthographic these are ignored.
@@ -954,6 +956,8 @@ export function createRenderer(canvas, state, options = {}) {
     // How many distinct per-chunk plans the frame used. 1 under orthographic
     // by construction; more than 1 under perspective is the proof that the
     // policy is per chunk and not per frame (slice V5).
+    // Whether the frame is drawing the overcast hour (B6).
+    stats.raining = result.raining === true;
     stats.chunkPlans = result.chunkPlans ?? 1;
     stats.chunkTiers = result.chunkTiers ?? 1;
     stats.counted = Math.round(result.triangles);

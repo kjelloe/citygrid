@@ -230,7 +230,8 @@ test("the hour defaults to day and survives a nonsense stored value", () => {
 test("`auto` is the only hour the game clock is allowed to move", () => {
   // The renderer has no clock; `game.js` maps `state.tick` onto a preset and
   // only when the player asked for it (spec §7.3, plan.md §6: off by default).
-  assert.deepEqual(TIME.map((c) => c.value), ["day", "sunset", "night", "auto"]);
+  // `rain` joined them in B6: a fourth look, pinned like the other three.
+  assert.deepEqual(TIME.map((c) => c.value), ["day", "sunset", "night", "rain", "auto"]);
 });
 
 test("the render style is a setting, defaulting to painted where there is a machine for it", () => {

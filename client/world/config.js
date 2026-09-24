@@ -80,6 +80,10 @@ export const DEFAULTS = Object.freeze({
   // which of the three looks you chose (ruling 017); the colours are absolute,
   // because "the same blue, dimmer" is not what dusk looks like. `night` is
   // what the lit windows and the lamps are dialled by.
+  // B6: the streaks near the eye. `reach` is metres from the camera, `perTile`
+  // how many streaks a tile of that circle holds, `fall` metres a second,
+  // `streak` the length of one.
+  rain: { reach: 22, perTile: 300, fall: 9.5, streak: 1.1, drift: 0.35 },
   presets: {
     day: {
       key: 1, keyColour: 0xfffaf0, hemi: 1, hemiSky: 0xdcecff, hemiGround: 0x93aa78,
@@ -92,6 +96,12 @@ export const DEFAULTS = Object.freeze({
     night: {
       key: 0.16, keyColour: 0x8fa8d8, hemi: 0.34, hemiSky: 0x2b3a5c, hemiGround: 0x1b2130,
       sky: 0x121a2c, fogNear: 0.7, fogFar: 2.6, night: 1, sunHeight: 0.5,
+    },
+    // B6: overcast and rain. A low flat key, a grey dome and the fog closer in;
+    // `night` 0.25 lights a few lamps without the city reading as dusk.
+    rain: {
+      key: 0.42, keyColour: 0xc9cfd6, hemi: 0.62, hemiSky: 0x9aa6b2, hemiGround: 0x6f7a72,
+      sky: 0x9fa9b4, fogNear: 0.6, fogFar: 2.4, night: 0.25, sunHeight: 0.75,
     },
   },
   // The ground's own colour (V3). `blend` at 0 reproduces the flat per-tile
@@ -124,6 +134,13 @@ export const DEFAULTS = Object.freeze({
     night: {
       shadowTint: 0x6f86c0, highlightTint: 0xffe0b0,
       lift: 0.03, gain: 0.98, saturation: 0.85, ink: 0.75, inkColour: 0x10141f,
+    },
+    // B6: overcast. The colour comes down — a grey day is a desaturated one —
+    // and the ink softens with it; a hard black outline under flat light reads
+    // as a mistake, which is the same reason night's line is soft.
+    rain: {
+      shadowTint: 0x8894a4, highlightTint: 0xd8e2ea,
+      lift: 0.025, gain: 0.98, saturation: 0.72, ink: 0.8, inkColour: 0x223038,
     },
   },
   // Ruling 040: rendering only. Nothing here reaches a command, a reducer or

@@ -62,6 +62,7 @@ export const TIME = [
   { value: "day", labelKey: "settings.time.day" },
   { value: "sunset", labelKey: "settings.time.sunset" },
   { value: "night", labelKey: "settings.time.night" },
+  { value: "rain", labelKey: "settings.time.rain" },
   { value: "auto", labelKey: "settings.time.auto" },
 ];
 

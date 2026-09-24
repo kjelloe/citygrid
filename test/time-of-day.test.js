@@ -19,8 +19,10 @@ import {
 
 const RIG = { key: 1.15, keyColour: 0xfffaf0, hemi: 1.25, hemiSky: 0xdcecff, hemiGround: 0x93aa78, sunHeight: 150 };
 
-test("the three presets are the three the spec names, and they are data", () => {
-  assert.deepEqual([...PRESET_NAMES], ["day", "sunset", "night"]);
+test("the presets are the ones the spec names, and they are data", () => {
+  // Three in E6 (spec §7.3) and a fourth since B6: overcast, which is a LOOK
+  // and not an hour — the item asks for it beside the other three.
+  assert.deepEqual([...PRESET_NAMES], ["day", "sunset", "night", "rain"]);
   for (const name of PRESET_NAMES) {
     assert.deepEqual(presetFor(name), DEFAULTS.presets[name], `${name} has drifted from the data`);
   }
@@ -162,8 +164,35 @@ test("the light cycle runs on the WALL clock, not the game clock (R2)", () => {
   assert.equal(/phaseOf\(state\.tick/.test(game), false, "the sun still reads the game clock");
   assert.match(game, /if \(speed > 0\) daySeconds \+=/, "the cycle does not stop when paused");
 
-  // Four minutes, and a whole day is walked in it.
+  // Four minutes, and a whole day is walked in it — overcast included since B6.
   const seen = new Set();
   for (let s = 0; s < 240; s += 1) seen.add(phaseOf(s, 240));
-  assert.deepEqual([...seen].sort(), ["day", "night", "sunset"]);
+  assert.deepEqual([...seen].sort(), ["day", "night", "rain", "sunset"]);
 });
+
+test("the overcast hour is a tenth of the day, and daylight is still most of it (B6)", () => {
+  // The item's number: "`auto` visits it a tenth of the day". Taken out of the
+  // middle of the daylight, because rain at dusk is a different picture from
+  // rain at noon and the flat grey one is what was asked for.
+  const period = 1000;
+  const count = {};
+  for (let s = 0; s < period; s += 1) {
+    const name = phaseOf(s, period);
+    count[name] = (count[name] ?? 0) + 1;
+  }
+  assert.equal(count.rain, Math.round(period * 0.1), `rain is ${count.rain} of ${period}`);
+  assert.ok(count.day > period * 0.35, `daylight is ${count.day} of ${period}`);
+  assert.ok(count.night > count.rain, "it rains more than it is dark");
+});
+
+test("the rain preset is a preset, and it is overcast rather than dark", () => {
+  const rain = presetFor("rain");
+  const day = presetFor("day");
+  const night = presetFor("night");
+  assert.ok(rain.key < day.key, "the overcast hour is as bright as noon");
+  assert.ok(rain.key > night.key, "the overcast hour is as dark as night");
+  assert.ok(rain.fogFar < day.fogFar, "the rain does not close the distance in");
+  assert.ok(rain.night > 0 && rain.night < night.night,
+    `a few lamps come on under it (night ${rain.night})`);
+});
+

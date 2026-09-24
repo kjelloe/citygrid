@@ -79,5 +79,8 @@ export function tideAt(phase) {
 export function phaseForPreset(name) {
   if (name === "night") return 0.76;
   if (name === "sunset") return 0.56;
+  // Overcast is a LOOK, not an hour (B6): the road keeps mid-morning under it,
+  // which is when `phaseOf` visits it.
+  if (name === "rain") return 0.45;
   return 0.25;
 }

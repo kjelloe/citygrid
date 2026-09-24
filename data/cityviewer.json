@@ -172,6 +172,18 @@
       "fogFar": 2.6,
       "night": 1.0,
       "sunHeight": 0.5
+    },
+    "rain": {
+      "key": 0.42,
+      "keyColour": 13225942,
+      "hemi": 0.62,
+      "hemiSky": 10135218,
+      "hemiGround": 7305842,
+      "sky": 10463668,
+      "fogNear": 0.6,
+      "fogFar": 2.4,
+      "night": 0.25,
+      "sunHeight": 0.75
     }
   },
   "grades": {
@@ -201,6 +213,22 @@
       "saturation": 0.85,
       "ink": 0.75,
       "inkColour": 1053727
+    },
+    "rain": {
+      "shadowTint": 8950948,
+      "highlightTint": 14213866,
+      "lift": 0.025,
+      "gain": 0.98,
+      "saturation": 0.72,
+      "ink": 0.8,
+      "inkColour": 2240568
     }
+  },
+  "rain": {
+    "reach": 22,
+    "perTile": 300,
+    "fall": 9.5,
+    "streak": 1.1,
+    "drift": 0.35
   }
 }

@@ -6948,3 +6948,49 @@ deletions on their own:
 - **`setLocale` is gone.** `loadLocale` sets the active catalogue itself.
 
 Suite 1,407 green twice; `omissions` and `reachability` 13 green; precache regenerated.
+
+## slice-B6a — the overcast hour (2026-09-24)
+
+**What it is.** A fourth look beside day, sunset and night. `rain` is a low flat key (0.42 against
+day's 1.0), a grey dome, the fog closer in (2.4 against 5.0) and `night` 0.25 — a few lamps come on
+without the city reading as dusk — with an ink grade that takes the colour down to 0.72 and softens
+the line, for the same reason night's line is soft. `phaseOf` gives it a **tenth of the cycle**,
+taken out of the middle of the daylight rather than off the end: rain at dusk is a different picture
+from rain at noon. The settings' Time row offers it in both catalogues.
+
+**Tests.** Five in `test/time-of-day.test.js` and `test/settings.test.js`: the preset is data and
+matches the file; the fourth choice is in the Time row; the cycle spends a tenth of itself overcast
+and still spends most of it in daylight; the preset is overcast rather than dark (dimmer than noon,
+brighter than night, fog closer, a little `night`). `ui_smoke` drives the row — 146 checks, and
+"choosing rain reaches the renderer" is one of them.
+
+**What is not in it, and why: the falling streaks (Q112).** The pool pushed 1,140 instances that
+the frame COUNTED — `stats.triangles` rose by exactly instances × triangles, the pool reported
+`count: 1140`, `visible` true, not culled, in the scene — and **no camera ever saw one**. Ruled out,
+each with a probe into the page: the hour, the count, the colour (magenta drew nothing), the size
+(and 20× drew nothing), the motion shader (commented out entirely, still nothing), the facing
+(crossed quads like a smoke puff), and the placement (instances at 26.9, 2.87, 36.6 tiles with the
+walker's eye at 27.5, 1.67, 37.2 — a few metres away, inside the column). So the cause is in the
+pool lifecycle rather than in the geometry, and the pool came back OUT: a pool that draws nothing is
+still priced by the estimate, which is Q110's defect. The memory
+`a-pool-that-counts-but-never-draws` carries the list so the next attempt starts further along.
+
+**Three defects of my own on the way, all found by measuring rather than reading.**
+- The rain was placed at the centre of the visible BOUNDS, which at a low pitch is past the map's
+  edge — (32, −4.4) on a 64×64 — so every streak was culled. The item said "near the eye".
+- Then at `eyeOf(view)`, which for a city camera is 1,200 units out along the orbit. The focus is
+  the walker's own position on foot and the camera's TARGET from the air.
+- And the rung was placed second on the ladder, so the city frame gave the rain up before anything
+  else. 1,140 streaks at two triangles is 2,280 of a 400,000 frame: it belongs late.
+
+**Measured.** Suite **1,409 green twice**; render **56 s of 120**, budget **232 s of 360**, quick
+**11 of 11** after teaching `ui_smoke` the fourth choice (it was asserting four).
+
+**What the pictures say**, looked at. `smoke-B6-city.png`: the flat grey light reads immediately —
+muted greens, a steely river, the far bank fading into haze, and the whole city a stop or two down
+without being dark. `smoke-B6-street.png`: the same at eye height, with the fog closing the street
+off at about eighty metres. It is a different day, and it is the half of weather that the item said
+was renderer-only.
+
+**Next:** Q84's coupling (a storm starting a fire, a downpour flooding the sewers) is engine work
+and Kjell's to rule on; Q112 is the streaks.
