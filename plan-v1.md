@@ -448,6 +448,7 @@ by number from the code they create.
 | Q116 | A road, a wire or a pipe may be laid straight through a building; T2's rail is the only network that refuses it | Kjell — a rule question, and a deputy change, so its own era |
 | Q117 | The deputy's wire is twelve components with seven producerless stubs; it connects new buildings to dead ones | Kjell — T2 fixed it for the station alone; the general fix is its own slice |
 | Q118 | The gate's fare is worth nothing — zeroing it leaves the sweep identical to the last digit, because treasuries are millions | Kjell — the economy's, and it blocks tuning anything priced in money |
+| Q119 | `landValueBonus` and `storage` are catalogue fields nothing reads — a park's amenity and a water tower's store are claims the data makes and the simulation does not keep | Kjell — two rules the data already promises; each is a balance era |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

@@ -497,6 +497,15 @@ none of them was in a gate set: they were run by hand in the slice that wrote th
 budget — the next picture tool has to earn its place or the set needs splitting. When a slice
 writes a tool that can fail, ask what runs it next month.
 
+**Grep every field of a data file for a reader, not just every key of the file.** The third
+direction usually asks "does anything read this BLOCK"; T2's round asked it per FIELD and found
+two that nothing reads — `landValueBonus` on the park (its whole purpose; the amenity effect
+comes only from its negative pollution) and `storage` on the water tower. Both had been there
+since the catalogue was written, and T2 had just copied one of them onto a new building, which is
+how a dead field spreads. `test/utilities.test.js` now refuses a new one without a written
+reason, in the shape `SAME_IN_BOTH` uses for the Norwegian catalogue: an allow-list where every
+entry says why.
+
 **And the sweep's third direction catches your own hour-old work.** P75 found a `rain` block in
 `data/cityviewer.json` and its config mirror that nothing read any more — B6a had removed the pool
 that read it the same session — plus an `idle` field on B3b's service kinds that nothing ever

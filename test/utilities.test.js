@@ -6,7 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot } from "./helpers/sources.js";
+import { repoRoot, jsFilesIn } from "./helpers/sources.js";
 import { createState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
@@ -38,6 +38,42 @@ function city(over) {
 
 const place = (state, def, x, y, actor = 1) =>
   apply(state, { type: CMD_PLACE_BUILDING, actor, def, x, y });
+
+/**
+ * Catalogue fields the engine does not read, each with the reason it is still
+ * in the data. A field here is a promise the JSON makes and the simulation does
+ * not keep — `def.landValueBonus` has been on the park since the catalogue was
+ * written and nothing has ever added it to anything.
+ *
+ * An entry without a reason is a field that should be deleted or implemented.
+ */
+const UNREAD_FIELDS = {
+  landValueBonus: "Q119 — a park's amenity effect comes only from its negative pollution; "
+    + "`landValuePass` never reads this. T2 copied it onto the rail station.",
+  storage: "Q119 — a water tower that stores nothing; `supplyPass` allocates per month "
+    + "and has no carry-over for it to fill.",
+};
+
+test("every field in the catalogue is read by the simulation", () => {
+  // The sweep that found it: `grep -c "\.<field>"` over engine/ and client/.
+  // A dead field is worse than a missing one — it reads as a rule somebody
+  // implemented, in a file whose whole job is to be the numbers.
+  const sources = [...jsFilesIn("engine"), ...jsFilesIn("client")]
+    .filter((f) => !f.path.endsWith("catalogue.js"))
+    .map((f) => f.source)
+    .join("\n");
+  const fields = new Set();
+  for (const def of Object.values(buildings)) {
+    if (typeof def === "object") for (const key of Object.keys(def)) fields.add(key);
+  }
+  const dead = [...fields].filter((key) => !sources.includes(`.${key}`)).sort();
+  const unexplained = dead.filter((key) => !Object.hasOwn(UNREAD_FIELDS, key));
+  assert.deepEqual(unexplained, [],
+    `catalogue fields nothing reads, and no entry in UNREAD_FIELDS: ${unexplained.join(", ")}`);
+  for (const key of Object.keys(UNREAD_FIELDS)) {
+    assert.ok(dead.includes(key), `${key} is read now — take it off UNREAD_FIELDS`);
+  }
+});
 
 test("the engine's catalogue mirrors data/buildings.json", () => {
   const mirror = catalogue();

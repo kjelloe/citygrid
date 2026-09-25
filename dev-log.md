@@ -7303,3 +7303,33 @@ layer list gains rail, so every hash in every fixture moves"*.
 wire stubs), **Q118** (no income means anything).
 
 **Next:** T3 — rail drawn: track, sleepers, a level crossing, a bridge, the station kit and a train.
+
+## P79 — the review round after T2 (2026-09-26)
+
+One finding, and it is the kind that spreads.
+
+**Two catalogue fields are read by nothing.** `landValueBonus` — 20 on the park, and T2 copied 14
+onto the rail station — never reaches `landValuePass`, which builds land value out of water, trees,
+pollution, crime, service coverage and crowding. A park's amenity effect is real but comes entirely
+from its NEGATIVE pollution; the field the data names has never done anything. `storage` on the
+water tower is the same: 200 units of a store that `supplyPass`, which allocates per month with no
+carry-over, has no concept of.
+
+Both have been there since the catalogue was written. What makes it worth a test rather than a fix
+is the direction it travels: T2 wrote "Land-value radius like a park" in its item, copied the
+park's two fields, and shipped a station whose inspector row promises something the simulation
+does not do. A dead field reads as a rule somebody implemented.
+
+`test/utilities.test.js` now greps every catalogue FIELD for a reader and refuses a new one without
+a written reason — the shape `SAME_IN_BOTH` uses for the Norwegian catalogue. Planted a `quietness`
+field to check it fires; it does. **Q119** carries the two, because implementing either is a
+balance era and a sweep, not a line in a review round. The `review-round` skill gains the sweep.
+
+**Also swept, and clean:** `test/omissions.test.js` and `test/reachability.test.js` 13 green; the
+gate keys are in step with `engine/gates.js`'s reasons (T2's own test); every `data/balance.json`
+key T2 added has a reader; `marshBand` is exported and used only in `generateTerrain`, which is
+what every other stage of that pipeline does. The unread balance keys that remain — `roadWeight`,
+`crowdingWeight`, `birthRatePerMille`, `labourBaseMax`, `internalMarketDivisor`, `responseMonths`,
+the three `max…Effect` and the five unlock tiers — predate this lane and are not T2's to answer.
+
+Suite **1,449 green twice**.
