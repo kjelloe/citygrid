@@ -10,7 +10,7 @@
 // come back.
 
 import { apply } from "./reducer.js";
-import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_BUILDING, CMD_BULLDOZE } from "./commands.js";
+import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_PLACE_BUILDING, CMD_BULLDOZE } from "./commands.js";
 import { definition } from "./catalogue.js";
 import { rules } from "./rules.js";
 import { i32 } from "../shared/arrays.js";
@@ -23,7 +23,7 @@ import { idiv, clamp } from "../shared/idiv.js";
 import { nextInt, chance } from "../shared/prng.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, OWNER_NATURE,
-  FLAG_POWERED, FLAG_WATERED, FLAG_RUINED,
+  FLAG_POWERED, FLAG_WATERED, FLAG_RUINED, TERRAIN_ROCK,
 } from "./constants.js";
 
 export var DOCTRINE_EXPAND = "expand";
@@ -42,7 +42,7 @@ export function makeDeputy(seat, doctrine) {
     cursorY: -1,
     hubX: -1,
     hubY: -1,
-    built: 0, avenues: 0,
+    built: 0, avenues: 0, stations: 0,
     zoned: 0,
     utilities: 0,
     refusals: 0,
@@ -442,6 +442,91 @@ function upgradeTrunk(state, deputy) {
   return true;
 }
 
+/**
+ * A straight run of rail from beside a station's footprint to the nearest map
+ * edge, or `undefined` when no side has a clear one (T2).
+ *
+ * Straight, and one of four: this is a mayor laying a branch line, not a
+ * pathfinder. A run that meets rock or a building is abandoned rather than
+ * routed around, and the next side is tried — if all four are blocked the
+ * station is not built this turn and the deputy comes back when its cursor has
+ * moved.
+ */
+function lineToEdge(state, x, y, def) {
+  var width = state.width;
+  var height = state.height;
+  var sides = [
+    { sx: x - 1, sy: y, dx: -1, dy: 0 },
+    { sx: x + def.w, sy: y, dx: 1, dy: 0 },
+    { sx: x, sy: y - 1, dx: 0, dy: -1 },
+    { sx: x, sy: y + def.h, dx: 0, dy: 1 },
+  ];
+  var best;
+  for (var s = 0; s < sides.length; s += 1) {
+    var side = sides[s];
+    var cx = side.sx;
+    var cy = side.sy;
+    var cells = [];
+    var clear = true;
+    while (cx >= 0 && cy >= 0 && cx < width && cy < height) {
+      var index = tileAt(width, cx, cy);
+      if (state.tiles.buildingId[index] !== 0) { clear = false; break; }
+      if (state.tiles.terrain[index] === TERRAIN_ROCK) { clear = false; break; }
+      cells.push(index);
+      cx += side.dx;
+      cy += side.dy;
+    }
+    if (!clear || cells.length === 0) continue;
+    if (!best || cells.length < best.length) best = cells;
+  }
+  return best;
+}
+
+/**
+ * A line to the edge and a station on it, once the town is big enough (T2).
+ *
+ * The order matters: the rail goes down FIRST, because `needsRail` refuses a
+ * station with no line to stand on. Then the wire, the pipe and a road — a
+ * station with no power or no road access is built, standing, costing upkeep
+ * and DEAD, which is a thing the player can do and the deputy should not.
+ */
+function openTheLine(state, deputy) {
+  if (deputy.stations >= 1) return false;
+  if (state.population < rules().deputy.railAtPopulation) return false;
+
+  var def = definition("railStation");
+  var spot = findSpotFor(state, deputy, "railStation");
+  if (spot < 0) return false;
+  var sx = xOf(state.width, spot);
+  var sy = yOf(state.width, spot);
+
+  var run = lineToEdge(state, sx, sy, def);
+  if (!run) return false;
+
+  var laid = issue(state, deputy, {
+    type: CMD_PLACE_RAIL, actor: deputy.seat, runs: encodeRuns(run),
+  });
+  if (laid.result !== RESULT.OK) {
+    deputy.refusals += 1;
+    return false;
+  }
+  var placed = issue(state, deputy, {
+    type: CMD_PLACE_BUILDING, actor: deputy.seat, def: "railStation", x: sx, y: sy,
+  });
+  if (placed.result !== RESULT.OK) {
+    deputy.refusals += 1;
+    return false;
+  }
+  deputy.stations += 1;
+  // To a LIVE piece of grid, not the nearest wire (see `connectToNetwork`): a
+  // station on a dead stub is built, standing, costing upkeep and dead, and
+  // the only thing that would ever have said so is this slice's own test.
+  connectToNetwork(state, deputy, spot, "wire", CMD_PLACE_WIRE, FLAG_POWERED);
+  connectToNetwork(state, deputy, spot, "pipe", CMD_PLACE_PIPE, FLAG_WATERED);
+  connectToNetwork(state, deputy, spot, "road", CMD_PLACE_ROAD);
+  return true;
+}
+
 function findSpotFor(state, deputy, defId) {
   var def = definition(defId);
   if (!def) return -1;
@@ -502,7 +587,7 @@ function nearWater(state, x, y, def) {
  * whole city went thirsty. A breadth-first search around the obstacles is what
  * a person does with the tool, and it is what works.
  */
-function connectToNetwork(state, deputy, from, layer, command) {
+function connectToNetwork(state, deputy, from, layer, command, flag) {
   var total = state.width * state.height;
   var seen = [];
   var cameFrom = [];
@@ -516,14 +601,26 @@ function connectToNetwork(state, deputy, from, layer, command) {
   seen[from] = true;
   var head = 0;
   var target = -1;
+  var fallback = -1;
 
   while (head < queue.length && head < 6000) {
     var index = queue[head];
     head += 1;
     // Already on the grid? Then this is where the new run should meet it.
+    //
+    // `flag` asks for a LIVE piece of grid — one the supply pass has marked
+    // satisfied — rather than the nearest carrier of any kind. The deputy's
+    // wire is not one network: on seed 1003 at year nine it is twelve
+    // components, seven of them with no producer on them at all, and joining
+    // the nearest one connected the rail station to a dead stub sixteen units
+    // deep in demand and zero in capacity. Only the station asks for this;
+    // fixing it for every building is a deputy change of its own (Q117).
     if (index !== from && hasNet(state.tiles[layer][index])) {
-      target = index;
-      break;
+      if (!flag || (state.tiles.flags[index] & flag) !== 0) {
+        target = index;
+        break;
+      }
+      if (fallback < 0) fallback = index;
     }
     var x = xOf(state.width, index);
     var y = yOf(state.width, index);
@@ -539,6 +636,8 @@ function connectToNetwork(state, deputy, from, layer, command) {
       queue.push(n);
     }
   }
+  // A dead stub is better than nothing: the grid may have no live piece yet.
+  if (target < 0) target = fallback;
   if (target < 0) return;
 
   var cells = [];
@@ -608,6 +707,8 @@ export function deputyTurn(state, deputy, sink) {
   if (keepCovered(state, deputy)) return true;
   // And once the town is big enough, its busiest street becomes its main road.
   if (upgradeTrunk(state, deputy)) return true;
+  // Then the railway, which is a bigger town still (T2).
+  if (openTheLine(state, deputy)) return true;
 
   // Stop expanding when a deficit is actually running the treasury down —
   // not merely because the books are negative. A new city runs a deficit by

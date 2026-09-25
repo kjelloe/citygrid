@@ -12,6 +12,10 @@ import {
   NET_PRESENT, NET_AVENUE,
 } from "../constants-mirror.js";
 import { OVERLAY_NAMES, labelKeyFor, bandAt, BAND } from "./overlays.js";
+// `client/ui/` reads the engine's rules where the HUD has to say what one IS —
+// the budget panel and the statistics do the same. Ruling 037 keeps `world/`,
+// `render/` and `life/` out of engine/, not the interface.
+import { gateStatus } from "../../engine/gates.js";
 
 const TERRAIN_KEYS = {
   [TERRAIN_GRASS]: "terrain.grass",
@@ -36,7 +40,29 @@ export function inspectorKeys() {
     ...BAND_WORD_KEYS,
     "inspect.landValue", "inspect.pollution", "inspect.crime",
     "inspect.fireRisk", "inspect.healthRisk", "inspect.traffic",
+    // A gate's row builds its key from `gateStatus`'s reason (T2), so the list
+    // is HERE rather than left for a source scan to miss — the reachability
+    // sweep can only see the keys something constructs for it.
+    ...GATE_KEYS,
   ];
+}
+
+/** Every key `gateOf` can produce: one per reason `engine/gates.js` gives, and
+ * the open one. A reason added there without a word here is a station whose
+ * inspector row says `gate.somethingNew`. */
+export const GATE_KEYS = Object.freeze([
+  "gate.live", "gate.noLine", "gate.unpowered", "gate.noRoad",
+]);
+
+/** The gate row, as keys rather than words: `{ live, reasonKey }` for a gate
+ * building, `undefined` for anything else. */
+function gateOf(state, building) {
+  const status = gateStatus(state, building);
+  if (!status) return undefined;
+  return {
+    live: status.live,
+    reasonKey: status.live ? "gate.live" : `gate.${status.reason}`,
+  };
 }
 
 export function inspect(state, x, y) {
@@ -67,6 +93,7 @@ export function inspect(state, x, y) {
     // Which KIND of road (T1): the inspector is where a player finds out what
     // they are standing on, and an avenue costs and carries differently.
     avenue: (state.tiles.road[index] & NET_AVENUE) !== 0,
+    rail: (state.tiles.rail[index] & NET_PRESENT) !== 0,
     wire: (state.tiles.wire[index] & NET_PRESENT) !== 0,
     pipe: (state.tiles.pipe[index] & NET_PRESENT) !== 0,
     powered: (flags & FLAG_POWERED) !== 0,
@@ -76,6 +103,10 @@ export function inspect(state, x, y) {
     building: building && {
       id: building.id,
       def: building.def,
+      // A gate's whole point is whether it is OPEN, and the three ways it can
+      // be shut are invisible from the outside (T2): the line stops short, the
+      // wire never arrived, or nothing drives to it.
+      gate: gateOf(state, building),
       level: building.level,
       occupancy: building.occupancy,
       condition: building.condition,

@@ -18,6 +18,10 @@ export const PALETTES = {
     road: 0x6f7278,
     roadMark: 0xf2f2f2,
     wire: 0x8a8377,
+    // Warm and dark — ballast and sleepers. The first cut was a shade of the
+    // wire's grey (T2) and read as another road from the air, which is the one
+    // thing a railway must not look like.
+    rail: 0x4a3a2c,
     lamp: 0xb8bcc0,
     lawn: 0x6fce4c,
     civic: 0xd8d2c6,
@@ -50,6 +54,7 @@ export const PALETTES = {
     road: 0x5f6068,
     roadMark: 0xe8e4d8,
     wire: 0x7a7468,
+    rail: 0x3d2f24,
     lamp: 0xa8acb0,
     lawn: 0x68c040,
     civic: 0xa8a098,
@@ -84,6 +89,7 @@ export const PALETTES = {
     road: 0x76727e,
     roadMark: 0xe6dcc4,
     wire: 0x8b8378,
+    rail: 0x4b3b2d,
     lamp: 0xbcbcc4,
     lawn: 0x93bd78,
     civic: 0xe0cdb2,

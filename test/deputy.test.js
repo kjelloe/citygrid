@@ -16,6 +16,7 @@ import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
 import { rules } from "../engine/rules.js";
+import { gateStatus, gateTerms, railReach } from "../engine/gates.js";
 import { isAvenue, NET_PRESENT } from "../engine/network.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -187,4 +188,60 @@ test("a town below the size has no avenue, and a grown city's is where the traff
   }
   assert.ok(avenueLoad / avenue.length > roadLoad / Math.max(1, roads),
     `the avenue carries ${(avenueLoad / avenue.length).toFixed(1)} against the streets' ${(roadLoad / roads).toFixed(1)}`);
+});
+
+test("the deputy opens a line to the edge, and the station it puts on it is LIVE", () => {
+  // T2. A station that is built, standing, costing upkeep and dead is a thing
+  // a player can do and the deputy should not — so the rail goes down first
+  // (`needsRail`), and the wire, the pipe and a road follow it.
+  const { state, deputy } = play(1003, 48, 2);
+  for (let turn = 0; turn < 600 && deputy.stations === 0; turn += 1) {
+    apply(state, { type: CMD_TICK });
+    if (turn % 6 === 0) deputyTurn(state, deputy);
+  }
+  assert.equal(deputy.stations, 1, `no station in a city of ${state.population}`);
+  assert.ok(state.population >= rules().deputy.railAtPopulation,
+    `the city only reached ${state.population}`);
+
+  const station = state.buildings.find((b) => b.def === "railStation");
+  assert.ok(station, "the deputy counted a station it did not build");
+  // A year for the supply pass to reach it: the flags are set by the monthly
+  // tick, not by the command that laid the wire, so a station is dead for a
+  // month after it is built however well it was connected.
+  for (let tick = 0; tick < 12; tick += 1) apply(state, { type: CMD_TICK });
+  const status = gateStatus(state, station);
+  assert.equal(status.live, true, `the deputy's own station is dead: ${status.reason}`);
+
+  // The line reaches an edge, which is what `live` means, and it is a LINE —
+  // a straight run, not a network.
+  const reach = railReach(state);
+  let laid = 0;
+  let joined = 0;
+  for (let i = 0; i < state.tiles.rail.length; i += 1) {
+    if ((state.tiles.rail[i] & NET_PRESENT) === 0) continue;
+    laid += 1;
+    if (reach[i] === 1) joined += 1;
+  }
+  assert.ok(laid > 0, "a live station with no rail under it");
+  assert.equal(joined, laid, `${laid - joined} rail tiles of ${laid} do not reach an edge`);
+
+  // And it is worth something: the Outside's terms are in the pool.
+  assert.deepEqual(gateTerms(state), {
+    residential: rules().gate.rail.residential,
+    commercial: rules().gate.rail.commercial,
+    industrial: rules().gate.rail.industrial,
+  });
+});
+
+test("a doctrine that holds the line never opens one", () => {
+  // `hold` builds nothing at all, which is the whole doctrine; this is the
+  // assertion that says the new row obeys it rather than reaching past it.
+  const { state } = play(1003, 48, 2);
+  const holding = makeDeputy(1, "hold");
+  for (let turn = 0; turn < 600; turn += 1) {
+    apply(state, { type: CMD_TICK });
+    if (turn % 6 === 0) deputyTurn(state, holding);
+  }
+  assert.equal(holding.stations, 0);
+  assert.equal(state.buildings.filter((b) => b.def === "railStation").length, 0);
 });

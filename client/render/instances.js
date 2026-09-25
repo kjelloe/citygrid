@@ -117,6 +117,13 @@ export function createInstances(scene, styleName = "plain") {
   // piped tile, supplied or dry.
   make("wireHub", flatGeometry(styleName, 0.09, 0.09, 0), 0xffffff, 40000);
   make("wireArm", flatGeometry(styleName, 0.09, 0.56, 0), 0xffffff, 80000);
+  // The railway (T2). Drawn like wire and pipe — a hub and an arm per
+  // connection, so a run reads as a run (ruling 030) — and drawn at all
+  // because the alternative is a tool a player uses and sees nothing from.
+  // Wider than the wire and darker than the road, which is what a track looks
+  // like from the air; the rails, the sleepers and the crossings are T3.
+  make("railHub", flatGeometry(styleName, 0.16, 0.16, 0), 0xffffff, 20000);
+  make("railArm", flatGeometry(styleName, 0.16, 0.56, 0), 0xffffff, 40000);
   // Burnt GROUND: flat, like the lawn quad. It was a 0.14-tile slab — a solid
   // block 2.8 m tall covering most of the tile — which is why a ruin has always
   // read as a dark box, and which buried B1b's walls and rubble inside it.
@@ -643,6 +650,18 @@ export function updateInstances(state, pools, options = {}) {
         if (poles && ((x + y) % 3 === 0)) {
           push(pools.wire, x + 0.5, h, y + 0.5, 1, 1, 1, palette.wire);
         }
+      }
+      // The rail line (T2). ABOVE the road surface, like the wire, so a level
+      // crossing shows the track across the street rather than under it.
+      //
+      // NOT gated on `drawn`, which every other L2 network is: that gate means
+      // "a baked chunk draws this better", and no baked chunk draws track
+      // until T3 — the same argument the grass tufts win. The first cut used
+      // `networks` and the line vanished inside the nine baked chunks around
+      // the camera, which is every street-level shot of it. **T3 must put the
+      // gate back** the moment the chunk baker lays a rail.
+      if (local.networks !== false && (state.tiles.rail[index] & NET_PRESENT)) {
+        connect(pools.railHub, pools.railArm, state.tiles.rail[index], x, y, 0.06, palette.rail, at);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
         // The burnt ground itself. The walls and the rubble that stand on it

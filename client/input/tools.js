@@ -8,7 +8,7 @@
 // player about a rule it does not own.
 
 import {
-  CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE,
+  CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL,
   CMD_PAINT_ZONE, CMD_DEZONE, CMD_BULLDOZE, CMD_PLACE_BUILDING,
 } from "../../engine/commands.js";
 import { ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL } from "../constants-mirror.js";
@@ -38,6 +38,10 @@ export const TOOLS = {
   avenue: { command: CMD_PLACE_ROAD, drag: DRAG.LINE, kind: "avenue", priceKind: "avenue", icon: "avenue", key: "a" },
   wire: { command: CMD_PLACE_WIRE, drag: DRAG.LINE, priceKind: "wire", icon: "wire", key: "w" },
   pipe: { command: CMD_PLACE_PIPE, drag: DRAG.LINE, priceKind: "pipe", icon: "pipe", key: "p" },
+  // The third network (T2). `l` because `r` is the road and `t` is taken by
+  // nothing yet but reads as "tool"; `collisions()` in `camera-model.js` is
+  // what keeps this honest.
+  rail: { command: CMD_PLACE_RAIL, drag: DRAG.LINE, priceKind: "rail", icon: "rail", key: "l" },
 
   zoneResidential: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_RESIDENTIAL, priceKind: null, icon: "zoneR", key: "1" },
   zoneCommercial: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_COMMERCIAL, priceKind: null, icon: "zoneC", key: "2" },

@@ -1,6 +1,6 @@
 {
- "version": "6f8cd38bd01b",
- "generated": "2026-09-24",
+ "version": "357d3d076547",
+ "generated": "2026-09-25",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -150,6 +150,7 @@
   "./engine/districts.js",
   "./engine/economy.js",
   "./engine/fire.js",
+  "./engine/gates.js",
   "./engine/history.js",
   "./engine/network.js",
   "./engine/options.js",

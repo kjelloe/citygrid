@@ -286,7 +286,10 @@ Later additions:
 - Bridge.
 - Pedestrian path.
 - Bus stop.
-- Rail.
+- ~~Rail~~ — **built 2026-09-25** (T2): a line of track, and a station that is LIVE only when the
+  line reaches the edge of the region. A live station is a door out of the map — it adds demand,
+  pulls commuters and takes a fare — which is how §7.8's "the Outside" is modelled: gate buildings,
+  not a second simulation (A65).
 - Metro.
 
 Every developed building requires access to a road tile within a defined distance, normally directly adjacent.

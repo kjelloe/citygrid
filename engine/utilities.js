@@ -15,6 +15,7 @@ import { CMD_PLACE_BUILDING } from "./commands.js";
 import { tileAt, xOf, yOf, DIR4, neighbour, forEachInRadius, inBounds } from "../shared/grid.js";
 import { idiv, clamp } from "../shared/idiv.js";
 import { hasNet } from "./network.js";
+import { touchesRail } from "./gates.js";
 import { definition } from "./catalogue.js";
 import { canBuildOn } from "./permissions.js";
 import { begin, commit, stage, charge, failed } from "./transaction.js";
@@ -240,6 +241,11 @@ register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
     }
   }
   if (def.needsSurfaceWater === true && !surfaceWaterNearby(state, x, y, def.w, def.h)) {
+    return fail(RESULT.INVALID);
+  }
+  // A gate stands on its line (T2). Power and a road are reasons it is DEAD,
+  // not reasons it cannot be built — `gates.js` says which.
+  if (def.needsRail === true && !touchesRail(state, x, y, def.w, def.h)) {
     return fail(RESULT.INVALID);
   }
 

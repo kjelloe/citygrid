@@ -30,6 +30,7 @@ import { rules } from "./rules.js";
 import { idiv, clamp } from "../shared/idiv.js";
 import { tileAt, xOf, yOf, DIR4 } from "../shared/grid.js";
 import { hasNet, isAvenue } from "./network.js";
+import { railReach, gateStatus } from "./gates.js";
 // `new` is not allowed in engine/ (ruling 004); scratch arrays come from here.
 import { i32 } from "../shared/arrays.js";
 import { ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL } from "./constants.js";
@@ -48,9 +49,19 @@ function isRoad(state, index) {
 function seedJobs(state, distance, queue) {
   var count = 0;
   var i;
+  // A live gate is a destination like a workplace (T2, A65): people drive to
+  // the station and leave the region. The field has no capacity for ANY sink —
+  // jobs do not have one either, and everyone takes the shortest route whether
+  // or not it is full (the limitation this module's header records). The
+  // gate's "capacity" is expressed on its demand term instead.
+  var reach = railReach(state);
   for (i = 0; i < state.buildings.length; i += 1) {
     var building = state.buildings[i];
-    if (building.zone !== ZONE_COMMERCIAL && building.zone !== ZONE_INDUSTRIAL) continue;
+    var isJob = building.zone === ZONE_COMMERCIAL || building.zone === ZONE_INDUSTRIAL;
+    if (!isJob) {
+      var status = gateStatus(state, building, reach);
+      if (!status || !status.live) continue;
+    }
     var dx;
     var dy;
     var d;

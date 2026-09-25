@@ -84,6 +84,7 @@ const SAME_IN_BOTH = {
   "lobby.size.region": "Region is the same word in Norwegian",
   "lobby.seedIs": "Region again, and the rest of the line is a token",
   "building.park": "Park is the same word in Norwegian",
+  "category.transport": "Transport is the same word in Norwegian",
   "disaster.storm": "Storm is the same word in Norwegian",
   "overlay.auto": "Auto is the same word in Norwegian",
   "hud.slot.auto": "Auto again",

@@ -10,7 +10,7 @@ export const PROTOCOL_VERSION = 1;
  * "dev" locally, where a mismatch is expected and tolerated. */
 export const BUILD_HASH = "dev";
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 /** Client → server. */
 export const C2S = Object.freeze({

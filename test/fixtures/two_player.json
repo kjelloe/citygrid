@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "The city name is a lobby option (gamedesign.md 5.1), so it is part of the hashed options record.",
+ "why": "T1's avenue bit, T2's rail layer and A79's rock and marsh: the transport re-pin the three were bundled into (A66, A79) — the tile layer list gains rail, so every hash in every fixture moves",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -33,7 +33,7 @@
     "name": "Ada"
    },
    "result": "ok",
-   "hash": "e8f798d2b0394029",
+   "hash": "5a80529c52c190df",
    "events": [
     "seatJoined"
    ]
@@ -46,7 +46,7 @@
     "name": "Bo"
    },
    "result": "ok",
-   "hash": "c05309ecef555499",
+   "hash": "cbf7a316b12daccf",
    "events": [
     "seatJoined"
    ]
@@ -61,7 +61,7 @@
     ]
    },
    "result": "ok",
-   "hash": "9b706abef11b72da",
+   "hash": "4fff769bb25b4a38",
    "events": [
     "built"
    ]
@@ -76,7 +76,7 @@
     ]
    },
    "result": "ok",
-   "hash": "180458c4fde76b55",
+   "hash": "ac96b24a6cf59bfb",
    "events": [
     "built"
    ]
@@ -92,7 +92,7 @@
     ]
    },
    "result": "ok",
-   "hash": "383ce5865ba6b4d5",
+   "hash": "56820061094ee2db",
    "events": [
     "zoned"
    ]
@@ -108,7 +108,7 @@
     ]
    },
    "result": "ok",
-   "hash": "225ffabb4f340b39",
+   "hash": "ab5cc340b972c30f",
    "events": [
     "zoned"
    ]
@@ -123,7 +123,7 @@
     ]
    },
    "result": "ok",
-   "hash": "026c827f2ade7a0e",
+   "hash": "289608dfd448263c",
    "events": [
     "built"
    ]
@@ -138,7 +138,7 @@
     ]
    },
    "result": "notOwner",
-   "hash": "026c827f2ade7a0e",
+   "hash": "289608dfd448263c",
    "events": []
   },
   {
@@ -148,7 +148,7 @@
     "rate": 8
    },
    "result": "ok",
-   "hash": "e11d100f0dadad49",
+   "hash": "c47b7963226522bb",
    "events": [
     "taxSet"
    ]
@@ -159,7 +159,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "294fdc8fb31de190",
+   "hash": "3d70eb5f4a2e5426",
    "events": [
     "budget"
    ]
@@ -170,12 +170,12 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "c5c669b78fc19672",
+   "hash": "a0777b7fba60c00c",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 1,
- "repinnedAt": "2026-08-30"
+ "era": 6,
+ "repinnedAt": "2026-09-25"
 }

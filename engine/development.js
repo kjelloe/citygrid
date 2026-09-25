@@ -9,7 +9,8 @@ import { RESULT, LIMITS } from "../shared/protocol.js";
 import { register, ok, fail, registerMonthly } from "./reducer.js";
 import { CMD_PAINT_ZONE, CMD_DEZONE } from "./commands.js";
 import { begin, commit, stage, charge, reject, peek, failed } from "./transaction.js";
-import { cellsFromRuns, hasNet } from "./network.js";
+import { cellsFromRuns, hasNet, hasRoadAccess } from "./network.js";
+import { gateTerms } from "./gates.js";
 import { canZone, canDemolish } from "./permissions.js";
 import { rules, buildCost, difficultyOf } from "./rules.js";
 import { isBuildable } from "./terrain.js";
@@ -144,6 +145,14 @@ export function computeDemand(state) {
   var industryWanted = idiv(workers * population.industryPerWorkerPercent, 100);
   var industrial = (industryWanted - counts.industrialJobs) * 5 + demandRules.industrialBase + drag;
 
+  // The Outside (T2, A65). A live gate is demand from beyond the map: added
+  // BEFORE the elasticity and the cap, so it is worth less on `demanding` and
+  // cannot lift the pool past the ceiling any other source obeys.
+  var outside = gateTerms(state);
+  residential += outside.residential;
+  commercial += outside.commercial;
+  industrial += outside.industrial;
+
   return {
     residential: clamp(idiv(residential * elasticity, 100), -demandRules.residentialCap, demandRules.residentialCap),
     commercial: clamp(idiv(commercial * elasticity, 100), -demandRules.commercialCap, demandRules.commercialCap),
@@ -166,20 +175,11 @@ function demandFor(state, zone) {
 
 // --- lots ------------------------------------------------------------------
 
-export function hasRoadAccess(state, x, y, w, h) {
-  var radius = rules().development.roadAccessRadius;
-  for (var dy = -radius; dy < h + radius; dy += 1) {
-    for (var dx = -radius; dx < w + radius; dx += 1) {
-      var inside = dx >= 0 && dy >= 0 && dx < w && dy < h;
-      if (inside) continue;
-      var nx = x + dx;
-      var ny = y + dy;
-      if (!inBounds(state.width, state.height, nx, ny)) continue;
-      if (hasNet(state.tiles.road[tileAt(state.width, nx, ny)])) return true;
-    }
-  }
-  return false;
-}
+// `hasRoadAccess` moved to `engine/network.js` in T2 — the gate rules need it
+// and this module reads their demand terms, so one of the two had to move.
+// Re-exported here because a dozen callers and three tests import it from this
+// module, and moving a function is not the same as renaming its home.
+export { hasRoadAccess };
 
 /** Is this rectangle free, zoned the same way, owned by the same player, and
  * on buildable ground? */

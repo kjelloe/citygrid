@@ -10,6 +10,11 @@
 // Usage: node tools/client_smoke.mjs
 
 import { shoot } from "./screenshot.mjs";
+import { CIVIC_DEFS } from "../client/world/civic-spec.js";
+
+/** Draw calls that are not one of the civic pools: the terrain, the water, the
+ * sky, the markings, the wires and the zoned-lot pools. Measured at T2. */
+const DRAW_BASE = 69;
 
 // Declared here rather than imported: client/render/* imports the bare
 // specifier "three", which only the browser's importmap resolves. A Node tool
@@ -61,8 +66,20 @@ for (const check of CHECKS) {
   }
   // The whole point of instancing: a city of hundreds of buildings must not be
   // hundreds of draw calls.
-  if (!check.post && report.drawCalls > 80) {
-    problems.push(`${report.drawCalls} draw calls — instancing is not working`);
+  //
+  // Two checks, because the first one was a literal 80 and every civic
+  // definition is an instanced pool of its own — T2's rail station took the
+  // count from 81 to 82 and failed a gate that was measuring the CATALOGUE
+  // rather than the instancing. `DRAW_BASE` is what is left when the pools are
+  // taken out, measured at T2: 82 draws with 13 civic definitions.
+  const ceiling = DRAW_BASE + CIVIC_DEFS.length;
+  if (!check.post && report.drawCalls > ceiling) {
+    problems.push(`${report.drawCalls} draw calls against a ceiling of ${ceiling} — instancing is not working`);
+  }
+  // And the sentence above, asserted as itself: whatever the pools cost, a
+  // city must never approach a draw per building.
+  if (!check.post && report.drawCalls > report.buildings / 2) {
+    problems.push(`${report.drawCalls} draw calls for ${report.buildings} buildings — that is a draw per building`);
   }
 
   if (problems.length > 0) {

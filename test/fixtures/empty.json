@@ -1,6 +1,6 @@
 {
  "name": "empty",
- "why": "The city name is a lobby option (gamedesign.md 5.1), so it is part of the hashed options record.",
+ "why": "T1's avenue bit, T2's rail layer and A79's rock and marsh: the transport re-pin the three were bundled into (A66, A79) — the tile layer list gains rail, so every hash in every fixture moves",
  "generate": false,
  "options": {
   "seed": 1,
@@ -25,7 +25,7 @@
    },
    "repeat": 1,
    "result": "ok",
-   "hash": "21c53b4f28c5c871",
+   "hash": "ddbc396c76908c71",
    "events": []
   },
   {
@@ -34,7 +34,7 @@
    },
    "repeat": 11,
    "result": "ok",
-   "hash": "6443a1ae3ff6960e",
+   "hash": "e2502198006cce0e",
    "events": [
     "budget"
    ]
@@ -45,7 +45,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "245c502a2475eada",
+   "hash": "fbdf391805ab52da",
    "events": [
     "budget"
    ]
@@ -56,12 +56,12 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "0c1132f75aef8245",
+   "hash": "310b0678ddd59645",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 1,
- "repinnedAt": "2026-08-30"
+ "era": 6,
+ "repinnedAt": "2026-09-25"
 }

@@ -77,7 +77,37 @@ avenue corridors, the two-lane links and the baked chunk before it is called an 
 frame was dropped: at that zoom the median is under a pixel and the shot proved nothing. What reads
 is the oblique at span 8, which is the camera's floor (`shot-camera-limits`).*
 
-## T2 — Rail and the station, in the engine (L) — A65, A66
+## T2 — Rail and the station, in the engine (L) — A65, A66 — **BUILT 2026-09-25** as `slice-T2` (era 6)
+
+*As built. `tiles.rail` is the fourth tile layer (appending is safe; the hash moved, and this is the
+re-pin T1 and A79 were bundled into). `CMD_PLACE_RAIL` with runs, a permission row, the rail price
+and 2 a tile of upkeep. A rail tile shares a road tile — that is a level crossing — and is the only
+network refused over a BUILDING; road, wire and pipe may still be laid through one (Q116).*
+
+*`railStation`, 3×2, category `transport`, `gate: "rail"`. `needsRail` is its only placement rule:
+power and road access are reasons it is DEAD, not reasons it cannot be built, which is what lets
+the inspector say which of the three it is. `engine/gates.js` holds all of it — `railReach` floods
+the layer inward from EVERY edge tile at once so the cost does not grow with the number of
+stations, and nothing about liveness, terms or fares is stored.*
+
+*The Outside (A65): `gate.rail`'s integer terms go into `computeDemand` BEFORE the elasticity and
+the cap, so they are worth less on `demanding` and obey the same ceiling as everything else. A live
+gate seeds the commuter field like a workplace. The fare is per resident within `range`, billed in
+`budgetFor` beside the taxes.*
+
+*The deputy lays a straight line to the nearest edge past `deputy.railAtPopulation` and puts a
+station on it — rail first, because `needsRail` refuses a station with no line to stand on — then
+wire, pipe and a road. Its wire goes to a LIVE piece of grid rather than the nearest carrier: the
+first cut connected the station to a dead stub and every station the deputy built was unpowered
+(Q117).*
+
+*And the controls, which the item did not ask for and ruling 026 does: a railway tool, a
+`transport` build category, the station's button, the inspector's line row and gate row, and the
+L2 line itself — drawn as a joined run like wire and pipe, because a tool a player uses and sees
+nothing from is not a feature. **T3 must gate that pass on `drawn`** the moment the chunk baker
+lays track.*
+
+## T2 — Rail and the station, in the engine (L) — A65, A66 — the item as written
 
 **Amended 2026-09-13 (A79).** The re-pin this item shares with T1 carries a third change:
 **worldgen places rock and marsh** — a lower rock threshold on `hilly` maps (`rockyPeaks`) and a

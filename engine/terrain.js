@@ -9,7 +9,7 @@ import { idiv, fdiv, clamp, FP, lerp } from "../shared/idiv.js";
 import { tileAt, xOf, yOf, inBounds, DIR4, DIR8, neighbour } from "../shared/grid.js";
 import {
   TERRAIN_GRASS, TERRAIN_DIRT, TERRAIN_FOREST, TERRAIN_WATER, TERRAIN_SHALLOW,
-  TERRAIN_ROCK, TERRAIN_SAND, TERRAIN_STYLE_FLAT, TERRAIN_STYLE_ROLLING,
+  TERRAIN_ROCK, TERRAIN_SAND, TERRAIN_MARSH, TERRAIN_STYLE_FLAT, TERRAIN_STYLE_ROLLING,
   TERRAIN_STYLE_HILLY, WATER_NONE, WATER_LAKES, WATER_RIVER, WATER_COASTAL,
   WATER_ARCHIPELAGO,
 } from "./constants.js";
@@ -253,13 +253,69 @@ export function shoreline(state) {
   for (i = 0; i < sand.length; i += 1) terrain[sand[i]] = TERRAIN_SAND;
 }
 
-/** High ground becomes rock: unbuildable, and a natural district border. */
+/** High ground becomes rock: unbuildable, and a natural district border.
+ *
+ * Lower on a HILLY map since T2 (A79). At one threshold for every style a
+ * hilly region had almost no rock in it — the peaks are higher but the field
+ * is normalised, so the same 215 caught the same share of a flatter map. A
+ * hilly map is supposed to be the one you have to build around. */
 export function rockyPeaks(state) {
   var terrain = state.tiles.terrain;
   var elevation = state.tiles.elevation;
+  var limit = state.options.terrainStyle === TERRAIN_STYLE_HILLY ? ROCK_ABOVE_HILLY : ROCK_ABOVE;
   for (var i = 0; i < terrain.length; i += 1) {
-    if (terrain[i] === TERRAIN_GRASS && elevation[i] > 215) terrain[i] = TERRAIN_ROCK;
+    if (terrain[i] === TERRAIN_GRASS && elevation[i] > limit) terrain[i] = TERRAIN_ROCK;
   }
+}
+
+/** How high ground has to be before it is bare rock, and how high on a hilly
+ * map. Elevation is a normalised byte, so these are shares of the range
+ * rather than metres. */
+var ROCK_ABOVE = 215;
+var ROCK_ABOVE_HILLY = 186;
+
+/** How many shallow tiles a 5x5 box around a bank tile needs before the land
+ * there is marsh rather than beach. A one-tile shelf — most of a river's bank
+ * — puts about five in the box; the flats where the shelf spreads put a dozen
+ * or more. */
+var MARSH_SHELF = 8;
+
+/**
+ * Marsh where the shallow shelf is widest (T2, A79).
+ *
+ * Reeds and standing water rather than a beach, and UNBUILDABLE — which is the
+ * point: a river mouth should cost a player something to build across. Run
+ * after `shoreline`, so the sand ring exists to be converted.
+ *
+ * By the WIDTH of the shelf rather than by noise, so the band is where the
+ * land is actually flat and wet, and so two maps from one seed differ only
+ * where their water does.
+ */
+export function marshBand(state) {
+  var terrain = state.tiles.terrain;
+  var width = state.width;
+  var height = state.height;
+  var found = [];
+  var x;
+  var y;
+  var i;
+  for (y = 0; y < height; y += 1) {
+    for (x = 0; x < width; x += 1) {
+      var index = tileAt(width, x, y);
+      if (terrain[index] !== TERRAIN_SAND) continue;
+      var shallow = 0;
+      for (var dy = -2; dy <= 2; dy += 1) {
+        for (var dx = -2; dx <= 2; dx += 1) {
+          var nx = x + dx;
+          var ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          if (terrain[tileAt(width, nx, ny)] === TERRAIN_SHALLOW) shallow += 1;
+        }
+      }
+      if (shallow >= MARSH_SHELF) found.push(index);
+    }
+  }
+  for (i = 0; i < found.length; i += 1) terrain[found[i]] = TERRAIN_MARSH;
 }
 
 /** Forest by random walk, as in the reference: clumps rather than noise, so
@@ -301,6 +357,7 @@ export function generateTerrain(state) {
   generateWater(state, makeRng(streamSeed(seed, "water")));
   rockyPeaks(state);
   shoreline(state);
+  marshBand(state);
   plantForest(state, makeRng(streamSeed(seed, "forest")), state.options.treeDensity);
   return state;
 }

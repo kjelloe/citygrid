@@ -57,5 +57,12 @@
     "category": "amenity", "w": 1, "h": 1, "cost": 60, "upkeep": 2,
     "power": 0, "water": -1, "pollution": -10, "fireRisk": 0,
     "landValueBonus": 20, "radius": 4, "unlock": 0
+  },
+
+  "railStation": {
+    "category": "transport", "w": 3, "h": 2, "cost": 1500, "upkeep": 90,
+    "power": -8, "water": -4, "pollution": 8, "fireRisk": 8,
+    "gate": "rail", "needsRail": true,
+    "landValueBonus": 14, "radius": 6, "unlock": 0
   }
 }

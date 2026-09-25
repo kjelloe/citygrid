@@ -81,7 +81,7 @@ const look = async (name, years, extra, pick, stand, want, deep = false) => {
 };
 
 // A standing building: after half a year a site is a building (B2).
-const standing = "state.tick - b.builtTick > 72";
+const standing = "state.tick - b.builtTick > 12";
 const above = (at) => ({ mode: "city", span: 8, pitch: 50, yaw: 0.6, fx: at.x, fy: at.y, width: 1920, height: 1080 });
 const onRoad = (at, yaw, pitch) => ({ street: `${at.road[0]},${at.road[1]}`, yaw, pitch });
 await look("park", 2, { place: "park", age: 400 }, `(b) => b.def === "park"`, above, ["bench", "pond", "wild"]);

@@ -98,6 +98,27 @@ export function registerMigration(fromVersion, fn) {
   MIGRATIONS[fromVersion] = fn;
 }
 
+/**
+ * 1 → 2: T2 appended the `rail` layer.
+ *
+ * A save from version 1 has no rail runs, and `fromSave` leaves the layer
+ * zeroed, which is right — there was no rail before there was rail. What it
+ * cannot keep is the CHECKSUM: `hash` was taken over a field list that did not
+ * include the layer, so recomputing it now gives a different digest and the
+ * load would be refused as "does not match its own hash". The hash is dropped
+ * rather than recomputed, because a checksum this build calculated proves
+ * nothing about the bytes the old build wrote; the save is verified from the
+ * next time it is written.
+ */
+registerMigration(1, function railLayer(data) {
+  var out = {};
+  for (var key in data) {
+    if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
+  }
+  out.v = 2;
+  return out;
+});
+
 export function migrate(data) {
   var working = data;
   var guard = 0;

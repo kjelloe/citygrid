@@ -5,10 +5,10 @@
 // shapes from the tile value alone and never recomputes connectivity.
 
 import { RESULT } from "../shared/protocol.js";
-import { tileAt, xOf, yOf, DIR4, neighbour, decodeRuns } from "../shared/grid.js";
+import { tileAt, xOf, yOf, DIR4, neighbour, decodeRuns, inBounds } from "../shared/grid.js";
 import { isWater, isBuildable } from "./terrain.js";
 import { canBuildOn, canDemolish, canConnectAcross } from "./permissions.js";
-import { buildCost } from "./rules.js";
+import { buildCost, rules } from "./rules.js";
 import { stage, charge, reject, peek, failed } from "./transaction.js";
 import { TERRAIN_FOREST, TERRAIN_ROCK, OWNER_NATURE } from "./constants.js";
 
@@ -48,7 +48,32 @@ export var NETWORKS = {
   avenue: { layer: "road", cost: "avenue", waterCost: "avenueOverWater", bits: NET_AVENUE },
   wire: { layer: "wire", cost: "wire", waterCost: "wireOverWater" },
   pipe: { layer: "pipe", cost: "pipe", waterCost: "pipeOverWater" },
+  // The third kind (T2, A66). It shares a tile with a road — that is a level
+  // crossing — and never with a building, which is why it alone carries
+  // `clearOfBuildings`. Road, wire and pipe may be laid across a building
+  // today; that is not T2's to change (Q116).
+  rail: { layer: "rail", cost: "rail", waterCost: "railOverWater", clearOfBuildings: true },
 };
+
+/** Is there a road within `development.roadAccessRadius` of this rectangle?
+ *
+ * Here rather than in `development.js` since T2, because the gate rules ask it
+ * too and `development.js` reads the gates' demand terms — one of the two had
+ * to move or the import graph grows a cycle (CLAUDE.md: acyclic imports). */
+export function hasRoadAccess(state, x, y, w, h) {
+  var radius = rules().development.roadAccessRadius;
+  for (var dy = -radius; dy < h + radius; dy += 1) {
+    for (var dx = -radius; dx < w + radius; dx += 1) {
+      var inside = dx >= 0 && dy >= 0 && dx < w && dy < h;
+      if (inside) continue;
+      var nx = x + dx;
+      var ny = y + dy;
+      if (!inBounds(state.width, state.height, nx, ny)) continue;
+      if (hasNet(state.tiles.road[tileAt(state.width, nx, ny)])) return true;
+    }
+  }
+  return false;
+}
 
 /** Recomputes one tile's shape from its neighbours, reading through the
  * transaction so a tile placed earlier in the same drag is already visible. */
@@ -100,6 +125,11 @@ export function placeNetwork(tx, kind, indices) {
     var terrain = state.tiles.terrain[index];
     if (terrain === TERRAIN_ROCK) {
       reject(tx, RESULT.INVALID);
+      return;
+    }
+    // A line through a building is not a level crossing (A66).
+    if (spec.clearOfBuildings && state.tiles.buildingId[index] !== 0) {
+      reject(tx, RESULT.NEEDS_BULLDOZE);
       return;
     }
 

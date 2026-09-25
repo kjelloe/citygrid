@@ -11,13 +11,13 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 5,
+  era: 6,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
-    pipeOverWater: 30, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
+    pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
     clearForest: 3,
   },
-  upkeep: { road: 1, wire: 0, pipe: 0, policeStation: 100, fireStation: 100, hospital: 120 },
+  upkeep: { road: 1, wire: 0, pipe: 0, rail: 2, policeStation: 100, fireStation: 100, hospital: 120 },
   difficulty: {
     relaxed: { buildCostPercent: 70, taxYieldPercent: 140, upkeepPercent: 80, startingTreasury: 30000, disasterOneIn: 479, demandElasticity: 120 },
     steady: { buildCostPercent: 90, taxYieldPercent: 120, upkeepPercent: 100, startingTreasury: 20000, disasterOneIn: 239, demandElasticity: 100 },
@@ -27,6 +27,12 @@ var RULES = {
     default: 7, min: 0, max: 20,
     dragTable: [200, 150, 120, 100, 80, 50, 30, 0, -10, -40, -100, -150, -200, -250, -300, -350, -400, -450, -500, -550, -600],
     dragScale: 600, responseMonths: 6,
+  },
+  // The Outside (T2, A65): a LIVE gate's integer terms, its fare and how far
+  // that fare reaches. Era 0, untuned against the bases below.
+  gate: {
+    _comment: "T2 (A65): the Outside is gate buildings, not a second simulation. A LIVE gate adds these integer terms to the regional demand pool, seeds the commuter field as a sink, and takes a fare from every resident within range. ERA 0, UNTUNED against the bases in `demand` below (400/150/150).",
+    rail: { residential: 150, commercial: 100, industrial: 200, farePerResident: 1, range: 16 },
   },
   demand: {
     residentialCap: 2000, commercialCap: 1500, industrialCap: 1500,
@@ -91,7 +97,7 @@ var RULES = {
     reliefCap: 6000,
   },
   deputy: {
-    _comment: "A81 (B9): the deputy lays a road only within roadReach tiles of a lot that is built, or zoned and supplied; expand reaches a little further than the doctrines that hold back. Era 3.",
+    _comment: "A81 (B9): the deputy lays a road only within roadReach tiles of a lot that is built, or zoned and supplied; expand reaches a little further than the doctrines that hold back. Era 3. T2: railAtPopulation is the size at which it lays a line to the edge and puts a station on it - just above avenueAtPopulation, so the order is the main road first and the railway after it.",
     buildingsPerStation: 40,
     // T1a (A60): the size at which the deputy's next block is an avenue. One,
     // so a returning player finds a main road rather than a grid of identical
@@ -99,6 +105,7 @@ var RULES = {
     avenueAtPopulation: 800,
     // How far either way along the busiest street the upgrade runs.
     avenueTiles: 7,
+    railAtPopulation: 900,
     roadReach: { expand: 4, balance: 3, green: 3, hold: 3 },
   },
   traffic: {

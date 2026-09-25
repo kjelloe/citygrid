@@ -97,6 +97,11 @@ A corridor is a road run turned into a polyline with a width. From the road mask
 - Kinds: `road` now; `rail`, `path`, `pipe`/`wire` later share the structure with their own
   widths and surfaces (ruling 030: draw a hub and arms from the mask, never a tile patch).
 
+**Amended T2 (2026-09-25):** `tiles.rail` is a fourth layer of the same shape, and
+`deriveCorridors(state, "rail")` will read it in T3 with its own width. A rail tile may share a road
+tile, so a level crossing is one tile carrying two networks — the first place in this model where
+that is true, and the reason `NETWORKS` keys a LAYER rather than being one per layer.
+
 **Amended T1b (2026-09-24), the second road kind — ruling 043.** `half`, `frontage`, `lanes` and `median` are
 the CORRIDOR's, read from `road.avenue` in `data/cityviewer.json` when the run carries
 `NET_AVENUE` and from `road` when it does not — a corridor has one cross-section from end to end,

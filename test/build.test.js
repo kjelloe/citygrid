@@ -281,13 +281,20 @@ test("permission matrix: every command against every ownership relation", () => 
     "placeWire/nature": RESULT.OK,
     "placeWire/commons": RESULT.OK,
     "placeWire/another player": RESULT.NOT_OWNER,
+    // The third network (T2). Crossing a border needs consent like the others:
+    // a railway is the one thing in this game that WANTS to cross one, and the
+    // answer is still that it asks first.
+    "placeRail/own land": RESULT.OK,
+    "placeRail/nature": RESULT.OK,
+    "placeRail/commons": RESULT.OK,
+    "placeRail/another player": RESULT.NOT_OWNER,
     "bulldoze/own land": RESULT.OK,
     "bulldoze/nature": RESULT.OK,
     "bulldoze/commons": RESULT.OK,
     "bulldoze/another player": RESULT.NOT_OWNER,
   };
 
-  for (const command of ["placeRoad", "placeWire", "bulldoze"]) {
+  for (const command of ["placeRoad", "placeWire", "placeRail", "bulldoze"]) {
     for (const relation of relations) {
       const state = world({ openBorders: false });
       const cell = at(7, 3);
@@ -332,7 +339,7 @@ test("permission matrix: zoning and placement obey the same rules", () => {
 test("permission matrix: every registered command is covered by a row", () => {
   // The check that keeps the matrix honest as the command set grows.
   const asserted = new Set([
-    "placeRoad", "placeWire", "placePipe", "bulldoze", "paintZone", "dezone",
+    "placeRoad", "placeWire", "placePipe", "placeRail", "bulldoze", "paintZone", "dezone",
     "placeBuilding", "setTax",
     // Not tile-scoped, so ownership does not apply; covered elsewhere.
     // `setFunding` and `setTax` are city-wide policy: see the funding tests in

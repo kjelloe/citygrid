@@ -31,6 +31,10 @@ export var TILE_LAYERS = [
   { name: "fireRisk", kind: "u8" },
   { name: "healthRisk", kind: "u8" },
   { name: "buildingId", kind: "u16" },
+  // Appended for T2 — appending is safe, reordering is not. A rail tile is the
+  // wire/pipe shape (mask plus present bit) on a layer of its own, because it
+  // shares a tile with a road at a level crossing (A66).
+  { name: "rail", kind: "u8" },
 ];
 
 function allocLayer(kind, length) {

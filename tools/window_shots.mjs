@@ -21,10 +21,17 @@ const YEARS = 20;
 // shows) and a HOUSE, because a house's frontage is ten metres from the kerb
 // and a shop on a corner is forty across a junction — the first cut of this
 // tool photographed a street and called it a facade.
+// "Standing" is `level >= 1` and a few months old, not six years (T2). The
+// filter was `> 72` — half a development cycle short of nothing on a city
+// whose commercial buildings turn over every two or three years — and seed
+// 1003 regrown at era 6 had FORTY-THREE shops, every one of them 60 or 72
+// ticks old, so the probe found none and the gate failed about a renderer
+// that was fine. Twelve ticks is a year: long enough that the lot has
+// developed and been drawn, short enough to exist in a city that churns.
 const find = (zone, minLevel = 1) => `(state) => {
   const W = state.width;
   const road = (x, y) => x >= 0 && y >= 0 && x < W && y < state.height && (state.tiles.road[y * W + x] & 16) !== 0;
-  const want = state.buildings.filter((b) => b.zone === ${zone} && state.tick - b.builtTick > 72)
+  const want = state.buildings.filter((b) => b.zone === ${zone} && state.tick - b.builtTick > 12)
     .sort((a, c) => Math.hypot(a.x - 32, a.y - 32) - Math.hypot(c.x - 32, c.y - 32));
   for (const b of want) {
     const sides = [[b.x, b.y - 1], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x - 1, b.y]];

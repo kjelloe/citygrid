@@ -14,7 +14,8 @@ import { assignDistricts, fairness, surveyDistricts } from "../engine/districts.
 import { generateWorld } from "../engine/worldgen.js";
 import { describeRegion, countIslands, regionNameKey } from "../engine/region-name.js";
 import { assertHashable } from "../shared/canonical.js";
-import { TERRAIN_WATER, TERRAIN_SHALLOW } from "../engine/constants.js";
+import { TERRAIN_WATER, TERRAIN_SHALLOW, TERRAIN_MARSH } from "../engine/constants.js";
+import { tileAt } from "../shared/grid.js";
 
 const opts = (over) => defaultOptions({ width: 48, height: 48, seed: 101, ...over });
 const built = (over) => {
@@ -233,4 +234,70 @@ test("water is never buildable and buildable is never water", () => {
   for (const value of state.tiles.terrain) {
     assert.ok(!(isBuildable(value) && isWater(value)), `terrain ${value} is both`);
   }
+});
+
+// --- rock and marsh (T2, A79) ------------------------------------------------
+
+test("a hilly map has rock on it, and a rolling one still does not", () => {
+  // One threshold for every style gave a hilly region almost no rock: the
+  // peaks are higher but the elevation field is normalised, so 215 caught the
+  // same share of a flatter map. A hilly map is the one you build around.
+  const hilly = built({ terrainStyle: "hilly", waterStyle: "river", seed: 1003 });
+  const rolling = built({ terrainStyle: "rolling", waterStyle: "river", seed: 1003 });
+  assert.ok(surveyTerrain(hilly).rock > 20,
+    `a hilly map has ${surveyTerrain(hilly).rock} rock tiles`);
+  assert.equal(surveyTerrain(rolling).rock, 0, "a rolling map grew rock");
+});
+
+test("a river map has marsh where its shelf is widest, and a dry map has none", () => {
+  const river = built({ waterStyle: "river", seed: 1003 });
+  let marsh = 0;
+  let onWideShelf = 0;
+  for (let y = 0; y < river.height; y += 1) {
+    for (let x = 0; x < river.width; x += 1) {
+      if (river.tiles.terrain[tileAt(river.width, x, y)] !== TERRAIN_MARSH) continue;
+      marsh += 1;
+      // Every marsh tile stands where the shelf is wide, which is the rule —
+      // not where a hash happened to land.
+      let shallow = 0;
+      for (let dy = -2; dy <= 2; dy += 1) {
+        for (let dx = -2; dx <= 2; dx += 1) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= river.width || ny >= river.height) continue;
+          if (river.tiles.terrain[tileAt(river.width, nx, ny)] === TERRAIN_SHALLOW) shallow += 1;
+        }
+      }
+      if (shallow >= 8) onWideShelf += 1;
+    }
+  }
+  assert.ok(marsh >= 5, `${marsh} marsh tiles on a river map`);
+  assert.equal(onWideShelf, marsh, "a marsh tile stands where the shelf is narrow");
+
+  const dry = built({ waterStyle: "none", seed: 1003 });
+  for (const value of dry.tiles.terrain) assert.notEqual(value, TERRAIN_MARSH, "a dry map grew marsh");
+});
+
+test("marsh is unbuildable, and the default map loses under 2% of its land to it", () => {
+  assert.equal(isBuildable(TERRAIN_MARSH), false, "a marsh can be built on");
+  assert.equal(isWater(TERRAIN_MARSH), false, "a marsh is water, so nothing can cross it");
+
+  // The band costs the default map something, and the amount is the claim.
+  // Measured over five seeds at T2 on a 64×64 `rolling` river map: 19 marsh
+  // tiles of 4,096, buildable land 3,565 against 3,584. A shelf threshold of
+  // seven put it at 40.6 tiles and 2.54% of this fixture's smaller map, over
+  // A79's bound — eight is what fits it.
+  let lost = 0;
+  let total = 0;
+  for (const seed of [1003, 2026, 7, 99, 70000]) {
+    const state = built({ seed });
+    const survey = surveyTerrain(state);
+    let marsh = 0;
+    for (const value of state.tiles.terrain) if (value === TERRAIN_MARSH) marsh += 1;
+    lost += marsh;
+    total += survey.buildable + marsh;
+  }
+  const share = (lost * 100) / total;
+  assert.ok(share < 2, `the marsh band takes ${share.toFixed(2)}% of the default map's buildable land`);
+  assert.ok(lost > 0, "no seed grew any marsh, so the bound above proves nothing");
 });

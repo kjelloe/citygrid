@@ -174,7 +174,15 @@ const damage = params.get("damage") ?? "";
 if (damage) {
   const BURNING = 4;
   const RUINED = 8;
-  const middle = [...state.buildings]
+  // ZONED lots only. The three nearest buildings to the middle of a played
+  // city included a fire station (T2's re-grown seed 1003 put one at 34,36
+  // beside the house at 33,36), so the harness set fire to the responder:
+  // `firesIn` joins the two burning footprints into one fire centred on the
+  // station, `dispatch` sends that station to itself, and `service_shots`
+  // reported "engines is 0" about a renderer that was working. A fire takes
+  // houses, shops and factories; the instrument has to do the same.
+  const zoned = state.buildings.filter((b) => b.zone !== 0);
+  const middle = [...(zoned.length >= 3 ? zoned : state.buildings)]
     .sort((a, b) => Math.hypot(a.x - state.width / 2, a.y - state.height / 2)
       - Math.hypot(b.x - state.width / 2, b.y - state.height / 2));
   const alight = [];

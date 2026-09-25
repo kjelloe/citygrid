@@ -179,6 +179,28 @@ export const CIVIC_SHAPES = Object.freeze({
       box(-0.2, 0.73, 0.46, 0.2, 0.87, 0.56, "red"),
     ],
   },
+  // The station (T2). An L2 silhouette only: a hall with a clock face on the
+  // street side, and a platform under a canopy on the rail side, so it reads
+  // as a station from the air and from a distance. T3 builds the real kit
+  // through the baker — the platform, the footbridge and the clock — and this
+  // is what has to agree with it (the L2/L3 rule, E5).
+  railStation: {
+    tall: false,
+    masses: [
+      // The hall, along the street half of a 3×2 lot.
+      box(-0.92, 0, -0.85, 0.92, 0.55, -0.05, "brick"),
+      box(-0.96, 0.55, -0.9, 0.96, 0.63, -0.02, "dark"),
+      // The entrance, and the clock over it — the part that says "station"
+      // rather than "long shed".
+      box(-0.22, 0, -0.95, 0.22, 0.4, -0.82, "glass"),
+      box(-0.12, 0.66, -0.06, 0.12, 0.9, 0.06, "white", true),
+      // The platform, and its canopy on four legs.
+      box(-0.92, 0, 0.05, 0.92, 0.07, 0.9, "concrete"),
+      box(-0.88, 0.52, 0.1, 0.88, 0.58, 0.88, "steel"),
+      box(-0.84, 0.07, 0.14, -0.76, 0.52, 0.22, "steel"),
+      box(0.76, 0.07, 0.14, 0.84, 0.52, 0.22, "steel"),
+    ],
+  },
   park: {
     // No building (S1's own words). The lawn and its path; S5 puts the benches
     // and the trees on it.

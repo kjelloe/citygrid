@@ -172,3 +172,22 @@ test("a save of a large region stays a sensible size", () => {
   const size = saveSize(toSave(world.state));
   assert.ok(size < 400000, `a fresh 128x128 save is ${size} bytes`);
 });
+
+test("a save from before the rail layer loads, and loses only its checksum", () => {
+  // T2 appended a tile layer, so a version-1 save's `hash` was taken over a
+  // field list that no longer exists. The migration drops it rather than
+  // recomputing a digest that would prove nothing about the old bytes.
+  const state = livedInCity();
+  const save = toSave(state);
+  assert.equal(save.v, SAVE_VERSION);
+
+  const old = { ...save, v: 1, hash: "a-digest-from-a-build-without-rail" };
+  delete old.tiles.rail;
+  const loaded = fromSave(old);
+  assert.equal(loaded.ok, true, loaded.reason);
+  assert.equal(loaded.state.tiles.rail.length, state.tiles.rail.length);
+  for (const value of loaded.state.tiles.rail) assert.equal(value, 0, "rail appeared from nowhere");
+  // And the version it came back as is this build's, so it is saved with a
+  // checksum from here on.
+  assert.equal(toSave(loaded.state).v, SAVE_VERSION);
+});

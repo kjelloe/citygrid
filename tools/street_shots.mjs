@@ -24,7 +24,7 @@ const YEARS = 20;
 const FIND = `(state) => {
   const W = state.width;
   const road = (x, y) => x >= 0 && y >= 0 && x < W && y < state.height && (state.tiles.road[y * W + x] & 16) !== 0;
-  const shops = state.buildings.filter((b) => b.zone === 2 && (b.flags & 8) === 0 && state.tick - b.builtTick > 72)
+  const shops = state.buildings.filter((b) => b.zone === 2 && (b.flags & 8) === 0 && state.tick - b.builtTick > 12)
     .sort((a, c) => Math.hypot(a.x - 32, a.y - 32) - Math.hypot(c.x - 32, c.y - 32));
   for (const b of shops) {
     const sides = [[b.x, b.y - 1], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x - 1, b.y]];

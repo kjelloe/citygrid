@@ -86,8 +86,9 @@ gate criteria re-aimed on evidence, each a one-line revert: **Q103**, **Q106** a
 **Q110**. The balance ones are **Q105** (era 4's demanding row) and **Q111**.
 
 **What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
-yielding to an engine), the rest of the **transport lane** (T2–T7; **T1 the avenue is built**, engine
-and picture, as `slice-T1a` and `slice-T1b`), the **worker lane** (W1–W4,
+yielding to an engine), the rest of the **transport lane** (T3–T7; **T1 the avenue** and **T2 rail,
+the station and the Outside** are built, and T2 carried the fixture re-pin the lane was waiting
+for), the **worker lane** (W1–W4,
 the door to Wave 5), **F2/F3** in the film lane, and **Q84's** weather coupling. The measurement
 lane (D2/D3/D5) still waits on your phone.
 
@@ -406,7 +407,7 @@ land first. Nothing here is scheduled.*
 | navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
 | world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row; S11 steep ground you can play on (Q80/A57); S12 a bank, not a quay (found in S4) |
 | behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather; B7 cars and people from the city camera; B8 cars stop at a junction; B9 the deputy lays roads near the town (engine, era 3) |
-| transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); T2 rail and the station in the engine; T3 rail drawn; T4 water bodies, marina, ferry, port; T5 unlock ranks, city hall, airport; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
+| transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); ~~T2 rail and the station in the engine~~ **built 2026-09-25** (era 6, the shared re-pin); T3 rail drawn; T4 water bodies, marina, ferry, port; T5 unlock ranks, city hall, airport; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
 
 ## Open questions
 
@@ -444,6 +445,9 @@ by number from the code they create.
 | Q113 | One deputy turn is worth 26% of the sweep's median — skipping a turn and issuing nothing gives numbers identical to T1a's avenue | Kjell — the measurement lane's; it changes how every balance number here is read, Q105 included |
 | Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
+| Q116 | A road, a wire or a pipe may be laid straight through a building; T2's rail is the only network that refuses it | Kjell — a rule question, and a deputy change, so its own era |
+| Q117 | The deputy's wire is twelve components with seven producerless stubs; it connects new buildings to dead ones | Kjell — T2 fixed it for the station alone; the general fix is its own slice |
+| Q118 | The gate's fare is worth nothing — zeroing it leaves the sweep identical to the last digit, because treasuries are millions | Kjell — the economy's, and it blocks tuning anything priced in money |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

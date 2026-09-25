@@ -21,6 +21,12 @@ var CATALOGUE = {
   policeStation: { category: "service", w: 2, h: 2, cost: 500, upkeep: 100, power: -6, water: -6, pollution: 0, fireRisk: 4, service: "police", radius: 12, unlock: 0 },
   hospital: { category: "service", w: 3, h: 3, cost: 1200, upkeep: 120, power: -14, water: -14, pollution: 0, fireRisk: 6, service: "health", radius: 14, capacity: 400, unlock: 0 },
   park: { category: "amenity", w: 1, h: 1, cost: 60, upkeep: 2, power: 0, water: -1, pollution: -10, fireRisk: 0, landValueBonus: 20, radius: 4, unlock: 0 },
+
+  // The first GATE (T2, A65). `gate` names which of the Outside's doors this
+  // is; `needsRail` is the only placement rule beyond the usual ones, because
+  // power and road access are reasons a station is DEAD rather than reasons it
+  // cannot be built — the inspector has to be able to say which.
+  railStation: { category: "transport", w: 3, h: 2, cost: 1500, upkeep: 90, power: -8, water: -4, pollution: 8, fireRisk: 8, gate: "rail", needsRail: true, landValueBonus: 14, radius: 6, unlock: 0 },
 };
 
 export function setCatalogue(loaded) {

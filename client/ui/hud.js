@@ -54,6 +54,7 @@ const GROUPS = [
       { tool: "avenue", labelKey: "tool.avenue" },
     ],
   },
+  { labelKey: "group.rail", items: [{ tool: "rail", labelKey: "tool.rail" }] },
   { labelKey: "group.electricity", items: [{ tool: "wire", labelKey: "tool.wire" }] },
   { labelKey: "group.water", items: [{ tool: "pipe", labelKey: "tool.pipe" }] },
   { labelKey: "group.bulldoze", items: [{ tool: "bulldoze", labelKey: "tool.bulldoze" }] },
@@ -707,9 +708,11 @@ export function createHud(root, {
     add(t("inspect.terrain"), t(report.terrainKey));
     if (report.zoneKey) add(t("inspect.zone"), t(report.zoneKey));
     add(t("inspect.road"), report.avenue ? t("inspect.avenue") : yesNo(report.road));
+    if (report.rail) add(t("inspect.rail"), t("inspect.yes"));
     add(t("inspect.power"), t(report.wire ? (report.powered ? "inspect.supplied" : "inspect.unsupplied") : "inspect.noWire"));
     add(t("inspect.water"), t(report.pipe ? (report.watered ? "inspect.supplied" : "inspect.dry") : "inspect.noPipe"));
     if (report.building) {
+      if (report.building.gate) add(t("inspect.gate"), t(report.building.gate.reasonKey));
       add(t("inspect.level"), report.building.level);
       add(t("inspect.condition"), report.building.condition);
       if (report.building.occupancy !== undefined) add(t("inspect.occupancy"), report.building.occupancy);

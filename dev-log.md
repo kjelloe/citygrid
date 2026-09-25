@@ -7215,3 +7215,91 @@ they belong to. `dev-prompts.md` gains P76 and P77. `workitems-transport.md` §T
 
 **Measured.** Suite **1,428 green twice** (three new tests). `render` 57 s of 120, `quick` 404 s of
 480. No re-pin and no era: nothing here touches state.
+
+## slice-T2 — rail, the station and the Outside (2026-09-25)
+
+**What it is.** The fourth tile layer, the first gate building, and the re-pin T1 and A79 were
+bundled into (A66, A79). Era 6.
+
+- **`tiles.rail`**, appended to `TILE_LAYERS` — which `copyState`, `hashState` and `save` all walk,
+  so a layer is one line and a re-pin rather than five places. `CMD_PLACE_RAIL` with runs, a
+  permission row, `build.rail` 20 and `upkeep.rail` 2 a tile. A rail tile **shares** a road tile —
+  that is a level crossing — and is the only network refused over a building (Q116 is the other
+  three).
+- **`railStation`**, 3×2, `category: "transport"`, `gate: "rail"`. `needsRail` is its only
+  placement rule: power and road access are reasons it is DEAD, which is the whole point of the
+  inspector row.
+- **`engine/gates.js`** holds the Outside. `railReach` floods the layer inward from EVERY edge tile
+  at once, so the cost does not grow with the number of stations; `gateStatus` returns
+  `noLine | unpowered | noRoad` in the order a player would fix them. Nothing is stored — asking
+  twice leaves the state byte-identical, which is a test.
+- **The terms** go into `computeDemand` before the elasticity and the cap, so a gate is worth less
+  on `demanding` and obeys the ceiling everything else does. A live gate seeds the commuter field
+  like a workplace. The fare is per resident in range, billed beside the taxes.
+- **The deputy** lays a straight line to the nearest edge past `deputy.railAtPopulation` (900) and
+  puts a station on it — rail first, because `needsRail` refuses a station with no line.
+- **A79**: `rockyPeaks` drops to 186 on a `hilly` map (49 rock tiles on five seeds, against 0
+  before — one threshold for every style caught the same share of a flatter map), and `marshBand`
+  turns bank tiles with a wide shallow shelf to marsh. Unbuildable, 19 tiles of 4,096 on the
+  default map, 1.1% of its buildable land. A shelf threshold of 7 put it at 2.54%, over A79's 2%.
+- **And the controls** (ruling 026): a railway tool, a `transport` build category, the station's
+  button, two inspector rows, and the L2 line drawn as a joined run.
+
+**What went wrong on the way, and what it measured.**
+
+- **Every station the deputy built was DEAD, unpowered.** Its wire ran to the nearest carrier tile,
+  which was an isolated stub: on seed 1003 at year nine the power grid is **twelve components,
+  seven of them with no producer at all**, and 10 buildings of 119 are starved. T2 is the first
+  thing that ever asked "is this building powered" out loud. Fixed for the station alone — it now
+  prefers a carrier the supply pass has flagged satisfied — because the general fix changes what
+  the deputy builds everywhere and belongs in its own era. **Q117.**
+- **The L2 rail line was drawn nowhere the player looks.** Gated on `drawn` like every other L2
+  network, which means "a baked chunk draws this better" — and no baked chunk draws track until T3.
+  It vanished inside the nine chunks around the camera, which is every street-level shot. The
+  grass tufts win the same argument; T3 must put the gate back.
+- **And it was the colour of a road.** The first cut was a shade of the wire's grey and read as
+  another street from the air. Warm dark brown now — ballast, not tarmac.
+- **`service_shots` failed about a renderer that was fine.** The harness sets fire to the three
+  buildings nearest the middle of the map; in the re-grown seed 1003 one of them is a **fire
+  station** at 34,36. `firesIn` joins the two burning footprints into one fire centred on the
+  station, `dispatch` sends that station to itself, and the errand is zero metres long, so no
+  engine is posed. Zoned lots only now.
+- **`window_shots` could not find a shop.** Its probe wants one `builtTick > 72` — six years — and
+  seed 1003 at era 6 has **forty-three shops, every one of them 60 or 72 ticks old**. Commercial
+  churns in every arm, including one with no station at all (oldest shop 689 ticks against a
+  house's 1,579), so it is not T2's doing; the filter is. Twelve ticks now, in four tools.
+- **`client_smoke`'s draw-call ceiling was a literal 80** and the thirteenth civic definition made
+  it 82. Derived from the pool count now, with the sentence it was written for asserted as itself:
+  never a draw per building.
+
+**Measured.** Era 6, 200 games × 4 configurations, `reports/balance-era6.md`. Steady median 1,902
+(era 5: 1,343), demanding 1,726 (1,118), relaxed 2,042 (1,706), no-disasters 2,024 (1,510). **Do
+not read that as the gate's doing** — Q113 says a deputy change reshuffles every later roll, and T2
+changes the deputy twice. The 30-seed arms:
+
+| arm | p25 | median | p75 |
+| --- | --- | --- | --- |
+| as built | 1,592 | **2,187** | 2,651 |
+| gate terms zeroed (station still built, still a sink) | 647 | **760** | 1,790 |
+| no station at all | 708 | **1,645** | 2,213 |
+| terms zeroed and the station free — no cost, no upkeep | 647 | **760** | 1,790 |
+
+The fare is worth nothing: zeroing it leaves every figure identical to the last digit (**Q118** —
+treasuries are millions). The station's price and upkeep are worth nothing either, to the digit.
+And a term-less station is worse than no station, which is not a mechanism anybody can name — a
+term sweep is **not monotonic** at 30 seeds (150/100/200 → 2,187; 90/60/120 → 1,747; 60/40/80 →
+2,000), so the terms cannot be tuned here. They stay at the era-0 guess the 200-game sweep
+measured, and tuning them wants the paired statistic Q113 asks for.
+
+Gates: `sim` **568 s of 900**, `quick` 405/480, `render` 66/120, `budget` 236/360, `shots` 238/360.
+Suite **1,448 green twice**. Save version 2, with a migration that drops a v1 save's checksum
+rather than recomputing one over a field list it was never taken across.
+
+**Re-pinned**, all three fixtures, 15 of 15 and 11 of 11 hashes: *"T1's avenue bit, T2's rail layer
+and A79's rock and marsh: the transport re-pin the three were bundled into (A66, A79) — the tile
+layer list gains rail, so every hash in every fixture moves"*.
+
+**Filed:** **Q116** (three networks may be laid through a building), **Q117** (the deputy's dead
+wire stubs), **Q118** (no income means anything).
+
+**Next:** T3 — rail drawn: track, sleepers, a level crossing, a bridge, the station kit and a train.

@@ -10,6 +10,7 @@ export var CMD_DEZONE = "dezone";
 export var CMD_PLACE_ROAD = "placeRoad";
 export var CMD_PLACE_WIRE = "placeWire";
 export var CMD_PLACE_PIPE = "placePipe";
+export var CMD_PLACE_RAIL = "placeRail";
 export var CMD_PLACE_BUILDING = "placeBuilding";
 export var CMD_BULLDOZE = "bulldoze";
 export var CMD_SET_TAX = "setTax";
@@ -34,7 +35,7 @@ export var CMD_QUEST_CHOICE = "questChoice";
  * the biggest multiplayer load lever there is. */
 export var AREA_COMMANDS = [
   CMD_PAINT_ZONE, CMD_DEZONE, CMD_PLACE_ROAD, CMD_PLACE_WIRE,
-  CMD_PLACE_PIPE, CMD_BULLDOZE, CMD_REQUEST_DEMOLITION, CMD_REPORT_NUISANCE,
+  CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_BULLDOZE, CMD_REQUEST_DEMOLITION, CMD_REPORT_NUISANCE,
 ];
 
 export function isAreaCommand(type) {

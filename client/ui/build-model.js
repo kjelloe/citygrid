@@ -17,7 +17,7 @@
 
 import { catalogue } from "../../engine/catalogue.js";
 
-export const CATEGORY_ORDER = ["power", "water", "service", "amenity"];
+export const CATEGORY_ORDER = ["power", "water", "service", "amenity", "transport"];
 
 export function categoryLabelKey(category) {
   return `category.${category}`;

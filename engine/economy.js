@@ -6,6 +6,7 @@
 // it is avoided the same way: do it once, at the beginning, when it is free.
 
 import { registerMonthly, register, ok, fail } from "./reducer.js";
+import { gateFare } from "./gates.js";
 import { RESULT } from "../shared/protocol.js";
 import { CMD_SET_TAX, CMD_SET_FUNDING } from "./commands.js";
 import { rules, difficultyOf } from "./rules.js";
@@ -82,6 +83,7 @@ function networkUpkeep(state) {
     if (hasNet(state.tiles.road[i])) cost += upkeep.road;
     if (hasNet(state.tiles.wire[i])) cost += upkeep.wire;
     if (hasNet(state.tiles.pipe[i])) cost += upkeep.pipe;
+    if (hasNet(state.tiles.rail[i])) cost += upkeep.rail;
     if (cost === 0) continue;
     perOwner[owner] = (Object.hasOwn(perOwner, owner) ? perOwner[owner] : 0) + cost;
   }
@@ -110,6 +112,11 @@ export function budgetFor(state, seat) {
 
   var networks = networkUpkeep(state);
   if (Object.hasOwn(networks, seat)) expenses += networks[seat];
+
+  // The Outside pays a fare (T2, A65): every resident within a live gate's
+  // range, billed with the utilities. Before the difficulty scaling, like the
+  // taxes it sits beside — a relaxed city keeps more of it.
+  income += gateFare(state, seat);
 
   var scaled = idiv(expenses * difficultyOf(state).upkeepPercent, 100);
   var yielded = idiv(income * difficultyOf(state).taxYieldPercent, 100);

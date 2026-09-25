@@ -4,7 +4,7 @@
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import { register, ok, fail } from "./reducer.js";
 import {
-  CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_BULLDOZE,
+  CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_BULLDOZE,
 } from "./commands.js";
 import { begin, commit, undo as undoTransaction, stage, charge, reject, peek, failed, priceOnly } from "./transaction.js";
 import { placeNetwork, removeNetwork, cellsFromRuns, hasNet, NETWORKS } from "./network.js";
@@ -75,6 +75,7 @@ function registerNetwork(type, kind, kinds) {
 registerNetwork(CMD_PLACE_ROAD, "road", ["avenue"]);
 registerNetwork(CMD_PLACE_WIRE, "wire");
 registerNetwork(CMD_PLACE_PIPE, "pipe");
+registerNetwork(CMD_PLACE_RAIL, "rail");
 
 /** Bulldoze clears networks, zoning and vegetation from tiles the actor is
  * allowed to touch. What it will never do is remove another player's work —
