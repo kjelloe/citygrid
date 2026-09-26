@@ -19,6 +19,7 @@ import { definition } from "./catalogue.js";
 import { tileAt, xOf, yOf, DIR4, neighbour } from "./../shared/grid.js";
 import { u8, i32 } from "../shared/arrays.js";
 import { hasNet, hasRoadAccess } from "./network.js";
+import { waterBodies, bodyAt } from "./terrain.js";
 import { FLAG_POWERED, ZONE_RESIDENTIAL } from "./constants.js";
 
 /** Which tiles of the rail layer are joined to a map edge.
@@ -131,7 +132,17 @@ export function gateStatus(state, building, reach) {
   if (!building) return undefined;
   var def = definition(building.def);
   if (!def || !def.gate) return undefined;
-  if (!lineFrom(state, building, reach)) return { gate: def.gate, live: false, reason: "noLine" };
+  // The WAY OUT first, and it is different for each kind of gate: a rail line
+  // that reaches the edge, or a body of water that does. It comes before the
+  // power and the road because it is the one a player cannot fix by building
+  // something else — a terminal on a lake is in the wrong place, not
+  // unfinished (T4, A68).
+  if (def.gate === "sea") {
+    var body = bodyAt(state, waterBodies(state), building.x, building.y, building.w, building.h);
+    if (!body || !body.edge) return { gate: def.gate, live: false, reason: "noSea" };
+  } else if (!lineFrom(state, building, reach)) {
+    return { gate: def.gate, live: false, reason: "noLine" };
+  }
   if (!powered(state, building)) return { gate: def.gate, live: false, reason: "unpowered" };
   if (!hasRoadAccess(state, building.x, building.y, building.w, building.h)) {
     return { gate: def.gate, live: false, reason: "noRoad" };

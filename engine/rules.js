@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 6,
+  era: 7,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -33,6 +33,18 @@ var RULES = {
   gate: {
     _comment: "T2 (A65): the Outside is gate buildings, not a second simulation. A LIVE gate adds these integer terms to the regional demand pool, seeds the commuter field as a sink, and takes a fare from every resident within range. ERA 0, UNTUNED against the bases in `demand` below (400/150/150).",
     rail: { residential: 150, commercial: 100, industrial: 200, farePerResident: 1, range: 16 },
+    // The sea (T4, A68). A ferry brings people and a port brings freight, so
+    // one gate kind carries both and the INDUSTRIAL term is the heavy one —
+    // the two buildings differ in what they cost and where they may stand,
+    // not in which door out of the region they are.
+    sea: { residential: 90, commercial: 80, industrial: 260, farePerResident: 1, range: 14 },
+  },
+  // NOT `water`: that is the utilities' block, twenty lines down, and a second
+  // one of the same name replaced it outright — in the JSON too, where a
+  // duplicate key is silently the last one (T4).
+  harbour: {
+    _comment: "T4 (A67, A68). marinaMinBody is how many tiles of one body a marina needs beside it - a pond is not a harbour. `water` next to this is the UTILITY's, and a second block of that name silently replaced it. ERA 0, UNTUNED.",
+    marinaMinBody: 40,
   },
   demand: {
     residentialCap: 2000, commercialCap: 1500, industrialCap: 1500,
@@ -106,6 +118,7 @@ var RULES = {
     // How far either way along the busiest street the upgrade runs.
     avenueTiles: 7,
     railAtPopulation: 900,
+    harbourAtPopulation: 1100,
     roadReach: { expand: 4, balance: 3, green: 3, hold: 3 },
   },
   traffic: {

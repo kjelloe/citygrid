@@ -51,7 +51,7 @@ export function inspectorKeys() {
  * the open one. A reason added there without a word here is a station whose
  * inspector row says `gate.somethingNew`. */
 export const GATE_KEYS = Object.freeze([
-  "gate.live", "gate.noLine", "gate.unpowered", "gate.noRoad",
+  "gate.live", "gate.noLine", "gate.noSea", "gate.unpowered", "gate.noRoad",
 ]);
 
 /** The gate row, as keys rather than words: `{ live, reasonKey }` for a gate

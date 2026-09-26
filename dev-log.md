@@ -7429,3 +7429,59 @@ Gates: `budget` 285 s of 360, `render` 75/120. Suite **1,461 green twice**.
 **Also swept, and clean:** `test/omissions.test.js`, `test/reachability.test.js` and
 `test/utilities.test.js` 31 green; every key of `data/cityviewer.json` has a reader, including all
 ten of T3's `rail` block; nothing T3 exported lacks an importer.
+
+## slice-T4a — water bodies, the marina and the sea gates (2026-09-26)
+
+**What it is.** The engine half of T4. A lake and a river are the same tiles to every other system
+in this game; what makes them different is one question — does this water reach the edge of the
+region — and three buildings hang off the answer. Era 7.
+
+- **`waterBodies(state)`** floods the water layer, deep AND shallow, so a lake is one body rather
+  than a ring of ponds around its own shelf. Each body carries its size and `edge` — a boolean,
+  because "does this lead out of the region" is the question, and "how many of its tiles are on a
+  border" is not the same thing. **`bodyAt`** answers which body a footprint's RING touches, since a
+  building on the water stands on the shore and never in it.
+- **`needsBody`** is the only placement rule: how many tiles of ONE body the footprint stands
+  beside. Whether that water leads anywhere is a reason a gate is DEAD — `gate.noSea`, and it comes
+  before the power and the road because it is the one a player cannot fix by building something
+  else.
+- **`marina`** (amenity), **`ferryTerminal`** and **`freightPort`** (both `sea` gates on T2's
+  machinery). The sea's terms are freight-heavy: 260 industrial against 90 residential.
+- **The deputy** builds a marina on any big enough body and a terminal only on one that reaches an
+  edge, because `findSpotFor` refuses the rest.
+
+**What went wrong on the way, and it is the same thing twice.**
+
+- **A second `water` block silently replaced the first.** The new rules went in as
+  `balance.water.marinaMinBody` — and `water` is already the utilities' block (pump capacities).
+  A JSON object with a duplicate key keeps the LAST one, and the mirror in `rules.js` did the same,
+  so the water pumps quietly lost their capacities and the only symptom was a marina that could not
+  be built. It is `harbour` now, with the reason written beside both.
+- **The deputy built harbours it could not power, and they took the rail stations with them.**
+  Measured over thirty seeds: **11 of 54 gates dead** — five stations unpowered, five terminals
+  unpowered, one terminal with no road — against **26 of 26 live** in the arm with no harbour at
+  all. Two buildings drawing 10 units of power joined the nearest carrier (Q117) and starved the
+  component the station was on. Connecting them to a LIVE piece of grid, the way T2's station does,
+  took it to 44 of 54; running a road to the terminal, the way T2's station gets one, took the
+  `noRoad` failures to **zero**. Five unpowered stations and three unpowered terminals remain, and
+  they are capacity rather than stubs — Q117's other half.
+
+**Measured, and once again the measurement is the finding.** Era 7's steady row is **2,314**
+against era 6's 1,902. Do not read that as the harbour: the thirty-seed arms say the opposite.
+
+| arm | p25 | median | p75 | gates live |
+| --- | --- | --- | --- | --- |
+| as built | 1,382 | **2,762** | 3,000 | 42 of 52 |
+| sea terms zeroed | 1,252 | **2,060** | 2,670 | 45 of 53 |
+| no harbour at all | 1,592 | **2,187** | 2,651 | 26 of 26 |
+| no harbour, no rail | 708 | **1,645** | 2,213 | — |
+
+The harbour's arm was *below* the no-harbour arm (1,823 against 2,187) before the two deputy fixes
+and *above* it after, on the same thirty seeds — which is a 20% swing from two lines that change
+where a wire goes. This is the third slice running where the arms cannot separate a mechanism from
+a trajectory, and it is **Q113** every time. The sea's terms stay at the era-0 guess.
+
+Gates: `sim` **597 s of 900**, all three green, re-run after the deputy fixes so the era's report
+describes the code that shipped. Suite **1,473 green twice**. No re-pin: nothing here is state.
+
+**Next:** T4b — the boats, the ferry, the wake, the three kits and `smoke-T4-{marina,ferry,port}`.

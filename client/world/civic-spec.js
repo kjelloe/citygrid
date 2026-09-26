@@ -201,6 +201,58 @@ export const CIVIC_SHAPES = Object.freeze({
       box(0.76, 0.07, 0.14, 0.84, 0.52, 0.22, "steel"),
     ],
   },
+  // The water (T4). None of these knows WHICH side its body is on — a shape is
+  // in lot units and the lot does not carry a shore — so each is built round
+  // its own axis and reads from any side: a jetty that runs both ways, a
+  // canopy across the whole front, a crane over the middle of the quay.
+  marina: {
+    tall: false,
+    masses: [
+      // The clubhouse, in one corner, and its deck.
+      box(-0.9, 0, -0.9, -0.1, 0.5, -0.2, "white"),
+      box(-0.95, 0.5, -0.95, -0.05, 0.58, -0.15, "dark"),
+      box(-0.75, 0, -0.85, -0.25, 0.35, -0.78, "glass"),
+      // The pontoon, out across the lot, with two fingers off it.
+      box(-0.9, 0, 0.1, 0.9, 0.09, 0.28, "concrete"),
+      box(-0.55, 0, 0.28, -0.45, 0.09, 0.92, "concrete"),
+      box(0.45, 0, 0.28, 0.55, 0.09, 0.92, "concrete"),
+      // A mast, so a marina is not a shed with a path (the recognising part).
+      box(-0.04, 0.09, 0.55, 0.04, 1.15, 0.63, "steel", true),
+    ],
+  },
+  ferryTerminal: {
+    tall: false,
+    masses: [
+      box(-0.85, 0, -0.9, 0.85, 0.62, 0.05, "white"),
+      box(-0.92, 0.62, -0.95, 0.92, 0.7, 0.1, "dark"),
+      // The waiting hall is glazed along its front, and the canopy reaches
+      // out over the quay on posts.
+      box(-0.7, 0.08, -0.95, 0.7, 0.5, -0.86, "glass"),
+      box(-0.9, 0.55, 0.05, 0.9, 0.62, 0.8, "steel"),
+      box(-0.82, 0.09, 0.7, -0.72, 0.55, 0.8, "steel"),
+      box(0.72, 0.09, 0.7, 0.82, 0.55, 0.8, "steel"),
+      box(-0.95, 0, 0.8, 0.95, 0.09, 0.95, "concrete"),
+    ],
+  },
+  freightPort: {
+    // A crane is a mast: it has to survive the silhouette pass that flattens
+    // everything else, or a port reads as a warehouse.
+    tall: true,
+    masses: [
+      box(-0.95, 0, -0.85, 0.35, 0.55, 0.3, "brick"),
+      box(-0.98, 0.55, -0.88, 0.38, 0.62, 0.33, "dark"),
+      // The quay, and containers stacked on it.
+      box(-0.98, 0, 0.35, 0.98, 0.07, 0.95, "concrete"),
+      box(-0.8, 0.07, 0.45, -0.45, 0.3, 0.75, "red"),
+      box(-0.4, 0.07, 0.45, -0.05, 0.3, 0.75, "steel"),
+      box(-0.78, 0.3, 0.47, -0.47, 0.5, 0.73, "steel"),
+      // The crane: two legs, a tower and a jib out over the water.
+      box(0.45, 0.07, 0.42, 0.55, 1.25, 0.52, "red", true),
+      box(0.78, 0.07, 0.42, 0.88, 1.25, 0.52, "red", true),
+      box(0.42, 1.25, 0.4, 0.92, 1.42, 0.55, "red"),
+      box(0.5, 1.28, 0.55, 0.62, 1.38, 0.98, "steel"),
+    ],
+  },
   park: {
     // No building (S1's own words). The lawn and its path; S5 puts the benches
     // and the trees on it.

@@ -18,7 +18,7 @@ import { budgetFor } from "./economy.js";
 import { RESULT } from "../shared/protocol.js";
 import { tileAt, xOf, yOf, encodeRuns, inBounds, DIR4, neighbour } from "../shared/grid.js";
 import { hasNet } from "./network.js";
-import { isBuildable, isWater } from "./terrain.js";
+import { isBuildable, isWater, waterBodies, bodyAt } from "./terrain.js";
 import { idiv, clamp } from "../shared/idiv.js";
 import { nextInt, chance } from "../shared/prng.js";
 import {
@@ -42,7 +42,7 @@ export function makeDeputy(seat, doctrine) {
     cursorY: -1,
     hubX: -1,
     hubY: -1,
-    built: 0, avenues: 0, stations: 0,
+    built: 0, avenues: 0, stations: 0, marinas: 0, terminals: 0,
     zoned: 0,
     utilities: 0,
     refusals: 0,
@@ -284,7 +284,7 @@ function keepSupplied(state, deputy) {
   return acted;
 }
 
-function placeUtility(state, deputy, def) {
+function placeUtility(state, deputy, def, liveGrid) {
   if (!def) return false;
   var spot = findSpotFor(state, deputy, def);
   if (spot < 0) return false;
@@ -298,6 +298,10 @@ function placeUtility(state, deputy, def) {
     return false;
   }
   deputy.utilities += 1;
+  // Where it went, for the caller that has to run something else to it. The
+  // alternative is `placeUtility` returning a tile instead of a boolean, and
+  // every one of its six callers learning about that.
+  lastSpot = spot;
   // The first plant becomes the grid hub every later block connects to.
   if (deputy.hubX < 0) {
     deputy.hubX = xOf(state.width, spot);
@@ -308,7 +312,18 @@ function placeUtility(state, deputy, def) {
   // it: a short run out from the building toward the nearest existing road,
   // which is where the city is.
   // Wire and pipe both, from the new building back to the grid.
-  connectToHub(state, deputy, spot);
+  //
+  // `liveGrid` asks for a piece the supply pass has flagged satisfied rather
+  // than the nearest carrier (T2's Q117). Only the things whose whole point is
+  // to be LIVE ask for it: on thirty seeds the deputy's first harbours were
+  // unpowered in five cities and took the rail station on the same component
+  // down with them, which the gate status says out loud and nothing else did.
+  if (liveGrid) {
+    connectToNetwork(state, deputy, spot, "wire", CMD_PLACE_WIRE, FLAG_POWERED);
+    connectToNetwork(state, deputy, spot, "pipe", CMD_PLACE_PIPE, FLAG_WATERED);
+  } else {
+    connectToHub(state, deputy, spot);
+  }
   return true;
 }
 
@@ -527,6 +542,45 @@ function openTheLine(state, deputy) {
   return true;
 }
 
+/** The water bodies, once a turn rather than once a candidate tile: the spot
+ * search walks every tile of the map and a flood fill per tile is a turn that
+ * never ends. */
+/** The tile `placeUtility` last built on. */
+var lastSpot = -1;
+
+var bodyCache = { tick: -1, width: -1, list: [] };
+function bodies(state) {
+  if (bodyCache.tick === state.tick && bodyCache.width === state.width) return bodyCache.list;
+  bodyCache = { tick: state.tick, width: state.width, list: waterBodies(state) };
+  return bodyCache.list;
+}
+
+/**
+ * A marina on a big enough body, and a ferry terminal on one that reaches the
+ * edge (T4, A67, A68).
+ *
+ * One a turn and one of each, in that order: the marina is the cheaper and is
+ * worth having on any region with water in it, while a terminal is a gate and
+ * only pays on a body that leads somewhere. A region with no water gets
+ * neither and costs one `waterBodies` call a turn to find that out.
+ */
+function openTheHarbour(state, deputy) {
+  if (state.population < rules().deputy.harbourAtPopulation) return false;
+  if (deputy.marinas < 1 && placeUtility(state, deputy, "marina", true)) {
+    deputy.marinas += 1;
+    return true;
+  }
+  if (deputy.terminals < 1 && placeUtility(state, deputy, "ferryTerminal", true)) {
+    deputy.terminals += 1;
+    // And a ROAD to it, the way the rail station gets one: a gate nobody can
+    // drive to is dead, and three of thirty cities built exactly that before
+    // this line existed.
+    connectToNetwork(state, deputy, lastSpot, "road", CMD_PLACE_ROAD);
+    return true;
+  }
+  return false;
+}
+
 function findSpotFor(state, deputy, defId) {
   var def = definition(defId);
   if (!def) return -1;
@@ -538,6 +592,14 @@ function findSpotFor(state, deputy, defId) {
     if (x + def.w > state.width || y + def.h > state.height) continue;
     if (!footprintClear(state, deputy.seat, x, y, def)) continue;
     if (def.needsSurfaceWater === true && !nearWater(state, x, y, def)) continue;
+    // A harbour stands beside enough water to be one (T4), and a SEA gate
+    // beside water that leads out of the region — the deputy will not build a
+    // terminal on a lake, which is a thing a player may do and be told about.
+    if (def.needsBody) {
+      var body = bodyAt(state, bodies(state), x, y, def.w, def.h);
+      if (!body || body.size < rules().harbour[def.needsBody]) continue;
+      if (def.gate === "sea" && !body.edge) continue;
+    }
     // Near the deputy's work, but not on top of it.
     var distance = Math.abs(x - deputy.cursorX) + Math.abs(y - deputy.cursorY);
     var score = 200 - Math.abs(distance - 8);
@@ -709,6 +771,8 @@ export function deputyTurn(state, deputy, sink) {
   if (upgradeTrunk(state, deputy)) return true;
   // Then the railway, which is a bigger town still (T2).
   if (openTheLine(state, deputy)) return true;
+  // And the water, if the region has any worth a harbour (T4).
+  if (openTheHarbour(state, deputy)) return true;
 
   // Stop expanding when a deficit is actually running the treasury down —
   // not merely because the books are negative. A new city runs a deficit by

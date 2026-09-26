@@ -184,6 +184,29 @@ called `corridors.test.js` is the name-that-means-two-things trap `workitems-cit
 warns about. `tools/rail_shots.mjs` is in the `shots` set and counts the carriages POSED before it
 calls a frame a train.*
 
+## T4 — Water bodies, the marina, the ferry and the port — A67, A68 — the ENGINE half **built 2026-09-26** as `slice-T4a` (era 7)
+
+*As built. `waterBodies(state)` in `engine/terrain.js` floods the water layer — deep AND shallow,
+so a lake is one body rather than a ring of ponds round its own shelf — and gives each body a size
+and whether it reaches a map edge. `bodyAt` answers which body a footprint's RING touches, which is
+what "on the water" means for a building that stands on the shore. Derived on every ask, stored
+nowhere.*
+
+*Three buildings. `needsBody` is a placement rule — how many tiles of ONE body the footprint stands
+beside — and it is the only one: whether that water leads out of the region is a reason a gate is
+DEAD, not a reason it cannot be built, so a player may put a terminal on a lake and the inspector
+says `gate.noSea`. `marina` is `amenity`; `ferryTerminal` and `freightPort` are `sea` gates on T2's
+machinery, and the sea's terms are the freight-heavy ones (260 industrial against 90 residential).*
+
+*The deputy builds a marina on any big enough body and a terminal only on one that reaches an edge —
+`findSpotFor` refuses the rest — and connects both to a LIVE piece of grid with a road run after
+them.*
+
+*Not in it: the boats, the ferry, the wake, the kits and `reports/smoke-T4-*`. That is T4b. Nor the
+build menu's greying of a sea gate on a `lakes` map: a gate on a lake is a legal thing to build and
+the UI has no business refusing what the reducer allows (ruling 026's sibling). The inspector row
+is the warning, and T4b can put it in front of the money.*
+
 ## T4 — Water bodies, the marina, the ferry and the port (M engine, M renderer) — A67, A68
 
 **Goal.** A lake is a lake, a shore can hold a harbour, and a body that touches the edge brings
@@ -209,6 +232,10 @@ people and freight.
 counted; a marina on a pond is refused; a terminal on a lake is dead. `test/boats.test.js`: a boat
 never crosses a shore; the ferry reaches the edge; D7 invariants. **Gate.** `sim` set; `render`
 set; `reports/smoke-T4-{marina,ferry,port}.png` from the shore at eye height.
+
+*As gated (T4a): `test/water-bodies.test.js` is 10 green and `test/deputy.test.js` gained two; the
+`sim` set ran on era 7 (`reports/balance-era7.md`) — 597 s of 900. `render` and the shots are
+T4b's, because nothing T4a built is drawn differently yet.*
 
 ## T5 — Ranks read, city hall, the airport (M engine, M renderer) — A69
 

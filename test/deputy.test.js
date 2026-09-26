@@ -17,6 +17,7 @@ import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
 import { rules } from "../engine/rules.js";
 import { gateStatus, gateTerms, railReach } from "../engine/gates.js";
+import { waterBodies, bodyAt } from "../engine/terrain.js";
 import { isAvenue, NET_PRESENT } from "../engine/network.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -28,8 +29,8 @@ import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
 
-function play(seed, size, years, doctrine = "expand") {
-  const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats: 1, waterStyle: "river" }));
+function play(seed, size, years, doctrine = "expand", over = {}) {
+  const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats: 1, waterStyle: "river", ...over }));
   assert.ok(world.ok, `seed ${seed} did not generate`);
   const state = world.state;
   apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Deputy" });
@@ -244,4 +245,45 @@ test("a doctrine that holds the line never opens one", () => {
   }
   assert.equal(holding.stations, 0);
   assert.equal(state.buildings.filter((b) => b.def === "railStation").length, 0);
+});
+
+test("the deputy builds a marina on a big body, and a terminal only on one that reaches the edge", () => {
+  // T4. `waterStyle: "river"` cuts the map in two, so the body reaches two
+  // edges and both buildings are on: the marina for the water itself, the
+  // terminal because that water leads out of the region.
+  const { state, deputy } = play(1003, 48, 2);
+  for (let turn = 0; turn < 900 && deputy.terminals === 0; turn += 1) {
+    apply(state, { type: CMD_TICK });
+    if (turn % 6 === 0) deputyTurn(state, deputy);
+  }
+  assert.ok(state.population >= rules().deputy.harbourAtPopulation,
+    `the city only reached ${state.population}`);
+  assert.equal(deputy.marinas, 1, "no marina on a river map");
+  assert.equal(deputy.terminals, 1, "no ferry terminal on a river map");
+
+  // Both stand on the water they need, and the terminal is LIVE — a deputy
+  // that builds a dead gate is the defect T2 found and fixed for the station.
+  for (let tick = 0; tick < 12; tick += 1) apply(state, { type: CMD_TICK });
+  const bodies = waterBodies(state);
+  for (const def of ["marina", "ferryTerminal"]) {
+    const b = state.buildings.find((x) => x.def === def);
+    assert.ok(b, `the deputy counted a ${def} it did not build`);
+    const body = bodyAt(state, bodies, b.x, b.y, b.w, b.h);
+    assert.ok(body && body.size >= rules().harbour.marinaMinBody,
+      `${def} stands beside ${body ? body.size : 0} tiles of water`);
+  }
+  const terminal = state.buildings.find((x) => x.def === "ferryTerminal");
+  const status = gateStatus(state, terminal);
+  assert.equal(status.live, true, `the deputy's own terminal is dead: ${status.reason}`);
+});
+
+test("a region with no water gets no harbour, and the turn is not wasted looking", () => {
+  const { state, deputy } = play(1003, 48, 2, "expand", { waterStyle: "none" });
+  for (let turn = 0; turn < 600; turn += 1) {
+    apply(state, { type: CMD_TICK });
+    if (turn % 6 === 0) deputyTurn(state, deputy);
+  }
+  assert.equal(deputy.marinas, 0);
+  assert.equal(deputy.terminals, 0);
+  assert.ok(state.population > 0, "the dry city did not grow, so this proves nothing");
 });

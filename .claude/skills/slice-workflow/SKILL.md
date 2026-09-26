@@ -129,6 +129,12 @@ once on `controllerchange`, and Playwright's next `evaluate` dies with "Executio
 destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
 changed. A gate reads the repository as it runs; edit it and you are testing two trees.
 
+**Grep the config file for the block name before you add it.** T4a's harbour rules went in as
+`balance.water.marinaMinBody`; `water` was already the utilities' block, a duplicate JSON key keeps
+the LAST one, and the mirror in `rules.js` made the same collision — so the two agreed, the drift
+test passed, and every water pump in the game silently lost its capacity. `grep -n '"<name>": {'`
+costs nothing and the symptom is somewhere else entirely.
+
 **A PHASE of the chunk baker costs a whole frame.** `street-chunks.js` runs one phase of one
 chunk per frame, so a chunk takes `PHASES.length + 1` frames however cheap each phase is. T3 added
 two and `budget_gate`'s 48-frame window — nine chunks × seven frames is 63 — reported 8 rebakes of

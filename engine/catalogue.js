@@ -27,6 +27,16 @@ var CATALOGUE = {
   // power and road access are reasons a station is DEAD rather than reasons it
   // cannot be built — the inspector has to be able to say which.
   railStation: { category: "transport", w: 3, h: 2, cost: 1500, upkeep: 90, power: -8, water: -4, pollution: 8, fireRisk: 8, gate: "rail", needsRail: true, landValueBonus: 14, radius: 6, unlock: 0 },
+
+  // The water (T4, A67, A68). `needsBody` is how many tiles of ONE body the
+  // footprint has to stand beside; `needsSeaway` additionally asks that the
+  // body reach the edge of the region — which is a placement rule for neither
+  // of the gates, because a terminal on a lake is DEAD and the inspector says
+  // so rather than the build menu refusing a thing the player can see water
+  // next to.
+  marina: { category: "amenity", w: 2, h: 2, cost: 900, upkeep: 40, power: -4, water: -2, pollution: 0, fireRisk: 4, needsBody: "marinaMinBody", landValueBonus: 30, radius: 7, unlock: 0 },
+  ferryTerminal: { category: "transport", w: 2, h: 2, cost: 1300, upkeep: 80, power: -6, water: -4, pollution: 6, fireRisk: 6, gate: "sea", needsBody: "marinaMinBody", landValueBonus: 8, radius: 5, unlock: 0 },
+  freightPort: { category: "transport", w: 3, h: 2, cost: 2200, upkeep: 130, power: -12, water: -6, pollution: 30, fireRisk: 12, gate: "sea", needsBody: "marinaMinBody", unlock: 0 },
 };
 
 export function setCatalogue(loaded) {

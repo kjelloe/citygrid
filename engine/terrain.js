@@ -6,6 +6,7 @@
 
 import { mix32, makeRng, nextInt, nextRange, chance, streamSeed } from "../shared/prng.js";
 import { idiv, fdiv, clamp, FP, lerp } from "../shared/idiv.js";
+import { i32 } from "../shared/arrays.js";
 import { tileAt, xOf, yOf, inBounds, DIR4, DIR8, neighbour } from "../shared/grid.js";
 import {
   TERRAIN_GRASS, TERRAIN_DIRT, TERRAIN_FOREST, TERRAIN_WATER, TERRAIN_SHALLOW,
@@ -343,6 +344,92 @@ export function plantForest(state, rng, density) {
 export function isBuildable(terrain) {
   return terrain === TERRAIN_GRASS || terrain === TERRAIN_FOREST
     || terrain === TERRAIN_DIRT || terrain === TERRAIN_SAND;
+}
+
+/**
+ * The water bodies of a region (T4, A67): one entry per connected run of water
+ * tiles, with its size and whether it reaches the edge of the region.
+ *
+ * `edge` is a boolean and `edgeTiles` the count behind it. A body either leads
+ * out of the region or it does not — that is the whole question a sea gate
+ * asks, and "how many of its tiles are on a border" is not the same thing.
+ *
+ * Derived on every ask and never stored, like T2's `railReach` — a body that
+ * is dug out or filled in is a different body the same month, with no record
+ * to keep in step and nothing to migrate.
+ *
+ * `isWater` is deep AND shallow, so a lake is one body rather than a ring of
+ * ponds around its own shelf.
+ */
+export function waterBodies(state) {
+  var width = state.width;
+  var height = state.height;
+  var terrain = state.tiles.terrain;
+  var total = terrain.length;
+  var label = i32(total);
+  var bodies = [];
+  var queue = i32(total);
+  var i;
+  for (i = 0; i < total; i += 1) label[i] = -1;
+
+  for (i = 0; i < total; i += 1) {
+    if (label[i] >= 0 || !isWater(terrain[i])) continue;
+    var id = bodies.length;
+    var size = 0;
+    var edgeTiles = 0;
+    var count = 0;
+    label[i] = id;
+    queue[count] = i;
+    count += 1;
+    var head = 0;
+    while (head < count) {
+      var index = queue[head];
+      head += 1;
+      size += 1;
+      var x = index % width;
+      var y = idiv(index - x, width);
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) edgeTiles += 1;
+      for (var d = 0; d < DIR4.length; d += 1) {
+        var n = neighbour(width, height, x, y, DIR4[d]);
+        if (n < 0 || label[n] >= 0 || !isWater(terrain[n])) continue;
+        label[n] = id;
+        queue[count] = n;
+        count += 1;
+      }
+    }
+    bodies.push({ id: id, size: size, edge: edgeTiles > 0, edgeTiles: edgeTiles, label: label });
+  }
+  return bodies;
+}
+
+/**
+ * The body a footprint's RING touches, or `undefined` for one inland.
+ *
+ * A building on the water stands on the shore, never in it — the placement
+ * rules refuse water under a footprint — so "on a lake" means "with a lake
+ * beside it", and the ring is the same one `touchesRail` and `touchesCarrier`
+ * walk. Where two bodies meet a corner, the bigger one wins: a marina wants
+ * the water it can sail on.
+ */
+export function bodyAt(state, bodies, x, y, w, h) {
+  if (bodies.length === 0) return undefined;
+  var label = bodies[0].label;
+  var width = state.width;
+  var wide = w ? w : 1;
+  var tall = h ? h : 1;
+  var best;
+  for (var dy = -1; dy <= tall; dy += 1) {
+    for (var dx = -1; dx <= wide; dx += 1) {
+      var nx = x + dx;
+      var ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= state.height) continue;
+      var id = label[tileAt(width, nx, ny)];
+      if (id < 0) continue;
+      var body = bodies[id];
+      if (!best || body.size > best.size) best = body;
+    }
+  }
+  return best;
 }
 
 export function isWater(terrain) {

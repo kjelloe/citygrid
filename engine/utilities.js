@@ -16,11 +16,12 @@ import { tileAt, xOf, yOf, DIR4, neighbour, forEachInRadius, inBounds } from "..
 import { idiv, clamp } from "../shared/idiv.js";
 import { hasNet } from "./network.js";
 import { touchesRail } from "./gates.js";
+import { waterBodies, bodyAt } from "./terrain.js";
 import { definition } from "./catalogue.js";
 import { canBuildOn } from "./permissions.js";
 import { begin, commit, stage, charge, failed } from "./transaction.js";
 import { isBuildable, isWater } from "./terrain.js";
-import { difficultyOf } from "./rules.js";
+import { difficultyOf, rules } from "./rules.js";
 import { isInt } from "./validate.js";
 import {
   FLAG_POWERED, FLAG_WATERED, OWNER_NATURE, ZONE_NONE,
@@ -247,6 +248,13 @@ register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
   // not reasons it cannot be built — `gates.js` says which.
   if (def.needsRail === true && !touchesRail(state, x, y, def.w, def.h)) {
     return fail(RESULT.INVALID);
+  }
+  // And a harbour stands on a shore, beside enough water to be one (T4). How
+  // BIG is a placement rule; whether that water leads out of the region is
+  // not — a terminal on a lake is dead, and the inspector says so.
+  if (def.needsBody) {
+    var body = bodyAt(state, waterBodies(state), x, y, def.w, def.h);
+    if (!body || body.size < rules().harbour[def.needsBody]) return fail(RESULT.INVALID);
   }
 
   var tx = begin(state, command.actor);
