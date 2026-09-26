@@ -7644,3 +7644,52 @@ being exact if a tick ever grew; `Math.imul` is what the rest of `engine/` mixes
 file has a duplicate key; nothing exported lacks an importer.
 
 Suite **1,478 green twice**.
+
+## slice-T4b — the boats, the ferry and the port (2026-09-26)
+
+**What it is.** The water half of T4. T4a made a lake a lake; this puts things on it.
+
+- **`client/world/water.js`** grew the renderer's own copy of the bodies — `client/world/` may not
+  import `engine/` (ruling 037) — and `ringOf`, how far a tile is from a shore, which is what "open
+  water" means.
+- **`client/life/boats.js`** holds all three kinds, because they are the same arithmetic: moored at
+  a marina, sailing on a body, plying a route. A hull looks a boat's LENGTH ahead before it moves,
+  so it turns before its bow is on the beach rather than when its middle is.
+- **Three pools** — `boat`, `ferry`, `wake` — all priced in `lod.js` the moment they existed, which
+  is what P81's round asked for. The wake is eight flat quads scaled per instance rather than a
+  ribbon rebuilt every frame for three metres of foam.
+
+**What went wrong, and three of the four were my own instruments.**
+
+- **The route was a straight line, and refused any terminal behind a headland.** That sounds
+  principled and is a limitation nobody asked for — a real ferry follows the channel — and it made
+  the freight port's own gate picture impossible, because the best 3×2 berth seed 1003 offers has
+  one tile of water at its corner. It is a breadth-first walk over the water now, and the test that
+  asserted the limitation now asserts the opposite.
+- **Boats started on a ring that does not exist.** The placement asked for `ringOf >= 3`; `ringOf`
+  is capped at `water.shelf + 1`, which is 2 on the shipped numbers. Every body came back with no
+  boats, and the test said so before a screenshot could.
+- **The moorings were a ruler.** Eight white hulls evenly spaced down the bank read as cargo on a
+  quay. Orthogonal berths only, jittered by a hash: four, in two pairs, off the marina.
+- **The port's gate photographed scaffolding.** A building placed this tick is a construction site
+  (B2), so the first run of `smoke-T4-port.png` was a picture of an empty frame and some orange
+  lines. `age=400`, which is what B2's own three-age gate does.
+- **And the probe that looks for a berth forgot MARSH.** It listed the terrains to reject and T2 put
+  marsh exactly where a wide shallow shelf meets the land — which is exactly where a port wants to
+  stand. Every candidate came back `invalid` with no clue why. It tests buildability positively now.
+
+**Tests.** `test/boats.test.js`, 10 green. The one that matters sails a bay with a headland for ten
+minutes at 30 steps a second and asserts every sampled hull is on water — 1,000+ positions. Planted
+two defects to see it fire: a boat that ignores the shore entirely (both shore tests go red) and one
+that turns only when its centre is aground (the clearance test alone goes red, which is the right
+answer and told me the first plant was too blunt).
+
+**A new gate, and the set it broke.** `tools/harbour_shots.mjs` counts the hulls POSED, not the
+boats that exist. With it the `shots` set reached **397 s of a 360 s budget** — and raising a budget
+to fit is what M2's rule forbids, for the third time. So it split along the lane: `shots` is the
+world and behaviour lanes' pictures (**211 s**), `transport` is T1–T4's (**187 s**).
+
+**Measured.** Suite **1,488 green twice**. `quick` 413 s of 480, `render` 64/120, `budget` 272/360,
+`shots` 211/300, `transport` 187/300. No re-pin, no era — nothing here is state.
+
+**Next:** T5 — unlock ranks, city hall and the airport.

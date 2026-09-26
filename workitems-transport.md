@@ -184,6 +184,25 @@ called `corridors.test.js` is the name-that-means-two-things trap `workitems-cit
 warns about. `tools/rail_shots.mjs` is in the `shots` set and counts the carriages POSED before it
 calls a frame a train.*
 
+## T4 — Water bodies, the marina, the ferry and the port — A67, A68 — **BUILT 2026-09-26**: `slice-T4a` (engine, era 7) and `slice-T4b` (the water)
+
+*T4b as built. `client/world/water.js` grew the renderer's own copy of the bodies (ruling 037 — it
+may not import `engine/`) plus `ringOf`, which is how far a tile is from a shore and therefore what
+"open water" means. `client/life/boats.js` holds all three kinds, because they are the same
+arithmetic: moored at a marina, sailing on a body, or plying a route. A hull looks a boat's LENGTH
+ahead before it moves, so it turns before its bow is on the beach rather than when its middle is.*
+
+*A vessel's route is a breadth-first walk over the water, not a straight line. The first cut was a
+line and refused any terminal whose crossing met a headland — a limitation nobody asked for, since
+a real ferry follows the channel, and one that made the freight port's own gate picture impossible.*
+
+*Three pools (`boat`, `ferry`, `wake`), all three priced in `lod.js` the moment they existed, which
+is what P81's round asked for. The wake is eight flat quads scaled per instance rather than a
+ribbon rebuilt every frame for three metres of foam.*
+
+*`shoot.html` gained `placeAt=<def>@x,y`: `place=` lines buildings up beside its own road across the
+middle of the map, which cannot photograph a thing that has to stand on a shore.*
+
 ## T4 — Water bodies, the marina, the ferry and the port — A67, A68 — the ENGINE half **built 2026-09-26** as `slice-T4a` (era 7)
 
 *As built. `waterBodies(state)` in `engine/terrain.js` floods the water layer — deep AND shallow,
@@ -236,6 +255,12 @@ set; `reports/smoke-T4-{marina,ferry,port}.png` from the shore at eye height.
 *As gated (T4a): `test/water-bodies.test.js` is 10 green and `test/deputy.test.js` gained two; the
 `sim` set ran on era 7 (`reports/balance-era7.md`) — 597 s of 900. `render` and the shots are
 T4b's, because nothing T4a built is drawn differently yet.*
+
+*As gated (T4b): `test/boats.test.js` is 10 green, including the one that matters — a boat sails a
+bay with a headland for ten minutes and is on water at every sample. `tools/harbour_shots.mjs` is a
+gate of its own and counts the hulls POSED, not the boats that exist. The `shots` set reached 397 s
+of a 360 s budget with it, so it SPLIT — `shots` is the world and behaviour lanes' pictures (211 s),
+`transport` is T1–T4's (187 s) — which is M2's rule firing for the third time.*
 
 ## T5 — Ranks read, city hall, the airport (M engine, M renderer) — A69
 

@@ -36,6 +36,22 @@
     "carriageH": 3.4,
     "dwell": 14
   },
+  "boat": {
+    "length": 7,
+    "perBody": 3,
+    "openTilesPerBoat": 12,
+    "mooredCap": 24,
+    "sailSpeed": 4,
+    "ferrySpeed": 9,
+    "cargoSpeed": 6,
+    "dwell": 10,
+    "wake": 8,
+    "hullColour": 15790320,
+    "sailColour": 16316664,
+    "ferryColour": 3372748,
+    "cargoColour": 9145227,
+    "wakeColour": 14806244
+  },
   "ground": {
     "blend": 1,
     "mottle": 0.06,

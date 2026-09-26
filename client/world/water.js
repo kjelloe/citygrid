@@ -209,8 +209,52 @@ export function deriveWater(state, cfg = getConfig()) {
     return maxDepth * Math.min(1, rings[tile] / Math.max(1, shelf));
   }
 
+  // The BODIES (T4b): one entry per connected run of water, with its size and
+  // whether it reaches a map edge. The renderer's own copy of
+  // `engine/terrain.js`'s `waterBodies` — `client/world/` may not import
+  // `engine/` (ruling 037) — and it answers the same two questions the sea
+  // gates ask, so a boat knows which water it may sail on and a ferry knows
+  // whether its water leads anywhere.
+  const body = new Int32Array(terrain.length).fill(-1);
+  const bodies = [];
+  for (const start of tiles) {
+    if (body[start] >= 0) continue;
+    const id = bodies.length;
+    const queue = [start];
+    body[start] = id;
+    let size = 0;
+    let edge = false;
+    let open = 0;
+    for (let head = 0; head < queue.length; head += 1) {
+      const i = queue[head];
+      size += 1;
+      const x = i % width;
+      const y = (i - x) / width;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) edge = true;
+      if (rings[i] >= 2) open += 1;
+      for (const [dx, dy] of DIR) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const j = ny * width + nx;
+        if (!wet(j) || body[j] >= 0) continue;
+        body[j] = id;
+        queue.push(j);
+      }
+    }
+    // `open` is the sailable part: a boat keeps two tiles off every shore, so
+    // a body with none of it carries no boats however big it is.
+    bodies.push({ id, size, edge, open, tiles: queue });
+  }
+
   return {
     tiles,
+    bodies,
+    /** Which body a water tile belongs to, or `undefined` for dry land. */
+    bodyOf: (tile) => (tile >= 0 && tile < body.length && body[tile] >= 0 ? bodies[body[tile]] : undefined),
+    /** How many tiles from the nearest shore: 0 touches land, `shelf + 1` is
+     * open water. What "two from a shore" means. */
+    ringOf: (tile) => (tile >= 0 && tile < rings.length ? rings[tile] : 0),
     isWater: (tile) => tile >= 0 && tile < terrain.length && wet(tile),
     levelOf,
     depthOf,

@@ -42,6 +42,17 @@ export const DEFAULTS = Object.freeze({
     width: 4, gauge: 1.5, railHalf: 0.08, sleeperEvery: 1.6, sleeperHalf: 0.14, lift: 0.1,
     speed: 22, carriages: 3, carriageLen: 17, carriageW: 2.9, carriageH: 3.4, dwell: 14,
   },
+  // Boats (T4b). `length` is a hull in metres — what a sailing boat looks
+  // AHEAD by, so it turns before its bow is on the beach rather than when its
+  // middle is. `openTilesPerBoat` is how much open water a body needs before
+  // it carries another one, so a pond gets none and a bay gets three.
+  // Colours are hex through JSON, which has no 0x.
+  boat: {
+    length: 7, perBody: 3, openTilesPerBoat: 12, mooredCap: 24,
+    sailSpeed: 4, ferrySpeed: 9, cargoSpeed: 6, dwell: 10, wake: 8,
+    hullColour: 0xf0f0f0, sailColour: 0xf8f8f8, ferryColour: 0x3376cc,
+    cargoColour: 0x8b8b8b, wakeColour: 0xe1ece4,
+  },
   // Poles and their sagging spans at L3 (E3, spec §5.4).
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },
   // Water (E8, spec §5.5). `depth` is how far the bed drops below the surface

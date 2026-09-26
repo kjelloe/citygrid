@@ -129,6 +129,10 @@ once on `controllerchange`, and Playwright's next `evaluate` dies with "Executio
 destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
 changed. A gate reads the repository as it runs; edit it and you are testing two trees.
 
+**A building placed THIS TICK is a construction site.** T4b's freight-port gate photographed
+scaffolding and orange lines, because B2 draws a young building as a site and `placeAt` had just
+put one down. `age=<ticks>` backdates every building, which is what B2's own three-age gate does.
+
 **Grep the config file for the block name before you add it.** T4a's harbour rules went in as
 `balance.water.marinaMinBody`; `water` was already the utilities' block, a duplicate JSON key keeps
 the LAST one, and the mirror in `rules.js` made the same collision — so the two agreed, the drift

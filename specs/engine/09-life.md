@@ -388,3 +388,25 @@ train is an arc length along the corridor and a sign.
 All of it is asserted in node (`test/train.test.js`), because the only other instrument is a
 screenshot of something moving, and a screenshot of something moving is a screenshot of something
 standing still.
+
+## 9.6 Boats (T4b, 2026-09-26)
+
+`client/life/boats.js`. Three kinds, one module, because they are the same arithmetic:
+
+- **Moored**, at a marina: in the water ORTHOGONALLY beside it, two berths a tile, each nudged
+  along by a hash. They do not move. The whole ring put hulls diagonally off the building and a
+  straight bank came out as a row of white blocks — cargo on a quay, not boats at a pontoon.
+- **Sailing**, two or three a body, on water at least `CLEAR_OF_SHORE` tiles from land. A hull looks
+  its own LENGTH ahead before it moves and turns through eight headings until one is clear, so it
+  turns before its bow is on the beach. A boat in a pocket with no clear heading turns on the spot,
+  which is a boat in a pocket.
+- **Plying**, a ferry or a cargo ship: a breadth-first walk over the water from the berth beside its
+  building to the nearest map edge, travelled by arc length through `sampleLine` — the same
+  function the train takes along a rail corridor. NOT a straight line: that refused any terminal
+  behind a headland, which is a limitation nobody asked for.
+
+`update(dt)` takes its seconds from the caller and nothing in the module asks the machine for the
+time, so `?life=0` freezes every hull where it is (D7, ruling 037). The invariant worth the test is
+that a boat never crosses a shore, asserted over ten simulated minutes on a bay with a headland —
+a vessel in a field is the most obvious defect this slice could ship, and a screenshot of a still
+boat cannot tell you whether the moving one ends up in one.

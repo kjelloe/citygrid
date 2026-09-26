@@ -119,6 +119,19 @@ if (placeList.length > 0) {
     at += d.w + 2;
   }
 }
+// `placeAt=<def>@x,y[;<def>@x,y]` puts one definition on a GIVEN tile, through
+// the reducer (T4b). `place=` builds its own road across the middle of the map
+// and lines buildings up beside it, which cannot photograph anything that has
+// to stand somewhere particular — a freight port needs a shore, and the shore
+// is wherever this seed put the water.
+for (const entry of (params.get("placeAt") ?? "").split(";").filter(Boolean)) {
+  const [def, where] = entry.split("@");
+  const [px, py] = where.split(",").map(Number);
+  state.players[0].treasury = 9000000;
+  const result = apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def, x: px, y: py }).result;
+  placed.push({ def, x: px, y: py, result });
+}
+
 const backdate = Number(params.get("age") ?? 0);
 if (backdate !== 0) for (const b of state.buildings) b.builtTick -= backdate;
 const wear = Number(params.get("wear") ?? -1);

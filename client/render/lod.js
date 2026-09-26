@@ -63,6 +63,11 @@ const DEFAULT_COSTS = {
   railHub: 2,
   railArm: 2,
   carriage: 12,
+  // A hull and its wake (T4b). Priced the moment the pools existed, because
+  // P81's round found three that were not and the note above `road: 0` is
+  // about exactly this.
+  hull: 12,
+  wake: 2,
 };
 
 /** One terrain chunk is 16x16 tiles at two triangles each. Terrain is not
@@ -318,6 +323,9 @@ function estimateOne(counts, plan) {
     // sacrifices first, and a line with three carriages on it is a rounding
     // error beside the traffic (T3).
     + (plan.cars !== false ? (counts.carriages ?? 0) * costs.carriage : 0)
+    // The boats ride the cars rung too: they are the same kind of thing the
+    // ladder sacrifices first.
+    + (plan.cars !== false ? (counts.hulls ?? 0) * costs.hull + (counts.wakes ?? 0) * costs.wake : 0)
     + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole * loose : 0)
     // The baked street chunks, at what they MEASURED last frame (slice E3).
     //
@@ -880,8 +888,10 @@ export function countScene(state, bounds, country = undefined, forest = undefine
     cars: 0,
     // ...and neither is the number of people, for the same reason.
     peds: 0,
-    // ...nor the carriages on the line (T3).
+    // ...nor the carriages on the line (T3), nor the boats on the water (T4b).
     carriages: 0,
+    hulls: 0,
+    wakes: 0,
   };
 }
 

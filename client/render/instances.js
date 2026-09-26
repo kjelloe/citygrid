@@ -129,6 +129,15 @@ export function createInstances(scene, styleName = "plain") {
   // `rail.carriage*` rather than from a literal, because the train's length is
   // what `client/life/train.js` spaces the carriages by and two copies of that
   // number is a train with gaps in it.
+  // Boats (T4b). A hull is a slab on the water — a sailing boat and a moored
+  // one are the same shape, coloured per instance — and a ferry is a bigger
+  // one. The wake is a flat quad scaled per instance, so a trail costs eight
+  // quads rather than a ribbon rebuilt every frame for three metres of foam.
+  const boat = getConfig().boat;
+  const boatM = getConfig().tileM;
+  make("boat", slabGeometry(styleName, 2.2 / boatM, 1.6 / boatM, boat.length / boatM), 0xffffff, 96);
+  make("ferry", slabGeometry(styleName, 5 / boatM, 3.4 / boatM, (boat.length * 2.4) / boatM), 0xffffff, 16);
+  make("wake", flatGeometry(styleName, 3.4 / boatM, 5 / boatM, 0), 0xffffff, 160);
   const carriage = getConfig().rail;
   const tileM = getConfig().tileM;
   make("train", slabGeometry(styleName,

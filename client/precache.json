@@ -1,5 +1,5 @@
 {
- "version": "49bac907a2ee",
+ "version": "66a599644bed",
  "generated": "2026-09-26",
  "files": [
   "./client/audio/audio-model.js",
@@ -21,6 +21,7 @@
   "./client/input/held.js",
   "./client/input/runs.js",
   "./client/input/tools.js",
+  "./client/life/boats.js",
   "./client/life/pedestrians.js",
   "./client/life/services.js",
   "./client/life/traffic.js",

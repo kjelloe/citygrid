@@ -56,6 +56,7 @@ export const GATES = {
   rain_shots: { args: ["tools/rain_shots.mjs"], what: "the overcast hour, from the street and from the air" },
   avenue_shots: { args: ["tools/avenue_shots.mjs"], what: "the deputy's own avenue: its width, its median and its two lanes each way" },
   rail_shots: { args: ["tools/rail_shots.mjs"], what: "the track, a level crossing and a train that is actually posed on the line" },
+  harbour_shots: { args: ["tools/harbour_shots.mjs"], what: "boats at a marina, a ferry with a wake, and a port with its ship" },
 
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
   passability: { args: ["tools/passability.mjs"], what: "a lane wide enough for a walker, everywhere" },
@@ -91,10 +92,17 @@ export const SETS = {
   // counts what it photographed and exits non-zero when the count is wrong, and
   // until now nothing ran them. They are slow and they are pictures, so they
   // are a set of their own rather than part of `render`.
-  shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots", "avenue_shots", "rail_shots"],
+  //
+  // **Split at T4b**, for the third time M2's rule has fired: seven tools came
+  // to 397 s of a 360 s budget, and raising the budget to fit is what the rule
+  // forbids. The line is the lane — `shots` is the world and behaviour lanes'
+  // pictures, `transport` is T1–T4's — so a slice runs the set its own lane
+  // owns and the two halves stay honest about what they cost.
+  shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots"],
+  transport: ["avenue_shots", "rail_shots", "harbour_shots"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
 };
-SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots];
+SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots, ...SETS.transport];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -132,10 +140,15 @@ export const BUDGET_MS = {
   // Measured at P75, all five in one run: water 23 s, damage 29, services 50,
   // windows 36, rain 28 — 166 s. The first guess was 20 minutes, from timings
   // taken while probing interactively rather than from the tools themselves.
-  shots: 6 * 60 * 1000,
+  // Restated at T4b's split from what is left in it: 210 s measured.
+  shots: 5 * 60 * 1000,
+  // The transport lane's pictures, measured at T4b in one run: avenue 38 s,
+  // rail 76, harbour 73 — 187 s.
+  transport: 5 * 60 * 1000,
   sim: 15 * 60 * 1000,
-  // Measured at P75: quick 394 s, render 56, budget 232, sim 541, shots 166.
-  all: 30 * 60 * 1000,
+  // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
+  // transport 187.
+  all: 35 * 60 * 1000,
 };
 
 export function gatesIn(set) {

@@ -86,8 +86,8 @@ gate criteria re-aimed on evidence, each a one-line revert: **Q103**, **Q106** a
 **Q110**. The balance ones are **Q105** (era 4's demanding row) and **Q111**.
 
 **What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
-yielding to an engine), the rest of the **transport lane** (T4–T7; **T1 the avenue**, **T2 rail,
-the station and the Outside** and **T3 the track, the crossings and the train** are built, and T2
+yielding to an engine), the rest of the **transport lane** (T5–T7; **T1 the avenue**, **T2 rail,
+the station and the Outside** **T3 the track, the crossings and the train** and **T4 the harbour, the boats and the ferry** are built, and T2
 carried the fixture re-pin the lane was waiting for), the **worker lane** (W1–W4,
 the door to Wave 5), **F2/F3** in the film lane, and **Q84's** weather coupling. The measurement
 lane (D2/D3/D5) still waits on your phone.
@@ -407,7 +407,7 @@ land first. Nothing here is scheduled.*
 | navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
 | world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row; S11 steep ground you can play on (Q80/A57); S12 a bank, not a quay (found in S4) |
 | behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather; B7 cars and people from the city camera; B8 cars stop at a junction; B9 the deputy lays roads near the town (engine, era 3) |
-| transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); ~~T2 rail and the station in the engine~~ **built 2026-09-25** (era 6, the shared re-pin); ~~T3 rail drawn~~ **built 2026-09-26**; T4 water bodies, marina, ferry, port — **engine built 2026-09-26** (era 7), renderer open; T3 rail drawn; T4 water bodies, marina, ferry, port; T5 unlock ranks, city hall, airport; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
+| transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); ~~T2 rail and the station in the engine~~ **built 2026-09-25** (era 6, the shared re-pin); ~~T3 rail drawn~~ **built 2026-09-26**; ~~T4 water bodies, marina, ferry, port~~ **built 2026-09-26** (T4a engine era 7, T4b the water); T3 rail drawn; T4 water bodies, marina, ferry, port; T5 unlock ranks, city hall, airport; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
 
 ## Open questions
 
