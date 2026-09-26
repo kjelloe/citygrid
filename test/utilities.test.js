@@ -14,6 +14,7 @@ import "../engine/build-commands.js";
 import "../engine/development.js";
 import { supplyPass, utilitiesPass } from "../engine/utilities.js";
 import { developmentPass } from "../engine/development.js";
+import { rules } from "../engine/rules.js";
 import { catalogue, definition, definitionIds } from "../engine/catalogue.js";
 import { CMD_JOIN, CMD_PLACE_BUILDING, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PAINT_ZONE } from "../engine/commands.js";
 import { RESULT } from "../shared/protocol.js";
@@ -48,10 +49,20 @@ const place = (state, def, x, y, actor = 1) =>
  * An entry without a reason is a field that should be deleted or implemented.
  */
 const UNREAD_FIELDS = {
-  landValueBonus: "Q119 — a park's amenity effect comes only from its negative pollution; "
-    + "`landValuePass` never reads this. T2 copied it onto the rail station.",
-  storage: "Q119 — a water tower that stores nothing; `supplyPass` allocates per month "
-    + "and has no carry-over for it to fill.",
+  landValueBonus: {
+    why: "Q119 — a park's amenity effect comes only from its negative pollution; "
+      + "`landValuePass` never reads this.",
+    // WHICH definitions carry it, so a fourth is a deliberate act. T2 copied it
+    // from the park onto the rail station and T4a onto the marina and the
+    // ferry terminal — a dead field spreads because it reads as a rule
+    // somebody implemented, and an allow-list keyed only by NAME let it.
+    on: ["ferryTerminal", "marina", "park", "railStation"],
+  },
+  storage: {
+    why: "Q119 — a water tower that stores nothing; `supplyPass` allocates per month "
+      + "and has no carry-over for it to fill.",
+    on: ["waterTower"],
+  },
 };
 
 test("every field in the catalogue is read by the simulation", () => {
@@ -72,6 +83,23 @@ test("every field in the catalogue is read by the simulation", () => {
     `catalogue fields nothing reads, and no entry in UNREAD_FIELDS: ${unexplained.join(", ")}`);
   for (const key of Object.keys(UNREAD_FIELDS)) {
     assert.ok(dead.includes(key), `${key} is read now — take it off UNREAD_FIELDS`);
+    const carrying = Object.keys(buildings)
+      .filter((id) => typeof buildings[id] === "object" && Object.hasOwn(buildings[id], key)).sort();
+    assert.deepEqual(carrying, UNREAD_FIELDS[key].on,
+      `${key} is a field nothing reads and it has moved: it is on ${carrying.join(", ")}. `
+      + "Adding it to another building is adding a rule the simulation does not keep.");
+  }
+});
+
+test("every needsBody names a rule that exists", () => {
+  // The catalogue points at a balance key by NAME (`needsBody: "marinaMinBody"`),
+  // and a name that misses reads as `undefined` — which makes `size < undefined`
+  // false, so the placement rule silently stops refusing anything. A rename
+  // would delete the rule rather than break it.
+  for (const [id, def] of Object.entries(buildings)) {
+    if (typeof def !== "object" || !def.needsBody) continue;
+    assert.equal(typeof rules().harbour[def.needsBody], "number",
+      `${id}.needsBody names "${def.needsBody}", which is not a number in balance.harbour`);
   }
 });
 

@@ -7485,3 +7485,29 @@ Gates: `sim` **597 s of 900**, all three green, re-run after the deputy fixes so
 describes the code that shipped. Suite **1,473 green twice**. No re-pin: nothing here is state.
 
 **Next:** T4b — the boats, the ferry, the wake, the three kits and `smoke-T4-{marina,ferry,port}`.
+
+## P83 — the review round after T4a (2026-09-26)
+
+Three instruments, all of them for things this run has already been bitten by once.
+
+**A duplicate key in a data file is now a red suite.** T4a's `harbour` block went in as `water`,
+which was already the utilities' block; a duplicate JSON key keeps the last one, `rules.js`
+mirrored the same collision, and the mirror test AGREED because both copies had lost the same
+thing. `test/rules.test.js` counts the key TOKENS in each data file's text against the keys in its
+parsed tree — `JSON.parse` is precisely what cannot see this — over `balance.json`,
+`buildings.json`, `cityviewer.json` and both catalogues. Planted the collision back: *"writes 208
+keys and parses 205: 3 of them are replaced by a later one of the same name"*.
+
+**The dead-field allow-list now records WHICH buildings carry each field.** P79 added a test that
+refuses a NEW field nothing reads; it did not stop `landValueBonus` spreading, and T4a put it on
+two more buildings the same day it was filed as Q119. The entry is `{ why, on: [...] }` now, so a
+fourth building is a line somebody has to write. Planted a fifth; it names them all.
+
+**And `needsBody` names a balance key by string**, which is a rename away from silence:
+`rules().harbour[undefined]` is `undefined`, `size < undefined` is `false`, and the placement rule
+stops refusing anything rather than breaking. A test asserts every `needsBody` names a number.
+
+**Also swept, and clean:** `omissions`, `reachability` and `utilities` 31 green; no data file has a
+duplicate key; everything T4a exported has an importer.
+
+Suite **1,476 green twice**.

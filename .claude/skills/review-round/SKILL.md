@@ -505,6 +505,15 @@ either — they are pushed into the CAR pools and `counts.cars` was `traffic.cou
 The check is a grep: every `make("name", …)` in `instances.js` against the cost table in `lod.js`.
 An under-estimate is the dangerous direction, because the render-and-measure loop only steps down.
 
+**A dead field spreads, so the allow-list has to name the buildings as well as the field.** P79's
+check refused a new unread field and let `landValueBonus` reach two more buildings the same day it
+was filed — a field nothing reads looks exactly like a rule somebody implemented, so the next
+slice copies it. The entry carries `on: [...]` now.
+
+**And a data file that names a key in ANOTHER data file by string is a rename away from silence.**
+`needsBody: "marinaMinBody"` resolves to `undefined`, `size < undefined` is `false`, and the rule
+stops refusing anything instead of breaking. Assert the indirection resolves.
+
 **Grep every field of a data file for a reader, not just every key of the file.** The third
 direction usually asks "does anything read this BLOCK"; T2's round asked it per FIELD and found
 two that nothing reads — `landValueBonus` on the park (its whole purpose; the amenity effect

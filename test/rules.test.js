@@ -93,3 +93,61 @@ test("the multiplayer thresholds match the ruling", () => {
   assert.equal(balance.multiplayer.absenceYears, 5);
   assert.equal(balance.multiplayer.seasonYears, 25);
 });
+
+// --- a duplicate key is not an error, which is the problem -------------------
+
+/** Every key token in a JSON text: a string literal followed by a colon.
+ *
+ * Written out rather than inferred from `JSON.parse`, because `parse` is
+ * exactly what cannot see this — a duplicate key keeps the LAST one and says
+ * nothing. Tracks string state so a value containing `":` is not a key. */
+function keyTokens(text) {
+  let count = 0;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch !== '"') { i += 1; continue; }
+    // Walk to the end of the string literal, honouring escapes.
+    let j = i + 1;
+    while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
+    let k = j + 1;
+    while (k < text.length && /\s/.test(text[k])) k += 1;
+    if (text[k] === ":") count += 1;
+    i = j + 1;
+  }
+  return count;
+}
+
+/** Every key in a parsed tree, counted the same way. */
+function parsedKeys(value) {
+  if (Array.isArray(value)) return value.reduce((n, v) => n + parsedKeys(v), 0);
+  if (value && typeof value === "object") {
+    return Object.keys(value).length + Object.values(value).reduce((n, v) => n + parsedKeys(v), 0);
+  }
+  return 0;
+}
+
+test("no data file has the same key twice", () => {
+  // T4a put a `harbour` block in as `water`, which was already the utilities'
+  // block. A duplicate JSON key keeps the last one, `engine/rules.js` mirrored
+  // the same collision, and the mirror test AGREED because both copies had
+  // lost the same thing — so every water pump in the game silently had no
+  // capacity and the only symptom was a marina that would not build.
+  for (const name of ["balance.json", "buildings.json", "cityviewer.json", "i18n/en.json", "i18n/no.json"]) {
+    const text = readFileSync(join(repoRoot, "data", name), "utf8");
+    const written = keyTokens(text);
+    const kept = parsedKeys(JSON.parse(text));
+    assert.equal(written, kept,
+      `data/${name} writes ${written} keys and parses ${kept}: ${written - kept} of them are replaced by a later one of the same name`);
+  }
+});
+
+test("the duplicate-key check can actually see one", () => {
+  // Planted, because a check that has never been shown to fire is a comment.
+  const doubled = '{ "a": { "x": 1 }, "b": 2, "a": { "y": 3 } }';
+  assert.equal(keyTokens(doubled), 5);
+  assert.equal(parsedKeys(JSON.parse(doubled)), 3);
+  // And a value that looks like a key does not count as one.
+  const tricky = '{ "note": "a: b, \\"c\\": d", "n": 1 }';
+  assert.equal(keyTokens(tricky), parsedKeys(JSON.parse(tricky)));
+});
