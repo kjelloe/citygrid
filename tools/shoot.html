@@ -69,7 +69,10 @@ const overlay = params.get("overlay") ?? "";
 const dense = params.get("dense") === "1";
 let state;
 if (dense) {
-  state = saturatedCity({ size, seed, ticks: years * TICKS_PER_YEAR }).state;
+  // `rail=0` builds the fixture without its line (T3). A lever, because the
+  // cost of the track is a before-and-after and the "before" has to be the
+  // code that ships rather than a number that sounds like it.
+  state = saturatedCity({ size, seed, ticks: years * TICKS_PER_YEAR, rail: params.get("rail") !== "0" }).state;
 } else {
   const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats, waterStyle: "river", terrainStyle }));
   if (!world.ok) throw new Error("generation failed: " + world.reason);

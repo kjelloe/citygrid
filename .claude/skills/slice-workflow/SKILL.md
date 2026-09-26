@@ -129,6 +129,18 @@ once on `controllerchange`, and Playwright's next `evaluate` dies with "Executio
 destroyed, most likely because of a navigation" — in a section of the gate nowhere near what you
 changed. A gate reads the repository as it runs; edit it and you are testing two trees.
 
+**A PHASE of the chunk baker costs a whole frame.** `street-chunks.js` runs one phase of one
+chunk per frame, so a chunk takes `PHASES.length + 1` frames however cheap each phase is. T3 added
+two and `budget_gate`'s 48-frame window — nine chunks × seven frames is 63 — reported 8 rebakes of
+9 about a cache that was working. Merge a pass that cannot exceed a slice's budget into its
+neighbour, and derive a frame-counting gate's window from `stats.streets.phases.length` rather
+than writing it down.
+
+**A ribbon's triangle count is a function of its POINTS, not its width.** Two attempts to prove
+T3's rail pass was running widened the ballast from 4 m to 14 m and read an identical count. The
+number that moves is the one that changes how many PIECES there are — the sleeper spacing. Before
+concluding a pass does nothing, change something it counts.
+
 **A per-thing triangle budget is meaningless until you multiply it.** S9's item allowed "+300 a
 house"; eight baked chunks of thirty houses is 240 houses, so +300 was +80,000 and `budget_gate`
 went 50k over. Multiply by things-per-chunk and chunks-per-frame BEFORE building to a per-thing

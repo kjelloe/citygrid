@@ -33,6 +33,15 @@ export const DEFAULTS = Object.freeze({
     // between the two halves, which is a wide road, not an avenue.
     avenue: { width: 14, lanes: 2, median: 2 },
   },
+  // The railway (T3). `width` is the ballast, `gauge` how far apart the two
+  // rails are, and `lift` how high the ballast stands above the ground — a
+  // track is built UP on a bed, which is most of what tells it from a road
+  // that happens to be narrow. `speed` is the train's (m/s), `dwell` how long
+  // it stands at a platform in seconds, and the carriage numbers are its kit.
+  rail: {
+    width: 4, gauge: 1.5, railHalf: 0.08, sleeperEvery: 1.6, sleeperHalf: 0.14, lift: 0.1,
+    speed: 22, carriages: 3, carriageLen: 17, carriageW: 2.9, carriageH: 3.4, dwell: 14,
+  },
   // Poles and their sagging spans at L3 (E3, spec §5.4).
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },
   // Water (E8, spec §5.5). `depth` is how far the bed drops below the surface

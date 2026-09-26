@@ -139,7 +139,31 @@ in the engine). `test/permissions.test.js`: the row. `test/fixture.test.js`: re-
 **Gate.** `sim` set on the new era; `disaster_soak` green with stations placed by the deputy;
 `traffic_gate` shows load on the roads to the station.
 
-## T3 — Rail drawn (M)
+## T3 — Rail drawn (M) — **BUILT 2026-09-26** as `slice-T3`
+
+*As built. `deriveCorridors(state, "rail")` — the same machinery the road uses, with its own
+cross-section from `rail` in `data/cityviewer.json` and no pavement, derived beside the road network
+in `model.js` and read by nothing else. `client/render/rails-l3.js` bakes the bed, its face, the
+sleepers and two rails in a phase of its own, so A78's check times it. A level crossing is a bar of
+paint across the road on each side of the track with a post at each end — not a boom, because a boom
+that never moves is worse than none and one that does is a state machine the renderer has no
+business running (ruling 037).*
+
+*`client/life/train.js`: one train a line, an arc length and a sign rather than a second lane graph.
+It arrives, stops at the platform — the projection of the station onto the track — waits `dwell`,
+runs to the far end, turns round out of sight and comes back. Timed by the caller, frozen by
+`?life=0`, and all of it asserted in node (`test/train.test.js`), because the only other instrument
+is a screenshot of something moving.*
+
+*The station kit is its `CIVIC_SHAPES.railStation` masses, which `building-kit.js` already bakes at
+L3 — a hall with a clock, a platform and a canopy. A second kit would be a second copy of the
+L2/L3 agreement (E5). The bridge is the causeway the ground module already builds under any network
+over water; nothing in T3 needed to add one.*
+
+*Not in it: the ground does NOT flatten under a line — grading is keyed to the road network — so a
+track over a hill follows the hill (Q120).*
+
+## T3 — Rail drawn (M) — the item as written
 
 **Goal.** Track, crossings, a bridge, a train and a station kit.
 
@@ -154,6 +178,11 @@ per second (D7), frozen by `?life=0`. Passengers at the platform are B5's role.
 the train stops at the platform and leaves by the edge; the D7 invariants. **Gate.** `render` set;
 `budget_gate` re-measured with a station and a line in the fixture (the saturated recipe gains
 one); `reports/smoke-T3-{station,crossing,train}.png`.
+
+*As gated: the corridor tests went into `test/world.test.js`, which owns corridors — a second file
+called `corridors.test.js` is the name-that-means-two-things trap `workitems-cityviewer.md` §0
+warns about. `tools/rail_shots.mjs` is in the `shots` set and counts the carriages POSED before it
+calls a frame a train.*
 
 ## T4 — Water bodies, the marina, the ferry and the port (M engine, M renderer) — A67, A68
 

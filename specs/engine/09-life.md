@@ -370,3 +370,21 @@ the main one, ~476 in stubs and islands) and the worst crime in reach may be on 
 Outside the car cap, and never a function of the camera (D7): what exists is the city's business
 and the bounds decide only what is drawn.
 
+## 9.5 The train (T3, 2026-09-26)
+
+`client/life/train.js`. One train a rail corridor, and **not on a lane graph**: a lane is a
+direction on a road with a stop line and a junction box, and a train that followed `links` would
+need a second graph over the rail corridors to say nothing the polyline does not already say. A
+train is an arc length along the corridor and a sign.
+
+- It enters one carriage back from an end, so the first thing a viewer sees is an arrival.
+- It stops where a station projects onto the track — the platform is derived, never stored — and
+  stands there for `rail.dwell` seconds.
+- At the far end it runs off, turns round out of sight and comes back. One train serves a line in
+  both directions rather than a second appearing from nowhere.
+- `update(dt)` takes its seconds from the caller and nothing in the module asks the machine for the
+  time, so `?life=0` freezes it where it stands and a screenshot is deterministic (D7, ruling 037).
+
+All of it is asserted in node (`test/train.test.js`), because the only other instrument is a
+screenshot of something moving, and a screenshot of something moving is a screenshot of something
+standing still.

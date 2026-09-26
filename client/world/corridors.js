@@ -36,7 +36,13 @@ export function nodeKind(mask) {
  * wide the median between them (T1). One place, because the ribbon, the lane
  * offsets, the junction box and the ground's flatten all have to agree about
  * where the kerb is. One per corridor, never per tile — ruling 043. */
-function sectionOf(cfg, avenue) {
+function sectionOf(cfg, avenue, layer) {
+  // A railway is its own cross-section and has no pavement: `frontage` is the
+  // ballast's own edge, so a lot fronts a street and never a line (T3).
+  if (layer === "rail") {
+    const half = cfg.rail.width / 2;
+    return { avenue: false, half, frontage: half, lanes: 1, median: 0 };
+  }
   const spec = avenue ? cfg.road.avenue : cfg.road;
   const half = spec.width / 2;
   return {
@@ -126,8 +132,8 @@ export function closestOnPolyline(points, x, z) {
 export function deriveCorridors(state, kindOfTile = "road") {
   const cfg = getConfig();
   const tileM = cfg.tileM;
-  const street = sectionOf(cfg, false);
-  const avenueSection = sectionOf(cfg, true);
+  const street = sectionOf(cfg, false, kindOfTile);
+  const avenueSection = sectionOf(cfg, true, kindOfTile);
   const { half, frontage } = street;
   const { width, height } = state;
   const layer = state.tiles[kindOfTile];

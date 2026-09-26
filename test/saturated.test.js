@@ -73,3 +73,23 @@ test("`buildings: false` leaves the lane graph a lane graph", () => {
   const { state } = saturatedCity({ ...SMALL, buildings: false });
   assert.equal(state.buildings.length, 0);
 });
+
+test("the fixture carries a railway, a station and level crossings (T3)", () => {
+  // A fixture with no line on it prices a renderer that has one: `budget_gate`
+  // measures the track, the sleepers and the crossings from here.
+  const { state, track } = saturatedCity(SMALL);
+  assert.ok(track > 20, `${track} rail tiles`);
+  assert.equal(state.buildings.filter((b) => b.def === "railStation").length, 1);
+
+  let crossings = 0;
+  for (let i = 0; i < state.tiles.rail.length; i += 1) {
+    if ((state.tiles.rail[i] & 16) && (state.tiles.road[i] & 16)) crossings += 1;
+  }
+  assert.ok(crossings > 3, `${crossings} level crossings — the line misses the grid`);
+
+  // And a line NOBODY asked for is not laid, because every gate that predates
+  // T3 measured a city without one.
+  const bare = saturatedCity({ ...SMALL, rail: false });
+  assert.equal(bare.track, 0);
+  assert.equal(bare.state.buildings.filter((b) => b.def === "railStation").length, 0);
+});

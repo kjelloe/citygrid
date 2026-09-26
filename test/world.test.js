@@ -465,3 +465,45 @@ test("setConfig changes the frame for the next model", () => {
   assert.equal(getConfig().tileM, 20);
   assert.equal(DIR4.length, 4);
 });
+
+// --- the railway (T3) --------------------------------------------------------
+
+test("a rail mask makes its own corridors, at the rail's width and with no pavement", () => {
+  const state = blank(12);
+  pave(state, row(4, 2, 9));
+  for (const [x, y] of column(6, 1, 9)) state.tiles.rail[tileAt(state.width, x, y)] = NET_PRESENT;
+  for (const [x, y] of column(6, 1, 9)) {
+    state.tiles.rail[tileAt(state.width, x, y)] = NET_PRESENT
+      | adjacencyMask(state.width, state.height, x, y, (i) => (state.tiles.rail[i] & NET_PRESENT) !== 0);
+  }
+  const m = createModel(state);
+
+  // The road network does not know the line exists, and the line does not know
+  // about the road: a level crossing is one tile carrying two networks, not a
+  // junction between them.
+  assert.equal(m.corridors.length, 1, "the road network grew a rail corridor");
+  assert.equal(m.rail.corridors.length, 1);
+  const line = m.rail.corridors[0];
+  assert.equal(line.kind, "rail");
+  assert.equal(line.half, DEFAULTS.rail.width / 2);
+  assert.equal(line.frontage, line.half, "a railway grew a pavement");
+  assert.equal(line.lanes, 1);
+  assert.equal(line.avenue, false);
+  assert.equal(line.tiles.length, 9);
+
+  // And the crossing tile is on both, which is the one thing that makes this
+  // different from a fourth road (A66).
+  const crossing = tileAt(state.width, 6, 4);
+  assert.ok(m.corridors[0].tiles.includes(crossing), "the road does not cross the line");
+  assert.ok(line.tiles.includes(crossing), "the line does not cross the road");
+});
+
+test("a map with no rail on it derives an empty railway rather than nothing", () => {
+  const state = blank(10);
+  pave(state, row(4, 2, 8));
+  const m = createModel(state);
+  assert.deepEqual(m.rail.corridors, []);
+  assert.deepEqual(m.rail.nodes, []);
+  // And a walker is not standing on a railway that is not there.
+  assert.equal(m.surfaceAt(4.5 * T, 4.5 * T).kind, "road");
+});

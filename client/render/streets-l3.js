@@ -30,7 +30,7 @@ import { jitter } from "../world/hash.js";
 import { sink } from "./solid.js";
 import { buildSigns, buildNameBoards } from "./signs.js";
 import { buildingParams, fenceOf } from "../world/params.js";
-import { familyColour } from "./palette.js";
+import { familyColour, shadeHex } from "./palette.js";
 import { ZONE_NONE } from "../constants-mirror.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 
@@ -414,11 +414,7 @@ function nameBoard(sign, heightAt, cfg) {
   return { corners: [at(0.65, y0), at(-0.65, y0), at(-0.65, y1), at(0.65, y1)], out: [f.x, f.z] };
 }
 
-/** A colour scaled by `k`, clamped. */
-function shadeHex(hex, k) {
-  const ch = (shift) => Math.min(255, Math.round(((hex >> shift) & 255) * k));
-  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
-}
+
 
 /** Every lot of a chunk at once: the facades, then the extras. */
 export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false, buildingName = undefined) {

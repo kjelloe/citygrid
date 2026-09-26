@@ -389,7 +389,15 @@ try {
       };
       const before = renderer.stats.streets?.total ?? 0;
       let seen = before;
-      for (let i = 0; i < 48; i += 1) {
+      // How many frames to WAIT, derived rather than written down: the baker
+      // does one phase a frame, `stats.streets.phases` is the last chunk's
+      // per-frame timings, so its length is the frames a chunk takes. A
+      // literal 48 was enough for nine chunks until T3 gave each one another
+      // phase, at which point the gate reported 8 rebakes of 9 and the defect
+      // was the window, not the cache.
+      const perChunk = (renderer.stats.streets?.phases?.length ?? 6) + 1;
+      const window = Math.max(48, (renderer.stats.streets?.live ?? 9) * perChunk + 12);
+      for (let i = 0; i < window; i += 1) {
         await frame();
         const s = renderer.stats.streets;
         const total = s?.total ?? seen;

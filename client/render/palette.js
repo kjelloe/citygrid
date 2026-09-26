@@ -89,3 +89,11 @@ export function familyColour(building, palette, showOwner = false, zoneNone = 0)
   if (building.zone === zoneNone) return palette.civic;
   return buildingColour(building.zone, building.valueTier, palette);
 }
+
+/** A colour scaled by `k`, clamped. Here since T3, because the street pass and
+ * the rail pass both shade a base colour and two copies of four lines of
+ * bit-shifting is the `VARIANTS` lesson in miniature. */
+export function shadeHex(hex, k) {
+  const ch = (shift) => Math.min(255, Math.round(((hex >> shift) & 255) * k));
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}

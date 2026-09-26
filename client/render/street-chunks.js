@@ -26,6 +26,7 @@ import {
   streetCorridors, bakeStreetCorridors, bakeStreetJoints, lotsOfChunk, bakeLotFacades, bakeLotExtras,
   bakeRuins,
 } from "./streets-l3.js";
+import { railCorridors, bakeRailCorridors, bakeCrossings } from "./rails-l3.js";
 import { createGroundColour } from "../world/ground-colour.js";
 import { getConfig } from "../world/config.js";
 import { nextBuild, expired } from "./streaming.js";
@@ -127,6 +128,22 @@ export function createStreetChunks(scene, options = {}) {
     },
     (job, state, model) => {
       bakeStreetJoints(job.baker, state, model, job.chunk.cx, job.chunk.cy, palette);
+      return true;
+    },
+    // The railway (T3). Its own phase, sliced like the street one, so A78's
+    // bake check times it rather than letting a long line hide inside the
+    // street pass — but the CROSSINGS ride along with it rather than taking a
+    // phase of their own: a phase costs a whole frame, the crossing pass is a
+    // scan of one chunk's tiles, and nine chunks × one wasted frame is most of
+    // a gate's window (`budget_gate` went to 8 rebakes of 9 the moment T3 made
+    // a chunk two phases longer).
+    (job, state, model) => {
+      job.rails ??= railCorridors(model, job.chunk.cx, job.chunk.cy);
+      const t0 = performance.now();
+      job.rail = bakeRailCorridors(job.baker, state, model, job.rails, job.rail ?? 0,
+        () => performance.now() - t0 > LOT_SLICE_MS, palette);
+      if (job.rail < job.rails.length) return false;
+      bakeCrossings(job.baker, state, model, job.chunk.cx, job.chunk.cy, palette);
       return true;
     },
     (job, state, model) => {

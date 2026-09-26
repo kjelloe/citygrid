@@ -25,6 +25,11 @@ export function createModel(state) {
   // corridor's own twenty-metre points interpolates straight across the level
   // junction box R3 put at each end.
   const lanes = deriveLanes(state, network, ground);
+  // The railway is a network of its own on the same machinery (T3): the same
+  // polylines, the same nodes, its own width and no pavement. Nothing else in
+  // the model reads it — the ground does not flatten under it and no lot
+  // fronts it — so it is derived beside the road rather than woven into it.
+  const rail = deriveCorridors(state, "rail");
 
   /** What is underfoot: `{ kind, y, corridor?, node?, lot?, dist }`.
    *
@@ -65,6 +70,7 @@ export function createModel(state) {
     corridors: network.corridors,
     nodes: network.nodes,
     connectors: network.connectors,
+    rail,
     nearestCorridor: network.nearest,
     heightAt: ground.heightAt,
     // A street's own graded profile (R3, A42), for anything that wants what the

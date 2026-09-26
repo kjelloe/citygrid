@@ -22,6 +22,20 @@
       "median": 2
     }
   },
+  "rail": {
+    "width": 4,
+    "gauge": 1.5,
+    "railHalf": 0.08,
+    "sleeperEvery": 1.6,
+    "sleeperHalf": 0.14,
+    "lift": 0.1,
+    "speed": 22,
+    "carriages": 3,
+    "carriageLen": 17,
+    "carriageW": 2.9,
+    "carriageH": 3.4,
+    "dwell": 14
+  },
   "ground": {
     "blend": 1,
     "mottle": 0.06,

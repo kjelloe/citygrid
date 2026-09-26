@@ -7333,3 +7333,70 @@ what every other stage of that pipeline does. The unread balance keys that remai
 the three `max…Effect` and the five unlock tiers — predate this lane and are not T2's to answer.
 
 Suite **1,449 green twice**.
+
+## slice-T3 — rail drawn (2026-09-26)
+
+**What it is.** The track, the crossings and a train. T2 gave the game a rail layer and an L2 line;
+this is what it looks like from the pavement.
+
+- **`deriveCorridors(state, "rail")`** — the same machinery the road uses, with its own
+  cross-section and no pavement (`rail` in `data/cityviewer.json`), derived beside the road network
+  in `model.js`. Nothing else reads it: no lot fronts a line and the ground does not flatten under
+  one, which is Q120.
+- **`client/render/rails-l3.js`** bakes a bed, the face it stands on, sleepers across and two rails
+  on top of them, in that order so a rail is never buried by its own sleeper. A track drawn flat is
+  a brown road; the `skirt` is what makes it a railway.
+- **A level crossing** is a bar of paint across the road on each side of the track with a post at
+  each end. Not a boom: one that never moves is worse than none, and one that does is a state
+  machine the renderer has no business running (ruling 037).
+- **`client/life/train.js`** — one train a line, an arc length and a sign rather than a second lane
+  graph over the rail. It arrives, stops at the platform (the projection of the station onto the
+  track), waits, runs to the far end, turns round out of sight and comes back.
+- **The L2 line is gated on `drawn` again.** T2 shipped it ungated with the reason in the comment,
+  because until this slice no baked chunk drew a line at all.
+- The **station kit** is its `CIVIC_SHAPES.railStation` masses, which `building-kit.js` already
+  bakes at L3. A second kit would be a second copy of the L2/L3 agreement (E5). The **bridge** is
+  the causeway the ground already builds under any network over water.
+
+**What went wrong on the way.**
+
+- **The fixture's line was eighteen fragments.** `saturatedCity` gained a line and a station, and
+  the line dodged the seeded housing — every third tile of a plain row carries a house, so the
+  longest run was ten tiles. The houses come down first now, the way a railway is built.
+- **And the station ate a road.** Its first placement bulldozed four tiles out of a road row; the
+  lane graph re-derived around the hole, the lanes ran through the new building, and `walkthrough`
+  reported **128 cliffs** where the walker climbed the station. It goes on a footprint clear of
+  every road now — two rows above the line, at x ≡ 1 (mod 4) — and `walkthrough` is back to 0.
+- **`budget_gate` went to 8 rebakes of 9.** A phase costs a whole frame, T3 added two, and the
+  gate's window was a literal 48 frames for nine chunks. Both halves fixed: the crossings ride
+  along with the rail pass rather than taking a phase of their own, and the window is derived from
+  `stats.streets.phases.length` — the frames the last chunk actually took.
+- **And the item's own gate was aimed at the wrong instrument.** "`budget_gate` re-measured with a
+  station and a line in the fixture" — `budget_gate` drives **index.html**, not `saturatedCity`, so
+  the fixture's line is invisible to it. The fixture change serves `walkthrough`, `passability`,
+  `lanes_dump` and `perf_card`; the track's cost is measured below with a lever instead.
+
+**Measured.**
+
+- **The track bakes**, proven by the one number that moves with it: tripling the sleeper density
+  (`sleeperEvery` 1.6 → 0.5) took four chunks from **137,554 to 139,534 triangles**. The first two
+  attempts at this measurement were worthless — a ribbon's triangle count is a function of its
+  POINTS, not its width, so widening the ballast from 4 m to 14 m changed nothing and looked like a
+  pass that was not running.
+- `shoot.html` gained `rail=0`, so the fixture can be built without its line. The straight
+  before/after is confounded — the arm without a line keeps the 24 houses the line clears — and it
+  is recorded here rather than quoted as the track's cost.
+- **The bake still fits its frame**: warm p95 **5.1–8.0 ms** of an 8 ms budget across five runs,
+  cold worst 8.6–13.4 ms. The high end of that range is new and is worth watching: T3 gave every
+  chunk another phase.
+- Gates: `quick` 411 s of 480, `render` 64/120, `budget` 280/360, `shots` **313/360** with
+  `rail_shots` at 75 s. Suite **1,460 green twice**. No re-pin, no era — nothing here is state.
+
+**The pictures**, each counting what it photographed: `reports/smoke-T3-station.png` (the line and
+its platform from the air), `smoke-T3-crossing.png` (the track, its sleepers and the bars, at eye
+height), `smoke-T3-train.png` (the train posed on the line — the gate refuses a frame with no
+carriage in the pool, because a moving thing photographed once is a still thing).
+
+**Filed:** **Q120** — the ground does not flatten under a railway, so a line follows the terrain.
+
+**Next:** T4 — water bodies, the marina, the ferry and the port.

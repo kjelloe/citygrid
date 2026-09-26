@@ -207,6 +207,11 @@ test("the modules that node can load are the ones that carry decisions", async (
     "baker.js", "building-kit.js", "camera.js", "instances.js", "picking.js",
     "scene.js", "sky.js", "street-chunks.js", "streets-l3.js",
   "signs.js",
+  // The track (T3): ribbons, a skirt and sleepers. The DECISIONS — where the
+  // line is, how wide, where a crossing is — are `client/world/corridors.js`
+  // over the rail layer and the rail tiles themselves, both of which node
+  // loads and both of which have tests.
+  "rails-l3.js",
   // The ink pipeline is three render targets and two materials; the SHADERS
   // and the grade table are in `ink-shaders.js`, which node can read (P2).
   "post-ink.js",

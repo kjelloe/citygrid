@@ -1,6 +1,6 @@
 {
- "version": "357d3d076547",
- "generated": "2026-09-25",
+ "version": "7ce61e7e127b",
+ "generated": "2026-09-26",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -24,6 +24,7 @@
   "./client/life/pedestrians.js",
   "./client/life/services.js",
   "./client/life/traffic.js",
+  "./client/life/train.js",
   "./client/life/walker.js",
   "./client/lobby/diorama.js",
   "./client/lobby/new-game.js",
@@ -54,6 +55,7 @@
   "./client/render/picking.js",
   "./client/render/post-ink.js",
   "./client/render/props-l3.js",
+  "./client/render/rails-l3.js",
   "./client/render/ramps.js",
   "./client/render/ribbon.js",
   "./client/render/roof-kit.js",

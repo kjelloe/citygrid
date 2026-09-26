@@ -55,6 +55,7 @@ export const GATES = {
   window_shots: { args: ["tools/window_shots.mjs"], what: "what is behind a window, day and night, from the pavement" },
   rain_shots: { args: ["tools/rain_shots.mjs"], what: "the overcast hour, from the street and from the air" },
   avenue_shots: { args: ["tools/avenue_shots.mjs"], what: "the deputy's own avenue: its width, its median and its two lanes each way" },
+  rail_shots: { args: ["tools/rail_shots.mjs"], what: "the track, a level crossing and a train that is actually posed on the line" },
 
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
   passability: { args: ["tools/passability.mjs"], what: "a lane wide enough for a walker, everywhere" },
@@ -90,7 +91,7 @@ export const SETS = {
   // counts what it photographed and exits non-zero when the count is wrong, and
   // until now nothing ran them. They are slow and they are pictures, so they
   // are a set of their own rather than part of `render`.
-  shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots", "avenue_shots"],
+  shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots", "avenue_shots", "rail_shots"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
 };
 SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots];

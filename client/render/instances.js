@@ -124,6 +124,16 @@ export function createInstances(scene, styleName = "plain") {
   // like from the air; the rails, the sleepers and the crossings are T3.
   make("railHub", flatGeometry(styleName, 0.16, 0.16, 0), 0xffffff, 20000);
   make("railArm", flatGeometry(styleName, 0.16, 0.56, 0), 0xffffff, 40000);
+  // A carriage (T3): a box on the track, one instance each, coloured per
+  // instance so the head is not the same as the two behind it. Sized from
+  // `rail.carriage*` rather than from a literal, because the train's length is
+  // what `client/life/train.js` spaces the carriages by and two copies of that
+  // number is a train with gaps in it.
+  const carriage = getConfig().rail;
+  const tileM = getConfig().tileM;
+  make("train", slabGeometry(styleName,
+    carriage.carriageW / tileM, carriage.carriageH / tileM, carriage.carriageLen / tileM),
+  0xffffff, 64);
   // Burnt GROUND: flat, like the lawn quad. It was a 0.14-tile slab — a solid
   // block 2.8 m tall covering most of the tile — which is why a ruin has always
   // read as a dark box, and which buried B1b's walls and rubble inside it.
@@ -654,13 +664,12 @@ export function updateInstances(state, pools, options = {}) {
       // The rail line (T2). ABOVE the road surface, like the wire, so a level
       // crossing shows the track across the street rather than under it.
       //
-      // NOT gated on `drawn`, which every other L2 network is: that gate means
-      // "a baked chunk draws this better", and no baked chunk draws track
-      // until T3 — the same argument the grass tufts win. The first cut used
-      // `networks` and the line vanished inside the nine baked chunks around
-      // the camera, which is every street-level shot of it. **T3 must put the
-      // gate back** the moment the chunk baker lays a rail.
-      if (local.networks !== false && (state.tiles.rail[index] & NET_PRESENT)) {
+      // Gated on `drawn` like every other L2 network again (T3): a baked chunk
+      // lays real track now — ballast, sleepers and two rails — so the flat
+      // quad underneath it would be a second railway in the same place. T2
+      // shipped it ungated, deliberately and with the reason in the comment,
+      // because until this slice nothing else drew a line at all.
+      if (networks && (state.tiles.rail[index] & NET_PRESENT)) {
         connect(pools.railHub, pools.railArm, state.tiles.rail[index], x, y, 0.06, palette.rail, at);
       }
       if (state.tiles.flags[index] & FLAG_RUINED) {
