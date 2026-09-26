@@ -7693,3 +7693,38 @@ world and behaviour lanes' pictures (**211 s**), `transport` is T1–T4's (**187
 `shots` 211/300, `transport` 187/300. No re-pin, no era — nothing here is state.
 
 **Next:** T5 — unlock ranks, city hall and the airport.
+
+## P89 — the review round after T4b (2026-09-26)
+
+One finding, and the instrument that should have found it two rounds ago.
+
+**The overlay's marks had no term in the estimate.** One flat quad a tile with something to say —
+1,446 of them with `pollution` on a played 64×64, and the frame goes from 128,684 triangles to
+131,576 with the overlay on. That is 2,892, which is 1,446 × 2 exactly. The estimate never saw
+any of it.
+
+It is priced now, from what the pools held LAST frame — asking `bandAt` about every visible tile in
+`countScene` is the overlay pass run twice a frame to save two triangles a tile, and
+`streetPerChunk` already sets the precedent. One frame behind a toggle, which is what
+`budget_gate`'s overlay row reads.
+
+**And the term was dropped by the perspective path.** `estimate` splits per chunk under perspective
+(V5), and a term that lives only on the top-level counts is silently not in `part` — so the first
+cut priced the marks in the orthographic path and nowhere a city camera looks. It goes in with the
+terrain and the street chunks now, which are the other two whole-frame terms.
+
+I nearly reverted it. The estimate went from 1,339 UNDER to 1,553 OVER and that reads as a term
+that made things worse — until the arm with the overlay OFF says the estimate was already 1,553
+over on that frame, and the 1,339 under was the missing term. **Measure the baseline before
+judging a correction by the residual.**
+
+**The instrument.** P81 found three unpriced pools by hand and P89 a fourth; `test/lod.test.js` now
+scans every `make("…")` in `instances.js` against the cost table and refuses one that is neither
+priced nor on `UNPRICED_POOLS` with a reason saying how its triangles reach the estimate some other
+way — inside `extrasOf`, baked into a street chunk, or under a differently-named term. Twenty-seven
+entries, each with its route. Planted a new pool; it names it.
+
+**Also swept, and clean:** `omissions`, `reachability`, `utilities` and `rules` 43 green; every
+`data/cityviewer.json` key has a reader; no data file has a duplicate key.
+
+Suite **1,489 green twice**.

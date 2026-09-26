@@ -811,3 +811,64 @@ test("the estimate prices the rail line and the train, not only the road", () =>
   const bare = countScene(blank(32));
   assert.ok(estimate(counts, plan) > estimate(bare, plan), "a railway is free to the estimate");
 });
+
+/**
+ * Pools the estimate does not price, each with the reason it need not.
+ *
+ * A term missing from the estimate is a term the budget cannot trade away
+ * (P35, and the note above `road: 0`). P81's round found three pools with no
+ * term at all and P89 a fourth, both by hand — this is the check that makes
+ * the fifth a red suite. An entry here is a claim that the pool's triangles
+ * reach the estimate some OTHER way, and it has to say which.
+ */
+const UNPRICED_POOLS = {
+  bed: "inside `extrasOf`, which charges a house's extras at the ground props' price",
+  bench: "inside `extrasOf` — a park's benches",
+  crane: "inside `extrasOf` — a building younger than half a year",
+  flag: "inside `extrasOf` — a civic building that flies one",
+  hedge: "counted as `props` by `streetProps`",
+  kerb: "its own term, `counts.kerbs` at `costs.kerb`",
+  lamp: "counted as `props` by `streetProps`",
+  lawn: "inside `extrasOf` — a park's lawn",
+  mark: "its own term, `counts.markArms` at `costs.marking`",
+  path: "inside `extrasOf` — a park's path",
+  pedCity: "its own term, `counts.pedsCity` at `costs.pedCity`",
+  pond: "inside `extrasOf` — `parkHasPond`",
+  rotor: "inside `extrasOf` — a turbine's blades",
+  rubble: "baked into the street chunk, which is priced at what it MEASURED (B1b)",
+  ruin: "baked into the street chunk, like the rubble",
+  ruinWall: "baked into the street chunk, like the rubble",
+  shed: "inside `extrasOf` — a house's shed",
+  sign: "baked into the street chunk with the facade it stands on",
+  smoke: "inside `extrasOf` — six a plume, for a stack or a fire",
+  train: "its own term, `counts.carriages` at `costs.carriage`",
+  boat: "its own term, `counts.hulls` at `costs.hull`",
+  ferry: "its own term, `counts.hulls` — a ferry is a hull",
+  wake: "its own term, `counts.wakes` at `costs.wake`",
+  wire: "the pole, its own term at `costs.pole`",
+  ovlGood: "its own term, `counts.overlayMarks` at `costs.overlayMark`",
+  ovlFair: "the same term",
+  ovlSevere: "the same term",
+};
+
+test("every instanced pool reaches the estimate somehow", () => {
+  const instances = readFileSync(join(repoRoot, "client", "render", "instances.js"), "utf8");
+  const lod = readFileSync(join(repoRoot, "client", "render", "lod.js"), "utf8");
+  const pools = [...instances.matchAll(/make\("([a-zA-Z0-9_]+)"/g)].map((m) => m[1]);
+  assert.ok(pools.length > 20, `only ${pools.length} pools found — the scan is broken`);
+
+  const missing = [];
+  for (const pool of new Set(pools)) {
+    if (lod.includes(`${pool}:`) || lod.includes(`costs.${pool}`)) continue;   // named in the table
+    if (Object.hasOwn(UNPRICED_POOLS, pool)) continue;                          // explained
+    missing.push(pool);
+  }
+  assert.deepEqual(missing.sort(), [],
+    `instanced pools with no term in the estimate and no entry in UNPRICED_POOLS: ${missing.join(", ")}. `
+    + "A term missing from the estimate is a term the budget cannot trade away.");
+
+  // And the other way: an entry for a pool that no longer exists is a note
+  // about nothing.
+  const gone = Object.keys(UNPRICED_POOLS).filter((p) => !pools.includes(p));
+  assert.deepEqual(gone, [], `UNPRICED_POOLS names pools that no longer exist: ${gone.join(", ")}`);
+});

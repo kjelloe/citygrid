@@ -809,6 +809,11 @@ export function createRenderer(canvas, state, options = {}) {
     counts.carriages = trains.count() * getConfig().rail.carriages;
     counts.hulls = boats.count();
     counts.wakes = boats.stats().plying * getConfig().boat.wake;
+    // What the overlay actually drew last frame (P89). The alternative is
+    // asking `bandAt` about every visible tile here, which is the overlay pass
+    // run twice a frame to save two triangles a tile.
+    counts.overlayMarks = (pools.ovlGood?.count ?? 0) + (pools.ovlFair?.count ?? 0)
+      + (pools.ovlSevere?.count ?? 0);
     counts.peds = pedestrians.count(bounds);
     const crowdSeen = crowd.countBy(bounds, figureAt);
     counts.pedsCity = crowdSeen.l2;

@@ -497,8 +497,21 @@ none of them was in a gate set: they were run by hand in the slice that wrote th
 budget — the next picture tool has to earn its place or the set needs splitting. When a slice
 writes a tool that can fail, ask what runs it next month.
 
+**Measure the baseline before judging a correction by the residual.** P89 added the overlay's
+missing term and the estimate went from 1,339 UNDER to 1,553 OVER, which reads as a correction
+that made things worse — until the arm with the overlay OFF showed the estimate was already 1,553
+over on that frame and the 1,339 under WAS the missing term. A residual is a difference of two
+numbers and says nothing about either.
+
+**And check the path your term actually travels.** `estimate` splits per chunk under perspective
+(V5), so a term added only to the top-level counts is priced in the orthographic path and nowhere
+a city camera looks. Terrain, street chunks and the overlay marks are whole-frame terms and go in
+once; everything else is per chunk.
+
 **Every instanced POOL the renderer makes needs a term in the estimate — check after any slice
-that adds one.** Four times now: P35's road that had become a box, V5's per-chunk plan, V5's
+that adds one.** `test/lod.test.js` does the scan now: every `make("…")` against the cost table,
+refusing one that is neither priced nor on `UNPRICED_POOLS` with a reason saying how its triangles
+reach the estimate another way. The check exists because this was found by hand twice. Four times now: P35's road that had become a box, V5's per-chunk plan, V5's
 frustum wedge, and T2/T3's three pools (the L2 rail line's hub and arm, and the train's carriages)
 with no term at all. The same sweep found that B3b's service vehicles have never been counted
 either — they are pushed into the CAR pools and `counts.cars` was `traffic.count(bounds)` alone.

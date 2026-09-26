@@ -68,6 +68,13 @@ const DEFAULT_COSTS = {
   // about exactly this.
   hull: 12,
   wake: 2,
+  // An overlay's mark, one flat quad a tile with something to say (V4). Fed
+  // from what the pools held LAST frame rather than counted here: `countScene`
+  // would have to call `bandAt` on every visible tile to know, which is the
+  // overlay pass done twice. Measured at P89: 1,446 marks with `pollution` on
+  // a played 64x64, and `budget_gate`'s overlay row was 1,884 triangles under
+  // — which is this, and only this.
+  overlayMark: 2,
 };
 
 /** One terrain chunk is 16x16 tiles at two triangles each. Terrain is not
@@ -236,9 +243,14 @@ export function planForChunk(plan, px) {
 export function estimate(counts, plan, planFor) {
   if (planFor && counts.chunks) {
     // The whole-frame terms go in once: terrain is counted against the frustum
-    // footprint, and the baked street chunks are a count around the camera, not
-    // a property of any one chunk being priced.
-    let total = counts.groundChunks * CHUNK_TRIANGLES + streetCost(counts, plan);
+    // footprint, the baked street chunks are a count around the camera rather
+    // than a property of any one chunk, and the overlay's marks are a count of
+    // what the last frame drew — none of the three is split per chunk, and a
+    // term that lives only on the top-level counts is a term this path drops
+    // silently (P89: the overlay's 2,892 triangles were priced in `estimate`
+    // and never reached a perspective frame).
+    let total = counts.groundChunks * CHUNK_TRIANGLES + streetCost(counts, plan)
+      + (counts.overlayMarks ?? 0) * costs.overlayMark;
     for (const [key, part] of counts.chunks) {
       const cz = Math.floor(key / 4096);
       const cx = key - cz * 4096;
@@ -326,6 +338,7 @@ function estimateOne(counts, plan) {
     // The boats ride the cars rung too: they are the same kind of thing the
     // ladder sacrifices first.
     + (plan.cars !== false ? (counts.hulls ?? 0) * costs.hull + (counts.wakes ?? 0) * costs.wake : 0)
+    + (counts.overlayMarks ?? 0) * costs.overlayMark
     + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole * loose : 0)
     // The baked street chunks, at what they MEASURED last frame (slice E3).
     //
@@ -892,6 +905,9 @@ export function countScene(state, bounds, country = undefined, forest = undefine
     carriages: 0,
     hulls: 0,
     wakes: 0,
+    // ...nor the overlay's marks, which are a function of the bands the tiles
+    // happen to be in and of whether an overlay is on at all.
+    overlayMarks: 0,
   };
 }
 
