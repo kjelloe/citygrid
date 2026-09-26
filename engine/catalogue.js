@@ -37,6 +37,16 @@ var CATALOGUE = {
   marina: { category: "amenity", w: 2, h: 2, cost: 900, upkeep: 40, power: -4, water: -2, pollution: 0, fireRisk: 4, needsBody: "marinaMinBody", landValueBonus: 30, radius: 7, unlock: 0 },
   ferryTerminal: { category: "transport", w: 2, h: 2, cost: 1300, upkeep: 80, power: -6, water: -4, pollution: 6, fireRisk: 6, gate: "sea", needsBody: "marinaMinBody", landValueBonus: 8, radius: 5, unlock: 0 },
   freightPort: { category: "transport", w: 3, h: 2, cost: 2200, upkeep: 130, power: -12, water: -6, pollution: 30, fireRisk: 12, gate: "sea", needsBody: "marinaMinBody", unlock: 0 },
+
+  // The top of the progression (T5, A69). `unlock` is read at last — by the
+  // reducer, the build menu and the deputy, through `engine/unlock.js`.
+  //
+  // The city hall is one per seat and marks the rank it grants; the airport is
+  // the first building with an AXIS (`orientable`, which swaps the footprint
+  // the reducer claims), a rule about the ground under it (`needsFlat`) and
+  // noise that carries past its fence (`noiseRadius`).
+  cityHall: { category: "civic", w: 3, h: 3, cost: 6000, upkeep: 200, power: -10, water: -8, pollution: 0, fireRisk: 6, onePerSeat: true, unlock: 2 },
+  airport: { category: "transport", w: 6, h: 4, cost: 14000, upkeep: 450, power: -30, water: -16, pollution: 40, fireRisk: 18, gate: "air", orientable: true, needsFlat: true, noiseRadius: 10, unlock: 3 },
 };
 
 export function setCatalogue(loaded) {

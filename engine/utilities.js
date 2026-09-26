@@ -19,6 +19,7 @@ import { touchesRail } from "./gates.js";
 import { waterBodies, bodyAt } from "./terrain.js";
 import { definition } from "./catalogue.js";
 import { canBuildOn } from "./permissions.js";
+import { isUnlocked } from "./unlock.js";
 import { begin, commit, stage, charge, failed } from "./transaction.js";
 import { isBuildable, isWater } from "./terrain.js";
 import { difficultyOf, rules } from "./rules.js";
@@ -219,20 +220,64 @@ export function buildingCost(state, id) {
   return idiv(def.cost * difficultyOf(state).buildCostPercent, 100);
 }
 
+/** Has this seat already got one? `onePerSeat` is the city hall's rule (T5):
+ * a second one is not "that cannot go there", it is "you have one". */
+function alreadyHas(state, seat, id) {
+  var i;
+  for (i = 0; i < state.buildings.length; i += 1) {
+    if (state.buildings[i].def === id && state.buildings[i].owner === seat) return true;
+  }
+  return false;
+}
+
+/** The largest difference in elevation across a footprint. A runway is flat,
+ * and the rule is sampled per TILE rather than at the corners — a hump in the
+ * middle of six tiles is exactly what four corners cannot see. */
+function dropAcross(state, x, y, w, h) {
+  var low = 255;
+  var high = 0;
+  var dx;
+  var dy;
+  for (dy = 0; dy < h; dy += 1) {
+    for (dx = 0; dx < w; dx += 1) {
+      var value = state.tiles.elevation[tileAt(state.width, x + dx, y + dy)];
+      if (value < low) low = value;
+      if (value > high) high = value;
+    }
+  }
+  return high - low;
+}
+
 register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
   var def = definition(command.def);
   if (!def) return fail(RESULT.INVALID);
+  // Rank first: a building that is not earned yet is refused wherever it is
+  // aimed, and the reason has to say so rather than "that cannot go there"
+  // (T5, A69). The build menu greys it, and this is what makes that a rule.
+  if (!isUnlocked(state, command.def)) return fail(RESULT.LOCKED);
+  if (def.onePerSeat === true && alreadyHas(state, command.actor, command.def)) {
+    return fail(RESULT.ALREADY_BUILT);
+  }
   if (!isInt(command.x) || !isInt(command.y)) return fail(RESULT.INVALID);
+  // The axis (T5). Only a definition that says it has one may be turned, and
+  // the orientation becomes the footprint the reducer CLAIMS — the building
+  // record carries the turned w and h, so nothing downstream has to remember
+  // that a 6x4 airport is sometimes 4x6.
+  var orientation = command.orientation === undefined ? 0 : command.orientation;
+  if (!isInt(orientation) || orientation < 0 || orientation > 1) return fail(RESULT.INVALID);
+  if (orientation === 1 && def.orientable !== true) return fail(RESULT.INVALID);
+  var w = orientation === 1 ? def.h : def.w;
+  var h = orientation === 1 ? def.w : def.h;
   var x = command.x;
   var y = command.y;
   if (!inBounds(state.width, state.height, x, y)) return fail(RESULT.INVALID);
-  if (!inBounds(state.width, state.height, x + def.w - 1, y + def.h - 1)) return fail(RESULT.INVALID);
+  if (!inBounds(state.width, state.height, x + w - 1, y + h - 1)) return fail(RESULT.INVALID);
 
   // Every tile of the footprint must be clear, buildable and permitted.
   var dx;
   var dy;
-  for (dy = 0; dy < def.h; dy += 1) {
-    for (dx = 0; dx < def.w; dx += 1) {
+  for (dy = 0; dy < h; dy += 1) {
+    for (dx = 0; dx < w; dx += 1) {
       var index = tileAt(state.width, x + dx, y + dy);
       if (!isBuildable(state.tiles.terrain[index])) return fail(RESULT.INVALID);
       if (state.tiles.buildingId[index] !== 0) return fail(RESULT.NEEDS_BULLDOZE);
@@ -241,26 +286,31 @@ register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
       if (permitted !== RESULT.OK) return fail(permitted);
     }
   }
-  if (def.needsSurfaceWater === true && !surfaceWaterNearby(state, x, y, def.w, def.h)) {
+  if (def.needsSurfaceWater === true && !surfaceWaterNearby(state, x, y, w, h)) {
+    return fail(RESULT.INVALID);
+  }
+  // Flat ground, for the one building that needs it (T5). Cut and fill is the
+  // renderer's business under a road; a runway is not graded, it is level.
+  if (def.needsFlat === true && dropAcross(state, x, y, w, h) > rules().airport.maxDrop) {
     return fail(RESULT.INVALID);
   }
   // A gate stands on its line (T2). Power and a road are reasons it is DEAD,
   // not reasons it cannot be built — `gates.js` says which.
-  if (def.needsRail === true && !touchesRail(state, x, y, def.w, def.h)) {
+  if (def.needsRail === true && !touchesRail(state, x, y, w, h)) {
     return fail(RESULT.INVALID);
   }
   // And a harbour stands on a shore, beside enough water to be one (T4). How
   // BIG is a placement rule; whether that water leads out of the region is
   // not — a terminal on a lake is dead, and the inspector says so.
   if (def.needsBody) {
-    var body = bodyAt(state, waterBodies(state), x, y, def.w, def.h);
+    var body = bodyAt(state, waterBodies(state), x, y, w, h);
     if (!body || body.size < rules().harbour[def.needsBody]) return fail(RESULT.INVALID);
   }
 
   var tx = begin(state, command.actor);
   charge(tx, buildingCost(state, command.def));
-  for (dy = 0; dy < def.h; dy += 1) {
-    for (dx = 0; dx < def.w; dx += 1) {
+  for (dy = 0; dy < h; dy += 1) {
+    for (dx = 0; dx < w; dx += 1) {
       var tile = tileAt(state.width, x + dx, y + dy);
       if (state.tiles.owner[tile] === OWNER_NATURE) stage(tx, tile, "owner", command.actor);
       if (state.tiles.zone[tile] !== ZONE_NONE) stage(tx, tile, "zone", ZONE_NONE);
@@ -278,8 +328,8 @@ register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
     zone: ZONE_NONE,
     x: x,
     y: y,
-    w: def.w,
-    h: def.h,
+    w: w,
+    h: h,
     owner: command.actor,
     level: 1,
     valueTier: 0,
@@ -288,8 +338,8 @@ register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
     builtTick: state.tick,
     flags: 0,
   });
-  for (dy = 0; dy < def.h; dy += 1) {
-    for (dx = 0; dx < def.w; dx += 1) {
+  for (dy = 0; dy < h; dy += 1) {
+    for (dx = 0; dx < w; dx += 1) {
       state.tiles.buildingId[tileAt(state.width, x + dx, y + dy)] = id;
     }
   }

@@ -48,6 +48,9 @@ export const ACTION_KEYS = [
   // whatever is already held — so it belongs here, beside Space, for the same
   // reason: a control with no button still needs a screen (ruling 027).
   { keys: ["Shift"], labelKey: "help.hurry" },
+  // T turns a building that has an axis before it is placed (T5). An action
+  // rather than a tool: it modifies the tool already held, like Shift.
+  { keys: ["T"], labelKey: "help.rotate" },
   { keys: ["Esc"], labelKey: "help.clearTool" },
   { keys: ["Ctrl", "Z"], labelKey: "help.undo" },
   { keys: ["?"], labelKey: "help.help" },

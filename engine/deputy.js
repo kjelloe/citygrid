@@ -12,6 +12,7 @@
 import { apply } from "./reducer.js";
 import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_PLACE_BUILDING, CMD_BULLDOZE } from "./commands.js";
 import { definition } from "./catalogue.js";
+import { isUnlocked } from "./unlock.js";
 import { rules } from "./rules.js";
 import { i32 } from "../shared/arrays.js";
 import { budgetFor } from "./economy.js";
@@ -632,6 +633,11 @@ function openTheHarbour(state, deputy) {
 function findSpotFor(state, deputy, defId) {
   var def = definition(defId);
   if (!def) return -1;
+  // A rank the seat has not reached is the same answer as nowhere to put it
+  // (T5, A69): the reducer would refuse the command, and a deputy that issues
+  // a command it knows will be refused inflates its own refusal count and
+  // spends a turn. Both of its building paths come through here.
+  if (!isUnlocked(state, defId)) return -1;
   var bestIndex = -1;
   var bestScore = -1;
   for (var i = 0; i < state.width * state.height; i += 1) {

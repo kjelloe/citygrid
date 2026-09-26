@@ -262,6 +262,70 @@ gate of its own and counts the hulls POSED, not the boats that exist. The `shots
 of a 360 s budget with it, so it SPLIT — `shots` is the world and behaviour lanes' pictures (211 s),
 `transport` is T1–T4's (187 s) — which is M2's rule firing for the third time.*
 
+## T5 — Ranks read, city hall, the airport — A69 — the ENGINE half **built 2026-09-26** as `slice-T5a`
+
+*As built. `engine/unlock.js` is the whole rule and it has three readers, which is why it is a
+module rather than a line in the reducer: `placeBuilding` refuses with a reason of its own
+(`RESULT.LOCKED`, new, beside `RESULT.ALREADY_BUILT` for the hall's one-per-seat), the build menu
+greys the entry with the rank where its price goes, and the deputy's `findSpotFor` answers "nowhere"
+for a definition its rank cannot have — so it never issues a command it knows will be refused.*
+
+*The rank is `state.quests.vars`, which is the REGION's and not the seat's. A69 says "the seat's
+rank" and gamedesign §27.2 says the opposite in as many words — "unlocks belong to the room, not the
+player… mayor rank never gates a building" — so the shared variable is the design's answer and a
+per-seat rank would be a state schema change to implement the wrong one (Q122).*
+
+*The airport is the first definition with an AXIS. `orientation` is validated in the reducer (0 or
+1, and only for a definition carrying `orientable`) and then spent: the building record stores the
+TURNED `w` and `h`, so nothing downstream has to remember that a 6×4 airport is sometimes 4×6, and
+no hashed field was added. `T` turns the ghost, and so does a button — a key alone is a control a
+phone does not have.*
+
+*`needsFlat` reads `tiles.elevation` across the whole footprint, not at its corners: a hump in the
+middle of six tiles is exactly what four corners cannot see. `airport.maxDrop` is 6 units — three
+metres at the renderer's relief step — which on a rolling 64×64 leaves about one 6×4 site in ten and
+on a hilly one almost none. Measured before it was chosen: p10 5–7 rolling, max 8 flat, min 4–6
+hilly.*
+
+*`gate: "air"` needs no way out — the sky reaches every edge — so an airport is dead only for the two
+reasons any building is, and the reasons list gained nothing. Its terms are the largest there are and
+it is the only gate with a `landingFee`: a flat monthly sum, so a live airport in an empty region
+still earns.*
+
+*Noise is the first pollution source with a RADIUS (`noiseRadius`, linear falloff from the centre,
+zero at the edge). Everything else is a footprint and a two-pass blur.*
+
+*Two civic shapes went in with it, because `test/civic-spec.test.js` pins the table against the
+catalogue: a hall with a portico and a clock cupola, and a terminal, a tower and a dark runway slab
+that reads from the air. `civicVariant` is an index into the SORTED list, so both are new pools and
+every other definition's index moved — derived per run, nothing persisted.*
+
+*Not in it: the runway and taxiway ribbons with their markings, the apron lights, the radar that
+turns, `client/life/plane.js` and `reports/smoke-T5-*`. That is T5b, which also needs a rank lever in
+`tools/shoot.html` — at rank 0 the harness cannot place the thing it has to photograph. Not
+`index.html`: the rank is HASHED state, and a URL that writes hashed state is a desync in a room,
+which `?life=0` and `?lock=0` are not.*
+
+*And T5b has a rotation to reconcile that T5a could leave alone. A civic shape is authored in unit
+space and `turnMass` rotates it by the lot's FRONTAGE — which street it faces — while the
+orientation rotates the footprint. For every other building those agree because the footprint is
+square or nearly so; for a 6×4 airport they are two different axes, so the runway ribbons have to
+follow `w > h` and not the frontage. The L2 slab in `civic-spec.js` stretches with the lot and reads
+either way, which is why the picture is not wrong today, only unspecific.*
+
+*The rank-3 milestone is a new quest (`the-city-hall`, objective `civic >= 1`, the measure added
+beside `amenities` so it reads the catalogue's category rather than a definition by name). The
+existing population route to rank 3 was LEFT IN: gating it behind a hall the deputy never builds
+would quietly take 4,000 from every deputy city that reaches 2,000 people, which is a balance change
+wearing a progression change's clothes (Q123).*
+
+*As gated (T5a): `test/unlock.test.js` 11 green and `test/airport.test.js` 15; `ui_smoke` gained four
+checks and is 176; `quick` 409 s of 480, `render` 57/120, `budget` 272/360, `sim` 593/900. The `sim`
+set is what found that **era 8's report had been void for two commits** — P87 re-mixed the deputy's
+own stream, so every deputy city moved. Three 60-game arms say it was not this slice: with and
+without T5a are byte-identical, and the tree that wrote era 8's report is not. Era **9**,
+`reports/balance-era9.md`, 200 games a configuration.*
+
 ## T5 — Ranks read, city hall, the airport (M engine, M renderer) — A69
 
 **Goal.** The unlock field means something, and the top of the progression is a building.

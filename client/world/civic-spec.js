@@ -253,6 +253,59 @@ export const CIVIC_SHAPES = Object.freeze({
       box(0.5, 1.28, 0.55, 0.62, 1.38, 0.98, "steel"),
     ],
   },
+  // The top of the progression (T5). Both are L2 silhouettes: the shapes that
+  // have to read from the air and from a distance. T5b bakes what only reads
+  // close up — the runway and taxiway ribbons with their markings, the apron
+  // lights, and the radar that turns on the tower.
+  cityHall: {
+    // The cupola is the recognising part, so it has to survive the silhouette
+    // pass that flattens everything else.
+    tall: true,
+    masses: [
+      box(-0.85, 0, -0.8, 0.85, 0.72, 0.72, "white"),
+      box(-0.9, 0.72, -0.85, 0.9, 0.8, 0.76, "dark"),
+      // The portico: four columns, a pediment over them and the steps up.
+      box(-0.62, 0, 0.72, -0.5, 0.68, 0.86, "white", true),
+      box(-0.3, 0, 0.72, -0.18, 0.68, 0.86, "white", true),
+      box(0.18, 0, 0.72, 0.3, 0.68, 0.86, "white", true),
+      box(0.5, 0, 0.72, 0.62, 0.68, 0.86, "white", true),
+      box(-0.7, 0.68, 0.68, 0.7, 0.84, 0.9, "white"),
+      box(-0.72, 0, 0.9, 0.72, 0.06, 1, "concrete"),
+      // The doors, and the clock cupola over the middle of the hall.
+      box(-0.2, 0.06, 0.66, 0.2, 0.5, 0.74, "glass"),
+      box(-0.17, 0.8, -0.1, 0.17, 1.28, 0.24, "white", true),
+      box(-0.11, 0.95, 0.2, 0.11, 1.17, 0.3, "glass"),
+      box(-0.18, 1.28, -0.11, 0.18, 1.4, 0.25, "dark", true),
+    ],
+  },
+  airport: {
+    // The tower is a mast: an airport whose tower is flattened to its terminal
+    // is a shopping centre with a car park.
+    tall: true,
+    masses: [
+      // The terminal, along the street half of the lot, glazed at the front.
+      //
+      // HALF the height a 3x3 definition would use for the same storeys: the
+      // kit's unit is the LOT, so a 6x4 lot makes every y twice the metres a
+      // hospital's does. The first cut was a warehouse with an eighty-metre
+      // tower over it, which is what the aerial shot showed and no test could.
+      box(-0.76, 0, 0.5, 0.76, 0.19, 0.9, "white"),
+      box(-0.8, 0.19, 0.46, 0.8, 0.23, 0.94, "dark"),
+      box(-0.7, 0.02, 0.9, 0.7, 0.17, 0.97, "glass"),
+      // The tower, at one end of it, with a glazed cab on top.
+      box(0.83, 0, 0.52, 0.96, 0.62, 0.66, "concrete", true),
+      box(0.77, 0.62, 0.45, 1, 0.73, 0.72, "glass"),
+      box(0.79, 0.73, 0.47, 0.99, 0.77, 0.7, "dark"),
+      // The apron, and the runway across the far half of the lot. Flat, wide
+      // and dark: at city zoom this is what says airport, and T5b lays the
+      // markings and the lights on top of it.
+      // The slabs keep their old thickness while everything above them halved:
+      // at 0.02 they sank under the lot's LAWN QUAD and the aerial shot showed
+      // a terminal standing in a field. A flat thing on a lot has a floor.
+      box(-0.98, 0, -0.18, 0.98, 0.05, 0.42, "concrete"),
+      box(-0.98, 0, -0.92, 0.98, 0.04, -0.34, "dark"),
+    ],
+  },
   park: {
     // No building (S1's own words). The lawn and its path; S5 puts the benches
     // and the trees on it.

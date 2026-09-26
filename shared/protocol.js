@@ -53,6 +53,12 @@ export const RESULT = Object.freeze({
   OUT_OF_SECTOR: "outOfSector",
   MODE_FORBIDDEN: "modeForbidden",
   RATE_LIMITED: "rateLimited",
+  // T5: the two refusals the catalogue can give. Both were `INVALID` in the
+  // first cut, which is the "0 tiles" problem again — a player told "that
+  // cannot go there" about a building that is merely not earned yet learns
+  // nothing, and tries the same tile again.
+  LOCKED: "locked",
+  ALREADY_BUILT: "alreadyBuilt",
 });
 
 /** Server-side caps. Deliberately here rather than in the server, so the

@@ -132,6 +132,27 @@
   }
  },
  {
+  "id": "the-city-hall",
+  "category": "growth",
+  "speaker": "sunny",
+  "titleKey": "quest.the-city-hall.title",
+  "textKey": "quest.the-city-hall.text",
+  "available": {
+   "type": "variable",
+   "name": "rank",
+   "atLeast": 2
+  },
+  "objective": {
+   "type": "measure",
+   "name": "civic",
+   "atLeast": 1
+  },
+  "reward": {
+   "money": 2500,
+   "rank": 3
+  }
+ },
+ {
   "id": "keep-the-lights-on",
   "category": "service",
   "speaker": "sunny",

@@ -293,8 +293,17 @@ try {
   });
   // Both rows: the tool row and the building popover, which is open by now.
   const tools = await page.$$eval("#tools button[data-tool], #build-menu button[data-tool]", (nodes) =>
-    nodes.filter((n) => n.dataset.tool).map((n) => ({ id: n.dataset.id, tool: n.dataset.tool, def: n.dataset.def })));
-  for (const { id, tool, def } of tools) {
+    nodes.filter((n) => n.dataset.tool).map((n) => ({
+      id: n.dataset.id, tool: n.dataset.tool, def: n.dataset.def,
+      // A building the seat has not earned yet is in the menu, greyed, with the
+      // rank it wants where its price goes (T5, A69). It is a button that must
+      // NOT arm a tool, which is the opposite of every other row here.
+      locked: n.dataset.locked === "true",
+      price: n.querySelector("small")?.textContent ?? "",
+    })));
+  check("the build menu greys what the seat has not earned",
+    tools.some((t) => t.locked), "every building is unlocked at rank 0, so the check proves nothing");
+  for (const { id, tool, def, locked, price } of tools) {
     // Buildings are behind the Build button now (P29): open the popover before
     // reaching for one, exactly as a player does.
     if (def) {
@@ -309,6 +318,26 @@ try {
       box && box.height >= 44, box ? `${Math.round(box.width)}×${Math.round(box.height)}` : "no box");
     // Clicked by coordinate: this is a hit test, not a handler call.
     await button.click();
+    if (locked) {
+      const after = await page.evaluate(() => ({
+        tool: globalThis.CITY.controller.tool,
+        result: document.querySelector(".hud-readout")?.dataset.result ?? "",
+        said: document.querySelector(".hud-readout")?.textContent ?? "",
+      }));
+      check(`the locked ${id} button arms nothing`, after.tool === undefined, `armed ${after.tool}`);
+      check(`the locked ${id} button says why`, after.result === "locked" && after.said.length > 4,
+        `${after.result}: ${after.said}`);
+      check(`the locked ${id} button names the rank instead of a price`, /\d/.test(price),
+        `its price line says "${price}"`);
+      // And close the popover, which picking a building does on its way out.
+      // Left open it covers the side rail, and the next block's click times out
+      // half a screen away from anything this one touched.
+      await page.evaluate(() => {
+        const b = document.getElementById("build");
+        if (b.getAttribute("aria-expanded") === "true") b.click();
+      });
+      continue;
+    }
     const held = await page.evaluate(() => [globalThis.CITY.controller.tool, globalThis.CITY.controller.def]);
     check(`the ${id} button selects the ${id} tool`,
       held[0] === tool && (def === undefined || held[1] === def), `selected ${held.join("/")}`);
@@ -320,6 +349,58 @@ try {
     if (def) await page.keyboard.press("Escape");
     else await button.click();
   }
+
+  // --- the turn button, which is only there while a building has an axis ----
+  //
+  // The airport is rank-locked, so its BUTTON cannot arm the tool at rank 0 —
+  // which is the check above. The control is armed through the controller here,
+  // the way the keyboard does, because what is under test is the button: it has
+  // to appear, it has to turn the footprint, and it has to go away again.
+  const turned = await page.evaluate(() => {
+    const { controller } = globalThis.CITY;
+    const out = { idle: document.getElementById("turn") !== null };
+    controller.setTool("building", "coalPlant");
+    out.square = document.getElementById("turn") !== null;
+    controller.setTool("building", "airport");
+    out.shown = document.getElementById("turn") !== null;
+    out.before = controller.orientation;
+    return out;
+  });
+  check("no turn button until something can be turned",
+    turned.idle === false && turned.square === false && turned.shown === true, JSON.stringify(turned));
+  // Hovering over the map first, because the thing that has to survive a turn is
+  // the GHOST: the footprint under the pointer, still there after it changes
+  // shape. The first cut called `preview()`, which hides the ghost when no drag
+  // is open, so a turn left the player with nothing under the pointer.
+  await page.mouse.move(400, 300);
+  const hovering = await page.evaluate(() =>
+    globalThis.CITY.renderer.scene.getObjectByName("ghostArea")?.count ?? -1);
+  check("a held building shows its footprint under the pointer", hovering === 24, `${hovering} tiles`);
+  await page.click("#turn");
+  const stillThere = await page.evaluate(() => {
+    const area = globalThis.CITY.renderer.scene.getObjectByName("ghostArea");
+    return { count: area?.count ?? -1, visible: area?.visible === true };
+  });
+  check("and the ghost survives the turn", stillThere.count === 24 && stillThere.visible,
+    JSON.stringify(stillThere));
+  const turnedTo = await page.evaluate(async () => {
+    const { controller } = globalThis.CITY;
+    const { footprintAt } = await import("/client/ui/build-model.js");
+    const tiles = footprintAt(10, 10, "airport", undefined, controller.orientation);
+    const w = Math.max(...tiles.map((t) => t.x)) - Math.min(...tiles.map((t) => t.x)) + 1;
+    const h = Math.max(...tiles.map((t) => t.y)) - Math.min(...tiles.map((t) => t.y)) + 1;
+    return { orientation: controller.orientation, w, h };
+  });
+  check("the turn button turns the footprint the reducer will claim",
+    turnedTo.orientation !== turned.before && turnedTo.w === 4 && turnedTo.h === 6,
+    `orientation ${turned.before} → ${turnedTo.orientation}, footprint ${turnedTo.w}×${turnedTo.h}`);
+  await page.keyboard.press("Escape");
+  const goneAfter = await page.evaluate(() => ({
+    turn: document.getElementById("turn") !== null,
+    tool: globalThis.CITY.controller.tool,
+  }));
+  check("and it leaves with the tool", goneAfter.turn === false && goneAfter.tool === undefined,
+    JSON.stringify(goneAfter));
 
   // Undo and speed are buttons that do something other than pick a tool.
   await page.click('#tools button[data-tool="road"]');

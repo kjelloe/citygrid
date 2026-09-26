@@ -73,7 +73,7 @@ export function toolCommand(name) {
  * `runs` for area tools, `x`/`y` for point tools. The actor is the local seat;
  * in multiplayer this same object is what crosses the wire, which is why it
  * carries no screen coordinates and no colours. */
-export function buildCommand(name, actor, { runs, x, y, def } = {}) {
+export function buildCommand(name, actor, { runs, x, y, def, orientation } = {}) {
   const tool = TOOLS[name];
   if (!tool) return undefined;
   const command = { type: tool.command, actor };
@@ -85,6 +85,10 @@ export function buildCommand(name, actor, { runs, x, y, def } = {}) {
     command.x = x;
     command.y = y;
     command.def = def;
+    // The axis, for the one definition that has one (T5). Always sent, so the
+    // wire carries the same field whoever built the command, and the reducer
+    // validates it rather than trusting the client's default.
+    if (orientation !== undefined) command.orientation = orientation;
   }
   if (tool.zone !== undefined) command.zone = tool.zone;
   if (tool.kind !== undefined) command.kind = tool.kind;

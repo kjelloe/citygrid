@@ -1,5 +1,5 @@
 {
- "version": "52d29ec03f0a",
+ "version": "205dbd32563d",
  "generated": "2026-09-26",
  "files": [
   "./client/audio/audio-model.js",
@@ -167,6 +167,7 @@
   "./engine/terrain.js",
   "./engine/traffic.js",
   "./engine/transaction.js",
+  "./engine/unlock.js",
   "./engine/utilities.js",
   "./engine/validate.js",
   "./engine/worldgen.js",

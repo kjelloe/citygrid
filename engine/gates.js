@@ -140,9 +140,12 @@ export function gateStatus(state, building, reach) {
   if (def.gate === "sea") {
     var body = bodyAt(state, waterBodies(state), building.x, building.y, building.w, building.h);
     if (!body || !body.edge) return { gate: def.gate, live: false, reason: "noSea" };
-  } else if (!lineFrom(state, building, reach)) {
+  } else if (def.gate === "rail" && !lineFrom(state, building, reach)) {
     return { gate: def.gate, live: false, reason: "noLine" };
   }
+  // An `air` gate has no way-out test at all: the sky reaches the edge of every
+  // region (T5). So an airport is dead only for the two reasons any building
+  // can be dead, and the reasons list gains nothing.
   if (!powered(state, building)) return { gate: def.gate, live: false, reason: "unpowered" };
   if (!hasRoadAccess(state, building.x, building.y, building.w, building.h)) {
     return { gate: def.gate, live: false, reason: "noRoad" };
@@ -184,6 +187,10 @@ export function gateFare(state, seat) {
     if (!status || !status.live) continue;
     var terms = config[status.gate];
     if (!terms) continue;
+    // The landing fee: a flat monthly term, from the aircraft rather than from
+    // the residents in range, so a live airport in an empty region still earns
+    // (T5). Only the air gate has one.
+    if (terms.landingFee) total += terms.landingFee;
     var cx = gate.x + (gate.w >> 1);
     var cy = gate.y + (gate.h >> 1);
     for (k = 0; k < state.buildings.length; k += 1) {

@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 8,
+  era: 9,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -38,6 +38,14 @@ var RULES = {
     // the two buildings differ in what they cost and where they may stand,
     // not in which door out of the region they are.
     sea: { residential: 90, commercial: 80, industrial: 260, farePerResident: 1, range: 14 },
+    // The sky (T5, A69). The largest terms there are, and the only gate with a
+    // LANDING FEE: a flat monthly sum from the aircraft rather than from the
+    // residents in range, so a live airport in an empty region still earns.
+    air: { _comment: "T5 (A69): the largest terms there are, plus a LANDING FEE - a flat monthly sum a live airport earns from the aircraft rather than from the residents near it, which is why an airport in an empty region is still worth something. ERA 0, UNTUNED.", residential: 260, commercial: 240, industrial: 300, farePerResident: 2, landingFee: 500, range: 20 },
+  },
+  airport: {
+    _comment: "T5 (A69). maxDrop is the largest difference in `tiles.elevation` the airport's footprint may contain - a runway is flat, and the engine has no metres. Six units is three metres at the renderer's half-metre relief step, a tenth of the grade a road is allowed over the same 120 m, because a road climbs and a runway does not. On a rolling map about one 6x4 site in ten qualifies; on a hilly one almost none, which is the intent.",
+    maxDrop: 6,
   },
   // NOT `water`: that is the utilities' block, twenty lines down, and a second
   // one of the same name replaced it outright — in the JSON too, where a

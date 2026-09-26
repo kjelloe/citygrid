@@ -430,6 +430,12 @@ button, [role="button"] {
   box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 .tool-build[aria-expanded="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+/* A building the seat has not earned yet (T5). MARKED rather than `disabled`,
+   the same choice the lobby's sizes make: a control removed from the keyboard's
+   reach is a control `reach_smoke` reports, and a player who cannot see the
+   airport never learns there is one. Its price line says the rank instead. */
+.hud-build .tool[data-locked="true"] { opacity: 0.45; }
+.hud-build .tool[data-locked="true"] small { font-variant: small-caps; letter-spacing: 0.02em; }
 
 /* --- demand ---------------------------------------------------------------- */
 

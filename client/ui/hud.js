@@ -20,10 +20,11 @@ import { rciBars } from "./rci-model.js";
 import { createAlerts, pushAlerts, expireAlerts, visibleAlerts, SEVERITY } from "./alerts-model.js";
 import { inspect } from "./inspector-model.js";
 import { OVERLAY_NAMES, OVERLAYS, legendFor, BAND } from "./overlays.js";
-import { buildMenu } from "./build-model.js";
+import { buildMenu, isOrientable } from "./build-model.js";
 import { budgetPanel, fundingRows, fundingSteps } from "./budget-model.js";
 import { TOOLS } from "../input/tools.js";
 import { buildingCost } from "../../engine/utilities.js";
+import { rankOf } from "../../engine/unlock.js";
 import { t } from "../i18n.js";
 import { makeRoving } from "./roving.js";
 import { createCameraCluster } from "./camera-cluster.js";
@@ -219,6 +220,10 @@ export function createHud(root, {
       button.title = `${t(labelKey)} · ${formatMoney(cost)} · ${size}`;
     }
     button.addEventListener("click", () => {
+      // A locked building names the reason rather than arming a tool that the
+      // reducer will refuse on the first tile. Not a rule of its own: the same
+      // refusal, said before the click on the map instead of after it.
+      if (button.dataset.locked === "true") { setResult(RESULT.LOCKED); return; }
       // Clicking the tool that is already held puts it down. With a building
       // tool the DEF has to match too, or picking a second plant would look
       // like a toggle and clear the toolbar instead.
@@ -231,6 +236,7 @@ export function createHud(root, {
     });
     buttons.push(button);
     wrap.append(button);
+    return button;
   }
 
   for (const group of GROUPS) {
@@ -257,6 +263,20 @@ export function createHud(root, {
   undoButton.addEventListener("click", () => { onUndo?.(); refresh(); });
   toolbar.append(undoButton);
 
+  // Turning a building has a key (T), and a key is nothing on a phone — §13.2's
+  // layout is this DOM with a different stylesheet, so a control that exists
+  // only on the keyboard is a control half the players do not have.
+  //
+  // It is ADDED AND REMOVED rather than hidden. A `hidden` control has to live
+  // in a container with an opener a player can click, which `reach_smoke`
+  // checks and this one cannot satisfy: what brings it on screen is holding a
+  // building that has an axis, not a panel. Hidden in place it was also a dead
+  // stop in the roving toolbar's arrow order (`a11y_smoke`).
+  const turnButton = el("button", "tool", t("hud.turn"));
+  turnButton.type = "button";
+  turnButton.id = "turn";
+  turnButton.addEventListener("click", () => { controller.turnBuilding(); refresh(); });
+
   // The buildings live in a popover above the bar, opened by one button (P29).
   // They were a permanent second row of twelve, which is most of why the panel
   // had grown to half the screen.
@@ -268,12 +288,16 @@ export function createHud(root, {
   buildBar.setAttribute("aria-label", t("group.build"));
   buildBar.id = "build-menu";
   buildBar.hidden = true;
+  // Every building, at every rank: a locked one is greyed with the rank it
+  // wants rather than left out (T5, A69). `refresh` is what keeps that current,
+  // because the rank arrives mid-game as a quest reward.
+  const lockables = [];
   for (const group of buildMenu()) {
     const wrap = el("div", "tool-group build-group");
     wrap.setAttribute("aria-label", t(group.labelKey));
     wrap.dataset.category = group.category;
     for (const item of group.items) {
-      addToolButton(wrap, {
+      const button = addToolButton(wrap, {
         tool: "building",
         def: item.def,
         labelKey: item.labelKey,
@@ -282,6 +306,7 @@ export function createHud(root, {
         cost: buildingCost(state, item.def),
         size: `${item.w}×${item.h}`,
       });
+      if (item.unlock > 0) lockables.push({ button, item });
     }
     buildBar.append(wrap);
   }
@@ -684,6 +709,23 @@ export function createHud(root, {
     }
     for (const button of overlayButtons) {
       button.setAttribute("aria-pressed", String(button.dataset.overlay === chosen));
+    }
+    const turnable = controller.def !== undefined && isOrientable(controller.def);
+    if (turnable && !turnButton.isConnected) undoButton.after(turnButton);
+    else if (!turnable && turnButton.isConnected) turnButton.remove();
+    const rank = rankOf(state);
+    for (const { button, item } of lockables) {
+      const locked = item.unlock > rank;
+      button.dataset.locked = String(locked);
+      // NOT `aria-disabled`: the button still answers, with the reason. A
+      // control that responds and claims to be disabled lies to everything that
+      // reads the tree — including Playwright, which refuses to click it, so the
+      // gate could not press the one button whose behaviour is new.
+      const price = button.querySelector("small");
+      price.textContent = locked
+        ? t("build.locked", { rank: item.unlock })
+        : formatMoney(buildingCost(state, item.def));
+      button.title = `${t(item.labelKey)} · ${price.textContent} · ${item.w}×${item.h}`;
     }
     renderAlerts();
     renderLegend();

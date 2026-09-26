@@ -345,6 +345,13 @@ test("permission matrix: every registered command is covered by a row", () => {
     // `setFunding` and `setTax` are city-wide policy: see the funding tests in
     // test/civic.test.js, which assert the range and the refusal.
     "tick", "join", "leave", "setStatus", "setFunding",
+    // `questChoice` is a card the advisor is holding, not a tile: it names a
+    // quest and an option and touches no ground. Covered by test/quests.test.js.
+    // It appears here at all because T5's `engine/unlock.js` reads the rank out
+    // of `engine/quests.js`, which put the quest pass in this file's module
+    // graph for the first time — a no-op, since the quest catalogue is empty
+    // until an adapter loads one.
+    "questChoice",
   ]);
   const uncovered = knownCommands().filter((name) => !asserted.has(name));
   assert.deepEqual(uncovered, [], `commands with no permission assertion: ${uncovered}`);

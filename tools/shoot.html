@@ -98,6 +98,21 @@ if (dense) {
 // `age=<ticks>` then backdates every building's `builtTick` by that many ticks,
 // which is how B2's three ages are photographed: a site, a finished building
 // and a derelict one are the same record at three numbers.
+// `rank=<n>` grants the region's mayoral rank before anything is placed (T5a).
+// `unlock` is a rule in the reducer now, so the harness cannot photograph a city
+// hall or an airport at rank 0 — it gets `result: "locked"` and a picture of an
+// empty road. Written the way a quest reward writes it, because that is the only
+// thing that writes it in the game. NOT a switch `index.html` has: the rank is
+// hashed state, and a URL that writes hashed state is a desync in a room.
+const wantRank = Number(params.get("rank") ?? 0);
+if (wantRank > 0) {
+  const vars = state.quests.vars;
+  const found = vars.find((v) => v.name === "rank");
+  if (found) found.value = wantRank;
+  else vars.push({ name: "rank", value: wantRank });
+  vars.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
 const placeList = (params.get("place") ?? "").split(",").filter(Boolean);
 const placed = [];
 if (placeList.length > 0) {

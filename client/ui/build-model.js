@@ -17,7 +17,7 @@
 
 import { catalogue } from "../../engine/catalogue.js";
 
-export const CATEGORY_ORDER = ["power", "water", "service", "amenity", "transport"];
+export const CATEGORY_ORDER = ["power", "water", "service", "amenity", "transport", "civic"];
 
 export function categoryLabelKey(category) {
   return `category.${category}`;
@@ -27,7 +27,10 @@ export function buildingLabelKey(def) {
   return `building.${def}`;
 }
 
-export function buildMenu(source = catalogue()) {
+/** The menu, at a RANK. A locked entry stays in it — greyed, with the rank it
+ * wants named (T5, A69). Hiding it would mean a player never learns the airport
+ * exists, and the build menu is the only place the catalogue is visible. */
+export function buildMenu(source = catalogue(), rank = 0) {
   const groups = [];
   for (const category of CATEGORY_ORDER) {
     const items = Object.keys(source)
@@ -39,6 +42,9 @@ export function buildMenu(source = catalogue()) {
         w: source[def].w,
         h: source[def].h,
         needsSurfaceWater: source[def].needsSurfaceWater === true,
+        orientable: source[def].orientable === true,
+        unlock: source[def].unlock | 0,
+        locked: (source[def].unlock | 0) > rank,
       }))
       // Ties broken by name so the menu is the same on every machine — a
       // toolbar that reorders itself between builds makes every UI gate flaky.
@@ -50,8 +56,14 @@ export function buildMenu(source = catalogue()) {
 
 /** Every building the menu offers, flat. The acceptance gate uses it to check
  * that nothing in the catalogue is unreachable from the interface. */
-export function menuDefs(source = catalogue()) {
-  return buildMenu(source).flatMap((group) => group.items.map((item) => item.def));
+export function menuDefs(source = catalogue(), rank = 0) {
+  return buildMenu(source, rank).flatMap((group) => group.items.map((item) => item.def));
+}
+
+/** Has this definition an axis the player may turn? The one building that has
+ * (T5) is the reason the ghost and the command carry an orientation at all. */
+export function isOrientable(def, source = catalogue()) {
+  return source[def]?.orientable === true;
 }
 
 /** The footprint a building would occupy if placed with its corner here.
@@ -60,12 +72,19 @@ export function menuDefs(source = catalogue()) {
  * right and down from the tile under the pointer. The ghost has to show the
  * same nine tiles the reducer will test, or the player learns the footprint by
  * being refused. */
-export function footprintAt(x, y, def, source = catalogue()) {
+export function footprintAt(x, y, def, source = catalogue(), orientation = 0) {
   const spec = source[def];
   if (!spec) return [{ x, y }];
+  // Turned, for the one definition with an axis (T5). The ghost has to show the
+  // tiles the reducer will claim, and the reducer swaps w and h for
+  // `orientation: 1` — a ghost that did not would teach the player the footprint
+  // by refusing them.
+  const turned = orientation === 1 && spec.orientable === true;
+  const w = turned ? spec.h : spec.w;
+  const h = turned ? spec.w : spec.h;
   const tiles = [];
-  for (let dy = 0; dy < spec.h; dy += 1) {
-    for (let dx = 0; dx < spec.w; dx += 1) tiles.push({ x: x + dx, y: y + dy });
+  for (let dy = 0; dy < h; dy += 1) {
+    for (let dx = 0; dx < w; dx += 1) tiles.push({ x: x + dx, y: y + dy });
   }
   return tiles;
 }

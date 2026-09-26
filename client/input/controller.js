@@ -14,7 +14,7 @@
 import { apply } from "../../engine/reducer.js";
 import { price, undoLast, lastUndoFor } from "../../engine/build-commands.js";
 import { buildingCost } from "../../engine/utilities.js";
-import { footprintAt } from "../ui/build-model.js";
+import { footprintAt, isOrientable } from "../ui/build-model.js";
 import { RESULT } from "../../shared/protocol.js";
 import { pickTile, groundPoint } from "../render/picking.js";
 import { panBy, zoomBy, rotate, setYawStep, yawBy, pitchBy, clampToMap, applyPose, focusOn } from "../render/camera.js";
@@ -47,6 +47,9 @@ export function createController(canvas, state, renderer, options = {}) {
   const ui = {
     tool: undefined,
     def: undefined,
+    /** Which way the pending building faces, for the one definition with an
+     * axis (T5). 0 or 1; the reducer validates it and swaps the footprint. */
+    orientation: 0,
     /** Tiles the current stroke has touched, in order. */
     trail: [],
     start: undefined,
@@ -73,7 +76,7 @@ export function createController(canvas, state, renderer, options = {}) {
     // the ghost has to show the whole footprint the reducer will test. Showing
     // one tile for a 3x3 plant teaches the footprint by refusal.
     if (tool.drag === DRAG.POINT) {
-      return ui.def ? footprintAt(last.x, last.y, ui.def) : [last];
+      return ui.def ? footprintAt(last.x, last.y, ui.def, undefined, ui.orientation) : [last];
     }
     if (tool.drag === DRAG.RECT) return rectTiles(ui.start.x, ui.start.y, last.x, last.y);
     return ui.trail;
@@ -132,7 +135,7 @@ export function createController(canvas, state, renderer, options = {}) {
 
     const tool = TOOLS[ui.tool];
     const command = tool.drag === DRAG.POINT
-      ? buildCommand(ui.tool, actor, { x: tiles[0].x, y: tiles[0].y, def: ui.def })
+      ? buildCommand(ui.tool, actor, { x: tiles[0].x, y: tiles[0].y, def: ui.def, orientation: ui.orientation })
       : buildCommand(ui.tool, actor, { runs: toRuns(tiles.map((t) => tileIndex(t.x, t.y, state.width))) });
     if (!command) return;
 
@@ -345,7 +348,7 @@ export function createController(canvas, state, renderer, options = {}) {
           if (tile && ui.tool && ui.def) {
             // Red before the press, not after. Same hint as the stroke preview.
             const affordable = buildingCost(state, ui.def) <= treasury();
-            renderer.showGhostTiles(footprintAt(tile.x, tile.y, ui.def), affordable);
+            renderer.showGhostTiles(footprintAt(tile.x, tile.y, ui.def, undefined, ui.orientation), affordable);
           } else if (tile && ui.tool) renderer.showGhost(tile.x, tile.y, true);
           else renderer.hideGhost();
           break;
@@ -971,6 +974,15 @@ export function createController(canvas, state, renderer, options = {}) {
 
     // Q, E, the arrows, the tilt and the zoom keys are all HELD now, and were
     // taken by `startHeldCamera` above (K2).
+    // T turns the pending building. Only a building with an axis has one, so
+    // the key is inert the rest of the time rather than bound to nothing — and
+    // it is on the controls card, because a control the player is not told
+    // about is a control they do not have (ruling 027).
+    if (!modified && (event.key === "t" || event.key === "T")) {
+      event.preventDefault();
+      turnBuilding();
+      return;
+    }
     if (event.key === "Escape") { setTool(undefined); handle(cancel(gestures)); }
     else if (!modified && event.key === " ") {
       event.preventDefault();
@@ -1031,7 +1043,29 @@ export function createController(canvas, state, renderer, options = {}) {
     handle(cancel(gestures));
     ui.tool = TOOLS[name] ? name : undefined;
     ui.def = def;
+    // A new tool faces the way the catalogue drew it. Carrying the last
+    // orientation over would make the ghost depend on what the player built
+    // before, which is the sort of state nobody can see and everybody blames.
+    ui.orientation = 0;
     renderer.hideGhost();
+    onChange();
+  }
+
+  /** Turns the pending building through its two orientations. Nothing else in
+   * the catalogue has an axis, so this is a no-op for every other tool — and it
+   * redraws the ghost, because the footprint has changed under the pointer. */
+  function turnBuilding() {
+    if (!ui.def || !isOrientable(ui.def)) return;
+    ui.orientation = ui.orientation === 1 ? 0 : 1;
+    // A stroke in progress re-prices itself through `preview()`. A pointer that
+    // is only HOVERING must not: `preview()` HIDES the ghost when no stroke is
+    // open, so the first cut turned the footprint and then left the player with
+    // no ghost at all until they moved the mouse.
+    if (ui.start) preview();
+    else if (ui.hover) {
+      const affordable = buildingCost(state, ui.def) <= treasury();
+      renderer.showGhostTiles(footprintAt(ui.hover.x, ui.hover.y, ui.def, undefined, ui.orientation), affordable);
+    }
     onChange();
   }
 
@@ -1047,6 +1081,7 @@ export function createController(canvas, state, renderer, options = {}) {
 
   return {
     setTool,
+    turnBuilding,
     undo,
     enterStreet,
     leaveStreet,
@@ -1096,6 +1131,7 @@ export function createController(canvas, state, renderer, options = {}) {
     /** Which building the building tool is holding. The toolbar needs it to
      * tell two pressed buttons apart. */
     get def() { return ui.def; },
+    get orientation() { return ui.orientation; },
     dispose() {
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);

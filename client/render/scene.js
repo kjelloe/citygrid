@@ -420,6 +420,9 @@ export function createRenderer(canvas, state, options = {}) {
     new THREE.MeshBasicMaterial({ color: UI.ghostValid, transparent: true, opacity: 0.42, depthWrite: false }),
     4096,
   );
+  // Named, so a gate can ask how many tiles the preview is showing without
+  // guessing which InstancedMesh in the scene it is (T5a).
+  ghostArea.name = "ghostArea";
   ghostArea.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   ghostArea.count = 0;
   ghostArea.visible = false;

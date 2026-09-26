@@ -49,6 +49,9 @@ test("every fixed binding the card claims is in the controller", () => {
     ["Space", /event\.key === " "/],
     ["?", /event\.key === "\?"/],
     ["H", /event\.key === "h"/],
+    // T turns a building that has an axis (T5). It is an ACTION rather than a
+    // tool key, so `toolForKey` cannot answer for it.
+    ["T", /event\.key === "t"/],
   ];
   for (const [name, pattern] of claims) {
     assert.match(controller, pattern, `the card claims ${name} and the controller does not bind it`);
@@ -79,6 +82,16 @@ test("every string on the card is in both locales", () => {
     const missing = keys.filter((k) => !Object.hasOwn(catalogue, k));
     assert.deepEqual(missing, [], `${name} is missing: ${missing.join(", ")}`);
   }
+});
+
+test("the turn key and the turn button do the same thing", () => {
+  // Ruling 042 §1, generalised: a key that does something no button does is a
+  // control a phone does not have, and §13.2's mobile layout is this DOM with a
+  // different stylesheet. Both go through `turnBuilding`.
+  const hud = readFileSync(join(repoRoot, "client", "ui", "hud.js"), "utf8");
+  assert.match(controller, /function turnBuilding\(\)/);
+  assert.match(hud, /controller\.turnBuilding\(\)/,
+    "nothing in the HUD turns a building, so the key is the only way");
 });
 
 test("double-click focuses, as §13.4 says", () => {

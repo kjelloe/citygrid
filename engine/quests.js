@@ -108,6 +108,10 @@ var MEASURES = {
   tax: function (state) { return state.tax; },
   serviceBuildings: function (state) { return countBy(state, "service"); },
   amenities: function (state) { return countBy(state, "amenity"); },
+  // The civic category is the city hall and nothing else yet, which is how the
+  // rank-3 milestone asks "is there a city hall" without naming a definition —
+  // the same reason `amenities` counts a category rather than parks (T5, A69).
+  civic: function (state) { return countBy(state, "civic"); },
   // What a disaster left behind. This is what makes a recoverable disaster
   // scenario expressible: available while there is wreckage, complete when it
   // is cleared.

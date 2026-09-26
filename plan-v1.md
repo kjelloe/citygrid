@@ -407,7 +407,7 @@ land first. Nothing here is scheduled.*
 | navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
 | world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row; S11 steep ground you can play on (Q80/A57); S12 a bank, not a quay (found in S4) |
 | behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather; B7 cars and people from the city camera; B8 cars stop at a junction; B9 the deputy lays roads near the town (engine, era 3) |
-| transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); ~~T2 rail and the station in the engine~~ **built 2026-09-25** (era 6, the shared re-pin); ~~T3 rail drawn~~ **built 2026-09-26**; ~~T4 water bodies, marina, ferry, port~~ **built 2026-09-26** (T4a engine era 7, T4b the water); T3 rail drawn; T4 water bodies, marina, ferry, port; T5 unlock ranks, city hall, airport; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
+| transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); ~~T2 rail and the station in the engine~~ **built 2026-09-25** (era 6, the shared re-pin); ~~T3 rail drawn~~ **built 2026-09-26**; ~~T4 water bodies, marina, ferry, port~~ **built 2026-09-26** (T4a engine era 7, T4b the water); T3 rail drawn; T4 water bodies, marina, ferry, port; ~~T5 unlock ranks, city hall, airport~~ **the engine half built 2026-09-27** (T5a, era 9 — the sweep found P87 had voided era 8); T5b the runway, the lights and the plane; T6 leisure and education coverage; T7 cheap catalogue rows and kits |
 
 ## Open questions
 
@@ -451,6 +451,8 @@ by number from the code they create.
 | Q119 | `landValueBonus` and `storage` are catalogue fields nothing reads — a park's amenity and a water tower's store are claims the data makes and the simulation does not keep | Kjell — two rules the data already promises; each is a balance era |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
 | Q121 | A city that burns is 10% BIGGER on steady and nobody knows why — an event census in both arms would say | Kjell — a balance mechanism nobody designed |
+| Q122 | Whose rank is it? T5a gates `unlock` on the region's shared quest variable; §11.7 lists a personal ladder and §27.2 forbids one | Kjell — two sections of the design contradict each other |
+| Q123 | The city hall does nothing beyond marking the rank, and the population route to rank 3 was left beside it | Kjell — should the hall have an effect, and should the other route survive? |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

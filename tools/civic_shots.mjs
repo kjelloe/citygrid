@@ -32,7 +32,16 @@ for (const def of defs) {
     // Backdated past `BUILDING_TICKS` (B2): a building placed this tick is a
     // construction site, and the first run of this tool photographed twelve
     // scaffolded slabs — which is B2 working and S1 unphotographed.
-    extra: { place: def, age: 200 },
+    // And the RANK the definition asks for (T5a): `unlock` is a rule in the
+    // reducer now, so a city hall at rank 0 is refused and the picture is of an
+    // empty road with `placed=locked` in the log beside it.
+    extra: { place: def, age: 200, rank: d.unlock },
+    // A FLAT map for a definition with a flatness rule (T5a). The airport's
+    // footprint must be level within `airport.maxDrop`, which a rolling 48×48
+    // offers about one site in ten of — and `place=` puts its buildings on a
+    // row of its own choosing, so on rolling terrain the reducer answered
+    // `invalid` and the picture was of an empty road.
+    terrain: d.needsFlat === true ? "flat" : "rolling",
   });
   console.log(`reports/smoke-S1-${def}.png ok=${r.ok} tri=${r.report?.triangles} placed=${r.report?.placed ?? "?"}`);
   if (!r.ok) for (const p of r.problems.slice(0, 2)) console.log("   ", p);

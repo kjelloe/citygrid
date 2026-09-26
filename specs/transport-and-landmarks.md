@@ -177,6 +177,15 @@ and a **plane** as a `life/` mover: an approach from the edge along the runway a
 taxi to the apron, a take-off out — one at a time, a rate per second. A helicopter is the
 reference's traffic-spotter and is not needed.
 
+**As built (T5a).** Two deviations, both deliberate. The grade rule is the largest difference in
+`tiles.elevation` across the WHOLE footprint (`airport.maxDrop`, 6 units ≈ 3 m), not the corner
+heights against `road.maxGrade`: corners cannot see a hump in the middle of a runway, and
+`road.maxGrade` is a renderer constant about a road that climbs, where a runway is level. And the
+orientation is spent rather than stored — the building record carries the turned `w` and `h`, so no
+hashed field was added and nothing downstream has to know that a 6×4 airport is sometimes 4×6. The
+`air` gate skips the way-out test entirely, since the sky reaches every edge, and it is the only
+gate with a flat `landingFee` beside the per-resident fare.
+
 **Hash impact.** A catalogue entry, an orientation field on `placeBuilding`, balance constants,
 the unlock check. **Size.** M engine, M renderer.
 

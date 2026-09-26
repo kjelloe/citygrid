@@ -7728,3 +7728,147 @@ entries, each with its route. Planted a new pool; it names it.
 `data/cityviewer.json` key has a reader; no data file has a duplicate key.
 
 Suite **1,489 green twice**.
+
+## slice-T5a — ranks read, the city hall, the airport in the engine (2026-09-27)
+
+`unlock` has been on every catalogue entry since the first commit, carrying a 0, read by nothing.
+Q119's sweep listed it beside `landValueBonus` and `storage` as a field the data promises and the
+simulation does not keep. This closes it, and the closing is the whole slice: two buildings and a
+rule with three readers.
+
+**The rule is a module, because it has three readers.** `engine/unlock.js` is nine lines.
+`placeBuilding` refuses with `RESULT.LOCKED` — a new code, beside `RESULT.ALREADY_BUILT` for the
+hall's one-per-seat — because "that cannot go there" about a building you have not earned is N13's
+"0 tiles" again: true, useless, and it invites the same click on the same tile. The build menu greys
+the entry and puts the rank where its price goes. The deputy's `findSpotFor` answers **nowhere** for
+a definition its rank cannot have, so it never issues a command it knows will be refused.
+
+**Whose rank.** `state.quests.vars`, which is the region's and not the seat's. A69 says "the seat's
+rank"; gamedesign §27.2 says "unlocks belong to the room, not the player… mayor rank never gates a
+building", and §11.7 says the opposite. The shared variable is §27.2's answer, a per-seat rank is a
+schema change to build the half the design already overruled, and in singleplayer there is one seat
+either way. Filed as **Q122** rather than decided quietly.
+
+**The airport is the first building with an axis, and the orientation is SPENT.** `placeBuilding`
+validates `orientation` (0 or 1, and only for a definition carrying `orientable`) and then stores
+the turned `w` and `h` on the building record. So the hash, the save and the multiplayer snapshot
+already carry the orientation — `writeState` and `snapshotOf` have written `b.w` and `b.h` since the
+first commit — and nothing downstream has to remember that a 6×4 airport is sometimes 4×6. **No
+hashed field was added; no re-pin; no era.**
+
+**The flatness rule samples every tile, not the four corners.** The work item asked for "the
+footprint's corner heights within `road.maxGrade`". Corners cannot see a hump in the middle of a
+runway, and `road.maxGrade` is a renderer constant about a road that climbs where a runway is level.
+So `airport.maxDrop` is the largest difference in `tiles.elevation` across the whole footprint.
+**Measured before it was chosen**, over every buildable 6×4 window on three terrains and three
+seeds: flat p10 1, max 8; rolling p10 5–7, median 9–14; hilly min 4–6, median 30–32. At 6 units
+(three metres at the renderer's relief step) a rolling map offers roughly one site in ten and a
+hilly map almost none, which is the intent — you do not put an airport in the mountains.
+
+**The sky needs no way out.** `gateStatus` tested a rail line for every gate that was not `sea`, so
+an `air` gate would have been dead in every city for want of a railway. It is `rail`-only now, and
+an airport is dead for the two reasons any building is — so the inspector's reason list gained
+nothing. Its terms are the largest there are and it is the only gate with a `landingFee`: a flat
+monthly sum, from the aircraft rather than the residents in range, so a live airport in an empty
+region still earns.
+
+**Noise is the first pollution source with a radius.** Everything else is a footprint and a two-pass
+blur; `noiseRadius` is a linear falloff from the centre, integer, zero at its own edge — which is
+what lets a test assert that the noise STOPS rather than that it exists.
+
+**The rank-3 milestone is a new quest, beside the old one rather than instead of it.** `the-city-hall`
+asks for `civic >= 1` — a new measure, so the quest reads the catalogue's CATEGORY the way
+`amenities` does rather than naming a definition — and grants rank 3. The population route to rank 3
+stayed: gating it behind a hall the deputy never builds would quietly take 4,000 from every deputy
+city that reaches 2,000 people, and that is a balance change wearing a progression change's clothes
+(Q113's lesson, and **Q123**).
+
+### What went wrong
+
+- **The build menu's locked button lied to Playwright.** `aria-disabled="true"` on a button that
+  still answers — it puts the reason in the readout — makes Playwright refuse to click it, so
+  `ui_smoke` timed out 30 s on the one button whose behaviour was new. It is marked with
+  `data-locked` and an opacity now, which is also ruling 011's own choice in the lobby: the sizes
+  a device will find heavy are **marked rather than disabled**.
+- **And the turn button, `hidden` in the toolbar, failed two gates that have nothing to do with it.**
+  `reach_smoke` walks every control, finds its nearest hidden ancestor and demands that container
+  have an opener a player can click — a button that hides itself has none. `a11y_smoke` focuses the
+  LAST button in `#tools` to test that the arrows wrap, and focusing a hidden button silently does
+  nothing, so it reported `14 buttons, last → zoneResidential`. A control that appears with a STATE
+  rather than with a panel has to leave the DOM, not hide in it.
+- **A new import edge registered a command in twelve test files.** `utilities.js` → `unlock.js` →
+  `quests.js` put the quest pass into every module graph that places a building, and
+  `test/build.test.js`'s permission matrix went red naming `questChoice`. Behaviour-neutral — the
+  quest catalogue is empty until an adapter loads one, and the pass returns early — and the fixtures
+  prove it: the hashes did not move.
+- **The airport had no silhouette and `test/civic-spec.test.js` said so.** The shape table is pinned
+  against the catalogue, so two definitions arrived with two shapes: a hall with a portico and a
+  clock cupola, and a terminal, a tower and a dark runway slab that reads from the air. Both are new
+  pools; `civicVariant` is an index into the sorted list, so every other definition's index moved —
+  derived per run, nothing persisted.
+- **The turn key could not be `R`.** The road tool has it, and `test/help.test.js` refuses a key
+  claimed twice. `T` for turn.
+
+**What no gate can see yet.** No deputy city has a hall or an airport — the deputy has no doctrine
+for either, exactly as it has none for a freight port — so `gate.air`'s terms, the landing fee and
+the noise are asserted by unit tests and by nothing at scale. Teaching the deputy to build them is a
+balance change with its own era and its own sweep, not a line inside a progression slice.
+
+### The sweep moved, and it was not this slice — ERA 9
+
+`sim_sweep` came back with relaxed's median population at **2,369** against era 8's report of
+**2,275**, steady's p25 down 84, and one steady city dead that had lived. Nothing in T5a reaches a
+deputy city: it builds no hall and no airport, every definition it does build is `unlock: 0`, and
+the sweep never loads a quest catalogue.
+
+So it was measured rather than argued, three arms of 60 games × 4 configurations:
+
+| arm | tree | relaxed median | steady median |
+|---|---|---|---|
+| A | this slice | 2,477 | 2,318 |
+| B | `HEAD` (8d357b2), a worktree | 2,477 | 2,318 |
+| C | `4368603`, the tree that WROTE era 8's report | 2,275 | 2,415 |
+
+A and B are byte-identical reports — **T5a moved nothing**. B and C differ in every configuration,
+and the only engine change between them is **P87**, a review round labelled `docs:` which rewrote
+`deputyRoll`'s mixing from `(seat << 20) + index` to `Math.imul(seat, 0x9e3779b1) ^ index`. It was
+done for a real reason — the tick term was leaving the integer range — and it changed the value, so
+every deputy decision in every city moved with it, and nobody re-ran the sweep.
+
+Era 8's report had described a world that no longer existed for two commits. The era is **9** now,
+with `reports/balance-era9.md` from 200 games a configuration, and the note says what moved and
+why. Era 8's own report is untouched: it belongs to era 8's build.
+
+**No rule changed.** This is A82's situation exactly, and era 8's note already says the sentence:
+*"every number below moved because the worlds did"*. T5a's own `gate.air` and `airport.maxDrop` are
+ERA 0, UNTUNED and reach nothing a deputy builds.
+
+**The lesson is about the review round, not about P87's change.** A round that touches `engine/`
+has changed the game, whatever its commit message says — and a change to a PRNG's mixing is the
+loudest possible version of that, because the suite stays green, the fixtures stay pinned, and only
+a sweep nobody ran can see it.
+
+### Looked at
+
+`civic_shots.mjs` can place a rank-locked definition now (`rank=` on the harness, and it passes
+`d.unlock`), and a definition with `needsFlat` gets a `flat` map — on rolling terrain the reducer
+answered `invalid` and the picture was of an empty road.
+
+Two iterations on the airport, from the aerial shot rather than the street one:
+
+- **A warehouse with an eighty-metre tower.** The civic kit's unit is the LOT, so every `y` on a
+  6×4 lot is twice the metres it is on a 3×3. Halved.
+- **And then the apron and the runway vanished** — at 0.02 they were under the lot's lawn quad. The
+  slabs keep their old thickness. A flat thing on a lot has a floor.
+
+The city hall reads as a low hall with a portico and a cupola, which is what the hospital beside it
+in `reports/smoke-S1-*.png` reads as too. Both are L2 silhouettes; T5b builds the kits.
+
+**Measured.** Suite **1,516 green twice**. `quick` **409 s of 480** (11 gates; `ui_smoke` 176 checks,
+four of them new: a locked button arms nothing, says why and names the rank, and the turn button
+appears, turns the footprint to 4×6 and leaves with the tool). `render` **57/120**. `budget`
+**272/360** — two new civic pools, no change. `sim` **593/900**, and it is what found the era.
+`test/unlock.test.js` 11 green, `test/airport.test.js` 15.
+
+**Next:** T5b — the runway and taxiway ribbons with their markings, the apron lights, the radar that
+turns, and `client/life/plane.js`.

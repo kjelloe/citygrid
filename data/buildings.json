@@ -82,5 +82,17 @@
     "category": "transport", "w": 3, "h": 2, "cost": 2200, "upkeep": 130,
     "power": -12, "water": -6, "pollution": 30, "fireRisk": 12,
     "gate": "sea", "needsBody": "marinaMinBody", "unlock": 0
+  },
+
+  "cityHall": {
+    "category": "civic", "w": 3, "h": 3, "cost": 6000, "upkeep": 200,
+    "power": -10, "water": -8, "pollution": 0, "fireRisk": 6,
+    "onePerSeat": true, "unlock": 2
+  },
+  "airport": {
+    "category": "transport", "w": 6, "h": 4, "cost": 14000, "upkeep": 450,
+    "power": -30, "water": -16, "pollution": 40, "fireRisk": 18,
+    "gate": "air", "orientable": true, "needsFlat": true, "noiseRadius": 10,
+    "unlock": 3
   }
 }

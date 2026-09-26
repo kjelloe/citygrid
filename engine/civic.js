@@ -71,6 +71,18 @@ function smooth(state, values, passes) {
 
 // --- pollution -------------------------------------------------------------
 
+/** A source heard out to `radius` tiles from the middle of the building,
+ * falling linearly to nothing. Measured from the CENTRE rather than from the
+ * footprint, so turning a runway turns the noise with it. */
+function addNoise(state, field, building, source, radius) {
+  var cx = building.x + (building.w >> 1);
+  var cy = building.y + (building.h >> 1);
+  forEachInRadius(state.width, state.height, cx, cy, radius, function (index, x, y, d) {
+    if (d > radius) return;
+    field[index] += idiv(source * (radius - d), radius);
+  });
+}
+
 export function pollutionPass(state) {
   var civic = rules().civic;
   var total = state.width * state.height;
@@ -96,6 +108,12 @@ export function pollutionPass(state) {
         field[index] += source;
       }
     }
+    // Noise carries past the fence (T5). Every other source is a footprint and
+    // a blur; an airport is heard across a district, so it gets a radius of its
+    // own with a linear falloff — integer, monotone, and zero at the edge of
+    // it, which is what makes "the noise stops" a thing a test can assert.
+    var def2 = definition(building.def);
+    if (def2 && def2.noiseRadius > 0) addNoise(state, field, building, source, def2.noiseRadius);
   }
 
   // Trees clean the air a little, which is what makes "protect a forest" a

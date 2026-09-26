@@ -81,6 +81,12 @@ Every change is a slice, named after its entry in `plan-v1.md`:
   previous era are void, not "roughly comparable".
 - **Telemetry must record failure**, not only success. Verify the instrument before believing the
   reading — a probe filtering on a wrong field reports zeros in a world full of events.
+- **A change to what the deputy DECIDES voids every sweep number, including a change that keeps
+  every rule.** The pinned fixtures cannot see it — they are built by explicit commands, not by a
+  deputy — so the suite stays green while every measured city in the project becomes a different
+  city. P87 re-mixed `deputyRoll` inside a round labelled `docs:` and era 8's report described a
+  world that no longer existed for two commits. Re-run the sweep in the same commit, or bump the
+  era and say why.
 - **When a probe and a sweep disagree, check the config plumbing first.**
 - **Measure on a saturated city**, never an empty map.
 - Multiplayer rows never mix into singleplayer baselines.
