@@ -262,3 +262,21 @@ What that buys, and what it does not:
   arm anyway.
 - **Still run the null arm.** An arm that does the same thing with the feature removed is the only
   way to tell a mechanism from a sequence, and it is cheap.
+
+## Measuring one rule, now that it is possible (A83)
+
+`tools/fire_arms.mjs` is the shape: the SAME build, the SAME seeds, one constant changed, the
+sweep's own recipe so the numbers sit beside `reports/balance-era*`. It is not a gate — it answers
+a question and then it is a record.
+
+Two things it does that a sweep does not, and both are why it could answer Q105 when six eras of
+sweeps could not:
+
+- **It changes a rule, not a build.** An era-to-era comparison changes everything at once; an arm
+  changes one constant. Since A82 that is enough, because the deputy no longer re-rolls the world.
+- **It prints the mechanism beside the outcome.** "Fires spread 136 tiles a city against 6.9" is
+  what says the rule is actually doing something; without it, a flat population row could mean the
+  rule does nothing OR that the arm never fired. Always print the thing the rule acts on.
+
+Its answer was that B1a's fire costs a demanding city **nothing** (+1.1%) and is worth **+10.4%**
+on steady — the opposite of the reading the era-4 sweep had carried for two months.

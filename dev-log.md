@@ -7584,3 +7584,38 @@ Gates: `sim` **628 s of 900**, `quick` 411/480, `render` 62/120, `budget` 274/36
 
 **Answered: Q113 as A82.** **Q105 is unblocked** — "era 4's demanding row was 14% smaller, and was
 that fire or the coupling" is now one sweep on era 8's build.
+
+## Q105, measured — the fire was not the cause (2026-09-26)
+
+**A83.** Kjell: *"go ahead"* — run the sweep A82 unblocked.
+
+`tools/fire_arms.mjs` runs the same build twice on the same 200 seeds, changing nothing but B1a's
+two constants: `unfoughtSpread` 4 → 1 and `unfoughtDamage` 5 → 14, which is an unfought fire
+behaving exactly like a fought one, the way it did before A62. Two configurations, 25 years, the
+sweep's own recipe so the numbers sit beside `reports/balance-era*`.
+
+| configuration | without B1a's fire | with it | the fire's effect |
+| --- | --- | --- | --- |
+| demanding-64 | 1,981 | **2,003** | **+1.1%** |
+| steady-64 | 2,207 | **2,437** | **+10.4%** |
+
+**B1a's fire does not cost a demanding city a seventh of its population. It costs it nothing.**
+Era 4's −14% was the coupling A82 removed — the deputy and the fire drawing from one stream, so
+"era 4 against era 3" was two different worlds rather than two rules. That is two open questions
+closed by one change, and the second one was closed the same afternoon.
+
+The instrument says the rule is working and the arms differ where they should: **136 tiles spread
+per demanding city against 6.9**, 60.6 on steady against 2.2 — a factor of twenty and thirty. The
+deputy builds the same number of stations either way (8.8 against 9.0 on demanding, 10.0 against
+9.7 on steady), so this is not the fire service paying for itself.
+
+**The direction is a surprise and it is not explained.** A city that burns is ten per cent BIGGER
+on steady. Two candidates, neither measured: `clearRuins` re-zones burnt ground, so a city that
+burns keeps fresh level-1 land to grow into while an unburnt one saturates; or destroying housing
+moves the vacancy term in `computeDemand`. The check is an event census — `developed` and
+`abandoned` per city in both arms — which is one more run with two counters added. Filed as
+**Q121** rather than guessed at, because a balance mechanism nobody designed is worth naming
+before it is used.
+
+Nothing is tuned. Era 8's numbers stand and `unfoughtSpread`, `unfoughtDamage` and
+`deputy.buildingsPerStation` are untouched. The run is `reports/q105-fire-arms.txt`.

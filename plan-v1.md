@@ -434,7 +434,7 @@ by number from the code they create.
 | Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
 | Q103 | `traffic_gate` read congestion against people-per-road; B9's deputy broke that proxy (r 0.55 → 0.07) and the gate now also reads driving demand (r 0.92) | Kjell — a gate criterion, a one-line revert either way |
 | Q104 | No road can cross water — `isBuildable` refuses it, and five played cities had zero — so neither a bridge nor Q58's causeway exists in the game | Kjell — an engine decision (cost, span, which command); S4 built the water and stopped there |
-| Q105 | Era 4's demanding row was 14% smaller — fire, or the coupling A82 removed? One sweep on era 8 answers it | Kjell — a balance call, answerable now |
+| ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |
 | Q106 | `a11y_smoke`'s hillside check moved because the city did, twice; it shoots bare hillside now and its floors are re-derived (median 45, tail 25) | Kjell, with Q103 — a gate re-aimed, a one-line revert |
 | Q107 | The smoke has never drawn a visible pixel (a varying carried a length, not a vector); fixed in B1b — is the column enough of a fire? | Kjell — an art call, now judgeable for the first time |
 | Q108 | `building.flags` is hashed state nothing writes; three client modules read it and always got 0 | Kjell — remove it or write it; an engine decision |
@@ -450,6 +450,7 @@ by number from the code they create.
 | Q118 | The gate's fare is worth nothing — zeroing it leaves the sweep identical to the last digit, because treasuries are millions | Kjell — the economy's, and it blocks tuning anything priced in money |
 | Q119 | `landValueBonus` and `storage` are catalogue fields nothing reads — a park's amenity and a water tower's store are claims the data makes and the simulation does not keep | Kjell — two rules the data already promises; each is a balance era |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
+| Q121 | A city that burns is 10% BIGGER on steady and nobody knows why — an event census in both arms would say | Kjell — a balance mechanism nobody designed |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

@@ -1,0 +1,10 @@
+Q105 — fire against the rest, era 8.
+200 games per configuration, 25 years each. Same build, same seeds, two constants.
+
+demanding-64   B1a's fire, as shipped     p25  1342  median  2003  p75  2597   fires 1.2/city  spread 136.0  ruins 0.2  stations 8.8
+steady-64      B1a's fire, as shipped     p25  1855  median  2437  p75  2997   fires 1.1/city  spread 60.6  ruins 0.0  stations 10.0
+demanding-64   as it was before B1a       p25  1368  median  1981  p75  2740   fires 1.2/city  spread 6.9  ruins 0.2  stations 9.0
+steady-64      as it was before B1a       p25  1737  median  2207  p75  2784   fires 1.2/city  spread 2.2  ruins 0.0  stations 9.7
+
+demanding-64: B1a's fire costs the median city -1.1% (1981 without it, 2003 with it)
+steady-64: B1a's fire costs the median city -10.4% (2207 without it, 2437 with it)
