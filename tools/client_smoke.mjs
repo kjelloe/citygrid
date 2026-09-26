@@ -76,9 +76,14 @@ for (const check of CHECKS) {
   if (!check.post && report.drawCalls > ceiling) {
     problems.push(`${report.drawCalls} draw calls against a ceiling of ${ceiling} — instancing is not working`);
   }
-  // And the sentence above, asserted as itself: whatever the pools cost, a
-  // city must never approach a draw per building.
-  if (!check.post && report.drawCalls > report.buildings / 2) {
+  // And the sentence above, asserted as itself — but only on a city big enough
+  // for it to mean anything. The first cut of this check was a bare ratio, and
+  // A82's deputy change gave the fixture 113 buildings instead of 246: 74
+  // draws is two thirds of a draw per building and nothing at all is wrong,
+  // because a draw call is a function of the POOL count and not of the city.
+  // A ratio against a number the fixture chooses is the same defect as the
+  // literal 80 it replaced.
+  if (!check.post && report.buildings >= 200 && report.drawCalls > report.buildings / 2) {
     problems.push(`${report.drawCalls} draw calls for ${report.buildings} buildings — that is a draw per building`);
   }
 

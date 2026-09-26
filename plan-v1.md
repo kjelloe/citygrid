@@ -434,7 +434,7 @@ by number from the code they create.
 | Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
 | Q103 | `traffic_gate` read congestion against people-per-road; B9's deputy broke that proxy (r 0.55 → 0.07) and the gate now also reads driving demand (r 0.92) | Kjell — a gate criterion, a one-line revert either way |
 | Q104 | No road can cross water — `isBuildable` refuses it, and five played cities had zero — so neither a bridge nor Q58's causeway exists in the game | Kjell — an engine decision (cost, span, which command); S4 built the water and stopped there |
-| Q105 | Era 4's demanding cities are 14% smaller (1,203 → 1,039) because fire now costs something; the other three configurations are flat or better | Kjell — a balance call, nothing blocks on it |
+| Q105 | Era 4's demanding row was 14% smaller — fire, or the coupling A82 removed? One sweep on era 8 answers it | Kjell — a balance call, answerable now |
 | Q106 | `a11y_smoke`'s hillside check moved because the city did, twice; it shoots bare hillside now and its floors are re-derived (median 45, tail 25) | Kjell, with Q103 — a gate re-aimed, a one-line revert |
 | Q107 | The smoke has never drawn a visible pixel (a varying carried a length, not a vector); fixed in B1b — is the column enough of a fire? | Kjell — an art call, now judgeable for the first time |
 | Q108 | `building.flags` is hashed state nothing writes; three client modules read it and always got 0 | Kjell — remove it or write it; an engine decision |
@@ -442,7 +442,7 @@ by number from the code they create.
 | Q110 | The frame's estimate prices every car on a visible link, not the cars actually posed — a 21% over-estimate that B3a exposed | Kjell — a measurement-lane slice; an over-charging estimate sacrifices detail silently |
 | Q111 | The deputy builds no police station (6 fire stations, 0 police on the played city), so B3b's patrols never appear in a headless city | Kjell — a deputy change, a new era and a sweep; crime already feeds land value |
 | Q112 | B6's rain streaks draw nothing — 1,140 instances counted, never seen; seven causes ruled out, pool removed, overcast light shipped | Kjell — same class as Q107's smoke; the cause is in the pool lifecycle |
-| Q113 | One deputy turn is worth 26% of the sweep's median — skipping a turn and issuing nothing gives numbers identical to T1a's avenue | Kjell — the measurement lane's; it changes how every balance number here is read, Q105 included |
+| ~~Q113~~ | **Answered A82** — the deputy drew from the world's PRNG; it has its own stream since era 8, and a deputy-neutral rule change is measurable again |
 | Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
 | Q116 | A road, a wire or a pipe may be laid straight through a building; T2's rail is the only network that refuses it | Kjell — a rule question, and a deputy change, so its own era |

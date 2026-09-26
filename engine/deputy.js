@@ -20,7 +20,7 @@ import { tileAt, xOf, yOf, encodeRuns, inBounds, DIR4, neighbour } from "../shar
 import { hasNet } from "./network.js";
 import { isBuildable, isWater, waterBodies, bodyAt } from "./terrain.js";
 import { idiv, clamp } from "../shared/idiv.js";
-import { nextInt, chance } from "../shared/prng.js";
+import { mix32 } from "../shared/prng.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, OWNER_NATURE,
   FLAG_POWERED, FLAG_WATERED, FLAG_RUINED, TERRAIN_ROCK,
@@ -43,10 +43,46 @@ export function makeDeputy(seat, doctrine) {
     hubX: -1,
     hubY: -1,
     built: 0, avenues: 0, stations: 0, marinas: 0, terminals: 0,
+    // The index of the next draw from the deputy's own stream, reset every
+    // turn (Q113).
+    rolls: 0,
     zoned: 0,
     utilities: 0,
     refusals: 0,
   };
+}
+
+/**
+ * The deputy's OWN randomness (Q113).
+ *
+ * It used to draw from `state.rng` — the same stream `development.js`,
+ * `fire.js` and `disasters.js` draw from — so one extra deputy action shifted
+ * when every later fire started and every later building grew. That is why
+ * T1a's avenue and "skip one turn and issue nothing" produced numbers
+ * identical to the last digit: the CONTENT of the action was irrelevant and
+ * only the draw count mattered, and a sweep comparing two eras was comparing
+ * two different worlds rather than two rules.
+ *
+ * A mayor's dithering must not change the weather. The stream is a pure
+ * function of the seed, the tick, the seat and the draw's index WITHIN the
+ * turn — reset every turn — so an extra decision does not move the deputy's
+ * own later rolls either, and the same turn of the same game always rolls the
+ * same numbers however it got there.
+ *
+ * Still deterministic and still reproducible on every client: `deputy.rolls`
+ * is a counter on the driver's record, not hashed state, and it is a function
+ * of decisions that are themselves a function of state.
+ */
+function roll(state, deputy, bound) {
+  if (bound <= 1) return 0;
+  var index = deputy.rolls;
+  deputy.rolls += 1;
+  return mix32(mix32(state.options.seed ^ (state.tick * 2654435761)) ^ ((deputy.seat << 20) + index)) % bound;
+}
+
+/** True one time in `oneIn`, from the deputy's own stream. */
+function rollChance(state, deputy, oneIn) {
+  return roll(state, deputy, oneIn) === 0;
 }
 
 /** Every command the deputy issues goes through here, so a probe can watch
@@ -163,8 +199,8 @@ function townReach(state, seat, reach) {
 function buildBlock(state, deputy, town) {
   var seat = deputy.seat;
   var reach = reachOf(deputy);
-  var horizontal = chance(state.rng, 2);
-  var length = 6 + nextInt(state.rng, 6);
+  var horizontal = rollChance(state, deputy, 2);
+  var length = 6 + roll(state, deputy, 6);
   var x = deputy.cursorX;
   var y = deputy.cursorY;
 
@@ -231,8 +267,8 @@ function buildBlock(state, deputy, town) {
 
   // Walk on from the end of the road, so blocks chain into a neighbourhood.
   var last = roadCells[roadCells.length - 1];
-  deputy.cursorX = xOf(state.width, last) + (horizontal ? 0 : nextInt(state.rng, 5) - 2);
-  deputy.cursorY = yOf(state.width, last) + (horizontal ? nextInt(state.rng, 5) - 2 : 0);
+  deputy.cursorX = xOf(state.width, last) + (horizontal ? 0 : roll(state, deputy, 5) - 2);
+  deputy.cursorY = yOf(state.width, last) + (horizontal ? roll(state, deputy, 5) - 2 : 0);
   deputy.cursorX = clamp(deputy.cursorX, 1, state.width - 2);
   deputy.cursorY = clamp(deputy.cursorY, 1, state.height - 2);
   return true;
@@ -746,6 +782,7 @@ function runCarrier(state, deputy, from, command, layer) {
  * reducer: a deputy is a player, and players act between ticks. */
 export function deputyTurn(state, deputy, sink) {
   deputy.sink = sink;
+  deputy.rolls = 0;
   if (deputy.doctrine === DOCTRINE_HOLD) return false;
 
   var funds = treasuryOf(state, deputy.seat);
@@ -793,17 +830,17 @@ export function deputyTurn(state, deputy, sink) {
     // near the town when there is one (B9): a hop to anywhere on the map is a
     // hop the reach rule refuses, and six of them are a turn wasted.
     if (town.fringeCount > 0) {
-      var spot = town.fringe[nextInt(state.rng, town.fringeCount)];
+      var spot = town.fringe[roll(state, deputy, town.fringeCount)];
       deputy.cursorX = clamp(xOf(state.width, spot), 1, state.width - 2);
       deputy.cursorY = clamp(yOf(state.width, spot), 1, state.height - 2);
     } else if (town.lots > 0) {
       var reach = reachOf(deputy);
-      var lot = town.queue[nextInt(state.rng, town.lots)];
-      deputy.cursorX = clamp(xOf(state.width, lot) + nextInt(state.rng, reach * 2 + 1) - reach, 1, state.width - 2);
-      deputy.cursorY = clamp(yOf(state.width, lot) + nextInt(state.rng, reach * 2 + 1) - reach, 1, state.height - 2);
+      var lot = town.queue[roll(state, deputy, town.lots)];
+      deputy.cursorX = clamp(xOf(state.width, lot) + roll(state, deputy, reach * 2 + 1) - reach, 1, state.width - 2);
+      deputy.cursorY = clamp(yOf(state.width, lot) + roll(state, deputy, reach * 2 + 1) - reach, 1, state.height - 2);
     } else {
-      deputy.cursorX = 1 + nextInt(state.rng, state.width - 2);
-      deputy.cursorY = 1 + nextInt(state.rng, state.height - 2);
+      deputy.cursorX = 1 + roll(state, deputy, state.width - 2);
+      deputy.cursorY = 1 + roll(state, deputy, state.height - 2);
     }
     attempts += 1;
   }

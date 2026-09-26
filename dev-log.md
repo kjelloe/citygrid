@@ -7511,3 +7511,76 @@ stops refusing anything rather than breaking. A test asserts every `needsBody` n
 duplicate key; everything T4a exported has an importer.
 
 Suite **1,476 green twice**.
+
+## slice-Q113 — the deputy draws from its own stream (2026-09-26)
+
+**What it is.** Kjell's instruction was *"Do A, then measure whether B is still needed"* — A being
+a deputy PRNG independent of the world's, B a frozen-trace paired sweep. A is built; **B is not
+needed**. Era 8, and no rule changed.
+
+**The cause, narrower than Q113 stated it.** The deputy drew from `state.rng` at nine call sites —
+cursor hops, block orientation, lot picks — and that is the same stream `development.js`,
+`fire.js` and `disasters.js` draw from. So one extra deputy action did not merely move the
+deputy's own cursor: it shifted **when every later fire started and every later building grew**.
+That is why T1a's avenue and "skip one turn and issue nothing" came out identical to the last
+digit — the content of the action was irrelevant, only the draw count mattered. It is an
+implementation accident, not a design: a mayor's dithering must not change the weather.
+
+The deputy's stream is now a pure function of the seed, the tick, the seat and the draw's index
+**within the turn**, reset every turn — so an extra decision moves neither the world's rolls nor
+the deputy's own later ones, and the same turn of the same game rolls the same numbers however it
+got there. Still deterministic and still reproducible on every client: the counter lives on the
+driver's record, which is not hashed state, and it is a function of decisions that are themselves
+a function of state. The pinned fixtures did **not** move — they run no deputy — so no re-pin.
+
+**Measured. T1a's own comparison, thirty seeds, steady, 25 years:**
+
+| arm | before | after |
+| --- | --- | --- |
+| the avenue as built | 1,410 | 1,434 |
+| one turn skipped, nothing issued | **1,410 — identical to the last digit** | **1,884** |
+| no avenue, every turn taken | 1,909 | 1,617 |
+
+**And the test that decides B** — a rule change that does not touch what the deputy builds, so both
+arms build exactly the same things (15,991 against 15,972 blocks). Monotonic in all three
+quantiles, which no term sweep in this project had ever been:
+
+| sea terms | p25 | median | p75 |
+| --- | --- | --- | --- |
+| zeroed | 1,467 | 2,019 | 2,737 |
+| as shipped | 1,863 | 2,267 | 2,866 |
+| doubled | 2,041 | 2,799 | 3,348 |
+
+T1b's equivalent sweep, before this, went 150/100/200 → 2,187, 90/60/120 → **1,747**, 60/40/80 →
+2,000. That non-monotonicity is gone.
+
+**So B is not built.** A rule change that alters what the deputy BUILDS still moves the trajectory
+— that is a real difference, and the arms now report it honestly rather than swamping it. The
+trace is available through `issue()`'s sink if a future slice needs the mayor's plan held fixed.
+
+**The balance did not move.** Era 8 against era 7 over 200 games: relaxed 2,275 against 2,316,
+steady 2,290 against 2,314, demanding 1,999 against 2,007, no-disasters 2,384 against 2,255. Two
+to six per cent, in both directions — which is what a change that decouples two streams without
+touching a rule should look like, and is itself the first era-to-era comparison in this project
+worth reading.
+
+**One test had to change.** "A city still grows" was three hand-picked seeds each over 150
+residents at twelve years — exactly what CLAUDE.md says not to tune on. Seed 77 now lands on a map
+where it reaches 112 while the other seven reach 1,400 to 2,352. One stuck city in eight is inside
+the distribution the sweep already measures (`living cities: 200 of 200`, `ended empty: 0`); a
+three-seed floor could not tell that from a deputy that had stopped working. It is eight seeds and
+a median now, with a second assertion that at least six of them got going.
+
+**And a check I wrote three rounds ago was wrong.** T2's round replaced `client_smoke`'s literal
+draw-call ceiling with two tests: one derived from the pool count, and a bare ratio — "never a
+draw per building". The deputy's new stream gives the shot fixture **113 buildings instead of 246**,
+and 74 draws is two thirds of a draw per building with nothing whatever wrong, because a draw call
+is a function of the POOL count and not of the city. A ratio against a number the fixture chooses
+is the same defect as the literal it replaced. It applies only above 200 buildings now, with the
+reason in the file.
+
+Gates: `sim` **628 s of 900**, `quick` 411/480, `render` 62/120, `budget` 274/360, `shots`
+304/360 — all green. Suite **1,476 green twice**. No re-pin.
+
+**Answered: Q113 as A82.** **Q105 is unblocked** — "era 4's demanding row was 14% smaller, and was
+that fire or the coupling" is now one sweep on era 8's build.

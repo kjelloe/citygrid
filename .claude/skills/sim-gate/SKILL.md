@@ -244,3 +244,21 @@ Not "the gate passed". Report:
   (ruling 001) makes snowballing the named risk.
 
 Then write it into `dev-log.md`, and into `reports/` if it pins a new era.
+
+## The deputy's randomness (A82, era 8)
+
+The deputy draws from **its own** stream — `(seed, tick, seat, index within the turn)`, reset every
+turn — not from `state.rng`. Before era 8 it shared the world's stream with `development.js`,
+`fire.js` and `disasters.js`, so one extra deputy action shifted every later fire and every later
+growth roll, and a sweep comparing two eras compared two worlds rather than two rules.
+
+What that buys, and what it does not:
+
+- A rule change that does **not** alter what the deputy builds is now cleanly measurable — the sea
+  gate's terms came out monotonic in all three quantiles at thirty seeds, where the same sweep had
+  never been monotonic before.
+- A change that **does** alter what it builds still moves the trajectory. That is real, not an
+  artefact. Report it as "the feature changes the city, and here is by how much", and run the null
+  arm anyway.
+- **Still run the null arm.** An arm that does the same thing with the feature removed is the only
+  way to tell a mechanism from a sequence, and it is cheap.
