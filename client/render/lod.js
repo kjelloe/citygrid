@@ -55,6 +55,14 @@ const DEFAULT_COSTS = {
   pole: 12,     // a box; vertical, so it cannot be flattened
   wireHub: 2,
   wireArm: 2,
+  // The railway (T2's L2 line and T3's train). Two flat quads for a rail tile
+  // and its arms, and a box for a carriage — small, and small is not the
+  // point: a term missing from the estimate is a term the budget cannot trade
+  // away, which is the note above `road: 0` and the third time this project
+  // has written it (P35, V5, here).
+  railHub: 2,
+  railArm: 2,
+  carriage: 12,
 };
 
 /** One terrain chunk is 16x16 tiles at two triangles each. Terrain is not
@@ -303,8 +311,13 @@ function estimateOne(counts, plan) {
     // the estimate is a term the budget cannot trade away (P35). A pipe is not
     // drawn at all since S3 (A80): the water overlay's texture shows it.
     + (plan.networks !== false
-      ? (counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm) * loose
+      ? (counts.wireTiles * costs.wireHub + counts.wireArms * costs.wireArm
+        + (counts.railTiles ?? 0) * costs.railHub + (counts.railArms ?? 0) * costs.railArm) * loose
       : 0)
+    // The train rides the CARS rung: it is the same kind of thing the ladder
+    // sacrifices first, and a line with three carriages on it is a rounding
+    // error beside the traffic (T3).
+    + (plan.cars !== false ? (counts.carriages ?? 0) * costs.carriage : 0)
     + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole * loose : 0)
     // The baked street chunks, at what they MEASURED last frame (slice E3).
     //
@@ -663,6 +676,8 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   let markArms = 0;
   let wireTiles = 0;
   let wireArms = 0;
+  let railTiles = 0;
+  let railArms = 0;
   // The same counts, split by 16x16 chunk, so a perspective frame can price
   // each chunk at its own plan (slice V5). One extra Map entry per chunk; the
   // per-tile work is the same walk it always was.
@@ -670,7 +685,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   const CHUNK = 16;
   const blank = () => ({
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
-    markArms: 0, wireTiles: 0, wireArms: 0, cars: 0, peds: 0,
+    markArms: 0, wireTiles: 0, wireArms: 0, railTiles: 0, railArms: 0, cars: 0, peds: 0,
     waterTiles: 0, kerbs: 0, groundProps: 0,
   });
   const chunkAt = (x, y) => {
@@ -720,6 +735,15 @@ export function countScene(state, bounds, country = undefined, forest = undefine
       part.wireTiles += 1;
       for (let d = 0; d < 4; d += 1) {
         if (state.tiles.wire[i] & (1 << d)) { wireArms += 1; part.wireArms += 1; }
+      }
+    }
+    // The L2 rail line, the same shape as the wire (T2). A baked chunk draws
+    // the real track instead, which `loose` already accounts for.
+    if (state.tiles.rail && (state.tiles.rail[i] & NET) !== 0) {
+      railTiles += 1;
+      part.railTiles += 1;
+      for (let d = 0; d < 4; d += 1) {
+        if (state.tiles.rail[i] & (1 << d)) { railArms += 1; part.railArms += 1; }
       }
     }
     if (state.tiles.terrain[i] === WATER || state.tiles.terrain[i] === SHALLOW) part.waterTiles += 1;
@@ -847,7 +871,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   }
   return {
     buildings, trees, props, roads, poles, groundChunks, waterTiles,
-    markArms, wireTiles, wireArms, chunks, kerbs, groundProps,
+    markArms, wireTiles, wireArms, railTiles, railArms, chunks, kerbs, groundProps,
     // Filled in by the caller from what the street cache measured last frame.
     streetPerChunk: 0,
     // Filled in by the caller from the traffic system's live count: the number
@@ -856,6 +880,8 @@ export function countScene(state, bounds, country = undefined, forest = undefine
     cars: 0,
     // ...and neither is the number of people, for the same reason.
     peds: 0,
+    // ...nor the carriages on the line (T3).
+    carriages: 0,
   };
 }
 

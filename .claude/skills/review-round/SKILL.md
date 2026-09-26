@@ -497,6 +497,14 @@ none of them was in a gate set: they were run by hand in the slice that wrote th
 budget — the next picture tool has to earn its place or the set needs splitting. When a slice
 writes a tool that can fail, ask what runs it next month.
 
+**Every instanced POOL the renderer makes needs a term in the estimate — check after any slice
+that adds one.** Four times now: P35's road that had become a box, V5's per-chunk plan, V5's
+frustum wedge, and T2/T3's three pools (the L2 rail line's hub and arm, and the train's carriages)
+with no term at all. The same sweep found that B3b's service vehicles have never been counted
+either — they are pushed into the CAR pools and `counts.cars` was `traffic.count(bounds)` alone.
+The check is a grep: every `make("name", …)` in `instances.js` against the cost table in `lod.js`.
+An under-estimate is the dangerous direction, because the render-and-measure loop only steps down.
+
 **Grep every field of a data file for a reader, not just every key of the file.** The third
 direction usually asks "does anything read this BLOCK"; T2's round asked it per FIELD and found
 two that nothing reads — `landValueBonus` on the park (its whole purpose; the amenity effect

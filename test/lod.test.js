@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULTS as CONFIG } from "../client/world/config.js";
 import { repoRoot } from "./helpers/sources.js";
+import { NET_PRESENT } from "../client/constants-mirror.js";
 import {
   TIER, choosePlan, estimate, stepDown, ladderLength, tilePixels, createChunkCeiling,
   visibleBounds, inBounds, setBudget, getBudget, setCosts, getCosts,
@@ -29,6 +30,7 @@ function blank(n) {
       road: new Uint8Array(cells),
       wire: new Uint8Array(cells),
       pipe: new Uint8Array(cells),
+      rail: new Uint8Array(cells),
       buildingId: new Uint16Array(cells),
       elevation: new Uint8Array(cells),
     },
@@ -783,3 +785,29 @@ test("a baked chunk priced on its own is charged for none of what it bakes (S5)"
     `a baked chunk still charged ${(lone - (loose - oneBaked)).toFixed(0)} beyond its road surface`);
 });
 
+
+// --- every pool the renderer draws has a term (T3's review round) -----------
+
+test("the estimate prices the rail line and the train, not only the road", () => {
+  // "A term missing from the estimate is a term the budget cannot trade away"
+  // (P35, and the note above `road: 0`). T2 added two instanced pools for the
+  // L2 rail line and T3 a third for the carriages; none of them was priced,
+  // which is the same defect that cost this project a city with no trees.
+  const state = blank(32);
+  for (let x = 4; x < 28; x += 1) {
+    const i = 10 * state.width + x;
+    state.tiles.rail[i] = NET_PRESENT | (x > 4 ? 8 : 0) | (x < 27 ? 2 : 0);
+  }
+  const counts = countScene(state);
+  assert.equal(counts.railTiles, 24, "the rail layer was not counted");
+  assert.ok(counts.railArms > 40, `${counts.railArms} arms for 24 tiles of line`);
+
+  const plan = { cars: true, networks: true, markings: true, poles: true, props: true };
+  const withLine = estimate({ ...counts, carriages: 0 }, plan);
+  const withTrain = estimate({ ...counts, carriages: 3 }, plan);
+  assert.ok(withTrain > withLine, "three carriages cost the estimate nothing");
+
+  // And a map with no line costs less than one with, by the line's own price.
+  const bare = countScene(blank(32));
+  assert.ok(estimate(counts, plan) > estimate(bare, plan), "a railway is free to the estimate");
+});

@@ -7400,3 +7400,32 @@ carriage in the pool, because a moving thing photographed once is a still thing)
 **Filed:** **Q120** — the ground does not flatten under a railway, so a line follows the terrain.
 
 **Next:** T4 — water bodies, the marina, the ferry and the port.
+
+## P81 — the review round after T3 (2026-09-26)
+
+One finding, and it is this project's oldest recurring defect.
+
+**Three pools the renderer draws had no term in the estimate.** T2 added two instanced pools for
+the L2 rail line and T3 a third for the carriages; none was priced. Nor were the SERVICE vehicles —
+B3b's engines and patrols are pushed into the same car pools at the same cost, and `counts.cars`
+was `traffic.count(bounds)` alone, so the estimate has been short one vehicle per fire and one per
+station since B3b shipped.
+
+This is the fourth time: P35's road that had become a box, V5's per-chunk plan, V5's frustum wedge,
+and now three pools with no term at all. The note above `road: 0` in the cost table says why it
+matters — *a term missing from the estimate is a term the budget cannot trade away* — and the
+direction is the dangerous one, because the render-and-measure loop corrects an over-estimate by
+stepping down and is blind to an under-estimate.
+
+`railHub`, `railArm` and `carriage` are in the cost table; `countScene` counts the rail layer the
+way it counts the wire; the train rides the CARS rung, which is the rung a line with three
+carriages on it belongs to. `test/lod.test.js` asserts a railway costs the estimate something and
+three carriages cost more than none — planted a free rail term to check it fires.
+
+**Measured.** The estimate is 0–16% out across the ortho rows, which is where it was. The pools are
+small — a rail tile is two flat quads and a carriage twelve triangles — and small is not the point.
+Gates: `budget` 285 s of 360, `render` 75/120. Suite **1,461 green twice**.
+
+**Also swept, and clean:** `test/omissions.test.js`, `test/reachability.test.js` and
+`test/utilities.test.js` 31 green; every key of `data/cityviewer.json` has a reader, including all
+ten of T3's `rail` block; nothing T3 exported lacks an importer.

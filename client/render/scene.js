@@ -798,7 +798,11 @@ export function createRenderer(canvas, state, options = {}) {
     lastBounds = bounds;
     counts = countScene(state, bounds, countrysideFor(state, model), treesFor(state, model), streetProps(model));
     // Only the cars on screen, which is the same set `pose` writes (R1.1).
-    counts.cars = traffic.count(bounds);
+    // WITH the service vehicles: an engine and a patrol are pushed into the
+    // same car pools at the same cost, and until T3's round counted them the
+    // estimate was short one vehicle per fire and one per station (B3b).
+    counts.cars = traffic.count(bounds) + services.count();
+    counts.carriages = trains.count() * getConfig().rail.carriages;
     counts.peds = pedestrians.count(bounds);
     const crowdSeen = crowd.countBy(bounds, figureAt);
     counts.pedsCity = crowdSeen.l2;
