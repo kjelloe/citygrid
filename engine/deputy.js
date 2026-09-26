@@ -73,11 +73,23 @@ export function makeDeputy(seat, doctrine) {
  * is a counter on the driver's record, not hashed state, and it is a function
  * of decisions that are themselves a function of state.
  */
-function roll(state, deputy, bound) {
+export function deputyRoll(state, deputy, bound) {
   if (bound <= 1) return 0;
   var index = deputy.rolls;
   deputy.rolls += 1;
-  return mix32(mix32(state.options.seed ^ (state.tick * 2654435761)) ^ ((deputy.seat << 20) + index)) % bound;
+  // `Math.imul` rather than `*`: a tick times a 32-bit constant leaves the
+  // integer range and comes back through a double, which is exact here and
+  // would stop being exact if a tick ever grew. The rest of `engine/` mixes
+  // the same way (`terrain.js`).
+  var turn = mix32((state.options.seed ^ Math.imul(state.tick | 0, 2654435761)) >>> 0);
+  return mix32((turn ^ Math.imul(deputy.seat | 0, 0x9e3779b1) ^ index) >>> 0) % bound;
+}
+
+/** The deputy's own draw, by its readable name inside this module. Exported
+ * above as `deputyRoll` for the one test that pins A82's invariant: the value
+ * must not depend on how far `state.rng` has been advanced. */
+function roll(state, deputy, bound) {
+  return deputyRoll(state, deputy, bound);
 }
 
 /** True one time in `oneIn`, from the deputy's own stream. */

@@ -505,6 +505,18 @@ either — they are pushed into the CAR pools and `counts.cars` was `traffic.cou
 The check is a grep: every `make("name", …)` in `instances.js` against the cost table in `lod.js`.
 An under-estimate is the dangerous direction, because the render-and-measure loop only steps down.
 
+**A measurement is not an assertion.** A82's whole value was an invariant — the deputy's rolls do
+not move when the world's PRNG does — proved by two arms that used to be byte-identical and a term
+sweep that became monotonic. None of that is a test anybody runs again. When a slice's result is a
+PROPERTY, write the property down: here, advance `state.rng` a hundred times and assert the
+deputy's rolls are unchanged, then assert fifty deputy draws leave `state.rng` where it was.
+
+**And read the object before comparing it.** That second assertion compared
+`[rng.a, rng.b, rng.c, rng.d]` before and after — four `undefined`s against four `undefined`s,
+because this xorshift32 keeps its state in `rng.s`. It passed with the defect planted. Assert the
+field exists (`typeof before === "number"`) before you assert it did not change, and plant the
+defect to see the test fire.
+
 **A dead field spreads, so the allow-list has to name the buildings as well as the field.** P79's
 check refused a new unread field and let `landValueBonus` reach two more buildings the same day it
 was filed — a field nothing reads looks exactly like a rule somebody implemented, so the next

@@ -7619,3 +7619,28 @@ before it is used.
 
 Nothing is tuned. Era 8's numbers stand and `unfoughtSpread`, `unfoughtDamage` and
 `deputy.buildingsPerStation` are untouched. The run is `reports/q105-fire-arms.txt`.
+
+## P87 — the review round after A82 and A83 (2026-09-26)
+
+Two findings, both in A82's own hour-old work.
+
+**The invariant A82 bought had no test.** The deputy's own stream was measured — two arms that used
+to be byte-identical now differ, a term sweep that was never monotonic now is — and none of that is
+an assertion anybody runs again. `test/deputy.test.js` pins both halves directly: a deputy roll does
+not move when the world's PRNG is advanced a hundred times, and fifty deputy draws do not move the
+world's PRNG. Planted the old `nextInt(state.rng, …)` back; both fire.
+
+The second one **did not fire on the first attempt**, and that is the finding. It compared
+`[rng.a, rng.b, rng.c, rng.d]` before and after — four `undefined`s against four `undefined`s,
+because this project's xorshift32 keeps its state in `rng.s`. A test that cannot fail is worse than
+no test, and it took planting the defect to see it. It reads `rng.s`, asserts it is a number before
+comparing, and checks that a single world draw moves it.
+
+**And the mixing left the integer range.** `state.tick * 2654435761` is exact today and would stop
+being exact if a tick ever grew; `Math.imul` is what the rest of `engine/` mixes with
+(`terrain.js`). Changed, with the reason.
+
+**Also swept, and clean:** `omissions`, `reachability`, `utilities` and `rules` 43 green; no data
+file has a duplicate key; nothing exported lacks an importer.
+
+Suite **1,478 green twice**.

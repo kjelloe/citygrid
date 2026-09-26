@@ -12,7 +12,8 @@ import assert from "node:assert/strict";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
-import { makeDeputy, deputyTurn } from "../engine/deputy.js";
+import { makeDeputy, deputyTurn, deputyRoll } from "../engine/deputy.js";
+import { nextInt } from "../shared/prng.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
 import { rules } from "../engine/rules.js";
@@ -300,4 +301,52 @@ test("a region with no water gets no harbour, and the turn is not wasted looking
   assert.equal(deputy.marinas, 0);
   assert.equal(deputy.terminals, 0);
   assert.ok(state.population > 0, "the dry city did not grow, so this proves nothing");
+});
+
+// --- the deputy's own stream (A82) -------------------------------------------
+
+test("a deputy roll does not depend on how far the world's PRNG has run", () => {
+  // The invariant A82 bought, asserted directly. Before it the deputy drew
+  // from `state.rng` — the stream `development.js`, `fire.js` and
+  // `disasters.js` draw from — so one extra deputy action shifted every later
+  // fire and every later growth roll, and "the avenue" and "skip a turn and
+  // issue nothing" produced numbers identical to the last digit.
+  const world = generateWorld(defaultOptions({ seed: 1003, width: 32, height: 32, seats: 1 }));
+  const state = world.state;
+  const deputy = makeDeputy(1, "expand");
+
+  const first = [];
+  deputy.rolls = 0;
+  for (let k = 0; k < 8; k += 1) first.push(deputyRoll(state, deputy, 1000));
+
+  // Everything else in the simulation draws a hundred times.
+  for (let k = 0; k < 100; k += 1) nextInt(state.rng, 1000);
+
+  const again = [];
+  deputy.rolls = 0;
+  for (let k = 0; k < 8; k += 1) again.push(deputyRoll(state, deputy, 1000));
+  assert.deepEqual(again, first, "the deputy's rolls moved because the world's PRNG did");
+
+  // And it is not a constant: the tick, the seat and the index each move it.
+  state.tick += 1;
+  deputy.rolls = 0;
+  assert.notDeepEqual([deputyRoll(state, deputy, 1000)], [first[0]], "a new tick rolls the same number");
+  state.tick -= 1;
+  const other = makeDeputy(2, "expand");
+  assert.notEqual(deputyRoll(state, other, 1000), first[0], "a second seat rolls the same number");
+  assert.notEqual(first[0], first[1], "two draws in one turn are the same number");
+});
+
+test("the deputy's draws do not move the world's PRNG", () => {
+  // The other half: a deputy that thinks harder must not change the weather.
+  const world = generateWorld(defaultOptions({ seed: 7, width: 32, height: 32, seats: 1 }));
+  const state = world.state;
+  const deputy = makeDeputy(1, "expand");
+  const before = state.rng.s;
+  assert.equal(typeof before, "number", "the world's PRNG does not keep its state in `s` any more");
+  for (let k = 0; k < 50; k += 1) deputyRoll(state, deputy, 97);
+  assert.equal(state.rng.s, before, "fifty deputy draws advanced the world's stream");
+  // And the check can see one: a single world draw moves it.
+  nextInt(state.rng, 97);
+  assert.notEqual(state.rng.s, before, "the world's stream did not move when the world drew");
 });
