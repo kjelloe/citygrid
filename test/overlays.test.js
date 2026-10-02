@@ -1,4 +1,4 @@
-// The eleven overlays.
+// The thirteen overlays.
 //
 // An overlay is the design's answer to "every action has visible consequences"
 // (`gamedesign.md` §16), and it is also the player's only diagnostic tool. The
@@ -25,12 +25,14 @@ function blank() {
 }
 const at = (state, x, y) => y * state.width + x;
 
-test("the design's eleven overlays all exist", () => {
-  // gamedesign.md §16 names eleven. A missing one is a diagnostic the player
-  // does not have.
-  assert.equal(OVERLAY_NAMES.length, 11, `expected 11 overlays, got ${OVERLAY_NAMES.join(", ")}`);
+test("the design's thirteen overlays all exist", () => {
+  // gamedesign.md §16 names them. A missing one is a diagnostic the player does
+  // not have. Eleven until T6, which added the two coverage layers the landmark
+  // table asks for — and amended §16 in the same slice, because an overlay list
+  // is a design statement rather than an implementation detail.
+  assert.equal(OVERLAY_NAMES.length, 13, `expected 13 overlays, got ${OVERLAY_NAMES.join(", ")}`);
   for (const name of ["zoning", "power", "water", "traffic", "landValue", "pollution",
-    "crime", "fire", "health", "density", "desirability"]) {
+    "crime", "fire", "health", "density", "desirability", "leisure", "education"]) {
     assert.ok(OVERLAYS[name], `no ${name} overlay`);
   }
 });

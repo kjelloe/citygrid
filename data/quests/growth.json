@@ -208,7 +208,8 @@
    "atLeast": 5000
   },
   "reward": {
-   "money": 6000
+   "money": 6000,
+   "rank": 4
   }
  }
 ]

@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 9,
+  era: 10,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -91,6 +91,14 @@ var RULES = {
   civic: {
     landValueBase: 90, waterfrontBonus: 9, greeneryBonus: 4, pollutionPenalty: 60,
     crimePenalty: 40, serviceValueDivisor: 12, crowdingThreshold: 120,
+    // T6 (A67, A70). Leisure and education are the AMENITY half of coverage:
+    // the three departments keep a city from going wrong, and these two are
+    // what makes one worth moving to. `amenityValueDivisor` is the land-value
+    // term (a smaller divisor than the departments' because a library ought to
+    // be worth more to a street than a police station is); `amenityDemand` is
+    // how much of the average coverage reaches the residential pool, per cent.
+    // ERA 0, UNTUNED.
+    amenityValueDivisor: 10, amenityDemand: 70,
     industrialPollution: 22, forestCleaning: 6, crimeBase: 110, policeDivisor: 5,
     healthDivisor: 6, noWaterHealthRisk: 60, fireDivisor: 8, buildingFireRisk: 12,
     industrialFireRisk: 30, forestFireRisk: 14, highCrime: 100, highPollution: 60,
@@ -117,6 +125,12 @@ var RULES = {
   deputy: {
     _comment: "A81 (B9): the deputy lays a road only within roadReach tiles of a lot that is built, or zoned and supplied; expand reaches a little further than the doctrines that hold back. Era 3. T2: railAtPopulation is the size at which it lays a line to the edge and puts a station on it - just above avenueAtPopulation, so the order is the main road first and the railway after it.",
     buildingsPerStation: 40,
+    // T6: how many buildings the deputy will run before the next school and
+    // the next square. A school covers ten tiles and the fire station forty
+    // buildings, so these are the same kind of number from the other side.
+    // ERA 0, UNTUNED.
+    buildingsPerSchool: 25,
+    buildingsPerPlaza: 30,
     // T1a (A60): the size at which the deputy's next block is an avenue. One,
     // so a returning player finds a main road rather than a grid of identical
     // streets.

@@ -142,20 +142,28 @@ export function pollutionPass(state) {
  * read by nothing. This comment used to claim funding worked; it never has. */
 export function coveragePass(state) {
   var total = state.width * state.height;
-  var fields = { fire: [], police: [], health: [] };
+  var fields = { fire: [], police: [], health: [], leisure: [], education: [] };
   var i;
   for (i = 0; i < total; i += 1) {
     fields.fire.push(0);
     fields.police.push(0);
     fields.health.push(0);
+    fields.leisure.push(0);
+    fields.education.push(0);
   }
 
   for (i = 0; i < state.buildings.length; i += 1) {
     var building = state.buildings[i];
     if (building.zone !== ZONE_NONE) continue;
     var def = definition(building.def);
-    if (!def || !def.service) continue;
-    var field = fields[def.service];
+    if (!def) continue;
+    // `coverage` is the field a building deposits into; `service` is the
+    // DEPARTMENT it belongs to (T6). The same word for fire, police and health;
+    // a park has the first without the second, because a park is not a
+    // department and the quests count departments.
+    var kind = def.coverage ? def.coverage : def.service;
+    if (!kind) continue;
+    var field = fields[kind];
     if (!field) continue;
 
     // An unpowered or unwatered station is a building with the lights off.
@@ -163,7 +171,7 @@ export function coveragePass(state) {
     var flags = state.tiles.flags[centre];
     // §9.4, and the reason this pass exists at all: funding is what the player
     // trades against the bill. 50% is half the reach, 150% is half again.
-    var strength = state.funding[def.service];
+    var strength = state.funding[kind];
     if ((flags & FLAG_POWERED) === 0) strength = idiv(strength, 2);
     if ((flags & FLAG_WATERED) === 0) strength = idiv(strength, 2);
 
@@ -178,6 +186,15 @@ export function coveragePass(state) {
   smooth(state, fields.fire, 1);
   smooth(state, fields.police, 1);
   smooth(state, fields.health, 1);
+  smooth(state, fields.leisure, 1);
+  smooth(state, fields.education, 1);
+  // These two are STORED (T6): they drive desirability and demand like the
+  // others, and unlike the others they are drawn as overlays and read by the
+  // inspector, which a field living inside one monthly pass cannot be.
+  for (i = 0; i < total; i += 1) {
+    state.tiles.leisure[i] = clamp(fields.leisure[i], 0, 255);
+    state.tiles.education[i] = clamp(fields.education[i], 0, 255);
+  }
   return fields;
 }
 
@@ -305,6 +322,11 @@ export function landValuePass(state, coverage, density) {
       value -= idiv(state.tiles.pollution[index] * civic.pollutionPenalty, 100);
       value -= idiv(state.tiles.crime[index] * civic.crimePenalty, 100);
       value += idiv(coverage.police[index] + coverage.fire[index] + coverage.health[index], civic.serviceValueDivisor);
+      // The amenity half (T6): a library, a park and a school are what make a
+      // street worth living on, where the three departments keep it from going
+      // wrong. Read from the LAYERS rather than the pass's own fields, so the
+      // number here is the one the overlay draws and the inspector reads.
+      value += idiv(state.tiles.leisure[index] + state.tiles.education[index], civic.amenityValueDivisor);
       // Overcrowding cuts both ways: some density is a city, too much is a slum.
       if (density[index] > civic.crowdingThreshold) {
         value -= idiv(density[index] - civic.crowdingThreshold, 4);

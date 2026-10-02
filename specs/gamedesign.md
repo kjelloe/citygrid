@@ -1272,6 +1272,11 @@ Required overlays:
 - Healthcare coverage.
 - Population density.
 - Building desirability.
+- Leisure coverage. *(Added at T6: leisure and education are coverage layers
+  like fire and health, and the two where MORE is better — their bands run the
+  other way round, which is why the legend words matter more here than
+  anywhere.)*
+- Education coverage.
 
 Overlay colors should remain consistent:
 

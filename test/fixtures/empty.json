@@ -1,6 +1,6 @@
 {
  "name": "empty",
- "why": "T1's avenue bit, T2's rail layer and A79's rock and marsh: the transport re-pin the three were bundled into (A66, A79) — the tile layer list gains rail, so every hash in every fixture moves",
+ "why": "T6: tiles.leisure and tiles.education are hashed layers, two more funding services, five new definitions and two new civic/demand terms (A67, A70)",
  "generate": false,
  "options": {
   "seed": 1,
@@ -25,7 +25,7 @@
    },
    "repeat": 1,
    "result": "ok",
-   "hash": "ddbc396c76908c71",
+   "hash": "5b9eb29497941951",
    "events": []
   },
   {
@@ -34,7 +34,7 @@
    },
    "repeat": 11,
    "result": "ok",
-   "hash": "e2502198006cce0e",
+   "hash": "c616df0b7e1a894e",
    "events": [
     "budget"
    ]
@@ -45,7 +45,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "fbdf391805ab52da",
+   "hash": "5cf94e9e4bc2a1ba",
    "events": [
     "budget"
    ]
@@ -56,12 +56,12 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "310b0678ddd59645",
+   "hash": "079e10d421fb6885",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 6,
- "repinnedAt": "2026-09-25"
+ "era": 9,
+ "repinnedAt": "2026-10-02"
 }

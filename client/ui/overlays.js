@@ -48,6 +48,16 @@ function isWater(state, index) {
 
 const has = (mask) => (mask & NET_PRESENT) !== 0;
 
+/** The opposite of `severity`: a quantity where MORE is better. GOOD above
+ * `plenty`, SEVERE below `thin`, FAIR between (T6). Written out rather than
+ * reusing `severity` backwards, because a reader of a band table should not
+ * have to invert anything in their head. */
+function plenty(value, thin, lots) {
+  if (value >= lots) return BAND.GOOD;
+  if (value >= thin) return BAND.FAIR;
+  return BAND.SEVERE;
+}
+
 export const OVERLAYS = {
   zoning: {
     labelKey: "overlay.zoning",
@@ -182,6 +192,37 @@ export const OVERLAYS = {
     band(state, index) {
       if (isWater(state, index)) return BAND.NONE;
       return severity(state.tiles.healthRisk[index], 70, 160);
+    },
+  },
+
+  // Leisure and education (T6, A67/A70). The only two overlays where MORE is
+  // better, so the bands run the other way round from crime and pollution —
+  // and the severity helper is for risk, so these read the layer directly.
+  leisure: {
+    labelKey: "overlay.leisure",
+    legend: [
+      { band: BAND.GOOD, textKey: "legend.lively" },
+      { band: BAND.FAIR, textKey: "legend.quietCorner" },
+      { band: BAND.SEVERE, textKey: "legend.nothingToDo" },
+      { band: BAND.NONE, textKey: "legend.water" },
+    ],
+    band(state, index) {
+      if (isWater(state, index)) return BAND.NONE;
+      return plenty(state.tiles.leisure[index], 30, 90);
+    },
+  },
+
+  education: {
+    labelKey: "overlay.education",
+    legend: [
+      { band: BAND.GOOD, textKey: "legend.schooled" },
+      { band: BAND.FAIR, textKey: "legend.someSchools" },
+      { band: BAND.SEVERE, textKey: "legend.unschooled" },
+      { band: BAND.NONE, textKey: "legend.water" },
+    ],
+    band(state, index) {
+      if (isWater(state, index)) return BAND.NONE;
+      return plenty(state.tiles.education[index], 30, 90);
     },
   },
 

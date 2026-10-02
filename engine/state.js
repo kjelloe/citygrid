@@ -35,6 +35,13 @@ export var TILE_LAYERS = [
   // wire/pipe shape (mask plus present bit) on a layer of its own, because it
   // shares a tile with a road at a level crossing (A66).
   { name: "rail", kind: "u8" },
+  // Appended for T6 (A67, A70). Two coverage fields with layers of their own,
+  // where fire, police and health are computed into scratch and folded in: the
+  // landmark table asks for leisure and education to drive desirability and
+  // demand, and a field that lives inside one monthly pass cannot be drawn as
+  // an overlay or read by an inspector.
+  { name: "leisure", kind: "u8" },
+  { name: "education", kind: "u8" },
 ];
 
 function allocLayer(kind, length) {

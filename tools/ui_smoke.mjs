@@ -8,7 +8,7 @@
 //   1. Does every button do what its label says? Clicked by coordinate, not by
 //      calling the handler — a button under another element, or one too small
 //      to hit on a phone, passes an API test and fails a person.
-//   2. Does each of the eleven overlays render, in a bounded number of draw
+//   2. Does each of the thirteen overlays render, in a bounded number of draw
 //      calls that does not depend on which overlay it is?
 //   3. Is each overlay actually DIFFERENT on screen? An overlay that renders a
 //      plausible picture of the wrong field is the failure mode that matters,
@@ -22,6 +22,7 @@ import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { SWEEP } from "../client/debug/perf-sweep.js";
+import { OVERLAY_NAMES } from "../client/ui/overlays.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = {
@@ -436,7 +437,11 @@ try {
   await page.click("#rail-overlays");
   const overlayNames = await page.$$eval(".hud-overlays button", (nodes) =>
     nodes.map((n) => n.dataset.overlay).filter((n) => n !== "auto"));
-  check("all eleven overlays have a button", overlayNames.length === 11, `${overlayNames.length} buttons`);
+  // The COUNT comes from the model, not from a literal here: a gate with its
+  // own copy of a number will one day measure a different game, and this one
+  // went red the moment T6 added two overlays rather than catching anything.
+  check("every overlay the model offers has a button",
+    overlayNames.length === OVERLAY_NAMES.length, `${overlayNames.length} buttons for ${OVERLAY_NAMES.length} overlays`);
 
   // "Auto" is selected by default (P29), so the baseline has to switch it off —
   // otherwise the no-overlay frame is not a no-overlay frame.

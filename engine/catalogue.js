@@ -20,7 +20,7 @@ var CATALOGUE = {
   fireStation: { category: "service", w: 2, h: 2, cost: 500, upkeep: 100, power: -6, water: -6, pollution: 0, fireRisk: 0, service: "fire", radius: 12, unlock: 0 },
   policeStation: { category: "service", w: 2, h: 2, cost: 500, upkeep: 100, power: -6, water: -6, pollution: 0, fireRisk: 4, service: "police", radius: 12, unlock: 0 },
   hospital: { category: "service", w: 3, h: 3, cost: 1200, upkeep: 120, power: -14, water: -14, pollution: 0, fireRisk: 6, service: "health", radius: 14, capacity: 400, unlock: 0 },
-  park: { category: "amenity", w: 1, h: 1, cost: 60, upkeep: 2, power: 0, water: -1, pollution: -10, fireRisk: 0, landValueBonus: 20, radius: 4, unlock: 0 },
+  park: { category: "amenity", w: 1, h: 1, cost: 60, upkeep: 2, power: 0, water: -1, pollution: -10, fireRisk: 0, coverage: "leisure", landValueBonus: 20, radius: 4, unlock: 0 },
 
   // The first GATE (T2, A65). `gate` names which of the Outside's doors this
   // is; `needsRail` is the only placement rule beyond the usual ones, because
@@ -34,7 +34,7 @@ var CATALOGUE = {
   // of the gates, because a terminal on a lake is DEAD and the inspector says
   // so rather than the build menu refusing a thing the player can see water
   // next to.
-  marina: { category: "amenity", w: 2, h: 2, cost: 900, upkeep: 40, power: -4, water: -2, pollution: 0, fireRisk: 4, needsBody: "marinaMinBody", landValueBonus: 30, radius: 7, unlock: 0 },
+  marina: { category: "amenity", w: 2, h: 2, cost: 900, upkeep: 40, power: -4, water: -2, pollution: 0, fireRisk: 4, needsBody: "marinaMinBody", coverage: "leisure", landValueBonus: 30, radius: 7, unlock: 0 },
   ferryTerminal: { category: "transport", w: 2, h: 2, cost: 1300, upkeep: 80, power: -6, water: -4, pollution: 6, fireRisk: 6, gate: "sea", needsBody: "marinaMinBody", landValueBonus: 8, radius: 5, unlock: 0 },
   freightPort: { category: "transport", w: 3, h: 2, cost: 2200, upkeep: 130, power: -12, water: -6, pollution: 30, fireRisk: 12, gate: "sea", needsBody: "marinaMinBody", unlock: 0 },
 
@@ -45,6 +45,17 @@ var CATALOGUE = {
   // the first building with an AXIS (`orientable`, which swaps the footprint
   // the reducer claims), a rule about the ground under it (`needsFlat`) and
   // noise that carries past its fence (`noiseRadius`).
+  // Leisure and education (T6, A67, A70). `coverage` is the field a building
+  // deposits into; `service` is the DEPARTMENT it belongs to, which is what the
+  // quests count and what the funding row is named after. They are the same
+  // word for fire, police and health, and a park has the second without the
+  // first — which is why this is not one field.
+  plaza: { category: "amenity", w: 2, h: 2, cost: 200, upkeep: 8, power: -1, water: -2, pollution: -4, fireRisk: 1, coverage: "leisure", radius: 6, unlock: 0 },
+  library: { category: "service", w: 2, h: 2, cost: 900, upkeep: 50, power: -5, water: -4, pollution: 0, fireRisk: 4, coverage: "leisure", radius: 9, unlock: 0 },
+  stadium: { category: "amenity", w: 4, h: 4, cost: 4500, upkeep: 220, power: -20, water: -16, pollution: 12, fireRisk: 10, coverage: "leisure", radius: 14, unlock: 2 },
+  school: { category: "service", w: 2, h: 2, cost: 800, upkeep: 70, power: -6, water: -6, pollution: 0, fireRisk: 5, coverage: "education", radius: 10, unlock: 0 },
+  university: { category: "service", w: 4, h: 4, cost: 6000, upkeep: 300, power: -24, water: -20, pollution: 0, fireRisk: 8, coverage: "education", radius: 18, unlock: 4 },
+
   cityHall: { category: "civic", w: 3, h: 3, cost: 6000, upkeep: 200, power: -10, water: -8, pollution: 0, fireRisk: 6, onePerSeat: true, unlock: 2 },
   airport: { category: "transport", w: 6, h: 4, cost: 14000, upkeep: 450, power: -30, water: -16, pollution: 40, fireRisk: 18, gate: "air", orientable: true, needsFlat: true, noiseRadius: 10, unlock: 3 },
 };

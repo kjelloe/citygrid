@@ -317,6 +317,96 @@ export const CIVIC_SHAPES = Object.freeze({
     // instanced pass, so it sits where the baked tower is at every zoom.
     radar: { x: 0.89, y: 0.79, z: 0.585 },
   },
+  // Leisure and education (T6, A67/A70). Five definitions, five silhouettes,
+  // and the recognising part of each is the part that carries from the
+  // pavement: a stadium is a bowl, a school is a long low block with a yard, a
+  // library has a portico and a plaza is not a building at all.
+  plaza: {
+    // Paving, trees in it and a fountain. No building (the park's own rule):
+    // what makes a square is that it is OPEN.
+    tall: false,
+    masses: [
+      box(-1, 0, -1, 1, 0.03, 1, "concrete"),
+      box(-0.16, 0.03, -0.16, 0.16, 0.1, 0.16, "white", true),
+      box(-0.1, 0.1, -0.1, 0.1, 0.34, 0.1, "white", true),
+      box(-0.3, 0.03, -0.9, -0.1, 0.06, -0.7, "lawn"),
+      box(0.1, 0.03, 0.7, 0.3, 0.06, 0.9, "lawn"),
+      box(-0.9, 0.03, 0.1, -0.7, 0.06, 0.3, "lawn"),
+    ],
+  },
+  library: {
+    tall: false,
+    masses: [
+      box(-0.85, 0, -0.8, 0.85, 0.78, 0.6, "brick"),
+      box(-0.9, 0.78, -0.85, 0.9, 0.86, 0.65, "dark"),
+      // A portico over the steps: four columns and a lintel, which is what a
+      // library has had since there were libraries.
+      box(-0.6, 0, 0.6, -0.48, 0.66, 0.74, "white", true),
+      box(-0.2, 0, 0.6, -0.08, 0.66, 0.74, "white", true),
+      box(0.08, 0, 0.6, 0.2, 0.66, 0.74, "white", true),
+      box(0.48, 0, 0.6, 0.6, 0.66, 0.74, "white", true),
+      box(-0.7, 0.66, 0.56, 0.7, 0.8, 0.78, "white"),
+      box(-0.3, 0.04, 0.52, 0.3, 0.5, 0.6, "glass"),
+      box(-0.72, 0, 0.78, 0.72, 0.05, 0.92, "concrete"),
+    ],
+  },
+  stadium: {
+    // The bowl is the whole building and it has to survive the silhouette
+    // pass: a flattened stadium is a car park with a fence.
+    tall: true,
+    masses: [
+      // Four stands around an open pitch, rather than a solid block — the
+      // inside is what says stadium from above.
+      box(-1, 0, -1, 1, 0.12, -0.55, "concrete"),
+      box(-1, 0, 0.55, 1, 0.12, 1, "concrete"),
+      box(-1, 0, -0.55, -0.55, 0.12, 0.55, "concrete"),
+      box(0.55, 0, -0.55, 1, 0.12, 0.55, "concrete"),
+      box(-0.98, 0.12, -0.98, 0.98, 0.5, -0.6, "white"),
+      box(-0.98, 0.12, 0.6, 0.98, 0.5, 0.98, "white"),
+      box(-0.98, 0.12, -0.6, -0.6, 0.44, 0.6, "white"),
+      box(0.6, 0.12, -0.6, 0.98, 0.44, 0.6, "white"),
+      // The pitch, and four floodlights on the corners.
+      box(-0.52, 0, -0.52, 0.52, 0.04, 0.52, "lawn"),
+      box(-0.99, 0.5, -0.99, -0.88, 0.95, -0.88, "steel", true),
+      box(0.88, 0.5, -0.99, 0.99, 0.95, -0.88, "steel", true),
+      box(-0.99, 0.5, 0.88, -0.88, 0.95, 0.99, "steel", true),
+      box(0.88, 0.5, 0.88, 0.99, 0.95, 0.99, "steel", true),
+    ],
+  },
+  school: {
+    tall: false,
+    masses: [
+      // A long low block with a wing, and a yard in front of it: the yard is
+      // half of what says school rather than office.
+      box(-0.9, 0, -0.9, 0.5, 0.6, -0.1, "red"),
+      box(-0.95, 0.6, -0.95, 0.55, 0.67, -0.05, "dark"),
+      box(0.5, 0, -0.9, 0.9, 0.46, -0.4, "brick"),
+      box(-0.6, 0.05, -0.1, -0.2, 0.42, -0.02, "glass"),
+      box(-0.9, 0, 0.0, 0.9, 0.04, 0.9, "concrete"),
+      // A flagless pole and a bike shed, because a yard with nothing in it
+      // reads as a car park.
+      box(-0.06, 0.04, 0.3, 0.06, 0.52, 0.42, "steel", true),
+      box(0.4, 0.04, 0.5, 0.86, 0.22, 0.86, "steel"),
+    ],
+  },
+  university: {
+    // A tower over a quad: the tower is the recognising part at any zoom.
+    tall: true,
+    masses: [
+      box(-0.95, 0, -0.95, 0.95, 0.52, -0.3, "brick"),
+      box(-0.95, 0, 0.3, 0.95, 0.52, 0.95, "brick"),
+      box(-0.95, 0, -0.3, -0.35, 0.52, 0.3, "brick"),
+      box(0.35, 0, -0.3, 0.95, 0.52, 0.3, "brick"),
+      box(-0.99, 0.52, -0.99, 0.99, 0.58, -0.26, "dark"),
+      box(-0.99, 0.52, 0.26, 0.99, 0.58, 0.99, "dark"),
+      // The quad inside, and the clock tower over the gate.
+      box(-0.33, 0, -0.28, 0.33, 0.03, 0.28, "lawn"),
+      box(-0.22, 0, 0.3, 0.22, 1.25, 0.72, "white"),
+      box(-0.12, 0.95, 0.68, 0.12, 1.15, 0.76, "glass"),
+      box(-0.26, 1.25, 0.26, 0.26, 1.38, 0.76, "dark"),
+      box(-0.16, 0.04, 0.72, 0.16, 0.5, 0.78, "glass"),
+    ],
+  },
   park: {
     // No building (S1's own words). The lawn and its path; S5 puts the benches
     // and the trees on it.

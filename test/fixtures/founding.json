@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "T1's avenue bit, T2's rail layer and A79's rock and marsh: the transport re-pin the three were bundled into (A66, A79) — the tile layer list gains rail, so every hash in every fixture moves",
+ "why": "T6: tiles.leisure and tiles.education are hashed layers, two more funding services, five new definitions and two new civic/demand terms (A67, A70)",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Mayor"
    },
    "result": "ok",
-   "hash": "ca8617ab8c505c27",
+   "hash": "594243088700aee7",
    "events": [
     "seatJoined"
    ]
@@ -49,7 +49,7 @@
     ]
    },
    "result": "ok",
-   "hash": "e18ef896d11ef428",
+   "hash": "57f2df0fb25cb6e8",
    "events": [
     "built"
    ]
@@ -64,7 +64,7 @@
     ]
    },
    "result": "ok",
-   "hash": "47d14d0df4fd269d",
+   "hash": "5b6a3c480af2fadd",
    "events": [
     "built"
    ]
@@ -84,7 +84,7 @@
     ]
    },
    "result": "ok",
-   "hash": "4a1545a74d4f9972",
+   "hash": "cc88edb0118e5cb2",
    "events": [
     "zoned"
    ]
@@ -104,7 +104,7 @@
     ]
    },
    "result": "ok",
-   "hash": "7ff9489d2a02729f",
+   "hash": "be23ece2223cef5f",
    "events": [
     "zoned"
    ]
@@ -122,7 +122,7 @@
     ]
    },
    "result": "ok",
-   "hash": "4433a9efcef766dd",
+   "hash": "a601c472e5f1581d",
    "events": [
     "zoned"
    ]
@@ -136,7 +136,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "64a70ce2cb30bb87",
+   "hash": "b27be3ed36abb827",
    "events": [
     "placed"
    ]
@@ -150,7 +150,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "515b0df767a7e2b7",
+   "hash": "8cec750e1a9a2f77",
    "events": [
     "placed"
    ]
@@ -189,7 +189,7 @@
     ]
    },
    "result": "ok",
-   "hash": "cec8000607dadf55",
+   "hash": "b99a0bfd4e81f115",
    "events": [
     "built"
    ]
@@ -228,7 +228,7 @@
     ]
    },
    "result": "ok",
-   "hash": "2ec7a3ff5e7621f6",
+   "hash": "60f8da3c1d649eb6",
    "events": [
     "built"
    ]
@@ -240,7 +240,7 @@
     "rate": 9
    },
    "result": "ok",
-   "hash": "2017b34fcba5226c",
+   "hash": "5d8798f8125478ac",
    "events": [
     "taxSet"
    ]
@@ -251,7 +251,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "9fc8d38a08ade4ff",
+   "hash": "ba927f2c9e9d293f",
    "events": [
     "budget",
     "highCrime",
@@ -264,7 +264,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "4604798fafb927ac",
+   "hash": "d2c9a6213109648c",
    "events": [
     "budget",
     "developed",
@@ -279,7 +279,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "84b972ca0e2eebaa",
+   "hash": "c81f7e7fab4f7dea",
    "events": [
     "abandoned",
     "budget",
@@ -296,7 +296,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "2aa72953b68dacc1",
+   "hash": "11aec4469af18d01",
    "events": [
     "abandoned",
     "budget",
@@ -307,6 +307,6 @@
    ]
   }
  ],
- "era": 6,
- "repinnedAt": "2026-09-25"
+ "era": 9,
+ "repinnedAt": "2026-10-02"
 }

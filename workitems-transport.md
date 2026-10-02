@@ -381,6 +381,32 @@ its rank; the deputy never places a locked one. `test/airport.test.js`: orientat
 a sloped footprint refused; the noise appears in the pollution pass. **Gate.** `sim` set; `render`
 set; `reports/smoke-T5-{cityhall,airport,plane}.png`.
 
+## T6 — Leisure and education coverage — A67, A70 — **BUILT 2026-10-02** as `slice-T6` (era 10, the layers re-pinned)
+
+*As built. `tiles.leisure` and `tiles.education` are hashed layers — the first coverage fields with
+layers of their own, where fire, police and health are computed into scratch and folded in. They
+have layers because they are drawn as overlays and read by the inspector, and a field that lives
+inside one monthly pass can be neither.*
+
+*`coverage` is a new catalogue field: the layer a building deposits into, where `service` is the
+DEPARTMENT it belongs to. The same word for the three departments; a park has the first without the
+second, because a park is not a department and `countBy(state, "service")` counts departments for
+the quests. Park and marina gained `coverage: "leisure"` without becoming service buildings.*
+
+*They reach the city twice: `civic.amenityValueDivisor` adds them to land value beside the three
+departments, and `civic.amenityDemand` puts their average over DEVELOPED land into the residential
+pool — the average over the whole region is a rounding error however good the parks are, which is
+the lesson era 1 learnt about pollution.*
+
+*The deputy builds a school every `deputy.buildingsPerSchool` buildings and a plaza every
+`buildingsPerPlaza`. Without it every sweep in the project would have measured a town that reads
+zero on two of its five layers, which is exactly what B1a found about the fire service.*
+
+*Thirteen overlays now, and §16 of the design was amended in the same slice: an overlay list is a
+design statement. The two new ones are the only overlays where MORE is better, so they read through
+`plenty()` rather than `severity()` — written out rather than inverting the other helper, because a
+reader of a band table should not have to invert anything in their head.*
+
 ## T6 — Leisure and education coverage (L) — A67, A70
 
 **Goal.** Two systems the landmark table keeps asking for, in the fire/police/health shape.

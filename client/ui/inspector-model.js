@@ -79,6 +79,8 @@ export function inspect(state, x, y) {
     { labelKey: "inspect.crime", value: state.tiles.crime[index] },
     { labelKey: "inspect.fireRisk", value: state.tiles.fireRisk[index] },
     { labelKey: "inspect.healthRisk", value: state.tiles.healthRisk[index] },
+    { labelKey: "inspect.leisure", value: state.tiles.leisure[index] },
+    { labelKey: "inspect.education", value: state.tiles.education[index] },
     { labelKey: "inspect.traffic", value: state.tiles.traffic[index] },
   ];
 

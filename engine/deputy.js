@@ -411,6 +411,37 @@ function keepCovered(state, deputy) {
   return placeUtility(state, deputy, "fireStation");
 }
 
+/** A school for every `deputy.buildingsPerSchool` buildings, and somewhere to
+ * sit for every `deputy.buildingsPerPlaza` (T6, A67/A70).
+ *
+ * The same argument as the fire station's, from the other side: leisure and
+ * education are coverage layers that drive desirability and demand, and a
+ * deputy that never builds for them is a mayor whose city reads both as zero —
+ * which is how every sweep number in the project would have been measured on a
+ * town with no school in it.
+ *
+ * A PLAZA rather than a park, because a park is 1x1 and the deputy's spot
+ * search would scatter forty of them; the plaza is the same idea at 2x2 with a
+ * radius worth having.
+ */
+function keepAmused(state, deputy) {
+  if (deputy.zoned === 0) return false;
+  var cfg = rules().deputy;
+  var schools = 0;
+  var plazas = 0;
+  var others = 0;
+  for (var i = 0; i < state.buildings.length; i += 1) {
+    var b = state.buildings[i];
+    if (b.owner !== deputy.seat) continue;
+    if (b.def === "school") schools += 1;
+    else if (b.def === "plaza") plazas += 1;
+    else others += 1;
+  }
+  if (schools * cfg.buildingsPerSchool < others) return placeUtility(state, deputy, "school");
+  if (plazas * cfg.buildingsPerPlaza < others) return placeUtility(state, deputy, "plaza");
+  return false;
+}
+
 /** Clears the burnt-out ground inside the town, and puts its zoning back (B1a).
  *
  * Nothing in a headless city has ever cleared a ruin: `clearRuin` had no caller
@@ -822,6 +853,11 @@ export function deputyTurn(state, deputy, sink) {
   // Then the fire service, before more streets: a block that burns down is
   // worth more than a block that was never built (B1a).
   if (keepCovered(state, deputy)) return true;
+  // Then the school and the square (T6): coverage a city is judged on rather
+  // than coverage that keeps it from burning, and the deputy is the mayor in
+  // every headless game — a sweep played without them measures a town that
+  // reads zero on two of the five layers.
+  if (keepAmused(state, deputy)) return true;
   // And once the town is big enough, its busiest street becomes its main road.
   if (upgradeTrunk(state, deputy)) return true;
   // Then the railway, which is a bigger town still (T2).

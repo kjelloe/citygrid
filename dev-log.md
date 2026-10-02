@@ -7783,6 +7783,10 @@ stayed: gating it behind a hall the deputy never builds would quietly take 4,000
 city that reaches 2,000 people, and that is a balance change wearing a progression change's clothes
 (Q113's lesson, and **Q123**).
 
+**Gates.** Suite **1,550 green twice**. `sim` **705 s of 900** (and it is what produced the table
+above), `render` **57/120**, `quick` **424/480**, `budget` **270/360** — five more civic pools and
+nothing moved, because a civic definition is one instanced box at city zoom.
+
 ### What went wrong
 
 - **The build menu's locked button lied to Playwright.** `aria-disabled="true"` on a button that
@@ -8017,3 +8021,69 @@ halfway through the slice.
 `lod` and `docs` 124 green; every exported function has an importer (`marshBand` and `rockyPeaks`
 are same-file, which is the one the sweep is written to tolerate); no dynamic import names a file
 that is not there.
+
+## slice-T6 — leisure and education coverage (2026-10-02, ERA 10, the layers re-pinned)
+
+Two more coverage fields in the fire/police/health shape, and the first two with TILE LAYERS of
+their own. `tiles.leisure` and `tiles.education` are hashed and saved, because they are drawn as
+overlays and read by the inspector and a field that lives inside one monthly pass can be neither.
+
+**`coverage` is a new catalogue field, beside `service`.** `service` is the DEPARTMENT a building
+belongs to — it is what the funding row is named after and what `countBy(state, "service")` counts
+for the quests — and `coverage` is the layer it deposits into. The same word for the three
+departments; a park has the second without the first. Making a park a "service building" to get it
+into the leisure layer would have changed what three quests ask for, silently.
+
+**They reach the city twice.** `civic.amenityValueDivisor` adds them to land value beside the
+departments, and `civic.amenityDemand` puts their average over DEVELOPED land into the residential
+pool — over the whole region it is a rounding error however good the parks are, which is the lesson
+era 1 learnt about pollution.
+
+**And the deputy builds for both**, a school every `buildingsPerSchool` buildings and a plaza every
+`buildingsPerPlaza`. Without that, every sweep in this project would have measured a town reading
+zero on two of its five layers — which is exactly what B1a found about the fire service, one slice
+after the fire started spreading.
+
+### Measured — era 10 against era 9, 200 games a configuration
+
+| configuration | era 9 median | era 10 median | |
+|---|---|---|---|
+| relaxed-64 | 2,369 | **2,435** | +2.8% |
+| steady-64 | 2,317 | **2,427** | +4.7% |
+| demanding-64 | 1,969 | **1,881** | −4.5% |
+| steady-64-nodisasters | 2,501 | **2,347** | −6.2% |
+
+The direction is the trade the slice makes: a school is 70 a month and a plaza 8, and on
+`demanding` the deputy pays for them out of the same reserve it was expanding with. The two
+configurations with money grew; the two without it shrank. Nothing here was tuned — every new
+constant is ERA 0, UNTUNED and this is the first measurement of them.
+
+**Crime fell from 11–12 to 6–7 in every configuration**, which is the land-value term arriving:
+crime reads land value, land value now reads the amenity layers, and the deputy builds for them.
+That is a bigger move than the population one and nobody asked for it — worth a question if it is
+not wanted (the sweep says cities are *safer* because they have schools, which is at least an
+arguable model). Congestion rose with the population (8–9 → 10–13) and stranded homes 2 → 5.
+
+### What went wrong
+
+- **The development fixture grew nothing**, and the first check in the test is what said so rather
+  than the feature looking broken: it set `FLAG_POWERED` on every tile, and `supplyPass` recomputes
+  the flags from the networks every month. A city supplied by hand-setting flags is a city that
+  grows nothing and looks exactly like a city where the school did not help. Real wire and pipe.
+- **`ui_smoke` carried the number eleven.** "All eleven overlays have a button" went red the moment
+  there were thirteen — a gate with its own copy of a number will one day measure a different game,
+  for the third time in this project. It reads `OVERLAY_NAMES.length` now.
+- And §16 of the design was amended in the same slice, because an overlay list is a design
+  statement rather than an implementation detail.
+
+### Also
+
+Thirteen overlays. The two new ones are the only ones where MORE is better, so they band through
+`plenty()` rather than `severity()` — written out rather than inverting the other helper, because a
+reader of a band table should not have to invert anything in their head. Five silhouettes: a
+stadium is a ring of stands round a green pitch with floodlights on its corners, a university is a
+quad with a clock tower, a school is a long block with a yard, a library has a portico and a plaza
+is not a building at all. Looked at from the air, which is the zoom a 4×4 is read at.
+
+`university` is `unlock: 4`, and nothing granted rank 4 until this slice: `city-of-five-thousand`
+was already written as a milestone and rewarded money only (Q125, assumed and now built).

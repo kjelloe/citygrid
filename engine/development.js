@@ -120,6 +120,25 @@ function taxDrag(state) {
   return idiv(tax.dragTable[rate] * 100, tax.dragScale);
 }
 
+/** Leisure and education per tile, averaged over the tiles a building stands
+ * on — never over the whole region (T6). A city of two hundred lots on a
+ * 64x64 map has 4,096 tiles and almost none of them are anybody's street. */
+function amenityAverage(state) {
+  var total = 0;
+  var tiles = 0;
+  for (var i = 0; i < state.buildings.length; i += 1) {
+    var b = state.buildings[i];
+    for (var dy = 0; dy < b.h; dy += 1) {
+      for (var dx = 0; dx < b.w; dx += 1) {
+        var index = tileAt(state.width, b.x + dx, b.y + dy);
+        total += state.tiles.leisure[index] + state.tiles.education[index];
+        tiles += 1;
+      }
+    }
+  }
+  return tiles === 0 ? 0 : idiv(total, tiles);
+}
+
 export function computeDemand(state) {
   var counts = census(state);
   var population = rules().population;
@@ -148,6 +167,13 @@ export function computeDemand(state) {
   // The Outside (T2, A65). A live gate is demand from beyond the map: added
   // BEFORE the elasticity and the cap, so it is worth less on `demanding` and
   // cannot lift the pool past the ceiling any other source obeys.
+  // Amenity (T6, A67): the average leisure and education coverage over the
+  // DEVELOPED part of the city, as a fraction of a hundred, which is the same
+  // "over developed land, not over the region" lesson era 1 learnt about
+  // pollution — a leisure average over a 64x64 map is a rounding error no
+  // matter how good the parks are.
+  residential += idiv(amenityAverage(state) * rules().civic.amenityDemand, 100);
+
   var outside = gateTerms(state);
   residential += outside.residential;
   commercial += outside.commercial;

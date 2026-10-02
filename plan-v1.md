@@ -111,7 +111,7 @@ the file to open first.
 | `workitems-navigation.md` | the camera on the screen and on both mouse buttons (P59, ruling 042) | **done 2026-09-11** — K1 the cluster, K3 the mouse and the free look, K2 held keys at a rate, K4 Home and the compass, K5 the phone |
 | `workitems-world.md` | the 3D world made detailed — civic kits, ground, streets, water, trees, motion, windows, the compare sheet as gate (P59) | **started 2026-09-11** — S9 houses and S1 civic kits done (B2 with it); S2 next, interleaved with behaviour |
 | `workitems-behaviour.md` | the simulation made visible and life made realistic — damage, ageing, service vehicles, rush hour, roles, weather (P59) | written 2026-09-10; interleaved with world |
-| `workitems-transport.md` | the transport lane from `specs/transport-and-landmarks.md` (P61, P62): T1 the avenue; T2–T3 rail and the station; T4 water bodies, marina, ferry and port; T5 ranks, city hall, the airport; T6 leisure and education coverage; T7 the cheap catalogue rows | written 2026-09-11, Q87–Q92 answered (A65–A70); **after behaviour** — it is the first lane since cityviewer that moves the hash |
+| `workitems-transport.md` | the transport lane from `specs/transport-and-landmarks.md` (P61, P62): T1 the avenue; T2–T3 rail and the station; T4 water bodies, marina, ferry and port; T5 ranks, city hall, the airport; ~~T6 leisure and education coverage~~ **built 2026-10-02** (era 10, two hashed layers re-pinned); T7 the cheap catalogue rows | written 2026-09-11, Q87–Q92 answered (A65–A70); **after behaviour** — it is the first lane since cityviewer that moves the hash |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
 The frame-time governor exists to decide what a phone gives up and has never run on a phone. D1
@@ -455,6 +455,7 @@ by number from the code they create.
 | Q123 | The city hall does nothing beyond marking the rank, and the population route to rank 3 was left beside it | Kjell — should the hall have an effect, and should the other route survive? |
 | Q124 | Ten ruleset numbers nothing reads; three of them (decayOneIn, roadWeight, crowdingWeight) are rules a player would feel | Kjell — which are rules you want, and is decay meant to be three times as fast as growth? |
 | Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
+| Q126 | Era 10's sweep halved crime (11–12 → 6–7) because the amenity layers reach it through land value | Kjell — should leisure and education reach crime at all, and by that much? |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan
