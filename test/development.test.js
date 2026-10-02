@@ -2,6 +2,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 import { createState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
@@ -11,13 +14,14 @@ import {
 } from "../engine/development.js";
 import { CMD_JOIN, CMD_PAINT_ZONE, CMD_DEZONE, CMD_TICK, CMD_BULLDOZE, CMD_PLACE_BUILDING } from "../engine/commands.js";
 import { utilitiesPass } from "../engine/utilities.js";
+import { rules } from "../engine/rules.js";
 import "../engine/utilities.js";
 import { RESULT } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import { NET_PRESENT } from "../engine/network.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
-  TERRAIN_WATER, TICKS_PER_MONTH, OWNER_NATURE,
+  TERRAIN_WATER, TICKS_PER_MONTH, OWNER_NATURE, FLAG_POWERED, FLAG_WATERED,
 } from "../engine/constants.js";
 
 const W = 20;
@@ -311,4 +315,66 @@ test("demolishing a lot frees its tiles for something else", () => {
   const result = apply(state, { type: CMD_BULLDOZE, actor: 1, runs: encodeRuns(cells) });
   assert.equal(result.result, RESULT.OK);
   assert.equal(state.tiles.zone[cells[0]], ZONE_NONE, "the zoning went with it");
+});
+
+// --- decay rolls like growth (slice G4; A92, Q124) ----------------------------
+
+test("a lot below the decay threshold decays one month in `decayOneIn`, not every month", () => {
+  // `development.decayOneIn` has been in the ruleset since the pass was written
+  // and read by nothing, so growth rolled one month in three and decay rolled
+  // nothing at all: decline was three times as fast as growth and nobody chose
+  // that (Q124, A92).
+  //
+  // The assertion is a RATE over a long run, not a single step — one month
+  // proves nothing about a one-in-six roll, and a rate is what the constant
+  // actually means.
+  const spec = rules().development;
+  assert.ok(spec.decayOneIn > 1, "decayOneIn is not a roll");
+
+  const state = city();
+  street(state, 5, ZONE_RESIDENTIAL);
+  supply(state);
+  months(state, 40);
+  const grown = lots(state);
+  assert.ok(grown.length > 0, "nothing developed, so this proves nothing");
+
+  // Now take the supply away, which is the deepest unhappiness there is
+  // (`unsuppliedScore`), so every lot is below the decay threshold every month
+  // and the only thing between them and the ground is the roll.
+  for (let i = 0; i < state.tiles.flags.length; i += 1) {
+    state.tiles.flags[i] &= ~(FLAG_POWERED | FLAG_WATERED);
+  }
+  const watched = grown[0];
+  let fell = 0;
+  let months_ = 0;
+  for (let m = 0; m < 180 && state.buildings.includes(watched); m += 1) {
+    const before = watched.condition;
+    developmentPass(state);
+    months_ += 1;
+    if (watched.condition < before) fell += 1;
+  }
+  assert.ok(months_ > 30, `only ${months_} months before the lot was gone`);
+  // Against BOTH constants the pass uses. A lot is only scored when the scan
+  // cursor reaches its slice (`scanSlices`, hashed state), so the calendar rate
+  // is one in `scanSlices × decayOneIn` and not one in `decayOneIn` — the first
+  // cut of this test asserted the second and read 3% against an expected 17%,
+  // which is the test being wrong rather than the rule.
+  const share = fell / months_;
+  const expected = 1 / (spec.scanSlices * spec.decayOneIn);
+  assert.ok(share > expected * 0.4 && share < expected * 2.2,
+    `condition fell in ${fell} of ${months_} months — ${(share * 100).toFixed(1)}%, `
+    + `against one in ${spec.scanSlices} × ${spec.decayOneIn} = ${(expected * 100).toFixed(1)}%`);
+  // And the roll is doing something beyond the scan: without it the lot fell
+  // every time it was looked at, which is one month in `scanSlices`.
+  assert.ok(share < 0.5 / spec.scanSlices,
+    `decay still happens on nearly every scan (${(share * 100).toFixed(1)}%)`);
+});
+
+test("growth and decay roll with the same kind of odds", () => {
+  // The symmetry is the whole point of A92: both are a `chance` against a
+  // `…OneIn` from the ruleset, drawn from the world's PRNG.
+  const source = readFileSync(join(repoRoot, "engine", "development.js"), "utf8");
+  const grow = /chance\(state\.rng, development\.growthOneIn\)/.test(source);
+  const decay = /chance\(state\.rng, development\.decayOneIn\)/.test(source);
+  assert.ok(grow && decay, `growth rolls: ${grow}, decay rolls: ${decay}`);
 });

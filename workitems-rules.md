@@ -67,6 +67,14 @@ amenity layers reach land value — this must not double-count them.
 **Gate.** `sim` on a new era. Expect crime to fall again (A93) and land value to rise; say so before
 running it, and check the direction rather than the magnitude.
 
+## G4 — Decay rolls like growth (S) — A92 (Q124) — **BUILT 2026-10-03** as `slice-G4` (era 12)
+
+*As built. One line in the decay branch and two numbers deleted. The measurement is in the dev-log;
+the thing worth carrying forward is that the TEST was wrong before the rule was: a lot is only
+scored when the scan cursor reaches its slice, so the calendar rate is one in
+`scanSlices × decayOneIn` and not one in `decayOneIn`. The first cut asserted the second, read 3%
+against an expected 17%, and would have been "fixed" by loosening the bound.*
+
 ## G4 — Decay rolls like growth (S) — A92 (Q124)
 
 **Goal.** Decline stops being three times as fast as growth by accident.

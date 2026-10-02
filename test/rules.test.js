@@ -46,15 +46,9 @@ const UNREAD_RULES = {
   "service.maxPoliceEffect": "a cap on the police term, which is already bounded by the "
     + "coverage field's own 0-255.",
   "service.maxFireEffect": "the same, for fire.",
-  // The three that are not merely vestigial — they describe rules a player would
-  // feel. Filed as Q124 rather than implemented, because each one moves every
-  // sweep number in the project and wants an era of its own.
-  "development.decayOneIn": "Q124. Growth rolls `growthOneIn`; decay has no roll, so a "
-    + "lot below the decay threshold decays EVERY month while a lot above the growth "
-    + "threshold grows one month in three.",
-  "development.roadWeight": "Q124. `scoreLot` weighs demand and land value; road access "
-    + "is a boolean gate rather than a weighted term.",
-  "development.crowdingWeight": "Q124. `scoreLot` has no crowding term.",
+  // Q124's three left this list in G4 (A92): `decayOneIn` is implemented — decay
+  // rolls like growth now — and `roadWeight` and `crowdingWeight` are deleted,
+  // because a term `scoreLot` does not have is a promise rather than a rule.
 };
 
 test("every number in the ruleset is read by something", () => {

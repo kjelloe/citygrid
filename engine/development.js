@@ -446,6 +446,13 @@ export function developmentPass(state) {
         events.push({ kind: "upgraded", id: building.id, level: building.level });
       }
     } else if (score <= development.decayThreshold) {
+      // A ROLL, like growth's (G4, A92). `decayOneIn` has been in the ruleset
+      // since this pass was written and read by nothing, so a lot above the
+      // growth threshold grew one month in `growthOneIn` while a lot below the
+      // decay threshold lost condition EVERY month it was scored — decline
+      // three times as fast as growth, which nobody chose and which Q124 found
+      // by asking what reads each number.
+      if (!chance(state.rng, development.decayOneIn)) continue;
       building.condition -= development.conditionDecay;
       if (building.condition <= 0) {
         building.condition = 0;

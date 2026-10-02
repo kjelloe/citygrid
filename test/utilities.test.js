@@ -315,7 +315,11 @@ test("a lot that loses its supply decays", () => {
     state.tiles.wire[at(x, 10)] = 0;
     state.tiles.pipe[at(x, 10)] = 0;
   }
-  for (let i = 0; i < 80; i += 1) {
+  // Twenty years, not seven. Decay ROLLS since G4 (A92) — one month in
+  // `decayOneIn` on each scan rather than every scan — so a district still
+  // empties out, three times more slowly. That is the change, and this is the
+  // test paying for it rather than being wrong.
+  for (let i = 0; i < 240; i += 1) {
     utilitiesPass(state);
     developmentPass(state);
   }

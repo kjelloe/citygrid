@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "T6: tiles.leisure and tiles.education are hashed layers, two more funding services, five new definitions and two new civic/demand terms (A67, A70)",
+ "why": "G4: decay rolls like growth (A92) — `development.decayOneIn` is read at last, so a lot below the threshold loses condition one scan in six rather than every scan",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -264,7 +264,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "d2c9a6213109648c",
+   "hash": "bb46316885a61c20",
    "events": [
     "budget",
     "developed",
@@ -279,15 +279,11 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "c81f7e7fab4f7dea",
+   "hash": "159221c8e9203569",
    "events": [
-    "abandoned",
     "budget",
     "developed",
-    "downgraded",
-    "noRouteToWork",
-    "upgraded",
-    "waterShortfall"
+    "noRouteToWork"
    ]
   },
   {
@@ -296,17 +292,15 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "11aec4469af18d01",
+   "hash": "b4291145e672a7e4",
    "events": [
     "abandoned",
     "budget",
     "developed",
-    "downgraded",
-    "noRouteToWork",
-    "waterShortfall"
+    "noRouteToWork"
    ]
   }
  ],
- "era": 9,
+ "era": 11,
  "repinnedAt": "2026-10-02"
 }

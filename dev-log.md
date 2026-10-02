@@ -8252,3 +8252,66 @@ definitions placed and photographed — `railStation` and `waterPump` for the fi
 **Also:** `workitems-rules.md` is indexed in the README beside the other lanes, and the `sim-gate`
 skill learnt T7's two lessons — read `reports/balance-era*.md` before choosing a threshold on a
 simulation quantity, and `(n + 1) * per <= others` is the form that means "one per `per`".
+
+## slice-G4 — decay rolls like growth (2026-10-03, ERA 12, one fixture hash moved)
+
+One line in the decay branch, two numbers deleted, and the largest single move any era in this
+project has made.
+
+`development.decayOneIn` has been in `data/balance.json` since the development pass was written and
+was read by nothing. Growth rolled one month in `growthOneIn`; decay rolled nothing, so a lot below
+the decay threshold lost condition **every time it was scored** while a lot above the growth
+threshold grew one scan in three. Decline was three times faster than growth and nobody chose that
+(Q124, A92). `roadWeight` and `crowdingWeight` went in the same breath: `scoreLot` has no such
+terms, and a number nothing reads is a promise rather than a rule.
+
+### Measured — era 12 against era 11, 200 games a configuration
+
+| configuration | era 11 | era 12 | |
+|---|---|---|---|
+| relaxed-64 | 2,410 | 1,711 | **−29%** |
+| steady-64 | 2,253 | 1,758 | **−22%** |
+| demanding-64 | 2,038 | 1,490 | **−27%** |
+| steady-64-nodisasters | 2,312 | 1,790 | **−23%** |
+
+I predicted the opposite in the work item — "slower decay means more standing buildings, which means
+more population" — and wrote it down before running it, which is the only reason the surprise is
+legible. **The mechanism was then measured rather than guessed**, five identical seeds with the
+rule and without it, in a worktree:
+
+| | without the roll | with it |
+|---|---|---|
+| population | 2,264 | 1,840 |
+| lots | 257 | 180 |
+| developments in 25 years | 2,238 | **346** |
+| abandonments | 1,979 | **156** |
+| mean condition | 56 | 47 |
+
+**The churn was producing the population.** Every lot that died freed ground that was rebuilt at
+level 1 and grew again, so a city demolishing itself twice over in twenty-five years was also
+rebuilding itself twice over — and 1,979 abandonments is the number `development.js`'s own
+`condition` comment says the memory was introduced to stop ("11,810 abandonments in forty years …
+building and demolishing the same street forever"). It stopped a lot of it; `decayOneIn` would have
+stopped the rest, if anything had read it.
+
+So this is a trade, not a regression: a calmer, smaller, shabbier city (mean condition 56 → 47,
+because a lot that would have been cleared now lingers unhappy) against a bigger, frantic, newer
+one. **Nothing is tuned** — this is the first measurement of a constant nothing had ever read — and
+the question of whether 6 is the right number is **Q128**, with 2 or 3 as the obvious alternative.
+
+### What went wrong
+
+- **The test was wrong before the rule was.** The first cut asserted "condition falls about one
+  month in `decayOneIn`" and measured 3% against an expected 17%. A lot is only scored when the scan
+  cursor reaches its slice, so the calendar rate is one in `scanSlices × decayOneIn`. Loosening the
+  bound would have hidden that; the test names both constants now, and the second assertion — that
+  decay no longer happens on nearly every SCAN — is the one that would catch a regression.
+- **`test/utilities.test.js`'s "a lot that loses its supply decays" needed twenty years, not
+  seven.** A cut-off district still empties out, three times more slowly, which is the change
+  itself rather than the test being wrong.
+
+### Measured
+
+Suite **1,559 green twice**. `sim` **750 s of 900**. One fixture hash moved (`founding`'s 132-tick
+step) and `two_player` did not move at all, which is the footprint of a draw that only happens in
+the decay branch.

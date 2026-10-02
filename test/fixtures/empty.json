@@ -1,6 +1,6 @@
 {
  "name": "empty",
- "why": "T6: tiles.leisure and tiles.education are hashed layers, two more funding services, five new definitions and two new civic/demand terms (A67, A70)",
+ "why": "G4: decay rolls like growth (A92) — `development.decayOneIn` is read at last, so a lot below the threshold loses condition one scan in six rather than every scan",
  "generate": false,
  "options": {
   "seed": 1,
@@ -62,6 +62,6 @@
    ]
   }
  ],
- "era": 9,
+ "era": 11,
  "repinnedAt": "2026-10-02"
 }
