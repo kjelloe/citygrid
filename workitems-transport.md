@@ -422,6 +422,29 @@ school raises the growth odds of homes in range; `copyState`, the hash list in b
 **Gate.** `sim` set on a new era — this is the item that changes balance most — with the sweep's
 per-configuration means before and after; `render` set with the five kits.
 
+## T7 — The cheap rows — A70 — **BUILT 2026-10-02** as `slice-T7` (era 11)
+
+*As built. Five rows and five deputy considerations, which is what makes it an era rather than a
+catalogue edit. Two of the five were specified in terms of fields nothing reads — `storage` on the
+water tower and `capacity` on the hospital (Q119, and `capacity` found by P92) — so the reservoir
+PRODUCES water rather than storing it and the headquarters are a bigger radius with no capacity.
+Adding a dead field to two more buildings is how `landValueBonus` reached four.*
+
+*`noiseRadius` became `pollutionRadius`: the waste facility is T5's airport with the sign the other
+way round, and one idea should have one name. Its negative source falls off linearly from the centre
+exactly as the airport's positive one does.*
+
+*The headquarters are `unlock: 0`. A definition above the seat's rank is invisible to the DEPUTY as
+well as to the player — `findSpotFor` answers "nowhere" (T5a) — so a rank on an everyday service
+building is a building no headless city ever has, and the progression is the city hall and the
+airport.*
+
+*As gated (T7): suite 1,557 green twice; `sim` 763 s of 900 on era 11, `quick` 433/480, `render`
+59/120. `reports/smoke-S1-{clinic,policeHQ,fireHQ,reservoir,wasteFacility}.png` — that tool's own
+name, because `civic_shots` owns the per-definition picture and T7 taught it to FAIL when nothing
+was placed. It had been photographing an empty road for every 1×1 definition since T2 put rock on
+seed 1003's x = 5.*
+
 ## T7 — The cheap rows (S engine, M renderer) — A70
 
 **Goal.** Content that costs a row and a kit each.

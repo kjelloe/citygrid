@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 10,
+  era: 11,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -131,6 +131,17 @@ var RULES = {
     // ERA 0, UNTUNED.
     buildingsPerSchool: 25,
     buildingsPerPlaza: 30,
+    // The cheap rows (T7). A clinic is the cheapest health there is, so it
+    // comes more often than a station; the headquarters wait for a town that
+    // has outgrown its stations; the reservoir replaces the pump past a size;
+    // and the tip is built when the city's own pollution average says so —
+    // over DEVELOPED land, which the sweep reports as 2 to 6, so the threshold
+    // is 5 and not the 24 the first cut guessed. ERA 0, UNTUNED.
+    buildingsPerClinic: 30,
+    headquartersAtPopulation: 1800,
+    reservoirAtPopulation: 1800,
+    tipAtPollution: 5,
+    tipAtPopulation: 600,
     // T1a (A60): the size at which the deputy's next block is an avenue. One,
     // so a returning player finds a main road rather than a grid of identical
     // streets.

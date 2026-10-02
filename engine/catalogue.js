@@ -44,7 +44,25 @@ var CATALOGUE = {
   // The city hall is one per seat and marks the rank it grants; the airport is
   // the first building with an AXIS (`orientable`, which swaps the footprint
   // the reducer claims), a rule about the ground under it (`needsFlat`) and
-  // noise that carries past its fence (`noiseRadius`).
+  // noise that carries past its fence (`pollutionRadius`, which T7 renamed when
+  // the waste facility turned out to be the same arithmetic with the sign the
+  // other way round).
+  // The cheap rows (T7, A70): content that costs a row and a kit each, built
+  // out of machinery that already works. Two of them were specified in terms of
+  // fields nothing reads — `storage` on the water tower and `capacity` on the
+  // hospital (Q119, Q127) — so the reservoir PRODUCES water rather than storing
+  // it and the headquarters are a bigger radius with no capacity. A dead field
+  // on two more buildings is how `landValueBonus` reached four.
+  clinic: { category: "service", w: 1, h: 1, cost: 300, upkeep: 45, power: -3, water: -3, pollution: 0, fireRisk: 3, service: "health", radius: 7, unlock: 0 },
+  // Both headquarters are `unlock: 0`: the progression is the city hall and the
+  // airport (A69), and a definition above the seat's rank is invisible to the
+  // DEPUTY as well as to the player — `findSpotFor` answers "nowhere" — so a
+  // rank on an everyday service building is a building no headless city has.
+  policeHQ: { category: "service", w: 3, h: 3, cost: 1800, upkeep: 260, power: -14, water: -12, pollution: 0, fireRisk: 5, service: "police", radius: 22, unlock: 0 },
+  fireHQ: { category: "service", w: 3, h: 3, cost: 1800, upkeep: 260, power: -14, water: -14, pollution: 0, fireRisk: 0, service: "fire", radius: 22, unlock: 0 },
+  reservoir: { category: "water", w: 2, h: 2, cost: 1600, upkeep: 45, power: -8, water: 520, pollution: 0, fireRisk: 2, needsSurfaceWater: false, unlock: 0 },
+  wasteFacility: { category: "service", w: 2, h: 2, cost: 1400, upkeep: 110, power: -10, water: -6, pollution: -26, fireRisk: 6, pollutionRadius: 9, unlock: 0 },
+
   // Leisure and education (T6, A67, A70). `coverage` is the field a building
   // deposits into; `service` is the DEPARTMENT it belongs to, which is what the
   // quests count and what the funding row is named after. They are the same
@@ -57,7 +75,7 @@ var CATALOGUE = {
   university: { category: "service", w: 4, h: 4, cost: 6000, upkeep: 300, power: -24, water: -20, pollution: 0, fireRisk: 8, coverage: "education", radius: 18, unlock: 4 },
 
   cityHall: { category: "civic", w: 3, h: 3, cost: 6000, upkeep: 200, power: -10, water: -8, pollution: 0, fireRisk: 6, onePerSeat: true, unlock: 2 },
-  airport: { category: "transport", w: 6, h: 4, cost: 14000, upkeep: 450, power: -30, water: -16, pollution: 40, fireRisk: 18, gate: "air", orientable: true, needsFlat: true, noiseRadius: 10, unlock: 3 },
+  airport: { category: "transport", w: 6, h: 4, cost: 14000, upkeep: 450, power: -30, water: -16, pollution: 40, fireRisk: 18, gate: "air", orientable: true, needsFlat: true, pollutionRadius: 10, unlock: 3 },
 };
 
 export function setCatalogue(loaded) {

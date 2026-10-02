@@ -89,7 +89,33 @@
     "power": -10, "water": -8, "pollution": 0, "fireRisk": 6,
     "onePerSeat": true, "unlock": 2
   },
-"plaza": {
+  "clinic": {
+    "category": "service", "w": 1, "h": 1, "cost": 300, "upkeep": 45,
+    "power": -3, "water": -3, "pollution": 0, "fireRisk": 3,
+    "service": "health", "radius": 7, "unlock": 0
+  },
+  "policeHQ": {
+    "category": "service", "w": 3, "h": 3, "cost": 1800, "upkeep": 260,
+    "power": -14, "water": -12, "pollution": 0, "fireRisk": 5,
+    "service": "police", "radius": 22, "unlock": 0
+  },
+  "fireHQ": {
+    "category": "service", "w": 3, "h": 3, "cost": 1800, "upkeep": 260,
+    "power": -14, "water": -14, "pollution": 0, "fireRisk": 0,
+    "service": "fire", "radius": 22, "unlock": 0
+  },
+  "reservoir": {
+    "category": "water", "w": 2, "h": 2, "cost": 1600, "upkeep": 45,
+    "power": -8, "water": 520, "pollution": 0, "fireRisk": 2,
+    "needsSurfaceWater": false, "unlock": 0
+  },
+  "wasteFacility": {
+    "category": "service", "w": 2, "h": 2, "cost": 1400, "upkeep": 110,
+    "power": -10, "water": -6, "pollution": -26, "fireRisk": 6,
+    "pollutionRadius": 9, "unlock": 0
+  },
+
+  "plaza": {
     "category": "amenity", "w": 2, "h": 2, "cost": 200, "upkeep": 8,
     "power": -1, "water": -2, "pollution": -4, "fireRisk": 1,
     "coverage": "leisure", "radius": 6, "unlock": 0
@@ -118,7 +144,7 @@
   "airport": {
     "category": "transport", "w": 6, "h": 4, "cost": 14000, "upkeep": 450,
     "power": -30, "water": -16, "pollution": 40, "fireRisk": 18,
-    "gate": "air", "orientable": true, "needsFlat": true, "noiseRadius": 10,
+    "gate": "air", "orientable": true, "needsFlat": true, "pollutionRadius": 10,
     "unlock": 3
   }
 }

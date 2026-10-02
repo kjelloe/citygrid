@@ -10,8 +10,8 @@ measured when somebody last looked, which is a different claim and the only one 
   is a document. Nothing on `dev_night` changes what this page claims until the next slice does,
   and the docs test prints the drift as a note rather than a failure for exactly that reason.
 - **Date:** 2026-09-08
-- **Balance era:** era 10, re-measured 2026-10-02 over 200 games per configuration
-  (`reports/balance-era10.md`). Numbers from an earlier era are void, not roughly comparable —
+- **Balance era:** era 11, re-measured 2026-10-02 over 200 games per configuration
+  (`reports/balance-era11.md`). Numbers from an earlier era are void, not roughly comparable —
   and the frame numbers further down are renderer measurements, which belong to no balance era.
   This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
   doc test was pinning the words rather than reading `data/balance.json`.

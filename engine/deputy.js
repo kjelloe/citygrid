@@ -377,6 +377,10 @@ function placeUtility(state, deputy, def, liveGrid) {
 }
 
 function pickPump(state, deputy) {
+  // Past a certain size a town stops adding pumps and digs a reservoir: more
+  // water for less ground and less upkeep per unit, which is the whole reason
+  // the row exists (T7). It needs no shore.
+  if (state.population >= rules().deputy.reservoirAtPopulation) return "reservoir";
   // A surface pump is cheaper and stronger but needs a shore. In a dry region
   // there is no shore, and the groundwater pump is the whole answer.
   for (var i = 0; i < state.tiles.terrain.length; i += 1) {
@@ -439,6 +443,62 @@ function keepAmused(state, deputy) {
   }
   if (schools * cfg.buildingsPerSchool < others) return placeUtility(state, deputy, "school");
   if (plazas * cfg.buildingsPerPlaza < others) return placeUtility(state, deputy, "plaza");
+  return false;
+}
+
+/** The cheap rows the deputy considers (T7, A70).
+ *
+ * Four more decisions in the shape `keepCovered` and `keepAmused` already have,
+ * and for the same reason: a row nobody builds is a row no headless city has,
+ * and every sweep in this project is played by this mayor.
+ *
+ *   a clinic   — one per `buildingsPerClinic`, which is the cheapest health
+ *                there is and the only one a young town can afford
+ *   the HQs    — once, each, past `headquartersAtPopulation`: a bigger radius
+ *                for a town that has outgrown its stations
+ *   the tip    — when the city's own pollution average passes `tipAtPollution`,
+ *                which is the number the civic pass already computes
+ */
+function keepTidy(state, deputy) {
+  if (deputy.zoned === 0) return false;
+  var cfg = rules().deputy;
+  var clinics = 0;
+  var policeHQs = 0;
+  var fireHQs = 0;
+  var tips = 0;
+  var others = 0;
+  for (var i = 0; i < state.buildings.length; i += 1) {
+    var b = state.buildings[i];
+    if (b.owner !== deputy.seat) continue;
+    if (b.def === "clinic") clinics += 1;
+    else if (b.def === "policeHQ") policeHQs += 1;
+    else if (b.def === "fireHQ") fireHQs += 1;
+    else if (b.def === "wasteFacility") tips += 1;
+    else others += 1;
+  }
+  // The ONE-OFFS first. A clinic is wanted every thirty buildings for ever, so
+  // leaving it first means it is the only thing this turn ever does: thirteen
+  // clinics and no headquarters, measured, because `keepTidy` returns as soon
+  // as anything fires and the town never stops growing past the next clinic.
+  if (state.population >= cfg.headquartersAtPopulation) {
+    if (policeHQs < 1) return placeUtility(state, deputy, "policeHQ");
+    if (fireHQs < 1) return placeUtility(state, deputy, "fireHQ");
+  }
+  // `(n + 1) * per <= others`, not `n * per < others`: the second form is true
+  // the moment a town has one building of anything, so the first clinic and the
+  // first tip were bought before the first resident. Measured on seed 1003:
+  // the town peaked at SIXTY people against 1,260 without them, because two
+  // upkeep rows in a village is a deputy permanently under its own reserve.
+  if ((clinics + 1) * cfg.buildingsPerClinic <= others) {
+    return placeUtility(state, deputy, "clinic");
+  }
+  // And the tip waits for a town as well as for dirt: `pollutionAverage` is
+  // over DEVELOPED land (era 1), so two power stations and nine houses is a
+  // filthy city by that measure and always has been.
+  if (tips < 1 && state.population >= cfg.tipAtPopulation
+    && state.civic.pollutionAverage > cfg.tipAtPollution) {
+    return placeUtility(state, deputy, "wasteFacility");
+  }
   return false;
 }
 
@@ -858,6 +918,9 @@ export function deputyTurn(state, deputy, sink) {
   // every headless game — a sweep played without them measures a town that
   // reads zero on two of the five layers.
   if (keepAmused(state, deputy)) return true;
+  // And the cheap rows (T7): a clinic, the two headquarters and somewhere for
+  // the rubbish, each on a threshold the city already computes.
+  if (keepTidy(state, deputy)) return true;
   // And once the town is big enough, its busiest street becomes its main road.
   if (upgradeTrunk(state, deputy)) return true;
   // Then the railway, which is a bigger town still (T2).

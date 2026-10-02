@@ -253,13 +253,26 @@ test("a doctrine that holds the line never opens one", () => {
   // `hold` builds nothing at all, which is the whole doctrine; this is the
   // assertion that says the new row obeys it rather than reaching past it.
   const { state } = play(1003, 48, 2);
+  // The DELTA, not the count. The two years of `expand` that set this fixture
+  // up are free to build whatever they like, and T7 made cities grow fast
+  // enough that they reach `railAtPopulation` inside them — at which point an
+  // assertion of "zero stations" is about the setup rather than the doctrine.
+  // Lots that GREW are the development pass, not the deputy, so only the
+  // unzoned ones count on either side.
+  const civic = (s) => s.buildings.filter((b) => b.zone === 0).length;
+  const before = civic(state);
+  const stationsBefore = state.buildings.filter((b) => b.def === "railStation").length;
   const holding = makeDeputy(1, "hold");
   for (let turn = 0; turn < 600; turn += 1) {
     apply(state, { type: CMD_TICK });
     if (turn % 6 === 0) deputyTurn(state, holding);
   }
   assert.equal(holding.stations, 0);
-  assert.equal(state.buildings.filter((b) => b.def === "railStation").length, 0);
+  assert.equal(state.buildings.filter((b) => b.def === "railStation").length, stationsBefore,
+    "the holding deputy opened a line");
+  // And nothing else either, which is the doctrine.
+  assert.equal(civic(state), before,
+    `the holding deputy built ${civic(state) - before} things`);
 });
 
 test("the deputy builds a marina on a big body, and a terminal only on one that reaches the edge", () => {

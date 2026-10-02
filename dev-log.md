@@ -8115,3 +8115,72 @@ because adding a dead one to two more buildings is how `landValueBonus` reached 
 **Also swept, and clean:** suite 1,550; `omissions`, `reachability`, `utilities`, `rules`, `world`,
 `lod` and `docs` 155 green; the two per-leaf data scans (P90's ruleset, P91's config) are tests now
 and both are quiet; every exported function has an importer.
+
+## slice-T7 — the cheap rows (2026-10-02, ERA 11) — the transport lane is complete
+
+Five definitions that cost a row and a kit each: a clinic, a police and a fire headquarters, a
+reservoir and a waste facility. Five deputy considerations with them, which is what makes this an
+era rather than a catalogue edit.
+
+**Two of the five were specified in terms of fields nothing reads.** The item asks for the reservoir
+to carry `storage` "like the tower" and the headquarters "a larger radius and capacity" — and
+`storage` is Q119's, while `capacity` turned out to be dead too (P92, found two hours earlier when
+the dead-field scan was tightened). So the reservoir PRODUCES water rather than storing it, and the
+headquarters are a bigger radius with no `capacity` at all. Adding a dead field to two more
+buildings is how `landValueBonus` reached four. Filed as Q127 before the slice, with the assumption
+stated.
+
+**`noiseRadius` is `pollutionRadius` now.** The waste facility is T5's airport with the sign the
+other way round — a source that falls off linearly from the centre — and one idea should have one
+name.
+
+**The headquarters are `unlock: 0`.** A definition above the seat's rank is invisible to the DEPUTY
+as well as to the player, because `findSpotFor` answers "nowhere" (T5a), and the deputy never
+completes a quest in a headless game. A rank on an everyday service building is a building no gate
+city ever has. The progression is still the city hall and the airport.
+
+### Measured — era 11 against era 10, 200 games a configuration
+
+| configuration | era 10 | era 11 | |
+|---|---|---|---|
+| relaxed-64 | 2,435 | 2,410 | −1.0% |
+| steady-64 | 2,427 | 2,253 | −7.2% |
+| demanding-64 | 1,881 | **2,038** | +8.3% |
+| steady-64-nodisasters | 2,347 | 2,312 | −1.5% |
+
+The interesting row is `demanding`, which went UP — the clinic is the only health a young town can
+afford, and on the configuration where money is tight it buys more growth than the hospital the
+deputy never builds. The two middle configurations pay for it in upkeep. Crime fell again, 6–7 to 4
+(Q126's coupling, now with more service coverage behind it).
+
+### What went wrong
+
+- **The first cut of the deputy's doctrine bankrupted every town.** Seed 1003 peaked at **sixty
+  people against 1,260 without it**. Two causes, both the same shape: `n * per < others` is true the
+  moment a town has one building of anything, so the first clinic and the first tip were bought
+  before the first resident; and `tipAtPollution: 24` was a guess, where the sweep reports pollution
+  over developed land as **1 to 2** — so the rule could only ever fire in a village, where two power
+  stations and nine houses is a filthy city by that measure. The thresholds are `(n + 1) * per <=
+  others`, a population gate on the tip, and 5. **The probe that found it was the pre-T7 tree in a
+  worktree**, which is the three-arm shape P90 arrived at.
+- **One-offs have to come first.** With the clinic rule ahead of them, `keepTidy` returned on every
+  turn and the headquarters were never reached: thirteen clinics, no HQ. A rule that is wanted for
+  ever starves a rule that is wanted once.
+- **Every 1×1 definition's picture has been an empty road since T2.** `civic_shots` put its building
+  at a fixed x = 5, and T2's rock generation put rock on that tile on seed 1003 — so `park`,
+  `windTurbine` and then T7's `clinic` were photographed as grass with `placed=…:invalid` printed in
+  a log nobody read. `place=` walks along the row until the reducer accepts a spot, the report
+  carries `@x,y` so the camera can aim at where it actually landed, and **the tool exits non-zero
+  when nothing was placed** — which is the rule this project wrote for itself after the five picture
+  gates nobody ran.
+- **A test asserting a count where it meant a delta.** `deputy.test.js`'s "a doctrine that holds the
+  line never opens one" asserted zero rail stations; T7's cities grow fast enough that the two
+  years of `expand` setting the fixture up now reach `railAtPopulation` on their own. It measures
+  the change across the holding deputy's turns now, which is what the doctrine actually claims.
+
+### Measured
+
+Suite **1,557 green twice**. `sim` **763 s of 900**, `quick` **433/480**, `render` **59/120**. Five pictures,
+looked at: the clinic is a white box with a red cross over a glazed door, the waste facility a shed
+with a smoking chimney and a skip — and that is the first time this project's smoke has been
+visible in a shot at all (S6 noted it never had been).

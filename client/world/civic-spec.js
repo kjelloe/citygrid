@@ -317,6 +317,82 @@ export const CIVIC_SHAPES = Object.freeze({
     // instanced pass, so it sits where the baked tower is at every zoom.
     radar: { x: 0.89, y: 0.79, z: 0.585 },
   },
+  // The cheap rows (T7, A70). Each one has to be told from the thing it is a
+  // bigger or smaller version of at a glance: a clinic from a hospital, a
+  // headquarters from a station, a reservoir from a water tower.
+  clinic: {
+    tall: false,
+    masses: [
+      // One tile, so it is small and must still read: a flat-roofed box, a
+      // glazed door and a red cross over it.
+      box(-0.8, 0, -0.8, 0.8, 0.62, 0.7, "white"),
+      box(-0.86, 0.62, -0.86, 0.86, 0.7, 0.76, "dark"),
+      box(-0.3, 0.03, 0.7, 0.3, 0.46, 0.78, "glass"),
+      box(-0.06, 0.3, 0.72, 0.06, 0.58, 0.8, "red"),
+      box(-0.2, 0.41, 0.72, 0.2, 0.47, 0.8, "red"),
+    ],
+  },
+  policeHQ: {
+    // A tower over the station: the thing that says HEADQUARTERS from across
+    // the city is that it is taller than the station it replaced.
+    tall: true,
+    masses: [
+      box(-0.95, 0, -0.9, 0.95, 0.5, 0.5, "concrete"),
+      box(-0.98, 0.5, -0.95, 0.98, 0.56, 0.55, "dark"),
+      box(-0.45, 0, -0.5, 0.45, 1.25, 0.2, "glass"),
+      box(-0.5, 1.25, -0.55, 0.5, 1.33, 0.25, "dark"),
+      // The blue lamp over the door, and the steps.
+      box(-0.25, 0.04, 0.5, 0.25, 0.44, 0.6, "glass"),
+      box(-0.06, 0.46, 0.52, 0.06, 0.6, 0.64, "steel", true),
+      box(-0.6, 0, 0.6, 0.6, 0.05, 0.78, "concrete"),
+    ],
+  },
+  fireHQ: {
+    tall: true,
+    masses: [
+      // Four doors rather than the station's two, and the drill tower.
+      box(-0.95, 0, -0.9, 0.95, 0.62, 0.55, "brick"),
+      box(-0.98, 0.62, -0.95, 0.98, 0.7, 0.6, "dark"),
+      box(-0.88, 0.04, 0.55, -0.5, 0.5, 0.64, "red"),
+      box(-0.42, 0.04, 0.55, -0.04, 0.5, 0.64, "red"),
+      box(0.04, 0.04, 0.55, 0.42, 0.5, 0.64, "red"),
+      box(0.5, 0.04, 0.55, 0.88, 0.5, 0.64, "red"),
+      box(0.55, 0, -0.85, 0.9, 1.35, -0.5, "concrete"),
+      box(0.52, 1.35, -0.88, 0.93, 1.42, -0.47, "dark"),
+    ],
+  },
+  reservoir: {
+    // A tank in the ground rather than on legs, which is what tells it from
+    // the water tower beside it in the menu.
+    tall: false,
+    masses: [
+      box(-0.95, 0, -0.95, 0.95, 0.12, 0.95, "concrete"),
+      box(-0.85, 0.12, -0.85, 0.85, 0.34, 0.85, "glass"),
+      box(-0.95, 0.1, -0.95, -0.82, 0.4, 0.95, "concrete"),
+      box(0.82, 0.1, -0.95, 0.95, 0.4, 0.95, "concrete"),
+      box(-0.82, 0.1, -0.95, 0.82, 0.4, -0.82, "concrete"),
+      box(-0.82, 0.1, 0.82, 0.82, 0.4, 0.95, "concrete"),
+      // The pump house on the end.
+      box(0.3, 0.12, 0.3, 0.75, 0.6, 0.75, "white"),
+      box(0.26, 0.6, 0.26, 0.79, 0.66, 0.79, "dark"),
+    ],
+  },
+  wasteFacility: {
+    tall: true,
+    masses: [
+      // A shed with a chimney and two skips: the chimney is the recognising
+      // part and the skips are what say RUBBISH rather than factory.
+      box(-0.9, 0, -0.9, 0.5, 0.66, 0.4, "steel"),
+      box(-0.95, 0.66, -0.95, 0.55, 0.74, 0.45, "dark"),
+      box(0.2, 0.66, -0.6, 0.44, 1.5, -0.36, "brick", true),
+      box(-0.6, 0.05, 0.4, -0.2, 0.3, 0.8, "red"),
+      box(-0.1, 0.05, 0.4, 0.3, 0.3, 0.8, "steel"),
+      box(0.55, 0, -0.9, 0.95, 0.08, 0.9, "concrete"),
+    ],
+    // The chimney smokes, like the two power stations (S6).
+    emits: [{ x: 0.32, y: 1.5, z: -0.48 }],
+  },
+
   // Leisure and education (T6, A67/A70). Five definitions, five silhouettes,
   // and the recognising part of each is the part that carries from the
   // pavement: a stadium is a bowl, a school is a long low block with a yard, a

@@ -146,7 +146,7 @@ test("the flatness rule reads the whole footprint, turned or not", () => {
 test("the noise reaches past the fence, and stops", () => {
   const state = city();
   const spec = SPEC();
-  assert.ok(spec.noiseRadius > spec.w, "the noise does not reach past the footprint");
+  assert.ok(spec.pollutionRadius > spec.w, "the noise does not reach past the footprint");
   assert.equal(build(state, 12, 12).result, RESULT.OK);
   pollutionPass(state);
   const cx = 12 + (spec.w >> 1);
@@ -158,20 +158,21 @@ test("the noise reaches past the fence, and stops", () => {
   // both spent — a field that never reaches zero is a map-wide offset, not a
   // noise radius.
   const near = state.tiles.pollution[at(cx + 2, cy)];
-  const far = state.tiles.pollution[at(cx + spec.noiseRadius - 1, cy)];
+  const far = state.tiles.pollution[at(cx + spec.pollutionRadius - 1, cy)];
   assert.ok(near > far, `noise did not fall off: ${near} at 2 tiles, ${far} at the edge`);
   assert.ok(far > 0, "the noise does not reach its own radius");
-  assert.equal(state.tiles.pollution[at(cx + spec.noiseRadius + 3, cy)], 0,
+  assert.equal(state.tiles.pollution[at(cx + spec.pollutionRadius + 3, cy)], 0,
     "the noise carries beyond its radius");
-  assert.ok(distance(cx, cy, cx + spec.noiseRadius + 3, cy) > spec.noiseRadius);
+  assert.ok(distance(cx, cy, cx + spec.pollutionRadius + 3, cy) > spec.pollutionRadius);
 });
 
-test("nothing else in the catalogue has a noise radius", () => {
+test("the airport is the only thing in the catalogue that is LOUD", () => {
   // The airport is loud because it is an airport. A second definition carrying
   // the field would be a rule spreading by copy, which is how `landValueBonus`
   // ended up on four definitions that do not use it (Q119).
-  const loud = definitionIds().filter((id) => definition(id).noiseRadius !== undefined);
-  assert.deepEqual(loud, ["airport"]);
+  const spread = definitionIds().filter((id) => (definition(id).pollution ?? 0) > 0
+    && definition(id).pollutionRadius !== undefined);
+  assert.deepEqual(spread, ["airport"]);
 });
 
 // --- the gate ----------------------------------------------------------------

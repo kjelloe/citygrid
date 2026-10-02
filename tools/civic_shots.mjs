@@ -12,23 +12,35 @@
 import { shoot } from "./screenshot.mjs";
 import { definitionIds, definition } from "../engine/catalogue.js";
 
+const problems = [];
 const only = process.argv[2];
 const defs = only ? [only] : definitionIds();
 const SEED = 1003;
 const SIZE = 48;
 const ROW = Math.round(SIZE / 2);
 
-/** Where the harness puts the first building: `place=` starts at x = 5 and
- * leaves two tiles between definitions, so a single one is always at 5. */
+/** Where the harness STARTS looking for a spot. It walks right from here until
+ * the reducer accepts one (T7), so the camera cannot assume this is where the
+ * building ended up — it reads the x back out of the report. */
 const FIRST_X = 5;
 
 for (const def of defs) {
   const d = definition(def);
+  // A probe first, cheap and small, to find out where the harness put it. The
+  // alternative is a camera pointed at x = 5 and a building three tiles along,
+  // which is what the first run of T7's clinic photographed.
+  const found = await shoot({
+    out: "reports/.civic-probe.png", seed: SEED, years: 0, size: SIZE, width: 320, height: 240,
+    terrain: d.needsFlat === true ? "flat" : "rolling",
+    extra: { place: def, age: 200, rank: d.unlock },
+  });
+  const spot = String(found.report?.placed ?? "").match(new RegExp(`${def}:ok@(\\d+),(\\d+)`));
+  const atX = spot ? Number(spot[1]) : FIRST_X;
   const r = await shoot({
     out: `reports/smoke-S1-${def}.png`, seed: SEED, years: 0, size: SIZE,
     width: 1000, height: 640, tier: "high", streets: 40, frames: 40,
     // In the street, two tiles north of the building, looking south at it.
-    street: `${FIRST_X + Math.floor(d.w / 2)},${ROW}`, yaw: 2, pitch: 8,
+    street: `${atX + Math.floor(d.w / 2)},${ROW}`, yaw: 2, pitch: 8,
     // Backdated past `BUILDING_TICKS` (B2): a building placed this tick is a
     // construction site, and the first run of this tool photographed twelve
     // scaffolded slabs — which is B2 working and S1 unphotographed.
@@ -43,8 +55,16 @@ for (const def of defs) {
     // `invalid` and the picture was of an empty road.
     terrain: d.needsFlat === true ? "flat" : "rolling",
   });
-  console.log(`reports/smoke-S1-${def}.png ok=${r.ok} tri=${r.report?.triangles} placed=${r.report?.placed ?? "?"}`);
+  // The harness reports what it placed as `<def>:<result>`, space separated.
+  const placed = String(r.report?.placed ?? "");
+  const built = placed.includes(`${def}:ok`);
+  console.log(`reports/smoke-S1-${def}.png ok=${r.ok} tri=${r.report?.triangles} placed=${placed}`);
   if (!r.ok) for (const p of r.problems.slice(0, 2)) console.log("   ", p);
+  // A picture of a building the rules refused is a picture of nothing, and this
+  // tool PRINTED that for two definitions and failed on neither (T7): every
+  // 1×1 has been an empty road since T2 put rock on the map.
+  if (!built) problems.push(`${def}: not placed — ${placed || "nothing"}`);
+  if (!r.ok) problems.push(`${def}: ${r.problems[0]}`);
 }
 
 if (!only) {
@@ -69,3 +89,9 @@ if (!only) {
     if (!r.ok) for (const p of r.problems.slice(0, 2)) console.log("   ", p);
   }
 }
+
+if (problems.length > 0) {
+  console.error(`\nFAIL  ${problems.join("\n      ")}`);
+  process.exit(1);
+}
+console.log("\ncivic shots ok");
