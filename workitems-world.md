@@ -235,7 +235,33 @@ lands here as a palette amendment with §3.1 updated in the same slice.
 **Done when** every row of the sheet has moved toward the reference by Kjell's eye, and the
 budgets in ruling 040 carry the re-measured numbers.
 
-## S11 — Steep ground you can play on — Q80 (A57), and it settles Q64/Q74
+## S13 — The bridge (L) — A84 (Q104)
+
+*Kjell took the expensive option in P93: a deck with clearance, not a causeway on the shallows.*
+
+**Goal.** A road crosses water, and the city on the far bank is part of the city.
+
+**Do.** `isBuildable` is not the lever — a bridge tile is a ROAD over water, not buildable ground —
+so the engine gains a crossing rule of its own: a road run may cross `TERRAIN_WATER`/`SHALLOW` where
+both ends reach land within `build.bridgeSpan` tiles, charged at `build.roadOverWater` (which the
+ruleset already carries and already charges). The renderer gives the run a DECK at a fixed height
+over the water surface with a ramp either end inside `road.maxGrade`, and `collision.floorAt` knows
+the deck so the walker crosses it rather than drowning. Anything that passes beneath — a boat
+(T4b) — reads the clearance.
+
+**Everything that reads the height field reads this**: the corridor profile, the lane graph, the
+lots either side, the walker, the ground colour under the deck. That is what makes it an L.
+
+**Tests first.** `test/build.test.js`: a run from bank to bank is accepted and charged at the water
+price; a run that ends ON the water is refused; a span longer than `bridgeSpan` is refused.
+`test/water.test.js`: a bridge tile's surface is the deck, not the water, and the water under it is
+still water. `test/lanes.test.js`: the lane graph crosses it as one corridor rather than two.
+
+**Gate.** `sim` on a new era — the deputy will cross rivers, which changes where every town grows —
+plus `walkthrough` over every bridge, `budget_gate` for the deck geometry, and
+`reports/smoke-S13-bridge.png` from the bank, from the deck and from a boat passing under it.
+
+## S11 — Steep ground you can play on — Q80 (A57), **and Kjell confirmed it is wanted** (A87: Q64, Q74)
 
 Kjell: *"whichever is easiest, allow steep ground."* So `hilly` stops being scenery and the cheap
 route is the renderer's: **a junction's height may move within the grade limit**, iterated in

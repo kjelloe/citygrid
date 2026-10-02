@@ -8184,3 +8184,36 @@ Suite **1,557 green twice**. `sim` **763 s of 900**, `quick` **433/480**, `rende
 looked at: the clinic is a white box with a red cross over a glazed door, the waste facility a shed
 with a smoking chimney and a skip — and that is the first time this project's smoke has been
 visible in a shot at all (S6 noted it never had been).
+
+## P93 — thirteen answers, and the work they buy (2026-10-03)
+
+Kjell answered the open list in one batch. Thirteen questions close as **A84–A93**, twenty-five stay
+open, and the answers turn into two lanes' worth of items.
+
+**The expensive option, deliberately.** Q104 offered a causeway — a road tile on shallow water at a
+price the ruleset already carries — or a bridge with a deck and clearance. He took the bridge. It is
+`workitems-world.md` **S13** and it is the largest single slice left: a deck height over the water,
+a ramp either end inside `road.maxGrade`, `collision.floorAt`, the lane graph, the lots either side,
+and a boat passing under it.
+
+**Four engine rules, four eras.** A85 (a network refuses a building), A86 (the deputy's carriers
+reach a live grid), A88/A91 (`landValueBonus` becomes a rule, `storage` and `capacity` are deleted,
+the city hall gets one) and A92 (decay rolls like growth) are a new lane, `workitems-rules.md`, as
+**G1–G4**. Every one of them moves what the deputy does, so every one moves every sweep number —
+which is why they are four items in the order **G4 → G2 → G1 → G3** rather than one. A82 bought the
+ability to attribute a move to a rule; combining them gives it straight back.
+
+**Two design corrections.** §11.7's five-rank personal ladder is struck (A90): it contradicted
+§27.2, only one of them could be built, and T5a built §27.2's. And §11.3 gains the crime coupling
+(A93): leisure and education reach crime through land value, measured at 11–12 → 6–7 → 4 across two
+eras, accepted as a model and written down rather than left as a surprise in a log.
+
+**Also ratified:** both gate criteria I re-aimed on evidence (A89 — `traffic_gate`'s congestion
+measure and `a11y_smoke`'s hillside floors), and `hilly` is confirmed as meant to be playable
+(A87), which makes **S11** wanted rather than merely allowed.
+
+**Still open, with an agreed action:** Q121 (a burning city is 10% bigger) is to be settled by an
+event census — `tools/fire_arms.mjs` with `developed` and `abandoned` counted per city in both
+arms — rather than by reasoning. Q118 (every income term is worthless against a 3.5M median
+treasury) stays as a precondition on any economy work. Q102 still wants a verdict before the next
+compare sheet.

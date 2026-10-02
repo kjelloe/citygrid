@@ -407,6 +407,7 @@ land first. Nothing here is scheduled.*
 | navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
 | world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row; S11 steep ground you can play on (Q80/A57); S12 a bank, not a quay (found in S4) |
 | behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather; B7 cars and people from the city camera; B8 cars stop at a junction; B9 the deputy lays roads near the town (engine, era 3) |
+| rules | `workitems-rules.md` | G1 a network refuses a building (A85); G2 the deputy's carriers reach a live grid (A86); G3 `landValueBonus` becomes a rule and two dead fields go (A88, A91); G4 decay rolls like growth (A92) | written 2026-10-03 from P93's answers; **four eras, one at a time** — each one moves every sweep number, so they are measured separately or none of them is measured at all |
 | transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); ~~T2 rail and the station in the engine~~ **built 2026-09-25** (era 6, the shared re-pin); ~~T3 rail drawn~~ **built 2026-09-26**; ~~T4 water bodies, marina, ferry, port~~ **built 2026-09-26** (T4a engine era 7, T4b the water); T3 rail drawn; T4 water bodies, marina, ferry, port; ~~T5 unlock ranks, city hall, airport~~ **built** (T5a the engine 2026-09-27, era 9 — the sweep found P87 had voided era 8; T5b the airfield, the lights and the plane 2026-10-02); T6 leisure and education coverage; ~~T7 cheap catalogue rows and kits~~ **built 2026-10-02** (era 11) — **the transport lane is complete** |
 
 ## Open questions
@@ -424,18 +425,13 @@ by number from the code they create.
 | Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
 | Q60 | When does the model derivation go per chunk — the number, again? | worker lane W3, with the 53.7 ms split |
 | Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
-| Q64 | Should a junction be allowed to move up or down? Fixed node heights are what stop 15% being kept on steep ground | **Kjell**: is `hilly` playable? |
 | Q68 | A night frame at High spends 93% of its budget on eight baked chunks | measurement lane D3 and D2's phone card |
 | Q70 | The saturated fixture generates no commutes, so its roads were empty until D1 seeded them | measurement lane D3/D6 |
 | Q72 | The saturated fixture is 1,129 copies of one building — right for cost, wrong for looks | measurement lane D6, or the first slice needing a realistic city cheaply |
-| Q74 | `walkthrough` fails on a `hilly` map — 80 cliffs the walker cannot climb | **Kjell**, with Q64 |
 | Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
 | Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
-| Q103 | `traffic_gate` read congestion against people-per-road; B9's deputy broke that proxy (r 0.55 → 0.07) and the gate now also reads driving demand (r 0.92) | Kjell — a gate criterion, a one-line revert either way |
-| Q104 | No road can cross water — `isBuildable` refuses it, and five played cities had zero — so neither a bridge nor Q58's causeway exists in the game | Kjell — an engine decision (cost, span, which command); S4 built the water and stopped there |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |
-| Q106 | `a11y_smoke`'s hillside check moved because the city did, twice; it shoots bare hillside now and its floors are re-derived (median 45, tail 25) | Kjell, with Q103 — a gate re-aimed, a one-line revert |
 | Q107 | The smoke has never drawn a visible pixel (a varying carried a length, not a vector); fixed in B1b — is the column enough of a fire? | Kjell — an art call, now judgeable for the first time |
 | Q108 | `building.flags` is hashed state nothing writes; three client modules read it and always got 0 | Kjell — remove it or write it; an engine decision |
 | Q109 | Wrecked, storm and flood damage have no state to read, so B1b drew burning and ruined and stopped | Kjell — engine state and a schema change, a slice of its own |
@@ -445,18 +441,10 @@ by number from the code they create.
 | ~~Q113~~ | **Answered A82** — the deputy drew from the world's PRNG; it has its own stream since era 8, and a deputy-neutral rule change is measurable again |
 | Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
-| Q116 | A road, a wire or a pipe may be laid straight through a building; T2's rail is the only network that refuses it | Kjell — a rule question, and a deputy change, so its own era |
-| Q117 | The deputy's wire is twelve components with seven producerless stubs; it connects new buildings to dead ones | Kjell — T2 fixed it for the station alone; the general fix is its own slice |
 | Q118 | The gate's fare is worth nothing — zeroing it leaves the sweep identical to the last digit, because treasuries are millions | Kjell — the economy's, and it blocks tuning anything priced in money |
-| Q119 | `landValueBonus` and `storage` are catalogue fields nothing reads — a park's amenity and a water tower's store are claims the data makes and the simulation does not keep | Kjell — two rules the data already promises; each is a balance era |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
 | Q121 | A city that burns is 10% BIGGER on steady and nobody knows why — an event census in both arms would say | Kjell — a balance mechanism nobody designed |
-| Q122 | Whose rank is it? T5a gates `unlock` on the region's shared quest variable; §11.7 lists a personal ladder and §27.2 forbids one | Kjell — two sections of the design contradict each other |
-| Q123 | The city hall does nothing beyond marking the rank, and the population route to rank 3 was left beside it | Kjell — should the hall have an effect, and should the other route survive? |
-| Q124 | Ten ruleset numbers nothing reads; three of them (decayOneIn, roadWeight, crowdingWeight) are rules a player would feel | Kjell — which are rules you want, and is decay meant to be three times as fast as growth? |
 | Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
-| Q126 | Era 10's sweep halved crime (11–12 → 6–7) because the amenity layers reach it through land value | Kjell — should leisure and education reach crime at all, and by that much? |
-| Q127 | T7's reservoir and HQs are specified in terms of `storage` and `capacity`, both of which nothing reads (Q119) — built without them | Kjell — is a store worth building, and should the renderer get a capacity it can read? |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan
