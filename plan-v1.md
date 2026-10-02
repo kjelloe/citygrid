@@ -456,6 +456,7 @@ by number from the code they create.
 | Q124 | Ten ruleset numbers nothing reads; three of them (decayOneIn, roadWeight, crowdingWeight) are rules a player would feel | Kjell — which are rules you want, and is decay meant to be three times as fast as growth? |
 | Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
 | Q126 | Era 10's sweep halved crime (11–12 → 6–7) because the amenity layers reach it through land value | Kjell — should leisure and education reach crime at all, and by that much? |
+| Q127 | T7's reservoir and HQs are specified in terms of `storage` and `capacity`, both of which nothing reads (Q119) — built without them | Kjell — is a store worth building, and should the renderer get a capacity it can read? |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

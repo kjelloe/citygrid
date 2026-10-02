@@ -63,10 +63,32 @@ const UNREAD_FIELDS = {
       + "and has no carry-over for it to fill.",
     on: ["waterTower"],
   },
+  capacity: {
+    why: "Q119's third, found in P92. It would be what a civic building's `occupancy` is a "
+      + "share of — the lit-window fraction at night — and `client/world/params.js` says so in "
+      + "as many words and then returns 0, because `client/world/` may not import `engine/` "
+      + "(ruling 032) and a mirror of the catalogue that goes stale is worse than a picture "
+      + "that is wrong. It passed this test for the life of the catalogue because the scan "
+      + "was for `.capacity` anywhere and `supply.capacity` exists.",
+    on: ["hospital"],
+  },
 };
 
+/**
+ * The names a catalogue DEFINITION goes by in this codebase. The scan below
+ * looks for `<receiver>.<field>`, and a receiver that is not one of these is
+ * not a definition — which is the whole point (P92).
+ *
+ * The first version of this test scanned for `.<field>` anywhere, and the
+ * hospital's `capacity` passed it for the life of the catalogue because
+ * `supply.capacity` and `power.capacity` exist. A dead field hiding behind an
+ * unrelated property of the same name is exactly the failure this test is for.
+ * A new receiver goes here deliberately.
+ */
+const DEFINITION_IS_CALLED = ["def", "def2", "spec", "d", "definition\\([^)]*\\)", "source\\[def\\]",
+  "entry", "cat\\[id\\]", "buildings\\[id\\]"];
+
 test("every field in the catalogue is read by the simulation", () => {
-  // The sweep that found it: `grep -c "\.<field>"` over engine/ and client/.
   // A dead field is worse than a missing one — it reads as a rule somebody
   // implemented, in a file whose whole job is to be the numbers.
   const sources = [...jsFilesIn("engine"), ...jsFilesIn("client")]
@@ -77,7 +99,11 @@ test("every field in the catalogue is read by the simulation", () => {
   for (const def of Object.values(buildings)) {
     if (typeof def === "object") for (const key of Object.keys(def)) fields.add(key);
   }
-  const dead = [...fields].filter((key) => !sources.includes(`.${key}`)).sort();
+  const reads = (key) => {
+    const receiver = DEFINITION_IS_CALLED.join("|");
+    return new RegExp(`(?:${receiver})\\.${key}(?![A-Za-z0-9_])`).test(sources);
+  };
+  const dead = [...fields].filter((key) => !reads(key)).sort();
   const unexplained = dead.filter((key) => !Object.hasOwn(UNREAD_FIELDS, key));
   assert.deepEqual(unexplained, [],
     `catalogue fields nothing reads, and no entry in UNREAD_FIELDS: ${unexplained.join(", ")}`);

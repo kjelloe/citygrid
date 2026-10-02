@@ -8087,3 +8087,31 @@ is not a building at all. Looked at from the air, which is the zoom a 4×4 is re
 
 `university` is `unlock: 4`, and nothing granted rank 4 until this slice: `city-of-five-thousand`
 was already written as a milestone and rewarded money only (Q125, assumed and now built).
+
+## P92 — the review round after T6 (2026-10-02)
+
+One finding, and it is the dead-field check failing to see a dead field.
+
+**`capacity` on the hospital is read by nothing, and the test that exists to catch that passed it
+for the life of the catalogue.** `client/world/params.js` says in as many words that the
+catalogue's `capacity` would be the honest answer for a civic building's lit-window fraction — and
+then returns 0, because `client/world/` may not import `engine/` (ruling 032) and a mirror that
+goes stale is worse than a picture that is wrong. So the field is a promise the data makes and the
+renderer declines.
+
+It survived because the scan was `sources.includes(".capacity")` and `supply.capacity`,
+`power.capacity` and `water.capacity` all exist. **A dead field hiding behind an unrelated property
+of the same name is exactly what this test is for**, so the scan is receiver-aware now: a
+definition in this codebase is called `def`, `spec`, `d`, `definition(...)` or one of three
+indexed forms, listed in `DEFINITION_IS_CALLED`, and a new receiver goes there deliberately.
+Planted `capacity` on the police station and watched the `on:` list catch it.
+
+That makes three dead catalogue fields (`landValueBonus`, `storage`, `capacity`), all of them
+Q119's, and it lands exactly where T7 needs it: the item specifies `reservoir` in terms of
+`storage` and the two HQs as "a larger radius and capacity". **Filed as Q127 before the slice
+rather than during it**, with the assumption stated — T7 builds all five rows without either field,
+because adding a dead one to two more buildings is how `landValueBonus` reached four.
+
+**Also swept, and clean:** suite 1,550; `omissions`, `reachability`, `utilities`, `rules`, `world`,
+`lod` and `docs` 155 green; the two per-leaf data scans (P90's ruleset, P91's config) are tests now
+and both are quiet; every exported function has an importer.
