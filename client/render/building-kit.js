@@ -869,6 +869,45 @@ export function flagGeometry() {
   return finish(parts);
 }
 
+/** An airliner (T5b), in TILE units, nose along +z — the direction
+ * `client/life/plane.js` gives as its heading. Fuselage, wings, tailplane and
+ * a fin: four boxes, because at the zoom a player watches a landing from, a
+ * wing is the whole silhouette and a cylinder is three hundred triangles.
+ *
+ * Sized from `airport.fuselage` and `airport.wingspan`, not from literals: the
+ * life module spaces nothing by them today, but the shot gate measures the
+ * aircraft against them and two copies of a length is a plane whose wings are
+ * in the wrong place.
+ */
+export function planeGeometry(tileM, spec) {
+  const parts = makeParts();
+  const len = spec.fuselage / tileM;
+  const span = spec.wingspan / tileM;
+  const body = len * 0.055;
+  addBox(parts, -body, 0, -len / 2, body, body * 2, len * 0.42, 1);
+  // The nose, tapered by being narrower rather than by being a cone.
+  addBox(parts, -body * 0.6, body * 0.25, len * 0.42, body * 0.6, body * 1.6, len / 2, 0.95);
+  // The wings, swept back by sitting behind the middle.
+  addBox(parts, -span / 2, body * 0.6, -len * 0.08, span / 2, body * 0.95, len * 0.12, 0.88);
+  // The tailplane and the fin.
+  addBox(parts, -span * 0.17, body * 1.1, -len * 0.46, span * 0.17, body * 1.4, -len * 0.34, 0.88);
+  addBox(parts, -body * 0.25, body * 1.4, -len * 0.48, body * 0.25, body * 3.4, -len * 0.3, 0.8);
+  return finish(parts);
+}
+
+/** The airport's radar (T5b): a bar across a small drum, turning about Y — a
+ * surveillance head, not a dish. In TILE units like the flag and the crane, so
+ * the pool poses it at the tower's cab without a scale of its own. */
+export function radarGeometry() {
+  const parts = makeParts();
+  addBox(parts, -0.012, 0, -0.012, 0.012, 0.03, 0.012, 0.8);
+  // The sweep: long, thin and asymmetric, because a symmetric bar turning is a
+  // bar standing still at half the speed.
+  addBox(parts, -0.015, 0.03, -0.09, 0.015, 0.055, 0.09, 1);
+  addBox(parts, -0.006, 0.03, 0.09, 0.006, 0.045, 0.115, 0.9);
+  return finish(parts);
+}
+
 /** A tower crane (S6): a mast, a jib with its counterweight and a hook line.
  * Everything above `CRANE_SLEW` turns with the jib. Tile units. */
 export const CRANE_MAST = 0.55;

@@ -22,6 +22,7 @@ import { houseLots } from "../world/homes.js";
 import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
+import { buildAirfield } from "./airport-l3.js";
 import { treesIn } from "../world/foliage.js";
 import { ruinPlots, ruinWalls, rubbleOf, charTint } from "../world/damage.js";
 import { signalHeads, crossingBars, stopMarks } from "../world/signals.js";
@@ -386,8 +387,16 @@ export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleNa
     // ring (S5) — from the same cached list the instanced pass reads.
     trees: treesIn(state, box, cfg, model), heightAt: model.heightAt, palette, cfg,
   })) baker.addPart(piece.part, piece.colour, piece.options);
+  // The airfield (T5b): asphalt, paint and the apron's lights, for any airport
+  // whose footprint reaches this chunk. It rides along here rather than taking
+  // a phase of its own — a phase costs a whole frame per chunk, and this is a
+  // walk over the buildings of one box.
+  const field = buildAirfield({
+    buildings: state.buildings, lots: model.lots, heightAt: model.heightAt, palette, box, cfg,
+  });
+  for (const piece of field.pieces) baker.addPart(piece.part, piece.colour);
   // Where the lamps are, for the night rig to hang point lights on (E6).
-  baker.lamps.push(...props.lamps);
+  baker.lamps.push(...props.lamps, ...field.lamps);
   // The fascias, which cannot go through the vertex-colour baker because they
   // carry a texture. One mesh per distinct NAME, added to the same group, so a
   // high street of forty shops is eighteen draw calls at worst (spec §6.5).

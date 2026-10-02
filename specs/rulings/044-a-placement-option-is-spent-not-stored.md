@@ -41,6 +41,10 @@ migration, no lobby options row.
 
 ## Consequences
 
+- **An orientable shape is not turned to face its street either** (T5b). `civicSpin(frontage, def)`
+  answers 0 for a shape with an `axis`, because the quarter turn that puts a hospital's entrance on
+  the road maps a 6×4 terminal across the four-tile side while the ground plan beneath it — which
+  takes no frontage, because the footprint already said which way the runway runs — cannot follow.
 - The renderer reads the axis from the footprint — `specs/engine/06-buildings-and-kit.md` §6.1f.
   `client/world/civic-spec.js` authors masses in unit space across the lot, so a turned lot
   stretches them automatically; anything that must run ALONG the axis (T5b's runway and taxiway
@@ -59,3 +63,7 @@ migration, no lobby options row.
   turned, turning swaps the claimed tiles, and a turned footprint fits where an untuned one does not
 - `test/unlock.test.js`, `test/hud.test.js` — `footprintAt` turns with it
 - `tools/ui_smoke.mjs` — the turn button turns the footprint the reducer will claim, on the real page
+- `test/airfield.test.js` — the runway runs along the footprint's long axis both ways round, and the
+  plan takes no frontage argument at all
+- `test/plane.test.js` — the aircraft's ground run is down the long side, measured against the
+  BUILDING rather than against the plan it flies

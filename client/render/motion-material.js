@@ -40,6 +40,12 @@ export const MOTION_GLSL = {
   float rotorA = ${n(MOTION.rotor.speed)} * uTime * (0.85 + 0.15 * cos(motionPhase));
   transformed.xy = vec2(cos(rotorA) * transformed.x - sin(rotorA) * transformed.y,
     sin(rotorA) * transformed.x + cos(rotorA) * transformed.y);`,
+  // The radar turns about Y, where the turbine's rotor turns about Z: one is a
+  // head on a tower looking out, the other a wheel facing the wind (T5b).
+  radar: () => `${PHASE}
+  float radarA = ${n(MOTION.radar.speed)} * uTime * (0.9 + 0.1 * cos(motionPhase));
+  transformed.xz = vec2(cos(radarA) * transformed.x - sin(radarA) * transformed.z,
+    sin(radarA) * transformed.x + cos(radarA) * transformed.z);`,
   crane: (slewFrom) => `${PHASE}
   if (position.y > ${n(slewFrom)}) {
     float craneA = ${n(MOTION.crane.amp)} * sin(${n(MOTION.crane.speed)} * uTime) * (0.7 + 0.3 * cos(motionPhase));

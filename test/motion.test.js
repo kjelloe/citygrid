@@ -4,7 +4,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MOTION, ANIMATED, motionTime, sway, rotorAngle, craneAngle, flagWave, puff } from "../client/world/motion.js";
+import { MOTION, ANIMATED, motionTime, sway, rotorAngle, radarAngle, craneAngle, flagWave, puff } from "../client/world/motion.js";
 import { addMotion, MOTION_GLSL, motionUniforms, setMotionTime } from "../client/render/motion-material.js";
 
 const PHASES = [0, 0.7, 2.1, 4.4, 9.9];
@@ -19,10 +19,11 @@ test("life off is t = 0, whatever the clock says", () => {
 });
 
 test("every animated pool has a still state at t = 0", () => {
-  assert.deepEqual(Object.values(ANIMATED).sort(), ["crane", "flag", "rotor", "smoke", "sway"]);
+  assert.deepEqual(Object.values(ANIMATED).sort(), ["crane", "flag", "radar", "rotor", "smoke", "sway"]);
   for (const phase of PHASES) {
     for (const h of [0, 0.3, 1]) assert.equal(sway(0, h, phase), 0, `sway at t=0, h ${h}`);
     assert.equal(rotorAngle(0, phase), 0);
+    assert.equal(radarAngle(0, phase), 0);
     assert.equal(craneAngle(0, phase), 0);
     // Smoke and flag hold a rest pose at t = 0: the same whichever clock was
     // frozen, which is what makes two frozen screenshots the same bytes.

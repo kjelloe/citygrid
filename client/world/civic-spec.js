@@ -15,6 +15,7 @@
 // tower and a 3×3 hospital. The renderer multiplies; nothing here knows a metre.
 
 import { jitter } from "./hash.js";
+import { BANDS } from "./airfield.js";
 
 /** The materials a civic mass can be made of (slice S1b).
  *
@@ -282,6 +283,10 @@ export const CIVIC_SHAPES = Object.freeze({
     // The tower is a mast: an airport whose tower is flattened to its terminal
     // is a shopping centre with a car park.
     tall: true,
+    // And it has an AXIS: the masses are authored in the LOT's own frame and
+    // must not be turned to face the street, because the ground plan beside
+    // them (`airfield.js`) cannot be (ruling 044).
+    axis: true,
     masses: [
       // The terminal, along the street half of the lot, glazed at the front.
       //
@@ -289,22 +294,28 @@ export const CIVIC_SHAPES = Object.freeze({
       // kit's unit is the LOT, so a 6x4 lot makes every y twice the metres a
       // hospital's does. The first cut was a warehouse with an eighty-metre
       // tower over it, which is what the aerial shot showed and no test could.
-      box(-0.76, 0, 0.5, 0.76, 0.19, 0.9, "white"),
-      box(-0.8, 0.19, 0.46, 0.8, 0.23, 0.94, "dark"),
-      box(-0.7, 0.02, 0.9, 0.7, 0.17, 0.97, "glass"),
+      box(-0.76, 0, BANDS.terminal.z0 + 0.04, 0.76, 0.19, BANDS.terminal.z1 - 0.04, "white"),
+      box(-0.8, 0.19, BANDS.terminal.z0, 0.8, 0.23, BANDS.terminal.z1, "dark"),
+      box(-0.7, 0.02, BANDS.terminal.z1 - 0.04, 0.7, 0.17, BANDS.terminal.z1 + 0.03, "glass"),
       // The tower, at one end of it, with a glazed cab on top.
       box(0.83, 0, 0.52, 0.96, 0.62, 0.66, "concrete", true),
       box(0.77, 0.62, 0.45, 1, 0.73, 0.72, "glass"),
       box(0.79, 0.73, 0.47, 0.99, 0.77, 0.7, "dark"),
-      // The apron, and the runway across the far half of the lot. Flat, wide
-      // and dark: at city zoom this is what says airport, and T5b lays the
-      // markings and the lights on top of it.
-      // The slabs keep their old thickness while everything above them halved:
-      // at 0.02 they sank under the lot's LAWN QUAD and the aerial shot showed
-      // a terminal standing in a field. A flat thing on a lot has a floor.
-      box(-0.98, 0, -0.18, 0.98, 0.05, 0.42, "concrete"),
-      box(-0.98, 0, -0.92, 0.98, 0.04, -0.34, "dark"),
+      // The apron and the runway, from the SAME bands the ground plan is built
+      // from (T5b): `airfield.js` lays the asphalt, the paint and the lights
+      // inside these, so the block at city zoom and the surface at street level
+      // cannot drift apart (E5's L2/L3 rule).
+      //
+      // The slabs keep their thickness while everything above them halved: at
+      // 0.02 they sank under the lot's LAWN QUAD and the aerial shot showed a
+      // terminal standing in a field. A flat thing on a lot has a floor.
+      { ...box(-0.98, 0, BANDS.apron.z0, 0.98, 0.05, BANDS.apron.z1, "concrete"), ground: true },
+      { ...box(-0.98, 0, BANDS.runway.z0, 0.98, 0.04, BANDS.runway.z1, "dark"), ground: true },
     ],
+    // The radar turns on the tower's cap (T5b). The same arrangement as the
+    // turbine's `hub`: a point in the shape's own unit space, posed by the
+    // instanced pass, so it sits where the baked tower is at every zoom.
+    radar: { x: 0.89, y: 0.79, z: 0.585 },
   },
   park: {
     // No building (S1's own words). The lawn and its path; S5 puts the benches
@@ -379,7 +390,14 @@ export function civicHeight(def) {
  * Here rather than in either renderer so the instanced box and the baked
  * facade turn by the same amount (E5).
  */
-export function civicSpin(frontage) {
+export function civicSpin(frontage, def) {
+  // A shape with an AXIS is not turned to face its street (T5b, ruling 044).
+  // The airport's footprint carries its own rotation — `w > h` is which way the
+  // runway runs — and a 6×4 lot spun a quarter turn would squash its terminal
+  // across the four-tile side while the ground plan, which takes no frontage,
+  // stayed where it was. Every other definition is square enough that the two
+  // rotations could not disagree.
+  if (def !== undefined && civicShape(def).axis === true) return 0;
   return (((frontage ?? 2) - 2) % 4 + 4) % 4;
 }
 
@@ -458,7 +476,7 @@ export function civicSignFace(def, ux, uz, heightM) {
 }
 
 export function civicPointOnLot(lot, params, point) {
-  const quarters = ((civicSpin(lot.frontage) % 4) + 4) % 4;
+  const quarters = ((civicSpin(lot.frontage, params?.def) % 4) + 4) % 4;
   let x = point.x;
   let z = point.z;
   for (let i = 0; i < quarters; i += 1) {

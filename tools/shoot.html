@@ -371,6 +371,13 @@ let stats;
 // `frameMs` is 16 whatever the clock really says: the governor must stay idle
 // for a shot, or a slow software rasteriser degrades the picture we are trying
 // to look at, and the picture would be of the governor.
+// `plane=<seconds>` winds the aircraft forward before the first frame (T5b).
+// Its cycle is about a minute and a frame is 1/60 s, so photographing a landing
+// by DRAWING up to it is three thousand frames; the flight is a pure function
+// of its own clock, so one big step lands exactly where a thousand small ones
+// would. Nothing else in `client/life/` is touched by it.
+const planeAt = Number(params.get("plane") ?? 0);
+if (planeAt > 0) view.planes?.update(planeAt);
 const step = life ? { dt: 1 / 60, frameMs: 16 } : {};
 for (let f = 0; f < frames; f += 1) stats = view.draw({ ...drawOptions, ...step, now: f * 16 });
 

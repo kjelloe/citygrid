@@ -832,6 +832,11 @@ const UNPRICED_POOLS = {
   lawn: "inside `extrasOf` — a park's lawn",
   mark: "its own term, `counts.markArms` at `costs.marking`",
   path: "inside `extrasOf` — a park's path",
+  // T5b. An airport has exactly one aircraft and exactly one radar head, so
+  // the `plane` term carries both rather than the estimate counting two pools
+  // that can never differ. The head is about sixty triangles against the
+  // aircraft's seventy-two, and `costs.plane` is the pair.
+  radar: "charged with the aircraft: `counts.planes` at `costs.plane` covers both, one each per airport",
   pedCity: "its own term, `counts.pedsCity` at `costs.pedCity`",
   pond: "inside `extrasOf` — `parkHasPond`",
   rotor: "inside `extrasOf` — a turbine's blades",

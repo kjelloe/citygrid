@@ -218,6 +218,37 @@ The shapes' masses are in unit space ACROSS THE LOT, which means `y` is in the l
 authored at a hospital's heights and came out a warehouse under an eighty-metre tower. A flat mass
 on a lot also has a floor — the apron and the runway at 0.02 sank under the lot's own lawn quad.
 
+**A shape with an `axis` is not turned by `civicSpin` (T5b).** Every other definition is spun so its
+entrance faces the street, which is right and which a 6×4 lot cannot have: a quarter turn maps the
+authored long side onto the lot's four-tile side, and the ground plan under it — which carries the
+runway and takes no frontage — stays where it is. `civicSpin(frontage, def)` answers 0 for them.
+
+**And a `ground` mass is L2 only.** The airport's runway and apron are slabs at city zoom and real
+asphalt with paint on it once the chunk is baked, so the baked path skips them (`civic-parts.js`)
+and `client/render/airport-l3.js` lays the surface instead. Baked as well, the slab sits forty
+centimetres over the markings and the airfield reads as two grey rectangles.
+
+### 6.1g The airfield (T5b, 2026-10-02)
+
+`client/world/airfield.js` is one pure function over a building record giving the runway, the
+taxiway, the apron, the centreline dashes, the threshold combs, the apron lights and the centreline
+an aircraft flies — all in metres, all inside the footprint. `BANDS` are the three strips across the
+short axis in unit space, and `civic-spec.js` builds the L2 slabs from the same three, which is what
+keeps the block at city zoom and the surface at street level the same shape (E5).
+
+`client/render/airport-l3.js` turns it into flat quads and never imports three, so the pass that
+feeds the baker is measured in node. It rides along with the lot-extras phase rather than taking a
+phase of its own, and a field belongs to the chunk the building's CENTRE is in — the rule the
+facades and the instanced kit already share (R2). Its surface sits on `max(lot.seat, highest ground
+under the footprint)`: `airport.maxDrop` limits the drop in the engine and LEVELS NOTHING, and a lot
+is cut into the hill, so asphalt on the raw height field is under the lot's own plot.
+
+**A flat quad has a winding.** `sink().quad` wound +x then +z gives a normal of (0, −1, 0) and a
+surface culled from above. Four aerial shots of this slice had asphalt in the baker, 36 triangles in
+the count and grass in the picture; a magenta box twenty-five metres tall found it in one frame. The
+same winding has been in `props-l3.js`'s `flatQuad` since S3, so every parking bay, bay line,
+manhole and drain the prop pass has baked has been facing the ground.
+
 ## 6.1c The density ladder (S10, 2026-09-11)
 
 A residential lot is a FORM, not a building. `client/world/homes.js` answers what a lot of a given

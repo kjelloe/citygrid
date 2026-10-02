@@ -52,6 +52,26 @@
     "cargoColour": 9145227,
     "wakeColour": 14806244
   },
+  "airport": {
+    "runwayHalf": 9,
+    "taxiwayHalf": 4.5,
+    "paintW": 0.9,
+    "dashM": 14,
+    "gapM": 12,
+    "thresholdBars": 6,
+    "thresholdM": 9,
+    "lightSpacingM": 22,
+    "lift": 0.05,
+    "approachM": 420,
+    "cruiseSpeed": 62,
+    "taxiSpeed": 9,
+    "turnaround": 16,
+    "climbGrade": 0.11,
+    "wingspan": 24,
+    "fuselage": 32,
+    "planeColour": 15921906,
+    "radarSpan": 7
+  },
   "ground": {
     "blend": 1,
     "mottle": 0.06,

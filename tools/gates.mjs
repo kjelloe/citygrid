@@ -57,6 +57,7 @@ export const GATES = {
   avenue_shots: { args: ["tools/avenue_shots.mjs"], what: "the deputy's own avenue: its width, its median and its two lanes each way" },
   rail_shots: { args: ["tools/rail_shots.mjs"], what: "the track, a level crossing and a train that is actually posed on the line" },
   harbour_shots: { args: ["tools/harbour_shots.mjs"], what: "boats at a marina, a ferry with a wake, and a port with its ship" },
+  airport_shots: { args: ["tools/airport_shots.mjs"], what: "a runway with its markings, an apron lit at night, and an aircraft on the ground" },
 
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
   passability: { args: ["tools/passability.mjs"], what: "a lane wide enough for a walker, everywhere" },
@@ -99,7 +100,7 @@ export const SETS = {
   // pictures, `transport` is T1–T4's — so a slice runs the set its own lane
   // owns and the two halves stay honest about what they cost.
   shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots"],
-  transport: ["avenue_shots", "rail_shots", "harbour_shots"],
+  transport: ["avenue_shots", "rail_shots", "harbour_shots", "airport_shots"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
 };
 SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots, ...SETS.transport];

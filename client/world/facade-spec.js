@@ -262,7 +262,7 @@ export function facadeSpec(lot, params, locale = "en", furniture = true, style =
     // Turned so the entrance faces the street. The masses are authored with the
     // front on +z; a hospital on a lot fronting north showed a blank ward wall
     // to the road, which is the first thing a screenshot said.
-    const quarters = civicSpin(lot.frontage);
+    const quarters = civicSpin(lot.frontage, params.def);
     spec.civic = {
       def: params.def,
       masses: civicShape(params.def).masses.map((m) => turnMass(m, quarters)),

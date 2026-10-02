@@ -262,6 +262,39 @@ gate of its own and counts the hulls POSED, not the boats that exist. The `shots
 of a 360 s budget with it, so it SPLIT — `shots` is the world and behaviour lanes' pictures (211 s),
 `transport` is T1–T4's (187 s) — which is M2's rule firing for the third time.*
 
+## T5 — Ranks read, city hall, the airport — A69 — **BUILT**: `slice-T5a` (the engine, era 9) and `slice-T5b` (the airfield)
+
+*T5b as built. `client/world/airfield.js` is the whole layout — runway, taxiway, apron, centreline
+dashes, threshold combs, apron lights and the centreline the aircraft flies — as one pure function
+over a building record, in metres. Three things read it: the L2 silhouette (through the shared
+`BANDS`), the L3 asphalt, and `client/life/plane.js`. It takes **no frontage**: ruling 044's
+consequence, and the slice had to take it one step further than the ruling did — a shape with an
+`axis` is not `civicSpin`-ed either, because a 6×4 terminal turned a quarter turn to face a side
+street squashes across the four-tile side while the ground under it cannot turn.*
+
+*`client/render/airport-l3.js` never imports three, so the pass that feeds the baker is measured in
+node rather than counted in a screenshot. It rides along with the lot-extras phase — a phase costs a
+whole frame per chunk — and a field belongs to the chunk the building's CENTRE is in, which is the
+rule the facades and the instanced kit already share (R2). Its surface sits on `max(lot.seat,
+highest ground under the footprint)`: `airport.maxDrop` limits the drop in the engine and levels
+nothing, and a lot is cut into the hill.*
+
+*The aircraft is a cycle of straight legs with durations, posed by a pure function of one scalar, so
+the same seconds in two step sizes land in the same place. It lands on the near threshold, turns off
+at three quarters, taxis to the stand, waits `airport.turnaround`, taxis back and takes off over the
+far threshold. The radar is the turbine's rotor about the other axis, still at t = 0 like every
+other motion.*
+
+*`tools/airport_shots.mjs` is the gate, in the `transport` set, and `shoot.html` gained `plane=` —
+the cycle is 56 seconds and a frame is 1/60 s, so photographing a landing by DRAWING up to it is
+three thousand frames.*
+
+*As gated (T5b): suite 1,539 green twice; `quick` 415 s of 480, `render` 56/120, `budget` 271/360,
+`transport` 207/300 with `airport_shots` at 20 s. `reports/smoke-T5-{cityhall,airport,plane}.png`.
+Five defects on the way, four of them invisible to every count the gate makes — the loudest is that
+`sink().quad` wound +x then +z faces DOWN, so the runway was in the baker and not in four aerial
+shots, and `props-l3.js` has had the same winding since S3.*
+
 ## T5 — Ranks read, city hall, the airport — A69 — the ENGINE half **built 2026-09-26** as `slice-T5a`
 
 *As built. `engine/unlock.js` is the whole rule and it has three readers, which is why it is a

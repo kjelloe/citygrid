@@ -72,6 +72,12 @@ export function buildCivic(spec, { height, trim, glass, palette, styleName }) {
     // The rotor is instanced and turns (S6); baked as well, it would be two
     // sets of blades, one of them still.
     if (m.rotor) continue;
+    // A GROUND mass stands in for a surface the L3 pass draws properly (T5b):
+    // the airport's runway and apron are slabs at city zoom and asphalt with
+    // paint on it up close. Baked as well, the slab sits forty centimetres
+    // over the markings and the whole airfield reads as two grey rectangles —
+    // which is what the first aerial shot of this slice showed.
+    if (m.ground) continue;
     const x0 = cx + m.x0 * hx;
     const x1 = cx + m.x1 * hx;
     const z0 = cz + m.z0 * hz;

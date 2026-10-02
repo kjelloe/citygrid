@@ -7922,3 +7922,67 @@ exist; `slice-workflow` and `sim-gate` learned the `transport` gate set T4b spli
 **Measured.** Suite **1,520 green twice** (`test/content.test.js` 3, `test/rules.test.js` 12).
 `quick` **413 s of 480** with the boot change in — the real page loads its ruleset from `data/`
 now, and nothing moved.
+
+## slice-T5b — the airfield, the lights and the plane (2026-10-02)
+
+The airport drawn: a runway with its markings, a taxiway, an apron lit at night, a radar that turns,
+and one aircraft doing a cycle. Five things went wrong and four of them were invisible to every
+count the gate makes, which is the whole argument for the last step of this project's ritual.
+
+**The layout is one pure function.** `client/world/airfield.js` takes a building record and gives
+the runway, the taxiway, the apron, the centreline dashes, the threshold combs, the apron lights and
+the centreline an aircraft flies, in metres. Three things read it — the L2 silhouette through the
+shared `BANDS`, the L3 asphalt, and `client/life/plane.js` — so the block at city zoom, the surface
+at street level and the thing taxiing on it cannot drift apart (E5's rule).
+
+**And it takes no frontage, which cost a rule.** Ruling 044 says an orientable definition carries its
+own rotation in its footprint. `civicSpin` did not know that: it turned the terminal a quarter turn
+to face the road, which on a 6×4 lot maps the authored long side onto the four-tile side while the
+ground under it stays put. A shape with an `axis` is not spun now — and that is a general rule, not
+an airport special case, because any lopsided footprint will meet it.
+
+**The aircraft is a list of legs with durations**, posed by a pure function of one scalar. The same
+seconds in two different step sizes land in the same place by construction, which `update(dt)`
+integrating a position does not give you. It lands on the near threshold, turns off at three
+quarters, taxis to the stand, waits, taxis back and takes off over the far one — 56 seconds, which
+is why `shoot.html` gained `plane=<seconds>`: photographing a landing by DRAWING up to it is three
+thousand frames.
+
+### What went wrong
+
+- **A flat quad has a winding, and mine faced the ground.** Four aerial shots: 36 triangles in the
+  pass, `fields: 1`, every count green, and grass in the picture. `sink().quad` wound +x then +z
+  gives a normal of (0, −1, 0) and a surface culled from above. What found it in one frame was a
+  **magenta box twenty-five metres tall** in place of the runway — the project's own instrument,
+  after an hour of reasoning about chunk ownership and lot heights had found two real bugs and not
+  this one.
+- **And the same winding is in `props-l3.js`'s `flatQuad`, since S3.** Every parking bay, bay line,
+  manhole and drain the prop pass has ever baked has been facing the ground. Fixed in the same
+  breath; the normal is (0, 1, 0) now and the bays are in `reports/.look-bays.png`.
+- **The field was baked into the wrong chunk.** My first cut claimed any chunk the field OVERLAPPED;
+  the instanced kit claims a lot by its CENTRE (R2), so the two drew over each other on a 6×4 lot,
+  which straddles a boundary more often than not. One rule, and it is R2's.
+- **Asphalt on the raw height field is under the lot's own plot.** A lot is cut into the hill and
+  its plot is drawn at the seat; `airport.maxDrop` limits the drop in the engine and levels nothing.
+  The surface sits on `max(seat, highest ground under the footprint)` now. The first cut used the
+  height at the footprint's MIDDLE and came out as a dark triangle — buried at the high end,
+  floating at the low one.
+- **The L2 slabs sat on the L3 paint.** The silhouette's runway and apron are 0.4 m thick; the
+  markings are 5 cm above the asphalt. A `ground: true` mass is L2 only now, skipped by the baked
+  path, which is the same shape as `rotor`.
+- **Six metres of grass between the runway and the apron**, for an aircraft to taxi across. The
+  bands touch.
+
+### Measured
+
+Suite **1,539 green twice**. `quick` **415 s of 480**, `render` **56/120**, `budget` **271/360**
+(two new pools, no change — no deputy city has an airport), `transport` **207/300** with
+`airport_shots` at 20 s. `test/airfield.test.js` 11, `test/plane.test.js` 8 — the two that matter are both aimed at
+something the plan cannot confirm about itself: the aircraft's ground run is measured against the
+BUILDING's footprint, and its long axis against `w > h`, because a plane and a layout derived from
+the same wrong axis agree with each other all the way into the next field. Planted the axis defect
+and watched it fire.
+
+`tools/airport_shots.mjs` joins the `transport` set and counts the aircraft posed, the radar posed,
+the lamps the baked chunks carry at night, and that a street chunk was live at all — a frame with no
+baked chunk has no asphalt in it, whatever the pools say.

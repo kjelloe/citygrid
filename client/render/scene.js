@@ -40,6 +40,7 @@ import { createPedestrians } from "../life/pedestrians.js";
 import { createServices } from "../life/services.js";
 import { createTrains } from "../life/train.js";
 import { createBoats } from "../life/boats.js";
+import { createPlanes } from "../life/plane.js";
 
 /** What the device would give us, capped by the tier (ruling 040). A cap, not a
  * replacement: a tier must never make a 1× screen render at 2×. */
@@ -333,6 +334,7 @@ export function createRenderer(canvas, state, options = {}) {
   let services = createServices(state, model, { life: options.life });
   let trains = createTrains(state, model, { life: options.life });
   let boats = createBoats(state, model, { life: options.life });
+  let planes = createPlanes(state, model, { life: options.life });
   // The nav graph and the people on it (slice E7, spec §9.3). Same contract as
   // the cars: derived, renderer-local, never state, frozen by `life: false`.
   let nav = deriveNav(state, model);
@@ -474,6 +476,7 @@ export function createRenderer(canvas, state, options = {}) {
     services = createServices(state, model, { life: options.life });
     trains = createTrains(state, model, { life: options.life });
     boats = createBoats(state, model, { life: options.life });
+    planes = createPlanes(state, model, { life: options.life });
     // The nav graph is derived from the same corridors, so it goes the same
     // way: a person holding an edge id from a graph that no longer exists is a
     // person in a field (E7).
@@ -781,6 +784,7 @@ export function createRenderer(canvas, state, options = {}) {
     services.update(dt);
     trains.update(dt);
     boats.update(dt);
+    planes.update(dt);
     if (drawOptions.frameMs > 0) {
       const before = governor.disabled().length;
       governor.sample(drawOptions.frameMs);
@@ -812,6 +816,7 @@ export function createRenderer(canvas, state, options = {}) {
     counts.carriages = trains.count() * getConfig().rail.carriages;
     counts.hulls = boats.count();
     counts.wakes = boats.stats().plying * getConfig().boat.wake;
+    counts.planes = planes.count();
     // What the overlay actually drew last frame (P89). The alternative is
     // asking `bandAt` about every visible tile here, which is the overlay pass
     // run twice a frame to save two triangles a tile.
@@ -898,6 +903,7 @@ export function createRenderer(canvas, state, options = {}) {
         services.pose(pools, pushInstance, bounds, near);
         trains.pose(pools, pushInstance, bounds);
         boats.pose(pools, pushInstance, bounds);
+        planes.pose(pools, pushInstance, bounds);
         // Settle the pools AGAIN. The moving cars go into the same pools as the
         // parked ones and they go in after `updateInstances` has already
         // written `visible = mesh.count > 0` — so on a street with no parked
@@ -1015,6 +1021,7 @@ export function createRenderer(canvas, state, options = {}) {
     stats.services = services.stats();
     stats.trains = trains.stats();
     stats.boats = boats.stats();
+    stats.planes = planes.stats();
     // How long the traffic has lived, which is what its population is a
     // function of (D7). Two cards can only be compared row for row where their
     // rows have lived comparable amounts of time — the delta clamp means a slow
@@ -1158,5 +1165,5 @@ export function createRenderer(canvas, state, options = {}) {
   return { renderer, scene, view, terrain, pools, style, setTier, setProjection, setTime,
     get night() { return timeOfDay.current.night; },
     enterStreet, leaveStreet, enterPhoto, leavePhoto, flyPhoto, lookPhoto, capture,
-    get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get services() { return services; }, get trains() { return trains; }, get boats() { return boats; }, get pedestrians() { return pedestrians; }, get crowd() { return crowd; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
+    get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get services() { return services; }, get trains() { return trains; }, get boats() { return boats; }, get planes() { return planes; }, get pedestrians() { return pedestrians; }, get crowd() { return crowd; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };
 }

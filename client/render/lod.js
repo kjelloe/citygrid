@@ -68,6 +68,13 @@ const DEFAULT_COSTS = {
   // about exactly this.
   hull: 12,
   wake: 2,
+  // An airliner (T5b). Five boxes: fuselage, nose, wings, tailplane, fin. One
+  // at a time at each airport, so this term is tiny — and it is here because a
+  // pool with no term is a pool the budget cannot trade away, which is the
+  // fourth time this note has been written. The RADAR is a pool as well, and
+  // its head is sixty triangles that turn: it rides in on `planes` rather than
+  // a term of its own, because an airport has exactly one of each.
+  plane: 136,
   // An overlay's mark, one flat quad a tile with something to say (V4). Fed
   // from what the pools held LAST frame rather than counted here: `countScene`
   // would have to call `bandAt` on every visible tile to know, which is the
@@ -338,6 +345,8 @@ function estimateOne(counts, plan) {
     // The boats ride the cars rung too: they are the same kind of thing the
     // ladder sacrifices first.
     + (plan.cars !== false ? (counts.hulls ?? 0) * costs.hull + (counts.wakes ?? 0) * costs.wake : 0)
+    // The aircraft and its radar ride the cars rung for the same reason (T5b).
+    + (plan.cars !== false ? (counts.planes ?? 0) * costs.plane : 0)
     + (counts.overlayMarks ?? 0) * costs.overlayMark
     + (plan.poles !== false ? Math.round(counts.poles / 3) * costs.pole * loose : 0)
     // The baked street chunks, at what they MEASURED last frame (slice E3).
@@ -905,6 +914,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
     carriages: 0,
     hulls: 0,
     wakes: 0,
+    planes: 0,
     // ...nor the overlay's marks, which are a function of the bands the tiles
     // happen to be in and of whether an overlay is on at all.
     overlayMarks: 0,

@@ -18,7 +18,7 @@ import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry, cityPersonGeometry,
   boulderVariants, BOULDER_VARIANTS, signGeometry,
-  rotorGeometry, flagGeometry, craneGeometry, smokeGeometry,
+  rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, radarGeometry, planeGeometry,
   FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
   carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
@@ -138,6 +138,14 @@ export function createInstances(scene, styleName = "plain") {
   make("boat", slabGeometry(styleName, 2.2 / boatM, 1.6 / boatM, boat.length / boatM), 0xffffff, 96);
   make("ferry", slabGeometry(styleName, 5 / boatM, 3.4 / boatM, (boat.length * 2.4) / boatM), 0xffffff, 16);
   make("wake", flatGeometry(styleName, 3.4 / boatM, 5 / boatM, 0), 0xffffff, 160);
+  // The airport (T5b): one aircraft at a time and a radar head that turns.
+  // Both are posed from modules node can load — `client/life/plane.js` and the
+  // shape's `radar` point — and the radar's motion is the rotor's about the
+  // other axis.
+  const air = getConfig().airport;
+  make("plane", planeGeometry(getConfig().tileM, air), 0xffffff, 8);
+  make("radar", radarGeometry(), 0xffffff, 16);
+  addMotion(pools.radar.material, "radar");
   const carriage = getConfig().rail;
   const tileM = getConfig().tileM;
   make("train", slabGeometry(styleName,
@@ -882,7 +890,7 @@ export function updateInstances(state, pools, options = {}) {
     // A civic box turns to face its street, like the facade it stands in for
     // (S1). Every other category keeps the hashed spin: a house has a front
     // door on its frontage already, and a shop's sign is on its own edge.
-    const spin = p.kind === "civic" ? civicSpin(lot?.frontage) * (Math.PI / 2) : p.spin;
+    const spin = p.kind === "civic" ? civicSpin(lot?.frontage, building.def) * (Math.PI / 2) : p.spin;
     // The lawn takes the building's seat, not its own tile's height: it is the
     // ground the house was cut into, so on a slope the uphill half of it is
     // buried and that is what a plinth looks like from above (spec §5.6).
@@ -950,6 +958,13 @@ export function updateInstances(state, pools, options = {}) {
         if (shape.hub) {
           const at = civicAt(shape.hub);
           push(pools.rotor, at.x, at.y, at.z, at.scale, at.scale, at.scale, 0xf4f4f0, at.turn);
+        }
+        // The airport's radar (T5b): the same arrangement, about the other
+        // axis, and NOT scaled by the lot — a six-tile lot would make a
+        // thirty-metre radar head.
+        if (shape.radar) {
+          const at = civicAt(shape.radar);
+          push(pools.radar, at.x, at.y, at.z, 1, 1, 1, 0xe8e8ea, at.turn);
         }
         for (const e of shape.emits ?? []) puffs(civicAt(e), 0xdcdcd6);
         if (shape.flag) {

@@ -53,6 +53,18 @@ export const DEFAULTS = Object.freeze({
     hullColour: 0xf0f0f0, sailColour: 0xf8f8f8, ferryColour: 0x3376cc,
     cargoColour: 0x8b8b8b, wakeColour: 0xe1ece4,
   },
+  // The airfield (T5b). `runwayHalf` and `taxiwayHalf` are metres either side
+  // of a centreline; the BANDS the strips sit in are in `airfield.js`, with the
+  // silhouette that reads them. `approachM` is how far outside the region a
+  // plane starts, and `climbGrade` what it climbs at — the same shape as a
+  // road's `maxGrade`, and nothing to do with the engine's `airport.maxDrop`,
+  // which is about the ground.
+  airport: {
+    runwayHalf: 9, taxiwayHalf: 4.5, paintW: 0.9, dashM: 14, gapM: 12,
+    thresholdBars: 6, thresholdM: 9, lightSpacingM: 22, lift: 0.05,
+    approachM: 420, cruiseSpeed: 62, taxiSpeed: 9, turnaround: 16, climbGrade: 0.11,
+    wingspan: 24, fuselage: 32, planeColour: 0xf2f2f2, radarSpan: 7,
+  },
   // Poles and their sagging spans at L3 (E3, spec §5.4).
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },
   // Water (E8, spec §5.5). `depth` is how far the bed drops below the surface

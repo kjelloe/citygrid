@@ -1,5 +1,5 @@
 {
- "version": "cf50232097b8",
+ "version": "d408e367dfc9",
  "generated": "2026-10-02",
  "files": [
   "./client/audio/audio-model.js",
@@ -23,6 +23,7 @@
   "./client/input/tools.js",
   "./client/life/boats.js",
   "./client/life/pedestrians.js",
+  "./client/life/plane.js",
   "./client/life/services.js",
   "./client/life/traffic.js",
   "./client/life/train.js",
@@ -32,6 +33,7 @@
   "./client/lobby/options-model.js",
   "./client/main.js",
   "./client/precache.json",
+  "./client/render/airport-l3.js",
   "./client/render/atmosphere.js",
   "./client/render/baker.js",
   "./client/render/building-kit.js",
@@ -99,6 +101,7 @@
   "./client/ui/statistics-model.js",
   "./client/ui/statistics.js",
   "./client/world/age.js",
+  "./client/world/airfield.js",
   "./client/world/chunks.js",
   "./client/world/civic-spec.js",
   "./client/world/collision.js",

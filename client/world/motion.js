@@ -22,13 +22,17 @@ export const MOTION = Object.freeze({
   flag: Object.freeze({ amp: 0.22, speed: 3.1, wave: 7 }),
   /** Radians of slew either way, and how slowly. */
   crane: Object.freeze({ amp: 0.9, speed: 0.12 }),
+  /** The airport's radar, in radians a second. A surveillance head turns about
+   * once every five seconds, which at city zoom is a sweep you notice without
+   * a spinning top on the skyline (T5b). */
+  radar: Object.freeze({ speed: 1.2 }),
   /** Puffs a source, seconds for one to rise, and how far it goes, in tiles. */
   smoke: Object.freeze({ puffs: 6, period: 7, rise: 1.4, drift: 0.55, grow: 1.6, opacity: 0.6 }),
 });
 
 /** The pools that move, and how. A pool not listed here does not move. */
 export const ANIMATED = Object.freeze({
-  tree: "sway", rotor: "rotor", flag: "flag", crane: "crane", smoke: "smoke",
+  tree: "sway", rotor: "rotor", flag: "flag", crane: "crane", smoke: "smoke", radar: "radar",
 });
 
 /** The clock the motion sees: zero whenever life is off, and never negative. */
@@ -53,6 +57,13 @@ export function sway(t, h, phase) {
 /** The rotor's angle. Zero at t = 0. */
 export function rotorAngle(t, phase) {
   return MOTION.rotor.speed * t * (0.85 + 0.15 * Math.cos(phase));
+}
+
+/** The radar head's angle. Zero at t = 0, like the rotor's: the phase is a
+ * MULTIPLIER rather than an offset, so a frozen frame is the rest pose and two
+ * heads on two airports are not in lockstep. */
+export function radarAngle(t, phase) {
+  return MOTION.radar.speed * t * (0.9 + 0.1 * Math.cos(phase));
 }
 
 /** The crane's slew. Zero at t = 0. */

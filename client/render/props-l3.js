@@ -151,7 +151,12 @@ export function streetPropGeometry(sinks, prop, cfg, heightAt) {
 function flatQuad(s, x, y, z, along, w, d) {
   const alongX = !along || Math.abs(along.x) >= Math.abs(along.z);
   const [hx, hz] = alongX ? [w / 2, d / 2] : [d / 2, w / 2];
-  s.quad([x - hx, y, z - hz], [x + hx, y, z - hz], [x + hx, y, z + hz], [x - hx, y, z + hz]);
+  // Wound +z then +x, which faces UP. The other order — the one this had from
+  // S3 to T5b — gives a normal of (0, -1, 0) and a surface culled from above,
+  // so every parking bay, bay line, manhole and drain the prop pass has baked
+  // has been facing the ground. Found by T5b, whose runway did the same thing
+  // and whose aerial shot made it impossible to miss.
+  s.quad([x - hx, y, z - hz], [x - hx, y, z + hz], [x + hx, y, z + hz], [x + hx, y, z - hz]);
 }
 
 /** A parking bay: its surface and a line at each end, all flat. */
