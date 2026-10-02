@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "G4: decay rolls like growth (A92) — `development.decayOneIn` is read at last, so a lot below the threshold loses condition one scan in six rather than every scan",
+ "why": "Q128 (A94): decayOneIn is 3 rather than 6 — decline mirrors growth instead of being 2.7 times slower than it",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -176,6 +176,6 @@
    ]
   }
  ],
- "era": 11,
+ "era": 13,
  "repinnedAt": "2026-10-02"
 }

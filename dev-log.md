@@ -8315,3 +8315,37 @@ the question of whether 6 is the right number is **Q128**, with 2 or 3 as the ob
 Suite **1,559 green twice**. `sim` **750 s of 900**. One fixture hash moved (`founding`'s 132-tick
 step) and `two_player` did not move at all, which is the footprint of a draw that only happens in
 the decay branch.
+
+## era 13 — `decayOneIn` is 3, mirroring growth (2026-10-03) — A94, Q128
+
+G4 shipped the roll with the **6** that happened to be in the file, and neither number had ever been
+chosen: before it, decline was three times faster than growth; after it, 2.7 times slower. At 3 a
+cut-off lot dies in four years against three years to grow through all four levels.
+
+**The ladder was measured before the question was asked**, eight seeds over `decayOneIn` 1, 2, 3, 4
+and 6 — and the useful half of that run was the half I could trust. Abandonments in 25 years came
+out **1,949 / 798 / 492 / 362 / 173**, clean and monotone, because it counts thousands of events.
+The population column from the same run was noise: 6 came out HIGHEST, where the 200-game sweep has
+it lowest. That is CLAUDE.md's "never tune on five seeds" arriving on schedule, and it is why the
+ladder picked the candidate and the sweep measured it.
+
+### Measured — 200 games a configuration
+
+| configuration | era 11 (no roll) | era 12 (`decayOneIn` 6) | era 13 (3) |
+|---|---|---|---|
+| relaxed-64 | 2,410 | 1,711 | **1,961** |
+| steady-64 | 2,253 | 1,758 | **1,894** |
+| demanding-64 | 2,038 | 1,490 | **1,469** |
+| steady-64-nodisasters | 2,312 | 1,790 | **1,903** |
+
+So three recovers about a third of what six gave up, and cities stay roughly **18% smaller** than
+the churning era 11 — the churn really was producing population, and no setting of this constant
+gets it back without getting the churn back with it.
+
+**And the quest ladder is now calibrated against a city that does not happen.** `city-of-two-thousand`
+grants rank 3; era 11 cleared two thousand in every configuration, era 12 in none, and era 13 in
+none either — relaxed comes closest at 1,961. Filed as **Q129** rather than fixed, because "the
+median DEPUTY city misses it" may be exactly right for a progression ladder and somebody should say
+so on purpose.
+
+Suite **1,559 green twice**; `sim` **863 s of 900**. One fixture hash moved, the same one G4 moved.

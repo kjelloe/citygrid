@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "G4: decay rolls like growth (A92) — `development.decayOneIn` is read at last, so a lot below the threshold loses condition one scan in six rather than every scan",
+ "why": "Q128 (A94): decayOneIn is 3 rather than 6 — decline mirrors growth instead of being 2.7 times slower than it",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -264,7 +264,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "bb46316885a61c20",
+   "hash": "5e2f86d7834681b1",
    "events": [
     "budget",
     "developed",
@@ -279,8 +279,9 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "159221c8e9203569",
+   "hash": "9db500269bc4544a",
    "events": [
+    "abandoned",
     "budget",
     "developed",
     "noRouteToWork"
@@ -292,15 +293,19 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "b4291145e672a7e4",
+   "hash": "f4c3ae11f76767b2",
    "events": [
     "abandoned",
     "budget",
+    "burntDown",
     "developed",
+    "fireOut",
+    "fireSpread",
+    "fireStarted",
     "noRouteToWork"
    ]
   }
  ],
- "era": 11,
+ "era": 13,
  "repinnedAt": "2026-10-02"
 }

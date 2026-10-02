@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 12,
+  era: 13,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -75,7 +75,7 @@ var RULES = {
     growthThreshold: 40,
     decayThreshold: -40,
     growthOneIn: 3,
-    decayOneIn: 6,
+    decayOneIn: 3,
     baseLandValue: 100,
     demandWeight: 60,
     landValueWeight: 40,

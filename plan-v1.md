@@ -445,7 +445,7 @@ by number from the code they create.
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
 | Q121 | A city that burns is 10% BIGGER on steady and nobody knows why — an event census in both arms would say | Kjell — a balance mechanism nobody designed |
 | Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
-| Q128 | G4 made every city ~25% smaller and 7× calmer: 1,979 → 156 abandonments on the same seeds, because the churn was producing population | Kjell — is that the trade you want, or should `decayOneIn` come down from 6 to 2–3? |
+| Q129 | The quest ladder wants 2,000 for rank 3 and 5,000 for rank 4; no era since 11 has had a median city clear either | Kjell — lower the thresholds, lower `decayOneIn` to 2, or say rank 3 is for good players? |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan
