@@ -24,7 +24,7 @@ import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
-import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PLACE_BUILDING } from "../engine/commands.js";
+import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PLACE_RAIL, CMD_PLACE_BUILDING } from "../engine/commands.js";
 import { definition } from "../engine/catalogue.js";
 import { phaseForPreset } from "../client/world/rush.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
@@ -120,6 +120,11 @@ if (placeList.length > 0) {
   const row = Math.round(W / 2);
   state.players[0].treasury = 9000000;
   apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: [row * W + 3, W - 6] });
+  // A LINE two rows north of the road, so a definition with `needsRail` has
+  // something to stand on. The rail station has never had a picture: the
+  // harness laid a road and nothing else, so `placeBuilding` answered `invalid`
+  // every time and printed it where nobody looked (P94).
+  apply(state, { type: CMD_PLACE_RAIL, actor: 1, runs: [(row - 3) * W + 3, W - 6] });
   let at = 5;
   for (const def of placeList) {
     const d = definition(def);
@@ -134,13 +139,25 @@ if (placeList.length > 0) {
     // 1003 is rock — so every 1×1 definition has been photographed as an empty
     // road with `invalid` in a log nobody read (park, windTurbine, and T7's
     // clinic, which is how it was found).
+    //
+    // And over SEVERAL rows, not one: a surface pump needs a shore and a rail
+    // station needs the line, so a single row of a seed is not enough ground to
+    // satisfy every placement rule the catalogue has. The rows run outward from
+    // the road so the nearest fit wins and the camera has the least distance to
+    // cover.
     let result = "invalid";
-    for (; at < W - d.w - 2; at += 1) {
-      result = apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def, x: at, y }).result;
+    let fx = at;
+    let fy = y;
+    const rows = [y, row - 2, y + 1, y + 2, row - 4, y + 3];
+    for (const ry of rows) {
+      for (let rx = at; rx < W - d.w - 2; rx += 1) {
+        result = apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def, x: rx, y: ry }).result;
+        if (result === "ok") { fx = rx; fy = ry; break; }
+      }
       if (result === "ok") break;
     }
-    placed.push({ def, x: at, y, w: d.w, h: d.h, result });
-    at += d.w + 2;
+    placed.push({ def, x: fx, y: fy, w: d.w, h: d.h, result });
+    at = fx + d.w + 2;
   }
 }
 // `placeAt=<def>@x,y[;<def>@x,y]` puts one definition on a GIVEN tile, through

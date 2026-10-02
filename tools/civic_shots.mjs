@@ -36,11 +36,16 @@ for (const def of defs) {
   });
   const spot = String(found.report?.placed ?? "").match(new RegExp(`${def}:ok@(\\d+),(\\d+)`));
   const atX = spot ? Number(spot[1]) : FIRST_X;
+  const atY = spot ? Number(spot[2]) : ROW + 1;
+  // Which WAY to look. `place=` searches several rows outward from the road
+  // now, so a rail station stands north of it beside the line — and a camera
+  // that always looked south photographed the field behind it (P94).
+  const facing = atY < ROW ? 0 : 2;
   const r = await shoot({
     out: `reports/smoke-S1-${def}.png`, seed: SEED, years: 0, size: SIZE,
     width: 1000, height: 640, tier: "high", streets: 40, frames: 40,
     // In the street, two tiles north of the building, looking south at it.
-    street: `${atX + Math.floor(d.w / 2)},${ROW}`, yaw: 2, pitch: 8,
+    street: `${atX + Math.floor(d.w / 2)},${ROW}`, yaw: facing, pitch: 8,
     // Backdated past `BUILDING_TICKS` (B2): a building placed this tick is a
     // construction site, and the first run of this tool photographed twelve
     // scaffolded slabs — which is B2 working and S1 unphotographed.

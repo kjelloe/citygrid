@@ -873,23 +873,22 @@ Consequences should primarily affect simulation variables and later dialogue, av
 
 #### 11.7 Mayor Rank
 
-Possible progression ranks:
+**Rewritten at P93 (A90).** This section used to describe a five-rank *personal* ladder that
+unlocked buildings, maps, overlays and scenarios. §27.2 says the opposite — "unlocks belong to the
+room, not the player… mayor rank never gates a building" — and only one of the two could be built.
+§27.2's is the one that exists.
 
-1. Settlement Steward.
-2. Town Mayor.
-3. City Mayor.
-4. Regional Leader.
-5. Metropolitan Architect.
+Rank is the **region's**, one shared number (`state.quests.vars`), granted by quest rewards:
 
-Ranks unlock:
+1. **Settlement Steward** — the tutorial chain.
+2. **Town Mayor** — five hundred residents.
+3. **City Mayor** — a city hall, or two thousand residents.
+4. **Regional Leader** — five thousand residents.
 
-- New civic buildings.
-- New power and water technologies.
-- Larger maps.
-- Advanced overlays.
-- New scenarios.
-- Decorative rewards.
-- Special landmarks.
+Rank gates **buildings and nothing else**, through `unlock` on a catalogue definition: the city
+hall and the stadium at 2, the airport at 3, the university at 4. Maps, overlays, scenarios and
+technologies are not gated on anything, and a fifth rank does not exist — a rank nothing grants is
+a building nobody can ever build, which `test/unlock.test.js` refuses.
 
 ### 12. Events and Disasters
 

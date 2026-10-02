@@ -8217,3 +8217,38 @@ event census — `tools/fire_arms.mjs` with `developed` and `abandoned` counted 
 arms — rather than by reasoning. Q118 (every income term is worthless against a 3.5M median
 treasury) stays as a precondition on any economy work. Q102 still wants a verdict before the next
 compare sheet.
+
+## P94 — the review round after P93's answers (2026-10-03)
+
+Two findings, and the second is P75's finding happening again to a different set of tools.
+
+**§11.7 still described the design that was struck.** A90 replaced the five-rank personal ladder
+with §27.2's shared regional rank, and the amendment table said so — but a reader of §11.7 itself
+still met five ranks unlocking maps, overlays, technologies and scenarios. The section is rewritten
+to what exists: four ranks, granted by quests, gating four catalogue definitions and nothing else.
+
+**Six picture tools can fail and no set ran any of them.** `test/gates.test.js` walks `tools/` for
+anything named `_smoke`, `_gate` or `_soak` — and the picture tools are named `_shots`, so the five
+P75 put into sets by hand were the only ones anybody had checked. The scan covers `_shots` now,
+which found **`civic_shots`, `foliage_shots`, `motion_shots`, `role_shots` and `street_shots` in no
+set at all**, and three more (`crowd_shots`, `house_shots`, `traffic_shots`) that are genuinely not
+gates — they take a frame for a person and have nothing to fail on. The latter are named in one
+`NOT_A_GATE` list that both tests read, and the test now proves they cannot fail rather than taking
+it on trust.
+
+The five that can are a new set, **`kits`** (M2's rule: split rather than raise — one picture per
+catalogue definition is 28 shots, which no existing set can absorb).
+
+**And running it found two definitions that have never been photographed.** `railStation` needs a
+line to stand on and `waterPump` needs a shore; the harness laid a road and nothing else, so both
+answered `invalid` and printed it where nobody looked. `place=` lays a rail line two rows north of
+its road now and searches several rows outward rather than one, and `civic_shots` reads the x AND y
+back out of the report so the camera looks the right WAY — the station stands north of the road, and
+a camera that always looked south photographed the field behind it.
+
+**Measured.** Suite **1,557 green twice**; the new `kits` set **365 s of 960**, all five green, 28
+definitions placed and photographed — `railStation` and `waterPump` for the first time.
+
+**Also:** `workitems-rules.md` is indexed in the README beside the other lanes, and the `sim-gate`
+skill learnt T7's two lessons — read `reports/balance-era*.md` before choosing a threshold on a
+simulation quantity, and `(n + 1) * per <= others` is the form that means "one per `per`".

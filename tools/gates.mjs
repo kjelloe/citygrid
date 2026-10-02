@@ -58,6 +58,11 @@ export const GATES = {
   rail_shots: { args: ["tools/rail_shots.mjs"], what: "the track, a level crossing and a train that is actually posed on the line" },
   harbour_shots: { args: ["tools/harbour_shots.mjs"], what: "boats at a marina, a ferry with a wake, and a port with its ship" },
   airport_shots: { args: ["tools/airport_shots.mjs"], what: "a runway with its markings, an apron lit at night, and an aircraft on the ground" },
+  civic_shots: { args: ["tools/civic_shots.mjs"], what: "one street-level picture per catalogue definition, counting that the reducer accepted each one" },
+  foliage_shots: { args: ["tools/foliage_shots.mjs"], what: "trees, gardens and a park, counted before they are called a picture" },
+  motion_shots: { args: ["tools/motion_shots.mjs"], what: "the things that move at rest and in motion — rotor, flag, crane, smoke" },
+  role_shots: { args: ["tools/role_shots.mjs"], what: "a building per role, told apart" },
+  street_shots: { args: ["tools/street_shots.mjs"], what: "a street at eye height, with what S3 put on it counted" },
 
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
   passability: { args: ["tools/passability.mjs"], what: "a lane wide enough for a walker, everywhere" },
@@ -101,9 +106,15 @@ export const SETS = {
   // owns and the two halves stay honest about what they cost.
   shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots"],
   transport: ["avenue_shots", "rail_shots", "harbour_shots", "airport_shots"],
+  // Its own set (M2's rule: split rather than raise). One picture per catalogue
+  // definition is twenty-eight shots and seven minutes, which no other set can
+  // absorb — and it is a gate rather than a tool since T7 taught it to exit
+  // non-zero when the reducer refused what it was photographing.
+  kits: ["civic_shots", "foliage_shots", "motion_shots", "role_shots", "street_shots"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
 };
-SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots, ...SETS.transport];
+SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots,
+  ...SETS.transport, ...SETS.kits];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -146,6 +157,7 @@ export const BUDGET_MS = {
   // The transport lane's pictures, measured at T4b in one run: avenue 38 s,
   // rail 76, harbour 73 — 187 s.
   transport: 5 * 60 * 1000,
+  kits: 16 * 60 * 1000,
   sim: 15 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
   // transport 187.

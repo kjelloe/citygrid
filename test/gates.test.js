@@ -17,10 +17,29 @@ import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { SETS, GATES, BUDGET_MS, gatesIn } from "../tools/gates.mjs";
 
-/** Files under `tools/` that are gates by their name. */
+/**
+ * Tools that are NOT gates: they produce something for a person to read or look
+ * at and have no criterion to fail on. Named here once, because two tests ask
+ * about them — "every gate file is in a set" has to skip them, and "a tool that
+ * is not a gate is not expected to be in a set" has to prove they really cannot
+ * fail (P94).
+ */
+const NOT_A_GATE = ["i18n_review", "screenshot", "serve", "repin", "make_precache", "play_shot",
+  "perf_card", "perf_report", "compare_sheet", "crowd_shots", "house_shots", "traffic_shots"];
+
+/** Files under `tools/` that are gates by their name.
+ *
+ * `_shots` is in the list since P94. P75's whole finding was that the picture
+ * tools — which COUNT what they photographed and exit non-zero — were run by
+ * hand in the slice that wrote them and never again; they were put into sets by
+ * hand, and this check could not see them, so `civic_shots` was outside every
+ * set for three slices while it quietly reported `invalid` for every 1×1
+ * definition. A tool that can fail belongs to a set by name, not by memory. */
 function gateFiles() {
   return readdirSync(join(repoRoot, "tools"))
-    .filter((n) => n.endsWith("_smoke.mjs") || n.endsWith("_gate.mjs") || n.endsWith("_soak.mjs"))
+    .filter((n) => n.endsWith("_smoke.mjs") || n.endsWith("_gate.mjs") || n.endsWith("_soak.mjs")
+      || n.endsWith("_shots.mjs"))
+    .filter((n) => !NOT_A_GATE.includes(n.replace(/\.mjs$/, "")))
     .sort();
 }
 
@@ -112,10 +131,20 @@ test("a tool that is not a gate is not expected to be in a set", () => {
   // produces numbers, `perf_report.mjs` a table of them, and `compare_sheet.mjs`
   // a picture judged by eye. A measurement is not a pass, and a gate set that
   // ran them would take twenty minutes to tell you nothing (D1, D2, D4).
-  for (const tool of ["i18n_review", "screenshot", "serve", "repin", "make_precache", "play_shot",
-    "perf_card", "perf_report", "compare_sheet"]) {
+  // `crowd_shots` and `house_shots` are the same shape in the picture lane:
+  // they take a frame for a person to look at and have no criterion to fail on,
+  // which is why they are named `_shots` and still are not gates. The four that
+  // DO exit non-zero are in `kits` (P94).
+  for (const tool of NOT_A_GATE) {
     assert.equal(SETS.all.includes(tool), false, `${tool} is in a gate set`);
     assert.equal(/_(smoke|gate|soak)$/.test(tool), false,
       `${tool} is named like a gate but is not one`);
+    // ...and a `_shots` tool that is not in a set must have no way to fail,
+    // which is the thing that makes it a picture rather than a gate.
+    if (tool.endsWith("_shots")) {
+      const source = readFileSync(join(repoRoot, "tools", `${tool}.mjs`), "utf8");
+      assert.equal(/process\.exit\(1\)/.test(source), false,
+        `${tool} can fail and no set runs it`);
+    }
   }
 });

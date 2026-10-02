@@ -38,6 +38,19 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Picture gates** | `node tools/gates.mjs shots` and `node tools/gates.mjs transport` | Tools that COUNT what they photographed before calling it a river, a fire, a ruin, a patrol, a window, rain, an avenue, a railway or a harbour. They existed as hand-run scripts until P75's omissions round found that nothing ran them, and T4b SPLIT them along the lane when the one set reached 397 s of a 360 s budget: `shots` is the world and behaviour lanes (211 s), `transport` is T1-T4's (187 s) |
 | **Lane dump** | `node tools/lanes_dump.mjs [size]` | What did the lane graph come out as? Link, node, turn and signal counts, and the shortest link against a car's length. No browser: the model is pure |
 
+**Read the era report before choosing a threshold.** Any rule keyed on a simulation quantity —
+`civic.pollutionAverage`, `crimeAverage`, `landValueAverage`, population, congested tiles — has a
+distribution printed in `reports/balance-era*.md` after every sweep. T7 guessed that a waste
+facility should be built when pollution over developed land passes **24**; the report says **1 to
+2** in every configuration, so the rule could only ever fire in a village — where it bankrupted the
+town, which peaked at sixty people against 1,260 without it. Grep the latest report for the
+quantity, pick from what it says, and prove it with a one-seed worktree probe (the tree with the
+rule and the tree without, side by side) before the 200-game sweep.
+
+**And `n * per < others` is true the moment a town has one building of anything.** A rule meant as
+"one per thirty buildings" buys its first at one. `(n + 1) * per <= others` is the form that means
+what it says. Both halves of this were in the same turn.
+
 **Twelve browser gates, and they are cheap to run all of them.** Do:
 
 ```
