@@ -59,13 +59,11 @@ var RULES = {
     birthRatePerMille: 20, labourBaseMax: 130, internalMarketDivisor: 370,
     residentialBase: 400, commercialBase: 150, industrialBase: 150,
   },
-  power: { coal: 700, gas: 500, wind: 60, solar: 180, nuclear: 2000 },
-  water: { pump: 300, groundwaterPump: 120, treatment: 900, tower: 200 },
+
   service: {
     maxRoadEffect: 32, maxPoliceEffect: 1000, maxFireEffect: 1000,
     fundingMinPercent: 50, fundingMaxPercent: 150,
   },
-  milestones: { town: 2000, city: 10000, capital: 50000, metropolis: 100000, megalopolis: 500000 },
   multiplayer: { derelictYears: 5, absenceYears: 5, abandonYears: 5, requestExpiryMonths: 12, seasonYears: 25 },
   development: {
     levels: 4,

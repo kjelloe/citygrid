@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot, docExists } from "./helpers/sources.js";
+import { repoRoot, docExists, jsFilesIn } from "./helpers/sources.js";
 import { rules, buildCost, difficultyOf } from "../engine/rules.js";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
@@ -17,6 +17,75 @@ test("the engine's mirror matches data/balance.json exactly", () => {
   for (const section of Object.keys(balance)) {
     if (section === "note") continue;
     assert.deepEqual(mirror[section], balance[section], `${section} has drifted from the JSON`);
+  }
+});
+
+/**
+ * Numbers in the ruleset that NOTHING reads, each with the reason it is still
+ * in the file. The same shape `test/utilities.test.js` uses for the catalogue's
+ * dead fields (Q119) and `test/i18n.test.js` uses for untranslated strings: an
+ * allow-list where every entry says why, never a way to make the test green.
+ *
+ * Found by P90's round, which ran the checklist's third direction — "data the
+ * engine mirrors and nothing reads" — per LEAF for the first time rather than
+ * per block. It found 21. Three whole blocks went: `power` and `water` were the
+ * catalogue's own production figures written down a second time (and `water`
+ * was the name that silently replaced the harbour's block in T4a), and
+ * `milestones` was a population ladder the quests have done since slice 4.3.
+ */
+const UNREAD_RULES = {
+  "tax.responseMonths": "how many months a tax change takes to be felt. `taxDrag` applies "
+    + "the table's value the same month, with no lag term anywhere.",
+  "demand.birthRatePerMille": "the reference's population model. `computeDemand` grows "
+    + "population out of housing capacity and occupancy, not out of a birth rate.",
+  "demand.labourBaseMax": "the reference's labour ceiling; nothing caps jobs that way.",
+  "demand.internalMarketDivisor": "the reference's internal-market term, which this "
+    + "demand model has no equivalent of.",
+  "service.maxRoadEffect": "a cap on what road coverage can contribute; `coveragePass` "
+    + "has no road term at all.",
+  "service.maxPoliceEffect": "a cap on the police term, which is already bounded by the "
+    + "coverage field's own 0-255.",
+  "service.maxFireEffect": "the same, for fire.",
+  // The three that are not merely vestigial — they describe rules a player would
+  // feel. Filed as Q124 rather than implemented, because each one moves every
+  // sweep number in the project and wants an era of its own.
+  "development.decayOneIn": "Q124. Growth rolls `growthOneIn`; decay has no roll, so a "
+    + "lot below the decay threshold decays EVERY month while a lot above the growth "
+    + "threshold grows one month in three.",
+  "development.roadWeight": "Q124. `scoreLot` weighs demand and land value; road access "
+    + "is a boolean gate rather than a weighted term.",
+  "development.crowdingWeight": "Q124. `scoreLot` has no crowding term.",
+};
+
+test("every number in the ruleset is read by something", () => {
+  // A leaf is READ if its name appears, as a whole word and outside a comment,
+  // anywhere in engine/, client/ or shared/. Deliberately lenient about HOW:
+  // `buildCost` indexes `build` by `kind + "OverWater"`, `upkeep` by a
+  // definition id and `deputy.roadReach` by a doctrine name, so a scan that
+  // demanded `.leaf` would report four live blocks as dead.
+  const source = [...jsFilesIn("engine"), ...jsFilesIn("client"), ...jsFilesIn("shared")]
+    .filter((f) => !f.path.endsWith("rules.js"))
+    .map((f) => f.source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""))
+    .join("\n");
+  const dead = [];
+  const walk = (value, path) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      for (const key of Object.keys(value)) {
+        if (key.startsWith("_") || key === "note" || key === "era") continue;
+        walk(value[key], [...path, key]);
+      }
+      return;
+    }
+    const leaf = path[path.length - 1];
+    if (!new RegExp(`(?<![A-Za-z0-9_])${leaf}(?![A-Za-z0-9_])`).test(source)) dead.push(path.join("."));
+  };
+  walk(balance, []);
+
+  const unexplained = dead.filter((key) => !Object.hasOwn(UNREAD_RULES, key));
+  assert.deepEqual(unexplained, [],
+    `ruleset numbers nothing reads, and no entry in UNREAD_RULES: ${unexplained.join(", ")}`);
+  for (const key of Object.keys(UNREAD_RULES)) {
+    assert.ok(dead.includes(key), `${key} is read now — take it off UNREAD_RULES`);
   }
 });
 

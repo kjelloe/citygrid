@@ -85,6 +85,12 @@ async function boot() {
     return;
   }
 
+  // The ruleset BEFORE the lobby, because the lobby generates a region and
+  // worldgen reads `rules()` (P90). Quests are loaded later, in `startGame`,
+  // where they are first needed.
+  const { loadRuleset } = await import("./content.js");
+  await loadRuleset();
+
   const app = document.getElementById("app");
   const { startGame } = await import("./game.js");
 

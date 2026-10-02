@@ -7872,3 +7872,53 @@ appears, turns the footprint to 4×6 and leaves with the tool). `render` **57/12
 
 **Next:** T5b — the runway and taxiway ribbons with their markings, the apron lights, the radar that
 turns, and `client/life/plane.js`.
+
+## P90 — the review round after T5a (2026-10-02)
+
+Two findings, both from the checklist's own directions, and both of the shape where a TEST was what
+hid the defect.
+
+**`data/balance.json` was decoration.** `engine/rules.js` and `engine/catalogue.js` carry a mirror
+of their JSON because `engine/` may not do I/O, and an adapter is supposed to hand the real file in
+at boot. Nothing has ever called `setRules` or `setCatalogue`. `client/content.js` loaded the quests
+and nothing else, so the game, every gate and every tool ran on the mirror — and editing the file
+CLAUDE.md calls the home of every number changed nothing at all.
+
+Behaviour was never wrong, because `test/rules.test.js` and `test/utilities.test.js` refuse to let
+the two drift. **That is why it survived**: the whole symptom was a file nobody could make a
+difference with, and the test that should have been the alarm was the thing guaranteeing the two
+could never disagree. Found by direction 4 — exported functions with no importer — where `setRules`
+sat in a list of 37 that is mostly same-file use and fine.
+
+`loadRuleset()` now runs in `main.js` **before the lobby**, because the lobby generates a region and
+worldgen reads `rules()`. A failed fetch is not fatal: the mirror is the fallback and is identical
+by test, so a city booting offline from a stale cache runs on numbers it can prove.
+`test/content.test.js` loads a DOCTORED ruleset — `build.road: 999` and an invented `pylon` — because
+a loader test whose fixture is byte-identical to the fallback passes whether or not it ran.
+
+**Twenty-one of the ruleset's 182 numbers are read by nothing.** Direction 3 has always been run per
+BLOCK; this is the first time it was run per leaf, with comments stripped. Three whole blocks went:
+`power` and `water` were the catalogue's own production figures written down a second time — and
+`water` was the name that silently replaced the harbour's block in T4a — and `milestones` was a
+population ladder the quests have done since slice 4.3. That is 14 numbers deleted.
+
+The ten that remain carry a reason each in `UNREAD_RULES`, the shape `UNREAD_FIELDS` and
+`SAME_IN_BOTH` already use, and a new test refuses the next one. Planted a key to watch it fire.
+Three of the ten are not vestigial and are filed as **Q124**: `development.decayOneIn` (growth rolls
+one month in three, decay rolls nothing, so decline is three times as fast as growth and nobody
+chose that), `roadWeight` and `crowdingWeight` (terms `scoreLot` does not have). Implementing any of
+them is an era and a sweep.
+
+**Ruling 044 — a placement option is spent into the record, not stored beside it**, written from
+T5a's orientation. The footprint is already hashed, saved and projected, so a turned airport is a
+record with `w: 4, h: 6` and nothing downstream needs an orientation field. `specs/engine/`
+§6.1f says what that means for the renderer, and it is the thing T5b has to obey: the runway follows
+`w > h`, which is a DIFFERENT rotation from `civicSpin(lot.frontage)`. For every definition before
+the airport the two could not disagree.
+
+**Also:** `CLAUDE.md` now says the mirror is a fallback rather than implying a loader that did not
+exist; `slice-workflow` and `sim-gate` learned the `transport` gate set T4b split out.
+
+**Measured.** Suite **1,520 green twice** (`test/content.test.js` 3, `test/rules.test.js` 12).
+`quick` **413 s of 480** with the boot change in — the real page loads its ruleset from `data/`
+now, and nothing moved.

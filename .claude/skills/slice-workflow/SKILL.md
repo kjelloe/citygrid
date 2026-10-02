@@ -105,8 +105,9 @@ time and writes it to `reports/gates-<date>.json`:
 node tools/gates.mjs quick     # after ANY change — 11 gates, ~5.5 min on SwiftShader
 node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump
 node tools/gates.mjs budget    # and the triangle budget — its own set since B3a, ~4 min
-node tools/gates.mjs shots     # the picture gates that count what they photographed, ~5 min
-node tools/gates.mjs sim       # a gameplay slice as well: the three soaks
+node tools/gates.mjs shots     # the world and behaviour lanes' pictures, ~4 min
+node tools/gates.mjs transport # T1-T4's pictures — avenue, rail, harbour (T4b split them), ~3 min
+node tools/gates.mjs sim       # a gameplay slice as well: the three soaks, ~10 min
 ```
 
 **`node --test test/docs.test.js` before EVERY commit** (Kjell, P70). It is seconds, and it is the

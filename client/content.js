@@ -10,6 +10,38 @@
 // — the most expensive kind of bug, because it looks like content.
 
 import { setQuests, validateQuests } from "../engine/quests.js";
+import { setRules } from "../engine/rules.js";
+import { setCatalogue } from "../engine/catalogue.js";
+
+/**
+ * The ruleset and the building catalogue, from `data/` into the engine.
+ *
+ * `setRules` and `setCatalogue` had no caller for the life of the project
+ * (P90): `engine/rules.js` and `engine/catalogue.js` carry a MIRROR of their
+ * JSON so that `engine/` can stay free of I/O, and the mirror was the only
+ * thing that ever ran. Nothing was wrong — `test/rules.test.js` and
+ * `test/utilities.test.js` refuse to let the two drift — but the file a
+ * CLAUDE.md rule calls the home of every number was decoration at runtime, and
+ * editing it changed nothing in the game.
+ *
+ * Failure is not fatal and must not be: the mirror IS the fallback, and it is
+ * byte-identical by test. A city that boots offline with a stale cache runs on
+ * numbers it can prove rather than on nothing.
+ */
+export async function loadRuleset(base = "./data/") {
+  const problems = [];
+  for (const [file, apply] of [["balance.json", setRules], ["buildings.json", setCatalogue]]) {
+    try {
+      const loaded = await (await fetch(`${base}${file}`)).json();
+      delete loaded.note;
+      apply(loaded);
+    } catch (error) {
+      problems.push(`${file}: ${error.message ?? error}`);
+    }
+  }
+  for (const problem of problems) console.error(`ruleset: ${problem} — running on the mirror`);
+  return { problems };
+}
 
 export async function loadQuests(base = "./data/quests/") {
   const index = await (await fetch(`${base}index.json`)).json();

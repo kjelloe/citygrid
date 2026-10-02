@@ -199,6 +199,25 @@ And one for anything that stands on the ground: **a building's own ground is not
 park's lawn at the full lot covered every ground pixel of its tile, and an overlay is a texture on
 the ground (ruling 041), so a park showed no pollution at all.
 
+## 6.1f Eighteen definitions, and a lot with an axis (T5a, 2026-09-27)
+
+Two more shapes (the city hall and the airport), and with them the first lot whose own ORIENTATION
+matters. `placeBuilding` spends an `orientation` into the footprint rather than storing it
+(ruling 044), so a turned airport is a record with `w: 4, h: 6` and **`w > h` is what says which
+way the runway runs**.
+
+That is a different rotation from `civicSpin(lot.frontage)`, which turns a shape so its entrance
+faces the street. For every definition before this one the two could not disagree, because the
+footprint was square or near enough. They can now: a 6×4 airport fronting a street to the north has
+its runway running east-west whatever its frontage is. **Anything that must run along the axis — the
+runway and taxiway ribbons, their markings, the apron — reads the footprint; anything that must face
+the street reads the frontage.**
+
+The shapes' masses are in unit space ACROSS THE LOT, which means `y` is in the lot's units too: on a
+6×4 lot every height is twice the metres the same number buys on a 3×3. The airport's first cut was
+authored at a hospital's heights and came out a warehouse under an eighty-metre tower. A flat mass
+on a lot also has a floor — the apron and the runway at 0.02 sank under the lot's own lawn quad.
+
 ## 6.1c The density ladder (S10, 2026-09-11)
 
 A residential lot is a FORM, not a building. `client/world/homes.js` answers what a lot of a given
