@@ -898,13 +898,17 @@ export function planeGeometry(tileM, spec) {
 /** The airport's radar (T5b): a bar across a small drum, turning about Y — a
  * surveillance head, not a dish. In TILE units like the flag and the crane, so
  * the pool poses it at the tower's cab without a scale of its own. */
-export function radarGeometry() {
+export function radarGeometry(tileM, spec) {
   const parts = makeParts();
+  // `airport.radarSpan` metres end to end. It was a literal 0.18 of a tile
+  // until P91's sweep found the data carrying a number nothing read — which is
+  // the shape this project keeps finding an hour after writing it.
+  const half = spec.radarSpan / 2 / tileM;
   addBox(parts, -0.012, 0, -0.012, 0.012, 0.03, 0.012, 0.8);
   // The sweep: long, thin and asymmetric, because a symmetric bar turning is a
   // bar standing still at half the speed.
-  addBox(parts, -0.015, 0.03, -0.09, 0.015, 0.055, 0.09, 1);
-  addBox(parts, -0.006, 0.03, 0.09, 0.006, 0.045, 0.115, 0.9);
+  addBox(parts, -half * 0.17, 0.03, -half, half * 0.17, 0.055, half, 1);
+  addBox(parts, -half * 0.07, 0.03, half, half * 0.07, 0.045, half * 1.3, 0.9);
   return finish(parts);
 }
 

@@ -144,7 +144,7 @@ export function createInstances(scene, styleName = "plain") {
   // other axis.
   const air = getConfig().airport;
   make("plane", planeGeometry(getConfig().tileM, air), 0xffffff, 8);
-  make("radar", radarGeometry(), 0xffffff, 16);
+  make("radar", radarGeometry(getConfig().tileM, air), 0xffffff, 16);
   addMotion(pools.radar.material, "radar");
   const carriage = getConfig().rail;
   const tileM = getConfig().tileM;

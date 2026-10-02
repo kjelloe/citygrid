@@ -7986,3 +7986,34 @@ and watched it fire.
 `tools/airport_shots.mjs` joins the `transport` set and counts the aircraft posed, the radar posed,
 the lamps the baked chunks carry at night, and that a street chunk was live at all — a frame with no
 baked chunk has no asphalt in it, whatever the pools say.
+
+## P91 — the review round after T5b (2026-10-02)
+
+Three findings, and two of them are the same shape as P90's: a test that was holding a stale claim
+in place rather than catching it.
+
+**`RELEASE.md` said "era 1" at era 9.** Five eras after the data stopped agreeing with it — and the
+doc test was the reason it survived, because it asserted the literal string `"era 1"` was on the
+page. A test written as a transcription of a line protects whatever the line got wrong (K3's lesson,
+for the second time). The test reads `data/balance.json`'s era now and the page names era 9 with its
+report; planted era 8 on the page and watched it fire. The commit count went 95 → 170 in the same
+breath.
+
+**A number I added an hour earlier was already dead.** `airport.radarSpan` went into
+`data/cityviewer.json` in T5b and the radar's geometry carried the span as a literal, so the data
+promised a size nothing read. The geometry reads it now (4 m end to end). This is the third data
+file in three rounds to produce one of these, so it stopped being a thing somebody runs: **every
+number in `data/cityviewer.json` now has to be read by something**, with `UNREAD_CONFIG` as the
+allow-list, in the shape `UNREAD_RULES` (P90) and `UNREAD_FIELDS` (Q119) already use. The list is
+empty and should stay empty. Planted a key; it fires.
+
+**T6 wants a rank that does not exist.** The next item gives `university` `unlock: 4`, and nothing
+in the quest data grants rank 4 — T5a's "every rank the catalogue gates on is a rank some quest
+grants" would refuse it. `city-of-five-thousand` is already written as a milestone and rewards money
+only, so the fix is one line. Filed as **Q125** with the assumption stated, rather than discovered
+halfway through the slice.
+
+**Also swept, and clean:** the suite at 1,539; `omissions`, `reachability`, `utilities`, `rules`,
+`lod` and `docs` 124 green; every exported function has an importer (`marshBand` and `rockyPeaks`
+are same-file, which is the one the sweep is written to tolerate); no dynamic import names a file
+that is not there.

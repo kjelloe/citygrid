@@ -63,7 +63,7 @@ export const DEFAULTS = Object.freeze({
     runwayHalf: 9, taxiwayHalf: 4.5, paintW: 0.9, dashM: 14, gapM: 12,
     thresholdBars: 6, thresholdM: 9, lightSpacingM: 22, lift: 0.05,
     approachM: 420, cruiseSpeed: 62, taxiSpeed: 9, turnaround: 16, climbGrade: 0.11,
-    wingspan: 24, fuselage: 32, planeColour: 0xf2f2f2, radarSpan: 7,
+    wingspan: 24, fuselage: 32, planeColour: 0xf2f2f2, radarSpan: 4,
   },
   // Poles and their sagging spans at L3 (E3, spec §5.4).
   wire: { poleSpacing: 60, poleHeight: 7, sag: 1.2, armWidth: 1.4 },

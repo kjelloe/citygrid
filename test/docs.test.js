@@ -357,7 +357,11 @@ test("the release page says how far behind HEAD it is, or warns", () => {
 
 test("the release page carries the numbers a reader would otherwise have to run", () => {
   const release = readDoc("RELEASE.md");
-  for (const wanted of ["./run.sh", "./test.sh", "gates.mjs", "era 1", "dev-log.md"]) {
+  // The ERA comes from the data, not from a literal here. This test carried
+  // `"era 1"` for five eras and the page carried it with them: a test written
+  // as a transcription of a line protects whatever the line got wrong (P91).
+  const era = JSON.parse(readFileSync(join(repoRoot, "data", "balance.json"), "utf8")).era;
+  for (const wanted of ["./run.sh", "./test.sh", "gates.mjs", `era ${era}`, "dev-log.md"]) {
     assert.ok(release.includes(wanted) || release.includes(wanted.replace("./", "")),
       `the release page never mentions ${wanted}`);
   }

@@ -454,6 +454,7 @@ by number from the code they create.
 | Q122 | Whose rank is it? T5a gates `unlock` on the region's shared quest variable; §11.7 lists a personal ladder and §27.2 forbids one | Kjell — two sections of the design contradict each other |
 | Q123 | The city hall does nothing beyond marking the rank, and the population route to rank 3 was left beside it | Kjell — should the hall have an effect, and should the other route survive? |
 | Q124 | Ten ruleset numbers nothing reads; three of them (decayOneIn, roadWeight, crowdingWeight) are rules a player would feel | Kjell — which are rules you want, and is decay meant to be three times as fast as growth? |
+| Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

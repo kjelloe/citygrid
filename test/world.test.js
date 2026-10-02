@@ -9,7 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot } from "./helpers/sources.js";
+import { repoRoot, jsFilesIn } from "./helpers/sources.js";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt, DIR4 } from "../shared/grid.js";
@@ -58,6 +58,52 @@ test("the config mirror matches data/cityviewer.json", () => {
   const file = JSON.parse(readFileSync(join(repoRoot, "data", "cityviewer.json"), "utf8"));
   delete file.note;
   assert.deepEqual(JSON.parse(JSON.stringify(DEFAULTS)), file, "client/world/config.js has drifted from data/cityviewer.json");
+});
+
+/**
+ * Numbers in the renderer's config that NOTHING reads, each with the reason it
+ * is still in the file. The same allow-list shape `UNREAD_RULES` uses for the
+ * ruleset and `UNREAD_FIELDS` for the catalogue — three data files, one rule:
+ * a number nobody reads looks exactly like a rule somebody implemented, and the
+ * next slice copies it.
+ *
+ * Empty, and it should stay that way: P75 found a dead `rain` block by hand and
+ * P91 found `airport.radarSpan` an hour after writing it (the radar's geometry
+ * had the span as a literal). This is what makes the sweep a test rather than a
+ * thing somebody remembers to run.
+ */
+const UNREAD_CONFIG = {};
+
+test("every number in the renderer's config is read by something", () => {
+  // A leaf is READ if its name appears, as a whole word and outside a comment,
+  // anywhere in client/, engine/ or shared/ — `config.js` itself excepted,
+  // since it is the mirror. Deliberately lenient about HOW: several blocks are
+  // indexed by a computed key (`tiers[name]`, `presets[hour]`).
+  const file = JSON.parse(readFileSync(join(repoRoot, "data", "cityviewer.json"), "utf8"));
+  const source = [...jsFilesIn("client"), ...jsFilesIn("engine"), ...jsFilesIn("shared")]
+    .filter((f) => !f.path.endsWith("config.js"))
+    .map((f) => f.source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""))
+    .join("\n");
+  const dead = [];
+  const walk = (value, path) => {
+    if (Array.isArray(value)) return;
+    if (value && typeof value === "object") {
+      for (const key of Object.keys(value)) {
+        if (key.startsWith("_") || key === "note") continue;
+        walk(value[key], [...path, key]);
+      }
+      return;
+    }
+    const leaf = path[path.length - 1];
+    if (!new RegExp(`(?<![A-Za-z0-9_])${leaf}(?![A-Za-z0-9_])`).test(source)) dead.push(path.join("."));
+  };
+  walk(file, []);
+  const unexplained = dead.filter((key) => !Object.hasOwn(UNREAD_CONFIG, key));
+  assert.deepEqual(unexplained, [],
+    `config numbers nothing reads, and no entry in UNREAD_CONFIG: ${unexplained.join(", ")}`);
+  for (const key of Object.keys(UNREAD_CONFIG)) {
+    assert.ok(dead.includes(key), `${key} is read now — take it off UNREAD_CONFIG`);
+  }
 });
 
 test("a tile is twenty metres and relief is half a metre a step (rulings 035, 038)", () => {

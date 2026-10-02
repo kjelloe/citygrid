@@ -10,9 +10,12 @@ measured when somebody last looked, which is a different claim and the only one 
   is a document. Nothing on `dev_night` changes what this page claims until the next slice does,
   and the docs test prints the drift as a note rather than a failure for exactly that reason.
 - **Date:** 2026-09-08
-- **Balance era:** era 1, tuned 2026-08-29 over 200 games per configuration
-  (`reports/balance-era1.md`). Numbers from era 0 are void, not roughly comparable.
-- **95 commits**, one per slice, no squash and no merge commits.
+- **Balance era:** era 9, re-measured 2026-09-27 over 200 games per configuration
+  (`reports/balance-era9.md`). Numbers from an earlier era are void, not roughly comparable —
+  and the frame numbers further down are renderer measurements, which belong to no balance era.
+  This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
+  doc test was pinning the words rather than reading `data/balance.json`.
+- **170 commits**, one per slice, no squash and no merge commits.
 
 ## Running it
 
@@ -99,7 +102,7 @@ on a 128 `hilly` it is 59.3% and 459 of 1,392 (Q64, Q74).
 
 ## What is missing, and known to be
 
-**35 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**36 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 
