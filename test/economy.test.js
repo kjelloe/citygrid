@@ -236,3 +236,40 @@ test("a village pays village money", () => {
     `${after.expenses - before.expenses} a month is not village money`);
 });
 
+// --- the difficulties still order the way they say they do (J4; A106, Q141) --
+
+test("a harder difficulty keeps less of its tax and pays more of its upkeep", () => {
+  // The invariant a re-cut can quietly break. J4 took demanding's squeeze from
+  // 80/120 to 90/110 so that it could absorb H8's service cost — the lever had
+  // shipped at a third of its worth because demanding had nothing to absorb it
+  // with — and a difficulty table is three numbers that only mean something
+  // against each other.
+  const order = ["relaxed", "steady", "demanding"];
+  const yields = order.map((name) => rules().difficulty[name].taxYieldPercent);
+  const upkeeps = order.map((name) => rules().difficulty[name].upkeepPercent);
+  for (let i = 1; i < order.length; i += 1) {
+    assert.ok(yields[i] < yields[i - 1],
+      `${order[i]} keeps ${yields[i]}% of its tax and ${order[i - 1]} keeps ${yields[i - 1]}%`);
+    assert.ok(upkeeps[i] > upkeeps[i - 1],
+      `${order[i]} pays ${upkeeps[i]}% of its upkeep and ${order[i - 1]} pays ${upkeeps[i - 1]}%`);
+  }
+  // And the squeeze is still a squeeze: the hardest difficulty keeps less than
+  // it spends, proportionally, or "demanding" is a label on nothing.
+  assert.ok(yields[2] < upkeeps[2], "demanding keeps more of its tax than it pays of its upkeep");
+});
+
+test("the same city is richer on an easier difficulty", () => {
+  // Asserted through `budgetFor`, which is where the two percentages meet, so a
+  // re-cut that reversed one of them would be caught by arithmetic rather than
+  // by reading the table.
+  const nets = [];
+  for (const difficulty of ["relaxed", "steady", "demanding"]) {
+    const state = city({ difficulty });
+    for (let i = 0; i < 6; i += 1) addLot(state, 1, ZONE_RESIDENTIAL, 4 + i, 4, 3, 40);
+    apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "fireStation", x: 10, y: 10 });
+    nets.push(budgetFor(state, 1).net);
+  }
+  assert.ok(nets[0] > nets[1] && nets[1] > nets[2],
+    `relaxed ${nets[0]}, steady ${nets[1]}, demanding ${nets[2]}`);
+});
+

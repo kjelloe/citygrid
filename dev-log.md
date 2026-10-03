@@ -9272,3 +9272,47 @@ plays `rolling`, where the limit never binds. The one demanding city that died a
 
 `sim` **867 s of 900**. Suite **1,591 green twice**.
 
+## era 23 — demanding's margin, re-cut against a real expense (2026-10-03) — J4, A106 (Q141)
+
+H8 gave a developed lot a service cost and could only ship it at **a third** of the rung it was
+measured for: at 6/12/22/35 the 200-game sweep lost nine demanding cities of two hundred, so it went
+out at 3/6/11/18. The reason was not the mechanism. `taxYieldPercent` 80 and `upkeepPercent` 120 were
+set in era 1, when a developed lot cost nothing to serve, so demanding had **nothing to absorb a new
+expense with**.
+
+Forty demanding cities a rung:
+
+| squeeze | service cost | population | cash | p25 | dead of 40 |
+|---|---|---|---|---|---|
+| 80/120 | 3/6/11/18 (era 22) | 1,547 | 1,839k | 1,616k | 0 |
+| 80/120 | 6/12/22/35 | 1,207 | 1,161k | 898k | **4** |
+| **90/110** | **6/12/22/35** | **1,516** | **1,890k** | **1,676k** | **0** |
+| 95/105 | 6/12/22/35 | 1,565 | 2,457k | 2,177k | 0 |
+| 90/110 | 12/25/45/70 | 1,063 | 808k | **0k** | 4 |
+| 100/100 | 12/25/45/70 | 1,373 | 1,721k | 1,478k | 3 |
+
+The squeeze comes in by a third and the service cost doubles: **demanding ends where it started with
+a real expense inside it**, and relaxed and steady pay the larger cost without the easier squeeze.
+95/105 is too kind. 12/25/45/70 kills cities at every squeeze tried, which is where this lever stops
+and the next question begins.
+
+### Measured — 200 games a configuration
+
+| configuration | population | treasury (era 22 → 23) | p25 | ended empty |
+|---|---|---|---|---|
+| relaxed-64 | 1,821 → 1,821 | 5,887k → **5,572k** | 5,437k → 5,139k | 0 |
+| steady-64 | 1,615 → 1,615 | 4,418k → **4,042k** | 4,052k → 3,702k | 0 |
+| demanding-64 | 1,544 → **1,566** | 1,909k → **2,092k** | 1,611k → 1,820k | 0 |
+| steady-64-nodisasters | 1,569 → 1,569 | 4,384k → **4,050k** | 4,058k → 3,678k | 0 |
+
+Exactly the shape it was designed for: three configurations pay the doubled cost, demanding gets its
+margin back and ends slightly bigger and slightly richer, and **nobody dies anywhere**. Against era 20
+— before the service cost existed at all — the treasuries are down **11% to 14%** across the board
+with the populations unmoved.
+
+Era 1's logged debt, "ACCEPTED, not fixed: runaway treasuries", is now a lever with a measured range
+at both ends: the mechanism (what a lot costs to serve) and the constraint (what the hardest
+difficulty can carry).
+
+`sim` **846 s of 900**. One fixture hash moved, no event drift. Suite **1,593 green twice**.
+

@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "H8 (A101): economy.serviceCostPerLevel settles at 3/6/11/18 after the 200-game sweep found nine dead demanding cities at the rung the eight-seed ladder had cleared",
+ "why": "J4 (A106): the service cost doubles to 6/12/22/35 now that demanding's squeeze can absorb it, so every treasury is lower again from the first month a lot stands — one hash, no event drift",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -260,7 +260,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "32560f482c4b7eaf",
+   "hash": "472712a0c9d19023",
    "events": [
     "budget",
     "developed",
@@ -275,7 +275,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "782cd948d35b4a12",
+   "hash": "fea3aaedfbe52112",
    "events": [
     "abandoned",
     "budget",
@@ -289,7 +289,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "06eb15acbb3e13e5",
+   "hash": "eca8b837d2d37fd1",
    "events": [
     "abandoned",
     "budget",
@@ -302,6 +302,6 @@
    ]
   }
  ],
- "era": 21,
+ "era": 23,
  "repinnedAt": "2026-10-03"
 }

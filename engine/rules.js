@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 22,
+  era: 23,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -19,9 +19,10 @@ var RULES = {
   },
   upkeep: { road: 1, wire: 0, pipe: 0, rail: 2, policeStation: 100, fireStation: 100, hospital: 120 },
   difficulty: {
+    _demanding: "J4 (A106, Q141): demanding's squeeze, re-cut against a real expense. taxYieldPercent 80 and upkeepPercent 120 were set in era 1, when a developed lot cost nothing to serve - so demanding had nothing to absorb H8's service cost with, and the lever shipped at a third of what it was worth (3/6/11/18 instead of 6/12/22/35, because the 200-game sweep lost nine demanding cities of two hundred at the higher rung). Measured over FORTY demanding cities a rung: at 80/120 with the service cost doubled the population is 1,207 and four cities die; at 90/110 it is 1,516 with none, which is the population demanding has today (1,547) and a p25 treasury of 1,676k against 1,616k. So the squeeze comes in by a third and the service cost doubles, and demanding ends where it started with a real expense inside it. 95/105 was measured too and is too kind (2,457k p25); 12/25/45/70 still kills cities at every squeeze tried, which is where this lever stops.",
     relaxed: { buildCostPercent: 70, taxYieldPercent: 140, upkeepPercent: 80, startingTreasury: 30000, disasterOneIn: 479, demandElasticity: 120 },
     steady: { buildCostPercent: 90, taxYieldPercent: 120, upkeepPercent: 100, startingTreasury: 20000, disasterOneIn: 239, demandElasticity: 100 },
-    demanding: { buildCostPercent: 120, taxYieldPercent: 80, upkeepPercent: 120, startingTreasury: 12000, disasterOneIn: 59, demandElasticity: 80 },
+    demanding: { buildCostPercent: 120, taxYieldPercent: 90, upkeepPercent: 110, startingTreasury: 12000, disasterOneIn: 59, demandElasticity: 80 },
   },
   tax: {
     default: 7, min: 0, max: 20,
@@ -113,7 +114,7 @@ var RULES = {
   },
   economy: {
     _service: "H8 (A101, Q118): what a developed lot costs the city to SERVE, per level. Until era 21 a lot was pure income - it paid tax and cost nothing - while the only expenses were the civic buildings and a penny a road tile, so a steady 25-year city took 20,268 a month and spent 5,048, banked the rest for twenty-five years and ended on 4.7 million. Per-TILE upkeep was tried twice and rejected twice because it bankrupts a young town without touching a rich one; this scales with what the city HAS GROWN rather than with what it has paved, so a village of nine level-1 cottages pays 225 a month and a city of 160 lots pays seven thousand. The ladder is steep on purpose - a level-4 tower is four cottages' worth of water, refuse and road - and it is calibrated from the lot census of a 25-year steady city (45/29/13/8 residential by level, 17/7/1 commercial, 29/9/2 industrial) and it is chosen from a four-rung ladder measured over eight cities a difficulty: at 0 the treasuries are 6,466k relaxed / 5,021k steady / 2,534k demanding; at 6/12/22/35 they are 5,837k / 4,264k / 1,258k with nobody dead; at 12/25/45/70 DEMANDING COLLAPSES, from 1,644 residents to 163 with a city dead of eight. The useful range of this lever is bounded by demanding's margin, not by the mechanism - it pays 120% of every expense and keeps 80% of every tax, so it has nothing to absorb a new one with. The eight-seed ladder said 6/12/22/35 killed nobody and the 200-game SWEEP said nine demanding cities of two hundred reached a hundred residents and ended empty - never tune on five seeds, from the other direction - so the rung came down again: at 3/6/11/18, measured over FORTY demanding cities, the dead count is 0, the population is 1,618 against 1,632 and the treasury 1,955k against 2,374k. A first step, deliberately small, and the reason it is small is demanding's own margin - J4 (A106) re-cuts it and raises this.",
-    serviceCostPerLevel: [3, 6, 11, 18],
+    serviceCostPerLevel: [6, 12, 22, 35],
     residentialDivisor: 150, commercialDivisor: 120, industrialDivisor: 140,
   },
   population: { workingAgePercent: 55, shoppersPerCommercialJob: 12, industryPerWorkerPercent: 45 },

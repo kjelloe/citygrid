@@ -115,6 +115,15 @@ on a new era: this changes what every map affords.
 `hilly` should lose streets and gain nothing — the city is already off the cliff since era 20, so
 this is about the roads that reach for it.
 
+## J4 — Demanding's margin, re-cut against a real expense (M) — A106 (Q141) — **BUILT 2026-10-03** as era 23
+
+*As built: 90/110 and the service cost doubled to 6/12/22/35. Demanding ends where it started — 1,566
+residents against 1,544, a p25 treasury of 1,820k against 1,611k — with a real expense inside it,
+while relaxed, steady and nodisasters pay the larger cost and give up another 5–8% of their
+treasuries. Nobody dies anywhere. The lever's far end is measured too: 12/25/45/70 kills cities at
+every squeeze tried, including 100/100, which is where this stops being a tuning question and starts
+being a different economy.*
+
 ## J4 — Demanding's margin, re-cut against a real expense (M) — A106 (Q141)
 
 **Goal.** The economy becomes tunable: a service cost worth having that demanding can survive.
