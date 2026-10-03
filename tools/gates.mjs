@@ -65,12 +65,19 @@ export const GATES = {
   street_shots: { args: ["tools/street_shots.mjs"], what: "a street at eye height, with what S3 put on it counted" },
 
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
-  // The same walk on the terrain the question was about (S11, J3). It could not
-  // be RUN until S11 taught the fixture that a network refuses rock, and it
-  // could not be GREEN until J3 stopped the deputy paving up a 30% hillside:
-  // 25 cliffs and 218 of 612 corridors ungradeable became 0 and 20 of 177.
-  // S11's own done-when, met at last.
-  walkthrough_hilly: { args: ["tools/walkthrough.mjs", "128", "hilly"], what: "the same walk on a hilly 128, which is what S11 and J3 are about" },
+  // The same walk on the terrain S11 and J3 are about. It could not be RUN at
+  // all until S11 taught the fixture that a network refuses rock, and J3 took it
+  // from 25 cliffs and 218 of 612 ungradeable corridors to 0 and 20 of 177.
+  //
+  // **Not in a set**, and the reason is a lesson rather than a defect: its
+  // criteria are absolute (no cliff, nothing walked into) and the hilly city
+  // changes with every balance era. It was green at era 22 and red at era 23 —
+  // four cliffs, four lots walked into — with no change to the rule, because
+  // the economy moved what the deputy builds and `maxRoadSlope` had been chosen
+  // at the rung that made THIS gate pass on THAT city. A gate whose pass depends
+  // on a constant tuned to one city is a gate that will be red on the next era's
+  // city. Run it by hand, read the four numbers, and see Q142.
+  walkthrough_hilly: { args: ["tools/walkthrough.mjs", "128", "hilly"], what: "the same walk on a hilly 128 — a tool, not a gate (Q142)" },
   passability: { args: ["tools/passability.mjs"], what: "a lane wide enough for a walker, everywhere" },
   lanes_dump: { args: ["tools/lanes_dump.mjs"], what: "the lane graph, its height error and its step time" },
 
@@ -98,7 +105,7 @@ export const SETS = {
   // (budget_gate 235, lanes_dump 60), so the next slice would have had to
   // raise the budget to fit — which the rule forbids. It is a set of its own
   // now, and `render` is restated from what is left in it.
-  render: ["walkthrough", "walkthrough_hilly", "passability", "lanes_dump"],
+  render: ["walkthrough", "passability", "lanes_dump"],
   budget: ["budget_gate"],
   // The picture tools that CHECK themselves (P75's omissions round): each one
   // counts what it photographed and exits non-zero when the count is wrong, and

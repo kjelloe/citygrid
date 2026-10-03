@@ -429,6 +429,7 @@ by number from the code they create.
 | Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
+| Q142 | walkthrough 128 hilly was green at era 22 and red at era 23 with no rule change: absolute criteria on a city that moves | Kjell — relative criteria, a pinned fixture, or leave it a tool? |
 
 ## What would make us stop and re-plan
 

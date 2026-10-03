@@ -286,10 +286,15 @@ same — because the saturated fixture does not grow from zoning. Its buildings 
 array on any tile, cliff or not (Q72), so the gate measures a city the rule never touched. The gate
 becomes meaningful with **H7**.*
 
-*Met at J3 (era 22, 2026-10-03): `walkthrough 128 hilly` is **green** — 0 cliffs, 0 refusals, 20 of
-177 corridors ungradeable — and it has joined the `render` set as `walkthrough_hilly`. What was
-missing was not the junctions: it was that `placeNetwork` had no slope rule at all, so the deputy
-paved up a 500% hillside and the walker met what it paved.*
+*Moved a long way at J3 (era 22, 2026-10-03) and NOT met. What was missing was not the junctions: it
+was that `placeNetwork` had no slope rule at all, so the deputy paved up a 500% hillside and the
+walker met what it paved. With the rule, `walkthrough 128 hilly` went from 25 cliffs and 218 of 612
+ungradeable corridors to **4 and 205 of 929** — 36% of corridors to 22%.*
+
+*It read ZERO cliffs at era 22 and joined the `render` set on that run; era 23's economy moved what
+the deputy builds and it was red again the same night, with no change to the rule. The gate's criteria
+are absolute and the city is not, which is **Q142** — so the walk is a tool you run and read, and this
+done-when stays open.*
 
 *Not met at S11: the done-when. `walkthrough 128 hilly` is **red** — 30 cliffs, 226 of 1,458 corridors
 ungradeable — so it has not joined the `render` set. Before this slice the gate **could not be run at

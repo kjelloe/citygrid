@@ -9316,3 +9316,54 @@ difficulty can carry).
 
 `sim` **846 s of 900**. One fixture hash moved, no event drift. Suite **1,593 green twice**.
 
+## P99's lane, complete (2026-10-03)
+
+| | | era | what it measured |
+|---|---|---|---|
+| J1 | a zoning stroke knows what it will cost and why | — | and "10 tiles" for a three-tile stroke, since slice 1.3 |
+| J2 | a block shorter than a car is part of its junction | — | links under 4.5 m: 4 of 7,694 → 0 |
+| J3 | a road refuses the ground a lot refuses | 22 | `walkthrough 128 hilly` green for the first time |
+| J4 | demanding's margin, re-cut against a real expense | 23 | the service cost doubles and nobody dies |
+
+**Two of the four did not land as written**, and the measurement said so in one run each:
+
+- J3's *"the same limit as `canZone`"* would have taken a played `hilly` city from 1,872 residents to
+  **217**. A lot refuses ground too rough to stand on; a road refuses a climb too steep to drive. The
+  rule is the step along the run, and the number came from the gate A112 named.
+- J2's *"absorbed into the junction"* read naturally as "dropped", and a corridor that publishes no
+  block link leaves its two junctions with no way between them. The clearances give way instead.
+
+Both are the same lesson in different clothes: a work item names the intent, and the first
+implementation that matches its words is not always the one that matches its goal. The gate, the
+ladder and the three-arm probe are what tell the two apart.
+
+**And both small slices found something older than themselves**: J1 found a readout that had said
+"10 tiles" for a three-tile stroke since slice 1.3, and J2 found that the lane graph's short-link
+criterion had never been able to fire on the grid fixture it was written against.
+
+## A correction: the hilly walk is a tool, not a gate (2026-10-03)
+
+`slice-J3` says `walkthrough 128 hilly` is "green for the first time in the project" and that
+`walkthrough_hilly` has joined the `render` set. The first half is true of era 22 and the second half
+did not survive era 23: the economy slice, two hours later, with **no change to the slope rule**,
+moved what the deputy builds — the hilly fixture went from 142 buildings to 185 — and the same gate
+now reads **4 cliffs and 4 lots walked into**.
+
+The rule is sound. On the same terrain it took 25 cliffs and 218 of 612 ungradeable corridors to 4
+and 205 of 929 — 36% of corridors to 22% — and `rolling` is untouched in the 200-game sweep.
+
+**The gate is the fragile part, and it was fragile because I tuned a constant to it.** `maxRoadSlope`
+12 was chosen as the rung where that gate read zero cliffs on that city; a constant chosen to make one
+gate pass on one city is a constant that fails on the next era's city, and the next era was the same
+night. The honest reading is that the criteria are absolute (no cliff, nothing walked into) and the
+city is not.
+
+So `walkthrough_hilly` is defined, runnable by name, and in no set — with the reason in `gates.mjs`
+rather than in a commit message — and **Q142** asks the real question: relative criteria the way
+`lanes_dump`'s two were re-aimed at H7, a pinned fixture that balance eras do not touch, or a tool
+somebody runs and reads. The same question is owed to `walkthrough` on `rolling`, which passes today
+for the same reason it might not tomorrow.
+
+S11's done-when is therefore **not** met. It was met for one era, by a number that was measuring the
+gate rather than the ground.
+

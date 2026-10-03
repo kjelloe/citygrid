@@ -15,7 +15,16 @@ places anything new or the soak never measures it; `sim` on a new era, with the 
 report quoted beside the new one; and **read `reports/balance-era*.md` before choosing any
 threshold** — T7 guessed one and bankrupted every town with it.
 
-# The third round — P99 (A106–A112)
+# The third round — P99 (A106–A112) — **COMPLETE 2026-10-03**
+
+*All four built. J1 and J2 are small slices, J3 and J4 are eras 22 and 23. Two of the four did not
+land as written, and both times the measurement said so in one run: J3's "the same limit as `canZone`"
+would have taken a played `hilly` city from 1,872 residents to 217 (a lot refuses ROUGHNESS, a road
+refuses a CLIMB), and J2's "absorbed into the junction" read as "dropped", which leaves two junctions
+with no way between them. The ratifications (A107, A110) and the re-scope (A111) are in the files
+they belong to.*
+
+
 
 *Written 2026-10-03 from P99, where Kjell took every recommendation on the seven questions the second
 round raised. Two are ratifications with no code (A107's gate criterion, A110's lane point) and one

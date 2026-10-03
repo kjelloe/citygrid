@@ -97,15 +97,16 @@ the 4090 (13 on SwiftShader) against an 8 ms budget. A person is 42 triangles an
 **The city under it**: the model rebuild after a build action is **53.3 ms on 96×96, 68.3 on a
 128 `hilly`, and 184.7 ms on 256×256** — eleven frames on the largest map the lobby offers, on the
 render thread (Q60, D6). The steepest street is 18.8% against a 15% limit on `rolling`, with no
-corridor that grading cannot fix. On a 128 `hilly` it is **33.3% with 20 of 177** — and that gate is
-**green**, which it had never been: it could not be run at all until S11 taught the fixture that a
-network refuses rock, it read 25 cliffs and 218 of 612 ungradeable corridors when H7 made the fixture
-a played city, and J3 (era 22) stopped the deputy paving up a 30% hillside. `walkthrough_hilly` is in
-the `render` set now.
+corridor that grading cannot fix. On a 128 `hilly` it is **42.7% with 205 of 929 ungradeable corridors
+and 4 cliffs**, down from 500% with 218 of 612 and 25 cliffs before J3 (era 22) stopped the deputy
+paving up a 30% hillside — and that gate could not be run at all until S11 taught the fixture that a
+network refuses rock. It is a tool rather than a gate: it was green at era 22 and red at era 23 with
+no change to the rule, because its criteria are absolute and the hilly city moves with every balance
+era (Q142).
 
 ## What is missing, and known to be
 
-**6 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**7 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 
