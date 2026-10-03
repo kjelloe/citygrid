@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 21,
+  era: 22,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -68,6 +68,8 @@ var RULES = {
   development: {
     _slope: "H6 (A100): the steepest step in elevation units between a tile and a four-neighbour that may still be zoned. Six, because that is the grade a STREET may climb: road.maxGrade is 15%, a tile is 20 m and an elevation step is 0.5 m, so 15% of 20 m is 3 m is six steps. You may not zone ground a street could not be built on. Measured over three 128 maps a style: it leaves rolling at 100% of its buildable tiles (93% are at 4 or less) and flat at 100%, and takes hilly from 100% to 41% - which is the point, and is still 17,000 tiles of city.",
     maxZoneSlope: 6,
+    _roadSlope: "J3 (A112): the steepest step ALONG a run that may still be paved, in elevation units. A lot refuses ground too rough to stand on - maxZoneSlope, the max step to any neighbour - and a road refuses a CLIMB too steep to drive, which is the step between consecutive tiles of the run; a street along a contour across a hillside has a gentle grade and a steep neighbour, and the first cut used the lot's test and took a played hilly city from 1,872 residents to 217. Twelve steps is six metres over a twenty-metre tile, about 30%: steeper than a street may be GRADED (road.maxGrade 15%), because this is the land a street may be laid ACROSS and S11's grading then flattens the street within its corridor. Measured as a ladder over four 64 maps a style, 25 years, with walkthrough 128 hilly beside it: rolling is unmoved from 10 upward; hilly reads 6 -> 147 residents, 10 -> 697, 11 -> 1,094, 12 -> 1,066, 13 -> 964, 14 -> 1,711, 20 and no limit -> 1,342. Fourteen beats NO LIMIT by a quarter - a deputy that stops at the foot of a hill builds where the city can be served - and fails the gate on one marginal cliff (1.03 m against a 1.00 m threshold). Twelve is the rung where walkthrough 128 hilly goes GREEN for the first time in the project: 0 cliffs, 0 refusals, 20 of 177 corridors ungradeable against 218 of 612, steepest street 500% -> 33.3%. The gate is what A112 named as the measurement, so the gate chose the number.",
+    maxRoadSlope: 12,
     levels: 4,
     residentsPerLevel: [4, 12, 28, 60],
     commercialJobsPerLevel: [3, 9, 20, 44],

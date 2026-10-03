@@ -10,8 +10,8 @@ measured when somebody last looked, which is a different claim and the only one 
   is a document. Nothing on `dev_night` changes what this page claims until the next slice does,
   and the docs test prints the drift as a note rather than a failure for exactly that reason.
 - **Date:** 2026-09-08
-- **Balance era:** era 21, re-measured 2026-10-03 over 200 games per configuration
-  (`reports/balance-era21.md`). Numbers from an earlier era are void, not roughly comparable —
+- **Balance era:** era 22, re-measured 2026-10-03 over 200 games per configuration
+  (`reports/balance-era22.md`). Numbers from an earlier era are void, not roughly comparable —
   and the frame numbers further down are renderer measurements, which belong to no balance era.
   This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
   doc test was pinning the words rather than reading `data/balance.json`.
@@ -96,11 +96,12 @@ the 4090 (13 on SwiftShader) against an 8 ms budget. A person is 42 triangles an
 
 **The city under it**: the model rebuild after a build action is **53.3 ms on 96×96, 68.3 on a
 128 `hilly`, and 184.7 ms on 256×256** — eleven frames on the largest map the lobby offers, on the
-render thread (Q60, D6). The steepest street is 18.8% against a 15% limit on `rolling`, with **no
-corridor of 773** that grading cannot fix — there were 8 until S11 let a junction's height move
-within 6 m of its own ground. On a 128 `hilly` the same measurement is 98.8% and 226 of 1,458, down
-from 98.1% and 485 before S11: better, and still not playable, which is Q134. That gate could not be
-run on `hilly` at all until S11 taught the saturated fixture that a network refuses rock.
+render thread (Q60, D6). The steepest street is 18.8% against a 15% limit on `rolling`, with no
+corridor that grading cannot fix. On a 128 `hilly` it is **33.3% with 20 of 177** — and that gate is
+**green**, which it had never been: it could not be run at all until S11 taught the fixture that a
+network refuses rock, it read 25 cliffs and 218 of 612 ungradeable corridors when H7 made the fixture
+a played city, and J3 (era 22) stopped the deputy paving up a 30% hillside. `walkthrough_hilly` is in
+the `render` set now.
 
 ## What is missing, and known to be
 

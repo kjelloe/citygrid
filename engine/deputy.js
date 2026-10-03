@@ -241,9 +241,18 @@ function dezoneUnder(state, deputy, cells) {
  * person actually uses, and the reason growth follows roads rather than
  * appearing in fields. */
 function buildBlock(state, deputy, town) {
+  var horizontal = rollChance(state, deputy, 2);
+  // Both ways before giving up (J3, A112). The axis is a coin flip, and since a
+  // road run stops at the first tile too steep to pave, a cursor standing with a
+  // hillside one way and a valley the other failed half the time for no reason —
+  // which on `hilly` is most cursors and was a city of four buildings.
+  if (buildBlockAlong(state, deputy, town, horizontal)) return true;
+  return buildBlockAlong(state, deputy, town, !horizontal);
+}
+
+function buildBlockAlong(state, deputy, town, horizontal) {
   var seat = deputy.seat;
   var reach = reachOf(deputy);
-  var horizontal = rollChance(state, deputy, 2);
   var length = 6 + roll(state, deputy, 6);
   var x = deputy.cursorX;
   var y = deputy.cursorY;
@@ -258,6 +267,16 @@ function buildBlock(state, deputy, town) {
     var owner = state.tiles.owner[index];
     if (owner !== OWNER_NATURE && owner !== seat) break;
     if (state.tiles.buildingId[index] !== 0) break;
+    // And not up a cliff (J3, A112): the step ALONG the street, which is what it
+    // climbs. A road run is a transaction, so one step too steep refuses the
+    // whole block — the deputy stops the street at the foot of the hill rather
+    // than discovering the refusal and wasting the turn, which is what it
+    // already does when it zones.
+    if (roadCells.length > 0) {
+      var rise = state.tiles.elevation[index] - state.tiles.elevation[roadCells[roadCells.length - 1]];
+      if (rise < 0) rise = -rise;
+      if (rise > rules().development.maxRoadSlope) break;
+    }
     // Within reach of the town (A81). With nothing that qualifies yet — the
     // first street of a new city — there is no town to be near, and a rule with
     // no exception for it is a deputy that never lays one.

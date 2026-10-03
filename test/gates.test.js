@@ -12,7 +12,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { SETS, GATES, BUDGET_MS, gatesIn } from "../tools/gates.mjs";
@@ -58,12 +58,21 @@ test("every gate file is in a set", () => {
     `these exist under tools/ and no set runs them: ${missing.join(", ")}`);
 });
 
-test("every gate a set names is a file that exists", () => {
+test("every gate a set names runs a file that exists", () => {
   // The other direction, and the one that rots: a gate renamed or deleted
   // leaves a set pointing at nothing, and the runner would skip it silently.
-  const files = new Set(readdirSync(join(repoRoot, "tools")).map((n) => n.replace(/\.mjs$/, "")));
-  const ghosts = [...named()].filter((n) => !files.has(n));
-  assert.deepEqual(ghosts, [], `sets name gates that do not exist: ${ghosts.join(", ")}`);
+  //
+  // Through GATES rather than through the filenames: a gate's NAME is not its
+  // file, because one tool can be two gates with different arguments —
+  // `walkthrough` and `walkthrough_hilly` are the same walk on two terrains
+  // (J3), and the hilly one is the measurement S11 and J3 exist for. What must
+  // exist is the script each entry actually runs.
+  const ghosts = [...named()].filter((name) => !Object.hasOwn(GATES, name));
+  assert.deepEqual(ghosts, [], `sets name gates GATES does not define: ${ghosts.join(", ")}`);
+  for (const [name, gate] of Object.entries(GATES)) {
+    const script = gate.args[0];
+    assert.ok(existsSync(join(repoRoot, script)), `${name} runs ${script}, which does not exist`);
+  }
 });
 
 test("`all` is every gate in every other set, and nothing else", () => {

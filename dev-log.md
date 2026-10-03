@@ -9224,3 +9224,51 @@ length is decided.
 is still whole — the test asserts no block link is joined to nothing at either end, which is the thing
 that would have broken quietly. Traffic flow, settled cars and the night ratio are unchanged.
 
+## era 22 — a road refuses the ground a lot refuses (2026-10-03) — J3, A112 (Q140)
+
+Era 20 put the slope rule in `canZone` and `placeNetwork` never got it, so the city stayed off the
+cliff and the **streets** did not: on a played `hilly` 128 the deputy paved up a 500% hillside to
+reach the next flat patch, and 218 of 612 corridors were steeper than any grading can flatten.
+
+### The rule is not the one the work item described
+
+"The same limit as `canZone`" was wrong, and one run said so. A lot refuses ground too rough to
+**stand** on — the max step to any neighbour — and a road refuses a **climb** too steep to drive,
+which is the step between consecutive tiles of the run. A street along a contour has a gentle grade
+and a steep neighbour, so the lot's test took a played `hilly` city from **1,872 residents to 217**.
+
+Water is exempt: a water tile's elevation is its bed, and a crossing is S13's question (A111). The
+first cut would have forbidden the causeways as a side effect, which is not what A84 chose.
+
+### The gate chose the number
+
+| `maxRoadSlope` | rolling | hilly | `walkthrough 128 hilly` |
+|---|---|---|---|
+| 6 (the lot's limit) | 1,644 | 147 | — |
+| 10 | 1,501 | 697 | 0 cliffs |
+| **12** | 1,501 | **1,066** | **green: 0 cliffs, 20 of 177 ungradeable, steepest 33.3%** |
+| 14 | 1,501 | 1,711 | 1 cliff (1.03 m against a 1.00 m threshold) |
+| no limit | 1,501 | 1,342 | 25 cliffs, 218 of 612, steepest 500% |
+
+A112 named the gate as the measurement, so the gate picked the rung: **`walkthrough 128 hilly` is
+green for the first time in the project**, and `walkthrough_hilly` has joined the `render` set —
+which is S11's own done-when, met three slices after it was written.
+
+**A moderate limit beats no limit at all by a quarter** (1,711 against 1,342 at 14). A deputy that
+stops at the foot of a hill builds where the city can be served instead of spending streets on ground
+that can never hold a lot — the same shape as H6's finding, from the roads' side.
+
+### Measured — 200 games a configuration
+
+| configuration | era 21 | era 22 | ended empty |
+|---|---|---|---|
+| relaxed-64 | 1,755 | 1,821 | 0 |
+| steady-64 | 1,634 | 1,615 | 0 |
+| demanding-64 | 1,529 | 1,544 | 1 → **0** |
+| steady-64-nodisasters | 1,557 | 1,569 | 0 |
+
+Unmoved, which is the prediction the work item asked to be written down before the run: the sweep
+plays `rolling`, where the limit never binds. The one demanding city that died at era 21 survives.
+
+`sim` **867 s of 900**. Suite **1,591 green twice**.
+

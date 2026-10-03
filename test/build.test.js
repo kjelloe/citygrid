@@ -12,6 +12,7 @@ import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import "../engine/build-commands.js";
 import { price, undoLast, resetUndoHistory } from "../engine/build-commands.js";
+import { rules } from "../engine/rules.js";
 import { hasNet, maskOf, NET_PRESENT } from "../engine/network.js";
 import {
   CMD_JOIN, CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_PLACE_BUILDING,
@@ -427,3 +428,52 @@ test("the refusal names the ground, not the owner", () => {
   assert.equal(apply(state, { type: CMD_PLACE_ROAD, actor: 2, runs: encodeRuns([at(11, 11)]) }).result,
     RESULT.NEEDS_BULLDOZE, "a player burying their own building got a different answer");
 });
+
+// --- a road refuses the ground a lot refuses (slice J3; A112, Q140) ----------
+
+test("a network refuses a slope a street could not climb, and says so", () => {
+  // Era 20 put the slope rule in `canZone` and `placeNetwork` never got it, so
+  // the city stayed off the cliff and the STREETS did not: on a played `hilly`
+  // 128 the deputy paves up a 500% hillside to reach the next flat patch, and
+  // 218 of 612 corridors end up steeper than any grading can flatten.
+  //
+  // One rule, both directions, same limit, same code.
+  // Along the RUN, which is what a street climbs: a lot refuses ground too rough
+  // to stand on (`slopeAt`, every direction) and a road refuses a climb too
+  // steep to drive. A street running along a contour across a hillside has a
+  // gentle grade and a steep neighbour, and the first cut of this refused it —
+  // which took a played `hilly` city from 1,872 residents to 217.
+  const state = world();
+  state.players[0].treasury = 100000;
+  const limit = rules().development.maxRoadSlope;
+  state.tiles.elevation[at(8, 8)] = state.tiles.elevation[at(7, 8)] + limit + 1;
+  const before = hashState(state);
+
+  for (const type of [CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL]) {
+    assert.equal(apply(state, { type, actor: 1, runs: encodeRuns([at(7, 8), at(8, 8)]) }).result,
+      "tooSteep", `${type} was laid up a cliff`);
+  }
+  assert.equal(hashState(state), before, "a refused network edit changed the state");
+
+  // And ACROSS the same cliff is fine: the street runs along the contour.
+  state.tiles.elevation[at(8, 9)] = state.tiles.elevation[at(8, 8)];
+  assert.equal(apply(state, road(1, [at(8, 8), at(8, 9)])).result, RESULT.OK,
+    "a street along a contour was refused for the hill beside it");
+});
+
+test("a run that crosses a cliff is refused whole, and a slope at the limit is not", () => {
+  const state = world();
+  state.players[0].treasury = 100000;
+  const limit = rules().development.maxRoadSlope;
+  state.tiles.elevation[at(6, 10)] = state.tiles.elevation[at(7, 10)] + limit + 2;
+  const before = hashState(state);
+  assert.equal(apply(state, road(1, [at(4, 10), at(5, 10), at(6, 10), at(7, 10)])).result, "tooSteep");
+  assert.equal(hashState(state), before, "the tiles before the cliff were kept");
+
+  // Exactly AT the limit is pavable: the rule is "steeper than a street may
+  // climb", and a street may climb the limit itself.
+  state.tiles.elevation[at(4, 12)] = state.tiles.elevation[at(5, 12)] + limit;
+  assert.equal(apply(state, road(1, [at(4, 12)])).result, RESULT.OK,
+    `a slope of exactly ${limit} was refused`);
+});
+

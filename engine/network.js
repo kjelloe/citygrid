@@ -107,6 +107,19 @@ function reshapeNeighbours(tx, index, layer) {
   }
 }
 
+/** Are these two tiles four-neighbours? A run's cells arrive in order, so the
+ * grade along a street is the step between consecutive ones — and a run that
+ * jumps (two separate strokes in one command) has no grade between them. */
+function isAdjacent(state, a, b) {
+  var ax = xOf(state.width, a);
+  var ay = yOf(state.width, a);
+  var bx = xOf(state.width, b);
+  var by = yOf(state.width, b);
+  var dx = ax > bx ? ax - bx : bx - ax;
+  var dy = ay > by ? ay - by : by - ay;
+  return dx + dy === 1;
+}
+
 export function placeNetwork(tx, kind, indices) {
   var spec = NETWORKS[kind];
   if (!spec) {
@@ -127,6 +140,30 @@ export function placeNetwork(tx, kind, indices) {
     if (terrain === TERRAIN_ROCK) {
       reject(tx, RESULT.INVALID);
       return;
+    }
+    // And not up a cliff (J3, A112). Era 20 put the slope rule in `canZone` and
+    // this never got it, so the city stayed off the steep ground and the STREETS
+    // did not — on a played `hilly` 128 the deputy paves a 500% hillside to
+    // reach the next flat patch, and 218 of 612 corridors came out steeper than
+    // any grading can flatten.
+    //
+    // Along the RUN, not in every direction. A lot refuses ground too rough to
+    // stand on, which is `slopeAt`'s max step to any neighbour; a road refuses a
+    // CLIMB too steep to drive, and a street running along a contour across a
+    // hillside has a gentle grade and a steep neighbour. The first cut used
+    // `slopeAt` and took a played `hilly` city from 1,872 residents to 217,
+    // because most of a hill is beside something steep.
+    //
+    // Water is exempt: a water tile's elevation is its BED, and a crossing is
+    // S13's question (A111) rather than a grade.
+    if (i > 0 && isAdjacent(state, indices[i - 1], index)
+      && !isWater(terrain) && !isWater(state.tiles.terrain[indices[i - 1]])) {
+      var rise = state.tiles.elevation[index] - state.tiles.elevation[indices[i - 1]];
+      if (rise < 0) rise = -rise;
+      if (rise > rules().development.maxRoadSlope) {
+        reject(tx, RESULT.TOO_STEEP);
+        return;
+      }
     }
     // A line through a building is not a level crossing (A66, and A85 for the
     // other three kinds). It is checked before ownership on purpose: a player

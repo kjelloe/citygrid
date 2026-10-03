@@ -78,6 +78,24 @@ break.
 **Gate.** `lanes_dump`: "links under 4.5 m" reads 0 of about 7,700, and the share criterion the gate
 re-aimed at H7 stays where it is.
 
+## J3 — A road refuses the ground a lot refuses (M) — A112 (Q140) — **BUILT 2026-10-03** as era 22
+
+*As built, and the rule is not the one the item described. "The same limit as `canZone`" was wrong
+and the measurement said so in one run: a lot refuses ground too rough to STAND on — the max step to
+any neighbour — and a road refuses a CLIMB too steep to drive, which is the step between consecutive
+tiles of the run. A street along a contour has a gentle grade and a steep neighbour, so the lot's
+test took a played `hilly` city from 1,872 residents to **217**.*
+
+*The number came from the GATE that A112 named rather than from the ladder's best city: at 14 a hilly
+city is 1,711 residents and `walkthrough 128 hilly` fails on one marginal cliff; at **12** it is 1,066
+and the gate is **green for the first time in the project** — 0 cliffs against 25, 20 of 177 corridors
+ungradeable against 218 of 612, steepest street 33.3% against 500%. `walkthrough_hilly` is in the
+`render` set now, which is S11's own done-when.*
+
+*One number worth keeping: a moderate limit beats **no limit at all** by a quarter (1,711 against
+1,342 at 14), because a deputy that stops at the foot of a hill builds where the city can be served
+instead of spending streets on ground that can never hold a lot.*
+
 ## J3 — A road refuses the ground a lot refuses (M) — A112 (Q140)
 
 **Goal.** `walkthrough 128 hilly` green, which is the last piece of Q134 and S11's own done-when.

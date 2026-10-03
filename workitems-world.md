@@ -286,7 +286,12 @@ same — because the saturated fixture does not grow from zoning. Its buildings 
 array on any tile, cliff or not (Q72), so the gate measures a city the rule never touched. The gate
 becomes meaningful with **H7**.*
 
-*Not met: the done-when. `walkthrough 128 hilly` is **red** — 30 cliffs, 226 of 1,458 corridors
+*Met at J3 (era 22, 2026-10-03): `walkthrough 128 hilly` is **green** — 0 cliffs, 0 refusals, 20 of
+177 corridors ungradeable — and it has joined the `render` set as `walkthrough_hilly`. What was
+missing was not the junctions: it was that `placeNetwork` had no slope rule at all, so the deputy
+paved up a 500% hillside and the walker met what it paved.*
+
+*Not met at S11: the done-when. `walkthrough 128 hilly` is **red** — 30 cliffs, 226 of 1,458 corridors
 ungradeable — so it has not joined the `render` set. Before this slice the gate **could not be run at
 all** on that terrain: `saturatedCity` threw "a rail line was asked for and none was laid", because
 its `land()` predicate did not know that `placeNetwork` refuses ROCK and the rail row carries twelve

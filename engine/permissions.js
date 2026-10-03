@@ -80,8 +80,9 @@ export function canConnectAcross(state, actor, index) {
 }
 
 /** The steepest step between this tile and one of its four neighbours, in
- * elevation units (H6, A100). */
-function slopeAt(state, index) {
+ * elevation units (H6, A100). Exported since J3, because `placeNetwork` asks
+ * the same question about the same ground — one rule in two directions. */
+export function slopeAt(state, index) {
   var width = state.width;
   var x = xOf(width, index);
   var y = yOf(width, index);
