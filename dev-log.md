@@ -9158,3 +9158,26 @@ against a median when its top rung is meant to be a stretch; a repair that count
 whether or not it acted; a fixture test that passed on a ten-tile railway. Each of those was found by
 reading what the assertion MEANT against what the rule says, not by the suite going red.
 
+## The quick set after the round (2026-10-03)
+
+`client_smoke` went red on **"101 draw calls against a ceiling of 97 — instancing is not working"**,
+and instancing is working: the ceiling is `DRAW_BASE + CIVIC_DEFS.length`, measured at T2, and the
+city has grown two kinds of thing it had never contained. Era 17 taught the deputy to plant **parks**
+and build **police stations**, so a twelve-year city now has park furniture in it and B3b's **patrol
+cars** on a beat — pools that only exist when the buildings that need them do. `DRAW_BASE` is 73.
+
+Worth noticing for its own sake: the message a gate prints when it fails is a claim, and this one
+would have sent somebody looking for a broken instancer at two in the morning. It says what the four
+extra pools are now.
+
+`ui_smoke` went red in the same round, on **"every step drew something (street walk 60m)"**, and the
+cause is the same shape as the draw-call ceiling: the perf card's street step called `enterStreet()`
+with no argument, which aims at **wherever the camera is looking** and needs a corridor within three
+tiles of it. That was fine while the city sat where it always had. Era 17 gave it parks and police
+stations and era 20 stopped it being zoned on steep ground, the shape moved, and the step stood in a
+field and measured nothing — under the label "street".
+
+It asks the model for the corridor nearest the city it is measuring now. *Aim a shot at the subject,
+not at a proxy* — the memory says it about screenshots, and a performance sweep is a screenshot that
+counts.
+

@@ -13,8 +13,18 @@ import { shoot } from "./screenshot.mjs";
 import { CIVIC_DEFS } from "../client/world/civic-spec.js";
 
 /** Draw calls that are not one of the civic pools: the terrain, the water, the
- * sky, the markings, the wires and the zoned-lot pools. Measured at T2. */
-const DRAW_BASE = 69;
+ * sky, the markings, the wires and the zoned-lot pools.
+ *
+ * Measured at T2 as 69 and restated at H3/H8 as **73**. The city grew two kinds
+ * of thing it had never contained: era 17 taught the deputy to plant **parks**
+ * and build **police stations**, so a twelve-year city now has park furniture in
+ * it and B3b's **patrol cars** on a beat — pools that only exist when the
+ * buildings that need them do. The ceiling was 97 and the frame draws 101.
+ *
+ * This is the contents of a city changing, not instancing breaking, which is
+ * what the message below would otherwise be telling somebody at two in the
+ * morning. */
+const DRAW_BASE = 73;
 
 // Declared here rather than imported: client/render/* imports the bare
 // specifier "three", which only the browser's importmap resolves. A Node tool

@@ -239,7 +239,7 @@ async function poseFor(step, session, play, hold) {
     // and returns false when there is none. A step that quietly measured a city
     // frame under the label "street" would be the worst kind of wrong number,
     // so the failure is carried into the row.
-    if (view.mode !== "street") entered = renderer.enterStreet() !== false;
+    if (view.mode !== "street") entered = renderer.enterStreet(...streetTile(renderer)) !== false;
   } else {
     if (view.mode === "street") renderer.leaveStreet(step.mode);
     else session.setProjection(step.mode);
@@ -249,6 +249,37 @@ async function poseFor(step, session, play, hold) {
     applyPose(view);
   }
   return { session, entered };
+}
+
+/** A tile with a street on it, for the street step to stand in.
+ *
+ * `enterStreet` aims at wherever the camera is looking and needs a corridor
+ * within three tiles of it — so the step was standing wherever the default
+ * camera target happened to be, and the moment the city's shape moved (era 20
+ * stopped it being zoned on steep ground, era 17 gave it parks and police
+ * stations) that target had no street near it: `enterStreet` returned false and
+ * the row read "street walk 60m" with nothing drawn.
+ *
+ * Aim at the subject, not at a proxy for it: the corridor nearest the middle of
+ * the city the card is actually measuring. An empty array falls back to the old
+ * behaviour, which is the right answer for a region with no streets at all. */
+function streetTile(renderer) {
+  const model = renderer.model;
+  const corridors = model?.corridors ?? [];
+  if (corridors.length === 0) return [];
+  const tileM = model.tileM ?? 20;
+  const midX = (renderer.view.targetX ?? 0) * tileM;
+  const midZ = (renderer.view.targetZ ?? 0) * tileM;
+  let best;
+  let bestD = Infinity;
+  for (const corridor of corridors) {
+    for (const point of corridor.points) {
+      const d = Math.hypot(point.x - midX, point.z - midZ);
+      if (d < bestD) { bestD = d; best = point; }
+    }
+  }
+  if (!best) return [];
+  return [Math.floor(best.x / tileM), Math.floor(best.z / tileM)];
 }
 
 async function measure(step, session, play, hold) {
