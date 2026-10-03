@@ -184,6 +184,30 @@ commuter load. Keep the flat traffic seed as an option — it is right for a ren
 `passability` and the kits. Re-baseline all of them in the same commit and quote the before and
 after; a fixture change that does not move a renderer number is a fixture change that did not land.
 
+**The recipe is already measured** (2026-10-03, era 20), so the slice starts from a decision rather
+than an experiment. Deputies on the fixture's own map, 40 years:
+
+| map | seats | buildings | population | road tiles | commuters | kinds | time |
+|---|---|---|---|---|---|---|---|
+| 96 | 1 | 416 | 2,055 | 3,040 | 433 | 18 | 3.4 s |
+| 96 | 4 | 642 | 6,173 | 4,916 | 781 | 18 | 5.5 s |
+| **128** | **4** | **1,245** | **7,290** | **8,884** | **1,595** | **18** | **17.5 s** |
+
+Against today's fixture on 128: 1,590 buildings of **one** kind, no commuters at all (the traffic
+seed is a flat 200 on every road tile, Q70). So **four deputies on a 128 map for forty years** is the
+recipe: the same order of buildings, eighteen kinds instead of one, and a commuter load the reducer
+actually routed. It costs 17.5 s a gate run against about one second today — roughly two minutes
+across the whole `all` set, which is the price of measuring a city instead of a monoculture.
+
+**Two things to keep.** The flat traffic seed stays an option (Q70: a *load* is right for a renderer
+measurement and reproducible, which a simulated one is not). And the rail line and its station are
+placed the way they are now, because a fixture with no railway prices a renderer that has one — the
+deputy builds one only past `railAtPopulation`, so a 4-seat city will have several, which is a
+better fixture and a different one.
+
+**And it unblocks H6's gate**: `walkthrough 128 hilly` cannot see the steep-ground rule while the
+fixture pushes buildings onto any tile, cliff or not. Run it in this slice and quote it.
+
 ## H8 — Money means something (L) — A101 (Q118)
 
 **Goal.** Any income term this project adds stops being decoration.

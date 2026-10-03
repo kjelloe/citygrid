@@ -8970,3 +8970,30 @@ balance slice inherits it.
 
 Suite **1,582 green twice**.
 
+## P97's lane, where it stands (2026-10-03)
+
+Six of the eight items Kjell's answers bought are built, in five commits and four eras:
+
+| | | era | what it measured |
+|---|---|---|---|
+| H1 | the quest ladder asks for a city that happens | — | 1,500 and 3,000, and a rename in two languages |
+| H2 | a park's two routes, written down | — | §11 carries the distinction |
+| H3 | the mayor plants parks and builds police stations | 17 | land value +13, crime halved, population flat |
+| H4 | the deputy dezones what it paves | 18 | 591 of 1,688 tiles → 0, everything else noise |
+| H5 | the deputy repairs a cut grid | 19 | 65 of 164 dark a year later → 5 |
+| H6 | ground too steep to build on is not zoned | 20 | a hilly city 1,015 → 1,872 people |
+
+**H7** (the saturated fixture becomes a played city) and **H8** (money means something) are left, and
+H7's recipe is now a decision rather than an experiment — the measurement is in the work item: four
+deputies on a 128 map for forty years gives **1,245 buildings across eighteen kinds with 1,595 routed
+commuters**, against today's 1,590 buildings of one kind with no commuter the reducer ever routed. It
+costs 17.5 s a gate run. It also unblocks H6's gate, which cannot see the steep-ground rule while the
+fixture pushes buildings onto any tile.
+
+**What this lane keeps teaching.** Three of the six slices were wrong in the TEST before they were
+wrong in the rule — a ration asserted at the end of a run that a fire had moved under it, a ladder
+asserted against a median when the top rung is meant to be a stretch, a repair that counted a turn as
+spent whether or not it acted. And the eight-seed population column lied again in H3 (+32% against a
+flat sweep), which is the third time; the columns that count thousands of events have been right every
+time, and the one that counts people has not.
+
