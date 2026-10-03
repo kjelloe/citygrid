@@ -43,36 +43,19 @@ const place = (state, def, x, y, actor = 1) =>
 /**
  * Catalogue fields the engine does not read, each with the reason it is still
  * in the data. A field here is a promise the JSON makes and the simulation does
- * not keep — `def.landValueBonus` has been on the park since the catalogue was
- * written and nothing has ever added it to anything.
+ * not keep.
  *
- * An entry without a reason is a field that should be deleted or implemented.
+ * **It is empty, and that is the assertion** (G3, A88). All three entries went
+ * in one slice: `landValueBonus` became a rule in `landValuePass`, and
+ * `storage` (a water tower that stores nothing, because `supplyPass` allocates
+ * per month with no carry-over) and `capacity` (what a civic building's lit-window
+ * fraction would be a share of, which `client/world/` may not read — ruling 032)
+ * were deleted from the data rather than left looking like rules.
+ *
+ * An entry without a reason is a field that should be deleted or implemented,
+ * and a NEW entry here is a decision somebody should have to defend.
  */
-const UNREAD_FIELDS = {
-  landValueBonus: {
-    why: "Q119 — a park's amenity effect comes only from its negative pollution; "
-      + "`landValuePass` never reads this.",
-    // WHICH definitions carry it, so a fourth is a deliberate act. T2 copied it
-    // from the park onto the rail station and T4a onto the marina and the
-    // ferry terminal — a dead field spreads because it reads as a rule
-    // somebody implemented, and an allow-list keyed only by NAME let it.
-    on: ["ferryTerminal", "marina", "park", "railStation"],
-  },
-  storage: {
-    why: "Q119 — a water tower that stores nothing; `supplyPass` allocates per month "
-      + "and has no carry-over for it to fill.",
-    on: ["waterTower"],
-  },
-  capacity: {
-    why: "Q119's third, found in P92. It would be what a civic building's `occupancy` is a "
-      + "share of — the lit-window fraction at night — and `client/world/params.js` says so in "
-      + "as many words and then returns 0, because `client/world/` may not import `engine/` "
-      + "(ruling 032) and a mirror of the catalogue that goes stale is worse than a picture "
-      + "that is wrong. It passed this test for the life of the catalogue because the scan "
-      + "was for `.capacity` anywhere and `supply.capacity` exists.",
-    on: ["hospital"],
-  },
-};
+const UNREAD_FIELDS = {};
 
 /**
  * The names a catalogue DEFINITION goes by in this codebase. The scan below
@@ -107,6 +90,9 @@ test("every field in the catalogue is read by the simulation", () => {
   const unexplained = dead.filter((key) => !Object.hasOwn(UNREAD_FIELDS, key));
   assert.deepEqual(unexplained, [],
     `catalogue fields nothing reads, and no entry in UNREAD_FIELDS: ${unexplained.join(", ")}`);
+  assert.deepEqual(Object.keys(UNREAD_FIELDS), [],
+    "UNREAD_FIELDS has grown again: a catalogue field nothing reads is a rule the data promises "
+    + "and the simulation does not keep (G3). Implement it or delete it.");
   for (const key of Object.keys(UNREAD_FIELDS)) {
     assert.ok(dead.includes(key), `${key} is read now — take it off UNREAD_FIELDS`);
     const carrying = Object.keys(buildings)

@@ -78,6 +78,19 @@ difference rather than a claim.
 **Gate.** `sim` on a new era, and `state.supply`'s component count printed beside the populations —
 the thing that changed is the supply, and the population is a consequence.
 
+## G3 — A park is worth living next to (M) — A88, A91 (Q119, Q123, Q127) — **BUILT 2026-10-03** as `slice-G3` (era 16)
+
+*As built. `amenityValue()` in `civic.js` deposits `def.landValueBonus` over `def.radius` with
+coverage's own falloff, a ruined building deposits nothing, the city hall gained 16 over radius 8,
+and `storage` and `capacity` are gone — **`UNREAD_FIELDS` is empty for the first time in the
+project**, which is the assertion that matters.
+Two things worth carrying forward. **A88's premise was one era stale**: it said a park "today
+contributes only through its negative pollution", which stopped being true when era 10 gave the park
+a leisure layer that reaches land value — so a park now has two routes and somebody should say
+whether it should (Q132). And **the sweep cannot see this rule**: the deputy builds three bonus
+carriers a city and has never built a park (Q133), so era 16's gate is a null result with a
+mechanism probe beside it — the same town, 40 seeds, with and without parks.*
+
 ## G3 — A park is worth living next to (M) — A88, A91 (Q119, Q123, Q127)
 
 **Goal.** The oldest dead field in the catalogue becomes the rule it has always looked like.

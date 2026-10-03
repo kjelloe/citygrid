@@ -25,7 +25,11 @@ import { SETS, GATES, BUDGET_MS, gatesIn } from "../tools/gates.mjs";
  * fail (P94).
  */
 const NOT_A_GATE = ["i18n_review", "screenshot", "serve", "repin", "make_precache", "play_shot",
-  "perf_card", "perf_report", "compare_sheet", "crowd_shots", "house_shots", "traffic_shots"];
+  "perf_card", "perf_report", "compare_sheet", "crowd_shots", "house_shots", "traffic_shots",
+  // G1's evidence (ruling 046): it photographs a state the engine can no longer
+  // produce, so it is run against a worktree of an older commit and can never
+  // fail here.
+  "street_proof"];
 
 /** Files under `tools/` that are gates by their name.
  *

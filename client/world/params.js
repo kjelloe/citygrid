@@ -126,11 +126,13 @@ export function fenceOf(building) {
 
 /** What a building's `occupancy` is a share OF, for the lit-window fraction.
  *
- * The catalogue's `capacity` would be the honest answer for a civic building
- * and `client/world/` may not import `engine/` (ruling 032) — so a grown
- * building uses what its level can hold and everything else falls through to
- * the third of windows E5 already lit. A lit fraction that is wrong is a
- * picture; a mirror of the catalogue that goes stale is a defect. */
+ * The catalogue used to carry a `capacity` that would have been the honest
+ * answer for a civic building, and `client/world/` may not import `engine/`
+ * (ruling 032) — so it was never read, and G3 deleted it rather than leave a
+ * field that looked like a rule (A88). A grown building uses what its level
+ * can hold; everything else falls through to the third of windows E5 already
+ * lit. A lit fraction that is wrong is a picture; a mirror of the catalogue
+ * that goes stale is a defect. */
 function definitionCapacity(building) {
   if ((building.def ?? "") !== "") return 0;
   return 40 * (1 + (building.level ?? 0));

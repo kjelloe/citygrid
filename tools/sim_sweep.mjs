@@ -171,6 +171,11 @@ for (const config of CONFIGS) {
     pollutionDeveloped: quantile(pick("pollutionDeveloped"), 0.5),
     pollutionRegional: quantile(pick("pollutionRegional"), 0.5),
     crime: quantile(pick("crime"), 0.5),
+    // Land value, for G3's gate (era 16): `landValueBonus` is a deposit onto
+    // this field and `crimePass` reads it, so the two belong side by side. The
+    // rows have carried it since era 1 and nothing printed it, which is why
+    // era 15's before had to be recovered from the JSON.
+    landValue: [quantile(pick("landValue"), 0.25), quantile(pick("landValue"), 0.5), quantile(pick("landValue"), 0.75)],
     congested: quantile(pick("congested"), 0.5),
     stranded: quantile(pick("stranded"), 0.5),
     powerComponents: quantile(pick("powerComponents"), 0.5),
@@ -195,6 +200,7 @@ for (const config of CONFIGS) {
   say(`- residential demand median ${summary.demandR}`);
   say(`- pollution over developed land ${summary.pollutionDeveloped}, over the whole region ${summary.pollutionRegional}`);
   say(`- crime ${summary.crime}, congested tiles ${summary.congested}, stranded homes ${summary.stranded}`);
+  say(`- land value over developed land: p25 ${summary.landValue[0]}, median **${summary.landValue[1]}**, p75 ${summary.landValue[2]}`);
   say(`- power grid ${summary.powerComponents} components; dark buildings: power median `
     + `${summary.powerStarved[0]} p95 ${summary.powerStarved[1]}, water median ${summary.waterStarved[0]} `
     + `p95 ${summary.waterStarved[1]} — in ${summary.shortfalls} of ${summary.livingCities} cities the `

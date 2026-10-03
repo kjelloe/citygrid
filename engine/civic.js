@@ -15,7 +15,7 @@ import { isWater } from "./terrain.js";
 import { hasNet } from "./network.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
-  TERRAIN_FOREST, FLAG_POWERED, FLAG_WATERED,
+  TERRAIN_FOREST, FLAG_POWERED, FLAG_WATERED, FLAG_RUINED,
 } from "./constants.js";
 
 /** Scratch buffers for the smoothing passes. They live outside the state
@@ -303,9 +303,53 @@ export function fireRiskPass(state, coverage) {
 /** What a place is worth. This is the number that decides where development
  * goes, what it upgrades to, and what it pays in tax, so it is the closest
  * thing the simulation has to a single opinion about a tile. */
+/** `def.landValueBonus` over `def.radius`, falling off the way coverage does
+ * (G3, A88).
+ *
+ * The field has been in the catalogue since it was written and nothing read it
+ * (Q119) — a park's only effect on the ground around it was its negative
+ * pollution, which is a reason not to live beside a factory rather than a
+ * reason to live beside a park. The city hall gains one in the same breath
+ * (A91), so that six thousand and two hundred a month buys something other
+ * than a quest.
+ *
+ * This is a SECOND route to land value for a park, which also feeds the
+ * leisure layer (era 10) — the two are deliberately separate: funding scales
+ * the layer and a ruined building keeps nothing. Q132 asks whether the park
+ * should carry both.
+ *
+ * A ruined building gives nothing: a fire must not improve the neighbourhood.
+ */
+function amenityValue(state) {
+  var total = state.width * state.height;
+  var field = [];
+  var i;
+  for (i = 0; i < total; i += 1) field.push(0);
+
+  for (i = 0; i < state.buildings.length; i += 1) {
+    var building = state.buildings[i];
+    if (building.zone !== ZONE_NONE) continue;
+    var def = definition(building.def);
+    if (!def) continue;
+    var bonus = def.landValueBonus | 0;
+    if (bonus <= 0 || (def.radius | 0) <= 0) continue;
+    var centre = tileAt(state.width, building.x, building.y);
+    if ((state.tiles.flags[centre] & FLAG_RUINED) !== 0) continue;
+
+    forEachInRadius(state.width, state.height, building.x, building.y, def.radius,
+      function deposit(index, x, y, distance) {
+        if (distance > def.radius) return;
+        var falloff = 100 - idiv(distance * 100, def.radius + 1);
+        field[index] += idiv(bonus * falloff, 100);
+      });
+  }
+  return field;
+}
+
 export function landValuePass(state, coverage, density) {
   var civic = rules().civic;
   var total = state.width * state.height;
+  var bonus = amenityValue(state);
   var field = [];
   var i;
   for (i = 0; i < total; i += 1) field.push(0);
@@ -331,6 +375,9 @@ export function landValuePass(state, coverage, density) {
       // wrong. Read from the LAYERS rather than the pass's own fields, so the
       // number here is the one the overlay draws and the inspector reads.
       value += idiv(state.tiles.leisure[index] + state.tiles.education[index], civic.amenityValueDivisor);
+      // What a particular building is worth to the ground beside it (G3, A88):
+      // `def.landValueBonus`, deposited by `amenityValue` above.
+      value += bonus[index];
       // Overcrowding cuts both ways: some density is a city, too much is a slum.
       if (density[index] > civic.crowdingThreshold) {
         value -= idiv(density[index] - civic.crowdingThreshold, 4);

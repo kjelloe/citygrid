@@ -8499,5 +8499,88 @@ them, and the ones from before this commit are void rather than roughly comparab
   carry a road**, and since this commit they can never develop. Read the code before filing the
   question.
 
+### And it was visible all along
+
+`reports/smoke-G1-on-the-street.png` and `smoke-G1-off-the-street.png`: the same scripted city on the
+same seed, built by command with zoning painted across the street as well as beside it, photographed
+from the same camera in a worktree of era 14 and in this tree. In the before, two houses stand in the
+carriageway with the asphalt running under them. In the after, the street is clear and the lots
+beside it are unchanged. `tools/street_proof.mjs` is kept with them, because the state it
+photographs can no longer be produced in this tree and the claim should stay checkable against an
+older commit.
+
+Nobody had taken that picture in eleven months. The city it needs is one a player makes by dragging
+a zoning block over a street they already laid, which the deputy never does in that order and no
+screenshot tool had reason to construct.
+
 Suite **1,565 green twice**; `sim` **756 s of 900**. One fixture re-pinned, 7 of its 15 hashes moved.
+
+## era 16 — a park is worth living next to (2026-10-03) — G3, A88 and A91 (Q119, Q123, Q127)
+
+`def.landValueBonus` has been in the catalogue since the catalogue was written and `landValuePass`
+has never read it (Q119). `amenityValue()` deposits it over `def.radius` with coverage's own falloff
+— the full bonus at the building, nothing at the radius — and a **ruined** building deposits nothing,
+because a fire must not improve the neighbourhood. The city hall gains 16 over radius 8 (A91).
+`storage` and `capacity` are deleted from the data and the mirror, which leaves **`UNREAD_FIELDS`
+empty for the first time in the project**; the test asserts the emptiness, which is the assertion
+that matters.
+
+### A88's premise was one era stale
+
+A88 says `landValueBonus` "is the whole point of a park, which today contributes only through its
+negative pollution". That was true of era 9. Era 10 gave the park `coverage: "leisure"`, and the
+leisure layer reaches land value through `civic.amenityValueDivisor` — so the park already had a
+route, and the bonus is a second one. Implemented as answered, and filed as **Q132** rather than
+quietly resolved: one route is "how much amenity reaches here", which funding buys and an unpowered
+building halves; the other is "what this building is worth to its street", which it either is or is
+not. Nobody has said that on purpose.
+
+### The sweep cannot see this rule, and that is the finding
+
+The deputy builds **three** bonus carriers a city — one rail station, one marina, one ferry terminal,
+measured over eight 20-year cities — and has never built a **park**, which is the cheapest thing in
+the catalogue and the definition the rule is about (**Q133**, and the third time this project has
+found "the mayor never builds X": the fire station before B1a, the school before T6).
+
+So the gate is a null result with the mechanism measured beside it, which is what the sim-gate skill
+asks for. The same town built by command, 40 seeds, with and without parks:
+
+| | land value | crime | population | lots |
+|---|---|---|---|---|
+| no parks | 63.8 | 13.3 | 74 | 12 |
+| parks, era 15 | 97.1 | 14.3 | 79 | 13 |
+| parks, **era 16** | **118.5** | **6.7** | **86** | 14 |
+
+A park was worth +33 land value before this slice and is worth +55 after it; the bonus is the +21.
+Crime halves, by the path §11.3 already describes — `crimePass` reads land value — which is A93's
+ratified consequence arriving exactly where it said it would.
+
+### Measured — 200 games a configuration
+
+| configuration | population | land value (era 15 → 16) | crime |
+|---|---|---|---|
+| relaxed-64 | 1,769 → 1,788 | 122 → **124** | 3 → 3 |
+| steady-64 | 1,660 → 1,529 | 123 → **124** | 2 → 2 |
+| demanding-64 | 1,515 → 1,514 | 121 → **122** | 3 → 3 |
+| steady-64-nodisasters | 1,534 → 1,614 | 123 → **126** | 2 → 2 |
+
+**Land value rises in all four**, which is the direction the work item asked to be stated before the
+run. Crime does not fall, because it is already 2–3 and era 11 took it there; there is no room left
+for three buildings a city to matter. The population column is noise — +1%, −8%, 0%, +5% in four
+configurations with a p25–p75 spread of 500 — and reading a trend into it would be exactly the
+mistake Q128's ladder was about.
+
+### What went wrong on the way
+
+- **The ruined-park test compared two months of one city** and read a RISE, because `pollutionPass`
+  is iterative: the second month is a different city whatever else changed. Two cities, one pass
+  each.
+- **A two-game smoke of `sim_sweep` overwrote `reports/balance-era15.md`** — the report era 15
+  shipped — with two games. Caught by `git status`, which is not a gate. Bump the era first, or
+  smoke the tool in a worktree; the skill says so now.
+- **The comments in `client/world/params.js` and `age.js` described `capacity` as a field that
+  exists.** It does not any more. Two models of the code, updated with the code that made them
+  stale.
+
+Suite **1,570 green twice**; `sim` **777 s of 900**.
 

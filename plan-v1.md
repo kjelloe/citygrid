@@ -79,11 +79,15 @@ writes (Q108), damage states with no state to read (Q109), an estimate that pric
 draws (Q110), a deputy that builds no police station (Q111) and a pool that counts 1,140 instances
 nobody can see (Q112).
 
-**Twenty-five open questions.** The ones that block work rather than merely waiting: **Q102**
-(street widths — S8's compare sheet is dishonest until it is settled), **Q104** (no road can cross
-water, so bridges cannot exist) and **Q64/Q74** (is `hilly` playable — it blocks S11). Three are
-gate criteria re-aimed on evidence, each a one-line revert: **Q103**, **Q106** and, in effect,
-**Q110**. The balance ones are **Q105** (era 4's demanding row) and **Q111**.
+**Thirty open questions**, after P93 answered thirteen and the four rules eras (G4, G2, G1, G3)
+raised five more. The ones that block work rather than merely waiting: **Q102** (street widths —
+S8's compare sheet is dishonest until it is settled). Q104 and Q64/Q74 are answered: the bridge is
+`workitems-world.md` **S13** and steep ground is **S11**. Three are gate criteria re-aimed on
+evidence, each a one-line revert: **Q103**, **Q106** and, in effect, **Q110**. The balance ones now
+come from the rules lane: **Q129** (the quest ladder names a city no era still produces), **Q130**
+(nothing repairs a grid a disaster cuts in two), **Q131** (two in five zoned tiles carry a road),
+**Q132** (a park reaches land value twice) and **Q133** (the deputy has never built a park, so no
+sweep can see G3's rule) — alongside **Q105** and **Q111**.
 
 **What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
 yielding to an engine), the rest of the **transport lane** (T5–T7; **T1 the avenue**, **T2 rail,
@@ -448,6 +452,8 @@ by number from the code they create.
 | Q129 | The quest ladder wants 2,000 for rank 3 and 5,000 for rank 4; no era since 11 has had a median city clear either | Kjell — lower the thresholds, lower `decayOneIn` to 2, or say rank 3 is for good players? |
 | Q130 | A grid a disaster cuts in two is never repaired: the deputy connects a building when it builds it and never looks again | Kjell — is the grid the deputy's to repair, or does a cut grid stay cut? |
 | Q131 | 39% of zoned tiles carry a road — the deputy paves across its own zoned land on purpose (B9) and since G1 those tiles are dead zoning | Kjell — dezone what it paves, or leave it as the honest record? |
+| Q132 | A park reaches land value twice since G3: the leisure layer (+33) and its own bonus (+21) | Kjell — is a park's land value its funding's or its own? |
+| Q133 | The deputy has never built a park, so G3's rule reaches a headless city through three buildings and no sweep can see it | Kjell — should the mayor plant parks? Its own era |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

@@ -294,6 +294,37 @@ Two things to keep straight when doing it:
   the one the era shipped. Quote the arm's numbers in the dev-log and say they came from an arm.
 - Run the two sweeps in parallel. They are single-threaded and there are twenty cores.
 
+## A short sweep run overwrites the era's report
+
+`node tools/sim_sweep.mjs 2 25` — the obvious way to smoke-test a change to the tool — writes
+`reports/balance-era<N>.md` and `.json` from those two games, over the 200-game report the era
+shipped. It happened once in era 16's round and was caught by `git status` rather than by anything
+else, because a two-game report looks exactly like a real one.
+
+Bump the era FIRST, or smoke the tool in a worktree. And read `git status` before committing a
+slice: a report whose era is not this slice's has no business in the diff.
+
+## A rule the sweep cannot see (G3, era 16)
+
+Before running the gate, ask **does the deputy build the thing this rule is about?** G3 gave
+`def.landValueBonus` a mechanism; the deputy builds exactly three buildings that carry one — a rail
+station, a marina and a ferry terminal, one each a city — and has never built a park. So the 200-game
+sweep could only ever say "this costs nothing", and reporting that alone would read as "the rule does
+nothing".
+
+The pair that answers it:
+
+- the **sweep** for the cost, over the cities the project actually measures;
+- a **scripted two-arm probe** for the mechanism — the same town built by command, 40 seeds, with
+  and without the thing. G3's said a park was worth +33 land value before and +55 after, with crime
+  13.3 → 6.7.
+
+Run the probe against a worktree at the previous commit as well, or the arm measures the rule
+against *nothing* rather than against the behaviour it replaced.
+
+And file the gap: "the mayor never builds X" is a question (Q133), not a footnote. It is the third
+time this project has found one — the fire station before B1a, the school before T6, the park now.
+
 ## Measuring one rule, now that it is possible (A83)
 
 `tools/fire_arms.mjs` is the shape: the SAME build, the SAME seeds, one constant changed, the

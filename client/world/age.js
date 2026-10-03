@@ -84,10 +84,11 @@ export function visualState(building, tick = undefined, capacity = 0) {
 
 /** How much of a building is awake at night.
  *
- * `capacity` is what the record's `occupancy` is a share OF — a definition's
- * own capacity for a civic building, or the level's for a grown one. With none
- * given the answer is the third of windows E5 already lights, so this can never
- * make a city darker than it was before anyone asked the question. */
+ * `capacity` is what the record's `occupancy` is a share OF: the level's, for a
+ * grown building. A civic building has none to give — the catalogue field that
+ * would have said so was deleted in G3 (A88) because nothing could read it from
+ * here — so the answer is the third of windows E5 already lights, and this can
+ * never make a city darker than it was before anyone asked the question. */
 function litFraction(building, capacity) {
   if (!(capacity > 0)) return 1 / 3;
   const share = clamp((building.occupancy ?? 0) / capacity, 0, 1);

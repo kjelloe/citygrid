@@ -15,11 +15,11 @@ var CATALOGUE = {
   waterPump: { category: "water", w: 1, h: 1, cost: 400, upkeep: 15, power: -4, water: 300, pollution: 0, fireRisk: 2, needsSurfaceWater: true, unlock: 0 },
   groundwaterPump: { category: "water", w: 1, h: 1, cost: 700, upkeep: 25, power: -6, water: 120, pollution: 0, fireRisk: 2, needsSurfaceWater: false, unlock: 0 },
   waterTreatment: { category: "water", w: 2, h: 2, cost: 1800, upkeep: 60, power: -10, water: 900, pollution: 10, fireRisk: 6, needsSurfaceWater: true, unlock: 0 },
-  waterTower: { category: "water", w: 1, h: 1, cost: 500, upkeep: 10, power: -2, water: 0, storage: 200, pollution: 0, fireRisk: 2, unlock: 0 },
+  waterTower: { category: "water", w: 1, h: 1, cost: 500, upkeep: 10, power: -2, water: 0, pollution: 0, fireRisk: 2, unlock: 0 },
 
   fireStation: { category: "service", w: 2, h: 2, cost: 500, upkeep: 100, power: -6, water: -6, pollution: 0, fireRisk: 0, service: "fire", radius: 12, unlock: 0 },
   policeStation: { category: "service", w: 2, h: 2, cost: 500, upkeep: 100, power: -6, water: -6, pollution: 0, fireRisk: 4, service: "police", radius: 12, unlock: 0 },
-  hospital: { category: "service", w: 3, h: 3, cost: 1200, upkeep: 120, power: -14, water: -14, pollution: 0, fireRisk: 6, service: "health", radius: 14, capacity: 400, unlock: 0 },
+  hospital: { category: "service", w: 3, h: 3, cost: 1200, upkeep: 120, power: -14, water: -14, pollution: 0, fireRisk: 6, service: "health", radius: 14, unlock: 0 },
   park: { category: "amenity", w: 1, h: 1, cost: 60, upkeep: 2, power: 0, water: -1, pollution: -10, fireRisk: 0, coverage: "leisure", landValueBonus: 20, radius: 4, unlock: 0 },
 
   // The first GATE (T2, A65). `gate` names which of the Outside's doors this
@@ -74,7 +74,7 @@ var CATALOGUE = {
   school: { category: "service", w: 2, h: 2, cost: 800, upkeep: 70, power: -6, water: -6, pollution: 0, fireRisk: 5, coverage: "education", radius: 10, unlock: 0 },
   university: { category: "service", w: 4, h: 4, cost: 6000, upkeep: 300, power: -24, water: -20, pollution: 0, fireRisk: 8, coverage: "education", radius: 18, unlock: 4 },
 
-  cityHall: { category: "civic", w: 3, h: 3, cost: 6000, upkeep: 200, power: -10, water: -8, pollution: 0, fireRisk: 6, onePerSeat: true, unlock: 2 },
+  cityHall: { category: "civic", w: 3, h: 3, cost: 6000, upkeep: 200, power: -10, water: -8, pollution: 0, fireRisk: 6, landValueBonus: 16, radius: 8, onePerSeat: true, unlock: 2 },
   airport: { category: "transport", w: 6, h: 4, cost: 14000, upkeep: 450, power: -30, water: -16, pollution: 40, fireRisk: 18, gate: "air", orientable: true, needsFlat: true, pollutionRadius: 10, unlock: 3 },
 };
 

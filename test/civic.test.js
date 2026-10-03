@@ -34,7 +34,7 @@ import {
 } from "../engine/constants.js";
 import { rules } from "../engine/rules.js";
 import { budgetFor } from "../engine/economy.js";
-import { catalogue } from "../engine/catalogue.js";
+import { catalogue, definition } from "../engine/catalogue.js";
 import { FUNDING_SERVICES } from "../engine/constants.js";
 
 const W = 24;
@@ -185,6 +185,90 @@ test("services raise land value", () => {
   apply(served, { type: CMD_PLACE_BUILDING, actor: 1, def: "fireStation", x: 14, y: 12 });
   civicPass(served);
   assert.ok(served.tiles.landValue[at(12, 12)] > bare.tiles.landValue[at(12, 12)]);
+});
+
+// --- a park is worth living next to (slice G3; A88, A91, Q119/Q123/Q127) -----
+
+test("a park raises land value within its radius and not beyond it", () => {
+  // `def.landValueBonus` has been on the park since the catalogue was written
+  // and nothing read it (Q119). It is the whole point of a park: it is why a
+  // street with one is a street people want to live on.
+  //
+  // Measured on the RAIL STATION, not the park, for the isolation: a park also
+  // feeds the leisure coverage layer, which era 10 gave a route to land value
+  // of its own, so a park's number cannot say which mechanism moved it. The
+  // station carries a bonus and no coverage at all.
+  const bare = city();
+  const withIt = city();
+  const def = definition("railStation");
+  assert.ok(def.landValueBonus > 0 && def.radius > 0, "the rail station carries no bonus to test");
+  // The station stands on its line (T2), so the line comes first.
+  for (const state of [withIt]) {
+    for (let x = 0; x < W; x += 1) state.tiles.rail[at(x, 11)] = NET_PRESENT;
+    assert.equal(apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "railStation", x: 11, y: 12 }).result,
+      RESULT.OK, "the station was not placed, so this proves nothing");
+  }
+  for (const state of [bare, withIt]) civicPass(state);
+
+  const near = at(11 + 1, 12 + 2);
+  const far = at(11 + def.radius + 3, 12);
+  assert.ok(withIt.tiles.landValue[near] > bare.tiles.landValue[near],
+    `a station raised nothing nearby: ${withIt.tiles.landValue[near]} against ${bare.tiles.landValue[near]}`);
+  assert.equal(withIt.tiles.landValue[far], bare.tiles.landValue[far],
+    "the bonus reached past its radius");
+});
+
+test("the bonus falls off with distance, like coverage does", () => {
+  const state = city();
+  for (let x = 0; x < W; x += 1) state.tiles.rail[at(x, 11)] = NET_PRESENT;
+  apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "railStation", x: 11, y: 12 });
+  civicPass(state);
+  const def = definition("railStation");
+  const close = state.tiles.landValue[at(11, 12 + 2)];
+  const mid = state.tiles.landValue[at(11, 12 + def.radius - 1)];
+  assert.ok(close > mid, `the bonus does not fall off: ${close} at two tiles, ${mid} at ${def.radius - 1}`);
+});
+
+test("two parks do not take a tile past the land value cap", () => {
+  // The cap is `clamp(value, 1, 250)` and it is the only thing between a
+  // stack of amenities and a number the overlay cannot draw.
+  const state = city();
+  for (let i = 0; i < 8; i += 1) {
+    apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "park", x: 10 + (i % 4), y: 10 + Math.floor(i / 4) });
+  }
+  civicPass(state);
+  for (let i = 0; i < state.tiles.landValue.length; i += 1) {
+    assert.ok(state.tiles.landValue[i] <= 250, `land value ${state.tiles.landValue[i]} is past the cap`);
+  }
+  assert.ok(state.tiles.landValue[at(11, 10)] > rules().civic.landValueBase,
+    "eight parks moved nothing");
+});
+
+test("the city hall is worth building for its own sake", () => {
+  // A91: it cost 6,000 and 200 a month to complete a quest and did nothing
+  // else. With a bonus it is a civic centre.
+  const def = definition("cityHall");
+  assert.ok(def.landValueBonus > 0, "the city hall carries no land value bonus (A91)");
+  assert.ok(def.radius > 0, "the city hall's bonus has no radius");
+});
+
+test("a ruined amenity is rubble, and gives nothing", () => {
+  // The bonus is the building's, not the tile's: a park that has burnt down
+  // must stop being a reason to live next to it, or a fire improves the
+  // neighbourhood.
+  // Two cities, one pass each. The first cut ran the pass twice on one city and
+  // read a RISE, because `pollutionPass` is iterative — a second month is a
+  // different city whatever else changed.
+  const standing = city();
+  const ruined = city();
+  for (const state of [standing, ruined]) {
+    apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "park", x: 12, y: 12 });
+  }
+  ruined.tiles.flags[at(12, 12)] |= FLAG_RUINED;
+  for (const state of [standing, ruined]) civicPass(state);
+  assert.ok(ruined.tiles.landValue[at(13, 12)] < standing.tiles.landValue[at(13, 12)],
+    `a ruined park is still worth living next to: ${ruined.tiles.landValue[at(13, 12)]} `
+    + `against ${standing.tiles.landValue[at(13, 12)]}`);
 });
 
 test("high crime and high pollution are reported, not left to be noticed", () => {

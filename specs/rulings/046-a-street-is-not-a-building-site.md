@@ -64,6 +64,13 @@ was never a building site. Era 15's sweep is the price.
 - Unchanged: a level crossing. A road and a rail line on one tile is the one legitimate sharing
   (A66), and a carrier may still share a road tile.
 
+## The picture
+
+`reports/smoke-G1-on-the-street.png` is the defect: two houses standing in the carriageway, with the
+road running under them, in a city built by command on era 14. `smoke-G1-off-the-street.png` is the
+same camera on the same seed in era 15. `tools/street_proof.mjs` makes the pair against a worktree
+of any earlier commit.
+
 ## Enforced by
 
 - `test/build.test.js` — a road, a wire, a pipe and a rail line over a park are each refused and

@@ -1,5 +1,5 @@
 {
-  "note": "Placeable buildings. ERA 0, UNTUNED (ruling 007). Static configuration only — runtime state lives on the building entity. Footprints are in tiles; capacity is in supply units; radius is in tiles.",
+  "note": "Placeable buildings. ERA 0, UNTUNED (ruling 007). Static configuration only — runtime state lives on the building entity. Footprints are in tiles; radius is in tiles; landValueBonus is land value at the building, falling off to nothing at radius.",
 
   "coalPlant": {
     "category": "power", "w": 3, "h": 3, "cost": 3000, "upkeep": 80,
@@ -35,7 +35,7 @@
   },
   "waterTower": {
     "category": "water", "w": 1, "h": 1, "cost": 500, "upkeep": 10,
-    "power": -2, "water": 0, "storage": 200, "pollution": 0, "fireRisk": 2, "unlock": 0
+    "power": -2, "water": 0, "pollution": 0, "fireRisk": 2, "unlock": 0
   },
 
   "fireStation": {
@@ -51,7 +51,7 @@
   "hospital": {
     "category": "service", "w": 3, "h": 3, "cost": 1200, "upkeep": 120,
     "power": -14, "water": -14, "pollution": 0, "fireRisk": 6,
-    "service": "health", "radius": 14, "capacity": 400, "unlock": 0
+    "service": "health", "radius": 14, "unlock": 0
   },
   "park": {
     "category": "amenity", "w": 1, "h": 1, "cost": 60, "upkeep": 2,
@@ -87,7 +87,7 @@
   "cityHall": {
     "category": "civic", "w": 3, "h": 3, "cost": 6000, "upkeep": 200,
     "power": -10, "water": -8, "pollution": 0, "fireRisk": 6,
-    "onePerSeat": true, "unlock": 2
+    "landValueBonus": 16, "radius": 8, "onePerSeat": true, "unlock": 2
   },
   "clinic": {
     "category": "service", "w": 1, "h": 1, "cost": 300, "upkeep": 45,
