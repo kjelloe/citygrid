@@ -140,6 +140,20 @@ and one dark lot.
 **Gate.** `sim` on a new era, with `power.components` and the dark-building counts beside the
 populations (the columns G2 added).
 
+## H6 — Ground too steep to build on is not zoned (M) — A100 (Q134) — **BUILT 2026-10-03** as era 20
+
+*As built, and the gate it was given is not the gate it can have yet. `walkthrough 128 hilly` is
+**unchanged** — 30 cliffs, 226 ungradeable of 1,458 — because `tools/lib/saturated.mjs` does not grow
+its buildings from zoning at all: when development produces nothing it pushes 1,129 `res` records
+straight into the array, on any tile, cliff or not. That is Q72, and it is **H7**. So H6's real gate
+arrives with H7, and the measurement that stands in the meantime is a played city on `hilly`: 1,015
+population with 505 zoned tiles before the rule, **1,872 with 334** after it — nearly twice the city,
+because the zoning that goes down is zoning that can be reached and served. `rolling` is unmoved.*
+
+*The deputy skips steep tiles when it zones rather than discovering the refusal: a zoning run is a
+transaction, so one steep tile in a strip would refuse the whole block and a `hilly` deputy would zone
+nothing at all.*
+
 ## H6 — Ground too steep to build on is not zoned (M) — A100 (Q134)
 
 **Goal.** `walkthrough 128 hilly` green, which is S11's done-when and the whole point of a `hilly`

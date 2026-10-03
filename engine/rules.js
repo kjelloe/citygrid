@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 19,
+  era: 20,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -66,6 +66,8 @@ var RULES = {
   },
   multiplayer: { derelictYears: 5, absenceYears: 5, abandonYears: 5, requestExpiryMonths: 12, seasonYears: 25 },
   development: {
+    _slope: "H6 (A100): the steepest step in elevation units between a tile and a four-neighbour that may still be zoned. Six, because that is the grade a STREET may climb: road.maxGrade is 15%, a tile is 20 m and an elevation step is 0.5 m, so 15% of 20 m is 3 m is six steps. You may not zone ground a street could not be built on. Measured over three 128 maps a style: it leaves rolling at 100% of its buildable tiles (93% are at 4 or less) and flat at 100%, and takes hilly from 100% to 41% - which is the point, and is still 17,000 tiles of city.",
+    maxZoneSlope: 6,
     levels: 4,
     residentsPerLevel: [4, 12, 28, 60],
     commercialJobsPerLevel: [3, 9, 20, 44],

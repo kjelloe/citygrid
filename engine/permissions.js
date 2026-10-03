@@ -9,6 +9,8 @@ import {
   OWNER_NATURE, OWNER_COMMONS, SEAT_MIN, SEAT_MAX,
   MODE_DISTRICTS, MODE_SHARED_CITY, MODE_REGION_RIVALS,
 } from "./constants.js";
+import { xOf, yOf, DIR4, neighbour } from "../shared/grid.js";
+import { rules } from "./rules.js";
 
 export function isSeat(owner) {
   return owner >= SEAT_MIN && owner <= SEAT_MAX;
@@ -77,8 +79,39 @@ export function canConnectAcross(state, actor, index) {
   return RESULT.NOT_OWNER;
 }
 
+/** The steepest step between this tile and one of its four neighbours, in
+ * elevation units (H6, A100). */
+function slopeAt(state, index) {
+  var width = state.width;
+  var x = xOf(width, index);
+  var y = yOf(width, index);
+  var here = state.tiles.elevation[index];
+  var worst = 0;
+  for (var d = 0; d < DIR4.length; d += 1) {
+    var n = neighbour(width, state.height, x, y, DIR4[d]);
+    if (n < 0) continue;
+    var step = state.tiles.elevation[n] - here;
+    if (step < 0) step = -step;
+    if (step > worst) worst = step;
+  }
+  return worst;
+}
+
 /** May `actor` zone here? Region Rivals keeps neutral land between cities,
- * so zoning is confined to claimed ground. */
+ * so zoning is confined to claimed ground.
+ *
+ * And the ground must be ground a street could be built on (H6, A100). S11 let
+ * a junction's height move within six metres of its own land and took `hilly`
+ * 128 from 177 cliffs on the walked route to 30; what was left was 20 m
+ * corridors with 10 m of land between their ends, which no cutting a person
+ * would dig fixes at 15%. Kjell took the expensive option: the city is not on
+ * the cliff in the first place.
+ *
+ * It is `canZone`'s rule rather than worldgen's so that it is the REDUCER's —
+ * one rule, checked once, the same for a player and for the deputy, and
+ * answered with a result code that says what the ground is rather than "that
+ * cannot go there".
+ */
 export function canZone(state, actor, index) {
   var base = canBuildOn(state, actor, index);
   if (base !== RESULT.OK) return base;
@@ -86,6 +119,7 @@ export function canZone(state, actor, index) {
     var owner = state.tiles.owner[index];
     if (owner === OWNER_NATURE) return RESULT.OUT_OF_SECTOR;
   }
+  if (slopeAt(state, index) > rules().development.maxZoneSlope) return RESULT.TOO_STEEP;
   return RESULT.OK;
 }
 

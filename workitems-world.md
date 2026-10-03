@@ -267,6 +267,12 @@ plus `walkthrough` over every bridge, `budget_gate` for the deck geometry, and
 against the same graded run `gradeProfile` uses, before the profiles are built. Ruling 038 is amended
 with it.*
 
+*Amended 2026-10-03 at H6: the steep half S11 left unbuilt is now the reducer's rule (`canZone`
+refuses a slope past `development.maxZoneSlope`, era 20), and `walkthrough 128 hilly` still reads the
+same — because the saturated fixture does not grow from zoning. Its buildings are pushed into the
+array on any tile, cliff or not (Q72), so the gate measures a city the rule never touched. The gate
+becomes meaningful with **H7**.*
+
 *Not met: the done-when. `walkthrough 128 hilly` is **red** — 30 cliffs, 226 of 1,458 corridors
 ungradeable — so it has not joined the `render` set. Before this slice the gate **could not be run at
 all** on that terrain: `saturatedCity` threw "a rail line was asked for and none was laid", because

@@ -8902,3 +8902,71 @@ and most sweep cities never are. What moved is the **p95 of dark buildings**, wh
 
 Suite **1,580 green twice**; `sim` **843 s of 900**.
 
+## era 20 — ground too steep to build on is not zoned (2026-10-03) — H6, A100 (Q134)
+
+Kjell took the expensive option. S11 let a junction's height move within six metres of its own land
+and took `hilly` 128 from 177 cliffs on the walked route to 30; what was left was 20 m corridors with
+10 m of land between their ends, which no cutting a person would dig fixes at 15%. So the city is not
+on the cliff in the first place.
+
+**`development.maxZoneSlope` is 6 elevation steps, and that is the street's own limit**: `maxGrade`
+is 15%, a tile is 20 m, an elevation step is 0.5 m, and 15% of 20 m is 3 m is six steps. You may not
+zone ground a street could not be built on. It is `canZone`'s rule, so it is the reducer's — one rule,
+the same for a player and for the deputy, answered with `RESULT.TOO_STEEP` and a string in both
+languages rather than "that cannot go there".
+
+The limit came from the distribution, not from a guess. Max step to a four-neighbour, over three 128
+maps a style:
+
+| | ≤4 steps | ≤6 | ≤10 |
+|---|---|---|---|
+| flat | 100% | 100% | 100% |
+| rolling | 93% | 100% | 100% |
+| hilly | 20% | 41% | 76% |
+
+### A hilly city is nearly twice the size when it cannot be built on a cliff
+
+Three 64 maps a style, 25 years of the deputy:
+
+| | population | buildings | zoned tiles |
+|---|---|---|---|
+| hilly, before | 1,015 | 149 | 505 |
+| hilly, **after** | **1,872** | 166 | 334 |
+| rolling, before | 1,837 | 301 | 1,103 |
+| rolling, after | 1,734 | 293 | 1,142 |
+
+Fewer zoned tiles and twice the people: the zoning that goes down is zoning that can be reached and
+served, instead of being scattered up a hillside where no road arrives and no carrier follows.
+`rolling` is unmoved, which is what the limit was chosen for.
+
+The deputy **skips** steep tiles when it zones rather than discovering the refusal: a zoning run is a
+transaction, so one steep tile in a strip would refuse the whole block and a `hilly` deputy would zone
+nothing at all.
+
+### The gate it was given is not the gate it can have yet
+
+`walkthrough 128 hilly` is **unchanged** — 30 cliffs, 226 ungradeable of 1,458 — and the reason is
+Q72: `tools/lib/saturated.mjs` does not grow its buildings from zoning. When development produces
+nothing it pushes 1,129 `res` records straight into the array, on any tile, cliff or not. So the gate
+measures a city this rule never touched, and it becomes meaningful with **H7**. Recorded in the work
+item rather than left as a puzzle for the next person to run it.
+
+### Measured — 200 games a configuration
+
+| configuration | era 19 | era 20 |
+|---|---|---|
+| relaxed-64 | 1,787 | 1,755 |
+| steady-64 | 1,598 | 1,634 |
+| demanding-64 | 1,537 | 1,538 |
+| steady-64-nodisasters | 1,559 | 1,557 |
+
+Flat, as predicted: the sweep plays `rolling`, where the rule refuses almost nothing. The hilly
+measurement above is the one that carries this slice.
+
+`sim` came in at **950 s of 900** — over, and the growth is `sim_sweep` at 635 s on cities that keep
+getting bigger. The budget is restated when the set's CONTENTS change (M2's rule); this is the set
+doing the same work on a heavier simulation, so it is logged here as the finding and the next
+balance slice inherits it.
+
+Suite **1,582 green twice**.
+

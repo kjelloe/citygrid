@@ -20,6 +20,7 @@ import { rules } from "./rules.js";
 import { i32 } from "../shared/arrays.js";
 import { budgetFor } from "./economy.js";
 import { RESULT } from "../shared/protocol.js";
+import { canZone } from "./permissions.js";
 import { tileAt, xOf, yOf, encodeRuns, inBounds, DIR4, neighbour } from "../shared/grid.js";
 import { hasNet } from "./network.js";
 import { isBuildable, isWater, waterBodies, bodyAt } from "./terrain.js";
@@ -309,6 +310,11 @@ function buildBlock(state, deputy, town) {
       if (state.tiles.zone[zi] !== ZONE_NONE) continue;
       var zOwner = state.tiles.owner[zi];
       if (zOwner !== OWNER_NATURE && zOwner !== seat) continue;
+      // And not a slope a street could not climb (H6, A100). The reducer
+      // refuses it, and a zoning run is a transaction — one steep tile in the
+      // strip would refuse the whole block, so on a `hilly` map the deputy
+      // would zone nothing at all rather than zone around the cliff.
+      if (canZone(state, seat, zi) !== RESULT.OK) continue;
       zoneCells.push(zi);
     }
   }

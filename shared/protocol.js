@@ -59,6 +59,10 @@ export const RESULT = Object.freeze({
   // nothing, and tries the same tile again.
   LOCKED: "locked",
   ALREADY_BUILT: "alreadyBuilt",
+  // H6 (A100): ground a street could not climb is ground nobody may zone. Its
+  // own code for the same reason as the two above — "that cannot go there" about
+  // a hillside teaches nothing, and the player is standing on the reason.
+  TOO_STEEP: "tooSteep",
 });
 
 /** Server-side caps. Deliberately here rather than in the server, so the

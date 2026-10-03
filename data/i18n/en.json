@@ -89,6 +89,7 @@
  "result.rateLimited": "Too many commands at once — slow down",
  "result.locked": "You have not earned that yet",
  "result.alreadyBuilt": "You already have one of those",
+ "result.tooSteep": "Too steep to build on",
  "ping.help": "Help here",
  "ping.building": "Building here",
  "ping.remove": "Please remove this",

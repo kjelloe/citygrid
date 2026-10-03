@@ -89,6 +89,7 @@
  "result.rateLimited": "For mange kommandoer på én gang — ro ned",
  "result.locked": "Det har du ikke fortjent ennå",
  "result.alreadyBuilt": "Du har allerede en slik",
+ "result.tooSteep": "For bratt å bygge på",
  "ping.help": "Hjelp her",
  "ping.building": "Bygger her",
  "ping.remove": "Kan dette fjernes?",

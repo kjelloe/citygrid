@@ -412,3 +412,48 @@ test("growth and decay roll with the same kind of odds", () => {
   const decay = /chance\(state\.rng, development\.decayOneIn\)/.test(source);
   assert.ok(grow && decay, `growth rolls: ${grow}, decay rolls: ${decay}`);
 });
+
+// --- ground too steep to build on is not zoned (H6; A100, Q134) --------------
+
+test("a slope a street could not climb cannot be zoned, and says so", () => {
+  // A100, the expensive option: S11 let a junction move within six metres of its
+  // own ground and `hilly` 128 went from 177 cliffs on the walked route to 30.
+  // What was left was 20 m corridors with 10 m of land between their ends, which
+  // no cutting fixes at 15% — so the city is not on the cliff in the first place.
+  //
+  // Six elevation steps IS the street's own limit: `road.maxGrade` is 15%, a
+  // tile is 20 m and a step is 0.5 m, so 15% of 20 m is 3 m is six steps.
+  const state = city();
+  const limit = rules().development.maxZoneSlope;
+  const flat = at(5, 5);
+  const cliff = at(10, 5);
+  state.tiles.elevation[cliff] = state.tiles.elevation[at(11, 5)] + limit + 1;
+
+  assert.equal(apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns([flat]), zone: ZONE_RESIDENTIAL }).result,
+    RESULT.OK, "flat ground was refused");
+  assert.equal(apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns([cliff]), zone: ZONE_RESIDENTIAL }).result,
+    "tooSteep", "a cliff was zoned");
+  assert.equal(state.tiles.zone[cliff], ZONE_NONE, "the cliff kept the zoning anyway");
+
+  // Exactly AT the limit is buildable: the rule is "steeper than a street may
+  // climb", and a street may climb the limit itself.
+  const edge = at(14, 5);
+  state.tiles.elevation[edge] = state.tiles.elevation[at(15, 5)] + limit;
+  assert.equal(apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns([edge]), zone: ZONE_RESIDENTIAL }).result,
+    RESULT.OK, `a slope of exactly ${limit} was refused`);
+});
+
+test("a run that crosses a cliff is refused whole, like every other edit", () => {
+  // The transaction rule (slice 1.3). A drag-paint across a hillside is one
+  // command, so the alternative is a block of zoning with a hole in it and a
+  // player who paid for both halves.
+  const state = city();
+  const limit = rules().development.maxZoneSlope;
+  state.tiles.elevation[at(8, 7)] = state.tiles.elevation[at(9, 7)] + limit + 2;
+  const before = hashState(state);
+  const run = [at(6, 7), at(7, 7), at(8, 7), at(9, 7)];
+  assert.equal(apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(run), zone: ZONE_RESIDENTIAL }).result,
+    "tooSteep");
+  assert.equal(hashState(state), before, "a refused zoning run changed the state");
+});
+
