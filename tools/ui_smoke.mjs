@@ -396,6 +396,25 @@ try {
     turnedTo.orientation !== turned.before && turnedTo.w === 4 && turnedTo.h === 6,
     `orientation ${turned.before} → ${turnedTo.orientation}, footprint ${turnedTo.w}×${turnedTo.h}`);
   await page.keyboard.press("Escape");
+
+  // A ZONING stroke says what it will cost, on the real page (J1, A108). The
+  // three zone tools carried `priceKind: null` until now, so a drag showed
+  // neither its price nor the reason it was about to be refused — which stopped
+  // being free the moment era 20 gave zoning a refusal (a slope a street could
+  // not climb) that a player meets constantly on a hilly map.
+  await page.click('#tools button[data-id="zoneResidential"]');
+  await page.mouse.move(400, 300);
+  await page.mouse.down();
+  await page.mouse.move(460, 340, { steps: 4 });
+  const quoted = await page.evaluate(() => ({
+    said: document.querySelector(".hud-readout")?.textContent ?? "",
+    result: document.querySelector(".hud-readout")?.dataset.result ?? "",
+  }));
+  await page.mouse.up();
+  await page.keyboard.press("Escape");
+  check("a zoning drag says what it will cost",
+    /\d/.test(quoted.said) && quoted.result === "", JSON.stringify(quoted));
+
   const goneAfter = await page.evaluate(() => ({
     turn: document.getElementById("turn") !== null,
     tool: globalThis.CITY.controller.tool,

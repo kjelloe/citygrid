@@ -8,7 +8,7 @@
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import { register, ok, fail, registerMonthly } from "./reducer.js";
 import { CMD_PAINT_ZONE, CMD_DEZONE } from "./commands.js";
-import { begin, commit, stage, charge, reject, peek, failed } from "./transaction.js";
+import { begin, commit, stage, charge, reject, peek, failed, priceOnly } from "./transaction.js";
 import { cellsFromRuns, hasNet, hasRoadAccess } from "./network.js";
 import { gateTerms } from "./gates.js";
 import { canZone, canDemolish } from "./permissions.js";
@@ -25,6 +25,46 @@ import {
 
 // --- zoning ----------------------------------------------------------------
 
+/** Stages a zoning stroke into a transaction, and answers why not (J1, A108).
+ *
+ * Shared by the command and by `priceZone` below, so what the player is QUOTED
+ * and what they are CHARGED come from one code path — slice 1.3's rule, which
+ * zoning was outside until era 20 gave it a refusal a player meets constantly
+ * (a slope a street could not climb) and the ghost could not see coming.
+ */
+function zoneInto(tx, state, actor, indices, zone) {
+  for (var i = 0; i < indices.length; i += 1) {
+    var index = indices[i];
+    if (!isBuildable(state.tiles.terrain[index])) {
+      reject(tx, RESULT.INVALID);
+      return RESULT.INVALID;
+    }
+    var permitted = canZone(state, actor, index);
+    if (permitted !== RESULT.OK) return permitted;
+    if (peek(tx, index, "zone") === zone) continue;
+
+    charge(tx, buildCost(state, "zone"));
+    stage(tx, index, "zone", zone);
+    if (state.tiles.owner[index] === OWNER_NATURE) stage(tx, index, "owner", actor);
+  }
+  return RESULT.OK;
+}
+
+/** Prices a zoning stroke without applying it (J1, A108). The tool preview asks
+ * this through `price(state, command, "zone")`. */
+export function priceZone(state, command) {
+  var indices = cellsFromRuns(state, command.runs, LIMITS.CELLS_PER_COMMAND);
+  if (!indices) return { result: RESULT.INVALID, cost: 0, tiles: 0 };
+  if (!isIntInRange(command.zone, ZONE_RESIDENTIAL, ZONE_INDUSTRIAL)) {
+    return { result: RESULT.INVALID, cost: 0, tiles: 0 };
+  }
+  var tx = begin(state, command.actor);
+  var refused = zoneInto(tx, state, command.actor, indices, command.zone);
+  var quote = priceOnly(tx);
+  if (refused !== RESULT.OK) return { result: refused, cost: quote.cost, tiles: quote.tiles };
+  return quote;
+}
+
 register(CMD_PAINT_ZONE, function paintZone(state, command) {
   if (!isIntArray(command.runs, LIMITS.CELLS_PER_COMMAND)) return fail(RESULT.INVALID);
   if (!isIntInRange(command.zone, ZONE_RESIDENTIAL, ZONE_INDUSTRIAL)) return fail(RESULT.INVALID);
@@ -32,20 +72,8 @@ register(CMD_PAINT_ZONE, function paintZone(state, command) {
   if (!indices) return fail(RESULT.INVALID);
 
   var tx = begin(state, command.actor);
-  for (var i = 0; i < indices.length; i += 1) {
-    var index = indices[i];
-    if (!isBuildable(state.tiles.terrain[index])) {
-      reject(tx, RESULT.INVALID);
-      return fail(tx.result);
-    }
-    var permitted = canZone(state, command.actor, index);
-    if (permitted !== RESULT.OK) return fail(permitted);
-    if (peek(tx, index, "zone") === command.zone) continue;
-
-    charge(tx, buildCost(state, "zone"));
-    stage(tx, index, "zone", command.zone);
-    if (state.tiles.owner[index] === OWNER_NATURE) stage(tx, index, "owner", command.actor);
-  }
+  var refused = zoneInto(tx, state, command.actor, indices, command.zone);
+  if (refused !== RESULT.OK) return fail(refused);
   if (failed(tx)) return fail(tx.result);
   var outcome = commit(tx);
   if (outcome.result !== RESULT.OK) return fail(outcome.result);

@@ -8,6 +8,7 @@ import {
 } from "./commands.js";
 import { begin, commit, undo as undoTransaction, stage, charge, reject, peek, failed, priceOnly } from "./transaction.js";
 import { placeNetwork, removeNetwork, cellsFromRuns, hasNet, NETWORKS } from "./network.js";
+import { priceZone } from "./development.js";
 import { canDemolish } from "./permissions.js";
 import { buildCost } from "./rules.js";
 import { isWater } from "./terrain.js";
@@ -48,6 +49,10 @@ function runArea(state, command, body) {
 export function price(state, command, kind) {
   var indices = cellsFromRuns(state, command.runs, LIMITS.CELLS_PER_COMMAND);
   if (!indices) return { result: RESULT.INVALID, cost: 0, tiles: 0 };
+  // Zoning is priced by the module that owns the rule (J1, A108) — the slope
+  // refusal era 20 added lives in `canZone`, and a second copy of it here would
+  // be the client's rule rather than the reducer's.
+  if (kind === "zone") return priceZone(state, command);
   var tx = begin(state, command.actor);
   if (kind === "bulldoze") bulldozeInto(tx, indices);
   else placeNetwork(tx, kind, indices);

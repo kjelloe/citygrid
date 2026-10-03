@@ -22,6 +22,19 @@ round raised. Two are ratifications with no code (A107's gate criterion, A110's 
 is a re-scope of a slice that has not started (A111 → `workitems-world.md` S13). The four that are
 work are below, cheapest first; two of them are deputy-and-reducer changes and therefore two eras.*
 
+## J1 — A zoning stroke knows what it will cost and why it will be refused (S) — A108 (Q136) — **BUILT 2026-10-03**
+
+*As built, and it found a second thing on the way: `priceOnly` returned `tx.indices.length`, which is
+the number of staged WRITES rather than tiles. A three-tile road quotes three road bits, three owners
+and four reshaped neighbours, so the readout has said **"10 tiles" for a three-tile stroke since
+slice 1.3** and nothing noticed, because nothing had ever compared the two numbers. Zoning's quote
+stages a zone and an owner, which made it a factor of exactly two and visible. `tiles` means tiles
+now.*
+
+*`priceZone` lives in `development.js` beside the rule it prices, and `price()` delegates — a second
+copy of era 20's slope refusal in `build-commands.js` would have been the client's rule rather than
+the reducer's.*
+
 ## J1 — A zoning stroke knows what it will cost and why it will be refused (S) — A108 (Q136)
 
 **Goal.** The ghost turns red before the click, not after it.

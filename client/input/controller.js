@@ -98,7 +98,10 @@ export function createController(canvas, state, renderer, options = {}) {
     const runs = toRuns(tiles.map((t) => tileIndex(t.x, t.y, state.width)));
     let quote;
     if (tool.priceKind) {
-      quote = price(state, { type: tool.command, actor, runs }, tool.priceKind);
+      // The zone goes with the command: `priceZone` validates it, and a quote
+      // without one is an INVALID the ghost would paint red for the wrong
+      // reason (J1).
+      quote = price(state, { type: tool.command, actor, runs, zone: tool.zone }, tool.priceKind);
     }
     // Buildings have no staging path to price, so the cost comes from the same
     // helper the reducer charges with rather than from a table in the client.

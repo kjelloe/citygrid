@@ -111,6 +111,22 @@ export function undo(state, record) {
 /** Prices an edit without performing it, for the cost preview every tool shows
  * before the player commits. Runs the same code path as the real thing, so the
  * preview cannot disagree with the outcome. */
+/** What a quote says, and `tiles` means TILES (J1, A108).
+ *
+ * It used to be `tx.indices.length`, which is the number of staged WRITES: a
+ * three-tile road quotes 3 road bits, 3 owners and 4 reshaped neighbours, so the
+ * readout said **"10 tiles"** for a three-tile stroke and had done since slice
+ * 1.3. Nothing caught it because nothing had ever compared the two numbers —
+ * zoning's quote, which stages a zone and an owner, is what made it a factor of
+ * exactly two and visible. */
 export function priceOnly(tx) {
-  return { cost: tx.cost, result: tx.result, tiles: tx.indices.length };
+  var seen = [];
+  var tiles = 0;
+  for (var i = 0; i < tx.indices.length; i += 1) {
+    var index = tx.indices[i];
+    if (seen[index]) continue;
+    seen[index] = true;
+    tiles += 1;
+  }
+  return { cost: tx.cost, result: tx.result, tiles: tiles };
 }

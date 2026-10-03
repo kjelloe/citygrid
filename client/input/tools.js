@@ -43,9 +43,9 @@ export const TOOLS = {
   // what keeps this honest.
   rail: { command: CMD_PLACE_RAIL, drag: DRAG.LINE, priceKind: "rail", icon: "rail", key: "l" },
 
-  zoneResidential: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_RESIDENTIAL, priceKind: null, icon: "zoneR", key: "1" },
-  zoneCommercial: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_COMMERCIAL, priceKind: null, icon: "zoneC", key: "2" },
-  zoneIndustrial: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_INDUSTRIAL, priceKind: null, icon: "zoneI", key: "3" },
+  zoneResidential: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_RESIDENTIAL, priceKind: "zone", icon: "zoneR", key: "1" },
+  zoneCommercial: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_COMMERCIAL, priceKind: "zone", icon: "zoneC", key: "2" },
+  zoneIndustrial: { command: CMD_PAINT_ZONE, drag: DRAG.RECT, zone: ZONE_INDUSTRIAL, priceKind: "zone", icon: "zoneI", key: "3" },
   dezone: { command: CMD_DEZONE, drag: DRAG.RECT, priceKind: null, icon: "dezone", key: "0" },
 
   bulldoze: { command: CMD_BULLDOZE, drag: DRAG.LINE, priceKind: "bulldoze", icon: "bulldoze", key: "b" },

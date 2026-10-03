@@ -9,6 +9,8 @@ import { createState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import "../engine/build-commands.js";
+import { price } from "../engine/build-commands.js";
+import { buildCost } from "../engine/rules.js";
 import {
   developmentPass, computeDemand, census, hasRoadAccess, landValueAt,
 } from "../engine/development.js";
@@ -455,5 +457,51 @@ test("a run that crosses a cliff is refused whole, like every other edit", () =>
   assert.equal(apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(run), zone: ZONE_RESIDENTIAL }).result,
     "tooSteep");
   assert.equal(hashState(state), before, "a refused zoning run changed the state");
+});
+
+// --- a zoning stroke knows what it will cost (slice J1; A108, Q136) ----------
+
+test("a zoning quote carries the cost and the tiles, and changes nothing", () => {
+  // Q136: `price()` handled networks and bulldoze and had no path for zoning, so
+  // the three zone tools carried `priceKind: null` — a zoning drag showed neither
+  // its cost nor the reason it would be refused. That cost nothing while zoning
+  // was refused for terrain and ownership; since era 20 a `hilly` map refuses it
+  // for SLOPE, which is the refusal a player meets constantly.
+  const state = city();
+  const before = hashState(state);
+  const run = [at(5, 5), at(6, 5), at(7, 5)];
+  const quote = price(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(run), zone: ZONE_RESIDENTIAL }, "zone");
+  assert.equal(quote.result, RESULT.OK);
+  assert.equal(quote.tiles, 3);
+  // Through the same helper the reducer charges with, not through the raw
+  // number in the file: `buildCost` scales with difficulty, and a test that
+  // quotes `build.zone` is a second copy of the rule.
+  assert.equal(quote.cost, 3 * buildCost(state, "zone"));
+  assert.equal(hashState(state), before, "a quote changed the state");
+});
+
+test("a zoning quote over a cliff says tooSteep before the click", () => {
+  const state = city();
+  const limit = rules().development.maxZoneSlope;
+  state.tiles.elevation[at(9, 5)] = state.tiles.elevation[at(10, 5)] + limit + 2;
+  const quote = price(state, {
+    type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns([at(8, 5), at(9, 5)]), zone: ZONE_RESIDENTIAL,
+  }, "zone");
+  assert.equal(quote.result, "tooSteep",
+    "the ghost cannot tell the player what the reducer is about to tell them");
+});
+
+test("a zoning quote and the command that follows it agree", () => {
+  // The whole point of `price` (slice 1.3): what the player is quoted and what
+  // they are charged come from one code path. A second copy of the rule in the
+  // client is a rule that drifts.
+  const state = city();
+  const run = [at(5, 9), at(6, 9), at(7, 9), at(8, 9)];
+  const quote = price(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(run), zone: ZONE_COMMERCIAL }, "zone");
+  const before = state.players[0].treasury;
+  const done = apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(run), zone: ZONE_COMMERCIAL });
+  assert.equal(done.result, quote.result);
+  assert.equal(before - state.players[0].treasury, quote.cost,
+    "the quote and the charge disagree");
 });
 

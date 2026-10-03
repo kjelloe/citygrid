@@ -9181,3 +9181,26 @@ It asks the model for the corridor nearest the city it is measuring now. *Aim a 
 not at a proxy* — the memory says it about screenshots, and a performance sweep is a screenshot that
 counts.
 
+## J1 — a zoning stroke knows what it will cost (2026-10-03) — A108 (Q136)
+
+`price(state, command, kind)` handled networks and bulldoze and had no path for zoning, so the three
+zone tools carried `priceKind: null` and a drag showed neither its cost nor the reason it was about to
+be refused. That was free while zoning was refused for terrain and ownership; era 20 gave it a
+refusal a player meets constantly on a `hilly` map — a slope a street could not climb — and the ghost
+could not see it coming.
+
+`priceZone` lives in `development.js`, beside the rule it prices, and shares `zoneInto` with the
+command itself: what the player is quoted and what they are charged come from one code path, which is
+slice 1.3's rule and which zoning was outside.
+
+### "10 tiles" for a three-tile stroke
+
+`priceOnly` returned `tx.indices.length` — the number of staged WRITES. A three-tile road stages
+three road bits, three owners and four reshaped neighbours, so the readout has said **10 tiles for a
+three-tile road since slice 1.3**, and nothing caught it because nothing had ever compared the two
+numbers. Zoning stages exactly two per tile, which made it a factor of two and visible. `tiles` means
+tiles now.
+
+The gate is the real page: `ui_smoke` drags a zoning stroke and reads the HUD, which says
+**"25 tiles · −§250"**. 215 checks green.
+
