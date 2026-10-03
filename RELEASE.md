@@ -15,7 +15,7 @@ measured when somebody last looked, which is a different claim and the only one 
   and the frame numbers further down are renderer measurements, which belong to no balance era.
   This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
   doc test was pinning the words rather than reading `data/balance.json`.
-- **170 commits**, one per slice, no squash and no merge commits.
+- **184 commits**, one per slice, no squash and no merge commits.
 
 ## Running it
 
@@ -96,9 +96,11 @@ the 4090 (13 on SwiftShader) against an 8 ms budget. A person is 42 triangles an
 
 **The city under it**: the model rebuild after a build action is **53.3 ms on 96×96, 68.3 on a
 128 `hilly`, and 184.7 ms on 256×256** — eleven frames on the largest map the lobby offers, on the
-render thread (Q60, D6). The steepest street is 18.8% against a 15% limit on `rolling`, with 8
-corridors of 773 that no grading can fix because their two junctions are further apart than that;
-on a 128 `hilly` it is 59.3% and 459 of 1,392 (Q64, Q74).
+render thread (Q60, D6). The steepest street is 18.8% against a 15% limit on `rolling`, with **no
+corridor of 773** that grading cannot fix — there were 8 until S11 let a junction's height move
+within 6 m of its own ground. On a 128 `hilly` the same measurement is 98.8% and 226 of 1,458, down
+from 98.1% and 485 before S11: better, and still not playable, which is Q134. That gate could not be
+run on `hilly` at all until S11 taught the saturated fixture that a network refuses rock.
 
 ## What is missing, and known to be
 
@@ -131,7 +133,8 @@ about:
 - **Treasuries run away** — median 1.9M by year 25. Accepted with numbers rather than tuned away;
   the two attempts to fix it with upkeep both bankrupted weak cities without touching rich ones.
 - Smaller ones, each with a note: the estimate's floor at the bottom of the LOD ladder (Q32), the
-  two hidden faces of a building (Q39), whether a junction may move to keep a 15% grade (Q64),
+  two hidden faces of a building (Q39), how deep a cutting a junction may have now that one may move
+  at all (Q134, which is what Q64 became when S11 answered it),
   and a night frame spending 93% of its budget on eight baked chunks at the close zoom (Q68).
   The water surface (Q66) and the chunk bake time (Q71) were closed by measurement on 2026-09-09.
 
@@ -142,7 +145,7 @@ about:
 | `specs/gamedesign.md` | what the game is |
 | `specs/plan.md`, `specs/engine/` | how it is built; the renderer |
 | `plan-v1.md`, `workitems-*.md` | what to do next |
-| `specs/rulings/` | why a decision was made — 41 of them, one per file |
+| `specs/rulings/` | why a decision was made — 46 of them, one per file |
 | `dev-log.md` | what actually happened, slice by slice, including the dead ends |
 | `CLAUDE.md` | the working rules, and they are not suggestions |
 
