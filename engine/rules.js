@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 16,
+  era: 17,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -123,12 +123,21 @@ var RULES = {
   deputy: {
     _comment: "A81 (B9): the deputy lays a road only within roadReach tiles of a lot that is built, or zoned and supplied; expand reaches a little further than the doctrines that hold back. Era 3. T2: railAtPopulation is the size at which it lays a line to the edge and puts a station on it - just above avenueAtPopulation, so the order is the main road first and the railway after it.",
     buildingsPerStation: 40,
+    // The police station mirrors the fire station exactly — same footprint, same
+    // price, same upkeep, same rule — because crime has no pressure of its own
+    // the way a spreading fire does, and nothing else was ever going to make the
+    // deputy build one (H3, A99/Q111).
+    buildingsPerPolice: 40,
     // T6: how many buildings the deputy will run before the next school and
     // the next square. A school covers ten tiles and the fire station forty
     // buildings, so these are the same kind of number from the other side.
     // ERA 0, UNTUNED.
     buildingsPerSchool: 25,
     buildingsPerPlaza: 30,
+    // A park every twenty buildings (H3, A99/Q133). Cheaper than anything else
+    // the deputy builds — 60 and 2 a month — and the smallest thing that carries
+    // `landValueBonus`, which G3 made a rule and no headless city could see.
+    buildingsPerPark: 20,
     // The cheap rows (T7). A clinic is the cheapest health there is, so it
     // comes more often than a station; the headquarters wait for a town that
     // has outgrown its stations; the reservoir replaces the pump past a size;

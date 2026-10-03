@@ -10,8 +10,8 @@ measured when somebody last looked, which is a different claim and the only one 
   is a document. Nothing on `dev_night` changes what this page claims until the next slice does,
   and the docs test prints the drift as a note rather than a failure for exactly that reason.
 - **Date:** 2026-09-08
-- **Balance era:** era 16, re-measured 2026-10-03 over 200 games per configuration
-  (`reports/balance-era16.md`). Numbers from an earlier era are void, not roughly comparable —
+- **Balance era:** era 17, re-measured 2026-10-03 over 200 games per configuration
+  (`reports/balance-era17.md`). Numbers from an earlier era are void, not roughly comparable —
   and the frame numbers further down are renderer measurements, which belong to no balance era.
   This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
   doc test was pinning the words rather than reading `data/balance.json`.
@@ -104,7 +104,7 @@ run on `hilly` at all until S11 taught the saturated fixture that a network refu
 
 ## What is missing, and known to be
 
-**6 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**7 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 

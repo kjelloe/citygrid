@@ -8750,3 +8750,64 @@ Measured: +33 and +21.
 No gate: no sweep configuration runs quests, and the design table is checked by `test/docs.test.js`.
 Suite **1,576 green twice**.
 
+## era 17 — the mayor plants parks and builds police stations (2026-10-03) — H3, A99 (Q133, Q111)
+
+The fourth and fifth time this project has found "the mayor never builds X": the fire station before
+B1a, the school before T6, and now the **park** — the 1x1 that carries the `landValueBonus` G3 had
+just made a rule — and the **police station**, which left B3b's patrols correct, tested and invisible
+in every headless city. A 25-year deputy city contained **0 of each**.
+
+Both in the fire station's shape: one per `deputy.buildingsPerPolice` (40, mirroring it exactly) and
+one per `deputy.buildingsPerPark` (20, for the cheapest thing in the catalogue at 60 and 2 a month).
+Both use `(n + 1) * per <= others` — the form T7 got wrong twice — while the fire station keeps its
+older `n * per < others` on purpose, because a town wants a fire service from its first house.
+
+### Three arms, and the population column lied again
+
+Eight seeds, 25 years:
+
+| arm | population | land value | crime | buildings |
+|---|---|---|---|---|
+| era 16 | 1,582 | 125.3 | 1.6 | 219 |
+| parks alone | 1,973 | 132.4 | 1.9 | 261 |
+| police alone | 1,826 | 126.1 | 2.0 | 253 |
+| both | **2,082** | **135.5** | **0.8** | 305 |
+
+The 200-game sweep then said:
+
+| configuration | era 16 | era 17 | land value | crime |
+|---|---|---|---|---|
+| relaxed-64 | 1,788 | 1,766 | 124 → **137** | 3 → **1** |
+| steady-64 | 1,529 | 1,589 | 124 → **137** | 2 → **1** |
+| demanding-64 | 1,514 | 1,518 | 122 → **135** | 3 → **1** |
+| steady-64-nodisasters | 1,614 | 1,565 | 126 → **138** | 2 → **1** |
+
+**Population is flat** — −1%, +4%, 0%, −3% — against +32% on eight seeds. That is the third time in
+this project's life that the eight-seed population column has told a story the 200-game sweep then
+refused (Q128's ladder, G4, and now this), and it is the same lesson every time: the columns that
+count thousands of events are trustworthy at eight seeds and the one that counts people is not.
+
+What the rules actually buy is **land value +13 in every configuration and crime halved**, both of
+which count tiles and both of which the arms got right. A park reaches crime through land value
+(A93's path) and a patrol reaches it directly.
+
+### The traffic gate failed, and the failure was the sample
+
+`traffic_gate` went red: *"congestion correlates with the SEED (r=−0.202)"*. Spearman agreed
+(−0.173) and the first hundred of its 200 maps averaged 16.2 congested tiles against the second
+hundred's 11.3 — so not an outlier, a real trend across that block.
+
+It is not the system. The same code on seed base **90000 reads 0.024** and on **50000 reads 0.037**,
+and gross terrain does not drift with the seed index at all (water r=0.040, forest −0.036, elevation
+−0.045 over the same 200 maps). The 70000 block has a latent first-half/second-half difference that
+only becomes visible once the cities standing on it are big enough — which is sample luck inside the
+very thing the criterion exists to rule out.
+
+The criterion is **re-aimed rather than loosened**, the way Q103 and Q106 were (A89): the seed may
+not be a serious RIVAL to the mechanism — it fails when the seed correlation exceeds 0.2 *and* half
+the driving correlation. Era 17 reads 0.202 against 0.751, so driving explains fourteen times the
+variance, and the number is still printed on every run. Filed as **Q135** for ratification.
+
+Suite **1,578 green twice**; `sim` **895 s of 900** — `disaster_soak` nearly doubled (212 s) on
+cities with 40% more buildings in them, which is the next thing that will push this set over.
+

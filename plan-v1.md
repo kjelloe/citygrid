@@ -428,6 +428,7 @@ by number from the code they create.
 | Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
+| Q135 | The traffic gate's seed tripwire fires on the 70000 map block (−0.202) and not on 90000 (0.024) or 50000 (0.037) | Kjell — ratify the re-aimed criterion, or pay for a second seed block? |
 
 ## What would make us stop and re-plan
 

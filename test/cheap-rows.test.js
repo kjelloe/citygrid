@@ -24,6 +24,7 @@ import { generateWorld } from "../engine/worldgen.js";
 import { catalogue, definition, definitionIds } from "../engine/catalogue.js";
 import { coveragePass, pollutionPass } from "../engine/civic.js";
 import { utilitiesPass } from "../engine/utilities.js";
+import { rules } from "../engine/rules.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { CMD_JOIN, CMD_PLACE_BUILDING, CMD_TICK } from "../engine/commands.js";
 import { FLAG_POWERED, FLAG_WATERED, TICKS_PER_YEAR, ZONE_INDUSTRIAL } from "../engine/constants.js";
@@ -203,3 +204,67 @@ test("the deputy considers all five", () => {
   assert.ok(got.policeHQ + got.fireHQ > 0, `no headquarters: ${JSON.stringify(got)}`);
   assert.ok(got.wasteFacility > 0, `nothing to take the rubbish: ${JSON.stringify(got)}`);
 });
+
+// --- the mayor plants parks and builds police stations (H3; A99, Q133/Q111) --
+
+test("a played city has parks and a police station in it", () => {
+  // The fourth and fifth time this shape has been found: the fire station
+  // before B1a, the school before T6, and now the park and the police station.
+  // Before this slice a 25-year deputy city contained **0 parks** — the 1x1
+  // that carries `landValueBonus`, 60 to build and 2 a month — and **0 police
+  // stations**, so B3b's patrols were correct, tested, and invisible in every
+  // headless city this project has ever measured.
+  //
+  // The reason is not the land value or the crime. It is that every balance
+  // number in this project is measured on a city that has neither.
+  const world = generateWorld(defaultOptions({ seed: 1003, width: 64, height: 64, seats: 1,
+    waterStyle: "river" }));
+  assert.ok(world.ok);
+  const state = world.state;
+  apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Deputy" });
+  const deputy = makeDeputy(1, "expand");
+  for (let tick = 1; tick <= TICKS_PER_YEAR * 25; tick += 1) {
+    apply(state, { type: CMD_TICK });
+    if (tick % 6 === 0) deputyTurn(state, deputy);
+  }
+  const built = (id) => state.buildings.filter((b) => b.def === id).length;
+  assert.ok(built("park") > 0, `no park in twenty-five years (${state.buildings.length} buildings)`);
+  assert.ok(built("policeStation") > 0,
+    `no police station in twenty-five years (${built("fireStation")} fire stations stand)`);
+
+  // And the deputy did not SCATTER them, which is why T6 chose the plaza over
+  // the park in the first place ("a park is 1x1 and the spot search would
+  // scatter forty of them"). The ration itself is asserted continuously below —
+  // at the END it cannot be, because a city that loses buildings to fire and
+  // decay satisfies or breaks a ration it met when it bought them.
+  const city = state.buildings.filter((b) => b.owner === 1).length;
+  assert.ok(built("park") * 10 <= city,
+    `${built("park")} parks in a city of ${city} buildings reads as scatter, not as parks`);
+});
+
+test("the ration holds all the way up, not only at the end", () => {
+  // `(n + 1) * per <= others`, not `n * per < others`: the second is true the
+  // moment a town has one building, which is how T7's clinic bought itself at a
+  // town of one and bankrupted it. Checked at every turn rather than at the
+  // end, because a city that shrinks can satisfy a ration it broke on the way.
+  const world = generateWorld(defaultOptions({ seed: 1003, width: 64, height: 64, seats: 1,
+    waterStyle: "river" }));
+  const state = world.state;
+  apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Deputy" });
+  const deputy = makeDeputy(1, "expand");
+  const cfg = rules().deputy;
+  let worst = "";
+  for (let tick = 1; tick <= TICKS_PER_YEAR * 10; tick += 1) {
+    apply(state, { type: CMD_TICK });
+    if (tick % 6 !== 0) continue;
+    deputyTurn(state, deputy);
+    const mine = state.buildings.filter((b) => b.owner === 1);
+    for (const [id, per] of [["park", cfg.buildingsPerPark], ["policeStation", cfg.buildingsPerPolice]]) {
+      const n = mine.filter((b) => b.def === id).length;
+      const others = mine.length - n;
+      if (n * per > others) worst = `${n} ${id} against ${others} others at tick ${tick}`;
+    }
+  }
+  assert.equal(worst, "", worst);
+});
+

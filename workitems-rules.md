@@ -59,6 +59,21 @@ and nothing at all when ruined. Measured: +33 and +21 in the same town.
 
 **Gate.** `node --test test/docs.test.js`.
 
+## H3 — The mayor plants parks and builds police stations (S) — A99 (Q133, Q111) — **BUILT 2026-10-03** as era 17
+
+*As built, with the three arms the item asked for and two lessons from writing the test rather than
+the rule. The RATION is counted the way the rule counts it — every building the deputy owns that is
+not of the kind being rationed, grown lots included — and the first assertion counted only the
+deputy's own placements, which read "13 parks for 48 buildings" and was the test measuring something
+the rule does not do. And a ration cannot be asserted at the END of a run: a city that loses
+buildings to fire and decay satisfies or breaks a ration it met when it bought them, so the
+invariant is checked at every turn and the end-state assertion is about SCATTER instead (T6's
+original objection to the park).*
+
+*Both new rules use `(n + 1) * per <= others`; the fire station keeps `n * per < others` on purpose,
+because a town wants a fire service from its first house and T7's bankruptcy came from a row that
+cost a hundred a month, not two.*
+
 ## H3 — The mayor plants parks and builds police stations (S) — A99 (Q133, Q111)
 
 **Goal.** Every balance number in this project is measured on a city that has both.

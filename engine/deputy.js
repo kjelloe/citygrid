@@ -397,17 +397,34 @@ function pickPump(state, deputy) {
  */
 function keepCovered(state, deputy) {
   if (deputy.zoned === 0) return false;
-  var per = rules().deputy.buildingsPerStation;
+  var cfg = rules().deputy;
   var stations = 0;
+  var police = 0;
   var others = 0;
   for (var i = 0; i < state.buildings.length; i += 1) {
     var b = state.buildings[i];
     if (b.owner !== deputy.seat) continue;
     if (b.def === "fireStation") stations += 1;
+    else if (b.def === "policeStation") police += 1;
     else others += 1;
   }
-  if (stations * per >= others) return false;
-  return placeUtility(state, deputy, "fireStation");
+  if (stations * cfg.buildingsPerStation < others) {
+    return placeUtility(state, deputy, "fireStation");
+  }
+  // And a POLICE station, on the same rule (H3, A99/Q111). B1a taught the
+  // deputy fire stations because a fire that spreads has to be answerable;
+  // crime has no such pressure, so it has built none in the project's life and
+  // `lanes_dump` read 6 fire stations and 0 police on a played 64x64. B3b's
+  // patrols are correct, tested, and invisible in every city this project has
+  // measured.
+  // `(n + 1) * per <= others`, not `n * per < others` — the second is true the
+  // moment a town has ONE building, which is how T7's clinic bought itself at a
+  // town of one and bankrupted it. The fire station above keeps its own older
+  // form deliberately: a town wants a fire service from the first house.
+  if ((police + 1) * cfg.buildingsPerPolice <= others) {
+    return placeUtility(state, deputy, "policeStation");
+  }
+  return false;
 }
 
 /** A school for every `deputy.buildingsPerSchool` buildings, and somewhere to
@@ -428,16 +445,25 @@ function keepAmused(state, deputy) {
   var cfg = rules().deputy;
   var schools = 0;
   var plazas = 0;
+  var parks = 0;
   var others = 0;
   for (var i = 0; i < state.buildings.length; i += 1) {
     var b = state.buildings[i];
     if (b.owner !== deputy.seat) continue;
     if (b.def === "school") schools += 1;
     else if (b.def === "plaza") plazas += 1;
+    else if (b.def === "park") parks += 1;
     else others += 1;
   }
   if (schools * cfg.buildingsPerSchool < others) return placeUtility(state, deputy, "school");
   if (plazas * cfg.buildingsPerPlaza < others) return placeUtility(state, deputy, "plaza");
+  // And a PARK, which is the cheapest thing in the catalogue and the smallest
+  // thing carrying `landValueBonus` (H3, A99/Q133). T6 chose the plaza over it
+  // because a 1x1 scatters — true, and it is why the park is RATIONED at one
+  // per `buildingsPerPark` rather than built whenever there is room. G3 made
+  // the bonus a rule and then measured that no headless city had a single park
+  // in it to carry one.
+  if ((parks + 1) * cfg.buildingsPerPark <= others) return placeUtility(state, deputy, "park");
   return false;
 }
 
