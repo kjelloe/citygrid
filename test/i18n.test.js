@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
+import { RESULT } from "../shared/protocol.js";
 
 const dir = join(repoRoot, "data", "i18n");
 const locales = Object.fromEntries(
@@ -19,6 +20,36 @@ const locales = Object.fromEntries(
 );
 
 const names = Object.keys(locales);
+
+// --- every refusal the reducer can give has words for it (P98) ---------------
+
+test("every RESULT code has a string in every catalogue", () => {
+  // `t()` returns its own argument on a miss, so a refusal with no string shows
+  // the player the literal `result.tooSteep` — and `setResult` in `hud.js`
+  // renders whatever the reducer answered, whether or not anybody wrote words
+  // for it. H6 added `TOO_STEEP` and nothing in the suite would have noticed if
+  // its two strings had been forgotten; the comment in `hud.js` still says
+  // "the seven result.* strings", and there are ten.
+  for (const code of Object.values(RESULT)) {
+    for (const [name, catalogue] of Object.entries(locales)) {
+      assert.ok(Object.hasOwn(catalogue, `result.${code}`),
+        `${name} has no words for RESULT ${code} — a player refused for this reason reads "result.${code}"`);
+    }
+  }
+});
+
+test("every result.* string is a code the reducer can actually give", () => {
+  // The other direction: a string for a result that no longer exists is a
+  // translation somebody paid for and nobody will ever see.
+  const codes = new Set(Object.values(RESULT));
+  for (const [name, catalogue] of Object.entries(locales)) {
+    const orphans = Object.keys(catalogue)
+      .filter((key) => key.startsWith("result."))
+      .map((key) => key.slice("result.".length))
+      .filter((code) => !codes.has(code));
+    assert.deepEqual(orphans, [], `${name} has words for results the reducer cannot give: ${orphans.join(", ")}`);
+  }
+});
 
 test("both launch locales exist", () => {
   assert.ok(names.includes("en"), "English catalogue missing");

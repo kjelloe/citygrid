@@ -67,6 +67,13 @@ argument on a miss, so a complete catalogue can still be English. The check that
 the same question applies to any data file outside the catalogue (`data/names.json`'s shop names
 were outside it and nothing had ever looked at them). M4.
 
+**A new result code is three files, and nothing used to check two of them.** `RESULT` is in
+`shared/protocol.js`, its words are in `data/i18n/en.json` and `no.json`, and `t()` returns its own
+argument on a miss — so a forgotten string shows the player `result.tooSteep` and no test said so
+until H6 added one. `test/i18n.test.js` now checks both directions (every code has words, every
+`result.*` string is a code the reducer can still give). The third place is the PREVIEW: a refusal
+the ghost cannot predict only speaks after the click (Q136).
+
 **Does a data file carry prose where it should carry an i18n key?** `t()` returns its own
   argument on a miss, so English ships as its own translation and nothing goes red. The check is a
   test that refuses the raw field, not a test that the key resolves.

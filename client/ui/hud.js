@@ -773,10 +773,13 @@ export function createHud(root, {
 
   /** What the stroke would do, or why it will not.
    *
-   * The seven `result.*` strings have been in both catalogues since the first
-   * commit and nothing ever rendered one: a refused build showed the player
-   * "0 tiles" and no reason, which is the most common feedback moment in the
-   * game saying nothing at all. */
+   * The `result.*` strings were in both catalogues from the first commit and
+   * nothing ever rendered one: a refused build showed the player "0 tiles" and
+   * no reason, which is the most common feedback moment in the game saying
+   * nothing at all. There were seven then and there are eleven now (H6 added
+   * `tooSteep`); `test/i18n.test.js` checks the two lists against each other,
+   * because `t()` returns its own argument on a miss and a forgotten string
+   * shows the player a key. */
   function setPreview(preview) {
     if (!preview) { readout.textContent = ""; delete readout.dataset.result; return; }
     const cost = preview.cost === undefined ? "" : ` · ${formatMoney(-preview.cost)}`;
