@@ -253,18 +253,30 @@ test("the ration holds all the way up, not only at the end", () => {
   apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Deputy" });
   const deputy = makeDeputy(1, "expand");
   const cfg = rules().deputy;
+  // At the moment of the DECISION, which is what the rule is. Asserting the
+  // ration at every turn instead reads "5 police stations against 199 others"
+  // on a city that had 200 when it bought the fifth and then lost a building to
+  // a fire — the deputy obeyed the rule and the city moved under it.
+  const kinds = [["park", cfg.buildingsPerPark], ["policeStation", cfg.buildingsPerPolice]];
+  const count = (id) => state.buildings.filter((b) => b.owner === 1 && b.def === id).length;
+  const others = (id) => state.buildings.filter((b) => b.owner === 1 && b.def !== id).length;
+  let bought = 0;
   let worst = "";
   for (let tick = 1; tick <= TICKS_PER_YEAR * 10; tick += 1) {
     apply(state, { type: CMD_TICK });
     if (tick % 6 !== 0) continue;
+    const before = kinds.map(([id]) => [count(id), others(id)]);
     deputyTurn(state, deputy);
-    const mine = state.buildings.filter((b) => b.owner === 1);
-    for (const [id, per] of [["park", cfg.buildingsPerPark], ["policeStation", cfg.buildingsPerPolice]]) {
-      const n = mine.filter((b) => b.def === id).length;
-      const others = mine.length - n;
-      if (n * per > others) worst = `${n} ${id} against ${others} others at tick ${tick}`;
-    }
+    kinds.forEach(([id, per], k) => {
+      if (count(id) <= before[k][0]) return;
+      bought += 1;
+      if ((before[k][0] + 1) * per > before[k][1]) {
+        worst = `bought ${id} number ${before[k][0] + 1} with ${before[k][1]} other buildings standing, `
+          + `one per ${per} asked`;
+      }
+    });
   }
+  assert.ok(bought > 0, "the deputy bought neither in ten years, so this proves nothing");
   assert.equal(worst, "", worst);
 });
 

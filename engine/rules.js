@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 17,
+  era: 18,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,

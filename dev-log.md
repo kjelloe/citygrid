@@ -8811,3 +8811,49 @@ variance, and the number is still printed on every run. Filed as **Q135** for ra
 Suite **1,578 green twice**; `sim` **895 s of 900** — `disaster_soak` nearly doubled (212 s) on
 cities with 40% more buildings in them, which is the next thing that will push this set over.
 
+## era 18 — the deputy dezones what it paves (2026-10-03) — H4, A97 (Q131)
+
+**591 of 1,688 zoned tiles on seed 1003 carried a road**, 639 of 1,646 on an eight-seed mean — two in
+five. The deputy crosses its own zoned land on purpose (B9 measured that refusing to halves the
+sweep's population, because crossing one is how blocks join), and since era 15 a lot cannot grow on a
+road. So two fifths of every city's zoning had been paid for and could never be used, and the zoning
+overlay showed a city that would never build.
+
+### The remainder was the finding
+
+Dezoning in `buildBlock` alone took seed 1003 from 591 to **one**. One is not a rounding error — it
+is a caller nobody thought of. The rail station's access road and the ferry terminal's are
+`connectToNetwork` runs, not `buildBlock` ones, so the rule lives in `dezoneUnder()` and every road
+path calls it. Zero on every seed afterwards.
+
+`runCarrier()` went in the same commit: **no caller anywhere**, superseded by `connectToNetwork`'s
+search, and it called `apply()` directly rather than `issue()` — so had anything still used it, it
+would not have counted its own refusals. The omissions sweep on the slice you just wrote, again.
+
+### Measured — 200 games a configuration
+
+| configuration | era 17 | era 18 | land value | crime |
+|---|---|---|---|---|
+| relaxed-64 | 1,766 | 1,842 | 137 → 137 | 1 → 1 |
+| steady-64 | 1,589 | 1,571 | 137 → 136 | 1 → 1 |
+| demanding-64 | 1,518 | 1,551 | 135 → 135 | 1 → 1 |
+| steady-64-nodisasters | 1,565 | 1,569 | 138 → 138 | 1 → 1 |
+
+Within noise in every column, which is **the prediction the work item asked to be written down before
+the run**: the tiles were already dead, so removing their zoning cannot change what grows. A
+prediction a sweep can refuse is worth more than a result nobody expected.
+
+### What the test learned
+
+Two cuts of the ration test were wrong before the rule was, and both for the same reason — a city
+moves under a rule:
+
+- asserting the ration at **every turn** read "5 police stations against 199 others" on a city that
+  had 200 when it bought the fifth and then lost a building to a fire;
+- asserting it at the **end** of a run is worse, because fire and decay make the end state arbitrary.
+
+The invariant is at the moment of the DECISION: when the count goes up, the city had enough buildings
+for it. That is what the rule says, and it is the only form that survives a city that burns.
+
+Suite **1,578 green twice**; `sim` **801 s of 900**.
+

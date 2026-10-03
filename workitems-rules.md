@@ -89,6 +89,15 @@ the town is big enough to want it. **Measure the before**: zero parks and zero p
 two are attributed separately. Expect crime to fall (police coverage, and parks through land value,
 which is §11.3's path) and land value to rise.
 
+## H4 — The deputy dezones what it paves (S) — A97 (Q131) — **BUILT 2026-10-03** as era 18
+
+*As built. The thing worth carrying forward is the REMAINDER: dezoning only in `buildBlock` took
+seed 1003 from 591 zoned-and-paved tiles to **one**, and one is not a rounding error — it is a
+caller nobody thought of. The rail station's access road and the ferry terminal's are
+`connectToNetwork` runs, so the rule lives in a helper every road path calls. The dead `runCarrier()`
+went in the same commit: no caller anywhere, superseded by the search, and it called `apply()`
+directly rather than `issue()`, so it would not have counted its own refusals.*
+
 ## H4 — The deputy dezones what it paves (S) — A97 (Q131)
 
 **Goal.** 639 of 1,646 zoned tiles a city stop being zoning that can never develop.

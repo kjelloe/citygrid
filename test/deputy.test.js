@@ -19,7 +19,7 @@ import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../eng
 import { rules } from "../engine/rules.js";
 import { gateStatus, gateTerms, railReach } from "../engine/gates.js";
 import { waterBodies, bodyAt } from "../engine/terrain.js";
-import { isAvenue, NET_PRESENT } from "../engine/network.js";
+import { isAvenue, hasNet, NET_PRESENT } from "../engine/network.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
@@ -413,3 +413,31 @@ test("every building the deputy builds ends up on a live grid", () => {
     }
   }
 });
+
+// --- the deputy dezones what it paves (slice H4; A97, Q131) ------------------
+
+test("no tile ends up carrying both a road and a zone", () => {
+  // Q131, measured: **639 of 1,646 zoned tiles a city — 39% — carried a road.**
+  // The deputy zones the strips beside a new street and then lays later streets
+  // across its own zoned land, deliberately: B9's comment records that refusing
+  // to cross a zoned strip cut the sweep's population by half, because crossing
+  // one is how blocks join.
+  //
+  // Before G1 those tiles grew houses on the carriageway. Since G1 they cannot
+  // develop at all, so they are zoning that was paid for and can never be used —
+  // and the zoning overlay shows a city two fifths of which will never build.
+  // The deputy dezones what it paves; crossing stays legal.
+  for (const seed of [1003, 404]) {
+    const { state } = play(seed, 64, 20);
+    let zoned = 0;
+    let paved = 0;
+    for (let i = 0; i < state.width * state.height; i += 1) {
+      if (state.tiles.zone[i] === ZONE_NONE) continue;
+      zoned += 1;
+      if (hasNet(state.tiles.road[i])) paved += 1;
+    }
+    assert.ok(zoned > 200, `seed ${seed} zoned only ${zoned} tiles, so this proves nothing`);
+    assert.equal(paved, 0, `seed ${seed}: ${paved} of ${zoned} zoned tiles carry a road`);
+  }
+});
+

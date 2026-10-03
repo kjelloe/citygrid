@@ -10,7 +10,10 @@
 // come back.
 
 import { apply } from "./reducer.js";
-import { CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_PLACE_BUILDING, CMD_BULLDOZE } from "./commands.js";
+import {
+  CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_DEZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL,
+  CMD_PLACE_BUILDING, CMD_BULLDOZE,
+} from "./commands.js";
 import { definition } from "./catalogue.js";
 import { isUnlocked } from "./unlock.js";
 import { rules } from "./rules.js";
@@ -210,6 +213,29 @@ function townReach(state, seat, reach) {
   return { dist: dist, lots: lots, queue: queue, fringe: fringe, fringeCount: fringeCount };
 }
 
+/** Zoning under a street the deputy has just laid stops being zoning (H4, A97).
+ *
+ * The deputy crosses its own zoned land on purpose — B9 measured that refusing
+ * to cross a zoned strip cut the sweep's population by half, because crossing
+ * one is how blocks join — and since G1 a lot cannot grow on a road. So those
+ * tiles were zoning that had been paid for and could never be used: **639 of
+ * 1,646 a city, two in five.** Dezoning them changes no growth and tells the
+ * truth in the overlay.
+ *
+ * Every path that lays road comes through here, not just `buildBlock`: the rail
+ * station's access road and the ferry terminal's are `connectToNetwork` runs,
+ * and leaving them out left exactly one zoned-and-paved tile a city — which is
+ * the kind of remainder that reads as a rounding error and is a missed caller.
+ */
+function dezoneUnder(state, deputy, cells) {
+  var zoned = [];
+  for (var i = 0; i < cells.length; i += 1) {
+    if (state.tiles.zone[cells[i]] !== ZONE_NONE) zoned.push(cells[i]);
+  }
+  if (zoned.length === 0) return;
+  issue(state, deputy, { type: CMD_DEZONE, actor: deputy.seat, runs: encodeRuns(zoned) });
+}
+
 /** Lays a road segment and zones the strip on both sides of it — the pattern a
  * person actually uses, and the reason growth follows roads rather than
  * appearing in fields. */
@@ -245,6 +271,16 @@ function buildBlock(state, deputy, town) {
     return false;
   }
   deputy.built += 1;
+
+  // What this street was just laid across stops being zoning (H4, A97).
+  //
+  // The deputy crosses its own zoned land on purpose — B9 measured that refusing
+  // to cross a zoned strip cut the sweep's population by half, because crossing
+  // one is how blocks join — and since G1 a lot cannot grow on a road, so those
+  // tiles were zoning that had been paid for and could never be used: **639 of
+  // 1,646 a city, two in five**. Dezoning them changes no growth and tells the
+  // truth in the overlay.
+  dezoneUnder(state, deputy, roadCells);
 
   // Utilities follow the street, and then join the grid. Laying them per
   // block without connecting the blocks produced a map full of separate
@@ -966,6 +1002,7 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
   }
   if (cells.length === 0) return;
   issue(state, deputy, { type: command, actor: deputy.seat, runs: encodeRuns(cells) });
+  if (command === CMD_PLACE_ROAD) dezoneUnder(state, deputy, cells);
 }
 
 /** To a LIVE piece of grid, for every building (G2, A86, Q117).
@@ -983,31 +1020,6 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
 function connectToHub(state, deputy, from) {
   connectToNetwork(state, deputy, from, "wire", CMD_PLACE_WIRE, FLAG_POWERED);
   connectToNetwork(state, deputy, from, "pipe", CMD_PLACE_PIPE, FLAG_WATERED);
-}
-
-/** Runs a carrier line from a building toward the built-up part of the city. */
-function runCarrier(state, deputy, from, command, layer) {
-  var x = xOf(state.width, from);
-  var y = yOf(state.width, from);
-  var cells = [];
-  var steps = 0;
-  while (steps < 40) {
-    var dx = deputy.cursorX > x ? 1 : deputy.cursorX < x ? -1 : 0;
-    var dy = deputy.cursorY > y ? 1 : deputy.cursorY < y ? -1 : 0;
-    if (dx === 0 && dy === 0) break;
-    // One axis at a time, so the line is readable rather than a diagonal
-    // staircase.
-    if (dx !== 0) x += dx;
-    else y += dy;
-    if (!inBounds(state.width, state.height, x, y)) break;
-    var index = tileAt(state.width, x, y);
-    if (state.tiles.buildingId[index] !== 0) break;
-    cells.push(index);
-    steps += 1;
-  }
-  if (cells.length === 0) return;
-  var result = apply(state, { type: command, actor: deputy.seat, runs: encodeRuns(cells) });
-  if (result.result !== RESULT.OK) deputy.refusals += 1;
 }
 
 /** One turn of the deputy. Called on a cadence by the driver, not by the
