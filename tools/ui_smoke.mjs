@@ -102,7 +102,7 @@ async function buildCity(page) {
     const wire = [];
     const pipe = [];
     for (const spine of [13, 23]) {
-      for (let y = row - 5; y <= row + 7; y += 1) {
+      for (let y = (spine === 13 ? row - 3 : row - 5); y <= row + 7; y += 1) {
         wire.push(y * W + spine, 1);
         pipe.push(y * W + spine, 1);
       }
@@ -113,8 +113,8 @@ async function buildCity(page) {
     // reported components: 2, served: 1, starved: 1 — which is worth reading
     // before blaming the reach.
     for (let x = 13; x <= 23; x += 1) {
-      wire.push((row - 5) * W + x, 1);
-      pipe.push((row - 5) * W + x, 1);
+      wire.push((row - 3) * W + x, 1);
+      pipe.push((row - 3) * W + x, 1);
     }
     apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
     apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });

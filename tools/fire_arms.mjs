@@ -1,5 +1,9 @@
 // Q105, measured: is a demanding city smaller because of FIRE, or because of
-// the coupling A82 removed?
+// the coupling A82 removed? And Q121, agreed at P93: WHY is a city that burns
+// bigger — which of the two candidates is it, fresh ground to grow into or the
+// vacancy term? The census is the same two arms with `developed` and
+// `abandoned` counted per city, which is one more field and the only way to
+// tell a city that grows MORE from a city that merely loses less.
 //
 // B1a (A62) made a fire nobody fights spread four times as readily while
 // consuming its own house more slowly, so it outlives what it is standing on.
@@ -51,17 +55,25 @@ function play(config, seed) {
   const deputy = makeDeputy(1, "expand");
   let burned = 0;
   let spread = 0;
+  // Q121's census: the churn, not just the outcome. A city that burns ends
+  // bigger, and "it grew more" and "it lost less" are different mechanisms
+  // with the same population column.
+  let developed = 0;
+  let abandoned = 0;
   for (let tick = 1; tick <= YEARS * TICKS_PER_YEAR; tick += 1) {
     const outcome = apply(state, { type: CMD_TICK });
     for (const event of outcome.events ?? []) {
       if (event.kind === "fireStarted") burned += 1;
       if (event.kind === "fireSpread") spread += 1;
+      if (event.kind === "developed") developed += 1;
+      if (event.kind === "abandoned") abandoned += 1;
     }
     if (tick % 6 === 0) deputyTurn(state, deputy);
   }
   let ruined = 0;
   for (let i = 0; i < state.tiles.flags.length; i += 1) if ((state.tiles.flags[i] & 8) !== 0) ruined += 1;
-  return { population: state.population, burned, spread, ruined,
+  return { population: state.population, burned, spread, ruined, developed, abandoned,
+    buildings: state.buildings.filter((b) => b.zone !== 0).length,
     stations: state.buildings.filter((b) => b.def === "fireStation").length };
 }
 
@@ -94,6 +106,9 @@ for (const arm of ARMS) {
     let spread = 0;
     let ruined = 0;
     let stations = 0;
+    let developed = 0;
+    let abandoned = 0;
+    let standing = 0;
     let live = 0;
     for (let game = 0; game < GAMES; game += 1) {
       const row = play(config, 70000 + game);
@@ -104,13 +119,22 @@ for (const arm of ARMS) {
       spread += row.spread;
       ruined += row.ruined;
       stations += row.stations;
+      developed += row.developed;
+      abandoned += row.abandoned;
+      standing += row.buildings;
     }
     const q = quantiles(pops);
-    rows[`${config.name} | ${arm.name}`] = q;
+    rows[`${config.name} | ${arm.name}`] = {
+      ...q,
+      developed: developed / live, abandoned: abandoned / live, standing: standing / live,
+    };
     console.log(`${config.name.padEnd(14)} ${arm.name.padEnd(26)} `
       + `p25 ${String(q.p25).padStart(5)}  median ${String(q.median).padStart(5)}  p75 ${String(q.p75).padStart(5)}   `
       + `fires ${(burned / live).toFixed(1)}/city  spread ${(spread / live).toFixed(1)}  `
       + `ruins ${(ruined / live).toFixed(1)}  stations ${(stations / live).toFixed(1)}`);
+    console.log(`${"".padEnd(14)} ${"".padEnd(26)} `
+      + `developed ${(developed / live).toFixed(0)}/city  abandoned ${(abandoned / live).toFixed(0)}  `
+      + `standing at the end ${(standing / live).toFixed(0)}`);
   }
 }
 fire.unfoughtSpread = shipped.spread;
@@ -123,4 +147,12 @@ for (const config of CONFIGS) {
   const delta = ((on.median - off.median) * 100) / off.median;
   console.log(`${config.name}: B1a's fire costs the median city ${(-delta).toFixed(1)}% `
     + `(${off.median} without it, ${on.median} with it)`);
+  // Q121: which mechanism. More developments with the same abandonments is
+  // fresh ground to grow into (clearRuins); the same developments with fewer
+  // abandonments would be the vacancy term instead.
+  console.log(`  census: developed ${off.developed.toFixed(0)} -> ${on.developed.toFixed(0)}`
+    + ` (${(100 * (on.developed - off.developed) / off.developed).toFixed(1)}%),`
+    + ` abandoned ${off.abandoned.toFixed(0)} -> ${on.abandoned.toFixed(0)}`
+    + ` (${(100 * (on.abandoned - off.abandoned) / off.abandoned).toFixed(1)}%),`
+    + ` standing ${off.standing.toFixed(0)} -> ${on.standing.toFixed(0)}`);
 }

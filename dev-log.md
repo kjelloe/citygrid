@@ -8647,3 +8647,50 @@ picture at that zoom, and `walkthrough` is the instrument, not the camera.
 
 Suite **1,574 green twice**.
 
+## P96 — the full gate set after four eras, and what only it could see (2026-10-03)
+
+Four eras landed in one night (G4, G2, G1, G3) and each ran its own gate — `sim` for the rules,
+`render` for S11. `gates.mjs all` is 32 gates and had not been run since. It found **four red**, all
+of them the same defect, and all of them G1's:
+
+```
+play_smoke   the city grows where it was zoned   2 → 2 buildings, pop 0,
+             {"road":"ok","zone":"ok","plant":"ok","pump":"ok","wire":"needsBulldoze","pipe":"ok"}
+save_smoke   the fixture city is worth saving    2 buildings, pop 0, tick 401
+ui_smoke     (the same scripted city)
+foliage_shots  nothing to aim the park shot at: park:ok@5,33
+```
+
+**Every scripted city in this repo lays its carriers through its own power plant.** It was free
+before G1 and it is `needsBulldoze` now, and because a run is a transaction the whole line is
+refused — so the city has no power, nothing develops, and the gate reports a city of two buildings.
+Four tools had the same recipe copied into them (`play_smoke`, `save_smoke`, `ui_smoke`,
+`mvp_acceptance`) and the `founding` fixture had it too, which this round had already fixed without
+realising it was a family.
+
+The park shot is the same rule from the other side: `tools/shoot.html` lays its demonstration road
+with **one command across the whole map**, and by era 15 the deputy had put a single house on that
+row — so the road was refused entirely, seven tiles of the deputy's own grid were all that remained
+on it, and the park was placed `ok` beside no street at all. The harness lays each clear stretch as
+its own run now, the way the saturated fixture lays its railway.
+
+**The lesson is about transactions, not about wire.** A rule that refuses something new breaks every
+scripted city that did the old thing, and a scripted city is exactly what a gate is. The slice's own
+gate cannot see it, because the slice's own gate is the sweep — which plays with a deputy and not
+with a script.
+
+### Measured
+
+`gates.mjs all`: **2,467 s of a 2,100 s budget**, 28 of 32 green on the first pass and 32 of 32
+after the four fixes. The overrun is `sim_sweep` (513 s) and `budget_gate` (277 s) in a set that also
+re-runs everything else; it is a finding for the next round rather than something to raise the
+budget over (M2's rule).
+
+`sim_sweep` inside the set reproduced era 16 to the digit (relaxed 1,788, steady 1,529), which is the
+determinism contract doing its job across a worktree, four commits and a day of edits.
+
+Also in this round: `tools/fire_arms.mjs` counts `developed` and `abandoned` per city in both arms,
+which is **Q121's agreed action** (P93) — the census that says whether a city that burns is bigger
+because it grows more or because it loses less. The instrument is in; the 800-game run is not,
+because it wants the machine to itself.
+

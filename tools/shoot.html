@@ -119,12 +119,28 @@ if (placeList.length > 0) {
   const W = state.width;
   const row = Math.round(W / 2);
   state.players[0].treasury = 9000000;
-  apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: [row * W + 3, W - 6] });
+  // One command per CLEAR stretch, not one across the whole map. Since G1 a
+  // network refuses a building and a run that crosses one is refused whole — so
+  // a single house the deputy had put on the row refused the entire road, and
+  // the park was photographed beside a field with "ok" in the log (the shot
+  // reported `park:ok@5,33` and the aiming step found no street to stand on).
+  const laneRuns = (type, y) => {
+    let start = -1;
+    for (let x = 3; x <= W - 3; x += 1) {
+      const clear = x < W - 3 && state.tiles.buildingId[y * W + x] === 0;
+      if (clear && start < 0) start = x;
+      if (!clear && start >= 0) {
+        apply(state, { type, actor: 1, runs: [y * W + start, x - start] });
+        start = -1;
+      }
+    }
+  };
+  laneRuns(CMD_PLACE_ROAD, row);
   // A LINE two rows north of the road, so a definition with `needsRail` has
   // something to stand on. The rail station has never had a picture: the
   // harness laid a road and nothing else, so `placeBuilding` answered `invalid`
   // every time and printed it where nobody looked (P94).
-  apply(state, { type: CMD_PLACE_RAIL, actor: 1, runs: [(row - 3) * W + 3, W - 6] });
+  laneRuns(CMD_PLACE_RAIL, row - 3);
   let at = 5;
   for (const def of placeList) {
     const d = definition(def);

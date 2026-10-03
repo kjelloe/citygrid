@@ -1163,12 +1163,14 @@ try {
     results.pump = apply(state, {
       type: CMD_PLACE_BUILDING, actor: 1, def: "groundwaterPump", x: 16, y: row - 5,
     }).result;
+    // The wire starts BELOW the plant, never inside it (G1, ruling 046): the
+    // plant is 3x3 at (10, row-5), so col 10 is inside it for rows row-5..row-3
+    // and a run that crosses a building is refused whole. The first run of this
+    // gate after G1 reported `wire: needsBulldoze` and a city of two buildings.
     const wire = [];
     const pipe = [];
-    for (let y = row - 4; y <= row + 3; y += 1) {
-      wire.push(y * state.width + 10, 1);
-      pipe.push(y * state.width + 16, 1);
-    }
+    for (let y = row - 2; y <= row + 3; y += 1) wire.push(y * state.width + 10, 1);
+    for (let y = row - 4; y <= row + 3; y += 1) pipe.push(y * state.width + 16, 1);
     results.wire = apply(state, { type: CMD_PLACE_WIRE, actor: 1, runs: wire }).result;
     results.pipe = apply(state, { type: CMD_PLACE_PIPE, actor: 1, runs: pipe }).result;
 

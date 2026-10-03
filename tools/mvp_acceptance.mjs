@@ -102,10 +102,16 @@ const RUN_CITY = async (row) => {
   const W = state.width;
   const wire = [];
   const pipe = [];
+  // Beside the plant, never through it (G1, ruling 046): the coal plant is 3x3
+  // at (11, row-6), so col 13 is inside it for rows row-6..row-4 — and since a
+  // network refuses a building, a run that crosses one is refused WHOLE. That
+  // left this city with no power at all: 2 buildings and nobody in it, which
+  // only `gates.mjs all` could see.
   for (const spine of [13, 23]) {
-    for (let y = row - 5; y <= row + 7; y += 1) { wire.push(y * W + spine, 1); pipe.push(y * W + spine, 1); }
+    const from = spine === 13 ? row - 3 : row - 5;
+    for (let y = from; y <= row + 7; y += 1) { wire.push(y * W + spine, 1); pipe.push(y * W + spine, 1); }
   }
-  for (let x = 13; x <= 23; x += 1) { wire.push((row - 5) * W + x, 1); pipe.push((row - 5) * W + x, 1); }
+  for (let x = 13; x <= 23; x += 1) { wire.push((row - 3) * W + x, 1); pipe.push((row - 3) * W + x, 1); }
   apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
   apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });
 
