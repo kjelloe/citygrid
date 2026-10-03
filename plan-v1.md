@@ -447,6 +447,7 @@ by number from the code they create.
 | Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
 | Q129 | The quest ladder wants 2,000 for rank 3 and 5,000 for rank 4; no era since 11 has had a median city clear either | Kjell — lower the thresholds, lower `decayOneIn` to 2, or say rank 3 is for good players? |
 | Q130 | A grid a disaster cuts in two is never repaired: the deputy connects a building when it builds it and never looks again | Kjell — is the grid the deputy's to repair, or does a cut grid stay cut? |
+| Q131 | 39% of zoned tiles carry a road — the deputy paves across its own zoned land on purpose (B9) and since G1 those tiles are dead zoning | Kjell — dezone what it paves, or leave it as the honest record? |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

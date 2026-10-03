@@ -8431,3 +8431,73 @@ runs to reach a live component instead of short runs to the nearest stub.
   the budget stands. Two 200-game sweeps in parallel are not two independent measurements of
   anything, and the one being timed is the one that must run alone.
 
+## era 15 — a network refuses a building, and a lot refuses a street (2026-10-03) — G1, A85 (Q116)
+
+A85 asked for one rule across four networks: `placeNetwork` refuses a tile carrying a `buildingId`
+with `RESULT.NEEDS_BULLDOZE`, which rail has done since A66 and road, wire and pipe never had. Four
+lines, one flag deleted, and it broke the deputy — which is how the real defect surfaced.
+
+### The avenue that stopped happening
+
+The first suite run after the refusal: **"0 avenue tiles in a city of 2166"**, and the G2 test from
+the commit before went red with two buildings dark. A probe printing every refusal said *66 refusals
+in one city, all of them `avenue`* — and the refused tile was a residential lot at (33,32) with a
+road on the same tile.
+
+The avenue is an UPGRADE of the busiest street (T1a). That street had houses standing on it.
+
+`lotFree` — `placeBuilding`'s counterpart for a lot nobody placed — checks zone, buildingId, owner
+and terrain, and has never read the road layer. `placeBuilding` has refused `hasNet(road)` since
+slice 1.3. So a block of zoning that covered a street grew lots on the carriageway, and **nothing in
+the project could see it**: the lot had road access by definition, the tile hashed perfectly well,
+the suite was green, and the renderer drew a house and a carriageway on one tile without complaint
+(`client/world/lots.js` builds a lot for every building, corridors come from the road layer, and
+neither consults the other).
+
+It was not rare. **90.9 of 295 buildings a city** — just under a third — on an eight-seed mean.
+
+### Three arms, because it is two rules
+
+| arm | lots on a street | avenue tiles | refusals | population |
+|---|---|---|---|---|
+| era 14 | 90.9 | 8.0 | 0 | 2,269 |
+| the network refusal alone | 74.3 | 7.3 | **169.9** | 2,072 |
+| both (era 15) | **0.0** | 10.0 | 0 | 1,758 |
+
+The refusal alone is not shippable: 170 refused commands a city and the arterial never built. The
+pair is one act, and ruling 046 records it.
+
+### Measured — 200 games a configuration
+
+| configuration | era 14 | era 15 | buildings (median) |
+|---|---|---|---|
+| relaxed-64 | 2,323 | **1,769** (−24%) | 345 → 260 |
+| steady-64 | 2,132 | **1,660** (−22%) | 316 → 239 |
+| demanding-64 | 1,629 | **1,515** (−7%) | 268 → 207 |
+| steady-64-nodisasters | 1,891 | **1,534** (−19%) | 290 → 238 |
+
+The eight-seed arms predicted −23% and the sweep says −22%, which is the one time this project's
+small-sample number has agreed with its large one. Land value is unmoved (123 → 122) and crime
+unmoved or one lower; no configuration ends with a dead city except demanding's two.
+
+**A quarter of the population was standing in the road.** That is the correct reading, not a
+regression: those lots were never legal, every sweep number in the project up to era 14 included
+them, and the ones from before this commit are void rather than roughly comparable.
+
+### What else it turned up
+
+- **The `founding` fixture's wire ran straight through its coal plant** — a 24-tile run across row 8
+  with a 3x3 plant at (8,8) — so the fixture was a city that could not be built. Rerouted beside the
+  plant, the route a player must now take. The **first** reroute split the carriers into two
+  components (the plant on one, the pump on the other) and the fixture went to population 0; what
+  caught it was the fixture's `expect` block, not a hash. Re-pinned with `--events-changed` and that
+  reason.
+- **Q131, measured rather than guessed.** My first draft of the question said the deputy zones its
+  own streets. It does not — `zoneBlock` skips a tile carrying a road. It lays LATER streets across
+  its own zoned land, deliberately (B9's comment: refusing to cross a zoned strip halved the sweep's
+  population, because crossing one is how blocks join). **639 of 1,646 zoned tiles a city — 39% —
+  carry a road**, and since this commit they can never develop. Read the code before filing the
+  question.
+
+Suite **1,565 green twice**; `sim` **756 s of 900**. One fixture re-pinned, 7 of its 15 hashes moved.
+

@@ -13,7 +13,10 @@ import { apply } from "../engine/reducer.js";
 import "../engine/build-commands.js";
 import { price, undoLast, resetUndoHistory } from "../engine/build-commands.js";
 import { hasNet, maskOf, NET_PRESENT } from "../engine/network.js";
-import { CMD_JOIN, CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_BULLDOZE } from "../engine/commands.js";
+import {
+  CMD_JOIN, CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_PLACE_BUILDING,
+  CMD_BULLDOZE,
+} from "../engine/commands.js";
 import { knownCommands } from "../engine/reducer.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
@@ -369,4 +372,58 @@ test("permission matrix: no command ever mutates a tile the actor does not own",
     apply(state, { type, actor: 1, runs: encodeRuns([theirs]) });
   }
   assert.equal(hashState(state), snapshot);
+});
+
+// --- a network refuses a building (slice G1; A85, Q116) ----------------------
+
+test("a road, a wire and a pipe over a building are each refused, and change nothing", () => {
+  // One rule across four networks instead of three-and-a-half. Rail has
+  // refused a building since A66 — `clearOfBuildings` on its spec alone — and
+  // road, wire and pipe have been laid straight across one since slice 1.3. A
+  // line through a building is not a level crossing, whichever line it is.
+  //
+  // The park is 1x1 and cheap, which keeps the assertion about the refusal
+  // rather than about the money.
+  const state = world();
+  state.players[0].treasury = 100000;
+  assert.equal(apply(state, { type: CMD_PLACE_BUILDING, actor: 1, x: 4, y: 4, def: "park" }).result,
+    RESULT.OK, "the park was not placed, so this test proves nothing");
+  const before = hashState(state);
+
+  for (const type of [CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL]) {
+    assert.equal(apply(state, { type, actor: 1, runs: encodeRuns([at(4, 4)]) }).result,
+      RESULT.NEEDS_BULLDOZE, `${type} was laid through a building`);
+  }
+  // Not "the tile is clear" — the whole state, because a refusal that charged
+  // for the run or claimed the ground would pass a per-tile check.
+  assert.equal(hashState(state), before, "a refused network edit changed the state");
+});
+
+test("a run that crosses one building is refused whole", () => {
+  // The transaction rule (slice 1.3) applied to the new refusal: an edit that
+  // fails at the last tile leaves the first tiles alone. A drag-paint across a
+  // city is one command, so the alternative is a line with a hole in it and a
+  // player who paid for both halves.
+  const state = world();
+  state.players[0].treasury = 100000;
+  apply(state, { type: CMD_PLACE_BUILDING, actor: 1, x: 8, y: 8, def: "park" });
+  const before = hashState(state);
+  const run = [at(6, 8), at(7, 8), at(8, 8), at(9, 8)];
+
+  assert.equal(apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns(run) }).result,
+    RESULT.NEEDS_BULLDOZE);
+  assert.equal(hashState(state), before, "the tiles before the building were kept");
+  assert.ok(!hasNet(state.tiles.road[at(6, 8)]), "the first tile of a refused run was laid");
+});
+
+test("the refusal names the ground, not the owner", () => {
+  // A building of the actor's OWN is still a building. The old behaviour was
+  // not a permission rule — it let a player bury their own park under a road —
+  // so the result code must be the one that tells the player what to do about
+  // it, and `canConnectAcross` must not get there first.
+  const state = world({ openBorders: false });
+  state.players[1].treasury = 100000;
+  apply(state, { type: CMD_PLACE_BUILDING, actor: 2, x: 11, y: 11, def: "park" });
+  assert.equal(apply(state, { type: CMD_PLACE_ROAD, actor: 2, runs: encodeRuns([at(11, 11)]) }).result,
+    RESULT.NEEDS_BULLDOZE, "a player burying their own building got a different answer");
 });

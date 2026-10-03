@@ -49,10 +49,11 @@ export var NETWORKS = {
   wire: { layer: "wire", cost: "wire", waterCost: "wireOverWater" },
   pipe: { layer: "pipe", cost: "pipe", waterCost: "pipeOverWater" },
   // The third kind (T2, A66). It shares a tile with a road — that is a level
-  // crossing — and never with a building, which is why it alone carries
-  // `clearOfBuildings`. Road, wire and pipe may be laid across a building
-  // today; that is not T2's to change (Q116).
-  rail: { layer: "rail", cost: "rail", waterCost: "railOverWater", clearOfBuildings: true },
+  // crossing — and never with a building. Until G1 it was the only kind that
+  // refused one (`clearOfBuildings` on this line alone, Q116); every kind
+  // refuses one now, so the rule is in `placeNetwork` and the spec says
+  // nothing about it.
+  rail: { layer: "rail", cost: "rail", waterCost: "railOverWater" },
 };
 
 /** Is there a road within `development.roadAccessRadius` of this rectangle?
@@ -127,8 +128,12 @@ export function placeNetwork(tx, kind, indices) {
       reject(tx, RESULT.INVALID);
       return;
     }
-    // A line through a building is not a level crossing (A66).
-    if (spec.clearOfBuildings && state.tiles.buildingId[index] !== 0) {
+    // A line through a building is not a level crossing (A66, and A85 for the
+    // other three kinds). It is checked before ownership on purpose: a player
+    // burying their OWN park under a road was the old behaviour, so the answer
+    // has to be the one that says what to do about it rather than a permission
+    // code (G1).
+    if (state.tiles.buildingId[index] !== 0) {
       reject(tx, RESULT.NEEDS_BULLDOZE);
       return;
     }

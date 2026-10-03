@@ -170,6 +170,40 @@ test("zoned land beside a road develops", () => {
   assert.ok(lots(state).every((b) => b.zone === ZONE_RESIDENTIAL));
 });
 
+test("a zoned tile that carries a road grows no lot, and its neighbours still do", () => {
+  // G1 (A85), the other half of "a network refuses a building": `lotFree` is
+  // `placeBuilding`'s counterpart for a lot nobody placed, and it never read
+  // the road layer — so a block of zoning painted across a street grew houses
+  // on the carriageway. 90.9 of 295 buildings in the median deputy city, for
+  // the life of the project, and nothing could see it: the lot had road access
+  // by definition and the tile hashed perfectly well.
+  //
+  // Zoning over a road stays legal — it is intent, and this is the rule that
+  // reads it.
+  const state = city();
+  street(state, 5, ZONE_RESIDENTIAL);
+  // Zone the street itself, which is what a player dragging a block does.
+  const onTheRoad = [];
+  for (let x = 2; x <= 12; x += 1) onTheRoad.push(at(x, 5));
+  assert.equal(apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(onTheRoad), zone: ZONE_RESIDENTIAL }).result,
+    RESULT.OK, "zoning across a road was refused — this rule is about development, not zoning");
+  supply(state, 1);
+  months(state, 12);
+
+  const paved = lots(state).filter((b) => {
+    for (let dy = 0; dy < b.h; dy += 1) {
+      for (let dx = 0; dx < b.w; dx += 1) {
+        if (state.tiles.road[at(b.x + dx, b.y + dy)] !== 0) return true;
+      }
+    }
+    return false;
+  });
+  assert.deepEqual(paved.map((b) => `${b.x},${b.y} ${b.w}x${b.h}`), [], "a lot grew on a street");
+  // And the rule did not simply stop the city: the row above the street is
+  // still zoned, still supplied, and still develops.
+  assert.ok(lots(state).length > 0, "nothing developed at all, so this proves nothing");
+});
+
 test("a wide block of zoning grows into larger lots", () => {
   // Footprints are tried largest first, so dense zoning produces few large
   // lots rather than many small ones (gamedesign 6.3).

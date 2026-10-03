@@ -438,6 +438,13 @@ A zone tile becomes eligible for development when it has:
 - No blocking structure.
 - No unresolved disaster.
 
+**Road access is beside, never on.** A tile that carries a road is not a development site, and
+neither is one that carries a building — the two are the same rule from opposite sides, and a
+network refuses to cross a building for the same reason (§7.4; ruling 046). Zoning painted across a
+street is legal and harmless: the street's own tiles simply never develop. This was implemented in
+G1 (era 15) and until then nearly a third of every deputy city — 90.9 lots of 295 — stood on the
+carriageway.
+
 A development score can conceptually use:
 
 $$

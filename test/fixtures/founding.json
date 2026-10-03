@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "Q128 (A94): decayOneIn is 3 rather than 6 — decline mirrors growth instead of being 2.7 times slower than it",
+ "why": "G1 (A85): a network refuses a building, so the fixture's wire and pipe run BESIDE the coal plant instead of through it — the same route a player must now take, joined at one tile so the carriers stay one network; G1's other half keeps a grown lot off a street, which moved every step after the first tick",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -160,12 +160,10 @@
     "type": "placeWire",
     "actor": 1,
     "runs": [
-     391,
-     24,
-     439,
-     24,
-     487,
-     24,
+     443,
+     20,
+     491,
+     1,
      535,
      24,
      583,
@@ -189,7 +187,7 @@
     ]
    },
    "result": "ok",
-   "hash": "b99a0bfd4e81f115",
+   "hash": "79a6d0d44c5cc611",
    "events": [
     "built"
    ]
@@ -199,12 +197,10 @@
     "type": "placePipe",
     "actor": 1,
     "runs": [
-     391,
-     24,
-     439,
-     24,
-     487,
-     24,
+     443,
+     20,
+     491,
+     1,
      535,
      24,
      583,
@@ -228,7 +224,7 @@
     ]
    },
    "result": "ok",
-   "hash": "60f8da3c1d649eb6",
+   "hash": "b112a867a3499466",
    "events": [
     "built"
    ]
@@ -240,7 +236,7 @@
     "rate": 9
    },
    "result": "ok",
-   "hash": "5d8798f8125478ac",
+   "hash": "53b4f834145155b0",
    "events": [
     "taxSet"
    ]
@@ -251,7 +247,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "ba927f2c9e9d293f",
+   "hash": "364e82ecde58eba9",
    "events": [
     "budget",
     "highCrime",
@@ -264,7 +260,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "5e2f86d7834681b1",
+   "hash": "feb75b716d36a258",
    "events": [
     "budget",
     "developed",
@@ -279,7 +275,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "9db500269bc4544a",
+   "hash": "f506fc0ee5ff3a07",
    "events": [
     "abandoned",
     "budget",
@@ -293,7 +289,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "f4c3ae11f76767b2",
+   "hash": "00fc45d1723905d8",
    "events": [
     "abandoned",
     "budget",
@@ -306,6 +302,6 @@
    ]
   }
  ],
- "era": 13,
- "repinnedAt": "2026-10-02"
+ "era": 14,
+ "repinnedAt": "2026-10-03"
 }

@@ -15,6 +15,18 @@ places anything new or the soak never measures it; `sim` on a new era, with the 
 report quoted beside the new one; and **read `reports/balance-era*.md` before choosing any
 threshold** — T7 guessed one and bankrupted every town with it.
 
+## G1 — A network refuses a building (S) — A85 (Q116) — **BUILT 2026-10-03** as `slice-G1` (era 15)
+
+*As built, and it was two rules rather than one. The refusal alone gave the deputy 169.9 refusals a
+city and not one avenue — because the avenue is an UPGRADE of the busiest street, and that street
+had houses standing on it. `lotFree`, which is `placeBuilding`'s counterpart for a lot nobody
+placed, had never read the road layer: **90.9 of 295 buildings a city stood on the carriageway**,
+for the life of the project, invisible to everything (the lot had road access by definition and the
+tile hashed fine). Ruling 046 carries the three-arm measurement. The price is that third of every
+city: 295 buildings to 238 on the eight-seed mean. The `founding` fixture's wire ran straight
+through its coal plant and had to be rerouted — and the first reroute split the grid in two, which
+the fixture's `expect` block caught and no hash would have.*
+
 ## G1 — A network refuses a building (S) — A85 (Q116)
 
 **Goal.** One rule across four networks instead of three-and-a-half.

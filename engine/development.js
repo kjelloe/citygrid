@@ -208,7 +208,16 @@ function demandFor(state, zone) {
 export { hasRoadAccess };
 
 /** Is this rectangle free, zoned the same way, owned by the same player, and
- * on buildable ground? */
+ * on buildable ground?
+ *
+ * **Not on a street** (G1, A85). `placeBuilding` has refused a tile carrying a
+ * road since slice 1.3 and this, its counterpart for a lot nobody placed, did
+ * not — so a block of zoning painted across the deputy's own street grew
+ * houses on the carriageway. Nothing said so until G1 made the avenue upgrade
+ * refuse a building: on seed 707 that was 66 refusals in one city and not one
+ * avenue, which is how a tile carrying a road AND a lot was finally visible
+ * from outside the renderer. Zoning over a road stays legal — it is intent,
+ * and this is the rule that reads it. */
 function lotFree(state, x, y, w, h, zone, owner) {
   for (var dy = 0; dy < h; dy += 1) {
     for (var dx = 0; dx < w; dx += 1) {
@@ -216,6 +225,7 @@ function lotFree(state, x, y, w, h, zone, owner) {
       var index = tileAt(state.width, x + dx, y + dy);
       if (state.tiles.zone[index] !== zone) return false;
       if (state.tiles.buildingId[index] !== 0) return false;
+      if (hasNet(state.tiles.road[index])) return false;
       if (state.tiles.owner[index] !== owner) return false;
       if (!isBuildable(state.tiles.terrain[index])) return false;
     }
