@@ -32,6 +32,23 @@ tiles alone).
 **Gate.** `sim` on a new era. The deputy lays roads, so the sweep moves: quote the before and after
 per configuration and say which way the deputy's own paving went.
 
+**What G2 left here.** The deputy's carrier runs already never place a carrier on a building tile —
+`connectToNetwork` treats a building tile as a wall unless it ALREADY carries the network, and the
+path it issues skips every tile that does — so this refusal should not cost the deputy a single run.
+If the sweep says otherwise, that is the finding: check `deputy.unconnected` first, because it is
+the counter that says a run reached nothing.
+
+## G2 — The deputy's carriers reach a live grid (S) — A86 (Q117) — **BUILT 2026-10-03** as `slice-G2` (era 14)
+
+*As built, and it was three defects rather than one. The flag preference this item describes was the
+smallest of them: the search also started at a lot's TOP-LEFT TILE, which for a 2x2 has two of the
+lot's own tiles as its neighbours, so a station with a building on each of the other two sides
+sealed itself in; and `findSpotFor` would choose a spot no carrier can ever arrive at, which seed
+404 did twice with clinics inside a solid block of buildings. The thing worth carrying forward is
+how all three hid: a carrier run that finds no route issues no command and earns no refusal, so
+every one of them was silent. `deputy.unconnected` counts them now, and it is the assertion the
+test leads with. Full measurement in the dev-log.*
+
 ## G2 — The deputy's carriers reach a live grid (S) — A86 (Q117)
 
 **Goal.** Ten starved buildings a city, fixed everywhere rather than for the rail station.

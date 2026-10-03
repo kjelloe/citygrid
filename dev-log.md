@@ -8349,3 +8349,85 @@ median DEPUTY city misses it" may be exactly right for a progression ladder and 
 so on purpose.
 
 Suite **1,559 green twice**; `sim` **863 s of 900**. One fixture hash moved, the same one G4 moved.
+
+## era 14 — the deputy's carriers reach a live grid (2026-10-03) — G2, A86 (Q117)
+
+A86 asked for one thing: `connectToNetwork` should prefer a carrier tile the supply pass has
+flagged satisfied — the preference T2 gave the rail station alone — for every building the deputy
+connects. That was the smallest of **three** defects, and the other two are worse, because they end
+with a building nothing can ever reach.
+
+- **The search started at the lot's top-left tile.** For a 2x2 that tile has two of the lot's own
+  tiles as neighbours, and both are walls to the search. Seed 1003's fire station had buildings on
+  the other two sides: the breadth-first search visited **one** tile, found no carrier, and
+  returned. It now starts from every tile of the lot.
+- **`findSpotFor` would choose a spot no carrier can ever arrive at.** Seed 404 put two clinics
+  inside a solid block of its own buildings. A spot now needs an orthogonal side that is
+  **reachable from the grid** — not merely empty, which seed 1111's reservoir showed is the same
+  mistake one step weaker: a free side facing into a pocket with no grid in it. `carrierReach`
+  floods out from the grid over `connectToNetwork`'s own walls, so the chooser and the search agree
+  by construction (ruling 045).
+- **And the join itself**, which is what the work item described.
+
+### All three were silent
+
+A carrier run that finds no route issues no command. No command means **no refusal**, no exception
+(`engine/` has none) and no counter — and the building then stands there looking exactly like a
+connected one. The only trace was one more entry in `state.supply.power.starved`, a number that is
+also non-zero when a city is genuinely short of capacity, which is the reading everybody assumed.
+
+`deputy.unconnected` counts them now and it is the assertion the test leads with. On the era-13
+code it reads 2 on seed 1003.
+
+### Measured — 200 games a configuration, and the before measured on the same instrument
+
+The supply columns are new in `tools/sim_sweep.mjs`, so era 13's report cannot carry them. The
+before is era 13's code in a worktree with the new tool copied in — and its population quantiles
+came back **identical to era 13's shipped report** (1,961 / 1,894 / 1,469 / 1,903), which is what
+says the arm is era 13 and that the counter changed nothing.
+
+| configuration | era 13 pop | era 14 pop | components | dark (power) median → | p95 → |
+|---|---|---|---|---|---|
+| relaxed-64 | 1,961 | **2,323** (+18%) | 8 → **1** | 10 → **0** | 184 → **3** |
+| steady-64 | 1,894 | **2,132** (+13%) | 7 → **1** | 10 → **0** | 185 → **5** |
+| demanding-64 | 1,469 | **1,629** (+11%) | 10 → **4** | 10 → **1** | 170 → **14** |
+| steady-64-nodisasters | 1,903 | **1,891** (−1%) | 7 → **1** | 9 → **0** | 185 → **0** |
+
+In **0 of 200** relaxed, steady and nodisasters cities did demand actually exceed capacity, before
+or after — so none of those ten dark buildings a city was the brown-out the figure looks like. They
+were lots holding a wire that led nowhere.
+
+**The population move is the interesting half, and it points at Q130.** The three configurations
+that have disasters gained 11–18%; the one without them is flat to within noise. A disaster cuts
+the grid, and nothing repairs it — but every building the deputy places afterwards now runs its
+carrier to a LIVE piece, which re-stitches the shattered grid incidentally as the city keeps
+building. So the gain is a city recovering from disasters it used to be permanently darkened by,
+and `nodisasters` had nothing to recover from. Demanding still ends with **4 components and a dark
+building in the median city**, which is the part incidental re-stitching does not reach: filed as
+**Q130** — is a cut grid the deputy's to repair?
+
+The city pays for it in carrier: 1,476 wire tiles to 1,739 on an eight-seed mean, laid in longer
+runs to reach a live component instead of short runs to the nearest stub.
+
+### What went wrong on the way
+
+- **The first test asserted `starved === 0` flat**, and seed 303 failed it with 335 buildings dark
+  out of 333 — a real capacity shortfall in a city that had grown faster than its plants. Joining
+  everything into ONE component makes a brown-out all-or-nothing, which is `supplyPass` working as
+  designed (ruling 016). The assertion is conditional on `demand <= capacity` now, and the figures
+  are in the message so the two cases cannot be confused.
+- **The second test was a source-text assertion** — "`connectToHub`'s body contains `FLAG_POWERED`"
+  — which is the thing memory already says not to do. Deleted; the behavioural test catches each of
+  the three parts, proved by running it against three worktree arms with one part each.
+- **A sealed building is not the invariant.** The first version asserted no building has a wall on
+  all four sides, which is true of the three test seeds and false on four of twelve: a lot can be
+  sealed in AFTER it is built, by lots developing around it, and it keeps its supply through the
+  carrier tile under it. The geometry is not the invariant; the supply is.
+- **The `liveGrid` argument is deleted.** With both branches asking for a live grid it had become
+  two identical paths through `placeUtility`.
+- **The first gate reading was contaminated and looked like a budget overrun**: 974 s of 900, with
+  the era-13 arm's 200-game sweep running beside it on the same machine. Alone it is **848 s of
+  900** — `sim_sweep` 550, `traffic_gate` 160, `disaster_soak` 138 — so the sweep did not grow and
+  the budget stands. Two 200-game sweeps in parallel are not two independent measurements of
+  anything, and the one being timed is the one that must run alone.
+

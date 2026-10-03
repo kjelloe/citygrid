@@ -225,13 +225,19 @@ test("every decision cityviewer settled names a ruling that exists", () => {
   assert.deepEqual(missing, [], `rulings cited by 12-decisions.md with no file: ${missing}`);
 });
 
-test("cityviewer's rulings point back at the specification", () => {
+test("a recent ruling points back at the specification it came from", () => {
   // 032 onward were written from specs/engine; a later edit that drops the
-  // pointer leaves a ruling nobody can trace to its design.
+  // pointer leaves a ruling nobody can trace to its design. 045 is the first
+  // ruling past 032 that is the SIMULATION's rather than the renderer's, so
+  // the requirement is "cite the document that specifies you" and only a
+  // renderer ruling has to cite specs/engine/ in particular.
   const files = readdirSync(join(repoRoot, "specs", "rulings")).filter((f) => Number(f.slice(0, 3)) >= 32);
   assert.ok(files.length >= 9, "rulings 032-040 should exist");
   for (const name of files) {
-    assert.ok(readDoc(join("specs", "rulings", name)).includes("specs/engine/"), `${name} does not cite specs/engine/`);
+    const body = readDoc(join("specs", "rulings", name));
+    assert.match(body, /specs\/[a-z0-9-]/, `${name} cites no specification at all`);
+    if (!/client\/(world|render|life)\//.test(body)) continue;
+    assert.ok(body.includes("specs/engine/"), `${name} is the renderer's and does not cite specs/engine/`);
   }
 });
 

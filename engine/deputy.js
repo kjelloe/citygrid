@@ -50,6 +50,10 @@ export function makeDeputy(seat, doctrine) {
     zoned: 0,
     utilities: 0,
     refusals: 0,
+    // Carrier runs that reached nothing at all (G2). A connect run that finds
+    // no route is silent — no command, no refusal — which is how two clinics
+    // sealed inside a block of buildings went unnoticed for the project's life.
+    unconnected: 0,
   };
 }
 
@@ -333,7 +337,7 @@ function keepSupplied(state, deputy) {
   return acted;
 }
 
-function placeUtility(state, deputy, def, liveGrid) {
+function placeUtility(state, deputy, def) {
   if (!def) return false;
   var spot = findSpotFor(state, deputy, def);
   if (spot < 0) return false;
@@ -358,21 +362,12 @@ function placeUtility(state, deputy, def, liveGrid) {
     if (deputy.hubY < 0) deputy.hubY = yOf(state.width, spot) + definition(def).h;
   }
   // A plant nobody is connected to is scenery, so the carrier goes down with
-  // it: a short run out from the building toward the nearest existing road,
-  // which is where the city is.
-  // Wire and pipe both, from the new building back to the grid.
-  //
-  // `liveGrid` asks for a piece the supply pass has flagged satisfied rather
-  // than the nearest carrier (T2's Q117). Only the things whose whole point is
-  // to be LIVE ask for it: on thirty seeds the deputy's first harbours were
-  // unpowered in five cities and took the rail station on the same component
-  // down with them, which the gate status says out loud and nothing else did.
-  if (liveGrid) {
-    connectToNetwork(state, deputy, spot, "wire", CMD_PLACE_WIRE, FLAG_POWERED);
-    connectToNetwork(state, deputy, spot, "pipe", CMD_PLACE_PIPE, FLAG_WATERED);
-  } else {
-    connectToHub(state, deputy, spot);
-  }
+  // it: wire and pipe both, from the new building back to a LIVE piece of the
+  // grid. Until G2 only the things whose whole point is to be live asked for
+  // that (a `liveGrid` argument, T2's Q117) and everything else took the
+  // nearest carrier of any kind; the argument is gone because the answer is
+  // the same for every building.
+  connectToHub(state, deputy, spot);
   return true;
 }
 
@@ -706,11 +701,11 @@ function bodies(state) {
  */
 function openTheHarbour(state, deputy) {
   if (state.population < rules().deputy.harbourAtPopulation) return false;
-  if (deputy.marinas < 1 && placeUtility(state, deputy, "marina", true)) {
+  if (deputy.marinas < 1 && placeUtility(state, deputy, "marina")) {
     deputy.marinas += 1;
     return true;
   }
-  if (deputy.terminals < 1 && placeUtility(state, deputy, "ferryTerminal", true)) {
+  if (deputy.terminals < 1 && placeUtility(state, deputy, "ferryTerminal")) {
     deputy.terminals += 1;
     // And a ROAD to it, the way the rail station gets one: a gate nobody can
     // drive to is dead, and three of thirty cities built exactly that before
@@ -729,6 +724,7 @@ function findSpotFor(state, deputy, defId) {
   // a command it knows will be refused inflates its own refusal count and
   // spends a turn. Both of its building paths come through here.
   if (!isUnlocked(state, defId)) return -1;
+  var reach = carrierReach(state, deputy);
   var bestIndex = -1;
   var bestScore = -1;
   for (var i = 0; i < state.width * state.height; i += 1) {
@@ -736,6 +732,7 @@ function findSpotFor(state, deputy, defId) {
     var y = yOf(state.width, i);
     if (x + def.w > state.width || y + def.h > state.height) continue;
     if (!footprintClear(state, deputy.seat, x, y, def)) continue;
+    if (!hasReachableSide(state, deputy.seat, x, y, def, reach)) continue;
     if (def.needsSurfaceWater === true && !nearWater(state, x, y, def)) continue;
     // A harbour stands beside enough water to be one (T4), and a SEA gate
     // beside water that leads out of the region — the deputy will not build a
@@ -771,6 +768,72 @@ function footprintClear(state, seat, x, y, def) {
   return true;
 }
 
+/** Every tile a carrier run could reach from the grid the deputy already has
+ * (G2, A86): a flood out from every wire and pipe tile over the ground a run
+ * may cross. `undefined` when there is no grid at all, which is the first
+ * plant in a new city and must not be refused a spot.
+ *
+ * The walls are `connectToNetwork`'s walls, so the two agree: a lot the search
+ * would arrive at is a lot this says yes to. */
+function carrierReach(state, deputy) {
+  var total = state.width * state.height;
+  var reach = [];
+  var queue = [];
+  var i;
+  for (i = 0; i < total; i += 1) reach.push(false);
+  for (i = 0; i < total; i += 1) {
+    if (!hasNet(state.tiles.wire[i]) && !hasNet(state.tiles.pipe[i])) continue;
+    reach[i] = true;
+    queue.push(i);
+  }
+  if (queue.length === 0) return undefined;
+  for (var head = 0; head < queue.length; head += 1) {
+    var index = queue[head];
+    var x = xOf(state.width, index);
+    var y = yOf(state.width, index);
+    for (var d = 0; d < DIR4.length; d += 1) {
+      var n = neighbour(state.width, state.height, x, y, DIR4[d]);
+      if (n < 0 || reach[n]) continue;
+      if (state.tiles.buildingId[n] !== 0) continue;
+      var owner = state.tiles.owner[n];
+      if (owner !== OWNER_NATURE && owner !== deputy.seat) continue;
+      reach[n] = true;
+      queue.push(n);
+    }
+  }
+  return reach;
+}
+
+/** Is there one orthogonal side a carrier run could arrive at this lot from
+ * (G2, A86)?
+ *
+ * Seed 404's deputy put two clinics inside a solid block of its own buildings:
+ * every tile around them was a lot, so neither wire nor pipe could ever reach
+ * them, and `connectToNetwork` issued nothing and said nothing. Seed 1111 then
+ * showed the weaker version of the same mistake — a free side facing into a
+ * pocket with no grid in it — which is why the side must be REACHABLE and not
+ * merely empty. Diagonals do not count: the search walks the four neighbours.
+ */
+function hasReachableSide(state, seat, x, y, def, reach) {
+  for (var dy = -1; dy <= def.h; dy += 1) {
+    for (var dx = -1; dx <= def.w; dx += 1) {
+      var insideX = dx >= 0 && dx < def.w;
+      var insideY = dy >= 0 && dy < def.h;
+      if (insideX === insideY) continue;
+      var nx = x + dx;
+      var ny = y + dy;
+      if (!inBounds(state.width, state.height, nx, ny)) continue;
+      var index = tileAt(state.width, nx, ny);
+      if (state.tiles.buildingId[index] !== 0) continue;
+      var owner = state.tiles.owner[index];
+      if (owner !== OWNER_NATURE && owner !== seat) continue;
+      if (reach && !reach[index]) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
 function nearWater(state, x, y, def) {
   for (var dy = -1; dy <= def.h; dy += 1) {
     for (var dx = -1; dx <= def.w; dx += 1) {
@@ -781,6 +844,13 @@ function nearWater(state, x, y, def) {
     }
   }
   return false;
+}
+
+/** Where a carrier run begins: the tile asked for, and every other tile of the
+ * same building. `lot` is 0 for a bare tile, which is then the only seed. */
+function isLotTile(state, index, from, lot) {
+  if (index === from) return true;
+  return lot !== 0 && state.tiles.buildingId[index] === lot;
 }
 
 /** Joins a point to the nearest tile that already carries the network, by the
@@ -804,8 +874,19 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
     cameFrom.push(-1);
   }
 
-  var queue = [from];
-  seen[from] = true;
+  // The search starts at the WHOLE lot, not at its top-left tile (G2, A86).
+  // A 2x2 station's corner tile has two tiles of the station itself as
+  // neighbours, and both are walls to this search — so a station with a
+  // building on each of the other two sides had nowhere to go at all. Seed
+  // 1003 had one: a fire station with no wire, no pipe and no refusal, because
+  // the search returned without issuing anything.
+  var lot = state.tiles.buildingId[from];
+  var queue = [];
+  for (i = 0; i < total; i += 1) {
+    if (!isLotTile(state, i, from, lot)) continue;
+    seen[i] = true;
+    queue.push(i);
+  }
   var head = 0;
   var target = -1;
   var fallback = -1;
@@ -817,12 +898,13 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
     //
     // `flag` asks for a LIVE piece of grid — one the supply pass has marked
     // satisfied — rather than the nearest carrier of any kind. The deputy's
-    // wire is not one network: on seed 1003 at year nine it is twelve
+    // wire was not one network: on seed 1003 at year nine it was twelve
     // components, seven of them with no producer on them at all, and joining
     // the nearest one connected the rail station to a dead stub sixteen units
-    // deep in demand and zero in capacity. Only the station asks for this;
-    // fixing it for every building is a deputy change of its own (Q117).
-    if (index !== from && hasNet(state.tiles[layer][index])) {
+    // deep in demand and zero in capacity. T2 asked for it for the station
+    // alone; since G2 every building the deputy connects asks for it, and over
+    // 200 games a configuration the grid is one component (era 14).
+    if (!isLotTile(state, index, from, lot) && hasNet(state.tiles[layer][index])) {
       if (!flag || (state.tiles.flags[index] & flag) !== 0) {
         target = index;
         break;
@@ -845,11 +927,14 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
   }
   // A dead stub is better than nothing: the grid may have no live piece yet.
   if (target < 0) target = fallback;
-  if (target < 0) return;
+  if (target < 0) {
+    deputy.unconnected += 1;
+    return;
+  }
 
   var cells = [];
   var walk = target;
-  while (walk !== from && walk >= 0) {
+  while (walk >= 0 && !isLotTile(state, walk, from, lot)) {
     if (!hasNet(state.tiles[layer][walk])) cells.push(walk);
     walk = cameFrom[walk];
   }
@@ -857,9 +942,21 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
   issue(state, deputy, { type: command, actor: deputy.seat, runs: encodeRuns(cells) });
 }
 
+/** To a LIVE piece of grid, for every building (G2, A86, Q117).
+ *
+ * This asked for the nearest carrier of any kind until now, and the deputy's
+ * wire is not one network: on seed 1003 at year nine it was twelve components,
+ * seven of them with no producer on them at all, so a new plant was joined to a
+ * dead stub and ten buildings of 119 had wire and no power. T2 fixed it for the
+ * rail station alone, because a station is the first building whose "am I
+ * powered" question anything asks out loud.
+ *
+ * `connectToNetwork` falls back to any carrier when no live one is in reach, so
+ * a city's FIRST plant still joins what there is.
+ */
 function connectToHub(state, deputy, from) {
-  connectToNetwork(state, deputy, from, "wire", CMD_PLACE_WIRE);
-  connectToNetwork(state, deputy, from, "pipe", CMD_PLACE_PIPE);
+  connectToNetwork(state, deputy, from, "wire", CMD_PLACE_WIRE, FLAG_POWERED);
+  connectToNetwork(state, deputy, from, "pipe", CMD_PLACE_PIPE, FLAG_WATERED);
 }
 
 /** Runs a carrier line from a building toward the built-up part of the city. */

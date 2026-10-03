@@ -113,7 +113,7 @@ export function soakOne({ seed, years = 40, size = 64, seats = 1, doctrine = "ex
     treasury: state.players[0].treasury,
     bankruptAt,
     demand: state.demand,
-    deputies: deputies.map((d) => ({ built: d.built, zoned: d.zoned, utilities: d.utilities, refusals: d.refusals })),
+    deputies: deputies.map((d) => ({ built: d.built, zoned: d.zoned, utilities: d.utilities, refusals: d.refusals, unconnected: d.unconnected })),
     supply: state.supply,
     civic: state.civic,
     net: budgetFor(state, 1).net,

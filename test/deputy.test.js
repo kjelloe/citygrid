@@ -363,3 +363,53 @@ test("the deputy's draws do not move the world's PRNG", () => {
   nextInt(state.rng, 97);
   assert.notEqual(state.rng.s, before, "the world's stream did not move when the world drew");
 });
+
+// --- the carriers reach a LIVE grid (slice G2; A86, Q117) ---------------------
+
+test("every building the deputy builds ends up on a live grid", () => {
+  // Q117, measured at T2 and left for its own slice. `connectToNetwork` ran to
+  // the NEAREST carrier tile, which is usually an isolated stub the deputy laid
+  // earlier, and the same seeds under the code this replaces read:
+  //
+  //   seed 1003  8 components, 7 of 346 dark, 1400 capacity against 1366 demand
+  //   seed  404  8 components, 228 of 439 dark on WATER, 1200 against 997
+  //   seed  707  8 components, 14 of 352 dark, 2800 against 1509
+  //
+  // Every one of those cities held more capacity than it had demand. Three
+  // seeds because three separate defects were in here and no single city shows
+  // all of them: a lot sealed by its own footprint (1003's fire station, whose
+  // corner tile had two of its own tiles as neighbours), a lot sealed by its
+  // neighbours (404's two clinics, inside a solid block of buildings), and the
+  // dead-stub join itself (all of them).
+  for (const seed of [1003, 404, 707]) {
+    const { state, deputy } = play(seed, 64, 20);
+    assert.ok(state.buildings.length > 40,
+      `seed ${seed} built only ${state.buildings.length} buildings, so it proves nothing`);
+
+    // 1. Every carrier run reached something. This counter is the instrument:
+    //    a run that finds no route issues no command and earns no refusal, so
+    //    without it the failure is invisible from outside the deputy.
+    assert.equal(deputy.unconnected, 0,
+      `seed ${seed}: ${deputy.unconnected} carrier runs reached nothing at all`);
+
+    // 2. The city is one grid, not a field of stubs. A disaster can still cut
+    //    one in two — that is the game working, and it is why this is not "one".
+    assert.ok(state.supply.power.components <= 2,
+      `seed ${seed}: the power grid is ${state.supply.power.components} components`);
+
+    // 3. And the grid they reached is live. Asserted through `state.supply` —
+    //    the engine's own answer to "is this city supplied" — rather than a
+    //    count of wire tiles: a deputy that laid more carrier to the same dead
+    //    stub passes that and fails this. A city genuinely short of capacity
+    //    browns out by design, so the assertion is conditional, and the message
+    //    carries the figures that say which case it was.
+    for (const kind of ["power", "water"]) {
+      const supply = state.supply[kind];
+      if (supply.demand > supply.capacity) continue;
+      assert.equal(supply.starved, 0,
+        `seed ${seed} ${kind}: ${supply.starved} of ${supply.served + supply.starved} buildings dark `
+        + `across ${supply.components} components, with ${supply.capacity} capacity `
+        + `against ${supply.demand} demand`);
+    }
+  }
+});

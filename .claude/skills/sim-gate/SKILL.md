@@ -276,6 +276,24 @@ What that buys, and what it does not:
 - **Still run the null arm.** An arm that does the same thing with the feature removed is the only
   way to tell a mechanism from a sequence, and it is cheap.
 
+## A new column has no "before" (G2, era 14)
+
+When a slice adds a measure to `sim_sweep.mjs` — G2 added the power grid's component count and the
+count of dark buildings — the previous era's report **cannot** carry it, so there is nothing to
+compare the new number against and the temptation is to report it alone.
+
+The fix costs one worktree: `git worktree add <dir> <previous commit>`, copy the **new**
+`tools/sim_sweep.mjs` into it, and run both sweeps at the same 200 games. The old code measured on
+the new instrument is the before. G2's came out as 8 components and a median of 10 dark buildings
+a city (p95 184) against 1 component and 0 dark — a figure no era-13 report could have contained.
+
+Two things to keep straight when doing it:
+
+- The arm's `data/balance.json` still says the old era, so it writes `balance-era13.md` **inside
+  the worktree**. That is correct and it must not be copied into `reports/` — the era's report is
+  the one the era shipped. Quote the arm's numbers in the dev-log and say they came from an arm.
+- Run the two sweeps in parallel. They are single-threaded and there are twenty cores.
+
 ## Measuring one rule, now that it is possible (A83)
 
 `tools/fire_arms.mjs` is the shape: the SAME build, the SAME seeds, one constant changed, the

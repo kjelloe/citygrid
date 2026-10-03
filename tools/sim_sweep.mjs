@@ -120,6 +120,14 @@ function play(config, seed) {
     crime: state.civic.crimeAverage,
     landValue: state.civic.landValueAverage,
     roads,
+    // The supply, for G2's gate (era 14): the grid's component count and how
+    // many buildings end the game dark. A deputy that joins every run to a
+    // dead stub reads the same as one that joins none of them on every other
+    // measure in this report.
+    powerComponents: state.supply.power.components,
+    powerStarved: state.supply.power.starved,
+    waterStarved: state.supply.water.starved,
+    shortfall: state.supply.power.demand > state.supply.power.capacity ? 1 : 0,
     congested: state.traffic.congested,
     stranded: state.traffic.stranded,
     commuters: state.traffic.commuters,
@@ -165,6 +173,10 @@ for (const config of CONFIGS) {
     crime: quantile(pick("crime"), 0.5),
     congested: quantile(pick("congested"), 0.5),
     stranded: quantile(pick("stranded"), 0.5),
+    powerComponents: quantile(pick("powerComponents"), 0.5),
+    powerStarved: [quantile(pick("powerStarved"), 0.5), quantile(pick("powerStarved"), 0.95)],
+    waterStarved: [quantile(pick("waterStarved"), 0.5), quantile(pick("waterStarved"), 0.95)],
+    shortfalls: live.filter((r) => r.shortfall === 1).length,
     emptied: rows.filter((r) => r.population === 0 && r.peakPopulation > 100).length,
   };
   report.configs[config.name] = { config, summary, rows };
@@ -183,6 +195,10 @@ for (const config of CONFIGS) {
   say(`- residential demand median ${summary.demandR}`);
   say(`- pollution over developed land ${summary.pollutionDeveloped}, over the whole region ${summary.pollutionRegional}`);
   say(`- crime ${summary.crime}, congested tiles ${summary.congested}, stranded homes ${summary.stranded}`);
+  say(`- power grid ${summary.powerComponents} components; dark buildings: power median `
+    + `${summary.powerStarved[0]} p95 ${summary.powerStarved[1]}, water median ${summary.waterStarved[0]} `
+    + `p95 ${summary.waterStarved[1]} — in ${summary.shortfalls} of ${summary.livingCities} cities the `
+    + `demand genuinely exceeded the capacity`);
   say();
 }
 
