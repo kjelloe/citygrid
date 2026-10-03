@@ -15,7 +15,15 @@ places anything new or the soak never measures it; `sim` on a new era, with the 
 report quoted beside the new one; and **read `reports/balance-era*.md` before choosing any
 threshold** — T7 guessed one and bankrupted every town with it.
 
-# The second round — P97 (A96–A105)
+# The second round — P97 (A96–A105) — **COMPLETE 2026-10-03**
+
+*All eight built: H1 and H2 are content and design, H3 to H6 and H8 are five eras (17, 18, 19, 20,
+21), H7 is the fixture every renderer gate measures on. What the round cost in gate time is five
+sweeps; what it bought is above each item. What it FOUND is the part worth reading — seven new
+questions, every one of them measured: Q136 to Q141 and the three the played fixture turned up in an
+afternoon.*
+
+
 
 *Written 2026-10-03 from P97, where Kjell took every recommendation in one batch. Four of them are
 **deputy changes** — a deputy change voids every sweep number in the project (CLAUDE.md), so they are

@@ -9129,3 +9129,32 @@ shipped. No event drift either time, which is the footprint of a change to a num
 
 Suite **1,584 green twice**; `sim` **839 s of 900**.
 
+## P97's lane, complete (2026-10-03)
+
+| | | era | what it measured |
+|---|---|---|---|
+| H1 | the quest ladder asks for a city that happens | — | 1,500 and 3,000, and a rename in two languages |
+| H2 | a park's two routes, written down | — | §11 carries the distinction |
+| H3 | the mayor plants parks and builds police stations | 17 | land value +13, crime halved, population flat |
+| H4 | the deputy dezones what it paves | 18 | 591 of 1,688 tiles → 0 |
+| H5 | the deputy repairs a cut grid | 19 | 65 of 164 dark a year later → 5 |
+| H6 | ground too steep to build on is not zoned | 20 | a hilly city 1,015 → 1,872 people |
+| H7 | the fixture becomes a played city | — | 1,129 copies of one house → 405 buildings of 18 kinds |
+| H8 | a developed lot costs money to serve | 21 | income was 4× expenses; treasuries down 5–17% |
+
+**Seven questions came out of it**, every one with a measurement attached: Q136 (a zoning stroke has
+no preview), Q137 (the deputy already builds causeways), Q138 (a lane link too short for a car),
+Q139 (a turn's lane off the ground), Q140 (H6 keeps the city off the cliff and not the streets),
+Q141 (demanding has no margin) — and Q135 from the round before it.
+
+**Three gate criteria were re-aimed**, each on measurement and each with its evidence in the file:
+`traffic_gate`'s seed tripwire (the correlation is a property of one block of 200 maps and not of the
+simulation), and two of `lanes_dump`'s, both of which were a MAXIMUM over a sample that has since
+grown tenfold — which is A89's lesson arriving twice more.
+
+**The lesson the round keeps teaching**, in four of its eight slices: the test was wrong before the
+rule was. A ration asserted at the end of a run that a fire had moved under it; a ladder asserted
+against a median when its top rung is meant to be a stretch; a repair that counted a turn as spent
+whether or not it acted; a fixture test that passed on a ten-tile railway. Each of those was found by
+reading what the assertion MEANT against what the rule says, not by the suite going red.
+
