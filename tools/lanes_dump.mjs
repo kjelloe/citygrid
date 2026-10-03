@@ -109,12 +109,12 @@ console.log(`shortest link   ${shortest.len.toFixed(2)} m (${shortest.kind}${sho
 // car, every one a `block`** — a street segment between two junctions the deputy
 // laid two metres apart, which the perfect 20 m grid never produced. The defect
 // is real and it is the lane graph's (a block shorter than a car should be part
-// of its junction, not a link); it is filed as Q138, and the gate fails when it
+// of its junction, not a link); it is J2 (A109), and the gate fails when it
 // stops being a handful.
 const CAR = 4.5;
 const tooShort = blocks.filter((link) => link.len < CAR).length + turns.filter((link) => link.len < CAR).length;
 const share = tooShort / Math.max(1, blocks.length + turns.length);
-console.log(`links under ${CAR} m  ${tooShort} of ${blocks.length + turns.length} (${(100 * share).toFixed(2)}%) — Q138`);
+console.log(`links under ${CAR} m  ${tooShort} of ${blocks.length + turns.length} (${(100 * share).toFixed(2)}%) — J2`);
 if (share > 0.005 || shortest.len < 1) {
   console.error(`\nFAIL  ${tooShort} links (${(100 * share).toFixed(2)}%) cannot hold a ${CAR} m car, `
     + `the shortest ${shortest.len.toFixed(2)} m`);
@@ -264,10 +264,17 @@ if (share > 0.005 || shortest.len < 1) {
 // between streets at different heights, where a turn's interpolation leaves a
 // point up to 0.38 m out: **one point of 36,414**, and none over half a metre.
 // A maximum over a sample that grew by ten times is not a measurement (A89), so
-// the gate fails on how MANY are out, and still prints the worst. Filed as Q139.
+// the gate fails on how MANY are out, and still prints the worst.
+//
+// **Settled at P99 (A110): left alone.** The honest fix is for a turn to read the
+// GROUND at its own points rather than interpolating two profiles, and that is
+// precisely what R2 removed to take the model rebuild from 80 ms to 53.7. One
+// point in thirty-six thousand, none over half a metre, is not worth
+// twenty-six milliseconds a rebuild — and if it ever stops being a handful, the
+// count below is what will say so.
 const offGround = [...rows.values()].reduce((n, row) => n + row.over, 0);
 const lanePoints = [...rows.values()].reduce((n, row) => n + row.n, 0);
-console.log(`lane points out  ${offGround} of ${lanePoints} over ${LANE_TOLERANCE} m, worst ${worstLane.toFixed(2)} m — Q139`);
+console.log(`lane points out  ${offGround} of ${lanePoints} over ${LANE_TOLERANCE} m, worst ${worstLane.toFixed(2)} m (A110: accepted)`);
 if (offGround > lanePoints / 1000 || worstLane > 1) {
   console.error(`\nFAIL  ${offGround} lane points of ${lanePoints} are off the ground they are drawn on, `
     + `the worst by ${worstLane.toFixed(2)} m`);

@@ -104,7 +104,7 @@ run on `hilly` at all until S11 taught the saturated fixture that a network refu
 
 ## What is missing, and known to be
 
-**13 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
+**6 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
 assumption the code was built against, so each is cheap to reverse. The ones a reader should know
 about:
 

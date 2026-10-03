@@ -235,9 +235,22 @@ lands here as a palette amendment with §3.1 updated in the same slice.
 **Done when** every row of the sheet has moved toward the reference by Kjell's eye, and the
 budgets in ruling 040 carry the re-measured numbers.
 
-## S13 — The bridge (L) — A84 (Q104)
+## S13 — The bridge (L) — A84 (Q104), **re-scoped at P99 (A111)**
 
 *Kjell took the expensive option in P93: a deck with clearance, not a causeway on the shallows.*
+
+***The crossings already exist.*** A84 was written on the understanding that no player and no deputy
+had ever paved one — 0 road tiles on water across five played 64×64 cities. That was true of 64 maps.
+H7's played fixture has **10 road tiles standing on shallow water in a 96 city**: the engine has
+always allowed it, `placeNetwork` charges `build.roadOverWater` for it, and the renderer drapes the
+road into the shallows — so each bank is a **0.72 m step**, which stopped `walkthrough`'s walker 939
+times in one run and is counted under its own name in that gate now.
+
+*So the first job is not the crossing RULE. It is the **deck**: a run of road over water gets a
+surface at a fixed height above it, a ramp at each end inside `road.maxGrade`, clearance under it for
+a boat, and a floor `collision.floorAt` will give the walker. The engine half shrinks to a span limit
+(`build.bridgeSpan`) and the question of whether a crossing may END on water; the renderer half is
+unchanged and is still the L.*
 
 **Goal.** A road crosses water, and the city on the far bank is part of the city.
 

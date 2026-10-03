@@ -83,8 +83,9 @@ nobody can see (Q112).
 — **Q102** (the street is wider than its houses from the air, which blocks S8's compare sheet),
 **Q107** (is the smoke enough of a fire), **Q112** (the rain draws nothing and seven causes are ruled
 out), **Q114** (parking bays collapse on an avenue), **Q115** (the minimap draws an avenue as a road)
-and **Q120** (the ground does not flatten under a railway). P97 answered the other twenty-four in one
-batch — A96 to A105 — and each of those that needs building is a work item now, not a question.
+and **Q120** (the ground does not flatten under a railway). P97 answered twenty-four in one batch and
+P99 the seven the work itself raised — A96 to A112 — and each of those that needs building is a work
+item now, not a question.
 
 **What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
 yielding to an engine), the rest of the **transport lane** (T5–T7; **T1 the avenue**, **T2 rail,
@@ -428,13 +429,6 @@ by number from the code they create.
 | Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
-| Q135 | The traffic gate's seed tripwire fires on the 70000 map block (−0.202) and not on 90000 (0.024) or 50000 (0.037) | Kjell — ratify the re-aimed criterion, or pay for a second seed block? |
-| Q136 | A zoning stroke has no price or refusal preview, so era 20's slope rule only speaks after the click | Kjell — worth a slice, or does the refusal teach well enough? |
-| Q137 | The deputy already builds causeways (10 road tiles on water a city) and nothing draws a deck — S13 from the other side | Kjell — for information; it makes S13 cheaper to justify |
-| Q138 | 4 of 7,694 lane links are shorter than a car, where the deputy's streets meet two metres apart | Kjell — fix the graph, or live with 0.05%? |
-| Q139 | A turn's lane is up to 0.38 m off the ground where two streets meet at different heights | Kjell — pay R2's milliseconds back, or accept it? |
-| Q140 | H6 keeps the city off the cliff and not the streets: the deputy still paves a 500% hillside | Kjell — should a road refuse the ground a lot refuses? |
-| Q141 | Demanding has no margin: one rung of H8's service cost takes it from 1,644 residents to 163 | Kjell — re-cut the difficulty, teach the deputy the tax slider, or accept the knife edge? |
 
 ## What would make us stop and re-plan
 

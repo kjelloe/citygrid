@@ -175,7 +175,7 @@ console.log(`games with any congestion: ${congestedGames} of ${live.length}`);
 // not be a serious rival to the mechanism. Era 17 reads seed 0.202 against
 // driving 0.751 — driving explains fourteen times the variance — and that is a
 // gate passing for the right reason rather than a threshold loosened to fit.
-// Filed for ratification as Q135.
+// **Ratified at P99 (A107)**, as Q103 and Q106 were before it (A89).
 if (Math.abs(rSeed) > 0.2) {
   console.log(`\nNOTE — the seed correlation is ${rSeed.toFixed(3)} on this block of maps. `
     + `Driving demand is ${rDriving.toFixed(3)}; the gate fails only if the seed rivals it.`);

@@ -15,6 +15,82 @@ places anything new or the soak never measures it; `sim` on a new era, with the 
 report quoted beside the new one; and **read `reports/balance-era*.md` before choosing any
 threshold** — T7 guessed one and bankrupted every town with it.
 
+# The third round — P99 (A106–A112)
+
+*Written 2026-10-03 from P99, where Kjell took every recommendation on the seven questions the second
+round raised. Two are ratifications with no code (A107's gate criterion, A110's lane point) and one
+is a re-scope of a slice that has not started (A111 → `workitems-world.md` S13). The four that are
+work are below, cheapest first; two of them are deputy-and-reducer changes and therefore two eras.*
+
+## J1 — A zoning stroke knows what it will cost and why it will be refused (S) — A108 (Q136)
+
+**Goal.** The ghost turns red before the click, not after it.
+
+**Do.** `price(state, command, kind)` gains a `paintZone` path — the staging transaction already
+exists, so it is the network path's shape — and the three zone tools lose their `priceKind: null`.
+The hint comes from the RULE: `controller.js` already says that a UI check which refused here would
+be inventing a rule nobody enforces.
+
+**Tests first.** `test/build.test.js` or `test/development.test.js`: a quote for a zoning run over a
+cliff carries `tooSteep` and the tiles it would have cost; a quote over clear ground carries the
+cost and `ok`; and the quote never CHANGES the state, which is what `price` is for.
+
+**Gate.** `ui_smoke` — the readout names the reason on the real page, which is where ruling 026's
+standard lives.
+
+## J2 — A block shorter than a car is part of its junction (S) — A109 (Q138)
+
+**Goal.** Every link in the lane graph can hold the car that drives on it.
+
+**Do.** `client/world/lanes.js`: a `block` link shorter than `cars.length` is absorbed into the
+junction at its end rather than published as a link of its own.
+
+**Tests first.** `test/lanes.test.js`: a corridor shorter than a car yields no block link and the
+turns either side still connect — the graph stays traversable, which is the thing that would quietly
+break.
+
+**Gate.** `lanes_dump`: "links under 4.5 m" reads 0 of about 7,700, and the share criterion the gate
+re-aimed at H7 stays where it is.
+
+## J3 — A road refuses the ground a lot refuses (M) — A112 (Q140)
+
+**Goal.** `walkthrough 128 hilly` green, which is the last piece of Q134 and S11's own done-when.
+
+**Do.** `placeNetwork` refuses a tile whose slope passes `development.maxZoneSlope`, with
+`RESULT.TOO_STEEP` — the same limit and the same code as `canZone` (era 20). The deputy skips those
+tiles when it lays a block, the way it already skips them when it zones.
+
+**Tests first.** `test/build.test.js`: a road, a wire and a pipe across a cliff are each refused and
+leave the tile untouched; a run that crosses one is refused whole; and a slope AT the limit is still
+pavable. `test/deputy.test.js`: a played `hilly` city has no corridor steeper than the limit.
+
+**Gate.** `walkthrough 128 hilly` — and it joins the `render` set, which S11 could not do. Plus `sim`
+on a new era: this changes what every map affords.
+
+**Say it before running it:** `rolling` should not move at all (it has no slope past the limit) and
+`hilly` should lose streets and gain nothing — the city is already off the cliff since era 20, so
+this is about the roads that reach for it.
+
+## J4 — Demanding's margin, re-cut against a real expense (M) — A106 (Q141)
+
+**Goal.** The economy becomes tunable: a service cost worth having that demanding can survive.
+
+**Do.** `difficulty.demanding.taxYieldPercent` and `upkeepPercent` are 80 and 120, set in era 1 when
+a developed lot cost nothing to serve. Re-cut them, then raise `economy.serviceCostPerLevel` to the
+rung the ladder already measured as worth having (6/12/22/35 halves the demanding surplus; 3/6/11/18
+is what shipped because nine cities of two hundred died at the other).
+
+**Tests first.** `test/economy.test.js`: the three difficulties order the same way they always did —
+relaxed keeps more than steady keeps more than demanding — which is the invariant a re-cut could
+quietly break.
+
+**Gate.** `sim` on a new era, read on the TREASURY quantiles and the empty-city count rather than on
+population: p25 treasury surviving and `cities that reached 100+ residents and ended empty` at zero
+in every configuration is what says it worked.
+
+**The ladder is already measured** (H8, eight cities a difficulty, and forty for the demanding rung),
+so this slice starts from a table rather than from an experiment.
+
 # The second round — P97 (A96–A105) — **COMPLETE 2026-10-03**
 
 *All eight built: H1 and H2 are content and design, H3 to H6 and H8 are five eras (17, 18, 19, 20,
