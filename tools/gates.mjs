@@ -145,7 +145,14 @@ SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.
 export const BUDGET_MS = {
   quick: 8 * 60 * 1000,
   // Measured after the split (B3a): walkthrough 2, passability 0, lanes_dump 60.
-  render: 2 * 60 * 1000,
+  // Restated at H7, when the FIXTURE changed: `saturatedCity` plays the deputy
+  // now, so the lane graph is 7,694 links against 2,436 and the walk is 405 real
+  // buildings against 1,129 copies of one. Measured: lanes_dump 150 s,
+  // walkthrough 4, passability 1. That is the set's contents changing under it
+  // rather than a gate that grew (M2's rule), and the fixture was chosen at ONE
+  // mayor and twenty years for exactly this reason — at four mayors lanes_dump
+  // had not finished in thirteen minutes.
+  render: 4 * 60 * 1000,
   // `budget_gate` alone, 235 s at B3a with three tiers, two projections, four
   // spans and the desktop viewport D8 added.
   budget: 6 * 60 * 1000,

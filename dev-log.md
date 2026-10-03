@@ -8968,6 +8968,16 @@ getting bigger. The budget is restated when the set's CONTENTS change (M2's rule
 doing the same work on a heavier simulation, so it is logged here as the finding and the next
 balance slice inherits it.
 
+### And H6's gate, now that it can see the rule
+
+`walkthrough 128 hilly` on a played city reads: **133 buildings**, 25 cliffs, 218 of 612 corridors
+ungradeable, steepest street 500%, 18 legs stopped at crossings. Still red, and now for a reason that
+is finally legible: **H6 keeps the CITY off the cliff and not the STREETS.** `canZone` refuses steep
+ground; `placeNetwork` does not, so the deputy still paves up a 500% hillside to reach the next flat
+patch, and the walker walks corridors. That is Q134's remainder, and it is a one-rule question —
+should a road refuse the ground a lot refuses? — rather than the open-ended "hilly is unplayable" it
+was this morning.
+
 Suite **1,582 green twice**.
 
 ## P97's lane, where it stands (2026-10-03)
@@ -8996,4 +9006,66 @@ asserted against a median when the top rung is meant to be a stretch, a repair t
 spent whether or not it acted. And the eight-seed population column lied again in H3 (+32% against a
 flat sweep), which is the third time; the columns that count thousands of events have been right every
 time, and the one that counts people has not.
+
+## H7 — the fixture becomes a played city, and finds four defects in an afternoon (2026-10-03) — A105 (Q72)
+
+`tools/lib/saturated.mjs` painted a grid of roads with zoning between them, ran four hundred ticks,
+grew **nothing** — development wants power, water and demand the recipe never supplied — and fell back
+to pushing **1,129 copies of one `res` definition** into the array. Four gates measured "a mature
+city" on a monoculture with no shops, no industry, no residents and no commuter the reducer had ever
+routed.
+
+It plays the deputy now.
+
+| | buildings | kinds | population | corridors |
+|---|---|---|---|---|
+| the grid it replaces | 1,129 | **1** | 0 | 773 |
+| 1 mayor, 20 years | 405 | **18** | 2,881 | 1,243 |
+| 2 mayors, 25 years | 574 | 18 | 3,411 | 2,764 |
+| 4 mayors, 40 years | 642 | 18 | 6,173 | 5,946 |
+
+**One mayor, not four.** The recipe measured at H7's planning was four-and-forty, and the gates
+cannot afford it: `lanes_dump` walks every point of every link and then runs three hundred steps of
+traffic over it, so its cost follows the corridor count — at four mayors it **had not finished in
+thirteen minutes** against a 110 s baseline. One mayor is the closest in size to the fixture it
+replaces, which is what the gates were calibrated on, and `seats` is still there for anyone who wants
+the bigger city.
+
+### Four defects, none of them the fixture's
+
+- **The causeway nobody designed (Q137).** The deputy paves over shallow water — **10 road tiles in a
+  96 city** — the engine has always allowed it and charges `build.roadOverWater` for it. The ground
+  under such a tile is the water's surface, so each bank is a **0.72 m step** the walker cannot climb:
+  `walkthrough` counted **939 refused steps and 3 stopped legs, every one at a crossing** and not one
+  anywhere else. A84 said "no player and no deputy has ever paved a crossing — 0 road tiles on water
+  across five played 64×64 cities", and that was true of 64 maps. S13 is not "allow a road to cross
+  water" any more; it is "give the crossings that already exist a deck".
+- **A block link too short to hold a car (Q138).** 4 of 7,694 links are shorter than the 4.5 m car
+  that sits on one, where the deputy's streets meet two metres apart. The 20 m grid could not produce
+  one, which is why the criterion was a minimum.
+- **A turn's lane 0.38 m off the ground (Q139)**, where two streets arrive at a junction at different
+  heights and the turn interpolates their profiles (R2's trade).
+- And the fixture's own tests were testing a **stub**: at 48 tiles the deputy's railway is five tiles
+  long, so "the fixture carries a railway, a station and level crossings" passed on a line that was
+  not one. They run the recipe the gates get now.
+
+### Two criteria re-aimed, on A89's evidence
+
+Both were a **maximum over a sample that has grown tenfold**, which is exactly what Q106 was about:
+
+- `lanes_dump`'s "shortest link" became "how many links cannot hold a car" (fails over 0.5%; reads
+  0.05%);
+- its "worst lane point" became "how many points are out" (fails over one in a thousand; reads 0 of
+  36,414 over half a metre, worst 0.38).
+
+`walkthrough` keeps its criteria and **classifies** instead: a refusal at a road tile standing on
+water is the causeway, counted and printed under its own name, and everything else still fails the
+gate. It reads 0 refusals, 0 unfinished legs, 0 cliffs on the played city.
+
+### Measured
+
+`render` restated from its new contents: **lanes_dump 150 s, walkthrough 4 s, passability 1 s** —
+the budget goes 2 min to 4. The fixture itself costs about a second to build.
+
+Suite **1,582 green twice**.
 

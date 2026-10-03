@@ -1,11 +1,29 @@
-// The saturated city three gates measure on (slices E1, E4).
+// The city four gates measure on (slices E1, E4; **played since H7, A105**).
 //
-// A grid every four tiles with zoning between it, four hundred ticks of
-// growth, on a GENERATED world — `createState` leaves every tile at terrain 0
-// with no elevation and the reducer refuses to build on it. Extracted from
-// `lanes_dump.mjs` when `walkthrough` and `passability` needed the same city:
-// three copies of a fixture recipe is three chances for a gate to be measuring
-// a different place from the one it reports.
+// It used to be a grid of roads every four tiles with zoning between them and
+// four hundred ticks — and nothing ever grew on it, because development wants
+// power, water and demand the recipe never supplied. A fallback then pushed
+// **1,129 copies of one `res` definition** straight into the array, so four
+// gates measured "a mature city" on a monoculture with no shops, no industry
+// and no residents (Q72).
+//
+// It plays the DEPUTY now: four mayors, forty years, roads and zoning and power
+// and water decided by the same agent every sweep in this project is measured
+// on. Measured before the change, on 128: 1,590 buildings of one kind and no
+// commuter the reducer had ever routed. After: 1,245 buildings across eighteen
+// kinds with 1,595 routed commuters, for 17.5 s a run against about one second.
+//
+// Two options survive as POST-FILTERS, because they are what a caller measures
+// rather than what a city is:
+//
+//   buildings: false — the lane graph is derived from roads and E1's numbers
+//     were taken before buildings existed (`lanes_dump`). The deputy's streets
+//     stay; its lots go.
+//   rail: false — the cost of the track is a before-and-after, and the "before"
+//     has to be the code that ships (T3).
+//
+// The flat traffic seed stays an option too: a *load* is right for a renderer
+// measurement and reproducible, which a simulated one is not (Q70).
 
 import { generateWorld } from "../../engine/worldgen.js";
 import { defaultOptions } from "../../engine/options.js";
@@ -19,172 +37,77 @@ import "../../engine/development.js";
 // the fixture comes back with a line and nothing on it — silently, because a
 // refusal is a result code nobody was reading.
 import "../../engine/utilities.js";
+// The played city needs every monthly system the sweep runs, or it is a city
+// that cannot catch fire, cannot congest and cannot go bankrupt — and the
+// renderer gates would be pricing a place that does not happen.
+import "../../engine/economy.js";
+import "../../engine/civic.js";
+import "../../engine/fire.js";
+import "../../engine/disasters.js";
+import "../../engine/traffic.js";
+import "../../engine/history.js";
+import { makeDeputy, deputyTurn } from "../../engine/deputy.js";
+import { TICKS_PER_YEAR } from "../../engine/constants.js";
+import { rules } from "../../engine/rules.js";
 
-export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings = true,
-  traffic = -1, terrain = "rolling", rail = true } = {}) {
+/** Takes buildings out of a played city and leaves the ground as it was: the
+ * tiles stop pointing at a record that is gone, which is the half a caller
+ * forgets. */
+function removeBuildings(state, doomed) {
+  const going = new Set(state.buildings.filter(doomed).map((b) => b.id));
+  if (going.size === 0) return;
+  state.buildings = state.buildings.filter((b) => !going.has(b.id));
+  for (let i = 0; i < state.tiles.buildingId.length; i += 1) {
+    if (going.has(state.tiles.buildingId[i])) state.tiles.buildingId[i] = 0;
+  }
+}
+
+export function saturatedCity({ size = 96, seed = 1003, ticks = 20 * TICKS_PER_YEAR, buildings = true,
+  traffic = -1, terrain = "rolling", rail = true, seats = 1 } = {}) {
   // `terrain` because Q64 is a question about a `hilly` map and there was no way
-  // to ask this recipe for one (D6). The default is what every gate before D6
-  // measured on, so nothing re-baselines.
+  // to ask this recipe for one (D6).
   const world = generateWorld(defaultOptions({
-    seed, width: size, height: size, waterStyle: "river", terrainStyle: terrain,
+    seed, width: size, height: size, seats, waterStyle: "river", terrainStyle: terrain,
   }));
   if (!world.ok) throw new Error(`generation failed: ${world.reason}`);
   const state = world.state;
-  apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Surveyor" });
-  state.players[0].treasury = 90000000;
+
+  // ONE mayor and twenty years, which is the recipe closest in SIZE to the
+  // fixture it replaces — and the size is what the gates were calibrated on.
+  // Measured at H7 on a 96 map:
+  //
+  //   1 seat, 20 y    405 buildings, 18 kinds, pop 2,881, 1,243 corridors
+  //   2 seats, 25 y   574                             3,411, 2,764
+  //   4 seats, 40 y   642                             6,173, 5,946
+  //   the grid it replaces   1,129 of ONE kind, no commuter ever routed, 773
+  //
+  // `lanes_dump` walks every point of every link and then runs three hundred
+  // steps of traffic over it, so its cost follows the corridor count: at four
+  // mayors it had not finished in thirteen minutes against a 110 s baseline.
+  // More mayors are still available through `seats` for anyone who wants the
+  // bigger city; the gates get the one they can afford to run.
+  const deputies = [];
+  for (let seat = 1; seat <= seats; seat += 1) {
+    apply(state, { type: CMD_JOIN, actor: seat, seat, name: `Mayor ${seat}` });
+    deputies.push(makeDeputy(seat, "expand"));
+  }
+  for (let tick = 1; tick <= ticks; tick += 1) {
+    apply(state, { type: CMD_TICK });
+    if (tick % 6 === 0) for (const deputy of deputies) deputyTurn(state, deputy);
+  }
 
   const W = state.width;
-  // `placeNetwork` refuses water and ROCK, and a command that touches one tile
-  // of either is refused whole — which on seed 1003 is most of them.
-  //
-  // Rock was missing from this predicate until S11, and nothing noticed while
-  // the gates ran on `rolling`, which has almost none. On `hilly` 128 the rail
-  // row carries **12 rock tiles**, so every run of the line was refused and
-  // `saturatedCity` threw "a rail line was asked for and none was laid" — the
-  // gate this fixture exists for could not be run on the terrain the question
-  // was about (Q64/Q74).
-  const land = (x, y) => {
-    const t = state.tiles.terrain[y * W + x];
-    return t !== 3 && t !== 4 && t !== 5;   // WATER, SHALLOW, ROCK
-  };
-  const paveLine = (tiles) => {
-    let start = -1;
-    for (let k = 0; k <= tiles.length; k += 1) {
-      const dry = k < tiles.length && land(tiles[k][0], tiles[k][1]);
-      if (dry && start < 0) start = k;
-      if (!dry && start >= 0) {
-        const [x, y] = tiles[start];
-        apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: [y * W + x, k - start] });
-        start = -1;
-      }
-    }
-  };
-  for (let y = 8; y < W - 8; y += 4) {
-    paveLine(Array.from({ length: W - 16 }, (_, k) => [8 + k, y]));
-  }
-  for (let x = 8; x < W - 8; x += 4) {
-    for (let y = 8; y < W - 8; y += 1) if (land(x, y)) apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: [y * W + x, 1] });
-  }
-  for (let y = 9; y < W - 9; y += 4) {
-    for (let x = 9; x < W - 9; x += 1) {
-      if (land(x, y)) apply(state, { type: CMD_PAINT_ZONE, actor: 1, runs: [y * W + x, 1], zone: ((y / 4) | 0) % 3 + 1 });
-    }
-  }
-  for (let i = 0; i < ticks; i += 1) apply(state, { type: CMD_TICK });
 
-  // Nothing DEVELOPS without power and water, so the grid alone has no
-  // buildings and therefore no lots — and a walkthrough of a city with nothing
-  // to bump into is a walkthrough of a field. Seeded directly, the way
-  // `budget_gate` does and for the same reason.
-  if (buildings && state.buildings.length === 0) {
-    let id = 1;
-    for (let y = 10; y < W - 10; y += 1) {
-      for (let x = 10; x < W - 10; x += 1) {
-        if ((state.tiles.road[y * W + x] & 16) !== 0) continue;
-        if ((x + y) % 3 !== 0) continue;
-        state.buildings.push({
-          id, def: "res", zone: 1, x, y, w: 1, h: 1, owner: 1,
-          level: 2, valueTier: 1, occupancy: 20, condition: 100, builtTick: 0, flags: 0,
-        });
-        state.tiles.buildingId[y * W + x] = id;
-        id += 1;
-      }
-    }
-    state.nextId = id;
+  // `rail: false` — the line and its stations come out, so the cost of the
+  // track stays a before-and-after against the code that ships (T3).
+  if (!rail) {
+    for (let i = 0; i < state.tiles.rail.length; i += 1) state.tiles.rail[i] = 0;
+    removeBuildings(state, (b) => b.def === "railStation");
   }
 
-  // A LINE and a station (T3), because a fixture with no railway on it prices a
-  // renderer that has one. Straight across the map on a row the grid does not
-  // use, so it makes level crossings with every north-south street it meets —
-  // which is the geometry the crossing pass is for. `rail` is refused over
-  // water and over a building, so it goes down in dry runs like the roads.
-  if (rail) {
-    // Through the MIDDLE of the map, on a row the grid does not use (the roads
-    // are every fourth row from 8, the zoning every fourth from 9). At row 15
-    // the line was outside every chunk `budget_gate` bakes and the triangle
-    // count came back identical to the run with no railway in the fixture at
-    // all — a fixture that has the thing and never shows it to the instrument.
-    let row = 15;
-    for (let y = Math.floor(W / 2) - 8; y < Math.floor(W / 2) + 8; y += 1) {
-      if (y % 4 === 3) { row = y; break; }
-    }
-    // The houses on the row come DOWN first. Dodging them instead chopped the
-    // line into eighteen fragments — every third tile of a plain row carries
-    // one — so the longest "line" in the fixture was ten tiles, none of it in
-    // the chunks `budget_gate` bakes, and the track cost exactly zero
-    // triangles in a fixture that was supposed to price it.
-    for (let x = 0; x < W; x += 1) {
-      const tile = row * W + x;
-      const id = state.tiles.buildingId[tile];
-      if (id === 0) continue;
-      const k = state.buildings.findIndex((b) => b.id === id);
-      if (k >= 0) state.buildings.splice(k, 1);
-      state.tiles.buildingId[tile] = 0;
-    }
-    const runs = [];
-    let start = -1;
-    for (let x = 0; x <= W; x += 1) {
-      const clear = x < W && land(x, row);
-      if (clear && start < 0) start = x;
-      if (!clear && start >= 0) {
-        runs.push([start, x - start]);
-        start = -1;
-      }
-    }
-    let laid = 0;
-    for (const [x, len] of runs) {
-      if (apply(state, { type: CMD_PLACE_RAIL, actor: 1, runs: [row * W + x, len] }).result === "ok") laid += len;
-    }
-    // Say what was refused rather than leaving the count to the check below: a
-    // line in four pieces is a fixture worth knowing about, and a line in none
-    // used to arrive as a bare throw forty lines later.
-    if (laid === 0 && runs.length > 0) {
-      throw new Error(`every rail run on row ${row} was refused (${runs.length} runs, `
-        + `${runs.reduce((n, [, len]) => n + len, 0)} tiles) — something on that row refuses a network`);
-    }
-    // And a station beside it, on a footprint that touches NO ROAD.
-    //
-    // The houses in its way are bulldozed, which is what a player does; the
-    // roads are not, which is what the first cut did — it cleared four tiles
-    // out of a road row, the lane graph re-derived around the hole, and
-    // `walkthrough` reported **128 cliffs** where the walker climbed the
-    // station it was now walking through. The grid here is a road every four
-    // rows and every four columns, so the two rows ABOVE the line are clear of
-    // road rows and a footprint starting at x ≡ 1 (mod 4) is clear of road
-    // columns.
-    // The two rows ABOVE the line are clear of the grid's road rows, and a
-    // footprint at x ≡ 1 (mod 4) is clear of its road columns — so the only
-    // thing in the way is the seeded housing, and a third of every row has
-    // some. It is removed the same way it was put there: `bulldoze` clears a
-    // network and a zone, not a building, and this recipe pushed these
-    // straight into the array.
-    //
-    // The first cut cleared ROAD tiles instead. The lane graph re-derived
-    // around the hole, the lanes ran through the new station, and
-    // `walkthrough` reported 128 cliffs where the walker climbed it.
-    let stood = false;
-    for (let x = 13; buildings && !stood && x < W - 12; x += 4) {
-      const foot = [];
-      let ok = true;
-      for (let dy = -2; dy <= -1 && ok; dy += 1) {
-        for (let dx = 0; dx < 3 && ok; dx += 1) {
-          const tile = (row + dy) * W + x + dx;
-          if (!land(x + dx, row + dy) || (state.tiles.road[tile] & 16) !== 0) ok = false;
-          else foot.push(tile);
-        }
-      }
-      if (!ok) continue;
-      for (const tile of foot) {
-        const id = state.tiles.buildingId[tile];
-        if (id === 0) continue;
-        const k = state.buildings.findIndex((b) => b.id === id);
-        if (k >= 0) state.buildings.splice(k, 1);
-        state.tiles.buildingId[tile] = 0;
-      }
-      for (const tile of foot) apply(state, { type: CMD_BULLDOZE, actor: 1, runs: [tile, 1] });
-      stood = apply(state, { type: CMD_PLACE_BUILDING, actor: 1, x, y: row - 2, def: "railStation" }).result === "ok";
-    }
-  }
+  // `buildings: false` — the streets stay and the lots go, which is what a lane
+  // graph is derived from (`lanes_dump`, E1).
+  if (!buildings) removeBuildings(state, () => true);
 
   // The commuter load, seeded rather than simulated. The buildings above are
   // pushed straight into the array with no zoning demand behind them, so the
@@ -203,10 +126,16 @@ export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings =
   if (paved === 0) throw new Error("no road was built");
   let track = 0;
   for (let i = 0; i < state.tiles.rail.length; i += 1) if (state.tiles.rail[i] & 16) track += 1;
-  if (rail && track === 0) throw new Error("a rail line was asked for and none was laid");
+  // A city that never grew big enough for a line is a young city, not a broken
+  // fixture: the deputy lays one past `deputy.railAtPopulation` and not before.
+  // The throw is for the case that used to happen silently — a line asked for,
+  // a city old enough to have one, and no track anywhere (S11's rock).
+  if (rail && track === 0 && state.population >= rules().deputy.railAtPopulation) {
+    throw new Error(`a rail line was asked for, the city is ${state.population} strong and none was laid`);
+  }
   // `buildings: false` is `lanes_dump`'s contract — a lane graph derived from
   // roads and nothing else — so the line goes down without a station on it.
-  if (rail && buildings && !state.buildings.some((b) => b.def === "railStation")) {
+  if (rail && buildings && track > 0 && !state.buildings.some((b) => b.def === "railStation")) {
     throw new Error("a rail line was laid and no station stands on it");
   }
   return { state, paved, track };

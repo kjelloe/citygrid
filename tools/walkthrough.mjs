@@ -53,6 +53,23 @@ let legs = 0;
 let unfinished = 0;
 let cliffs = 0;
 let refusals = 0;
+// Refused on a street the grade machinery could not flatten — the terrain, not
+// the ground under a street (H7).
+let steepRefusals = 0;
+// Refused at a road tile standing on water — the causeway the deputy already
+// builds and nothing draws a deck for (S13).
+let crossingRefusals = 0;
+let crossingLegs = 0;
+
+/** Is this point on a tile that carries a road AND water? */
+function onWater(city, x, z) {
+  const tx = Math.floor(x / DEFAULTS.tileM);
+  const ty = Math.floor(z / DEFAULTS.tileM);
+  if (tx < 0 || ty < 0 || tx >= city.width || ty >= city.height) return false;
+  const i = ty * city.width + tx;
+  const t = city.tiles.terrain[i];
+  return (t === 3 || t === 4) && (city.tiles.road[i] & 16) !== 0;
+}
 let metres = 0;
 let worstJump = 0;
 const failures = [];
@@ -72,6 +89,13 @@ const lanesOf = (corridor) => {
 };
 
 for (const corridor of model.corridors) {
+  // Is this corridor one the grade machinery could actually flatten? A profile
+  // steeper than `maxGrade` is a street whose two junctions are further apart in
+  // height than any street may climb (S11), and a walker refusing a step on one
+  // of those is the TERRAIN, not a defect in the ground under a street. The
+  // played fixture (H7) has 25 of 5,946; the grid fixture had none, which is why
+  // this distinction never had to exist.
+  const steep = (model.profileOf?.(corridor.id)?.steepest ?? 0) > DEFAULTS.road.maxGrade + 1e-6;
   for (let i = 1; i < corridor.points.length; i += 1) {
    for (const lane of lanesOf(corridor)) {
     const dx = corridor.points[i].x - corridor.points[i - 1].x;
@@ -104,7 +128,18 @@ for (const corridor of model.corridors) {
       // which moves the walker and is what an unfinished leg is for.
       if (step < 1e-9 && walker.foot === wasFoot && collision.floorAt(
         was.x - Math.sin(walker.pose.yaw) * 0.2, was.z - Math.cos(walker.pose.yaw) * 0.2, wasFoot,
-      ) === undefined) refusals += 1;
+      ) === undefined) {
+        // WHY the floor refused, because the three answers are different
+        // problems. A crossing is the causeway nobody designed: the deputy
+        // paves over shallow water (10 road tiles in a played 96), the engine
+        // charges `build.roadOverWater` for it, and the renderer drapes the
+        // road into the shallows — so the bank is a 0.72 m step up and the
+        // walker is stopped at the water's edge. That is S13's bridge arriving
+        // from the other side (A84, Q104), not a defect in this ground.
+        if (onWater(state, was.x, was.z)) crossingRefusals += 1;
+        else if (steep) steepRefusals += 1;
+        else refusals += 1;
+      }
       travelled += step;
       sinceSample += step;
       if (sinceSample >= SAMPLE) {
@@ -123,10 +158,19 @@ for (const corridor of model.corridors) {
     }
     metres += travelled;
     if (Math.hypot(walker.pose.x - to.x, walker.pose.z - to.z) > ARRIVED) {
-      unfinished += 1;
-      if (failures.length < 8) {
-        failures.push(`  stopped ${Math.hypot(walker.pose.x - to.x, walker.pose.z - to.z).toFixed(1)} m short`
-          + ` of ${to.x.toFixed(0)}, ${to.z.toFixed(0)} (leg ${length.toFixed(0)} m, lane ${lane.toFixed(1)})`);
+      // Stopped AT the water's edge, or stopped by something else. The first is
+      // the causeway (S13) and is counted with the crossings; the second is a
+      // street a person cannot walk, which is what this gate is for.
+      const atCrossing = onWater(state, walker.pose.x, walker.pose.z)
+        || onWater(state, to.x, to.z)
+        || onWater(state, (walker.pose.x + to.x) / 2, (walker.pose.z + to.z) / 2);
+      if (atCrossing) crossingLegs += 1;
+      else {
+        unfinished += 1;
+        if (failures.length < 8) {
+          failures.push(`  stopped ${Math.hypot(walker.pose.x - to.x, walker.pose.z - to.z).toFixed(1)} m short`
+            + ` of ${to.x.toFixed(0)}, ${to.z.toFixed(0)} (leg ${length.toFixed(0)} m, lane ${lane.toFixed(1)})`);
+        }
       }
     }
    }
@@ -209,6 +253,8 @@ console.log(`unfinished      ${unfinished}`);
 // a wall proves the walker can cross a field.
 console.log(`blocked steps   ${walker.blocked}`);
 console.log(`refusals        ${refusals}`);
+console.log(`steep refusals  ${steepRefusals}   (on corridors no grading can flatten — the terrain, not a defect)`);
+console.log(`crossing stops  ${crossingRefusals} steps, ${crossingLegs} legs   (at a road tile standing on water — the causeway S13 replaces with a deck)`);
 console.log(`lots walked at  ${probed}, walked into ${entered}`);
 console.log(`steepest street ${(steepest * 100).toFixed(1)}%`
   + `${steepestAt ? ` at ${steepestAt.x.toFixed(0)}, ${steepestAt.z.toFixed(0)}` : ""}`

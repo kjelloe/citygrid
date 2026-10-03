@@ -430,6 +430,10 @@ by number from the code they create.
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
 | Q135 | The traffic gate's seed tripwire fires on the 70000 map block (−0.202) and not on 90000 (0.024) or 50000 (0.037) | Kjell — ratify the re-aimed criterion, or pay for a second seed block? |
 | Q136 | A zoning stroke has no price or refusal preview, so era 20's slope rule only speaks after the click | Kjell — worth a slice, or does the refusal teach well enough? |
+| Q137 | The deputy already builds causeways (10 road tiles on water a city) and nothing draws a deck — S13 from the other side | Kjell — for information; it makes S13 cheaper to justify |
+| Q138 | 4 of 7,694 lane links are shorter than a car, where the deputy's streets meet two metres apart | Kjell — fix the graph, or live with 0.05%? |
+| Q139 | A turn's lane is up to 0.38 m off the ground where two streets meet at different heights | Kjell — pay R2's milliseconds back, or accept it? |
+| Q140 | H6 keeps the city off the cliff and not the streets: the deputy still paves a 500% hillside | Kjell — should a road refuse the ground a lot refuses? |
 
 ## What would make us stop and re-plan
 

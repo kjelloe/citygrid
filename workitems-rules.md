@@ -171,6 +171,22 @@ measurement, not from a guess.
 **Gate.** `walkthrough 128 hilly` — green, and it joins the `render` set, which is what S11 could not
 do. Plus `sim` on a new era: this changes what every map affords, so every number moves.
 
+## H7 — The saturated fixture becomes a played city (M) — A105 (Q72) — **BUILT 2026-10-03**
+
+*As built, at ONE mayor and twenty years rather than the four-and-forty the measurement proposed:
+`lanes_dump` walks every point of every link and then runs three hundred steps of traffic over it, so
+its cost follows the corridor count, and at four mayors it had not finished in thirteen minutes
+against a 110 s baseline. One mayor gives 405 buildings of eighteen kinds, 2,881 residents and 1,243
+corridors — the closest in SIZE to the fixture it replaces, which is what the gates were calibrated
+on. More mayors are still available through `seats`.*
+
+*It found four defects in one afternoon, which is the whole argument for the change, and none of them
+is the fixture's: the **causeway** nobody designed (Q137 — the deputy paves over shallow water, ten
+tiles a city, and the bank is a 0.72 m step that stopped the walker 939 times), a **block link too
+short to hold a car** (Q138), a **turn's lane 0.38 m off the ground** where two streets meet at
+different heights (Q139), and the two gate criteria that were a MAXIMUM over a sample that has now
+grown tenfold (A89's lesson, re-applied).*
+
 ## H7 — The saturated fixture becomes a played city (M) — A105 (Q72)
 
 **Goal.** Four gates stop measuring a mature city on 1,129 copies of one house.
