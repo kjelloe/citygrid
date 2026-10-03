@@ -35,6 +35,11 @@ const BODIES = {
 
 export const BODY_NAMES = Object.keys(BODIES);
 
+/** The longest thing that drives, in metres. The lane graph reads it (J2): a
+ * link shorter than this cannot hold the vehicle that sits on it, and the
+ * number belongs beside the bodies rather than copied into `lanes.js`. */
+export const LONGEST_BODY = Math.max(...Object.values(BODIES).map((body) => body.length));
+
 /** How many cars are vans (B3b).
  *
  * A van is a truck when it comes off an industrial street: one in eight

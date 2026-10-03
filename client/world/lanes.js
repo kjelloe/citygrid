@@ -20,6 +20,9 @@ import { getConfig } from "./config.js";
 import { laneWidth, laneOffset } from "./corridors.js";
 import { jitter } from "./hash.js";
 import { isSignalled, givesWayAt } from "./signals.js";
+// The longest thing that drives (J2, A109): a link shorter than it cannot hold
+// the vehicle that sits on it.
+import { LONGEST_BODY } from "./vehicle-spec.js";
 // Shared with the nav graph pedestrians walk on (E7): one copy of "offset a
 // centre line" and "stop short of a junction", not two.
 import { rightOf, offsetPolyline, trim, lengthOf } from "./polyline.js";
@@ -221,16 +224,39 @@ export function deriveLanes(state, network, ground) {
           if (kind === "seam") return corridor.half;
           return stopLine;
         };
-        const cut = trim(centre, clear(from), clear(to));
+        // A link has to hold the car that drives on it (J2, A109). The deputy
+        // lays streets that meet two metres apart, so a corridor can be shorter
+        // than its own two junction boxes — and the block link that came out of
+        // it was 2.00 m against a 4.5 m car. The grid fixture could not produce
+        // one, which is why `lanes_dump`'s criterion was a minimum and why it
+        // went red the moment H7 made the fixture a city.
+        //
+        // The link is not DROPPED: that would leave the two junctions with no
+        // way between them and a hole in the graph. The clearances give way
+        // instead, in proportion, until the lane is a car long or the corridor
+        // has nothing left to give — which is the physical truth of the place,
+        // because a street that short IS most of the junction.
+        const want = LONGEST_BODY;
+        let keepFrom = clear(from);
+        let keepTo = clear(to);
+        const room = corridorLen - keepFrom - keepTo;
+        if (room < want) {
+          const spare = Math.max(0, corridorLen - want);
+          const asked = keepFrom + keepTo;
+          const scale = asked > 1e-6 ? Math.min(1, spare / asked) : 0;
+          keepFrom *= scale;
+          keepTo *= scale;
+        }
+        const cut = trim(centre, keepFrom, keepTo);
         if (cut.length < 2) continue;
         // Where this lane starts on its corridor, and how much of it the lane
         // covers between the two stop lines (R4). Computed here rather than in
         // the link literal below, because `packAlong` needs them too — and a
         // second copy of "where does this lane start" is exactly the arithmetic
         // that went wrong.
-        const s0 = dir === 0 ? clear(from) : corridorLen - clear(from);
+        const s0 = dir === 0 ? keepFrom : corridorLen - keepFrom;
         const dirSign = dir === 0 ? 1 : -1;
-        const covers = Math.max(0, corridorLen - clear(from) - clear(to));
+        const covers = Math.max(0, corridorLen - keepFrom - keepTo);
         const packed = packAlong(cut, profile, { s0, dirSign, run: covers });
         if (packed.len < 1e-6) continue;
         const lane = { id: lanes.length, corridor: corridor.id, dir, index: k, of: perDir, from, to };

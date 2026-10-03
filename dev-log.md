@@ -9204,3 +9204,23 @@ tiles now.
 The gate is the real page: `ui_smoke` drags a zoning stroke and reads the HUD, which says
 **"25 tiles · −§250"**. 215 checks green.
 
+## J2 — a block shorter than a car is part of its junction (2026-10-03) — A109 (Q138)
+
+The deputy lays streets that meet two metres apart, so a corridor can be shorter than the clearances
+its two junctions ask for: `lanes_dump` read a **2.00 m block link against a 4.6 m van**, 4 of 7,694.
+The 20 m grid the fixture used until H7 could not produce one, which is why the gate's criterion was
+a minimum and why it went red the moment the fixture became a city.
+
+**Not by dropping the link**, which was the first reading of "absorbed into the junction": the block
+link is how the two junctions are connected, and a corridor that publishes none leaves a hole in the
+graph that nothing else fills. The CLEARANCES give way instead — in proportion, until the lane is a
+car long or the corridor has nothing left to give — which is the physical truth of a street that
+short, because it is most of the junction already.
+
+The car is `LONGEST_BODY` from `vehicle-spec.js`, not a number in `lanes.js`: the kit is where a van's
+length is decided.
+
+`lanes_dump`: links under 4.5 m **4 → 0 of 7,694**, shortest link **2.00 m → 5.10 m**, and the graph
+is still whole — the test asserts no block link is joined to nothing at either end, which is the thing
+that would have broken quietly. Traffic flow, settled cars and the night ratio are unchanged.
+

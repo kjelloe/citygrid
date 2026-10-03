@@ -19,6 +19,7 @@ import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 import { DEFAULTS, getConfig } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
 import { isSignalled } from "../client/world/signals.js";
+import { LONGEST_BODY } from "../client/world/vehicle-spec.js";
 
 const T = DEFAULTS.tileM;
 const { stopLine, width: ROAD_W, lanes: LANES } = DEFAULTS.road;
@@ -603,3 +604,46 @@ test("where an avenue becomes a street the lanes taper rather than step sideways
   assert.equal(fed.length, 2);
   for (const lane of fed) assert.ok(lane.preds.length > 0, `avenue lane ${lane.index} has nothing behind it`);
 });
+
+// --- every link holds the car that drives on it (slice J2; A109, Q138) -------
+
+test("a corridor shorter than its own junction boxes still yields a usable link", () => {
+  // Q138: the deputy lays streets that meet two metres apart, so a corridor can
+  // be shorter than the clearances its two junctions ask for — and the block
+  // link that came out of it was **2.00 m against a 4.6 m van**. The 20 m grid
+  // the fixture used until H7 could not produce one, which is why the gate's
+  // criterion was a minimum and why it went red the moment the fixture became a
+  // city.
+  //
+  // The link is not dropped: that would leave the two junctions with no way
+  // between them and a hole in the graph. The clearances give way instead.
+  // Two crossroads one tile apart: the corridor between them is 20 m long and
+  // asks for more clearance than that at each end.
+  const state = blank(16);
+  pave(state,
+    Array.from({ length: 12 }, (_, i) => [2 + i, 6]),
+    Array.from({ length: 8 }, (_, i) => [6, 2 + i]),
+    Array.from({ length: 8 }, (_, i) => [7, 2 + i]));
+  const model = createModel(state);
+  const blocks = model.lanes.links.filter((link) => link.kind === "block");
+  assert.ok(blocks.length > 0, "no block links at all, so this proves nothing");
+  const short = blocks.filter((link) => link.len < LONGEST_BODY - 1e-6);
+  assert.deepEqual(short.map((link) => `${link.id}:${link.len.toFixed(2)}m`), [],
+    "a link shorter than the longest thing that drives on it");
+});
+
+test("the short corridor is still connected at both ends", () => {
+  // The thing that would quietly break: a link that keeps its length by giving
+  // up its clearances must still JOIN. A graph with a hole in it is worse than
+  // a link a car overhangs.
+  const state = blank(16);
+  pave(state,
+    Array.from({ length: 12 }, (_, i) => [2 + i, 6]),
+    Array.from({ length: 8 }, (_, i) => [6, 2 + i]),
+    Array.from({ length: 8 }, (_, i) => [7, 2 + i]));
+  const model = createModel(state);
+  const blocks = model.lanes.links.filter((link) => link.kind === "block");
+  const orphans = blocks.filter((link) => link.next.length === 0 && link.preds.length === 0);
+  assert.deepEqual(orphans.map((link) => link.id), [], "block links joined to nothing at either end");
+});
+

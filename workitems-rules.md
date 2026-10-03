@@ -51,6 +51,19 @@ cost and `ok`; and the quote never CHANGES the state, which is what `price` is f
 **Gate.** `ui_smoke` — the readout names the reason on the real page, which is where ruling 026's
 standard lives.
 
+## J2 — A block shorter than a car is part of its junction (S) — A109 (Q138) — **BUILT 2026-10-03**
+
+*As built, and NOT by dropping the link, which was the first reading of "absorbed into the junction":
+a corridor whose block link is not published leaves its two junctions with no way between them and a
+hole in the graph. **The clearances give way instead**, in proportion, until the lane is a car long or
+the corridor has nothing left — which is the physical truth of a street that short, because it IS
+most of the junction. `lanes_dump`: links under 4.5 m went 4 of 7,694 to **0**, and the shortest link
+2.00 m to 5.10 m.*
+
+*The car's length is read from `vehicle-spec.js` (`LONGEST_BODY`, a van at 4.6 m) rather than written
+into `lanes.js`, because the kit is where a van's length is decided and a second copy would be the
+lane graph's own idea of a car.*
+
 ## J2 — A block shorter than a car is part of its junction (S) — A109 (Q138)
 
 **Goal.** Every link in the lane graph can hold the car that drives on it.
