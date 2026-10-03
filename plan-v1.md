@@ -454,6 +454,7 @@ by number from the code they create.
 | Q131 | 39% of zoned tiles carry a road — the deputy paves across its own zoned land on purpose (B9) and since G1 those tiles are dead zoning | Kjell — dezone what it paves, or leave it as the honest record? |
 | Q132 | A park reaches land value twice since G3: the leisure layer (+33) and its own bonus (+21) | Kjell — is a park's land value its funding's or its own? |
 | Q133 | The deputy has never built a park, so G3's rule reaches a headless city through three buildings and no sweep can see it | Kjell — should the mayor plant parks? Its own era |
+| Q134 | S11 took hilly's cliffs 177 → 30 and its ungradeable corridors 485 → 226, and `walkthrough 128 hilly` is still red | Kjell — dig deeper, allow a steeper street, or keep the city off the cliff? |
 | Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan

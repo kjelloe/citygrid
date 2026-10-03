@@ -178,6 +178,72 @@ function steepestOf(cum, ys) {
 /** The graded height `s` metres along a profile. Linear between the points,
  * which is what makes a caller sampling every two metres see the same limit the
  * profile itself obeys. Clamped at both ends. */
+/** Junction heights a street can actually be graded between (slice S11; A87).
+ *
+ * R3 pinned a junction to the land (A42) and graded the street between two of
+ * them. That is right until the land between two junctions is steeper than any
+ * street may be: `gradeProfile` sees `direct > maxGrade`, gives up, and draws a
+ * straight line at whatever grade the land demanded. On `hilly` 128 that was
+ * **485 of 1,458 corridors** and a steepest street of 98.1% — the terrain was
+ * scenery, which is Q64 and Q74.
+ *
+ * So the junctions give way too, within a cap. One Gauss-Seidel pass per
+ * corridor moves both ends halfway toward the limit; the clamp afterwards keeps
+ * every node within `maxDrift` of its own land, which is what makes this a cut
+ * and an embankment rather than a road on stilts — every lot, lawn and walker
+ * still reads the land. The two fight, deliberately: the cap wins, and what is
+ * left over is a street `gradeProfile` straightens as it always did.
+ *
+ * `maxDrift` at or below zero turns it off, the way `maxGrade` turns grading
+ * off, so one harness can measure the before and the after (R3's lesson).
+ */
+export function relaxNodes(network, landAt, maxGrade, maxDrift, passes = PASSES) {
+  const height = new Map();
+  const land = new Map();
+  for (const node of network.nodes) {
+    const h = landAt(node.x, node.z);
+    height.set(node.id, h);
+    land.set(node.id, h);
+  }
+  if (!(maxGrade > 0) || !(maxDrift > 0)) return height;
+
+  // The run the grade has to fit into is the street, NOT the street plus its
+  // two junction boxes — the same subtraction `gradeProfile` makes, or this
+  // relaxes to a limit the profile cannot meet and `ungradeable` does not move
+  // (measured: 485 of 1,458 corridors before the subtraction and 485 after,
+  // while the field's steepest fell, which is what said the two disagreed).
+  const spans = [];
+  for (const c of network.corridors) {
+    const len = lengthOfPolyline(c.points);
+    if (len <= 1e-6 || !height.has(c.from) || !height.has(c.to)) continue;
+    const box = Math.min(c.frontage ?? 0, len / 6);
+    const graded = Math.max(1e-6, len - 2 * box);
+    spans.push({ from: c.from, to: c.to, allowed: maxGrade * graded });
+  }
+
+  for (let pass = 0; pass < passes; pass += 1) {
+    let moved = false;
+    for (const span of spans) {
+      const a = height.get(span.from);
+      const b = height.get(span.to);
+      const drop = b - a;
+      const excess = Math.abs(drop) - span.allowed;
+      if (excess <= 1e-9) continue;
+      moved = true;
+      const sign = drop > 0 ? 1 : -1;
+      height.set(span.to, b - sign * excess * 0.5);
+      height.set(span.from, a + sign * excess * 0.5);
+    }
+    for (const [id, h] of height) {
+      const l = land.get(id);
+      if (h > l + maxDrift) height.set(id, l + maxDrift);
+      else if (h < l - maxDrift) height.set(id, l - maxDrift);
+    }
+    if (!moved) break;
+  }
+  return height;
+}
+
 export function heightOnProfile(profile, s) {
   const { cum, ys } = profile;
   const last = ys.length - 1;

@@ -34,11 +34,18 @@ export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings =
   state.players[0].treasury = 90000000;
 
   const W = state.width;
-  // `placeNetwork` refuses water, and a command that touches one tile of river
-  // is refused whole — which on seed 1003 is most of them.
+  // `placeNetwork` refuses water and ROCK, and a command that touches one tile
+  // of either is refused whole — which on seed 1003 is most of them.
+  //
+  // Rock was missing from this predicate until S11, and nothing noticed while
+  // the gates ran on `rolling`, which has almost none. On `hilly` 128 the rail
+  // row carries **12 rock tiles**, so every run of the line was refused and
+  // `saturatedCity` threw "a rail line was asked for and none was laid" — the
+  // gate this fixture exists for could not be run on the terrain the question
+  // was about (Q64/Q74).
   const land = (x, y) => {
     const t = state.tiles.terrain[y * W + x];
-    return t !== 3 && t !== 4;   // WATER, SHALLOW
+    return t !== 3 && t !== 4 && t !== 5;   // WATER, SHALLOW, ROCK
   };
   const paveLine = (tiles) => {
     let start = -1;
@@ -124,7 +131,17 @@ export function saturatedCity({ size = 96, seed = 1003, ticks = 400, buildings =
         start = -1;
       }
     }
-    for (const [x, len] of runs) apply(state, { type: CMD_PLACE_RAIL, actor: 1, runs: [row * W + x, len] });
+    let laid = 0;
+    for (const [x, len] of runs) {
+      if (apply(state, { type: CMD_PLACE_RAIL, actor: 1, runs: [row * W + x, len] }).result === "ok") laid += len;
+    }
+    // Say what was refused rather than leaving the count to the check below: a
+    // line in four pieces is a fixture worth knowing about, and a line in none
+    // used to arrive as a bare throw forty lines later.
+    if (laid === 0 && runs.length > 0) {
+      throw new Error(`every rail run on row ${row} was refused (${runs.length} runs, `
+        + `${runs.reduce((n, [, len]) => n + len, 0)} tiles) — something on that row refuses a network`);
+    }
     // And a station beside it, on a footprint that touches NO ROAD.
     //
     // The houses in its way are bulldozed, which is what a player does; the

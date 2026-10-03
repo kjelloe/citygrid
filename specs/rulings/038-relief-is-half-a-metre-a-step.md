@@ -41,6 +41,22 @@ flat tinted quads, and at a block of relief they either become ribbons or fight 
 Half a metre is enough for hills to read as hills under a perspective camera (034) and small
 enough that the flat layers can be re-checked one by one (V4's definition of done).
 
+## Amended at S11 (A87, 2026-10-03) — a junction may move
+
+R3 added the second half of this ruling (A42): node heights are fixed at the land, and the street
+between two of them is graded to `road.maxGrade`. That holds until the land between two junctions is
+steeper than any street may be — on `hilly` 128, **485 of 1,458 corridors**, where `gradeProfile`
+gives up and draws a straight line at whatever the land demanded, and the walker meets 177 cliffs.
+
+So a junction gives way too, within `road.junctionDrift` of its own ground (6 m), relaxed against
+the same graded run the profile uses. It is a cutting and an embankment, not a road on stilts: every
+lot, lawn and walker still reads the land, and on `rolling` — the terrain every other gate measures
+— it moves **3% of junctions, by 1.19 m at worst**, while taking the last 8 ungradeable corridors to
+none. `junctionDrift: 0` turns it off, so one harness can measure the before and the after.
+
+It is not enough to make `hilly` playable on its own: at 6 m the walked route still meets 30 cliffs
+and 226 corridors are still ungradeable (Q134).
+
 ## Consequences
 
 - Slice V4: `heightAt`, corridor flattening, seating, height-field picking, and every flat

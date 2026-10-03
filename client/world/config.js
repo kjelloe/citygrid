@@ -22,6 +22,15 @@ export const DEFAULTS = Object.freeze({
   road: {
     width: 8, sidewalk: 2.5, blend: 4,
     lanes: 1, stopLine: 2, maxGrade: 0.15, speed: 11, maxDensity: 12, dip: 0.16,
+    // How far a junction's height may leave its own land so that the street
+    // either side of it can be graded (S11, A87) — a cutting or an embankment,
+    // in metres. Measured as a ladder on `hilly` 128 (ungradeable corridors of
+    // 1,458 / cliffs on the walked route): 0 → 485/177, 3 → 349/66, 6 → 226/30,
+    // 10 → 99/19. Six, because on `rolling` — the terrain every other gate
+    // measures — it moves 3% of junctions, by 1.19 m at worst, and takes the
+    // last 8 ungradeable corridors to none. At zero the whole rule is off,
+    // which is what lets one harness shoot the before and the after.
+    junctionDrift: 6,
     // L3 only (E3): how far the kerb steps up from the carriageway, how much
     // the road is crowned, and how far the carriageway sits above the ground.
     kerb: 0.15, camber: 0.035, lift: 0.02,

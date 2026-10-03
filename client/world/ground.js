@@ -22,7 +22,7 @@
 import { getConfig } from "./config.js";
 import { TERRAIN_WATER, TERRAIN_SHALLOW } from "../constants-mirror.js";
 import { closestOnPolyline } from "./corridors.js";
-import { gradeProfile, heightOnProfile } from "./grade.js";
+import { gradeProfile, heightOnProfile, relaxNodes } from "./grade.js";
 import { deriveWater } from "./water.js";
 
 function sstep(a, b, v) {
@@ -119,8 +119,12 @@ export function createGround(state, network) {
   let steepestStreet = 0;
   if (network) {
     const maxGrade = cfg.road.maxGrade;
-    const nodeHeight = new Map();
-    for (const n of network.nodes) nodeHeight.set(n.id, landAt(n.x, n.z));
+    // A junction is where the land is — until the land between two of them is
+    // steeper than any street may be, and then it gives way too, within
+    // `road.junctionDrift` of its own ground (S11, A87). Shared by every
+    // corridor that meets there, as it always was: two streets that disagree
+    // about the height of the junction between them is a step in the road.
+    const nodeHeight = relaxNodes(network, landAt, maxGrade, cfg.road.junctionDrift);
     for (const c of network.corridors) {
       const profile = gradeProfile(c.points, landAt, {
         maxGrade,

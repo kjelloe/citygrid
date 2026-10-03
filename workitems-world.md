@@ -261,6 +261,24 @@ still water. `test/lanes.test.js`: the lane graph crosses it as one corridor rat
 plus `walkthrough` over every bridge, `budget_gate` for the deck geometry, and
 `reports/smoke-S13-bridge.png` from the bank, from the deck and from a boat passing under it.
 
+## S11 — Steep ground you can play on — Q80 (A57), A87 (Q64, Q74) — **PART BUILT 2026-10-03** as `slice-S11`
+
+*Built: a junction's height may move within `road.junctionDrift` (6 m) of its own ground, relaxed
+against the same graded run `gradeProfile` uses, before the profiles are built. Ruling 038 is amended
+with it.*
+
+*Not met: the done-when. `walkthrough 128 hilly` is **red** — 30 cliffs, 226 of 1,458 corridors
+ungradeable — so it has not joined the `render` set. Before this slice the gate **could not be run at
+all** on that terrain: `saturatedCity` threw "a rail line was asked for and none was laid", because
+its `land()` predicate did not know that `placeNetwork` refuses ROCK and the rail row carries twelve
+rock tiles. That is fixed, and the baseline it then printed (177 cliffs, 485 ungradeable, steepest
+street 98.1%) is the first honest reading this question has ever had. The remaining corridors are
+20 m long with 10 m of land between their ends, and no cutting fixes that at 15%: **Q134** is the
+choice between a deeper cut, a steeper street and worldgen refusing to zone the cliff.*
+
+*On `rolling` 96 — the terrain every other gate measures — the rule is a clear win and no regression:
+ungradeable 8 → 0, samples over 15% 220 → 46, steepest street unchanged at 18.8%, cliffs still 0.*
+
 ## S11 — Steep ground you can play on — Q80 (A57), **and Kjell confirmed it is wanted** (A87: Q64, Q74)
 
 Kjell: *"whichever is easiest, allow steep ground."* So `hilly` stops being scenery and the cheap

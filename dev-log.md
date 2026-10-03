@@ -8584,3 +8584,66 @@ mistake Q128's ladder was about.
 
 Suite **1,570 green twice**; `sim` **777 s of 900**.
 
+## S11 — a junction may move, and `hilly` gets its first honest reading (2026-10-03) — A87 (Q64, Q74)
+
+A87: *"whichever is easiest, allow steep ground."* The easiest half is the renderer's — R3 pinned
+every junction to the land (A42) and graded the street between two of them, which is right until the
+land between two junctions is steeper than any street may be. `gradeProfile` then reports
+`direct > maxGrade`, gives up, and draws a straight line at whatever grade the land demanded.
+
+### The gate could not be run on the terrain the question is about
+
+`node tools/walkthrough.mjs 128 hilly` threw **"a rail line was asked for and none was laid"**, and
+had done since the saturated fixture learned to lay rail (T3). `saturatedCity`'s `land()` predicate
+knows that `placeNetwork` refuses water; it does not know that it refuses **rock**, and the rail row
+on `hilly` 128 carries twelve rock tiles — so every run of the line was refused whole and the
+fixture threw forty lines later. The predicate knows about rock now, and the rail builder says which
+runs were refused instead of leaving it to a count.
+
+So the numbers in the work item (459 ungradeable, steepest street 59.3%) were from a build before
+the fixture had a railway in it. The first honest reading, era 16:
+
+```
+unfinished 0   refusals 0   lots walked into 0
+steepest street 98.1%   ungradeable 485 of 1458   cliffs 177
+```
+
+### The rule, and the ladder that chose its constant
+
+`relaxNodes` in `client/world/grade.js`: one Gauss-Seidel pass per corridor moves both junctions
+halfway toward the limit, then every node is clamped to within `road.junctionDrift` of its own land.
+The two fight deliberately — the cap wins, and what is left over is a street `gradeProfile`
+straightens as it always did.
+
+**The first cut relaxed against the wrong length.** It targeted `maxGrade × corridorLength`, where
+the profile grades over the length MINUS its two junction boxes. The symptom was precise and
+confusing: the field's steepest street fell from 98% to 36% while `ungradeable` did not move at all
+(485 → 481), because the relaxation was meeting a limit the profile did not use. Relaxing against the
+same graded run is what made the counter move.
+
+| `junctionDrift` | ungradeable of 1,458 | cliffs | steepest street |
+|---|---|---|---|
+| 0 (off) | 485 | 177 | 98.1% |
+| 3 | 349 | 66 | 98.4% |
+| **6** | **226** | **30** | 98.8% |
+| 10 | 99 | 19 | 79.9% |
+
+Six, and the reason is the other terrain: on `rolling` 96, where every other gate in this project is
+measured, the rule moves **3% of junctions, by 1.19 m at worst**, leaves the steepest street exactly
+where it was (18.8%) and takes the last **8 ungradeable corridors to none**. It is invisible where it
+should be invisible.
+
+### What it does not do
+
+`walkthrough 128 hilly` is still **red**, so S11's own done-when — green, and joined to the `render`
+set — is not met and the slice is marked PART BUILT. What is left is five corridors on the walked
+route, each about 20 m long with 10 m of land between its ends: no cutting a person would dig fixes
+that at 15%. **Q134** puts the three levers to Kjell — a deeper cut, a steeper street on steep
+ground, or the half of S11 that was never built: worldgen refusing to zone ground this steep.
+
+The aerial pair at a 60-tile span (`reports/smoke-S11-hilly.png`) is **indistinguishable** from the same
+shot with the rule off, which is the honest thing to say about it: six metres on a junction is not a
+picture at that zoom, and `walkthrough` is the instrument, not the camera.
+
+Suite **1,574 green twice**.
+

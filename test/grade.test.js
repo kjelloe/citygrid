@@ -17,7 +17,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULTS, setConfig } from "../client/world/config.js";
-import { gradeProfile, heightOnProfile } from "../client/world/grade.js";
+import { gradeProfile, heightOnProfile, relaxNodes } from "../client/world/grade.js";
 
 setConfig(DEFAULTS);
 const G = DEFAULTS.road.maxGrade;
@@ -224,4 +224,71 @@ test("a corridor shorter than its two junction boxes is not turned inside out", 
   for (const y of p.ys) assert.ok(Number.isFinite(y), `${y}`);
   assert.ok(Math.abs(p.ys[0]) < 1e-6);
   assert.ok(Math.abs(p.ys[p.ys.length - 1] - 4) < 1e-6);
+});
+
+// --- junctions that can move (slice S11; A87, Q64/Q74) -----------------------
+
+/** A chain of junctions `step` metres apart at the given LAND heights, as a
+ * network of the shape `createGround` walks. */
+function chain(heights, step = 20) {
+  const nodes = heights.map((y, i) => ({ id: `n${i}`, x: i * step, z: 0, y }));
+  const corridors = [];
+  for (let i = 1; i < nodes.length; i += 1) {
+    corridors.push({
+      id: `c${i}`, from: `n${i - 1}`, to: `n${i}`,
+      points: [{ x: (i - 1) * step, z: 0 }, { x: i * step, z: 0 }],
+    });
+  }
+  const land = (x) => heights[Math.round(x / step)] ?? 0;
+  return { network: { nodes, corridors }, landAt: (x) => land(x) };
+}
+
+test("a junction may move so that the street between two of them can be graded", () => {
+  // R3 pinned every junction to the land (A42), which is right until the land
+  // between two of them is steeper than any street may be: `gradeProfile` then
+  // reports `direct > maxGrade`, gives up, and draws a straight line at
+  // whatever grade the land demanded. On `hilly` 128 that was **485 of 1,458
+  // corridors** and a steepest street of 98.1%.
+  //
+  // A87: "whichever is easiest, allow steep ground" — so a junction's height
+  // may move, within a limit, and the street it is an end of becomes gradeable.
+  const { network, landAt } = chain([0, 8]);           // 8 m over 20 m is 40%
+  const heights = relaxNodes(network, landAt, G, 4);
+  const drop = Math.abs(heights.get("n1") - heights.get("n0"));
+  assert.ok(drop <= G * 20 + 1e-6,
+    `the junctions are still ${(100 * drop / 20).toFixed(1)}% apart, against a limit of ${G * 100}%`);
+});
+
+test("a junction does not wander away from its own ground", () => {
+  // The drift cap is what keeps this a cut and an embankment rather than a
+  // road on stilts: every lot, every lawn and every walker reads the land.
+  const { network, landAt } = chain([0, 20, 0]);
+  const drift = 3;
+  const heights = relaxNodes(network, landAt, G, drift);
+  for (const node of network.nodes) {
+    const moved = Math.abs(heights.get(node.id) - landAt(node.x));
+    assert.ok(moved <= drift + 1e-6, `${node.id} moved ${moved.toFixed(2)} m, cap ${drift}`);
+  }
+});
+
+test("ground that needs no cutting is left exactly where it is", () => {
+  // The rule must be invisible on the terrain every other gate measures: a
+  // street already inside the limit is not re-levelled, and `rolling` is most
+  // of this project's measured ground.
+  const { network, landAt } = chain([0, 1, 2, 3]);     // 5% — well inside 15%
+  const heights = relaxNodes(network, landAt, G, 4);
+  for (const node of network.nodes) {
+    assert.equal(heights.get(node.id), landAt(node.x), `${node.id} was moved for nothing`);
+  }
+});
+
+test("the cap at zero turns the whole thing off, like maxGrade does", () => {
+  // R3's switch (`?grade=0`) is what let one harness shoot the before and the
+  // after; this needs the same, or the gate cannot say what moving junctions
+  // was worth.
+  const { network, landAt } = chain([0, 8]);
+  const heights = relaxNodes(network, landAt, G, 0);
+  for (const node of network.nodes) {
+    assert.equal(heights.get(node.id), landAt(node.x), `${node.id} moved with the cap at zero`);
+  }
 });
