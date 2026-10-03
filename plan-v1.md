@@ -79,15 +79,12 @@ writes (Q108), damage states with no state to read (Q109), an estimate that pric
 draws (Q110), a deputy that builds no police station (Q111) and a pool that counts 1,140 instances
 nobody can see (Q112).
 
-**Thirty open questions**, after P93 answered thirteen, the four rules eras (G4, G2, G1, G3) raised
-five, S11 raised one, and Q121 closed on its own census (A95). The ones that block work rather than merely waiting: **Q102** (street widths —
-S8's compare sheet is dishonest until it is settled). Q104 and Q64/Q74 are answered: the bridge is
-`workitems-world.md` **S13** and steep ground is **S11**. Three are gate criteria re-aimed on
-evidence, each a one-line revert: **Q103**, **Q106** and, in effect, **Q110**. The balance ones now
-come from the rules lane: **Q129** (the quest ladder names a city no era still produces), **Q130**
-(nothing repairs a grid a disaster cuts in two), **Q131** (two in five zoned tiles carry a road),
-**Q132** (a park reaches land value twice) and **Q133** (the deputy has never built a park, so no
-sweep can see G3's rule) — alongside **Q105** and **Q111**.
+**Six open questions**, and they are one group: the pictures and the defects a person has to look at
+— **Q102** (the street is wider than its houses from the air, which blocks S8's compare sheet),
+**Q107** (is the smoke enough of a fire), **Q112** (the rain draws nothing and seven causes are ruled
+out), **Q114** (parking bays collapse on an avenue), **Q115** (the minimap draws an avenue as a road)
+and **Q120** (the ground does not flatten under a railway). P97 answered the other twenty-four in one
+batch — A96 to A105 — and each of those that needs building is a work item now, not a question.
 
 **What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
 yielding to an engine), the rest of the **transport lane** (T5–T7; **T1 the avenue**, **T2 rail,
@@ -423,38 +420,14 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q18 | Which mayor ranks unlock which advisor personas, and does the player then pick freely? | C3 |
-| Q19 | In a split-income room, does a seat in regency still receive its share? | 6.1 |
-| Q20 | When a player leaves permanently and their land is released, what happens to their money? | 5.4 |
-| Q32 | Should the estimate's floor be measured rather than counted? | E3, when the ladder bottoms out |
-| Q60 | When does the model derivation go per chunk — the number, again? | worker lane W3, with the 53.7 ms split |
-| Q61 | Nothing in the interface selects the territory overlay — it is a draw option a gate passes | Wave 5, when a room has more than one seat |
-| Q68 | A night frame at High spends 93% of its budget on eight baked chunks | measurement lane D3 and D2's phone card |
-| Q70 | The saturated fixture generates no commutes, so its roads were empty until D1 seeded them | measurement lane D3/D6 |
-| Q72 | The saturated fixture is 1,129 copies of one building — right for cost, wrong for looks | measurement lane D6, or the first slice needing a realistic city cheaply |
-| Q75 | Is p95 over 60 frames the right trigger for a machine that drops one frame in twenty? | measurement lane D5, with the phone card |
-| Q78 | Below 15 fps the renderer-local world runs in slow motion — the delta clamp | measurement lane, when a card must be compared with a much slower machine's |
 | Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |
 | Q107 | The smoke has never drawn a visible pixel (a varying carried a length, not a vector); fixed in B1b — is the column enough of a fire? | Kjell — an art call, now judgeable for the first time |
-| Q108 | `building.flags` is hashed state nothing writes; three client modules read it and always got 0 | Kjell — remove it or write it; an engine decision |
-| Q109 | Wrecked, storm and flood damage have no state to read, so B1b drew burning and ruined and stopped | Kjell — engine state and a schema change, a slice of its own |
-| Q110 | The frame's estimate prices every car on a visible link, not the cars actually posed — a 21% over-estimate that B3a exposed | Kjell — a measurement-lane slice; an over-charging estimate sacrifices detail silently |
-| Q111 | The deputy builds no police station (6 fire stations, 0 police on the played city), so B3b's patrols never appear in a headless city | Kjell — a deputy change, a new era and a sweep; crime already feeds land value |
 | Q112 | B6's rain streaks draw nothing — 1,140 instances counted, never seen; seven causes ruled out, pool removed, overcast light shipped | Kjell — same class as Q107's smoke; the cause is in the pool lifecycle |
 | ~~Q113~~ | **Answered A82** — the deputy drew from the world's PRNG; it has its own stream since era 8, and a deputy-neutral rule change is measurable again |
 | Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
-| Q118 | The gate's fare is worth nothing — zeroing it leaves the sweep identical to the last digit, because treasuries are millions | Kjell — the economy's, and it blocks tuning anything priced in money |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
-| Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
-| Q129 | The quest ladder wants 2,000 for rank 3 and 5,000 for rank 4; no era since 11 has had a median city clear either | Kjell — lower the thresholds, lower `decayOneIn` to 2, or say rank 3 is for good players? |
-| Q130 | A grid a disaster cuts in two is never repaired: the deputy connects a building when it builds it and never looks again | Kjell — is the grid the deputy's to repair, or does a cut grid stay cut? |
-| Q131 | 39% of zoned tiles carry a road — the deputy paves across its own zoned land on purpose (B9) and since G1 those tiles are dead zoning | Kjell — dezone what it paves, or leave it as the honest record? |
-| Q132 | A park reaches land value twice since G3: the leisure layer (+33) and its own bonus (+21) | Kjell — is a park's land value its funding's or its own? |
-| Q133 | The deputy has never built a park, so G3's rule reaches a headless city through three buildings and no sweep can see it | Kjell — should the mayor plant parks? Its own era |
-| Q134 | S11 took hilly's cliffs 177 → 30 and its ungradeable corridors 485 → 226, and `walkthrough 128 hilly` is still red | Kjell — dig deeper, allow a steeper street, or keep the city off the cliff? |
-| Q39 | Are the two hidden faces of a building worth their windows? | E5, revisit if the budget tightens |
 
 ## What would make us stop and re-plan
 

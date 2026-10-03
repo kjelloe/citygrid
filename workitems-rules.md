@@ -15,6 +15,126 @@ places anything new or the soak never measures it; `sim` on a new era, with the 
 report quoted beside the new one; and **read `reports/balance-era*.md` before choosing any
 threshold** — T7 guessed one and bankrupted every town with it.
 
+# The second round — P97 (A96–A105)
+
+*Written 2026-10-03 from P97, where Kjell took every recommendation in one batch. Four of them are
+**deputy changes** — a deputy change voids every sweep number in the project (CLAUDE.md), so they are
+four items and four eras, one at a time, exactly as G1–G4 were. The order below is cheapest-first,
+and the cheap ones are not eras at all.*
+
+## H1 — The quest ladder asks for a city that happens (XS) — A102 (Q129)
+
+**Goal.** A ladder somebody climbs.
+
+**Do.** `city-of-two-thousand` asks for **1,500** and `city-of-five-thousand` for **3,000**, in
+`data/quests.json`. The ranks they grant do not change (A103).
+
+**Tests first.** `test/quests.test.js`: the thresholds are the ones a median city in the CURRENT era
+reaches — assert against `reports/balance-era16.md`'s medians rather than against a literal, or this
+goes stale the next time the sweep moves.
+
+**Gate.** None of its own: it is content, and no sweep configuration runs quests. Say so.
+
+## H2 — A park's two routes, written down (XS) — A98 (Q132)
+
+**Goal.** The distinction is a design statement, not a comment in `civic.js`.
+
+**Do.** `specs/gamedesign.md` §11: the **layer** is how much amenity reaches a tile, which funding
+buys and an unpowered building halves; the **bonus** is what a building is worth to its street, flat
+and nothing at all when ruined. Measured: +33 and +21 in the same town.
+
+**Gate.** `node --test test/docs.test.js`.
+
+## H3 — The mayor plants parks and builds police stations (S) — A99 (Q133, Q111)
+
+**Goal.** Every balance number in this project is measured on a city that has both.
+
+**Do.** `keepAmused` gains a park per `deputy.buildingsPerPark`; `keepCovered` gains a police station
+per `deputy.buildingsPerPolice`. Read the era report before choosing either number — the fire station
+is one per `buildingsPerStation` and that is the shape to copy.
+
+**Tests first.** `test/cheap-rows.test.js`: a played city contains both, and neither is built before
+the town is big enough to want it. **Measure the before**: zero parks and zero police stations today.
+
+**Gate.** `sim` on a new era, and a **three-arm probe** — parks alone, police alone, both — so the
+two are attributed separately. Expect crime to fall (police coverage, and parks through land value,
+which is §11.3's path) and land value to rise.
+
+## H4 — The deputy dezones what it paves (S) — A97 (Q131)
+
+**Goal.** 639 of 1,646 zoned tiles a city stop being zoning that can never develop.
+
+**Do.** After `buildBlock` lays its road, the tiles the road now occupies are dezoned (`CMD_DEZONE`
+is the player's own command and the deputy pays for it). Crossing zoned land stays legal — B9
+measured that refusing it halves the population.
+
+**Tests first.** `test/deputy.test.js`: after a played run, no tile carries both a road and a zone.
+Measure the before in the test message.
+
+**Gate.** `sim` on a new era. Expect the move to be small — the tiles were already dead — and say so
+before running it, because "small" is a prediction this can be wrong about.
+
+## H5 — The deputy repairs a grid a disaster cut in two (S) — A96 (Q130)
+
+**Goal.** A component that loses its producer stops being dark for the rest of the game.
+
+**Do.** A deputy turn reads `state.supply`: if a building it owns is dark while the city has capacity
+to spare, run one carrier from that building to a LIVE piece of grid — `connectToNetwork` with the
+arguments it already takes (G2). One a turn, so a shattered grid is repaired over several months
+rather than in one.
+
+**Tests first.** `test/deputy.test.js`: cut a live grid in two in a played city, tick, and assert the
+dark buildings come back. The G2 test's seed 808 is the natural fixture — it ends with 2 components
+and one dark lot.
+
+**Gate.** `sim` on a new era, with `power.components` and the dark-building counts beside the
+populations (the columns G2 added).
+
+## H6 — Ground too steep to build on is not zoned (M) — A100 (Q134)
+
+**Goal.** `walkthrough 128 hilly` green, which is S11's done-when and the whole point of a `hilly`
+map.
+
+**Do.** The steep half of S11, which was never built: a tile whose local slope exceeds a limit is not
+zonable, so the city is not on the cliff. It is `canZone`'s rule, which makes it the reducer's and
+hashed — and worldgen stops being the only thing that decides what a map affords.
+
+**Tests first.** `test/development.test.js`: a tile on a slope past the limit is refused with a result
+code that says why; one inside it is not. `test/worldgen.test.js`: a `hilly` map still has enough
+zonable ground to be a city — which is the number that decides the limit, and it comes from a
+measurement, not from a guess.
+
+**Gate.** `walkthrough 128 hilly` — green, and it joins the `render` set, which is what S11 could not
+do. Plus `sim` on a new era: this changes what every map affords, so every number moves.
+
+## H7 — The saturated fixture becomes a played city (M) — A105 (Q72)
+
+**Goal.** Four gates stop measuring a mature city on 1,129 copies of one house.
+
+**Do.** `tools/lib/saturated.mjs` plays the deputy rather than pushing `res` records into the array:
+roads, zoning, power, water and forty years, which gives 294 buildings across five kinds and a real
+commuter load. Keep the flat traffic seed as an option — it is right for a renderer measurement
+(Q70) — and keep the recipe deterministic.
+
+**Gate.** Every gate that uses the fixture moves: `budget_gate`, `lanes_dump`, `walkthrough`,
+`passability` and the kits. Re-baseline all of them in the same commit and quote the before and
+after; a fixture change that does not move a renderer number is a fixture change that did not land.
+
+## H8 — Money means something (L) — A101 (Q118)
+
+**Goal.** Any income term this project adds stops being decoration.
+
+**Do.** Not a constant: an upkeep that SCALES with the city, or a demand on money the player must
+meet. Two attempts at per-tile upkeep both bankrupted weak cities without touching rich ones (era 1
+and era 0), so the shape has to be progressive — and the measurement that says it worked is the p25
+city surviving while the p95 treasury stops climbing.
+
+**Tests first.** `test/economy.test.js`: the new term is progressive — assert the ratio it takes from
+a small city against a large one, not the absolute.
+
+**Gate.** `sim` on a new era, reading the treasury quantiles rather than the population: p95 peak
+treasury is the number era 1 logged as a debt and nothing has moved since.
+
 ## G1 — A network refuses a building (S) — A85 (Q116) — **BUILT 2026-10-03** as `slice-G1` (era 15)
 
 *As built, and it was two rules rather than one. The refusal alone gave the deputy 169.9 refusals a
