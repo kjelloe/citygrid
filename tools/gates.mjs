@@ -160,8 +160,13 @@ export const BUDGET_MS = {
   kits: 16 * 60 * 1000,
   sim: 15 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
-  // transport 187.
-  all: 35 * 60 * 1000,
+  // transport 187 — which is where 35 minutes came from, and `kits` (365 s) was
+  // added to `all` in P94 without it. Restated from the contents at P96, the
+  // first full run since: **2,467 s** — quick 396, render 113, budget 277,
+  // sim 768, shots 385, transport 181, kits 347. That is a restatement, not a
+  // raise to fit a gate that grew (M2's rule): the set gained a member and the
+  // number it was measured from no longer described it.
+  all: 45 * 60 * 1000,
 };
 
 export function gatesIn(set) {

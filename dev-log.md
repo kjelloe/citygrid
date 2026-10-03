@@ -8682,9 +8682,13 @@ with a script.
 ### Measured
 
 `gates.mjs all`: **2,467 s of a 2,100 s budget**, 28 of 32 green on the first pass and 32 of 32
-after the four fixes. The overrun is `sim_sweep` (513 s) and `budget_gate` (277 s) in a set that also
-re-runs everything else; it is a finding for the next round rather than something to raise the
-budget over (M2's rule).
+after the four fixes.
+
+The overrun is bookkeeping rather than growth, and the measurement says so: `all`'s 35 minutes came
+from T4b's run — quick 411, render 62, budget 274, sim 628, shots 210, transport 187 — and **`kits`
+(365 s) was added to the set in P94 without the budget being restated**. The set gained a member and
+nobody re-measured it. Restated here from its contents, which is what `render`'s budget got when its
+contents changed at K1, and is not the same act as raising a budget to fit a gate that grew.
 
 `sim_sweep` inside the set reproduced era 16 to the digit (relaxed 1,788, steady 1,529), which is the
 determinism contract doing its job across a worktree, four commits and a day of edits.
