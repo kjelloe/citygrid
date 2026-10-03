@@ -8720,3 +8720,33 @@ question about a world can outlive the world.
 Q121 closes as **A95**, with a standing note: if a later era takes cities back over two thousand, the
 effect may come back, and the counters are in the tool to say so.
 
+## H1 and H2 — the ladder comes down to the city, and a park's two routes are written down (2026-10-03) — A102, A98
+
+**H1 (Q129).** `city-of-two-thousand` granted rank 3 — the airport — and no era since 11 has had a
+median city clear two thousand; era 16's best is relaxed at **1,788**. The thresholds come down to
+**1,500 and 3,000**.
+
+It is a rename as well as a retune, which the work item did not say and the content does: a quest
+whose id is `city-of-two-thousand` and whose English text reads *"Two thousand residents"* cannot ask
+for 1,500 without lying to the player in two languages. So `city-of-fifteen-hundred` and
+`city-of-three-thousand`, in `data/quests/growth.json`, `data/i18n/en.json` and `data/i18n/no.json`,
+with the second's `questDone` gate following the first's new id.
+
+The test asserts the **ladder**, not the numbers, and reads the era's own report:
+
+- the lowest rank-granting population is at or below the best configuration's median — *a deputy city
+  reaches the airport*, which is what Q129 was about;
+- the highest is **above** it — or the top of the ladder is something you get for turning up.
+
+The first cut asserted "no quest asks for more than the best median", which failed on the 3,000 rung
+and would have made the ladder flat. A stretch goal is not a defect; a first rung nobody reaches is.
+
+**H2 (Q132).** `specs/gamedesign.md` §11 now says which question each route answers — the layer is
+*how much amenity reaches this tile* (funding scales it, an unpowered building halves it, it is
+stored and drawn), the bonus is *what this building is worth to the street outside it* (flat, nothing
+from a ruin, and the reason a rail station is worth living near when it deposits no coverage at all).
+Measured: +33 and +21.
+
+No gate: no sweep configuration runs quests, and the design table is checked by `test/docs.test.js`.
+Suite **1,576 green twice**.
+

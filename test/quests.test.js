@@ -22,6 +22,7 @@ import { CMD_JOIN, CMD_QUEST_CHOICE } from "../engine/commands.js";
 import { RESULT } from "../shared/protocol.js";
 import { readQuests } from "./helpers/content.js";
 import { repoRoot } from "./helpers/sources.js";
+import { rules } from "../engine/rules.js";
 import "../engine/build-commands.js";
 import "../engine/quests.js";
 
@@ -350,3 +351,53 @@ test("no quest carries prose instead of a key", () => {
     }
   }
 });
+
+// --- the ladder asks for a city that happens (H1; A102, Q129) ----------------
+
+test("the ladder's rungs sit either side of the city the simulation produces", () => {
+  // Q129: `city-of-two-thousand` granted rank 3 — the airport — and no era since
+  // 11 has had a median city clear two thousand. A rung the simulation never
+  // reaches is a rung nobody climbs.
+  //
+  // Measured against the SWEEP REPORT rather than a literal, so the day the
+  // simulation moves again this says so instead of going stale. Two statements,
+  // and they are different:
+  //
+  //   the LOWEST rank-granting population must be at or below the best
+  //     configuration's median — the median deputy city reaches it, which is
+  //     what "the airport exists" means;
+  //   the HIGHEST must be above it — or the top of the ladder is a thing you
+  //     get for turning up, and there is nothing left to play for.
+  const era = rules().era;
+  const report = JSON.parse(readFileSync(join(repoRoot, "reports", `balance-era${era}.json`), "utf8"));
+  const medians = Object.values(report.configs).map((c) => c.summary.population[1]);
+  const best = Math.max(...medians);
+  assert.ok(best > 0, `era ${era}'s report has no populations in it`);
+
+  const { all } = readQuests();
+  const asks = all
+    .filter((q) => q.reward?.rank && q.objective?.type === "measure" && q.objective.name === "population")
+    .map((q) => q.objective.atLeast)
+    .sort((a, b) => a - b);
+  assert.ok(asks.length >= 2, `only ${asks.length} rank is granted for a population`);
+
+  assert.ok(asks[0] <= best,
+    `the first rank a population grants wants ${asks[0]} residents and the best median city in `
+    + `era ${era} is ${best} — no deputy city reaches it`);
+  assert.ok(asks[asks.length - 1] > best,
+    `the last rung wants ${asks[asks.length - 1]} and the median city already has ${best}`);
+});
+
+test("the ranks a quest grants still run 1 to 4 without a gap", () => {
+  // A103: rank 4 is a city of five thousand — now three thousand — and the
+  // ladder is 1-2-3-4 with a building at the top of each. Moving a THRESHOLD
+  // must not quietly move a rank.
+  const { all } = readQuests();
+  const granted = new Set();
+  for (const quest of all) {
+    if (quest.reward?.rank) granted.add(quest.reward.rank);
+    for (const choice of quest.choices ?? []) if (choice.reward?.rank) granted.add(choice.reward.rank);
+  }
+  assert.deepEqual([...granted].sort((a, b) => a - b), [1, 2, 3, 4]);
+});
+

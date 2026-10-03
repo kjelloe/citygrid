@@ -22,6 +22,16 @@ threshold** — T7 guessed one and bankrupted every town with it.
 four items and four eras, one at a time, exactly as G1–G4 were. The order below is cheapest-first,
 and the cheap ones are not eras at all.*
 
+## H1 — The quest ladder asks for a city that happens (XS) — A102 (Q129) — **BUILT 2026-10-03**
+
+*As built, and it was a rename as well as a retune: a quest whose id and whose text say "two
+thousand" cannot ask for 1,500 without lying to the player in two languages. `city-of-two-thousand`
+is `city-of-fifteen-hundred` and `city-of-five-thousand` is `city-of-three-thousand`, in the data,
+both i18n catalogues and the quest's own gate. The test asserts the LADDER rather than the numbers:
+the lowest rank-granting population is at or below the best configuration's median (a deputy city
+reaches the airport) and the highest is above it (there is something left to play for), both read
+from `reports/balance-era<N>.json` so they move when the simulation does.*
+
 ## H1 — The quest ladder asks for a city that happens (XS) — A102 (Q129)
 
 **Goal.** A ladder somebody climbs.
@@ -34,6 +44,10 @@ reaches — assert against `reports/balance-era16.md`'s medians rather than agai
 goes stale the next time the sweep moves.
 
 **Gate.** None of its own: it is content, and no sweep configuration runs quests. Say so.
+
+## H2 — A park's two routes, written down (XS) — A98 (Q132) — **BUILT 2026-10-03**
+
+*As built: `specs/gamedesign.md` §11's table carries the distinction with the measurement beside it.*
 
 ## H2 — A park's two routes, written down (XS) — A98 (Q132)
 

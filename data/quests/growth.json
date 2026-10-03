@@ -111,20 +111,20 @@
   }
  },
  {
-  "id": "city-of-two-thousand",
+  "id": "city-of-fifteen-hundred",
   "category": "growth",
   "speaker": "sunny",
-  "titleKey": "quest.city-of-two-thousand.title",
-  "textKey": "quest.city-of-two-thousand.text",
+  "titleKey": "quest.city-of-fifteen-hundred.title",
+  "textKey": "quest.city-of-fifteen-hundred.text",
   "available": {
    "type": "measure",
    "name": "population",
-   "atLeast": 900
+   "atLeast": 800
   },
   "objective": {
    "type": "measure",
    "name": "population",
-   "atLeast": 2000
+   "atLeast": 1500
   },
   "reward": {
    "money": 4000,
@@ -193,19 +193,19 @@
   }
  },
  {
-  "id": "city-of-five-thousand",
+  "id": "city-of-three-thousand",
   "category": "growth",
   "speaker": "sunny",
-  "titleKey": "quest.city-of-five-thousand.title",
-  "textKey": "quest.city-of-five-thousand.text",
+  "titleKey": "quest.city-of-three-thousand.title",
+  "textKey": "quest.city-of-three-thousand.text",
   "available": {
    "type": "questDone",
-   "id": "city-of-two-thousand"
+   "id": "city-of-fifteen-hundred"
   },
   "objective": {
    "type": "measure",
    "name": "population",
-   "atLeast": 5000
+   "atLeast": 3000
   },
   "reward": {
    "money": 6000,
