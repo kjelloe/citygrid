@@ -18,6 +18,7 @@ import { CMD_JOIN, CMD_SET_TAX, CMD_PLACE_ROAD, CMD_PLACE_BUILDING } from "../en
 import { RESULT } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import { ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_NONE } from "../engine/constants.js";
+import { rules } from "../engine/rules.js";
 
 const W = 20;
 const at = (x, y) => tileAt(W, x, y);
@@ -189,3 +190,49 @@ test("the economy is deterministic", () => {
   }
   assert.equal(hashState(a), hashState(b));
 });
+
+// --- a lot costs money to serve (slice H8; A101, Q118) -----------------------
+
+test("a developed lot costs the city money, and more as it grows", () => {
+  // Q118: every income term in this project was decoration, because income ran
+  // FOUR TIMES expenses at every size and every difficulty — a steady 25-year
+  // city took 20,268 a month and spent 5,048, and banked the difference for
+  // twenty-five years. The reason is here: a developed lot paid tax and cost
+  // nothing, while the only expenses were the civic buildings and a penny a
+  // road tile.
+  //
+  // Per-TILE upkeep was tried twice and rejected twice (era 0 and era 1): it
+  // bankrupts a young town without touching a rich one. This scales with what
+  // the city has GROWN.
+  const state = city();
+  const ladder = rules().economy.serviceCostPerLevel;
+  const bare = budgetFor(state, 1).expenses;
+
+  addLot(state, 1, ZONE_RESIDENTIAL, 6, 6, 1);
+  const lot = state.buildings[state.buildings.length - 1];
+  const one = budgetFor(state, 1).expenses;
+  assert.equal(one - bare, ladder[0] * lot.w * lot.h,
+    "a level-1 lot costs the city nothing to serve");
+
+  lot.level = 4;
+  const four = budgetFor(state, 1).expenses;
+  assert.equal(four - bare, ladder[3] * lot.w * lot.h,
+    "a tower costs the same as the cottage it replaced");
+  assert.ok(ladder[3] > ladder[0] * 3, "the ladder is not steep enough to be a ladder");
+});
+
+test("a village pays village money", () => {
+  // The shape that got per-tile upkeep rejected twice: a young town has a lot of
+  // road and almost no city, so a charge on what it has PAVED bankrupts it while
+  // a charge on what it has GROWN does not.
+  const state = city();
+  const before = budgetFor(state, 1);
+  for (let i = 0; i < 9; i += 1) addLot(state, 1, ZONE_RESIDENTIAL, 4 + i, 4, 1);
+  const after = budgetFor(state, 1);
+  const ladder = rules().economy.serviceCostPerLevel;
+  assert.equal(after.expenses - before.expenses, 9 * ladder[0],
+    "nine cottages cost more than nine cottages");
+  assert.ok(after.expenses - before.expenses < 300,
+    `${after.expenses - before.expenses} a month is not village money`);
+});
+

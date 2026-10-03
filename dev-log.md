@@ -9069,3 +9069,63 @@ the budget goes 2 min to 4. The fixture itself costs about a second to build.
 
 Suite **1,582 green twice**.
 
+## era 21 — a developed lot costs money to serve (2026-10-03) — H8, A101 (Q118)
+
+Q118 said every income term in this project is decoration: zeroing the rail fare left the 30-seed
+median identical to the last digit, because treasuries are millions. The diagnosis was the work, and
+it is one line long:
+
+> **Income runs four times expenses at every size and every difficulty.** A steady 25-year city takes
+> **20,268** a month and spends **5,048**, and banks the difference for twenty-five years.
+
+The reason is the asymmetry nobody had looked at: **a developed lot paid tax and cost nothing.** The
+only expenses in the game are the civic buildings and a penny a road tile, so 160 lots were pure
+income. Per-TILE upkeep was tried twice and rejected twice (era 0 and era 1) for bankrupting a young
+town without touching a rich one; `economy.serviceCostPerLevel` scales with what the city has GROWN
+instead — per level, per tile of the lot, so a village of cottages pays cottage money.
+
+### The ladder, and what measuring it found
+
+Eight cities a difficulty, 25 years:
+
+| ladder | relaxed | steady | demanding | demanding pop | dead of 8 |
+|---|---|---|---|---|---|
+| 0 (era 20) | 6,466k | 5,021k | 2,534k | 1,644 | 0 |
+| 6/12/22/35 | 5,837k | 4,264k | 1,258k | 1,415 | 0 |
+| 12/25/45/70 | 5,187k | 3,481k | **0** | **163** | 1 |
+| 18/36/66/105 | 4,578k | 2,750k | 0 | 135 | 2 |
+
+**Demanding has no margin.** One rung takes it from a city to nothing while relaxed and steady barely
+notice — it keeps 80% of every tax and pays 120% of every expense, and that 1.5× squeeze was tuned
+when a lot cost nothing. The lever's useful range is set by the difficulty curve rather than by the
+mechanism, which is **Q141** and which blocks tuning the economy any further.
+
+### Never tune on five seeds, from the other direction
+
+The eight-seed ladder cleared 6/12/22/35 with **nobody dead**. The 200-game sweep ran it and found
+**nine demanding cities of two hundred reached a hundred residents and ended empty**, with p25
+treasury down to 987k. The small sample said "safe" and the large one said "a city in twenty-two
+dies" — the same lesson as G4's and H3's population columns, met from the opposite side.
+
+So the rung came down again, and was measured over **forty** demanding cities rather than eight:
+**3/6/11/18** — 0 dead, population 1,618 against 1,632, treasury 1,955k against 2,374k.
+
+### Measured — 200 games a configuration
+
+| configuration | population | treasury (median) | p25 | ended empty |
+|---|---|---|---|---|
+| relaxed-64 | 1,755 → 1,755 | 6,292k → **5,967k** | 5,907k → 5,601k | 0 |
+| steady-64 | 1,634 → 1,634 | 4,694k → **4,305k** | 4,388k → 3,998k | 0 |
+| demanding-64 | 1,538 → 1,529 | 2,373k → **1,961k** | 2,118k → 1,696k | 0 → **1** |
+| steady-64-nodisasters | 1,557 → 1,557 | 4,831k → **4,439k** | 4,508k → 4,114k | 0 |
+
+A first step, deliberately small: populations unmoved, treasuries down 5–17%, one demanding city of
+200 lost where era 20 lost none. The debt era 1 logged — "ACCEPTED, not fixed: runaway treasuries" —
+is now **a measured lever with a known range** rather than an open question, and the range is what
+Q141 is about.
+
+One fixture hash moved, twice: once for the rung that was measured and once for the rung that
+shipped. No event drift either time, which is the footprint of a change to a number the budget reads.
+
+Suite **1,584 green twice**; `sim` **839 s of 900**.
+

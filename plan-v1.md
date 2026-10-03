@@ -434,6 +434,7 @@ by number from the code they create.
 | Q138 | 4 of 7,694 lane links are shorter than a car, where the deputy's streets meet two metres apart | Kjell — fix the graph, or live with 0.05%? |
 | Q139 | A turn's lane is up to 0.38 m off the ground where two streets meet at different heights | Kjell — pay R2's milliseconds back, or accept it? |
 | Q140 | H6 keeps the city off the cliff and not the streets: the deputy still paves a 500% hillside | Kjell — should a road refuse the ground a lot refuses? |
+| Q141 | Demanding has no margin: one rung of H8's service cost takes it from 1,644 residents to 163 | Kjell — re-cut the difficulty, teach the deputy the tax slider, or accept the knife edge? |
 
 ## What would make us stop and re-plan
 

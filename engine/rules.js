@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 20,
+  era: 21,
   build: {
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
@@ -109,7 +109,11 @@ var RULES = {
     _unfought: "B1a (A62): a fire is unaddressed when at least unfoughtPercent of the building's own fire risk is left after coverage - no station in range - and it then spreads unfoughtSpread times as readily while consuming its house more slowly, so it outlives what it is standing on and reaches the next one.",
     unfoughtPercent: 80, unfoughtSpread: 4, unfoughtDamage: 5,
   },
-  economy: { residentialDivisor: 150, commercialDivisor: 120, industrialDivisor: 140 },
+  economy: {
+    _service: "H8 (A101, Q118): what a developed lot costs the city to SERVE, per level. Until era 21 a lot was pure income - it paid tax and cost nothing - while the only expenses were the civic buildings and a penny a road tile, so a steady 25-year city took 20,268 a month and spent 5,048, banked the rest for twenty-five years and ended on 4.7 million. Per-TILE upkeep was tried twice and rejected twice because it bankrupts a young town without touching a rich one; this scales with what the city HAS GROWN rather than with what it has paved, so a village of nine level-1 cottages pays 225 a month and a city of 160 lots pays seven thousand. The ladder is steep on purpose - a level-4 tower is four cottages' worth of water, refuse and road - and it is calibrated from the lot census of a 25-year steady city (45/29/13/8 residential by level, 17/7/1 commercial, 29/9/2 industrial) and it is chosen from a four-rung ladder measured over eight cities a difficulty: at 0 the treasuries are 6,466k relaxed / 5,021k steady / 2,534k demanding; at 6/12/22/35 they are 5,837k / 4,264k / 1,258k with nobody dead; at 12/25/45/70 DEMANDING COLLAPSES, from 1,644 residents to 163 with a city dead of eight. The useful range of this lever is bounded by demanding's margin, not by the mechanism - it pays 120% of every expense and keeps 80% of every tax, so it has nothing to absorb a new one with. The eight-seed ladder said 6/12/22/35 killed nobody and the 200-game SWEEP said nine demanding cities of two hundred reached a hundred residents and ended empty - never tune on five seeds, from the other direction - so the rung came down again: at 3/6/11/18, measured over FORTY demanding cities, the dead count is 0, the population is 1,618 against 1,632 and the treasury 1,955k against 2,374k. A first step, deliberately small, and the reason it is small is Q141.",
+    serviceCostPerLevel: [3, 6, 11, 18],
+    residentialDivisor: 150, commercialDivisor: 120, industrialDivisor: 140,
+  },
   population: { workingAgePercent: 55, shoppersPerCommercialJob: 12, industryPerWorkerPercent: 45 },
   disasters: {
     _comment: "era 0, untuned. Frequency is difficulty.disasterOneIn, which already existed; this is only the shape of one.",

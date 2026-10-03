@@ -90,6 +90,14 @@ function networkUpkeep(state) {
   return perOwner;
 }
 
+/** What a developed lot costs the city each month (H8, A101). */
+function serviceCost(building) {
+  var ladder = rules().economy.serviceCostPerLevel;
+  var level = building.level < 1 ? 1 : building.level;
+  if (level > ladder.length) level = ladder.length;
+  return ladder[level - 1] * building.w * building.h;
+}
+
 export function budgetFor(state, seat) {
   var income = 0;
   var expenses = 0;
@@ -100,6 +108,15 @@ export function budgetFor(state, seat) {
     if (building.owner !== seat) continue;
     if (building.zone !== ZONE_NONE) {
       income += taxFrom(state, building);
+      // And what it costs to SERVE (H8, A101). A developed lot was pure income
+      // until era 21 — it paid tax and cost nothing — while the only expenses
+      // were the civic buildings and a penny a road tile, so a steady city took
+      // four times what it spent and banked the difference for twenty-five
+      // years. Per-TILE upkeep was tried twice and rejected twice because it
+      // bankrupts a young town without touching a rich one (era 0 and era 1);
+      // this scales with what the city has GROWN, so a village of cottages pays
+      // cottage money and a city of towers pays for towers.
+      expenses += serviceCost(building);
       continue;
     }
     var def = definition(building.def);

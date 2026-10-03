@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "G1 (A85): a network refuses a building, so the fixture's wire and pipe run BESIDE the coal plant instead of through it — the same route a player must now take, joined at one tile so the carriers stay one network; G1's other half keeps a grown lot off a street, which moved every step after the first tick",
+ "why": "H8 (A101): economy.serviceCostPerLevel settles at 3/6/11/18 after the 200-game sweep found nine dead demanding cities at the rung the eight-seed ladder had cleared",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -260,7 +260,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "feb75b716d36a258",
+   "hash": "32560f482c4b7eaf",
    "events": [
     "budget",
     "developed",
@@ -275,7 +275,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "f506fc0ee5ff3a07",
+   "hash": "782cd948d35b4a12",
    "events": [
     "abandoned",
     "budget",
@@ -289,7 +289,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "00fc45d1723905d8",
+   "hash": "06eb15acbb3e13e5",
    "events": [
     "abandoned",
     "budget",
@@ -302,6 +302,6 @@
    ]
   }
  ],
- "era": 14,
+ "era": 21,
  "repinnedAt": "2026-10-03"
 }

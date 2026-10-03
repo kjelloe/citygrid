@@ -224,6 +224,20 @@ better fixture and a different one.
 **And it unblocks H6's gate**: `walkthrough 128 hilly` cannot see the steep-ground rule while the
 fixture pushes buildings onto any tile, cliff or not. Run it in this slice and quote it.
 
+## H8 — Money means something (L) — A101 (Q118) — **BUILT 2026-10-03** as era 21
+
+*As built, and the diagnosis was the work. Income ran **four times** expenses at every size and every
+difficulty — a steady 25-year city took 20,268 a month and spent 5,048 — and the reason was that a
+developed lot paid tax and cost nothing, while the only expenses were the civic buildings and a penny
+a road tile. `economy.serviceCostPerLevel` is what a lot costs to serve, per level and per tile: it
+scales with what the city has GROWN, which is what per-tile upkeep (rejected twice) did not.*
+
+*The ladder is measured, and the measurement found something bigger than the sink: **demanding has no
+margin.** At 6/12/22/35 nobody dies and the demanding treasury halves; one rung further, at
+12/25/45/70, demanding goes from 1,644 residents to 163 while relaxed and steady barely notice. The
+lever's useful range is bounded by a difficulty curve that was tuned when a lot cost nothing — Q141,
+and the economy cannot be tuned further until it is answered.*
+
 ## H8 — Money means something (L) — A101 (Q118)
 
 **Goal.** Any income term this project adds stops being decoration.
