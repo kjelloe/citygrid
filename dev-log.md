@@ -8689,8 +8689,30 @@ budget over (M2's rule).
 `sim_sweep` inside the set reproduced era 16 to the digit (relaxed 1,788, steady 1,529), which is the
 determinism contract doing its job across a worktree, four commits and a day of edits.
 
-Also in this round: `tools/fire_arms.mjs` counts `developed` and `abandoned` per city in both arms,
-which is **Q121's agreed action** (P93) — the census that says whether a city that burns is bigger
-because it grows more or because it loses less. The instrument is in; the 800-game run is not,
-because it wants the machine to itself.
+### Q121's census — the effect being explained is gone (A95)
+
+`tools/fire_arms.mjs` counts `developed` and `abandoned` per city in both arms now, which is P93's
+agreed action. Run over 200 games a configuration at era 16, same build, same seeds, only
+`unfoughtSpread` and `unfoughtDamage` changed:
+
+| configuration | without B1a's fire | with it | developed | abandoned | standing |
+|---|---|---|---|---|---|
+| demanding-64 | 1,503 | 1,488 (−1.0%) | 351 → 373 | 175 → 187 | 162 → 164 |
+| steady-64 | 1,607 | 1,612 (+0.3%) | 468 → 473 | 274 → 278 | 191 → 189 |
+
+**The +10.4% is not there any more.** Q121 was written about era 8's arms, where a steady city that
+burned ended 2,207 → 2,437. At era 16 the fire costs or gives nothing — ±1%, inside the noise — while
+plainly working: 127.8 tiles of spread a demanding city against 6.7 without it.
+
+The census says what it does now: developments and abandonments rise **by the same proportion** and
+the standing city is the same size. That is neither of the two candidates the question named — not
+fresh ground producing net growth, not the vacancy term. It is a wash.
+
+Why it changed is the era rule arriving where CLAUDE.md promised it would. The mechanism needed a
+SATURATED city for burnt ground to be worth having, and these cities are not saturated: era 12 and 13
+gave decay a roll, and era 15 found a third of every city standing on the road and took it away. A
+question about a world can outlive the world.
+
+Q121 closes as **A95**, with a standing note: if a later era takes cities back over two thousand, the
+effect may come back, and the counters are in the tool to say so.
 

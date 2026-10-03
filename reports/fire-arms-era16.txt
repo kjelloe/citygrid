@@ -1,0 +1,16 @@
+Q105 — fire against the rest, era 16.
+200 games per configuration, 25 years each. Same build, same seeds, two constants.
+
+demanding-64   B1a's fire, as shipped     p25  1271  median  1488  p75  1799   fires 1.0/city  spread 127.8  ruins 0.0  stations 6.6
+                                          developed 373/city  abandoned 187  standing at the end 164
+steady-64      B1a's fire, as shipped     p25  1461  median  1612  p75  1990   fires 0.9/city  spread 50.8  ruins 0.2  stations 7.5
+                                          developed 473/city  abandoned 278  standing at the end 189
+demanding-64   as it was before B1a       p25  1419  median  1503  p75  1724   fires 1.0/city  spread 6.7  ruins 0.0  stations 6.5
+                                          developed 351/city  abandoned 175  standing at the end 162
+steady-64      as it was before B1a       p25  1465  median  1607  p75  2043   fires 0.9/city  spread 2.1  ruins 0.0  stations 7.5
+                                          developed 468/city  abandoned 274  standing at the end 191
+
+demanding-64: B1a's fire costs the median city 1.0% (1503 without it, 1488 with it)
+  census: developed 351 -> 373 (6.3%), abandoned 175 -> 187 (6.6%), standing 162 -> 164
+steady-64: B1a's fire costs the median city -0.3% (1607 without it, 1612 with it)
+  census: developed 468 -> 473 (1.1%), abandoned 274 -> 278 (1.3%), standing 191 -> 189

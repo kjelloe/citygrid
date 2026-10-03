@@ -79,8 +79,8 @@ writes (Q108), damage states with no state to read (Q109), an estimate that pric
 draws (Q110), a deputy that builds no police station (Q111) and a pool that counts 1,140 instances
 nobody can see (Q112).
 
-**Thirty open questions**, after P93 answered thirteen and the four rules eras (G4, G2, G1, G3)
-raised five more. The ones that block work rather than merely waiting: **Q102** (street widths —
+**Thirty open questions**, after P93 answered thirteen, the four rules eras (G4, G2, G1, G3) raised
+five, S11 raised one, and Q121 closed on its own census (A95). The ones that block work rather than merely waiting: **Q102** (street widths —
 S8's compare sheet is dishonest until it is settled). Q104 and Q64/Q74 are answered: the bridge is
 `workitems-world.md` **S13** and steep ground is **S11**. Three are gate criteria re-aimed on
 evidence, each a one-line revert: **Q103**, **Q106** and, in effect, **Q110**. The balance ones now
@@ -447,7 +447,6 @@ by number from the code they create.
 | Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
 | Q118 | The gate's fare is worth nothing — zeroing it leaves the sweep identical to the last digit, because treasuries are millions | Kjell — the economy's, and it blocks tuning anything priced in money |
 | Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
-| Q121 | A city that burns is 10% BIGGER on steady and nobody knows why — an event census in both arms would say | Kjell — a balance mechanism nobody designed |
 | Q125 | T6 asks for an `unlock: 4` university and no quest grants rank 4; `city-of-five-thousand` is written and rewards money only | Kjell — is rank 4 "a city of five thousand"? Assumed yes for T6 |
 | Q129 | The quest ladder wants 2,000 for rank 3 and 5,000 for rank 4; no era since 11 has had a median city clear either | Kjell — lower the thresholds, lower `decayOneIn` to 2, or say rank 3 is for good players? |
 | Q130 | A grid a disaster cuts in two is never repaired: the deputy connects a building when it builds it and never looks again | Kjell — is the grid the deputy's to repair, or does a cut grid stay cut? |
