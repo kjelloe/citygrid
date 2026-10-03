@@ -112,6 +112,18 @@ Measure the before in the test message.
 **Gate.** `sim` on a new era. Expect the move to be small — the tiles were already dead — and say so
 before running it, because "small" is a prediction this can be wrong about.
 
+## H5 — The deputy repairs a grid a disaster cut in two (S) — A96 (Q130) — **BUILT 2026-10-03** as era 19
+
+*As built, and the two defects in the first cut are the thing worth carrying forward — both are G2's
+shape wearing new clothes. It ran carriers out of the **coal plant**, two hundred and forty times,
+because a producer standing on an under-capacity component is itself unlit and the loop had no reason
+to skip it; and it **counted the turn as spent whether or not the run laid anything**, so the deputy
+stopped doing everything else and the city it was repairing went from 84 dark to 211. A function that
+can legitimately do nothing has to say so: `connectToNetwork` returns whether it laid a run now.*
+
+*The guard that matters is "only when the city HAS the capacity" — a brown-out is a shortfall to
+build out of, not a grid to re-stitch, and `keepSupplied` runs first for exactly that reason.*
+
 ## H5 — The deputy repairs a grid a disaster cut in two (S) — A96 (Q130)
 
 **Goal.** A component that loses its producer stops being dark for the rest of the game.

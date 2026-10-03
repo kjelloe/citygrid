@@ -15,7 +15,7 @@ import { apply } from "../engine/reducer.js";
 import { makeDeputy, deputyTurn, deputyRoll } from "../engine/deputy.js";
 import { nextInt } from "../shared/prng.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
-import { TICKS_PER_YEAR, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
+import { TICKS_PER_YEAR, TICKS_PER_MONTH, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
 import { rules } from "../engine/rules.js";
 import { gateStatus, gateTerms, railReach } from "../engine/gates.js";
 import { waterBodies, bodyAt } from "../engine/terrain.js";
@@ -439,5 +439,60 @@ test("no tile ends up carrying both a road and a zone", () => {
     assert.ok(zoned > 200, `seed ${seed} zoned only ${zoned} tiles, so this proves nothing`);
     assert.equal(paved, 0, `seed ${seed}: ${paved} of ${zoned} zoned tiles carry a road`);
   }
+});
+
+// --- the deputy repairs a grid a disaster cut in two (slice H5; A96, Q130) ---
+
+test("a grid cut in two is repaired, and the dark buildings come back", () => {
+  // G2 made every carrier RUN reach a live piece of grid and left Q130 open: a
+  // disaster cuts a line, the component behind it loses its producer, and the
+  // deputy — which connects a building when it BUILDS it and never looks again
+  // — never notices. What repair there was came incidentally, from G2's rule
+  // running a NEW building's carriers to a live piece.
+  //
+  // Measured before the rule, cutting every wire in one column of a 15-year
+  // city: seed 1003 darkened 84 buildings of 234 and had **54 still dark a year
+  // later**; seed 404 darkened 80 and had 11 after a year and **six after five**.
+  //
+  // The cut is made here rather than waited for, so this is a test of the
+  // REPAIR rather than of a disaster's luck.
+  let darkened = 0;
+  let remaining = 0;
+  for (const seed of [1003, 404]) {
+    const { state, deputy } = play(seed, 64, 15);
+    assert.ok(state.supply.power.capacity > state.supply.power.demand,
+      `seed ${seed} has no spare capacity, so a dark building is a shortfall rather than a cut`);
+
+    const cutX = Math.round(state.width / 2);
+    let cut = 0;
+    for (let y = 0; y < state.height; y += 1) {
+      const index = y * state.width + cutX;
+      if (!hasNet(state.tiles.wire[index])) continue;
+      state.tiles.wire[index] = 0;
+      cut += 1;
+    }
+    assert.ok(cut > 0, `seed ${seed} had no wire to cut`);
+
+    // One month, so the supply pass sees the cut.
+    for (let tick = 0; tick < TICKS_PER_MONTH; tick += 1) apply(state, { type: CMD_TICK });
+    const dark = state.supply.power.starved;
+    assert.ok(dark > 0, `seed ${seed}: cutting ${cut} wire tiles darkened nothing`);
+
+    // Then a year of the deputy's turns. One repair a turn, so a shattered grid
+    // comes back over months rather than in an afternoon.
+    for (let tick = 1; tick <= TICKS_PER_YEAR; tick += 1) {
+      apply(state, { type: CMD_TICK });
+      if (tick % 6 === 0) deputyTurn(state, deputy);
+    }
+    darkened += dark;
+    remaining += state.supply.power.starved;
+  }
+
+  // Across both seeds, because one city can always hold a building nothing can
+  // reach — seed 404 keeps one, in a pocket later development closed. The rule
+  // is "the grid comes back", not "every building is always reachable".
+  assert.ok(remaining * 10 < darkened,
+    `${darkened} buildings went dark and ${remaining} were still dark a year later `
+    + `(the code this replaces left 65 of 164)`);
 });
 

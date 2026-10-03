@@ -8857,3 +8857,48 @@ for it. That is what the rule says, and it is the only form that survives a city
 
 Suite **1,578 green twice**; `sim` **801 s of 900**.
 
+## era 19 — the deputy repairs a grid a disaster cut in two (2026-10-03) — H5, A96 (Q130)
+
+G2 made every carrier RUN reach a live piece of grid and left the other half of the question open:
+the deputy connects a building when it **builds** it and never looks again, so a component that loses
+its producer is dark for the rest of the game. What repair there was came incidentally, from G2's
+rule running a NEW building's carriers to a live piece.
+
+Measured by cutting every wire in one column of a 15-year city — what a storm does to a line:
+
+| | darkened | a year later | five years later |
+|---|---|---|---|
+| seed 1003 | 84 of 234 | 54 | 0 |
+| seed 404 | 80 of 231 | 11 | **6** |
+
+With the rule: **0 and 5** after one year, and seed 1003's grid back to one component.
+
+### The first cut made it worse, and said why
+
+Dark went from 84 to **211**. Two defects, both G2's shape wearing new clothes:
+
+- it ran carriers out of the **coal plant**, two hundred and forty times. A producer standing on an
+  under-capacity component is itself unlit, and a plant's darkness is `keepSupplied`'s problem — a
+  capacity shortfall, not a route to find. The loop had no reason to skip it, so it never got past it.
+- it counted the turn as **spent whether or not the run laid anything**. `connectToNetwork` can
+  legitimately do nothing (the route may already be carrier all the way), so the deputy stopped
+  laying roads, building plants and everything else, and the city it was repairing shrank.
+
+`connectToNetwork` returns whether it actually laid a run now. "I tried" and "I did" are the same
+thing to a caller that spends a turn on either.
+
+### Measured — 200 games a configuration
+
+| configuration | era 18 | era 19 | dark p95 | components |
+|---|---|---|---|---|
+| relaxed-64 | 1,842 | 1,787 | 1 | 1 |
+| steady-64 | 1,571 | 1,598 | 2 | 1 |
+| demanding-64 | 1,551 | 1,537 | 3 | 2 |
+| steady-64-nodisasters | 1,569 | 1,559 | 0 | 1 |
+
+Population within noise, which is right: the repair only acts on a city that has already been cut,
+and most sweep cities never are. What moved is the **p95 of dark buildings**, which was 3, 4, 12 and
+0 at era 17 and is 1, 2, 3 and 0 now — the tail, which is exactly where a disaster lives.
+
+Suite **1,580 green twice**; `sim` **843 s of 900**.
+

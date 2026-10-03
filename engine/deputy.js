@@ -373,6 +373,49 @@ function keepSupplied(state, deputy) {
   return acted;
 }
 
+/** One dark building a turn put back on a live grid (H5, A96, Q130).
+ *
+ * G2 made every carrier RUN reach a live piece of grid and left the other half
+ * open: a disaster cuts a line, the component behind it loses its producer, and
+ * the deputy — which connects a building when it BUILDS it and never looks
+ * again — never notices. Measured before this rule: cutting 34 wire tiles on
+ * seed 1003 darkened 84 buildings of 234, and a year later 54 were still dark;
+ * on seed 404, 80 went dark and SIX were still dark five years on. What repair
+ * there was came incidentally, from G2's rule running new buildings' carriers to
+ * a live piece.
+ *
+ * Only when the city HAS the capacity: a brown-out is a shortfall to build out
+ * of, not a grid to re-stitch, and `keepSupplied` above is what answers that.
+ * One a turn, so a shattered grid comes back over months — a mayor repairing
+ * forty lines in an afternoon is not a mayor anybody would believe.
+ */
+function reconnectDark(state, deputy, kind, layer, command, flag) {
+  var supply = state.supply[kind];
+  if (supply.starved === 0 || supply.demand > supply.capacity) return false;
+  for (var i = 0; i < state.buildings.length; i += 1) {
+    var building = state.buildings[i];
+    if (building.owner !== deputy.seat) continue;
+    var index = tileAt(state.width, building.x, building.y);
+    if ((state.tiles.flags[index] & flag) !== 0) continue;
+    // Not from a PRODUCER. A plant whose own tile is dark is a plant on a
+    // component that is short of capacity, which is `keepSupplied`'s problem
+    // and not a route to find — and the first cut of this spent two hundred and
+    // forty turns running carriers out of the same coal plant while the city it
+    // was meant to be repairing stopped growing.
+    var def = definition(building.def);
+    if (def && ((kind === "power" && def.power > 0) || (kind === "water" && def.water > 0))) continue;
+    // And only a run that actually LAYS something counts as the turn's work.
+    if (connectToNetwork(state, deputy, index, layer, command, flag)) return true;
+  }
+  return false;
+}
+
+function repairGrid(state, deputy) {
+  if (deputy.zoned === 0) return false;
+  if (reconnectDark(state, deputy, "power", "wire", CMD_PLACE_WIRE, FLAG_POWERED)) return true;
+  return reconnectDark(state, deputy, "water", "pipe", CMD_PLACE_PIPE, FLAG_WATERED);
+}
+
 function placeUtility(state, deputy, def) {
   if (!def) return false;
   var spot = findSpotFor(state, deputy, def);
@@ -991,7 +1034,7 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
   if (target < 0) target = fallback;
   if (target < 0) {
     deputy.unconnected += 1;
-    return;
+    return false;
   }
 
   var cells = [];
@@ -1000,9 +1043,13 @@ function connectToNetwork(state, deputy, from, layer, command, flag) {
     if (!hasNet(state.tiles[layer][walk])) cells.push(walk);
     walk = cameFrom[walk];
   }
-  if (cells.length === 0) return;
+  // Whether anything was actually LAID, which is not the same as "a target was
+  // found": the route may already be carrier all the way, and a caller that
+  // treats that as work done spends every turn on it (H5).
+  if (cells.length === 0) return false;
   issue(state, deputy, { type: command, actor: deputy.seat, runs: encodeRuns(cells) });
   if (command === CMD_PLACE_ROAD) dezoneUnder(state, deputy, cells);
+  return true;
 }
 
 /** To a LIVE piece of grid, for every building (G2, A86, Q117).
@@ -1045,6 +1092,11 @@ export function deputyTurn(state, deputy, sink) {
   // Supply first, expansion second — but only after the cursor exists, since
   // the carrier line is run toward it.
   if (keepSupplied(state, deputy)) return true;
+  // Then anything the city has capacity for and cannot reach: a disaster cuts a
+  // line and the component behind it is dark until somebody joins it back up
+  // (H5, A96). Before expansion, because a dark block is a block that is already
+  // built and already paid for.
+  if (repairGrid(state, deputy)) return true;
   // Then the fire service, before more streets: a block that burns down is
   // worth more than a block that was never built (B1a).
   if (keepCovered(state, deputy)) return true;
