@@ -10614,3 +10614,41 @@ for the life of the project.
 
 `quick` 510 s of 540 after the boot change (`main.js` now reads the manifest for the build hash
 before anything else), `offline_smoke` included.
+
+## The review before X1, and the unplanned written down (2026-10-04)
+
+**The multiplayer plan, read against the seam as built.** Five findings, in `workitems-multiplayer.md`:
+
+1. **The transport contract is request/response, and a room pushes.** `openMirrorSession(given,
+   transport)` takes `post(message) → Promise<reply>` and nothing else, which is all a worker or
+   W4's echo stub ever needs — and is exactly why W4 did not notice. A room broadcasts frames, and a
+   frame carrying **another seat's** command has no promise waiting for it: with today's contract
+   the mirror would never hear about it. The contract gains `onMessage(handler)`, which the worker
+   transport never calls, and the session treats a pushed message as an apply it did not ask for.
+   Settled now because X1's ROOM half decides the frame shape, and a frame shaped for a reply is a
+   frame that cannot be pushed.
+2. **The server needs `data/` the way the worker did** — W2's first `worker_smoke` had the two arms
+   5,300 apart because the worker ran on the engine's mirrors with no quests. The server may do
+   I/O, so it loads the content at startup, and the room's content is what the build hash is of.
+3. **`keepForDays` leaves the unread list** when `server/store.js` reads it, and the pin goes red in
+   the direction that means somebody did the work (A124).
+4. Nothing in `server/` is precached, and must not be.
+5. `render` is a nine-second set since S18's split, so a room slice can run it as cheaply as the
+   suite.
+
+**And the unplanned, written down rather than carried:**
+
+- **S20 — the shot tools aim themselves.** `street_shots`' shop camera stands against a wall on seed
+  1003. That is the fifth camera this week aimed by a proxy (F2's three, S18's one), and the pattern
+  that works is `embankment_shots`': find the subject in node from the same model the renderer
+  draws, choose the camera from its geometry, use the photo camera where a walker cannot stand, and
+  print what must exist for the subject to exist.
+- **W6 gains a third cost nobody has timed**: `worldChanged` recreates the traffic, the services,
+  the trains, the boats and the planes, because each holds ids from a graph that no longer exists.
+  Same identity problem, different hat — and the number has never been taken, which is `budget_gate`'s
+  to take.
+- **Q154** — a faced shoulder is a storey deep. The ladder is in the question (1.2 m → 916 faced
+  shoulders on a hilly 128, 2 m → 264, 3 m → 130; a rolling 96 has 51 and none), the pictures are
+  taken, and it is a picture decision rather than a measurement.
+- S18's other two halves — the deck as one profile, the water as one surface — were already in the
+  item and stay there.

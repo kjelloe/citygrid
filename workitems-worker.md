@@ -247,6 +247,12 @@ against everything else: it is now 100% of the stall.
    touches a handful of chunks; the lane graph is two thirds of the cost at every size and is the
    part that is hardest to make local, because a lane leaves its chunk.
 
+**And a third cost nobody has timed.** `worldChanged` does not only rebuild the model and the nav
+graph: it recreates the traffic, the services, the trains, the boats and the planes, because every
+one of them holds ids from a graph that no longer exists. That is the same identity problem wearing
+a different hat, and it is why stable ids are the item rather than a detail of it — but the number
+has never been taken, and a browser is the only place it can be. `budget_gate` is where it goes.
+
 **Do first, before choosing:** split the 38.5 ms by phase on a played city (`lanes_dump` prints
 corridors and lanes; `deriveNav` and `deriveWater` have never been timed), and count how much of it
 a single build action actually invalidates. A rebuild that only had to redo one chunk's lots is a

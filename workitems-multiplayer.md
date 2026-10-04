@@ -133,6 +133,32 @@ of them each descends from.
 - `worker/sim-host.js`'s `snapshot` reply and the save format are asserted to be one shape
   (`test/session-worker.test.js`), because the join snapshot is that shape.
 
+## Review before X1 (2026-10-04, after X0)
+
+*Read against the seam as built, not against the plan's description of it.*
+
+1. **The transport contract is request/response and a room PUSHES.** `openMirrorSession(given,
+   transport)` takes `post(message) → Promise<reply>` and nothing else — which is all a worker or
+   the echo stub ever needs, and is why W4 did not notice. A room broadcasts frames: a frame
+   carrying **another seat's** command has no promise waiting for it, so with today's contract the
+   mirror would never hear about it. **The contract gains one member** — `onMessage(handler)`, which
+   the worker transport never calls and the socket transport calls per frame — and the session
+   treats a pushed message as an apply it did not ask for: feed the local worker, patch the mirror,
+   announce. Settled here because X1's ROOM half decides the frame shape, and a frame shaped for a
+   reply is a frame that cannot be pushed.
+2. **The server needs the content the way the worker did.** W2's first `worker_smoke` had the two
+   arms 5,300 apart in the treasury because the worker ran on `engine/rules.js`'s mirrors with no
+   quests. The server imports `engine/` the same way and may do I/O, so it loads `data/` at startup
+   — and the room's content is what the build hash is OF, which is what the handshake compares.
+   A room whose content differs from a client's is the same defect wearing a socket.
+3. **`keepForDays` leaves the unread list** when `server/store.js` reads it, and
+   `test/omissions.test.js` will go red in the direction that means somebody did the work (A124).
+   Twelve left after that.
+4. **Nothing in `server/` is precached.** `tools/make_precache.mjs`'s roots are `client`, `engine`,
+   `shared`, `worker`, `data`, `vendor` — the server is not shipped to a browser and must not be.
+5. **The two walks and `passability` are a nine-second set now** (S18's split): a room slice can run
+   `render` as cheaply as the suite, and `lanes` only when the model changes.
+
 ## X1 — Server and relay (L) — plan-v1 slice 5.1
 
 **Goal.** Two real clients play one city, hash for hash, through a real socket.
@@ -154,7 +180,9 @@ of them each descends from.
 **Do — the client.**
 - `client/transport/socket.js`: the third transport. `post(apply)` sends `COMMAND` and resolves
   when the frame carrying it (or its refusal) arrives; frames carrying other seats' commands are
-  fed to the worker in `(tick, seq)` order; the tick count in a frame drives the worker's clock.
+  fed to the worker in `(tick, seq)` order through the contract's **`onMessage`** (see the review
+  above — a reply-only transport cannot carry somebody else's command); the tick count in a frame
+  drives the worker's clock.
 - `client/session-remote.js` is `openMirrorSession(given, socketTransport)` and nothing else — if
   it needs to be more, the seam was wrong and that is the finding.
 - The optimistic ghost stays a ghost until its frame arrives; a refusal is the existing toast.

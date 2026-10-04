@@ -662,6 +662,26 @@ minutes it wants its census sampled or its own set — not a larger number.
   action costs every client 115 ms and resets its traffic. `workitems-multiplayer.md` says so and
   orders it before X3.
 
+## S20 — The shot tools aim themselves (S) — found while re-running them, 2026-10-04
+
+**Goal.** A picture gate points at its subject rather than at a tile somebody remembered.
+
+`street_shots`' "facing the shop across its bays" camera stands against a wall on seed 1003: its
+`FIND` asks for the nearest standing shop with a road on one side and then stands ON that road
+facing the shop, which on a 3×3 corner lot is a camera inside the frontage. F2 found the same shape
+three times in one evening (the longest corridor was an industrial strip, the furthest house was a
+forest, the centre of mass had no works near it), and S18 found the fourth (a street camera inside
+an embankment).
+
+**Do.** The pattern `tools/embankment_shots.mjs` now uses: find the subject in NODE from the same
+model the renderer draws, choose the camera from the subject's own geometry — back off along the
+frontage normal until the nearest building is further than the near plane — and use the photo camera
+where a walker cannot stand. Then print what has to exist for the subject to exist (baked chunks,
+posed instances) and fail at zero.
+
+**Done when** each `_shots` gate prints the thing it is pointed at and the distance it stands back,
+and somebody has looked at the frames it takes.
+
 ## S15 — Tone and proportion, against the sheet (M) — S8's verdict
 
 **Goal.** The compare sheet's rows 2 and 3 read as one family. Measured, not eyeballed first.

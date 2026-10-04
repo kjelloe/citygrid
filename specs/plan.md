@@ -238,7 +238,11 @@ drives directly. Two consequences, both now decided rather than discovered later
   client's — which is what §3.9's build hash is for, and what makes the handshake load-bearing
   rather than ceremonial;
 - the snapshot the server sends on join and the `snapshot` reply the worker already produces are
-  the same shape, and should stay one shape.
+  the same shape, and should stay one shape (asserted by `test/session-worker.test.js` since X0);
+- and the transport contract needs an inbound channel. `post(message) → Promise<reply>` is all a
+  worker needs; a room broadcasts a frame carrying **other seats'** commands, which no promise is
+  waiting for. `onMessage(handler)` is the member that makes a socket a transport rather than a
+  special case, and it is settled before X1 rather than discovered inside it.
 
 ### 3.2 Command relay, not state streaming
 
