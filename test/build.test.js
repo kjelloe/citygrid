@@ -16,7 +16,7 @@ import { rules, buildCost } from "../engine/rules.js";
 import { hasNet, maskOf, NET_PRESENT } from "../engine/network.js";
 import {
   CMD_JOIN, CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_PLACE_BUILDING,
-  CMD_BULLDOZE,
+  CMD_BULLDOZE, CMD_UNDO,
 } from "../engine/commands.js";
 import { knownCommands } from "../engine/reducer.js";
 import "../engine/development.js";
@@ -217,6 +217,38 @@ test("undo does not stack — it is one deep per player", () => {
   assert.equal(undoLast(state, 1), RESULT.INVALID, "there is nothing further to undo");
 });
 
+test("undo is a COMMAND, so it can cross a wire (Q147, W4)", () => {
+  // `undoLast` changed the city and was not a command: on a worker it was
+  // undoing a copy, and in a room it would change one client's city and desync
+  // it. Everything that changes the city must BE a command (plan.md §3.2).
+  const state = world();
+  const before = hashState(state);
+  const treasury = state.players[0].treasury;
+  apply(state, road(1, [at(2, 10), at(3, 10)]));
+  assert.notEqual(hashState(state), before);
+
+  const outcome = apply(state, { type: CMD_UNDO, actor: 1 });
+  assert.equal(outcome.result, RESULT.OK);
+  assert.equal(state.players[0].treasury, treasury, "the money came back");
+  assert.equal(hashState(state), before, "the world came back");
+
+  // Nothing left to undo, and the refusal is the same one the direct call gave.
+  assert.equal(apply(state, { type: CMD_UNDO, actor: 1 }).result, RESULT.INVALID);
+  // A seat that never built anything cannot undo somebody else's work.
+  apply(state, road(1, [at(5, 10)]));
+  assert.equal(apply(state, { type: CMD_UNDO, actor: 2 }).result, RESULT.INVALID);
+  assert.ok(state.tiles.road[at(5, 10)] !== 0, "seat 2 undid seat 1's road");
+});
+
+test("undo as a command obeys ownership like every other command", () => {
+  const state = world();
+  apply(state, road(1, [at(7, 10)]));
+  state.tiles.owner[at(7, 10)] = 2;
+  const before = hashState(state);
+  assert.equal(apply(state, { type: CMD_UNDO, actor: 1 }).result, RESULT.NOT_OWNER);
+  assert.equal(hashState(state), before, "a refused undo changed the world");
+});
+
 test("a malformed run list is refused before a single tile is touched", () => {
   const state = world();
   const before = hashState(state);
@@ -350,6 +382,9 @@ test("permission matrix: every registered command is covered by a row", () => {
   const asserted = new Set([
     "placeRoad", "placeWire", "placePipe", "placeRail", "bulldoze", "paintZone", "dezone",
     "placeBuilding", "setTax",
+    // `undo` is tile-scoped and asserted directly above (Q147): it refuses
+    // NOT_OWNER once somebody else owns the ground it would rewind.
+    "undo",
     // Not tile-scoped, so ownership does not apply; covered elsewhere.
     // `setFunding` and `setTax` are city-wide policy: see the funding tests in
     // test/civic.test.js, which assert the range and the refusal.

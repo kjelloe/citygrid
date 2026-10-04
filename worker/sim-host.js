@@ -22,7 +22,7 @@ import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { toSave, fromSave } from "../engine/save.js";
 import { CMD_TICK } from "../engine/commands.js";
-import { undoLast } from "../engine/build-commands.js";
+import "../engine/build-commands.js";
 import { setRules } from "../engine/rules.js";
 import { setCatalogue } from "../engine/catalogue.js";
 import { setQuests } from "../engine/quests.js";
@@ -115,10 +115,6 @@ export function createSimHost() {
       case "apply": {
         const outcome = apply(state, message.command);
         return answer("result", { id, result: outcome.result, events: outcome.events });
-      }
-      case "undo": {
-        const result = undoLast(state, message.actor);
-        return answer("result", { id, result, events: [] });
       }
       case "tick": {
         // Every tick's events, not the last one's. A count of one is the game's

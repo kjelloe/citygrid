@@ -124,9 +124,10 @@ test("the placeholder directories are still empty, or their slice has started", 
   //
   // `client/lobby/` left this list when the new-game screen was built: it is
   // the singleplayer half of slice 5.2, and slice 5.2 adds seats to it rather
-  // than replacing it (Q22). `worker/` left it in W2, which is its slice: the
-  // reducer runs there now (`sim-host.js`, `sim-worker.js`).
-  for (const dir of ["server", "client/transport"]) {
+  // than replacing it (Q22). `worker/` left it in W2 and `client/transport/`
+  // in W4, which are their slices: the reducer runs in `worker/` now, and the
+  // mirror takes a transport rather than building its own worker.
+  for (const dir of ["server"]) {
     const path = join(repoRoot, dir);
     if (!existsSync(path)) continue;
     const contents = readdirSync(path);

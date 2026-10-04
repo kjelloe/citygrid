@@ -4,10 +4,11 @@
 // them what is happening. The simulation and the HUD are both fed from state;
 // nothing here decides a rule.
 //
-// The clock is the only place in the client that decides when time passes. It
-// issues `CMD_TICK` and nothing else, because the reducer owns what a tick
-// means; a client that advanced anything itself would desync the moment a
-// second client existed.
+// The clock is the SESSION's since W4 (`client/session.js`, plan.md §3.4): this
+// file asks for a speed and the seam decides what that means — an interval here,
+// a server's frame in a room. It issues `CMD_TICK` and nothing else, because the
+// reducer owns what a tick means; a client that advanced anything itself would
+// desync the moment a second client existed.
 
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
@@ -160,7 +161,6 @@ export async function startGame(root, given = {}) {
     : TIME.some((c) => c.value === given.time) ? given.time : "day";
   /** Seconds of wall clock the light cycle has run for. */
   let daySeconds = 0;
-  let clock;
   let lastAutosaveTick;
   // The live state is replaced wholesale on load, so everything that holds it
   // has to be rebuilt. `current.state` is the one place that knows which city
@@ -273,15 +273,13 @@ export async function startGame(root, given = {}) {
 
   function setSpeed(next) {
     speed = next;
-    clearInterval(clock);
-    clock = undefined;
     const { labelKey, ms } = SPEEDS[speed];
     hud.setSpeedLabel(labelKey);
-    // The clock is a CALLER of the seam, and what a tick does to the HUD, the
-    // audio and the autosave is a listener on it (W1). The schedule is the only
-    // thing left here, which is what lets a gate step the city by hand and get
-    // exactly what the interval would have done.
-    if (ms > 0) clock = setInterval(() => sim.tick(), ms);
+    // The SESSION owns the clock (W4, plan.md §3.4): a remote one ticks when a
+    // frame says to, and a client that also ran its own interval would run the
+    // world twice. What a tick does to the HUD, the audio and the autosave is a
+    // listener on the seam (W1), so nothing of the clock is left in this file.
+    sim.setSpeed(ms);
   }
   setSpeed(1);
 
@@ -503,8 +501,6 @@ export async function startGame(root, given = {}) {
     pause: () => setSpeed(0),
     resume: () => setSpeed(1),
     stop() {
-      clearInterval(clock);
-      clock = undefined;
       cancelAnimationFrame(frame);
       globalThis.removeEventListener("resize", onResize);
       controller.dispose();

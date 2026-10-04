@@ -1,5 +1,5 @@
 {
- "version": "63694e7bcd3d",
+ "version": "4b233222a192",
  "generated": "2026-10-04",
  "files": [
   "./client/audio/audio-model.js",
@@ -84,6 +84,8 @@
   "./client/storage/db.js",
   "./client/storage/saves.js",
   "./client/style.css",
+  "./client/transport/echo.js",
+  "./client/transport/worker.js",
   "./client/ui/alerts-model.js",
   "./client/ui/auto-overlay.js",
   "./client/ui/budget-model.js",

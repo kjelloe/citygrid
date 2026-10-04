@@ -249,11 +249,9 @@ local and immediate.
 - Ordering: commands are applied in `(tick, seq)` order, `seq` assigned by the server on
   arrival. Ties never exist. Same order on every machine, forever.
 - **Everything that changes the city must BE a command.** W1 found the exception the hard way:
-  `undoLast(state, actor)` changes the city and is not a command, so it cannot cross a wire — in a
-  room it would change one client's copy and desync it. Undo is either a command (`CMD_UNDO`,
-  validated and ordered like any other, which also makes it fair: you can only undo your own last
-  action) or it is refused in multiplayer. That is **Q147**, and it is the one thing the seam
-  cannot carry as built.
+  `undoLast(state, actor)` changed the city and was not a command, so it could not cross a wire.
+  **`CMD_UNDO` since W4** (A123): validated and ordered like any other, which also makes it fair —
+  your own last action, refused once somebody else owns the ground it would rewind.
 - Rejection: an illegal command is rejected identically by client and server; the client's
   optimistic ghost preview is never state, so a rejection is a UI toast, not a rollback.
 - Desync: a hash mismatch triggers a resync — the server sends a full snapshot and the client
@@ -278,12 +276,10 @@ local and immediate.
 
 ### 3.4 Clock authority
 
-**Who calls `tick()` is a property of the session, not of the game.** As built, `client/game.js`
-owns a `setInterval` that calls `sim.tick()`; a remote session must take that over, because the
-frame carries the tick count and a client that also ran its own interval would run the world twice.
-W4's drop-in test is the place this gets settled: the local session keeps an interval, the remote
-session ticks when a frame says to, and `game.js` asks the session for a speed rather than owning
-a clock.
+**Who calls `tick()` is a property of the session, not of the game** — settled in W4.
+`session.setSpeed(ms)`: the local session and the mirror keep an interval, a remote one will tick
+when a frame says to, `game.js` asks for a speed, and `dispose()` stops it. A client that kept its
+own interval would run the world twice.
 
 The server owns the clock. Speed is a lobby setting plus an in-game **majority vote**
 (`SET_SPEED_VOTE`); the host can force it. No single player can pause the world — pausing is
@@ -399,6 +395,9 @@ The seam is built, so this is checkable rather than aspirational. What exists an
 - `engine/permissions.js`'s `ownershipPartitions` and `isCooperative` — the modes §4 describes.
 - `worker/sim-host.js`'s `snapshot` and `save` messages — §3.3's join payload, in the shape the
   singleplayer client already uses.
+- `client/transport/` (W4): the mirror takes a transport, the worker is one implementation and
+  `echo.js` is the stub that answers with a sequence number. The socket is the third, and nothing
+  above the seam has to know.
 - Multiplayer state the reducer already keeps and the fixtures already pin: seats, ownership,
   requests, contracts, the two-player fixture.
 

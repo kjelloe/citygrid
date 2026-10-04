@@ -10289,3 +10289,38 @@ Gates: suite green twice (1,651); `kits` 336 s green (role and street shots), `b
 the crowd grew from 308 held to 600 and the air frame is 391k of 400k triangles with the ladder
 giving up street detail at 40 tiles across for resolution reasons, not budget ones; `render` 217 s
 green. The storyboard was re-rendered and looked at.
+
+## W4 — the seam proven against a transport that is not a worker (2026-10-04)
+
+Ruling 003 put the session seam in from day one so that "no UI module ever learns whether a socket
+exists". That was a claim, not a fact: every `apply()` ran on the render thread until W1, and W2's
+mirror could only be built over a `Worker`, which node cannot construct — so the drop-in property
+had never been checked by anything.
+
+**A transport is an argument now.** `openMirrorSession(given, transport)` takes anything with
+`post(message, transfer) → Promise<reply>`. `client/transport/worker.js` is the thread;
+`client/transport/echo.js` is the stub that runs the simulation where it stands and answers with a
+sequence number, which is what a room's frame carries. `test/session-remote.test.js` drives the real
+mirror session in node, in milliseconds: the echo arm and the local arm play the same city hash for
+hash, a refusal changes nothing and is not announced as a change, both generated fixtures replay
+through the transport against their pinned hashes, and every sequence number is unique and in order.
+
+**Q147 answered by building it: undo is a command.** `CMD_UNDO` goes through `apply` like
+everything else, with the ownership rule it already had — refused once somebody else owns the ground
+it would rewind, refused when there is nothing to undo, and refused for a seat that did not build
+it. The permission matrix has its row. The seam lost a member, `worker/sim-host.js` lost a message
+type, and the thing that could not cross a wire can.
+
+**The clock moved onto the session.** `game.js` owned a `setInterval` calling `sim.tick()`; a remote
+session cannot allow that, because the server owns the clock and the frame carries the tick count
+(plan.md §3.4). `session.setSpeed(ms)` on both sides, the interval inside them, `dispose()` clearing
+it — and the test asserts all three: a speed ticks, speed 0 stops, and a disposed session is not
+still playing the city in the background.
+
+**The parity test the lane never had.** `Object.keys()` of the local session and of the mirror
+session, compared member for member. Two sessions that differ by one member are two APIs, and the
+difference would have been found by a UI module rather than by a test.
+
+Gates: suite green twice (1,661 — W4's file is 8 of them); `quick` 508 s of 540, every gate green
+with the worker on. `client/transport/` left `test/omissions.test.js`'s empty-directory list, which
+is how that list is supposed to shrink.

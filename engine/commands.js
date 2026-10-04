@@ -13,6 +13,11 @@ export var CMD_PLACE_PIPE = "placePipe";
 export var CMD_PLACE_RAIL = "placeRail";
 export var CMD_PLACE_BUILDING = "placeBuilding";
 export var CMD_BULLDOZE = "bulldoze";
+/** Undo of the actor's own last action (Q147). A command, because everything
+ * that changes the city has to be one: it used to be a direct call into the
+ * reducer's module, which worked on one thread and would have undone a copy on
+ * a worker and desynced a room (plan.md §3.2). */
+export var CMD_UNDO = "undo";
 export var CMD_SET_TAX = "setTax";
 export var CMD_SET_FUNDING = "setFunding";
 export var CMD_TAKE_LOAN = "takeLoan";

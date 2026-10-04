@@ -4,7 +4,7 @@
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import { register, ok, fail } from "./reducer.js";
 import {
-  CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_BULLDOZE,
+  CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_BULLDOZE, CMD_UNDO,
 } from "./commands.js";
 import { begin, commit, undo as undoTransaction, stage, charge, reject, peek, failed, priceOnly } from "./transaction.js";
 import { placeNetwork, removeNetwork, cellsFromRuns, hasNet, NETWORKS } from "./network.js";
@@ -136,6 +136,10 @@ export function bulldozeInto(tx, indices) {
 register(CMD_BULLDOZE, function bulldoze(state, command) {
   if (!isIntArray(command.runs, LIMITS.CELLS_PER_COMMAND)) return fail(RESULT.INVALID);
   return runArea(state, command, bulldozeInto);
+});
+
+register(CMD_UNDO, function undo(state, command) {
+  return { result: undoLast(state, command.actor), events: [] };
 });
 
 /** Undo of the actor's own last committed action. Refused once anyone else has

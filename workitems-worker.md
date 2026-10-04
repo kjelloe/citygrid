@@ -220,7 +220,25 @@ different item from one that has to redo the lane graph.
 **Done when** a build action on a played 96 blocks the render thread for under a frame, measured by
 `tools/seam_cost.mjs` with the same city, and `budget_gate` and `walkthrough` are unmoved.
 
-## W4 — The server reuses the seam (M, the door to Wave 5) — **designed 2026-10-04 after W2**
+## W4 — The server reuses the seam (M, the door to Wave 5) — **done 2026-10-04 as `slice-W4`**
+
+A transport is an argument: `openMirrorSession(given, transport)` over `client/transport/worker.js`
+(the thread) or `client/transport/echo.js` (the stub that answers with a sequence number).
+`test/session-remote.test.js` drives it in node — the echo arm and the local arm play the same city
+hash for hash, both fixtures replay through it against their pinned hashes, a refusal changes
+nothing, and the three sessions are compared member for member, which is the drop-in claim stated as
+an assertion for the first time.
+
+**Q147 is answered by building it:** `CMD_UNDO` is a command, with the ownership rule it already
+had and a row in the permission matrix. The seam lost a member and the host lost a message type.
+
+**The clock is the session's:** `setSpeed(ms)` on both sides, `game.js` asks for a speed, and
+`dispose()` stops it — a remote session ticks when a frame says to, and a client that kept its own
+interval would run the world twice.
+
+What is left for Wave 5 is the socket and the room, which is ruling 003's business, not this lane's.
+
+## W4 — The server reuses the seam (M, the door to Wave 5) — the item as written
 
 **Goal.** Not the server — ruling 003 keeps Wave 5 behind playtest acceptance — but the proof
 that `session-remote.js` is a drop-in: a stub transport in `client/transport/` that echoes

@@ -24,13 +24,13 @@
 // ever built.
 
 import { apply } from "../engine/reducer.js";
-import { CMD_TICK } from "../engine/commands.js";
+import { CMD_TICK, CMD_UNDO } from "../engine/commands.js";
 import { hashState } from "../engine/state.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { fromSave } from "../engine/save.js";
 import { RESULT } from "../shared/protocol.js";
-import { undoLast } from "../engine/build-commands.js";
+import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
 import "../engine/economy.js";
@@ -65,6 +65,7 @@ export async function openLocalSession(given) {
     state = world.state;
   }
   const listeners = new Set();
+  let clock;
 
   function notify(command, outcome) {
     const change = { command, result: outcome.result, events: outcome.events, tick: state.tick };
@@ -91,14 +92,19 @@ export async function openLocalSession(given) {
     get desyncs() { return 0; },
     get desyncChecks() { return 0; },
     async apply(command) { return run(command); },
-    /** Undo, which is the one way the client changes the city WITHOUT a
-     * command (`undoLast` mutates the state directly). It belongs on the seam
-     * for the same reason `apply` does: with the reducer on another thread, a
-     * caller that reached past the seam to undo would be undoing a copy. */
+    /** Undo is a command like any other since W4 (Q147): it used to be a direct
+     * call into the reducer's module, which is a change to the city that could
+     * not cross a wire. */
     async undo(actor) {
-      const result = undoLast(state, actor);
-      if (result === RESULT.OK) notify({ type: "undo", actor }, { result, events: [] });
-      return result;
+      return run({ type: CMD_UNDO, actor }).result;
+    },
+    /** The clock belongs to the SESSION (plan.md §3.4, W4), not to `game.js`:
+     * a remote session ticks when a frame says to, and a client that also ran
+     * its own interval would run the world twice. */
+    setSpeed(ms) {
+      clearInterval(clock);
+      clock = undefined;
+      if (ms > 0) clock = setInterval(() => { this.tick(); }, ms);
     },
     async tick(count = 1) {
       // Every tick's events, as the worker does it: a batched tick that reports
@@ -127,6 +133,10 @@ export async function openLocalSession(given) {
     },
     /** The checksum the save, the replay and the desync detector all use. */
     async hash() { return hashState(state); },
-    dispose() { listeners.clear(); },
+    dispose() {
+      clearInterval(clock);
+      clock = undefined;
+      listeners.clear();
+    },
   };
 }

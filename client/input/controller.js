@@ -12,6 +12,7 @@
 //     tile crossed.
 
 import { price, lastUndoFor } from "../../engine/build-commands.js";
+import { CMD_UNDO } from "../../engine/commands.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { footprintAt, isOrientable } from "../ui/build-model.js";
 import { RESULT } from "../../shared/protocol.js";
@@ -1082,7 +1083,10 @@ export function createController(canvas, session, renderer, options = {}) {
   }
 
   function undo() {
-    return session.undo(actor).then((result) => {
+    // A command like any other since W4 (Q147): the seam used to carry a member
+    // for it, which is how a change to the city that could not cross a wire hid
+    // in plain sight.
+    return session.apply({ type: CMD_UNDO, actor }).then(({ result }) => {
       onResult(result, { type: "undo", actor });
       if (result === RESULT.OK) {
         renderer.worldChanged();
