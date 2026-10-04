@@ -325,6 +325,11 @@ export function createRenderer(canvas, state, options = {}) {
   // Rebuilt whole with the terrain when the world changes; the renderer reads
   // it and never writes it.
   let model = createModel(state);
+  // How high the camera is ABOVE THE GROUND, which is what decides the photo
+  // camera's near plane (S20): `view.eye.y` is absolute, and a city on land 40 m
+  // up read as flying. The view holds the question; the scene owns the terrain
+  // and answers it, and the answer follows the model when the world changes.
+  view.groundAt = (x, z) => model.heightAt(x * model.tileM, z * model.tileM) / model.tileM;
   // The cars (slice V1, ruling 037). Renderer-local: the engine says how busy a
   // road is and this decides what busy looks like. `life: false` freezes them
   // where they settled, so a screenshot is the same picture twice.

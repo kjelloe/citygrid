@@ -36,6 +36,33 @@ export const PHOTO_FAST = 3;
 export const PHOTO_MAX_PITCH = 88 * (Math.PI / 180);
 
 /** Tiles a second at this zoom. */
+/**
+ * The near and far planes for a free-look camera, by how high it is **above the
+ * ground** (S20).
+ *
+ * Here, in the pure layer, because it is arithmetic and because
+ * `client/render/camera.js` imports three — so nothing in `test/` could reach
+ * the rule, and the rule was wrong for the life of photo mode: it compared
+ * `eye.y`, an ABSOLUTE height, against one tile. Seed 1003's land stands at
+ * 40 m, which is two and a half tiles, so a camera at eye height on it read as
+ * flying and was given the city's planes. A near plane of half a tile is eight
+ * metres: every street-level photograph clipped its own foreground, and the
+ * instrument that finally noticed was a shot tool that aims itself and
+ * photographed the horizon from six metres in front of a shop.
+ *
+ * `aboveGround` is in TILES, like everything else the camera holds.
+ */
+export function planesFor(mode, aboveGround) {
+  const nearGround = mode === "street" || (mode === "photo" && aboveGround <= PHOTO_AIR_ABOVE);
+  // Near enough that the pavement the camera stands on is not clipped; far
+  // enough, from the air, that the city does not end halfway to the horizon.
+  return nearGround ? { near: 0.02, far: 100 } : { near: 0.5, far: 4000 };
+}
+
+/** Above this, in tiles above the ground, a photo camera is flying rather than
+ * standing — one tile is sixteen metres, about a fourth storey. */
+export const PHOTO_AIR_ABOVE = 1;
+
 export function photoSpeed(span) {
   return span / PHOTO_CROSS_SECONDS;
 }

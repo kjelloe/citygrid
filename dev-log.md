@@ -11055,3 +11055,51 @@ Every gate reads what it read before: suite 1,744 green twice, `render` 8 s, `la
 times standalone, both failures in runs started while I was editing source files — a 250-second
 browser gate reads the module tree as it goes, so an edit mid-flight is a half-written module.
 Nothing to fix in the product; the rule is not to edit while a gate is running.
+
+## slice-S20 — the shot tools aim themselves, and the near plane that was eight metres (2026-10-05)
+
+`street_shots`' shop camera stood ON the road tile in front of the shop and faced it, which on a
+3×3 corner lot is three metres from a wall. The fix is `embankment_shots`' shape, written once as
+`tools/lib/aim.mjs` so the next tool inherits it instead of copying it: `playedCity` (the twenty-year
+deputy city with the nine side-effect imports nobody must forget), `clearanceAt` (to the WALLS, not
+the centres), `standBack` (back off along a direction until nothing is inside the near field, and
+until the ground is ground), `fitDistance` (how far a subject of a given width has to be seen from)
+and `describe` (one line per subject, printed before the shot).
+
+**The camera's three wrong answers, in order, each found by looking at the frame:**
+
+1. **Standing in the river.** Six metres clear of every building and in the middle of the water: a
+   band of city across the horizon with the river filling the bottom half. "Can stand there" is not
+   only "is not inside a wall", so `standBack` asks `surfaceAt` as well.
+2. **Facing the horizon behind the subject.** `client/world/orbit.js` makes a free-look camera's
+   forward `(-sin(yaw), …, -cos(yaw))`, so looking back along the stand-off direction is
+   `atan2(dir.x, dir.z)`; the first cut negated both and pointed every camera away. The defect S20
+   exists to end, reproduced inside the fix for it — and `test/aim.test.js` pins it with a dot
+   product rather than with an angle somebody can transcribe.
+3. **A wall, then a dot.** Six metres from a 20 m frontage fills the frame with windows; the first
+   fitted distance (0.55 of the lens) stood 41 m off and the shop was a detail in a streetscape. A
+   frontage filled to a frame and a quarter is **sixteen metres**, which is the pavement opposite,
+   and that frame has the Butcher, the Records shop, the Hardware and the Cafe in it with their
+   benches, their tree and their parked cars.
+
+**And the renderer defect underneath all of it.** The photo camera's near plane is chosen by whether
+the eye is "near the ground", and the rule was `view.eye.y <= PHOTO_AIR_ABOVE` — an **absolute**
+height against one tile. Seed 1003's land stands at 40 m, which is two and a half tiles, so **every
+street-level photo on it read as flying** and got the city's planes: near 0.5 tiles is eight metres,
+and the shot clipped its own foreground. That is why the first three frames had a hard horizontal
+edge with sky beneath it — not the aim at all, and the aim is what found it. The rule now measures
+height **above the ground**, through a `groundAt` the scene owns and the camera asks.
+
+The decision moved to `planesFor` in `client/world/photo.js`, which is why it can be tested at all:
+`client/render/camera.js` imports three, so nothing in `test/` could reach the rule for the life of
+photo mode. `test/camera-model.test.js` now pins both ends and the boundary.
+
+**Measured.** `street_shots` prints its subject, its stand-off and what the camera is standing on:
+`shop: subject 36.5,21.5, camera 16 m back on road, 10.0 m clear, eye 1.7 m`. Every frame still
+counts its baked chunks and the people within forty metres, and still fails at zero. Suite 1,751
+green twice.
+
+**What is left of S20:** the other seventeen picture tools already ask the city where their subject
+is — none hard-codes a camera — but none of them prints its stand-off, and all of them have been
+taking photo-mode frames with an eight-metre near plane. Re-running the three picture sets and
+looking at the output is the next item, and it is the gate for this one.

@@ -1,51 +1,91 @@
-// The street shots (slice S3).
+// The street shots (slice S3; self-aiming since S20).
 //
 // A shopping street from the pavement of a PLAYED city: its parking bays, the
 // bench and bike rack outside a shop, the bollards and the name sign at the
 // corner, the wear down the lanes. Aimed at a shop with a street in front of
-// it, found by asking the page, and COUNTED before it is called a street.
+// it, found in NODE from the same model the renderer draws, and COUNTED before
+// it is called a street.
 //
-//   reports/smoke-S3-street.png   along a shopping street, from the road
+//   reports/smoke-S3-street.png   along a shopping street, from its pavement
 //   reports/smoke-S3-shop.png     facing the shop across its bays
 //   reports/smoke-S3-corner.png   at a junction, facing its corner
 //   reports/smoke-S3-city15.png   the same streets at D4's row-3 zoom (city 15, 26°)
 //   reports/smoke-S3-row3.png     that view beside D4's reference row 3
 //
 //     node tools/street_shots.mjs
+//
+// **S20: the camera stands where it can see.** The shop shot used to stand ON
+// the road tile in front of the shop and face it, which on seed 1003 is three
+// metres from a wall — the frontage fills the frame. The subject and the camera
+// now come from the model's own geometry through `tools/lib/aim.mjs`: back off
+// along the frontage normal until nothing is within three metres, and use the
+// photo camera, because a walker cannot stand in the middle of a carriageway
+// and a tile plus a quarter-turn cannot say "four metres further back".
 
 import { shoot } from "./screenshot.mjs";
+import { setConfig, DEFAULTS } from "../client/world/config.js";
+import { createModel } from "../client/world/model.js";
+import { playedCity, standBack, frontageNormal, frontageMiddle, describe } from "./lib/aim.mjs";
 
 const SEED = 1003;
 const SIZE = 64;
 const YEARS = 20;
 
-// The standing shop nearest the middle with a road on one side, the side (the
-// frontage and the yaw in quarter turns that faces it), and the road tile.
-const FIND = `(state) => {
-  const W = state.width;
-  const road = (x, y) => x >= 0 && y >= 0 && x < W && y < state.height && (state.tiles.road[y * W + x] & 16) !== 0;
-  const shops = state.buildings.filter((b) => b.zone === 2 && (b.flags & 8) === 0 && state.tick - b.builtTick > 12)
-    .sort((a, c) => Math.hypot(a.x - 32, a.y - 32) - Math.hypot(c.x - 32, c.y - 32));
-  for (const b of shops) {
-    const sides = [[b.x, b.y - 1], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x - 1, b.y]];
-    const f = sides.findIndex(([x, y]) => road(x, y));
-    if (f < 0) continue;
-    // A junction along this street, for the corner shot: the first road tile
-    // with three or more road neighbours, walking along the frontage.
-    const along = f % 2 === 0 ? [1, 0] : [0, 1];
-    let junction;
-    for (const dir of [1, -1]) {
-      for (let k = 1; k < 8 && !junction; k += 1) {
-        const [x, y] = [sides[f][0] + along[0] * k * dir, sides[f][1] + along[1] * k * dir];
-        if (!road(x, y)) break;
-        const n = [[0, -1], [1, 0], [0, 1], [-1, 0]].filter(([dx, dy]) => road(x + dx, y + dy)).length;
-        if (n >= 3) junction = [x, y];
-      }
-    }
-    return { frontage: f, road: sides[f], junction };
+setConfig(DEFAULTS);
+const state = playedCity({ seed: SEED, size: SIZE, years: YEARS });
+const model = createModel(state);
+const T = model.tileM;
+const middle = { x: (SIZE / 2) * T, z: (SIZE / 2) * T };
+
+/** The standing shop nearest the middle of the map that a camera can stand back
+ * from — "nearest" is not enough on its own, because the nearest one may be in
+ * a corner no camera can see. */
+function shopToShoot() {
+  const shops = model.lots
+    .filter((lot) => lot.building?.zone === 2 && (lot.building.flags & 8) === 0
+      && state.tick - lot.building.builtTick > 12)
+    .sort((a, b) => Math.hypot(a.cx - middle.x, a.cz - middle.z)
+      - Math.hypot(b.cx - middle.x, b.cz - middle.z));
+  for (const lot of shops) {
+    const front = frontageMiddle(lot);
+    // Far enough back that the shop is a shop rather than a wall: its own
+    // frontage, fitted to 55% of the frame.
+    // The FRONTAGE's own length, filled to about a frame and a quarter: at 0.55
+    // the camera stood 41 m off and the shop was a dot in a streetscape; at six
+    // metres it was a wall. A 20 m frontage at 1.25 is sixteen metres back,
+    // which is the pavement opposite — where somebody looking at a shop stands.
+    const camera = standBack(model, {
+      at: front, away: frontageNormal(lot), clear: 3, max: 34, pitch: -4,
+      fitWidthM: lot.frontageLen ?? Math.max(lot.x1 - lot.x0, lot.z1 - lot.z0), fitShare: 1.25,
+    });
+    if (camera) return { lot, front, camera };
   }
   return undefined;
-}`;
+}
+
+/** A junction near the shop, and a camera standing back from it along one of
+ * its arms, looking at the corner. */
+function cornerNear(lot) {
+  const nodes = model.nodes
+    .filter((node) => node.degree >= 3)
+    .sort((a, b) => Math.hypot(a.x - lot.cx, a.z - lot.cz) - Math.hypot(b.x - lot.cx, b.z - lot.cz));
+  for (const node of nodes.slice(0, 6)) {
+    for (const id of node.corridors) {
+      const corridor = model.corridors[id];
+      // Along this arm, away from the junction: the direction the camera backs
+      // off in is the street itself, which is where a pavement is.
+      const end = Math.hypot(corridor.points[0].x - node.x, corridor.points[0].z - node.z) < T
+        ? corridor.points[Math.min(2, corridor.points.length - 1)]
+        : corridor.points[Math.max(0, corridor.points.length - 3)];
+      const away = { x: end.x - node.x, z: end.z - node.z };
+      const camera = standBack(model, {
+        at: { x: node.x, z: node.z }, away, clear: 3, start: 14, max: 32, pitch: -5,
+      });
+      if (camera) return { node, camera };
+    }
+  }
+  return undefined;
+}
 
 // People are counted by DISTANCE FROM THE EYE, not by how many are on screen
 // (B10, Q146). `stats.peds` said 122 on a high street where the nearest person
@@ -72,21 +112,29 @@ const COUNT = `(state, view) => {
 }`;
 
 const problems = [];
-const probe = await shoot({ out: "reports/.street-probe.png", seed: SEED, years: YEARS, size: SIZE,
-  width: 320, height: 240, extra: { __ask: FIND } });
-const at = probe.answer;
-if (!at) throw new Error("no standing shop with a street in front of it");
-console.log(`shop's street at ${at.road}, frontage ${at.frontage}, junction ${at.junction ?? "none near"}`);
+
+const subject = shopToShoot();
+if (!subject) throw new Error("no standing shop a camera can stand back from — the city, not the tool");
+const corner = cornerNear(subject.lot);
+console.log(describe("shop", { cx: subject.lot.cx, cz: subject.lot.cz, tileM: T }, subject.camera));
+console.log(corner
+  ? describe("corner", { cx: corner.node.x, cz: corner.node.z, tileM: T }, corner.camera)
+  : "corner: no junction near the shop that a camera can stand back from");
+
+// Along the street from the shop's own pavement: the same camera turned a
+// quarter so the street runs away from it rather than across the frame.
+const along = {
+  ...subject.camera,
+  photo: `${subject.camera.tile.x.toFixed(3)},${subject.camera.tile.z.toFixed(3)},`
+    + `${subject.camera.eyeM},${(subject.camera.yaw + Math.PI / 2).toFixed(4)},-4`,
+};
 
 const shots = [
-  // Along the street, from the road in front of the shop.
-  ["reports/smoke-S3-street.png", { street: `${at.road[0]},${at.road[1]}`, yaw: (at.frontage + 1) % 4, pitch: -6 }],
-  // Facing the shop across its bays: the bench, the bike rack, the cars.
-  ["reports/smoke-S3-shop.png", { street: `${at.road[0]},${at.road[1]}`, yaw: (at.frontage + 2) % 4, pitch: -10 }],
+  ["reports/smoke-S3-street.png", { photo: along.photo }],
+  ["reports/smoke-S3-shop.png", { photo: subject.camera.photo }],
 ];
-if (at.junction) {
-  shots.push(["reports/smoke-S3-corner.png", { street: `${at.junction[0]},${at.junction[1]}`, yaw: at.frontage, pitch: -8 }]);
-}
+if (corner) shots.push(["reports/smoke-S3-corner.png", { photo: corner.camera.photo }]);
+
 for (const [out, camera] of shots) {
   const r = await shoot({ out, seed: SEED, years: YEARS, size: SIZE, tier: "high", streets: 40, frames: 60,
     width: 1280, height: 720, extra: { __ask: COUNT }, ...camera });
@@ -105,7 +153,8 @@ for (const [out, camera] of shots) {
 // residential street", city at span 15 and 26° (compare_sheet.mjs), not the
 // pavement. A street-level frame beside an aerial is two different questions.
 await shoot({ out: "reports/smoke-S3-city15.png", seed: SEED, years: YEARS, size: SIZE, tier: "high",
-  mode: "city", span: 15, pitch: 26, yaw: 0.6, fx: at.road[0], fy: at.road[1], width: 1280, height: 720, frames: 40 });
+  mode: "city", span: 15, pitch: 26, yaw: 0.6,
+  fx: subject.lot.cx / T, fy: subject.lot.cz / T, width: 1280, height: 720, frames: 40 });
 {
   const { chromium } = await import("playwright");
   const { readFileSync, writeFileSync } = await import("node:fs");

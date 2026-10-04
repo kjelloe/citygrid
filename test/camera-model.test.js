@@ -23,6 +23,7 @@ import {
 import { TOOLS } from "../client/input/tools.js";
 import { heldFor } from "../client/input/held.js";
 import { facing, COMPASS_POINTS } from "../client/ui/camera-model.js";
+import { planesFor, PHOTO_AIR_ABOVE } from "../client/world/photo.js";
 
 const en = JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "en.json"), "utf8"));
 const no = JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "no.json"), "utf8"));
@@ -187,4 +188,28 @@ test("the compass wraps rather than running off the end of the list", () => {
   for (const yaw of [0, Math.PI, Math.PI * 1.99, Math.PI * 2 - 1e-9, -Math.PI / 3]) {
     assert.ok(COMPASS_POINTS.includes(facing(yaw).labelKey), `yaw ${yaw}`);
   }
+});
+
+test("the photo camera's planes follow its height above the GROUND (S20)", () => {
+  // The rule compared `eye.y`, an ABSOLUTE height, against one tile. Seed
+  // 1003's land stands at 40 m — two and a half tiles — so a camera at eye
+  // height on it read as flying and got the city's planes: a near plane of half
+  // a tile, which is eight metres, clipping the foreground of every
+  // street-level photograph. It lived in `client/render/camera.js`, which
+  // imports three, so nothing here could reach it; it is `planesFor` in
+  // `client/world/photo.js` now, and this is the test that could not be written
+  // before.
+  const standing = planesFor("photo", 1.7 / 16);
+  assert.deepEqual(standing, { near: 0.02, far: 100 }, "a camera at eye height got the city's planes");
+
+  const flying = planesFor("photo", 30 / 16);
+  assert.deepEqual(flying, { near: 0.5, far: 4000 }, "a camera thirty metres up got the street's planes");
+
+  // The boundary is a tile above the ground, not a tile above the sea.
+  assert.equal(planesFor("photo", PHOTO_AIR_ABOVE).near, 0.02);
+  assert.equal(planesFor("photo", PHOTO_AIR_ABOVE + 0.001).near, 0.5);
+
+  // Street mode is near the ground by definition; the orbit never is.
+  assert.equal(planesFor("street", 99).near, 0.02);
+  assert.equal(planesFor("city", 0).near, 0.5);
 });

@@ -14,6 +14,7 @@
 
 import * as THREE from "three";
 import { eyeOf, verticalSpan, eyeDistance, PITCH, ORTHO_DISTANCE } from "../world/orbit.js";
+import { planesFor } from "../world/photo.js";
 
 export const YAW_STEPS = 4;
 
@@ -32,7 +33,6 @@ const FREE_LOOK = new Set(["street", "photo"]);
  * starts taking the city's, in TILES of eye height. The same threshold the fog
  * uses (`atmosphere.js`), and for the same reason: down among the buildings a
  * near plane of half a tile clips the kerb the camera is standing on. */
-const PHOTO_AIR_ABOVE = 1;
 
 /** Vertical field of view for the perspective camera, degrees. Wide enough to
  * feel like a place, narrow enough that the edges do not smear. */
@@ -141,10 +141,19 @@ export function applyZoom(view, aspect) {
  */
 function applyPlanes(view) {
   if (!view.persp) return;
-  const nearGround = view.mode === "street"
-    || (view.mode === "photo" && (view.eye?.y ?? Infinity) <= PHOTO_AIR_ABOVE);
-  const near = nearGround ? 0.02 : 0.5;
-  const far = nearGround ? 100 : 4000;
+  // **Above the GROUND, not above zero** (S20). `eye.y` is an absolute height,
+  // and seed 1003's land stands at 40 m — two and a half tiles — so every
+  // street-level photo on it read as "in the air" and was given the city's
+  // planes. A near plane of half a tile is eight metres: the shot clipped its
+  // own foreground, and a self-aiming shot tool found it by standing six metres
+  // from a shop and photographing the horizon.
+  //
+  // `groundAt` is set by whoever owns the terrain (`client/render/scene.js`).
+  // Without one the test is the old absolute height, which is right for a view
+  // with no world under it — a test fixture, or the first frame.
+  const aboveGround = view.eye === undefined ? Infinity
+    : view.eye.y - (view.groundAt?.(view.eye.x, view.eye.z) ?? 0);
+  const { near, far } = planesFor(view.mode, aboveGround);
   if (view.persp.near === near && view.persp.far === far) return;
   view.persp.near = near;
   view.persp.far = far;
