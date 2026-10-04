@@ -646,6 +646,12 @@ and fire shots.
   checkerboard (`smoke-T4-marina.png`, `smoke-B1-street.png`). Re-run `shots`, `transport` and
   `kits` and look, before any of the items below is judged.
 
+**Measured by the reviewer**, on the working tree while the slice in flight was also using the
+machine, so the times are an upper bound: `quick` 12 of 12 in **537 s of 540**, `ui_smoke` 212 s;
+`render` green and **8 s over its 240 s budget**, `lanes_dump` 239 s. Three seconds of headroom and a
+set over budget are both M2 findings: re-measure each alone, and if `lanes_dump` really is four
+minutes it wants its census sampled or its own set — not a larger number.
+
 **Three omissions that are not pictures.**
 - **`RELEASE.md` is a release note for a different game.** It names `782e759` (2026-09-08) and
   says every commit since is a document; there have been 122 commits and twenty-five eras. `main`
