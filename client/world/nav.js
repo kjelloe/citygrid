@@ -52,7 +52,7 @@ import { ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, FLAG_RUINED } from 
  * and a civic building by its own `pull` in `civic-spec.js`, which is 0 for a
  * pump and eight for a station, because nobody strolls past a reservoir.
  */
-export function doorPull(building, cfg = getConfig()) {
+function doorPull(building, cfg = getConfig()) {
   if (!building) return 0;
   // A ruin draws nobody (the same exclusion `signals.js` makes for crossings).
   if ((building.flags & FLAG_RUINED) !== 0) return 0;
