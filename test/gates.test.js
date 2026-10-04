@@ -34,7 +34,6 @@ const NOT_A_GATE = ["i18n_review", "screenshot", "serve", "repin", "make_precach
   // shots at a place `walkthrough 128 hilly` names and asserts nothing: the
   // question it serves is a picture decision, and the walk is what counts the
   // cliffs.
-  "embankment_shots",
   // W6's measurement (and W3's): they print a table, not a pass. A tool that
   // produces numbers is run by the slice that reads them.
   "model_cost", "seam_cost", "crowd_probe"];

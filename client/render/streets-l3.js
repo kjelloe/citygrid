@@ -13,6 +13,7 @@
 import * as THREE from "three";
 import { ribbon, skirt, sagCurve, dashes, clip, trim } from "./ribbon.js";
 import { getConfig } from "../world/config.js";
+import { retainingRuns } from "../world/retaining.js";
 import { chunkOfLot } from "../world/chunks.js";
 import { laneWidth, laneOffset } from "../world/corridors.js";
 import { OUTWARD, frontEdgeOf } from "../world/lots.js";
@@ -160,6 +161,10 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
   const patch = shadeHex(asphalt, 1.1);
   const kerbColour = palette.roadMark ?? 0xd8d4c8;
   const concrete = palette.civic ?? 0xd0ccc4;
+  // A retaining wall is concrete that has been outside (S18): the civic grey,
+  // darker. Derived rather than a new palette entry, so `specs/art-direction.md`
+  // keeps describing every colour the renderer has.
+  const wallColour = shadeHex(concrete, 0.82);
 
   /** How deep the kerb face hangs at each point: a kerb on land, and over
    * water the bridge's girder, from the deck down to `road.deckDepth` under
@@ -238,6 +243,37 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
           const line = shift(walk, sign * (junction + vergeHalf));
           for (const run of vergeRuns(line, cfg.tileM, ground.natural)) {
             addStrip(baker, ribbon(run.points, vergeHalf, height, { lift: 0.01 }), run.colour);
+          }
+          // The retaining wall (S18, Q145 → A128). Where the shoulder falls away
+          // hard it is a faced embankment, not grass hanging in the air: the
+          // drop is up to 14.7 m on a played `hilly` 128, and every case is
+          // beside water, where a road along a bank stands above the shore level
+          // S12 cuts to.
+          //
+          // A SURFACE, not a structure. S14 tried twice to move the ground under
+          // this — a wider blend dragged every neighbouring street, a floor on it
+          // buried a building — and what Q145 is actually about is what the eye
+          // reads: a fifteen-metre grass cliff reads as a terrain fault, the same
+          // slope in stone reads as a city holding a road up. `coping` is the
+          // band along the top, which is what makes it a wall rather than a
+          // discoloured hill.
+          const inner = shift(walk, sign * junction);
+          const outer = shift(walk, sign * (junction + cfg.road.wallOut + vergeHalf * 2));
+          const tops = inner.map((p) => height(p.x, p.z));
+          const feet = outer.map((p) => {
+            const level = model.waterLevelAt(p.x, p.z);
+            return level === undefined ? height(p.x, p.z) : level;
+          });
+          for (const run of retainingRuns(line, tops, feet,
+            { minDrop: cfg.road.wallMinDrop, maxDrop: cfg.road.wallMaxDrop })) {
+            addStrip(baker, ribbon(run.points, vergeHalf, height, { lift: 0.02 }), wallColour);
+            // The coping: a band at the kerb edge of the face, in the pavement's
+            // own concrete, so the wall has a top.
+            const cap = run.points.map((p, k) => {
+              const back = inner[line.indexOf(run.points[k])] ?? p;
+              return { x: (p.x + back.x) / 2, z: (p.z + back.z) / 2 };
+            });
+            addStrip(baker, ribbon(cap, cfg.road.coping / 2, height, { lift: 0.03 }), concrete);
           }
         }
       }

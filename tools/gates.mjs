@@ -59,6 +59,7 @@ export const GATES = {
   rail_shots: { args: ["tools/rail_shots.mjs"], what: "the track, a level crossing and a train that is actually posed on the line" },
   harbour_shots: { args: ["tools/harbour_shots.mjs"], what: "boats at a marina, a ferry with a wake, and a port with its ship" },
   bridge_shots: { args: ["tools/bridge_shots.mjs"], what: "a crossing from the bank, from the deck and side on, with the deck, the water and the bed measured beside each" },
+  embankment_shots: { args: ["tools/embankment_shots.mjs"], what: "a street's faced shoulder from the water, before and after, with the baked chunk count that is the point (S18, A128)" },
   airport_shots: { args: ["tools/airport_shots.mjs"], what: "a runway with its markings, an apron lit at night, and an aircraft on the ground" },
   civic_shots: { args: ["tools/civic_shots.mjs"], what: "one street-level picture per catalogue definition, counting that the reducer accepted each one" },
   foliage_shots: { args: ["tools/foliage_shots.mjs"], what: "trees, gardens and a park, counted before they are called a picture" },
@@ -125,7 +126,8 @@ export const SETS = {
   // forbids. The line is the lane — `shots` is the world and behaviour lanes'
   // pictures, `transport` is T1–T4's — so a slice runs the set its own lane
   // owns and the two halves stay honest about what they cost.
-  shots: ["water_shots", "bridge_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots"],
+  shots: ["water_shots", "bridge_shots", "embankment_shots", "disaster_shot", "service_shots",
+    "window_shots", "rain_shots"],
   transport: ["avenue_shots", "rail_shots", "harbour_shots", "airport_shots"],
   // Its own set (M2's rule: split rather than raise). One picture per catalogue
   // definition is twenty-eight shots and seven minutes, which no other set can
@@ -198,7 +200,9 @@ export const BUDGET_MS = {
   // windows 36, rain 28 — 166 s. The first guess was 20 minutes, from timings
   // taken while probing interactively rather than from the tools themselves.
   // Restated at T4b's split from what is left in it: 210 s measured.
-  shots: 5 * 60 * 1000,
+  // `embankment_shots` joined at S18 (six photo frames of a played hilly 128,
+  // about 90 s): restated from the contents rather than raised to fit.
+  shots: 7 * 60 * 1000,
   // The transport lane's pictures, measured at T4b in one run: avenue 38 s,
   // rail 76, harbour 73 — 187 s.
   transport: 5 * 60 * 1000,

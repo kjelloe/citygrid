@@ -10478,3 +10478,35 @@ and the trains every time ("a car holding a link id from a graph that no longer 
 field"). So W6's second half is not "move it to a worker" and not a weekend: it is stable identity
 for corridors, lanes and lots, and then a dirty-set rebuild. That is an architecture slice, it is
 written up with these numbers, and it is where the whole remaining stall is.
+
+## S18, first half — the camera, and then the wall (2026-10-04, A128)
+
+Kjell's answer to Q145 was a retaining wall **and the camera first**, because S14 had built the
+facing once and reverted it for the right reason: nothing could photograph one.
+
+**The camera.** `tools/shoot.html` gains `photo=<x>,<z>[,<eye>[,<yaw>[,<pitch>]]]` — F1's free
+camera, an eye set directly, no walker and no corridor to stand on. That is the whole difference: a
+street camera at a steep shoulder stands *inside* the embankment, and a city camera cannot bake L3
+street geometry at all (21–44 tile pixels, "street detail not resolvable"). The eye sits above the
+SURFACE rather than the ground, which over water is the water — the first run of it stood three
+metres off a quay and one metre under the river.
+
+`tools/embankment_shots.mjs` aims itself now: it plays the city in node, finds the three deepest
+shoulders from the same model the renderer draws, stands the photo camera three metres out and
+looks back. **9.3 m, 8.5 m and 6.3 m, all three at water**, 7–8 baked chunks a frame, and it **fails
+at zero** — which is what A128 asked for and what caught four identical pictures being reported as a
+change. Both arms come from one harness: `wall=0` is the before (R3's `grade=0` lesson).
+
+**The wall.** `client/world/retaining.js` decides where one belongs (pure, nine tests);
+`streets-l3.js` draws the verge in stone with a concrete coping where it falls away. No height
+changes — S14 proved twice that moving the ground drags the streets and buries lots.
+
+**The threshold is a storey, and the ladder says why.** At 1.2 m a played `hilly` 128 has **916**
+faced shoulders, 652 of them under two metres — a grass bank, not a wall — and a rolling 96 has 51.
+At 3 m: **130 on the hilly map, deepest 9.8 m, 37 of them at water; none at all on rolling.** That is
+the rarity the question describes, and `walkthrough` prints the count beside the shoulder cliffs it
+has always counted.
+
+Gates: `shots` 394 s of 420 with `embankment_shots` in it (103 s, the set's slowest); `kits` 346 s;
+suite green twice (1,671). The pictures are in `reports/smoke-S18-wall*-{before,after}.png` and the
+difference is a grass bank becoming a faced one with a coping along its top.

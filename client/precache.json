@@ -1,5 +1,5 @@
 {
- "version": "0555d0674b5d",
+ "version": "dca7ca3f5a16",
  "generated": "2026-10-04",
  "files": [
   "./client/audio/audio-model.js",
@@ -137,6 +137,7 @@
   "./client/world/polyline.js",
   "./client/world/rain.js",
   "./client/world/raymarch.js",
+  "./client/world/retaining.js",
   "./client/world/rush.js",
   "./client/world/signals.js",
   "./client/world/street-furniture.js",

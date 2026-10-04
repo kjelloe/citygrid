@@ -21,6 +21,16 @@ export const DEFAULTS = Object.freeze({
   // signals, which is where a player can see the reason for them.
   road: {
     width: 8, sidewalk: 2.5, blend: 4,
+    // The retaining wall (S18, Q145 → A128). Where the shoulder falls more than
+    // `wallMinDrop` between the kerb and `wallOut` metres beyond it, the face is
+    // stone with a coping rather than grass hanging in the air. **Three metres
+    // is a storey** (A128's words), and the ladder is why: at 1.2 m a played
+    // `hilly` 128 has 916 faced shoulders of which 652 are under two metres —
+    // which is a grass bank, not a wall — and a rolling 96 has 51. At 3 m the
+    // hilly map has 177 and the rolling one none, which is the rarity the
+    // question describes. `wallMaxDrop` is the backstop, since the foot of a
+    // wall beside water is the water's surface rather than the bed under it.
+    wallMinDrop: 3, wallOut: 4, wallMaxDrop: 24, coping: 0.4,
     lanes: 1, stopLine: 2, maxGrade: 0.15, speed: 11, maxDensity: 12, dip: 0.16,
     // How far a junction's height may leave its own land so that the street
     // either side of it can be graded (S11, A87) — a cutting or an embankment,

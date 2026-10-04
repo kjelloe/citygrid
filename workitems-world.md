@@ -723,7 +723,18 @@ Each within a stated triangle ceiling, each with an L2 silhouette of a few boxes
 the lamps B4 poses still sit on a car's body. **Gate.** `harbour_shots`, `rail_shots`,
 `airport_shots`, `service_shots` re-taken and looked at; the car rows in `budget_gate`.
 
-## S18 — The bridge, the wall and the water (M) — Q145
+## S18 — The bridge, the wall and the water (M) — Q145 — **the camera and the wall done 2026-10-04**
+
+`photo=<x>,<z>,<eye>,<yaw>,<pitch>` in the shot harness (F1's free camera, eye above the SURFACE —
+over water that is the water); `tools/embankment_shots.mjs` finds the three deepest shoulders in
+node, stands three metres off each and fails at zero baked chunks. 9.3 / 8.5 / 6.3 m, all at water,
+7–8 chunks a frame, both arms from one harness (`wall=0`). Then the facing: `client/world/
+retaining.js` decides, `streets-l3.js` draws stone with a concrete coping, no height moved. The
+threshold is a storey — at 1.2 m a hilly 128 has 916 faced shoulders and 652 are under two metres;
+at 3 m it has 130 and a rolling 96 has none. `walkthrough` prints the count. **Still open in this
+item: the deck as one profile, and the water as one surface.**
+
+## S18 — The bridge, the wall and the water (M) — Q145 — the item as written
 
 **Goal.** A crossing reads as a bridge and a lake as one sheet.
 

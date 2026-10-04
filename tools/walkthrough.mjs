@@ -34,6 +34,7 @@
 
 import { saturatedCity } from "./lib/saturated.mjs";
 import { createModel } from "../client/world/model.js";
+import { wallRuns } from "../client/world/retaining.js";
 import { createCollision } from "../client/world/collision.js";
 import { createWalker } from "../client/life/walker.js";
 import { DEFAULTS } from "../client/world/config.js";
@@ -366,6 +367,14 @@ console.log(`cliffs          ${cliffs} (steepest ${worstJump.toFixed(2)} m over 
   + `   ${(cliffs / Math.max(1, metres / 1000)).toFixed(2)} per km walked`);
 console.log(`terrain cliffs  ${steepCliffs}   (on corridors no grading can flatten — the land, not the ground under a street)`);
 for (const line of shoulders) console.log(line);
+// S18: the same shoulders, counted as what they are now — a faced wall rather
+// than grass hanging in the air. The ground did not move (A128: renderer only),
+// so the cliff count below is unchanged by design; this says how many of them
+// the city now has a face on.
+const walls = wallRuns(model, DEFAULTS);
+console.log(`walls           ${walls.length} faced shoulders (S18)`
+  + `${walls.length > 0 ? `, deepest ${Math.max(...walls.map((w) => w.drop)).toFixed(1)} m` : ""}`
+  + `, ${walls.filter((w) => w.water).length} at water`);
 console.log(`shoulder cliffs ${shoulderCliffs}   (at the edge of an embankment the grading built, worst fill ${worstFill.toFixed(1)} m`
   + `${worstFillAt ? ` at ${worstFillAt.x.toFixed(0)}, ${worstFillAt.z.toFixed(0)} m — tile ${(worstFillAt.x / 20).toFixed(0)},${(worstFillAt.z / 20).toFixed(0)}` : ""} — Q145)`);
 for (const line of failures) console.log(line);

@@ -43,7 +43,7 @@ import "../engine/history.js";
 import { saturatedCity } from "./lib/saturated.mjs";
 import { getConfig, setConfig } from "../client/world/config.js";
 import { createRenderer } from "../client/render/scene.js";
-import { setYawStep, zoomBy, focusOn, pitchBy } from "../client/render/camera.js";
+import { setYawStep, zoomBy, focusOn, pitchBy, applyPose } from "../client/render/camera.js";
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get("seed") ?? 1003);
@@ -315,6 +315,14 @@ if (reliefParam > 0) setConfig({ ...getConfig(), reliefM: reliefParam });
 // `grade=0` is the street as it was before R3: the land under it. Anything else
 // overrides `road.maxGrade`, so a decision about how steep a street may be can
 // be shot rather than argued (A42).
+// `wall=0` turns the retaining facing off (S18): the before and the after of a
+// picture decision come out of ONE harness, or they are two cities.
+const wallParam = params.get("wall");
+if (wallParam === "0") {
+  const cfg0 = getConfig();
+  setConfig({ ...cfg0, road: { ...cfg0.road, wallMinDrop: Infinity } });
+}
+
 const gradeParam = params.get("grade");
 if (gradeParam !== null) {
   const cfg0 = getConfig();
@@ -374,6 +382,32 @@ if (focusX >= 0 && focusY >= 0) {
   }
   if (n > 0) focusOn(view.view, sx / n, sy / n);
 }
+// The PHOTO camera (F1), put exactly where a shot needs it:
+// `photo=<x>,<z>[,<eye metres>[,<yaw radians>[,<pitch degrees>]]]`, in TILES.
+//
+// There is no walker, no pavement and no corridor to stand on, which is the
+// whole point (A128): a street camera beside a steep shoulder stands inside the
+// embankment, and a city camera cannot bake street geometry at all. This one
+// stands three metres off the face at eye height and looks back at it.
+const photoAt = params.get("photo");
+if (photoAt) {
+  const [px, pz, eyeM = 1.7, pyaw = 0, pPitch = 0] = photoAt.split(",").map(Number);
+  focusOn(view.view, px, pz);
+  view.enterPhoto();
+  // The scene is in TILES and `heightAt` answers metres, which is the one
+  // conversion this block exists to get right.
+  // Above the SURFACE, which over water is the water (S18): a camera three
+  // metres off a quay stands on the river, and one metre above the bed is one
+  // metre under the river.
+  const atX = px * view.model.tileM;
+  const atZ = pz * view.model.tileM;
+  const groundM = view.model.waterLevelAt?.(atX, atZ) ?? view.model.heightAt(atX, atZ);
+  view.view.eye = { x: px, y: (groundM + eyeM) / view.model.tileM, z: pz };
+  view.view.yaw = pyaw;
+  view.view.pitch = pPitch * (Math.PI / 180);
+  applyPose(view.view);
+}
+
 // Street mode (slice E4): `street=x,z` drops the walker at a tile and looks
 // along `yaw`. The camera is the walker, so the shot is what a player sees.
 const streetAt = params.get("street");
