@@ -1,0 +1,174 @@
+// What the model rebuild is made of, and how much one build action changes
+// (W6, Q60, Q51).
+//
+//   node tools/model_cost.mjs [size] [terrain]
+//
+// W3 priced the whole thing: a build action blocks the render thread for 38.5 ms
+// on a played 96 and `createModel` is 100% of it. W6 has two shapes to choose
+// between — the derivation in a worker, or per-chunk rebuilds keyed by
+// `chunkHash` — and the item says to split the cost by phase and count what one
+// action actually invalidates BEFORE choosing, because those two numbers decide
+// it.
+//
+// Node, not a browser: every phase here is `client/world/`, which is pure, and
+// the numbers are CPU rather than SwiftShader.
+
+import { deriveCorridors } from "../client/world/corridors.js";
+import { createGround } from "../client/world/ground.js";
+import { deriveLots } from "../client/world/lots.js";
+import { deriveLanes } from "../client/world/lanes.js";
+import { deriveWater } from "../client/world/water.js";
+import { deriveNav } from "../client/world/nav.js";
+import { profilesFor } from "../client/world/grade.js";
+import { createModel } from "../client/world/model.js";
+import { DEFAULTS, setConfig, getConfig } from "../client/world/config.js";
+import { apply } from "../engine/reducer.js";
+import { generateWorld } from "../engine/worldgen.js";
+import { defaultOptions } from "../engine/options.js";
+import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PLACE_BUILDING } from "../engine/commands.js";
+import { TICKS_PER_YEAR } from "../engine/constants.js";
+import { makeDeputy, deputyTurn } from "../engine/deputy.js";
+import { encodeRuns } from "../shared/grid.js";
+import "../engine/build-commands.js";
+import "../engine/development.js";
+import "../engine/utilities.js";
+import "../engine/economy.js";
+import "../engine/civic.js";
+import "../engine/fire.js";
+import "../engine/disasters.js";
+import "../engine/traffic.js";
+import "../engine/history.js";
+import "../engine/quests.js";
+
+setConfig(DEFAULTS);
+const cfg = getConfig();
+const size = Number(process.argv[2] ?? 96);
+const terrain = process.argv[3] ?? "rolling";
+const YEARS = 20;
+
+const played = () => {
+  const world = generateWorld(defaultOptions({
+    seed: 1003, width: size, height: size, seats: 1, waterStyle: "river", terrainStyle: terrain,
+  }));
+  if (!world.ok) throw new Error(world.reason);
+  const state = world.state;
+  apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" });
+  const deputy = makeDeputy(1, "expand");
+  for (let tick = 1; tick <= YEARS * TICKS_PER_YEAR; tick += 1) {
+    apply(state, { type: CMD_TICK });
+    if (tick % 6 === 0) deputyTurn(state, deputy);
+  }
+  return state;
+};
+
+/** Median of n runs, which is what a phase costs rather than what the first one
+ * cost: the first `createModel` of a process pays for every JIT decision in it. */
+function median(times) {
+  const sorted = [...times].sort((a, b) => a - b);
+  return sorted[sorted.length >> 1];
+}
+function time(label, runs, fn) {
+  const times = [];
+  let out;
+  for (let n = 0; n < runs; n += 1) {
+    const t = performance.now();
+    out = fn();
+    times.push(performance.now() - t);
+  }
+  return { label, ms: median(times), out };
+}
+
+const state = played();
+console.log(`${size}×${size} ${terrain}, ${YEARS} years: ${state.buildings.length} buildings, `
+  + `population ${state.population}\n`);
+
+// --- 1. the phases -----------------------------------------------------------
+//
+// In the order `createModel` runs them, each one given what the ones before it
+// produced, so the numbers add up to the whole rather than to an argument.
+
+const whole = time("createModel (everything)", 6, () => createModel(state));
+const corridors = time("deriveCorridors (road)", 6, () => deriveCorridors(state, "road"));
+const network = corridors.out;
+const water = time("deriveWater", 6, () => deriveWater(state, cfg));
+const ground = time("createGround (profiles, relax)", 6, () => createGround(state, network));
+const lots = time("deriveLots", 6, () => deriveLots(state, network, ground.out));
+const lanes = time("deriveLanes", 6, () => deriveLanes(state, network, ground.out));
+const rail = time("deriveCorridors (rail)", 6, () => deriveCorridors(state, "rail"));
+const railProfiles = time("profilesFor (rail)", 6, () =>
+  profilesFor(rail.out, ground.out.landAt, { maxGrade: cfg.rail.maxGrade, freeEnds: true }));
+// Not inside `createModel` — `scene.js` derives it beside the model, on the
+// same thread and for the same reason, so a worker that moved the model and
+// left this behind would have moved half the stall (E7).
+const model = whole.out;
+const nav = time("deriveNav (scene.js, beside it)", 6, () => deriveNav(state, model));
+
+const phases = [corridors, water, ground, lots, lanes, rail, railProfiles];
+const accounted = phases.reduce((n, p) => n + p.ms, 0);
+console.log("what a model rebuild is made of:");
+for (const p of [...phases].sort((a, b) => b.ms - a.ms)) {
+  const share = (100 * p.ms / whole.ms).toFixed(0);
+  console.log(`  ${p.label.padEnd(32)} ${p.ms.toFixed(2).padStart(8)} ms  ${share.padStart(3)}%`
+    + `  ${"#".repeat(Math.round(p.ms / whole.ms * 40))}`);
+}
+console.log(`  ${"accounted for".padEnd(32)} ${accounted.toFixed(2).padStart(8)} ms  `
+  + `${(100 * accounted / whole.ms).toFixed(0).padStart(3)}%`);
+console.log(`  ${"createModel, whole".padEnd(32)} ${whole.ms.toFixed(2).padStart(8)} ms`);
+console.log(`  ${nav.label.padEnd(32)} ${nav.ms.toFixed(2).padStart(8)} ms  `
+  + `(+${(100 * nav.ms / whole.ms).toFixed(0)}% on top, and on the same thread)`);
+
+// --- 2. what ONE build action invalidates ------------------------------------
+//
+// The question that decides between a model worker and per-chunk rebuilds: if a
+// road tile changes two chunks' worth of derivation, the second shape is cheap
+// and needs no staleness rule at all.
+
+// Keyed by GEOMETRY, never by id. The first cut of this keyed everything by
+// `c.id` and reported that one road tile changed 8,896 of 8,896 lanes — which
+// is true of the ids and false of the city: ids are array indices assigned at
+// derivation, so adding one corridor renumbers every one of them. A measure of
+// how much changed must not be a measure of how much was renumbered.
+const place = (p) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`;
+const fingerprint = (m) => ({
+  corridors: new Map(m.corridors.map((c) => [
+    `${place(c.points[0])}|${place(c.points[c.points.length - 1])}`,
+    c.points.map(place).join(" "),
+  ])),
+  lots: new Map(m.lots.map((l) => [`${l.cx.toFixed(1)},${l.cz.toFixed(1)}`,
+    `${l.frontage},${l.building?.def ?? ""},${l.building?.level ?? 0}`])),
+  lanes: new Map((m.lanes?.links ?? []).map((l) => [
+    `${(l.pts?.[0] ?? 0).toFixed(1)},${(l.pts?.[1] ?? 0).toFixed(1)}`,
+    `${(l.pts?.[l.pts.length - 2] ?? 0).toFixed(1)},${(l.pts?.[l.pts.length - 1] ?? 0).toFixed(1)}`,
+  ])),
+});
+const changed = (a, b) => {
+  const out = { corridors: 0, lots: 0, lanes: 0, chunks: new Set() };
+  for (const key of ["corridors", "lots", "lanes"]) {
+    for (const [id, was] of a[key]) if (b[key].get(id) !== was) out[key] += 1;
+    for (const id of b[key].keys()) if (!a[key].has(id)) out[key] += 1;
+  }
+  return out;
+};
+
+const empty = { x: 2, y: 2 };
+const W = state.width;
+const actions = [
+  ["one road tile", { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([empty.y * W + empty.x]) }],
+  ["a ten-tile drag", { type: CMD_PLACE_ROAD, actor: 1,
+    runs: encodeRuns(Array.from({ length: 10 }, (unused, i) => (empty.y + 2) * W + empty.x + i)) }],
+  ["a building", { type: CMD_PLACE_BUILDING, actor: 1, def: "clinic", x: empty.x + 2, y: empty.y + 5 }],
+];
+
+console.log("\nwhat one action invalidates (of the whole model):");
+const before = fingerprint(model);
+const totals = { corridors: model.corridors.length, lots: model.lots.length,
+  lanes: (model.lanes?.links ?? []).length };
+for (const [name, command] of actions) {
+  const outcome = apply(state, command);
+  const after = fingerprint(createModel(state));
+  const diff = changed(before, after);
+  console.log(`  ${name.padEnd(18)} ${outcome.result === "ok" ? "   " : "(refused)"}`
+    + ` corridors ${String(diff.corridors).padStart(4)} of ${totals.corridors}`
+    + `   lots ${String(diff.lots).padStart(4)} of ${totals.lots}`
+    + `   lanes ${String(diff.lanes).padStart(5)} of ${totals.lanes}`);
+}

@@ -192,7 +192,42 @@ before and after) stays blocked on D2.
 **Done when** the dev-log has a table: build action stall, month tick stall, frame p95 on the
 phone, before W2 and after.
 
-## W6 — The model off the render thread (L) — **what W3 measured, 2026-10-04**
+## W6 — The model off the render thread (L) — **measured 2026-10-04; the shape is decided**
+
+`tools/model_cost.mjs` split it, and the split changed the item.
+
+- **The stall is ~115 ms, not 38.5.** `deriveNav` is derived in `worldChanged` beside the model and
+  costs **64.5 ms on a played 96** — more than `createModel`'s 49.6 — and nothing had ever timed it.
+  Inside the model, `deriveLanes` is 42–47% and everything else is small.
+- **One build action changes 0.07% of it**: a ten-tile drag moves 1 corridor of 1,402, 0 lots of 284
+  and 2 lanes of 8,896. A building moves one lot more.
+
+So **not a worker.** A worker moves 115 ms off the thread and buys a staleness rule with it — the
+walker stands on the model, the cars drive on it, picking reads it — while rebuilding only what
+changed makes the same 115 ms into microseconds with nothing stale.
+
+**The obstacle is identity, not performance.** Ids are array indices assigned at derivation, so one
+new corridor renumbers every corridor, lane and lot — which is why `worldChanged` throws away the
+traffic, the services and the trains each time. (The first cut of the measurement was keyed by id
+and reported that one road tile changed 8,896 of 8,896 lanes: a measure of renumbering.)
+
+**So W6 is: stable identity, then a dirty set.**
+1. A corridor's identity is its geometry, not its index — a key that survives a rebuild (the ends of
+   its polyline, or a hash of its tiles). Same for a lot (its anchor tile) and a lane (its corridor
+   key plus its index along it).
+2. `createModel(state, previous)` re-derives only what the changed tiles touch, and returns the rest
+   by reference. The engine already knows which tiles a command wrote — that is what the patch in
+   `worker/sim-host.js` carries.
+3. `deriveNav` and the life systems keep their entities across a rebuild where their keys still
+   exist, instead of being recreated wholesale.
+4. The gate is `tools/model_cost.mjs` again — a build action under a frame on a played 96 — plus
+   `budget_gate`, `walkthrough` and `traffic_gate` unmoved, because this must change what it COSTS
+   and nothing else.
+
+**Done when** a build action on a played 96 costs under a frame of derivation, and every gate reads
+what it read before.
+
+## W6 — The model off the render thread (L) — the item as written
 
 **Goal.** The 38.5 ms (96), 43.6 ms (128 hilly) and 184.7 ms (256) that `createModel` blocks the
 render thread for after **every accepted build action** — two and a half frames at 60 Hz on a

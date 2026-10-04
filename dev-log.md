@@ -10399,3 +10399,53 @@ water, and `tools/embankment_shots.mjs` takes the three pictures at a named tile
 drop, and side on). The before shots are in `reports/smoke-S14-*-before.png`. The first framing of
 those was wrong in the usual way — span 24 at a low pitch under perspective is the whole town, and
 the subject was four pixels of it.
+
+## W6, first half — what the model rebuild is made of, and what one action changes (2026-10-04)
+
+The item says to split the 38.5 ms by phase and count what a single build action invalidates before
+choosing between a model worker and per-chunk rebuilds, because those two numbers decide it.
+`tools/model_cost.mjs`, node, on a played city at era 26.
+
+| | 96 rolling | 128 hilly |
+|---|---|---|
+| `deriveLanes` | **20.9 ms (42%)** | **25.2 ms (47%)** |
+| `createGround` (profiles, relax) | 3.5 ms | 4.2 ms |
+| `deriveCorridors` (road) | 2.7 ms | 2.6 ms |
+| `deriveLots` | 2.9 ms | 1.2 ms |
+| `deriveWater` | 0.4 ms | 0.4 ms |
+| accounted for | 30.4 ms (61%) | 33.7 ms (62%) |
+| **`createModel`, whole** | **49.6 ms** | **53.9 ms** |
+| **`deriveNav`, beside it** | **64.5 ms** | **44.0 ms** |
+
+**Two findings, and the second one decides the item.**
+
+**W3 understated the stall by half.** `deriveNav` is not inside `createModel` — `scene.js` derives it
+in `worldChanged`, on the same thread, right after — and on a played 96 it costs **more than the
+model does**. A build action is about **115 ms** of main-thread derivation, not 38.5, and
+`worldChanged` then rebuilds the traffic, the services, the trains, the boats and the planes on top
+of that. E7's pedestrian graph has never been timed by anything; this is the first number it has.
+
+**One build action changes 0.07% of the model.**
+
+```
+  one road tile      corridors  0 of 1402   lots  0 of 284   lanes     0 of 8896
+  a ten-tile drag    corridors  1 of 1402   lots  0 of 284   lanes     2 of 8896
+  a building         corridors  1 of 1402   lots  1 of 284   lanes     2 of 8896
+```
+
+That is the answer to W6's question. A model worker would move 115 ms off the render thread and buy
+a staleness rule to go with it — what the walker stands on, what the cars drive on and what picking
+reads would all be one action behind. **Rebuilding only what changed makes the 115 ms into
+microseconds and needs no staleness rule at all**, because nothing is stale.
+
+**And the first cut of that table was a measure of renumbering, not of change.** Keyed by `c.id` it
+reported that one road tile changed **8,896 of 8,896 lanes** — true of the ids and false of the city:
+ids are array indices assigned at derivation, so adding one corridor renumbers every one of them.
+Keyed by geometry, the real number is two lanes.
+
+**Which is also the obstacle.** Incremental derivation needs STABLE ids, and this project has the
+opposite by construction — which is exactly why `worldChanged` throws away the traffic, the services
+and the trains every time ("a car holding a link id from a graph that no longer exists is a car in a
+field"). So W6's second half is not "move it to a worker" and not a weekend: it is stable identity
+for corridors, lanes and lots, and then a dirty-set rebuild. That is an architecture slice, it is
+written up with these numbers, and it is where the whole remaining stall is.
