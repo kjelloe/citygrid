@@ -87,6 +87,9 @@ export async function openLocalSession(given) {
      * seam because a caller that has to ask "which session is this?" is a
      * caller the swap will break. */
     get pending() { return 0; },
+    // There is no mirror to disagree with: the reducer is on this thread.
+    get desyncs() { return 0; },
+    get desyncChecks() { return 0; },
     async apply(command) { return run(command); },
     /** Undo, which is the one way the client changes the city WITHOUT a
      * command (`undoLast` mutates the state directly). It belongs on the seam

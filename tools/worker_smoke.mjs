@@ -99,13 +99,19 @@ const PLAY = async () => {
     const outcome = await globalThis.CITY.apply(command);
     if (outcome.result !== "ok") refused.push(`${command.type}:${outcome.result}`);
   }
-  await globalThis.CITY.tick(200);
+  // Ten at a time, twenty times, rather than one message of two hundred: the
+  // desync detector compares once per REPLY that crosses a month boundary, so a
+  // single batched message would exercise it twice and the check below would be
+  // asserting on a detector that had barely run.
+  for (let n = 0; n < 20; n += 1) await globalThis.CITY.tick(10);
 
   return {
     row,
     commands: commands.length,
     refused,
     worker: globalThis.CITY.worker,
+    desyncs: globalThis.CITY.desyncs,
+    desyncChecks: globalThis.CITY.desyncChecks,
     hash: await globalThis.CITY.hash(),
     tick: state.tick,
     buildings: state.buildings.length,
@@ -151,6 +157,12 @@ try {
     `${arms.worker.buildings}/${arms.worker.population}/${arms.worker.treasury} vs `
     + `${arms.local.buildings}/${arms.local.population}/${arms.local.treasury}`);
   check("and on the clock", arms.worker.tick === arms.local.tick, `${arms.worker.tick} vs ${arms.local.tick}`);
+  // The desync detector hashes the mirror once a month and shouts. Over 200
+  // ticks that is sixteen comparisons, and a detector nothing reads is a
+  // detector that can rot into always-true without anybody noticing.
+  check("the mirror never disagreed with the simulation", arms.worker.desyncs === 0
+    && arms.worker.desyncChecks > 10,
+    `${arms.worker.desyncs} desync(s) in ${arms.worker.desyncChecks} monthly comparisons`);
 
   // A save made on one arm, restored on the other: the bytes are the city.
   const swap = await browser.newContext({ viewport: { width: 900, height: 600 } });

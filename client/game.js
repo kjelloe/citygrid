@@ -443,6 +443,11 @@ export async function startGame(root, given = {}) {
      * guessed delay is a flake or a gate that cannot fail. */
     get worker() { return !sim.local; },
     get pending() { return sim.pending; },
+    /** How many times the mirror has disagreed with the simulation (W2). Zero,
+     * or the seam is broken — and a detector nothing reads is a detector that
+     * can rot, so `worker_smoke` asserts it. */
+    get desyncs() { return sim.desyncs; },
+    get desyncChecks() { return sim.desyncChecks; },
     /** The seam itself, for the gates that build a city in the page. They used
      * to import the reducer and apply to `CITY.state` — which since W2 is a
      * MIRROR, so that would change a copy and leave the simulation playing a

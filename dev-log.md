@@ -10088,6 +10088,11 @@ local seam and the worker host play the same four-command city and sixty ticks a
 matches the PINNED hashes; this proves the two implementations match each other on a city neither
 has seen).
 
+And the detector counts its COMPARISONS beside its failures (S13's lesson, one lane along): the
+first version of that check read "0 desyncs" after **2** monthly comparisons, because a batched
+`tick(200)` is one reply and the detector compares once per reply that crosses a month. The gate
+ticks ten at a time now and the detector runs seventeen times.
+
 The omissions sweep on the slice's own work found the last one: `session.dispose()` existed and
 nothing called it, so a style change, a load and "new city" each left a worker still playing the old
 city in the background. `stop()` terminates it beside the renderer now.

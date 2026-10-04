@@ -68,6 +68,11 @@ async function openWorkerSession(given) {
   let state;
   let lastChecked = -1;
   let desyncs = 0;
+  // How many times the detector actually COMPARED, beside how many times it
+  // disagreed. A failure counter reads 0 both when the subject is fine and when
+  // the check never ran, and those are the two readings a gate most needs to
+  // tell apart.
+  let checks = 0;
 
   worker.onmessage = (event) => {
     const reply = event.data;
@@ -108,6 +113,7 @@ async function openWorkerSession(given) {
     const month = Math.floor(reply.tick / TICKS_PER_MONTH);
     if (month === lastChecked) return;
     lastChecked = month;
+    checks += 1;
     const mirrored = hashState(state);
     if (mirrored === reply.hash) return;
     desyncs += 1;
@@ -128,6 +134,7 @@ async function openWorkerSession(given) {
      * instead of guessing at a delay. */
     get pending() { return pending.size; },
     get desyncs() { return desyncs; },
+    get desyncChecks() { return checks; },
     async apply(command) {
       const reply = await post({ type: "apply", command });
       if (reply.result === RESULT.OK) announce(command, reply);
