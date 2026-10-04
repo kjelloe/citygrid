@@ -128,6 +128,14 @@ It took two playtests: N27 joined the runs and N28 found them still reading as d
 was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
 player uses**, not only at the zoom that proves the change.
 
+**A "nothing uses this" audit must strip comments and strings.** Q148's first cut reported eleven
+unread options and the real number was thirteen: `copyOptions` and `writeState` name every option, so
+serialization looked like reading, and a mention in a COMMENT counted as a reader — the comment that
+rescued `seasonYears` was one I had written ten minutes earlier about that very option.
+`test/helpers/sources.js` has `stripCommentsAndStrings`; use it, exclude the module that declares the
+thing and the one that serializes it, and state the rule in the assertion. Then PIN the result, so
+adding another is a deliberate act.
+
 **A shot aimed by a proxy photographs the proxy.** F2's first shot list picked its subjects with
 "the longest straight corridor", "the furthest house" and "near the centre of mass", and the
 storyboard came back with a sawtooth factory roof where the high street should be, a forest where
