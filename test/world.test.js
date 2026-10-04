@@ -17,6 +17,7 @@ import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 import { TERRAIN_WATER } from "../client/constants-mirror.js";
 import { DEFAULTS, getConfig, setConfig } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
+import { streaksAround, anchorFor, rainsAt } from "../client/world/rain.js";
 import { nodeKind } from "../client/world/corridors.js";
 import { buildingParams, variantFor, unitHeight, storeys, VARIANTS } from "../client/world/params.js";
 import { pseudo, jitter } from "../client/world/hash.js";
@@ -552,4 +553,103 @@ test("a map with no rail on it derives an empty railway rather than nothing", ()
   assert.deepEqual(m.rail.nodes, []);
   // And a walker is not standing on a railway that is not there.
   assert.equal(m.surfaceAt(4.5 * T, 4.5 * T).kind, "road");
+});
+
+// --- the rain (Q112, A115) ------------------------------------------------------
+
+test("the rain falls around the EYE, in tiles, and keeps falling", () => {
+  // B6's streaks were placed at the centre of the visible bounds — which at a
+  // low pitch is past the map's edge — and then at `eyeOf`, which for a city
+  // camera is twelve hundred units out along the orbit. Both were invisible for
+  // the same reason, and neither was visible as a defect from inside three.
+  const spec = { count: 40, radius: 6, height: 8, length: 0.4, period: 0.9 };
+  const eye = { x: 20, y: 2, z: 30 };
+  const now = streaksAround(eye, 0, spec);
+  assert.equal(now.length, spec.count);
+  for (const s of now) {
+    assert.ok(Math.hypot(s.x - eye.x, s.z - eye.z) <= spec.radius + 1e-9, "a streak is outside the column");
+    assert.ok(s.y >= eye.y - spec.length && s.y <= eye.y + spec.height, `a streak is at ${s.y}`);
+  }
+  // It falls: the same streak is lower a moment later, and it wraps rather than
+  // running out.
+  const later = streaksAround(eye, spec.period * 0.25, spec);
+  assert.ok(later.some((s, i) => s.y < now[i].y), "nothing moved down");
+  const wrapped = streaksAround(eye, spec.period, spec);
+  for (let i = 0; i < wrapped.length; i += 1) {
+    assert.ok(Math.abs(wrapped[i].y - now[i].y) < 1e-6, "the column does not wrap at its own period");
+  }
+  // And it travels with the eye rather than staying where it was.
+  const moved = streaksAround({ x: 40, y: 2, z: 30 }, 0, spec);
+  assert.ok(Math.abs((moved[0].x - now[0].x) - 20) < 1e-9, "the column did not travel with the eye");
+});
+
+test("the rain's column stands where the camera is LOOKING, not where its eye is", () => {
+  // A city camera's eye is out on an orbit — B6 put the rain there, and the
+  // streaks fell twelve hundred tiles from the city. On foot the eye IS where
+  // you are, so the two answers are different questions rather than a constant.
+  const far = { mode: "city", targetX: 30, targetZ: 40, groundY: 1.2 };
+  const eye = { x: 1200, y: 400, z: 1200 };
+  assert.deepEqual(anchorFor(far, eye), { x: 30, y: 1.2, z: 40 });
+  const walking = { mode: "street", targetX: 0, targetZ: 0 };
+  assert.deepEqual(anchorFor(walking, { x: 5, y: 1.7, z: 6 }), { x: 5, y: 1.7, z: 6 });
+});
+
+test("the rain is drawn on foot and not from the air (Q112, A115)", () => {
+  // A streak is half a metre long. At eighteen pixels a tile that is nothing,
+  // and what weather looks like from up there is the flat light and the fog
+  // B6a already ships — so the city camera draws the hour and not 1,400
+  // triangles of rain it cannot resolve.
+  assert.equal(rainsAt({ mode: "street" }), true);
+  assert.equal(rainsAt({ mode: "photo" }), true);
+  assert.equal(rainsAt({ mode: "city" }), false);
+  assert.equal(rainsAt({ mode: "ortho" }), false);
+  assert.equal(rainsAt(undefined), false);
+});
+
+// --- the railway's own profile (Q120, A118) ---------------------------------------
+
+test("a line is graded within rail.maxGrade, and the ground does not move", () => {
+  // R3's grading is keyed to the ROAD network, so a rail corridor followed the
+  // terrain: on `hilly` the track climbed gradients no train could take. It has
+  // its own profile now — and NOT in the height field, because the field is
+  // what every lot, lane, prop and walker reads.
+  const size = 24;
+  const state = createState(defaultOptions({ width: size, height: size, seed: 7 }));
+  // A hillside: four elevation steps a tile is 2 m over 20, which is 10% — far
+  // past a railway's four per cent and inside a road's fifteen.
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) state.tiles.elevation[tileAt(size, x, y)] = 40 + x * 4;
+  }
+  const rail = state.tiles.rail;
+  for (let x = 2; x <= 20; x += 1) rail[tileAt(size, x, 10)] = NET_PRESENT;
+  for (let x = 2; x <= 20; x += 1) {
+    rail[tileAt(size, x, 10)] = NET_PRESENT | adjacencyMask(size, size, x, 10, (i) => (rail[i] & NET_PRESENT) !== 0);
+  }
+  const m = createModel(state);
+  assert.equal(m.rail.corridors.length, 1, "the line is not one corridor");
+  const corridor = m.rail.corridors[0];
+  const profile = m.railProfileOf(corridor.id);
+  assert.ok(profile, "the line has no profile");
+  assert.ok(profile.steepest <= DEFAULTS.rail.maxGrade + 1e-6,
+    `the line climbs ${(profile.steepest * 100).toFixed(1)}% against a limit of ${(DEFAULTS.rail.maxGrade * 100).toFixed(0)}%`);
+
+  // The track stands clear of the land it crosses: a cutting at one end and an
+  // embankment at the other, which is what a graded line IS.
+  let worstFill = 0;
+  let worstCut = 0;
+  for (const p of corridor.points) {
+    const d = m.railHeightAt(p.x, p.z) - m.landAt(p.x, p.z);
+    if (d > worstFill) worstFill = d;
+    if (-d > worstCut) worstCut = -d;
+  }
+  assert.ok(worstFill > 1 && worstCut > 1,
+    `the line hugs the ground: ${worstFill.toFixed(1)} m of fill and ${worstCut.toFixed(1)} m of cutting`);
+
+  // And the GROUND is the ground: the height field under the line is what it
+  // would be with no line there at all.
+  const bare = createModel({ ...state, tiles: { ...state.tiles, rail: new Uint8Array(state.tiles.rail.length) } });
+  for (const p of corridor.points) {
+    assert.ok(Math.abs(m.heightAt(p.x, p.z) - bare.heightAt(p.x, p.z)) < 1e-9,
+      "the railway moved the height field");
+  }
 });

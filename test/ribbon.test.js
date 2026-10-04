@@ -131,6 +131,23 @@ test("a skirt hangs from the edge and is vertical", () => {
     `skirt spans ${bottom} to ${top}`);
 });
 
+test("a skirt may hang a different depth at every point (S13's girder)", () => {
+  // A bridge: a kerb at each bank and a girder down to the water in between.
+  // One scalar drop cannot say that — it drags the girder across the dry land
+  // either side, which is the whole reason `drops` exists.
+  const drops = [0.17, 3, 3, 0.17];
+  const s = skirt(line(4), 4, flat(0), 0.17, { drops });
+  const bottoms = [];
+  for (let i = 0; i < s.position.length / 3; i += 1) {
+    const x = s.position[i * 3];
+    const yy = s.position[i * 3 + 1];
+    if (yy < -1e-9) bottoms.push([Math.round(x / 10), -yy]);
+  }
+  const deep = bottoms.filter(([, d]) => d > 1).map(([k]) => k);
+  assert.deepEqual([...new Set(deep)].sort(), [1, 2], "the girder is under the middle two points only");
+  for (const [, d] of bottoms) assert.ok(Math.abs(d - 0.17) < 1e-5 || Math.abs(d - 3) < 1e-5, `depth ${d}`);
+});
+
 test("a skirt follows the ground it hangs from", () => {
   const field = ramp(0.1);
   const s = skirt(line(4), 4, field, 0.15);

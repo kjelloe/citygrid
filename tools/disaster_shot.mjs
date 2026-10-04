@@ -29,9 +29,13 @@ const COUNT = `(state, view) => {
   // (S6), and the ruin shot — with nothing alight — came back with twelve puffs
   // from two chimneys. Read out of the instance matrices, which is where the
   // puffs actually are.
+  //
+  // BOTH pools since A114: a building on fire pushes into the fireSmoke pool,
+  // whose shader carries the denser column, and a chimney still pushes into the
+  // smoke pool. Reading only the old one reports a fire with no smoke in it.
   let fireSmoke = 0;
-  const mesh = pools.smoke;
-  if (mesh && damage.fire) {
+  for (const mesh of [pools.fireSmoke, pools.smoke]) {
+    if (!mesh || !damage.fire) continue;
     const m = new Float32Array(16);
     for (let i = 0; i < mesh.count; i += 1) {
       mesh.instanceMatrix.array && m.set(mesh.instanceMatrix.array.subarray(i * 16, i * 16 + 16));
@@ -43,7 +47,7 @@ const COUNT = `(state, view) => {
   return {
     ...damage,
     fireSmoke,
-    smoke: n("smoke"), ruinWall: n("ruinWall"), rubble: n("rubble"), burntGround: n("ruin"),
+    smoke: n("smoke") + n("fireSmoke"), ruinWall: n("ruinWall"), rubble: n("rubble"), burntGround: n("ruin"),
     streets: view.stats?.streets?.live ?? 0,
     // A baked chunk builds its own ruin and the instanced pools go quiet on it,
     // so the two counts are one measurement: walls drawn EITHER way.

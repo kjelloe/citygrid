@@ -29,11 +29,7 @@ const NOT_A_GATE = ["i18n_review", "screenshot", "serve", "repin", "make_precach
   // G1's evidence (ruling 046): it photographs a state the engine can no longer
   // produce, so it is run against a worktree of an older commit and can never
   // fail here.
-  "street_proof",
-  // J3's hilly walk: defined so it can be run by name, deliberately in no set
-  // (Q142) — its criteria are absolute and the hilly city moves with every
-  // balance era.
-  "walkthrough_hilly"];
+  "street_proof"];
 
 /** Files under `tools/` that are gates by their name.
  *

@@ -238,3 +238,30 @@ test("the airport is the dearest thing in the catalogue", () => {
   assert.ok(spec.cost >= 10000, `the airport costs ${spec.cost}`);
   assert.ok(spec.upkeep > definition("coalPlant").upkeep);
 });
+
+test("no building stands on a plinth taller than the limit (A120, Q144)", () => {
+  // The airport's own flatness rule is `airport.maxDrop` and is about a runway.
+  // This is every building: a lot is seated on its lowest corner and a plinth
+  // makes up the difference (ruling 038), so a 3x3 civic footprint across a
+  // hillside is a building buried in it — on a played `hilly` 128 the worst are
+  // a coal plant at 28 elevation steps (fourteen metres), a police headquarters
+  // at 26 and a rail station at 22.
+  const state = city();
+  const limit = rules().development.maxPlinth;
+  const ramp = (perTile) => {
+    for (let y = 0; y < W; y += 1) {
+      for (let x = 0; x < W; x += 1) state.tiles.elevation[at(x, y)] = 40 + x * perTile;
+    }
+  };
+  // A 3x3 spans two tiles of ramp.
+  ramp(limit / 2);
+  assert.equal(apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 5, y: 5 }).result,
+    RESULT.OK, "a plant on a plinth exactly at the limit was refused");
+  ramp(limit / 2 + 1);
+  assert.equal(apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 9, y: 5 }).result,
+    RESULT.TOO_STEEP, "a plant on a plinth over the limit was accepted");
+  // And flat ground takes it, so this is the rule and not the fixture.
+  ramp(0);
+  assert.equal(apply(state, { type: CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 13, y: 5 }).result,
+    RESULT.OK);
+});

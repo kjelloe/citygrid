@@ -19,7 +19,8 @@ test("life off is t = 0, whatever the clock says", () => {
 });
 
 test("every animated pool has a still state at t = 0", () => {
-  assert.deepEqual(Object.values(ANIMATED).sort(), ["crane", "flag", "radar", "rotor", "smoke", "sway"]);
+  assert.deepEqual(Object.values(ANIMATED).sort(),
+    ["crane", "fire", "flag", "radar", "rotor", "smoke", "sway"]);
   for (const phase of PHASES) {
     for (const h of [0, 0.3, 1]) assert.equal(sway(0, h, phase), 0, `sway at t=0, h ${h}`);
     assert.equal(rotorAngle(0, phase), 0);
@@ -27,8 +28,10 @@ test("every animated pool has a still state at t = 0", () => {
     assert.equal(craneAngle(0, phase), 0);
     // Smoke and flag hold a rest pose at t = 0: the same whichever clock was
     // frozen, which is what makes two frozen screenshots the same bytes.
-    for (let k = 0; k < MOTION.smoke.puffs; k += 1) {
-      assert.deepEqual(puff(motionTime(99, { life: false }), k), puff(0, k));
+    for (const spec of [MOTION.smoke, MOTION.fire]) {
+      for (let k = 0; k < spec.puffs; k += 1) {
+        assert.deepEqual(puff(motionTime(99, { life: false }), k, spec), puff(0, k, spec));
+      }
     }
     assert.equal(flagWave(motionTime(99, { life: false }), 0.5, phase), flagWave(0, 0.5, phase));
   }
@@ -95,4 +98,25 @@ test("the shader patch chains, keys its program by kind, and takes its numbers f
   setMotionTime(3.5);
   assert.equal(motionUniforms.uTime.value, 3.5);
   setMotionTime(0);
+});
+
+test("a fire is a denser column than a chimney, and the chimney is unchanged (Q107, A114)", () => {
+  // B1b made smoke draw for the first time since S6, and what it drew was one
+  // thin column nobody can see from the city camera — which is the one place a
+  // fire has to be noticed. §9.4's restraint is about the city's resting tone.
+  assert.deepEqual(MOTION.smoke, { puffs: 6, period: 7, rise: 1.4, drift: 0.55, grow: 1.6, opacity: 0.6 },
+    "the chimney moved; A114 says it does not");
+  assert.ok(MOTION.fire.puffs > MOTION.smoke.puffs, "a fire has no more puffs than a chimney");
+  assert.ok(MOTION.fire.opacity > MOTION.smoke.opacity, "a fire is no denser than a chimney");
+  // The same SHAPE, so a fire reads as smoke rather than as a different effect:
+  // one puff's rise, drift and growth are the chimney's.
+  for (const key of ["period", "rise", "drift", "grow"]) {
+    assert.equal(MOTION.fire[key], MOTION.smoke[key], `a fire's ${key} is not the chimney's`);
+  }
+  // And the puff arithmetic takes the spec, so the two columns are the same
+  // function at two settings rather than two copies of it.
+  const a = puff(3, 0, MOTION.fire);
+  const b = puff(3, 0, MOTION.smoke);
+  assert.equal(a.rise, b.rise, "the first puff of each rises differently");
+  assert.notEqual(puff(3, 7, MOTION.fire).f, undefined, "a fire has a seventh puff");
 });

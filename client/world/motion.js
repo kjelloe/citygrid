@@ -28,11 +28,19 @@ export const MOTION = Object.freeze({
   radar: Object.freeze({ speed: 1.2 }),
   /** Puffs a source, seconds for one to rise, and how far it goes, in tiles. */
   smoke: Object.freeze({ puffs: 6, period: 7, rise: 1.4, drift: 0.55, grow: 1.6, opacity: 0.6 }),
+  /** A BUILDING ON FIRE is not a chimney (Q107, A114). The same column, denser
+   * and more opaque: a fire is an event the player has to notice from the city
+   * camera, and §9.4's restraint is about the city's resting tone rather than
+   * about an emergency in it. The puff count and the opacity are compiled into
+   * the shader, so a louder fire is a pool of its own rather than an argument —
+   * which is also what keeps the chimney exactly as it was. */
+  fire: Object.freeze({ puffs: 9, period: 7, rise: 1.4, drift: 0.55, grow: 1.6, opacity: 0.75 }),
 });
 
 /** The pools that move, and how. A pool not listed here does not move. */
 export const ANIMATED = Object.freeze({
-  tree: "sway", rotor: "rotor", flag: "flag", crane: "crane", smoke: "smoke", radar: "radar",
+  tree: "sway", rotor: "rotor", flag: "flag", crane: "crane", smoke: "smoke", fireSmoke: "fire",
+  radar: "radar",
 });
 
 /** The clock the motion sees: zero whenever life is off, and never negative. */
@@ -79,8 +87,8 @@ export function flagWave(t, u, phase) {
 
 /** Puff `k` of a smoke column: how far through its rise, and what that makes
  * it — lifted, drifted downwind, grown, and faded in then out. */
-export function puff(t, k) {
-  const { puffs, period, rise, drift, grow } = MOTION.smoke;
+export function puff(t, k, spec = MOTION.smoke) {
+  const { puffs, period, rise, drift, grow } = spec;
   const f = ((t / period + k / puffs) % 1 + 1) % 1;
   return {
     f,

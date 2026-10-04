@@ -11,6 +11,8 @@ import { createGround } from "./ground.js";
 import { deriveLots } from "./lots.js";
 import { deriveLanes } from "./lanes.js";
 import { getConfig } from "./config.js";
+import { profilesFor, heightOnProfile } from "./grade.js";
+import { closestOnPolyline } from "./corridors.js";
 import { TERRAIN_WATER, TERRAIN_SHALLOW } from "../constants-mirror.js";
 
 export function createModel(state) {
@@ -30,6 +32,12 @@ export function createModel(state) {
   // the model reads it — the ground does not flatten under it and no lot
   // fronts it — so it is derived beside the road rather than woven into it.
   const rail = deriveCorridors(state, "rail");
+  // The line's own graded profile (Q120, A118). Not in the height field: a
+  // railway cuts and embanks, and putting that in `heightAt` would move the
+  // ground every lot, lane, prop and walker reads for the sake of a line nobody
+  // stands on. `rails-l3` draws the track on these and hangs the cutting and
+  // the embankment under it; `railHeightAt` is what the train runs on.
+  const railProfiles = profilesFor(rail, ground.landAt, { maxGrade: cfg.rail.maxGrade, freeEnds: true });
 
   /** What is underfoot: `{ kind, y, corridor?, node?, lot?, dist }`.
    *
@@ -71,6 +79,17 @@ export function createModel(state) {
     nodes: network.nodes,
     connectors: network.connectors,
     rail,
+    railProfileOf: (id) => railProfiles.get(id),
+    /** The top of the BALLAST at a point on the line, or the ground where there
+     * is no line near — what the train runs on, and what the track is drawn at
+     * (A118). */
+    railHeightAt: (x, z) => {
+      const near = rail.nearest(x, z, cfg.tileM);
+      const profile = near?.corridor ? railProfiles.get(near.corridor.id) : undefined;
+      if (!profile) return ground.heightAt(x, z);
+      const hit = closestOnPolyline(near.corridor.points, x, z);
+      return heightOnProfile(profile, hit.s);
+    },
     nearestCorridor: network.nearest,
     heightAt: ground.heightAt,
     // A street's own graded profile (R3, A42), for anything that wants what the

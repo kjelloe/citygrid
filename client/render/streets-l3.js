@@ -161,6 +161,17 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
   const kerbColour = palette.roadMark ?? 0xd8d4c8;
   const concrete = palette.civic ?? 0xd0ccc4;
 
+  /** How deep the kerb face hangs at each point: a kerb on land, and over
+   * water the bridge's girder, from the deck down to `road.deckDepth` under
+   * it (S13). A scalar drop is a 0.17 m lip, which over a river is a slab of
+   * tarmac floating in the air — the clearance is in the height field and
+   * nothing was drawing the structure that holds it up. */
+  const kerbDrops = (pts, hs) => pts.map((p, k) => {
+    const level = model.waterLevelAt(p.x, p.z);
+    if (level === undefined) return kerb + lift;
+    return Math.max(kerb + lift, hs[k] + lift - (level + cfg.road.deckClearance - cfg.road.deckDepth));
+  });
+
   let i = from;
   while (i < corridors.length) {
     const { corridor, runs, kerbside } = corridors[i];
@@ -206,7 +217,9 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
     // the mouth of the side street.
     for (const walk of kerbside) {
       const hs = walk.map((p) => height(p.x, p.z));
-      addStrip(baker, skirt(walk, half, height, kerb + lift, { lift, heights: hs }), kerbColour);
+      addStrip(baker, skirt(walk, half, height, kerb + lift, {
+        lift, heights: hs, drops: kerbDrops(walk, hs),
+      }), kerbColour);
       for (const sign of [-1, 1]) {
         addStrip(baker, ribbon(
           shift(walk, sign * (half + sidewalk / 2)), sidewalk / 2, height, { lift: lift + kerb },

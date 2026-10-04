@@ -90,8 +90,9 @@ item now, not a question.
 **What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
 yielding to an engine), the rest of the **transport lane** (T5–T7; **T1 the avenue**, **T2 rail,
 the station and the Outside** **T3 the track, the crossings and the train** and **T4 the harbour, the boats and the ferry** are built, and T2
-carried the fixture re-pin the lane was waiting for), the **worker lane** (W1–W4,
-the door to Wave 5), **F2/F3** in the film lane, and **Q84's** weather coupling. The measurement
+carried the fixture re-pin the lane was waiting for), the rest of the **worker lane** (**W3–W4**,
+the door to Wave 5; W1's seam and W2's worker were built 2026-10-04), **F3** in the film lane (F2 built 2026-10-04, F3 waits on
+a phone's frame rate and on `ffmpeg`), and **Q84's** weather coupling. The measurement
 lane (D2/D3/D5) still waits on your phone.
 
 **The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as an automated
@@ -108,8 +109,8 @@ the file to open first.
 |---|---|---|
 | `workitems-mainline.md` | the branch, the gates, the release, the Norwegian pass | **M1–M5 finished 2026-09-08/09** — merged and pushed, the runner and the checklist built, the Norwegian read and passed. **M6 done 2026-09-24** |
 | `workitems-measurement.md` | real-device numbers and the reference compare | **D1, D4, D6, D7, D8 done**, plus the desktop halves of D2 and D5. The first real card found the governor giving up its whole ladder at 60 fps. **What is left needs a phone**: D3 and the last of D5 are blocked on that card |
-| `workitems-film.md` | photo mode, tours, a demo film | not started; unblocked — the measurement lane's buildable half is done, so F1 follows D8 |
-| `workitems-worker.md` | the simulation off the render thread | not started; `worker/` is empty and `specs/plan.md` §0 asked for it |
+| `workitems-film.md` | photo mode, tours, a demo film | **F1 done 2026-09-10, F2 done 2026-10-04** — photo mode, and a shot list the storyboard tool renders a frame a second (`node tools/gates.mjs film`). F3 (encode, and lead the README with the film) waits on a phone's frame rate, as the lane always said |
+| `workitems-worker.md` | the simulation off the render thread | **W1 and W2 done 2026-10-04** — the seam, and then the reducer in a Web Worker behind it. `worker_smoke` plays the same city on both arms and gets the same hash. W3 (what the worker bought, measured) is next |
 | `workitems-navigation.md` | the camera on the screen and on both mouse buttons (P59, ruling 042) | **done 2026-09-11** — K1 the cluster, K3 the mouse and the free look, K2 held keys at a rate, K4 Home and the compass, K5 the phone |
 | `workitems-world.md` | the 3D world made detailed — civic kits, ground, streets, water, trees, motion, windows, the compare sheet as gate (P59) | **started 2026-09-11** — S9 houses and S1 civic kits done (B2 with it); S2 next, interleaved with behaviour |
 | `workitems-behaviour.md` | the simulation made visible and life made realistic — damage, ageing, service vehicles, rush hour, roles, weather (P59) | written 2026-09-10; interleaved with world |
@@ -404,10 +405,10 @@ land first. Nothing here is scheduled.*
 |---|---|---|
 | mainline | `workitems-mainline.md` | M1 merge `dev_night` into `main`; M2 a gate runner with a time budget; M3 the release page; M4 the Norwegian pass; M5 review fixes after the measurement lane; M6 the tidy-up the omissions sweep asked for |
 | measurement | `workitems-measurement.md` | D1 a performance card (`?perf=1`); D2 real devices; D3 the tiers re-tuned from them; D4 the reference-compare sheet against the Transport Worlds shots; D5 the governor validated; D6 the big and steep maps; D7 traffic per second; D8 a viewport that can see a street chunk |
-| film | `workitems-film.md` | F1 photo mode (plan.md §10 bonus 4); F2 a shot list and storyboard tool; F3 encode and lead the README with it |
-| worker | `workitems-worker.md` | W1 the session seam on one thread; W2 the reducer in a Web Worker behind a mirror; W3 the model off the tick; W4 the seam proven against an echo transport, the door to Wave 5 |
+| film | `workitems-film.md` | ~~F1~~ **built** (photo mode, plan.md §10 bonus 4); ~~F2~~ **built 2026-10-04** (a shot list, a tour player and `tools/film.mjs` — the `film` gate set); F3 encode and lead the README with it |
+| worker | `workitems-worker.md` | ~~W1~~ **built 2026-10-04** (the session seam on one thread); ~~W2~~ **built 2026-10-04** (the reducer in a Web Worker behind a mirror; `?worker=0` is the lever); W3 the model off the tick; W4 the seam proven against an echo transport, the door to Wave 5 |
 | navigation | `workitems-navigation.md` | K1 the camera cluster on screen; K2 held keys at a rate; K3 the two mouse buttons in every mode; K4 Home, double-click and a compass; K5 the phone |
-| world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row; **S11 steep ground — PART BUILT 2026-10-03** (a junction may move within 6 m; `walkthrough 128 hilly` runs at last and is still red, Q134); S12 a bank, not a quay (found in S4); **S13 the bridge** (A84, Q104) — the largest slice left |
+| world | `workitems-world.md` | S1 civic kits per definition; S2 ground and countryside; S3 street detail and widths; S4 river cut and bridges; S5 trees, gardens, parks; S6 ambient motion; S7 windows; S8 the compare sheet row by row; **S11 steep ground — PART BUILT 2026-10-03** (a junction may move within 6 m; `walkthrough 128 hilly` runs at last and is still red, Q134); **S12 a bank, not a quay — BUILT 2026-10-03** (ruling 038 amended); **S13 the bridge — BUILT 2026-10-03** (A84, Q104, ruling 047, era 24) |
 | behaviour | `workitems-behaviour.md` | B1 damage you can see; B2 buildings that age; B3 service vehicles; B4 doors and rush hour; B5 people with roles; B6 weather; B7 cars and people from the city camera; B8 cars stop at a junction; B9 the deputy lays roads near the town (engine, era 3) |
 | rules | `workitems-rules.md` | ~~G1~~ **built** (A85, era 15 — and it found a third of every city standing on the road); ~~G2~~ **built** (A86, era 14); ~~G3~~ **built** (A88/A91, era 16); ~~G4~~ **built** (A92, era 12, retuned at era 13) | **the lane is complete, 2026-10-03.** Four eras, one at a time, each with its own sweep — which is what let era 15 be attributed to one rule rather than to a night's work. Five questions came out of it: Q130–Q134 |
 | transport | `workitems-transport.md` | ~~T1 the avenue~~ **built 2026-09-24** (T1a engine, T1b picture); ~~T2 rail and the station in the engine~~ **built 2026-09-25** (era 6, the shared re-pin); ~~T3 rail drawn~~ **built 2026-09-26**; ~~T4 water bodies, marina, ferry, port~~ **built 2026-09-26** (T4a engine era 7, T4b the water); T3 rail drawn; T4 water bodies, marina, ferry, port; ~~T5 unlock ranks, city hall, airport~~ **built** (T5a the engine 2026-09-27, era 9 — the sweep found P87 had voided era 8; T5b the airfield, the lights and the plane 2026-10-02); T6 leisure and education coverage; ~~T7 cheap catalogue rows and kits~~ **built 2026-10-02** (era 11) — **the transport lane is complete** |
@@ -421,15 +422,19 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q102 | S3's width knobs cannot make a street narrower than its houses from the air: the road tile is asphalt across 20 m and a house is 10 m | Kjell, before S8's compare sheet — every house and street shot moves |
+| ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |
-| Q107 | The smoke has never drawn a visible pixel (a varying carried a length, not a vector); fixed in B1b — is the column enough of a fire? | Kjell — an art call, now judgeable for the first time |
-| Q112 | B6's rain streaks draw nothing — 1,140 instances counted, never seen; seven causes ruled out, pool removed, overcast light shipped | Kjell — same class as Q107's smoke; the cause is in the pool lifecycle |
+| ~~Q107~~ | **Answered A114** — the fire reads as a fire (scale, opacity and puff count up for a FIRE only); the chimney is unchanged |
+| ~~Q112~~ | **Answered A115** — one time-boxed slice: something in the pool machinery swallows a pool silently, and the next one will not be rain |
 | ~~Q113~~ | **Answered A82** — the deputy drew from the world's PRNG; it has its own stream since era 8, and a deputy-neutral rule change is measurable again |
-| Q114 | A shop's parking bays collapse on an avenue: `shopBays` measures the kerb from the config, not from the corridor the lot fronts | Kjell — a lot that knows its street, once, rather than a fix per symptom |
-| Q115 | The minimap draws an avenue as a road, so the city's one arterial is invisible in the view built for finding your way | Kjell — a legibility decision about the minimap |
-| Q120 | The ground does not flatten under a railway — grading is keyed to the road network, so T3's track follows the terrain | Kjell — should a line cut and embank, or is following the ground enough? |
-| Q142 | walkthrough 128 hilly was green at era 22 and red at era 23 with no rule change: absolute criteria on a city that moves | Kjell — relative criteria, a pinned fixture, or leave it a tool? |
+| ~~Q114~~ | **Answered A116** — a lot carries its corridor id, so every cross-section question is answered from the street it fronts |
+| ~~Q115~~ | **Answered A117** — a lighter road colour where `NET_AVENUE` is set, at a modest lift |
+| ~~Q120~~ | **Answered A118** — the rail corridor gets its own profile and S13's per-point skirt draws the cutting; the height field does not move |
+| ~~Q142~~ | **Answered A119** — relative criteria (cliffs per km, lots as a share), and the same is owed to `walkthrough` on rolling |
+| ~~Q143~~ | **Answered A121, built 2026-10-04 (era 26)** — the far bank is worth a quarter of a city where the town is hemmed in by water, and nothing where it is not |
+| Q145 | a street on a hillside stands on up to 14.7 m of fill that falls away over four metres: the embankment has no batter | Kjell — a picture decision, and widening the blend re-measures the height field |
+| Q146 | nobody is on the pavement in F2's storyboard while two counters say 122 people are posed there — and the magenta shot has 0 magenta pixels | a behaviour slice (B5/B7's lane); reproduced by `node tools/film.mjs` |
+| ~~Q144~~ | **Answered A120** — `lot.maxPlinth` is a reducer rule in the shape of `maxZoneSlope`; the quay as a thing is a later content slice |
 
 ## What would make us stop and re-plan
 

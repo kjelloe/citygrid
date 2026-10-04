@@ -166,6 +166,12 @@ export function ribbon(points, halfWidth, heightAt, options = {}) {
  *
  * What turns a 0.15 m step into something visible from the pavement rather than
  * a colour change, and what the walker's `floorAt` will step up in E4.
+ *
+ * `options.drops` gives a depth PER POINT instead, which is what makes a bridge
+ * a bridge: over the water the same face hangs from the deck down to the
+ * surface, and at the bank it is a kerb again (S13). A scalar cannot do it —
+ * one deep skirt for the whole run drags a girder across the dry land either
+ * side.
  */
 export function skirt(points, halfWidth, heightAt, drop, options = {}) {
   const lift = options.lift ?? 0;
@@ -181,7 +187,11 @@ export function skirt(points, halfWidth, heightAt, drop, options = {}) {
     const s = side[k];
     const x = p.x + s.x * halfWidth * edge;
     const z = p.z + s.z * halfWidth * edge;
-    return { x, z, top: (heights ? heights[k] : heightAt(x, z)) + lift, u: cum[k] };
+    return {
+      x, z, u: cum[k],
+      top: (heights ? heights[k] : heightAt(x, z)) + lift,
+      drop: options.drops ? options.drops[k] : drop,
+    };
   }));
 
   let at = 0;
@@ -195,9 +205,9 @@ export function skirt(points, halfWidth, heightAt, drop, options = {}) {
       // Outward, away from the carriageway — a kerb seen from the pavement.
       const want = { x: nx, y: 0, z: nz };
       const at1 = { ...a, y: a.top, v: 1 };
-      const at0 = { ...a, y: a.top - drop, v: 0 };
+      const at0 = { ...a, y: a.top - a.drop, v: 0 };
       const bt1 = { ...b, y: b.top, v: 1 };
-      const bt0 = { ...b, y: b.top - drop, v: 0 };
+      const bt0 = { ...b, y: b.top - b.drop, v: 0 };
       at = triangle(buf, at, at1, at0, bt1, want);
       at = triangle(buf, at, bt1, at0, bt0, want);
     }

@@ -31,9 +31,28 @@ export const DEFAULTS = Object.freeze({
     // last 8 ungradeable corridors to none. At zero the whole rule is off,
     // which is what lets one harness shoot the before and the after.
     junctionDrift: 6,
+    // A bridge's deck, over the water it crosses (S13, A84/A111).
+    // `deckClearance` is the deck's own SURFACE above the water and `deckDepth`
+    // the girder hanging under it, so what passes beneath has
+    // 5 - 1 = 4 m. That number is the ferry's: its slab is 3.4 m tall
+    // (`instances.js`), the sailing boat's 1.6, and a clearance under the
+    // tallest vessel in the city is the point of a deck rather than a causeway.
+    // The ramps either side climb it at `maxGrade` — 15% is 33 m of approach on
+    // each bank, under two tiles.
+    deckClearance: 5, deckDepth: 1,
     // L3 only (E3): how far the kerb steps up from the carriageway, how much
     // the road is crowned, and how far the carriageway sits above the ground.
     kerb: 0.15, camber: 0.035, lift: 0.02,
+    // The verge from the air (Q102, A113): a road TILE is a carriageway, two
+    // pavements and two verges (ruling 035), and the city camera painted the
+    // whole 20 m of it asphalt — so a street read as two houses wide where the
+    // reference's is two thirds of one. The terrain mesh splits a straight road
+    // tile into three bands now, and `minVerge` is the width below which the
+    // strip is not worth four triangles: an avenue's is 0.5 m and an avenue
+    // filling its tile is right. Set it large and every road tile is paved
+    // corner to corner again, which is how the before and the after are shot
+    // from one harness.
+    minVerge: 1,
     // The second road kind (T1). `width` is the whole carriageway, `median`
     // the strip down the middle of it, so a lane is (width - median) / (2 ×
     // lanes) = 3 m. Fourteen and not more: the pavement and the verge live in
@@ -48,6 +67,14 @@ export const DEFAULTS = Object.freeze({
   // that happens to be narrow. `speed` is the train's (m/s), `dwell` how long
   // it stands at a platform in seconds, and the carriage numbers are its kit.
   rail: {
+    // A line cuts and embanks rather than following the ground (Q120, A118).
+    // Four per cent is a steep main line — a road may climb 15% and a train may
+    // not — and it is the gradient the track's own profile is held to. The
+    // HEIGHT FIELD does not move: the cutting and the embankment are drawn
+    // under the ballast, so no lot, lane or walker is re-measured for a line
+    // nobody stands on. `maxGrade: 0` turns the whole thing off, which is how
+    // one harness shoots the before and the after.
+    maxGrade: 0.04,
     width: 4, gauge: 1.5, railHalf: 0.08, sleeperEvery: 1.6, sleeperHalf: 0.14, lift: 0.1,
     speed: 22, carriages: 3, carriageLen: 17, carriageW: 2.9, carriageH: 3.4, dwell: 14,
   },
@@ -58,6 +85,12 @@ export const DEFAULTS = Object.freeze({
   // Colours are hex through JSON, which has no 0x.
   boat: {
     length: 7, perBody: 3, openTilesPerBoat: 12, mooredCap: 24,
+    // The hulls, in metres, because what passes under S13's bridge has to fit
+    // under it: the free clearance there is `road.deckClearance` minus
+    // `road.deckDepth`, and `test/boats.test.js` compares the two. They were
+    // literals inside `instances.js`, which three means node cannot read — so
+    // the one number the bridge depends on lived where no test could see it.
+    hullW: 2.2, hullH: 1.6, ferryW: 5, ferryH: 3.4,
     sailSpeed: 4, ferrySpeed: 9, cargoSpeed: 6, dwell: 10, wake: 8,
     hullColour: 0xf0f0f0, sailColour: 0xf8f8f8, ferryColour: 0x3376cc,
     cargoColour: 0x8b8b8b, wakeColour: 0xe1ece4,
@@ -85,7 +118,12 @@ export const DEFAULTS = Object.freeze({
   // surface, so a plane at exactly the level is coplanar with the sand and the
   // two z-fight — which at night showed as a river glowing through a black
   // city. The same reason `road.lift` exists.
-  water: { depth: 1.4, lift: 0.06, wade: 0.4, opacity: 0.7, shelf: 1 },
+  // `bank` is the other half of `shelf`, on the dry side (S12): how many tiles
+  // the land takes to come up to its own height from the waterline. At one tile
+  // — which is what a cut capped at the bank amounts to — a shore under high
+  // ground fell 7.44 m over 20 m, a 37% quay wall nobody can walk up. Three
+  // tiles is 60 m for that same drop, 12%, under `road.maxGrade`.
+  water: { depth: 1.4, lift: 0.06, wade: 0.4, opacity: 0.7, shelf: 1, bank: 3 },
   // Haze and sky (V8, spec §7.3). The city camera's fog follows the zoom — the
   // same numbers would be invisible on a 64-tile map and opaque on a 128-tile
   // one — but a walker's eye does not zoom, so street fog is METRES and the
@@ -156,7 +194,11 @@ export const DEFAULTS = Object.freeze({
   // the coarse noise says so (S2) — 0 is one green.
   ground: { blend: 1, mottle: 0.06, urbanReach: 40, farTone: 0.12, tone: 0.55 },
   lot: {
-    setback: { none: 2, residential: 3, commercial: 0, industrial: 2 },
+    // `residential` halved to 1.5 at A113 (Q102): the setback is an inset on
+    // all four sides of the tile, so it moves the GAPS between houses rather
+    // than the house, and a 10 m house on a 14 m lot read as a street 1.3
+    // houses wide. A 13 m house on a 17 m lot is the reference's proportion.
+    setback: { none: 2, residential: 1.5, commercial: 0, industrial: 2 },
     bayW: { none: 6, residential: 6, commercial: 5, industrial: 8 },
     floorH: { none: 4, residential: 3, commercial: 3.6, industrial: 5 },
     groundH: { none: 4.5, residential: 3, commercial: 4.5, industrial: 6 },

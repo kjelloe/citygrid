@@ -527,3 +527,18 @@ value, which is new behaviour on top of a settled base.
 Each is its own era and its own commit. **Four eras in a row is four sweeps**, about 40 minutes of
 gate time; they are not combined, because A82 bought the ability to attribute a move to a rule and
 combining them gives it straight back.
+
+## G5 — The deputy seeks a crossing (M) — A121 (Q143) — **BUILT 2026-10-04** as era 26
+
+*Built: `openTheCrossing` scans the town's own flooded tiles, spans up to `build.bridgeSpan` tiles of
+water and lands on three tiles it may pave — but only where `deputy.bridgeNeedsRoom` free unzoned
+tiles lie within `bridgeRoomReach` of the landing, because a crossing onto a rock is a crossing to
+nowhere. `bridgeAtPopulation` 900 and `bridgeCap` 2 are the other two numbers, and the ladder that
+chose them says the ROOM is the lever that matters.*
+
+*What it is worth, and the reason this item exists: over twelve 64 `rolling` seeds the rule fires in
+**two**; those two go **1,506 → 1,866** residents and the other ten are unchanged to the resident.
+The 200-game sweep is flat (1,764 → 1,749 relaxed, and so on) because it averages a rare large
+effect with ten zeroes. **The far bank is worth a quarter of a city where the town is hemmed in by
+water, and nothing at all where it is not** — which is the question Q143 asked, answered by the
+measurement taken where the rule fires rather than by the one taken everywhere.*

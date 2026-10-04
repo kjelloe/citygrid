@@ -25,8 +25,8 @@
 // strictly better than jumping to the centre.
 
 import { PALETTES } from "./palettes.js";
-import { TERRAIN_WATER, TERRAIN_SHALLOW, NET_PRESENT } from "../constants-mirror.js";
-import { pixelToTile, viewportShape, walkerMark } from "./minimap-model.js";
+import { TERRAIN_WATER, TERRAIN_SHALLOW, NET_PRESENT, NET_AVENUE } from "../constants-mirror.js";
+import { pixelToTile, viewportShape, walkerMark, roadShade } from "./minimap-model.js";
 
 /** Big enough to make out a district, small enough to leave the city the
  * screen. A 128-region maps to a little over one pixel a tile. */
@@ -50,6 +50,7 @@ export function createMinimap(canvas, state, view, { style = "plain", onJump } =
   const terrain = palette.terrain.map(rgb);
   const zones = palette.zone.map(rgb);
   const roadColour = rgb(palette.road);
+  const avenueColour = roadShade(NET_PRESENT | NET_AVENUE, roadColour, NET_AVENUE);
   const civicColour = rgb(palette.civic);
 
   const world = context.createImageData(size, size);
@@ -90,7 +91,8 @@ export function createMinimap(canvas, state, view, { style = "plain", onJump } =
           const zone = tiles.zone[index];
           colour = zone === 0 ? civicColour : zones[zone];
         } else if ((tiles.road[index] & NET_PRESENT) !== 0) {
-          colour = roadColour;
+          // An avenue is a lighter grey (A117), so the arterial is findable.
+          colour = (tiles.road[index] & NET_AVENUE) !== 0 ? avenueColour : roadColour;
         } else if (tiles.zone[index] !== 0) {
           // Zoned but empty: the zone colour, dimmed, so a district the player
           // has drawn and not yet filled still reads as theirs.

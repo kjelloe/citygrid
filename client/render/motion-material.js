@@ -56,7 +56,12 @@ export const MOTION_GLSL = {
   float flagU = clamp(position.x / ${n(length)}, 0.0, 1.0);
   transformed.z += ${n(MOTION.flag.amp)} * ${n(length)} * flagU
     * sin(${n(MOTION.flag.speed)} * uTime - flagU * ${n(MOTION.flag.wave)} + motionPhase);`,
-  smoke: (radius) => `
+  smoke: (radius) => smokeBody(radius, MOTION.smoke),
+  // A building on fire: the same column with more in it (A114).
+  fire: (radius) => smokeBody(radius, MOTION.fire),
+};
+
+const smokeBody = (radius, spec) => `
   // Where on the puff this vertex is, as a share of its half-size — the VECTOR,
   // not its length (B1b). Taking the length here made the varying constant:
   // every vertex of the two crossed quads is a CORNER, so all four carried
@@ -66,20 +71,20 @@ export const MOTION_GLSL = {
   // counts instances and \`smoke-S6-smoke-t2.png\` has the plant dead centre with
   // nothing above it. Interpolating the vector puts the centre back at zero.
   vMotionRound = vec2(position.x + position.z, position.y) / ${n(radius)};
-  float puffK = float(gl_InstanceID % ${MOTION.smoke.puffs});
-  float puffF = fract(uTime / ${n(MOTION.smoke.period)} + puffK / ${n(MOTION.smoke.puffs)});
-  transformed *= 0.5 + puffF * ${n(MOTION.smoke.grow)};
-  transformed.y += puffF * ${n(MOTION.smoke.rise)};
-  transformed.x += puffF * ${n(MOTION.smoke.drift)};
-  vMotionFade = (1.0 - puffF) * min(1.0, puffF * 6.0);`,
-};
+  float puffK = float(gl_InstanceID % ${spec.puffs});
+  float puffF = fract(uTime / ${n(spec.period)} + puffK / ${n(spec.puffs)});
+  transformed *= 0.5 + puffF * ${n(spec.grow)};
+  transformed.y += puffF * ${n(spec.rise)};
+  transformed.x += puffF * ${n(spec.drift)};
+  vMotionFade = (1.0 - puffF) * min(1.0, puffF * 6.0);`;
 
 /** Patches `material` to move as `kind`. `size` is the geometry measure the
  * formula needs: a tree's height, a flag's length, where a crane's jib begins. */
 export function addMotion(material, kind, size = 1) {
   const body = MOTION_GLSL[kind];
   if (!body) throw new Error(`no motion called ${kind}`);
-  const fades = kind === "smoke";
+  const fades = kind === "smoke" || kind === "fire";
+  const smokeSpec = kind === "fire" ? MOTION.fire : MOTION.smoke;
   const already = material.onBeforeCompile;
   material.onBeforeCompile = (shader, renderer) => {
     if (typeof already === "function") already(shader, renderer);
@@ -93,7 +98,7 @@ export function addMotion(material, kind, size = 1) {
         // Round and soft, not a square: a flat quad of one alpha read as a
         // grey cardboard panel near the camera (S6, looked at).
         .replace("#include <dithering_fragment>", `#include <dithering_fragment>
-  gl_FragColor.a *= vMotionFade * ${n(MOTION.smoke.opacity)} * (1.0 - smoothstep(0.35, 1.0, length(vMotionRound)));`);
+  gl_FragColor.a *= vMotionFade * ${n(smokeSpec.opacity)} * (1.0 - smoothstep(0.35, 1.0, length(vMotionRound)));`);
     }
   };
   // Every patched material's `onBeforeCompile` is the same closure text, and

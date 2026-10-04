@@ -23,9 +23,10 @@ import { createState } from "../engine/state.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt } from "../shared/grid.js";
-import { NET_PRESENT } from "../client/constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 import { DEFAULTS, setConfig } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
+import { createCollision } from "../client/world/collision.js";
 import { deriveWater } from "../client/world/water.js";
 
 setConfig(DEFAULTS);
@@ -175,25 +176,90 @@ test("the shoreline is where the bed comes up through the surface", () => {
   assert.equal(crossings, 1, `the ground crosses the water ${crossings} times`);
 });
 
-// --- the causeway (Q58) -------------------------------------------------------------
+// --- the bridge (slice S13, A84) ----------------------------------------------------
 
-test("a road over water is a causeway at the water's surface, not on the bed", () => {
-  // Q58, answered: a causeway is acceptable, and E8 gives it a surface to sit
-  // in. What it must not do is sink to the riverbed with the water over it.
+/** A road running the full width of the map across a pond, with its adjacency
+ * mask, which is what `deriveCorridors` reads. */
+function crossing(state, row, kind = NET_PRESENT) {
+  const road = state.tiles.road;
+  for (let x = 0; x < state.width; x += 1) road[tileAt(state.width, x, row)] = kind;
+  for (let x = 0; x < state.width; x += 1) {
+    const mask = adjacencyMask(state.width, state.height, x, row, (i) => (road[i] & NET_PRESENT) !== 0);
+    road[tileAt(state.width, x, row)] = kind | mask;
+  }
+}
+
+test("a road over water is a DECK above the surface, not a causeway in it", () => {
+  // Q58 accepted a causeway and A84 overruled it: the road clamped to the water
+  // level, which made the bank a 0.7 m step the walker could not climb and put
+  // the carriageway at the waterline. The deck rides `road.deckClearance` over
+  // it so a boat passes under (T4b).
   const state = blank(16);
   pond(state, 4, 4, 11, 11, 30);
-  const road = state.tiles.road;
-  for (let x = 0; x < state.width; x += 1) road[tileAt(state.width, x, 7)] = NET_PRESENT;
-  for (let x = 0; x < state.width; x += 1) {
-    const mask = adjacencyMask(state.width, state.height, x, 7, (i) => (road[i] & NET_PRESENT) !== 0);
-    road[tileAt(state.width, x, 7)] = NET_PRESENT | mask;
-  }
+  crossing(state, 7);
   const m = createModel(state);
   const level = m.waterLevelAt(7.5 * T, 7.5 * T);
-  const onRoad = m.heightAt(7.5 * T, 7.5 * T);
-  assert.ok(onRoad >= level - 0.2, `the causeway is ${(level - onRoad).toFixed(2)} m under water`);
-  // And a step to the side of it is not.
+  const deck = m.heightAt(7.5 * T, 7.5 * T);
+  const clear = DEFAULTS.road.deckClearance;
+  assert.ok(deck > level + clear - 0.5,
+    `mid-channel the deck is ${(deck - level).toFixed(2)} m over the water, asked for ${clear}`);
+  // And a step to the side of it is still the lake.
   assert.ok(m.heightAt(7.5 * T, 5.5 * T) < level - 0.5, "the whole lake came up with the road");
+});
+
+test("the water under a bridge is still water, and the ground under it still the bed", () => {
+  // The deck is the ROAD's height. The terrain mesh, the overlay quads and the
+  // camera's orbit read `cornerHeightAt`, and if that followed the deck the
+  // river would be a four-metre earth embankment with the water inside it.
+  const state = blank(16);
+  pond(state, 4, 4, 11, 11, 30);
+  // An AVENUE, because a street's half-width plus its blend is eight metres and
+  // the nearest mesh corner is ten: the corridor never reaches a corner of the
+  // terrain mesh at all, so a street crossing cannot tell the two answers
+  // apart. The seven-metre half of an avenue can.
+  const bare = createModel(state);
+  const bed = [];
+  for (let j = 5; j <= 11; j += 1) for (let i = 5; i <= 11; i += 1) bed.push(bare.cornerHeightAt(i, j));
+  crossing(state, 7, NET_PRESENT | NET_AVENUE);
+  const m = createModel(state);
+  const level = m.waterLevelAt(7.5 * T, 7.5 * T);
+  // The invariant, rather than a threshold: the terrain under a bridge is the
+  // terrain of the same channel with no bridge over it. A corridor's blend
+  // reaches ten metres and an avenue's mesh corners are inside that, so with
+  // the deck in the corner table every one of these lifts toward it.
+  const now = [];
+  for (let j = 5; j <= 11; j += 1) for (let i = 5; i <= 11; i += 1) now.push(m.cornerHeightAt(i, j));
+  const worst = Math.max(...now.map((h, k) => Math.abs(h - bed[k])));
+  assert.ok(worst < 1e-9, `the bridge moved the channel bed by ${worst.toFixed(3)} m`);
+  assert.ok(m.cornerHeightAt(7, 7) < level - 0.5,
+    `the ground under the deck is at ${m.cornerHeightAt(7, 7).toFixed(2)}, the surface at ${level}`);
+  assert.equal(m.surfaceAt(7.5 * T, 7.5 * T).kind, "road", "the deck is what is underfoot on the bridge");
+  assert.ok(m.surfaceAt(7.5 * T, 5.5 * T).kind === "water", "beside the bridge is open water");
+});
+
+test("the walker crosses the bridge instead of drowning at the bank (S13)", () => {
+  // The 939 refused steps `walkthrough` counted at crossings were all one
+  // shape: `floorAt` returns undefined over water deeper than `water.wade`, and
+  // the causeway's own bank was a step taller than `stepUp` on top of that.
+  const state = blank(16);
+  pond(state, 4, 4, 11, 11, 30);
+  crossing(state, 7);
+  const m = createModel(state);
+  const col = createCollision(m);
+  let foot = m.surfaceAt(0.5 * T, 7.5 * T).y;
+  let blocked = 0;
+  let drowned = 0;
+  for (let x = 0.5; x < 15.5; x += 0.25) {
+    const y = col.floorAt(x * T, 7.5 * T, foot);
+    if (y === undefined) {
+      const kind = m.surfaceAt(x * T, 7.5 * T).kind;
+      if (kind === "water") drowned += 1; else blocked += 1;
+      continue;
+    }
+    foot = y;
+  }
+  assert.equal(drowned, 0, `${drowned} steps along the crossing are open water`);
+  assert.equal(blocked, 0, `${blocked} steps along the crossing are too tall to climb`);
 });
 
 // --- which chunks need a plane --------------------------------------------------------
@@ -347,4 +413,115 @@ test("a river still steps down its valley", () => {
   assert.ok(top - bottom > 5, `the river falls ${(top - bottom).toFixed(2)} m from end to end`);
   // Level ACROSS the channel at any one point, which is what water does.
   assert.equal(w.cornerLevelAt(7, 8), w.cornerLevelAt(9, 8));
+});
+
+// --- the bank (slice S12) ------------------------------------------------------------
+
+/** The steepest step the ground takes walking INLAND out of the water, in rise
+ * over run — counting only the dry part of the walk.
+ *
+ * The bed below the waterline belongs to S4's shelf and the walker never
+ * stands on it; what S12 is about is the part a person walks, from the
+ * waterline up onto the land. */
+function shoreGrade(model, state, tile, step = 2) {
+  const x = tile % state.width;
+  const y = (tile - x) / state.width;
+  const level = model.water.levelOf(tile);
+  let worst = 0;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+    const t = state.tiles.terrain[tileAt(state.width, nx, ny)];
+    if (t === WATER || t === SHALLOW) continue;
+    const cx = (x + 0.5) * T;
+    const cz = (y + 0.5) * T;
+    let prev;
+    let dryFrom = -1;
+    for (let d = 0; d <= 4 * T; d += step) {
+      const h = model.heightAt(cx + dx * d, cz + dy * d);
+      if (h >= level) {
+        if (dryFrom < 0) dryFrom = d;
+        // The first TILE of dry ground, which is where the quay was: beyond it
+        // the land is the land, and a hill inland is not a shore.
+        if (prev !== undefined && d - dryFrom <= T) worst = Math.max(worst, Math.abs(h - prev) / step);
+      }
+      prev = h >= level ? h : undefined;
+    }
+  }
+  return worst;
+}
+
+/** Every shore tile of a generated region, with its steepest dry climb. */
+function shoreGrades(seed) {
+  const state = region(seed);
+  const m = createModel(state);
+  const grades = [];
+  for (const tile of m.water.tiles) {
+    if (dryNeighbours(state, tile).length === 0) continue;
+    grades.push([tile, shoreGrade(m, state, tile)]);
+  }
+  return { state, model: m, grades };
+}
+
+test("the shore is a bank you can walk up, not a quay wall (S12)", () => {
+  // S4 capped the water at its bank and cut a channel under it, and left the
+  // cut ONE tile wide: where the land stands high the shore fell 7.44 m over
+  // 20 m — 37%, a quay wall in `smoke-S4-shore.png` and a cliff on foot.
+  //
+  // The criterion is MEASURED rather than guessed, because "no shore steeper
+  // than `road.maxGrade`" is not a thing any cut can deliver: a hill that meets
+  // water is a sea cliff, and flattening it is flattening the map. Over three
+  // generated regions the ladder reads, as the share of shores climbing more
+  // than 15% in their first tile:
+  //
+  //   bank 0   41%  50%  48%      (the quay: p95 126–171%)
+  //   bank 2   14%  11%  22%
+  //   bank 3    7%   1%  14%      <- the knee, and the shipped number
+  //   bank 5    7%   1%  14%      no better, and it cuts twice as much land
+  //
+  // So: a fifth of the shores of any map may still be cliffs, and the MEDIAN
+  // shore is a bank — which is the sentence S12 is about.
+  for (const seed of [1003, 2026, 77]) {
+    const { grades } = shoreGrades(seed);
+    assert.ok(grades.length > 20, `seed ${seed}: only ${grades.length} shore tiles to measure`);
+    const steep = grades.filter(([, g]) => g > DEFAULTS.road.maxGrade).length;
+    const sorted = grades.map(([, g]) => g).sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    assert.ok(median <= DEFAULTS.road.maxGrade,
+      `seed ${seed}: the median shore climbs ${(median * 100).toFixed(1)}%`);
+    assert.ok(steep / grades.length <= 0.2,
+      `seed ${seed}: ${steep} of ${grades.length} shores are steeper than`
+      + ` ${(DEFAULTS.road.maxGrade * 100).toFixed(0)}%`);
+  }
+});
+
+test("cutting the bank only ever cuts, and never moves the water (S12)", () => {
+  // Measured against the same region with the cut turned OFF (`water.bank: 0`),
+  // because a tile's own elevation is not the baseline: `landAt` is bilinear
+  // over corners, so the middle of a tile beside a higher one is already above
+  // its own height. Nothing on the dry side may come UP — a shore that raises
+  // the land is a dam — and the surface is a separate thing from the ground
+  // under it, which is what keeps the sheet, the wet sand and the reeds where
+  // they were.
+  const state = region(1003);
+  const cut = createModel(state);
+  setConfig({ ...DEFAULTS, water: { ...DEFAULTS.water, bank: 0 } });
+  const quay = createModel(state);
+  setConfig(DEFAULTS);
+  let raised = 0;
+  let lowered = 0;
+  for (const tile of cut.water.tiles) {
+    assert.equal(cut.water.levelOf(tile), quay.water.levelOf(tile), "the surface moved");
+    for (const dry of dryNeighbours(state, tile)) {
+      const dx = dry % state.width;
+      const dy = (dry - dx) / state.width;
+      const before = quay.heightAt((dx + 0.5) * T, (dy + 0.5) * T);
+      const after = cut.heightAt((dx + 0.5) * T, (dy + 0.5) * T);
+      if (after > before + 1e-6) raised += 1;
+      if (after < before - 1e-6) lowered += 1;
+    }
+  }
+  assert.equal(raised, 0, `${raised} bank tiles were raised by the cut`);
+  assert.ok(lowered > 10, `the cut lowered only ${lowered} bank tiles — it is not doing anything`);
 });

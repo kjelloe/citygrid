@@ -845,7 +845,8 @@ const UNPRICED_POOLS = {
   ruinWall: "baked into the street chunk, like the rubble",
   shed: "inside `extrasOf` — a house's shed",
   sign: "baked into the street chunk with the facade it stands on",
-  smoke: "inside `extrasOf` — six a plume, for a stack or a fire",
+  smoke: "inside `extrasOf` — `MOTION.smoke.puffs` a plume, for a stack",
+  fireSmoke: "inside `extrasOf` — `MOTION.fire.puffs` for a building that is burning (A114)",
   train: "its own term, `counts.carriages` at `costs.carriage`",
   boat: "its own term, `counts.hulls` at `costs.hull`",
   ferry: "its own term, `counts.hulls` — a ferry is a hull",
@@ -876,4 +877,65 @@ test("every instanced pool reaches the estimate somehow", () => {
   // about nothing.
   const gone = Object.keys(UNPRICED_POOLS).filter((p) => !pools.includes(p));
   assert.deepEqual(gone, [], `UNPRICED_POOLS names pools that no longer exist: ${gone.join(", ")}`);
+});
+
+test("a bridge tile is counted as a deck, and the deck is charged for (S13)", () => {
+  // The deck is the one piece of road surface that is GEOMETRY: every other
+  // road is a colour of the terrain mesh, and under a crossing the terrain is
+  // the riverbed (ruling 047). A term missing from the census is a term the
+  // budget cannot trade away — and this one is drawn at every tier.
+  const state = blank(8);
+  const WATER = 3;
+  const SHALLOW = 4;
+  for (let x = 1; x <= 6; x += 1) state.tiles.road[2 * 8 + x] = NET_PRESENT;
+  const dry = countScene(state, undefined);
+  assert.equal(dry.decks, 0, "a road on dry land is not a deck");
+  state.tiles.terrain[2 * 8 + 3] = WATER;
+  state.tiles.terrain[2 * 8 + 4] = SHALLOW;
+  const wet = countScene(state, undefined);
+  assert.equal(wet.decks, 2, "both kinds of water under a road are a deck");
+  assert.equal(wet.roads, dry.roads, "a crossing is still a road tile as well");
+  // Per chunk too, because a perspective frame prices each chunk at its own
+  // plan (V5) and a chunk that forgets its decks under-charges its own frame.
+  const part = [...wet.chunks.values()].find((c) => c.decks > 0);
+  assert.ok(part && part.decks === 2, "the chunk census does not carry the decks");
+
+  const plan = { buildings: 2, trees: true, treeDetail: 2, props: true, markings: true, shadows: false, streetChunks: 0 };
+  assert.ok(estimate({ ...CITY, decks: 20 }, plan) > estimate({ ...CITY, decks: 0 }, plan),
+    "twenty bridge tiles cost the estimate nothing");
+});
+
+test("a verged road tile is three bands, and the estimate knows it (A113)", () => {
+  // The terrain mesh splits a straight road tile into grass, carriageway and
+  // grass, which is four triangles more than the two a plain tile costs. A term
+  // missing from the estimate is a term the budget cannot trade away — and this
+  // one is on the ground, which comes off the top of the budget.
+  const state = blank(8);
+  for (let x = 1; x <= 6; x += 1) state.tiles.road[3 * 8 + x] = NET_PRESENT;
+  for (let x = 1; x <= 6; x += 1) {
+    let mask = 0;
+    if (x > 1) mask |= 8;
+    if (x < 6) mask |= 2;
+    state.tiles.road[3 * 8 + x] |= mask;
+  }
+  const counted = countScene(state, undefined);
+  assert.equal(counted.roads, 6, "the run is not six tiles");
+  assert.equal(counted.verges, 4, "only the four straight tiles keep a verge; the two stubs are paved");
+  const part = [...counted.chunks.values()].find((c) => c.verges > 0);
+  assert.equal(part.verges, 4, "the chunk census does not carry the verges");
+
+  const plan = { buildings: 2, trees: true, treeDetail: 2, props: true, markings: true, shadows: false, streetChunks: 0 };
+  assert.equal(estimate({ ...CITY, verges: 100 }, plan) - estimate({ ...CITY, verges: 0 }, plan), 400,
+    "a hundred verged tiles are not four hundred triangles");
+});
+
+test("the rain is priced, so a street frame can trade it away (Q112, A115)", () => {
+  // B6's pool was taken out partly because a pool that draws nothing is still
+  // priced — Q110's defect. The answer is not to leave it unpriced: a term
+  // missing from the estimate is a term the budget cannot trade away, and 700
+  // streaks at eight triangles is 5,600 of a street frame.
+  const plan = { buildings: 2, trees: true, treeDetail: 2, props: true, markings: true, shadows: false, streetChunks: 0 };
+  const dry = estimate({ ...CITY, rain: 0 }, plan);
+  const wet = estimate({ ...CITY, rain: 700 }, plan);
+  assert.equal(wet - dry, 700 * 8, "a column of rain costs the estimate nothing");
 });

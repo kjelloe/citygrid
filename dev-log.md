@@ -9367,3 +9367,726 @@ for the same reason it might not tomorrow.
 S11's done-when is therefore **not** met. It was met for one era, by a number that was measuring the
 gate rather than the ground.
 
+
+## slice-S13 — the bridge (2026-10-03, era 24)
+
+A84 took the expensive option over Q58's causeway and A111 re-scoped the slice when H7's played
+fixture turned out to contain ten road tiles standing on shallow water: **the crossings already
+existed**, the deck did not. So the engine's half is small and the renderer's is the slice.
+
+**The engine.** `build.bridgeSpan` is 6 tiles — 120 m — and `crossingRefusal` refuses a run longer
+than that, a run that starts or ends on water, and a diagonal hop across it. Road layer only: the
+first cut applied to every kind, and the wire and the pipe cross water routinely, so the deputy
+stopped building anything at all — no clinics, nothing, in a city that had been fine a minute
+earlier.
+
+**The deck is two height questions, not one.** `heightAt(x, z)` answers what a road stands on, which
+over water is the water's level plus `road.deckClearance`; `heightAt(x, z, false)` answers what the
+ground does, which under a deck is still the riverbed. Exactly three readers want the second — the
+terrain mesh, the overlay quads and the camera's ground orbit — and they all take it through
+`cornerHeightAt`. With one answer for both, a crossing is a four-metre earth embankment with the
+river inside it: **0.206 m** of lift on an avenue's mesh corners, measured, and the test that pins it
+is an identity rather than a threshold (the terrain under a bridge is the terrain of the same
+channel with no bridge over it). A street cannot see it at all — a street's half-width plus its
+blend is 8 m and the nearest mesh corner is 10 — which is why the test uses an avenue.
+
+The ramps cost no code: `gradeProfile` and `relaxNodes` already respect `road.maxGrade`, so they
+sample the new answer and the approach comes out at 33 m a bank.
+
+**Three defects that had nothing to do with heights**, and all three are in the first picture:
+
+- The riverbed under the deck was painted `palette.road`, because `computeTile` answers tarmac for
+  any road tile.
+- `skirt` could hang only one depth for a whole run, so a deck had a 0.17 m lip and read as a slab
+  of tarmac floating in the air. It takes a depth per point now — a kerb at the bank, a girder over
+  the water.
+- **The deck had no surface at city zoom at all.** A road is painted into the terrain mesh
+  (N30) and over water the terrain is the bed, so the crossing was white centre dashes floating over
+  open water with nothing under them. The first three screenshots showed it and I read the band as
+  "the deck, tinted by the water" twice before probing the scene graph and finding no mesh there.
+  There is a `deck` pool now — one box a tile, the carriageway and its two pavements across,
+  `road.deckDepth` thick — priced in the estimate and counted in the census.
+
+**What passes beneath reads the clearance.** 5 m to the deck's surface minus a 1 m girder is 4 m, and
+the tallest hull in the city is the ferry's 3.4 m. Those hull dimensions were literals inside
+`instances.js`, which imports three and is invisible to node, so the clearance and the thing it is a
+clearance for could never have been compared by a test. They are in `data/cityviewer.json` now.
+
+**The deputy crosses rivers (era 24).** It never had: `buildBlockAlong` breaks on `!isBuildable`, and
+J3's slope rule reads a water tile's elevation, which is its BED — so every river was also a cliff.
+Both fixed, and the span does not count against the block's length because a bridge is not street.
+Two arms over eight 64 `rolling` seeds, 25 years: **1,694 residents and 225 buildings with zero road
+tiles on water; 1,749 and 238 with 124 water tiles paved over eight cities.** The 200-game sweep
+points the other way and is the authority — relaxed 1,821 → 1,800, steady 1,615 → 1,585, demanding
+1,566 → 1,541, treasuries 2–4% lower because a crossing costs five times a road tile — with **zero
+dead cities** in every configuration. Eight seeds say a rule fires; two hundred games say what it is
+worth.
+
+**And no gate city contained a bridge.** The 96 fixture's river is wider than six tiles nearly
+everywhere, so the deputy builds none there: `walkthrough`, `budget_gate` and every shot were
+measuring a city with no crossing in it, and the three crossing counters `walkthrough` grew at H7 are
+failure counters that read 0 either way. `saturatedCity` lays one crossing through the reducer now
+and throws if it cannot (`bridge: false` is the lever, `walkthrough … nobridge` the fourth argument),
+and `walkthrough` counts the decks it walked and fails if a city with a bridge in it never put a foot
+on one: **1,356 steps over 15 legs**, zero refusals, zero cliffs, zero crossing stops — against the
+939 refusals at crossings the causeway produced.
+
+**Four scripted cities laid no road at all**, and that is the same lesson G1 taught with wires. The
+row through the middle of seed 1003 crosses **twenty-seven** tiles of river, and a run that spans
+more than `bridgeSpan` is refused whole — so `budget_gate`'s cars block, `a11y_smoke`'s traffic seed,
+`play_smoke`'s two streets and `shoot.html`'s demonstration road each produced nothing. `budget_gate`
+said *"somebody's brakes come on at a junction: 0"*, which names a brake and is about a river. None
+of the four read the result of its own command. All four lay one command per DRY STRETCH now — the
+pattern the rail fixture has used for slices — and `budget_gate` checks that its street was laid
+before it measures anything on it. It had been measuring 31 cars on a causeway; it measures 42 on a
+street, 20 braking and 8 indicating.
+
+`client_smoke`'s draw-call ceiling moves 73 → 74 in the same breath, and this one is a pool rather
+than a city: one more pool is one more draw whether or not the city has a crossing in it.
+
+`quick`'s budget is restated 8 → 9 minutes in the same round, and that is a third instance of the
+same cause rather than a gate that grew: `ui_smoke` carries the perf card, the card measures
+`saturatedCity`, and that recipe has been a PLAYED city since H7 — eras 17 to 24 gave it parks,
+police stations, more people and now a bridge. Measured today: 490 s for the set, ui_smoke 197 s
+against about 110 at P96.
+
+Gates: suite green twice; `sim` ok (`sim_sweep` 555 s, `traffic_gate` 151 s, `disaster_soak` 130 s)
+with `reports/balance-era24.md`; `walkthrough` on `rolling` 96 and on `hilly` 128 (the hilly arm's 4
+cliffs and 4 lots are era 23's, unchanged by this slice — Q142); `budget_gate`; and
+`reports/smoke-S13-bridge.png`, `-deck.png`, `-under.png`, each with the deck, the water and the bed
+measured beside it, because 4 m of clearance at 160 m is a few pixels and the picture is the check
+rather than the proof. `bridge_shots` joins the `shots` set (256 s of 300 with it in). `quick`,
+`budget` and `shots` all green at the end of the round.
+
+**Two gates found red in this round were not S13's**, and the worktree arm is what said so — both
+fail identically on the commit before the slice:
+
+- `ui_smoke`'s perf card: *"every step drew something — street walk 60m"*. The row says
+  `triangles: 156266` and `frames: 0`. The gate drives `?perfHold=1`, which holds each of nine steps
+  for **one second**, and the street step on SwiftShader draws a frame every two seconds — so the
+  sweep collected no inter-frame delta and the check, which requires `frames > 1`, failed on the
+  hold it asked for. The card records `heldSeconds` now and the gate asks for two frames only when
+  the card was not held; the check that means what its name says is the triangle count. The failure
+  message prints the whole row rather than the step's label, because "street walk 60m" was the name
+  of three different possible problems.
+- The same round's `client_smoke` ceiling, above.
+
+**Q143** is open: the deputy spans a river its block happens to reach, and in twenty years on the 96
+it reaches one five times and crosses none. Should it SEEK a crossing, the way it seeks a rail line?
+
+## slice-S12 — a bank, not a quay (2026-10-03)
+
+S4 ended the river painted across a hillside by capping the water at its lowest dry neighbour and
+cutting a channel under it. What it left was a cut **one tile wide**: where the land stands high the
+shore fell 7.44 m over 20 m — 37%, a quay wall in `smoke-S4-shore.png` and a cliff on foot.
+
+**The cut is `water.bank` tiles wide now (3), and it lives in `landAt`.** Not in `heightAt` beside
+the water clamp, which is where the work item put it: everything else is derived from the land — the
+corridor profiles are graded from it, the lots are seated on it — and a bank cut only into the
+blended field would leave the streets on it floating.
+
+**And a road is not on the bank.** The first cut graded `pavableAt` from the cut land, and every
+street that reaches water dived into it: on the bridge fixture the carriageway fell 3.9 m to the
+waterline and the walker was stopped at the abutment by a 1.5 m step. S13's own test caught it in
+the same run — which is what a test written at the moment of the decision is for. `pavableAt` reads
+the BARE land; a road at a shore is on an embankment above the beach, which is what the corridor
+blend already draws.
+
+**The criterion is measured, not asserted.** My first test said "no shore steeper than
+`road.maxGrade`", and no fixed-width cut can deliver that: a hill that meets water is a sea cliff
+and flattening it is flattening the map. The ladder over three generated regions, as the share of
+shores climbing more than 15% in their first tile:
+
+| `water.bank` | seed 1003 | 2026 | 77 | median shore |
+|---|---|---|---|---|
+| 0 (the quay) | 41% | 50% | 48% | 6–9% |
+| 2 | 14% | 11% | 22% | 5–7% |
+| **3** | **7%** | **1%** | **14%** | **3–4%** |
+| 5 | 7% | 1% | 14% | 1–2% |
+| 8 | 7% | 1% | 14% | 0–1% |
+
+Three is the knee: past it the cut eats more land and the tail does not move, because the tail is
+terrain. So the test asserts the median shore is walkable and that no more than a fifth of a map's
+shores are cliffs — both measured, with the ladder in the test's own comment.
+
+`water.bank: 0` is the lever, and the second test uses it: measured against the same region with
+the cut off, nothing on the dry side comes UP (a shore that raises the land is a dam) and
+`levelOf` is unchanged, which is what keeps the sheet, the wet-sand band and the reeds where they
+were.
+
+Gates: suite green twice (1,605); `render` ok (walkthrough 3 s, passability 1 s, lanes_dump 206 s);
+`budget` ok (261 s); `shots` ok (254 s of 300, bridge_shots in it);
+`walkthrough` **byte-identical** — 0 cliffs, 0 refusals, the same
+98.88 km — which is the right null result and has a reason: the walker walks corridors, and since
+`pavableAt` reads the bare land the walked route is exactly where it was. The instrument that can
+see this slice is the shore census in the test and the picture. `water_shots` green and
+`smoke-S4-shore.png` re-shot: the far bank reads as a beach, green into sand into water, where it
+was a step. The hard edges left at the waterline in that shot are LOTS on their plinths, which is a
+different thing and worth its own look — **Q144**, filed rather than left in a transcript: a
+building is seated on the lowest corner of its lot with a plinth making up the difference, which on
+the new slope is a wall. Right in a dock, wrong on a beach, and the deputy does not know which it
+is building.
+
+## A113 half one — the verge from the air (2026-10-03)
+
+Q102, answered in P100: a road TILE is painted asphalt across its whole 20 m at city zoom, because a
+road is a colour of the terrain mesh (N30). So from the air a street is **two houses wide** where the
+reference D4 compares against is two thirds of one — and `road.width`, `road.sidewalk` and
+`lot.setback` cannot touch it, because none of them reaches the mesh.
+
+**The mesh splits a straight road tile into three bands** — grass, carriageway, grass — at the widths
+ruling 035 has stated since E0 and the L3 bake has drawn since E3. Only a straight run: a junction, a
+corner and a stub are paved corner to corner, which is what they are on the ground. `road.minVerge`
+(1 m) is the width below which a strip is not worth four triangles, and it is what makes an avenue
+fill its tile — 14 m of carriageway and two 2.5 m pavements leave half a metre each side.
+
+**The hard edge moved inward.** `corner()` returned a tile's own colour the moment a neighbour was
+BUILT, which is what keeps a road's edge crisp against a meadow. What a verged road shows at its edge
+is now grass, so the neighbour blends with it and the hard edge sits at the carriageway, inside the
+tile. One rule, stated once: **a corner shows what the tile shows at its edge**. The test that
+pinned the old rule is amended rather than deleted — it asserts the same thing about a junction,
+which is still paved corner to corner.
+
+The predicate is `vergeAt(road, cfg)`, exported from `client/world/ground-colour.js` and read by
+both the mesh and `lod.js`'s census, because a second copy of it is a cost table that goes stale.
+
+Measured on a played 64: **410 of 1,398 road tiles** keep a verge (the rest are junctions, corners,
+stubs and avenues), 1,640 triangles on an 18,432-triangle ground, and the city-zoom frame goes
+**108,850 → 110,102**. `road.minVerge: 99` turns the whole thing off, which is how the before and the
+after were shot from one harness.
+
+What this does not do is the other half of A113: the house is still 10 m on an 18 m lot, so the
+carriageway is now about 0.6 of a tile against a house's half. That is its own round, and it moves
+every house and street shot.
+
+Known overlap, left alone: `streets-l3` still draws its own verge ribbon at street level. The two
+agree in colour and the ribbon covers junction approaches the mesh paves, so removing it would make a
+T-junction read worse at eye height. Unifying them means splitting the mesh by the CORRIDOR rather
+than by the tile mask, which is a bigger slice than this one.
+
+Gates: suite green twice (1,610); `budget` ok (259 s) with the verge priced in the census and the
+estimate — `counts.verges × 4`, the same shape S13's deck took.
+
+## A117 — the avenue on the minimap (2026-10-03)
+
+Q115: from the air an avenue reads by its two-dash centre line and its wider junction boxes, and at
+one pixel a tile neither survives — so the city's one deliberate arterial was invisible on the screen
+built for finding your way. `roadShade` lifts the road colour by a third where `NET_AVENUE` is set;
+it lives in `minimap-model.js` (the pure half) so the decision is testable, and the test asserts the
+shape of the choice rather than the number: lighter on every channel, inside 255, and still grey —
+it must not start competing with the zone and territory colours the minimap already carries.
+
+## A114 — a fire reads as a fire (2026-10-03)
+
+Q107: B1b made smoke draw for the first time since S6, and what it draws is one thin column that
+does not register from the city camera — which is the one place a fire has to be noticed. §9.4's
+restraint is about the city's resting tone, not about an emergency in it.
+
+**It could not be an argument.** `MOTION.smoke.puffs` and `.opacity` are compiled INTO the shader
+(`gl_InstanceID % puffs`, and the alpha constant in the fragment patch), so "denser and more opaque
+for a fire only" is a second material — and a second material is a second pool. `MOTION.fire` is the
+chimney's spec with 9 puffs instead of 6 and 0.75 opacity instead of 0.6, the same period, rise,
+drift and growth so a fire reads as smoke rather than as a different effect, and the burning branch
+pushes into `pools.fireSmoke` at scale 2.2 rather than 1.6. The chimney is untouched, which the test
+asserts by pinning `MOTION.smoke` whole.
+
+Three things moved with it, each of which would have been a silent wrong number:
+
+- `extrasOf` charged **six** puffs for a burning building; it charges `MOTION.fire.puffs` now, and
+  the chimney's term reads `MOTION.smoke.puffs` rather than a literal 6.
+- `disaster_shot` counted smoke instances near the fire out of `pools.smoke`, which a fire no longer
+  pushes into — it would have reported a burning city with no smoke in it. It reads both pools.
+- `client_smoke`'s draw-call ceiling 74 → 75, for the same reason as S13's: one more pool.
+
+`reports/smoke-B1-burning.png` is the picture to judge, and the two bridges in the background of it
+are S13 in a city nobody built by hand.
+
+Gates: suite green twice (1,612); `client_smoke` ok; `disaster_shot` ok — 9 puffs over the fire
+against the 6 that were there, and 27 in the scene.
+
+## A119 — a gate's criteria are relative to the city it measures (2026-10-03)
+
+Q142: `walkthrough 128 hilly` was green at era 22 and red at era 23 with no change to the rule it
+tests, because the economy moved what the deputy builds. Its criteria were absolute — no cliff,
+nothing walked into — and the city is not.
+
+The answer turned out to be **attribution rather than a looser number**, which is the stronger half
+of what A119 asked for:
+
+- **A cliff on a corridor no grading can flatten is terrain.** The tool already carried that
+  distinction for refusals (`steep refusals`, H7); cliffs now take it too. On `hilly` 128 the four
+  cliffs are all on ungradeable corridors — they are the land, and the land is what S11 and J3 said
+  it was. `cliffs` on gradeable ground is the defect, and it is 0.
+- **A lot the walker stands on top of is a building buried in a hillside.** All four of hilly's
+  "walked INTO lot" are the same shape: the walker's feet 7.9 m above the lot's seat and **within
+  15 cm of the box's roof**, standing on the hill over a building that is inside it. `resolve` is
+  right not to call that a wall. It is counted as `buried` with its depth — and it is **Q144**'s
+  question from the other side, which A120's plinth limit will answer at the source.
+- And the relative reading A119 named is printed beside the counts: **cliffs per kilometre walked**.
+
+So `walkthrough 128 hilly` is **green**, for the first time by a criterion a moving city cannot
+drift through, and it rejoins the `render` set — which is S11's own done-when, properly met this
+time. 4.2 s on this machine, against the set's 240 s budget. `test/gates.test.js` loses its
+`NOT_A_GATE` entry, which is the check that would otherwise have let it sit outside every set again.
+
+Numbers today: rolling 96 — 0 cliffs (0.00/km), 0 terrain cliffs, 0 walked into, 0 buried;
+hilly 128 — 0 cliffs (0.00/km), 4 terrain cliffs, 0 walked into, 4 buried, deepest 8.0 m.
+
+## A frozen screenshot of a city that was still arriving (2026-10-03)
+
+`motion_shots`' oldest check — two `?life=0` shots are the same BYTES — went red in the A114 round,
+and the worktree arm said it was mine. It was not the fire, and it was not the verge: both runs
+reported the same LOD plan, the same pool counts and the same `lod: "full"`, and differed in **5,707
+pixels, all in one horizontal band** across the far distance.
+
+That band is where the street chunks were still being baked. The baker slices its work by the WALL
+CLOCK (R5: one phase a frame, `LOT_SLICE_MS`), so how much of a city exists after thirty frames
+depends on how fast the machine was for those thirty frames. The check had been passing because the
+bake happened to finish inside them; a slightly heavier frame was enough to make it not.
+
+So `shoot.html` settles: after the frames the caller asked for, it draws on until the street cache
+reports nothing left to build (capped, and reported as `settleFrames`). **Time does not advance
+while it settles** — `now` holds where the last frame left it and `dt` is zero — so the motion pose,
+the clock and the traffic are exactly what was asked for and only the geometry catches up. A
+one-frame shot is left alone, because that is a caller asking for one frame.
+
+This is a flake every picture gate in the project has been exposed to, and it is the same shape as
+the perf card's held sample: **a measurement whose answer depends on how fast the machine was**. The
+check that found it is the one that compares two runs rather than one run against a number.
+
+## A120 — a plinth has a limit (2026-10-03, era 25)
+
+Q144, which S12 turned up: the hard edges left at a waterline are LOTS. A building is seated on the
+lowest corner of its lot and a plinth makes up the difference (ruling 038), so on a slope the ground
+at the lot's middle climbs toward the roof and what is drawn is a building in the hill with a wall of
+base below it. `walkthrough` had been reporting the same defect from the other side — its four
+"walked INTO lot" cases on `hilly` 128 are each sixteen elevation steps, with the walker's feet
+within **15 cm of a roof**.
+
+`development.maxPlinth` is 8 steps — four metres, a storey and a half. One rule, both halves:
+`placeBuilding` refuses with `RESULT.TOO_STEEP`, and `lotFree` refuses a grown lot, which is the
+shape ruling 046 had to fix twice.
+
+**What the grown half can reach today is nothing**, and saying so is part of the rule: a grown
+footprint is at most 2×2, so its spread is one tile step, and `canZone` already refuses a step past
+`maxZoneSlope` (6) — under the limit. It is the PLACED buildings this bites, which is exactly where
+the measurement said the problem was: on a played hilly 128 the worst are a 3×3 coal plant at **28
+steps (fourteen metres)**, a police headquarters at 26 and a rail station at 22. The test for the
+grown half writes the zone layer directly, because the only ground that reaches it is ground
+`canZone` would refuse.
+
+Measured on the played fixtures: **hilly 128 goes from 185 buildings with a worst plinth of 28 steps
+to 129 with a worst of 8**; **rolling 96 is unmoved** at 284 (its worst was already 7); flat 64 never
+had a spread over 1. The 200-game sweep is flat — 1,800 → 1,764 relaxed, 1,585 → 1,604 steady,
+1,541 → 1,520 demanding, 1,568 → 1,580 nodisasters.
+
+**One demanding city of 200 ends empty in era 25's report where era 24 had none, and it is not this
+rule.** Two arms over the sweep's own 200 demanding seeds, the rule off and on: **1 dead and median
+1,550 against 1 dead and median 1,548.** The rule costs demanding two residents. A number that moved
+between two eras is not the same thing as a number the change moved, and the arm is what tells them
+apart.
+
+**And it broke the bridge fixture, which is a finding about the fixture.** `layBridge` picked the
+best crossing and issued it; with the deputy's buildings moved, that crossing's approach was refused
+by J3's slope rule and `saturatedCity` threw. It tries every candidate in score order now — a recipe
+that tries once throws away a whole fixture when its first choice happens to be on a hillside.
+
+**And the hilly walk went red again, which is Q142's lesson arriving on schedule.** The rule moved
+that city hard — 185 buildings to 129, 929 corridors to 1,376, 3 road tiles on water to 25 — and
+`walkthrough 128 hilly` came back with four cliffs on corridors the grader CAN flatten. They are all
+one place, and the probe says what it is: the ground there is **5.7 m above the bare land**, because
+R3's profile and S11's junction drift hold the street up and the field blends back to the land over
+four metres. That is an embankment with no batter — the same shape as the building plinth this slice
+just limited — so it is counted under its own name (`shoulder cliffs`, worst fill **14.7 m**) and
+filed as **Q145**. The criterion that is left is a cliff that is neither the terrain nor a thing the
+grading built, and on both terrains that is **0**.
+
+Gates: `sim` ok (sweep 541 s) with `reports/balance-era25.md`; suite green twice (1,614);
+`walkthrough` green on rolling 96 and hilly 128; `render` ok with the hilly walk in it — **218 s of
+a 240 s budget**, which is the number to use (an earlier 314 s was two gate sets running at once,
+which `gates.mjs` says not to do and which makes the runner accuse itself of a leak).
+
+## A115 — the rain draws (2026-10-03)
+
+Q112, open since B6a: the streak pool pushed 1,140 instances the frame COUNTED — triangles up by
+exactly instances × geometry, `count: 1140`, `visible` true, not culled, in the scene — and no camera
+ever saw one. Seven causes had been ruled out with probes (the hour, the count, the colour, the size,
+the motion shader, the facing, the placement), and the conclusion written down was "the cause is in
+the pool lifecycle".
+
+**It is not in the pool lifecycle.** `settlePools` iterates `Object.values(pools)` and uploads every
+one of them; `make()` sets `frustumCulled = false` on every pool. A rain pool written fresh draws on
+the first run. What B6 had was a placement, and the reason it was never found is that **every probe
+it ran reported a count**. A count is not a picture: the question that finds this in one run is
+*where is instance zero, and how far is that from the camera?*
+
+So the new one is built the other way round. The placement lives in `client/world/rain.js` — pure,
+node-testable — and `rain_shots` reads back the first instance's matrix and the nearest and furthest
+streak from the eye.
+
+**Three defects of my own, each the same shape as B6's, each found by looking at the picture:**
+
+- **A spiral of rain across the sky.** `jitter` is a multiplicative hash with one xorshift, and for
+  CONSECUTIVE k its high bits walk in order — used as an angle it draws a Fibonacci arm. The disc is
+  laid out on the golden angle now and the fall phase on a second irrational, so the two are
+  uncorrelated: an even disc needs no hash at all.
+- **Ten-metre bars of rain.** The pools take TILE units; a streak written in metres is twenty times
+  too big. Then again, in the geometry's own half-width: 0.02 tiles is forty centimetres, so the
+  second shot was a sky full of grey tiles.
+- **Rain forty metres wide in the middle distance.** The column is anchored at the camera, and from
+  the air that is a swarm over one block. It is drawn on foot and in photo mode only — `rainsAt(view)`
+  — which is the markings rung's reasoning and keeps 5,600 triangles out of a frame that cannot
+  resolve a raindrop.
+
+`counts.rain` is in the estimate at eight triangles a streak, because the other half of B6's reason
+for taking the pool out was that a pool which draws nothing still gets priced; the answer to that is
+to price what is actually there. `client_smoke`'s ceiling 75 → 76.
+
+Gates: suite green twice (1,618); `shots` ok (256 s of 300) with `rain_shots` reporting 700 streaks
+on foot — the nearest 0.05 tiles from the eye, the furthest 2 — and **0 from the city camera**;
+`client_smoke` ok at the new ceiling. `reports/smoke-B6-street.png` is the
+picture, and it is the first time rain has been visible in this project.
+
+## A116 — a lot knows its street (2026-10-03)
+
+Q114: `shopProps` measured the strip between the shopfront and the kerb as
+`tileM / 2 + setback − (road.width / 2 + sidewalk)` — **from the config**. On a street that is 3.5 m;
+on T1b's fourteen-metre avenue it is **0.25 m**, and the cars parked in it stood nearly on top of one
+another. Nothing went red: the lot had a frontage and the bays existed.
+
+A lot records `street: { id, half, kerb, avenue }` — the corridor it fronts and that corridor's own
+cross-section, found from the middle of its front edge. `shopProps` measures from that, and **a strip
+narrower than a car is not a parking space**: a shop on an avenue opens straight onto the pavement,
+which is what a high street looks like. The bench and the bike rack stay.
+
+One more reader was measuring the same thing from the config and is now avenue-aware: `rails-l3`'s
+level crossing drew its barriers at a street's half-width, so an avenue crossing a line had its bars
+ending in the middle of the carriageway.
+
+The test is the cheap half of A116's argument for doing this once: it builds the same shops on an
+avenue and on a street, and asserts the avenue's lots KNOW they are on one (`lot.street.avenue`), get
+no bays, and keep their props — proved red on the old rule with "lot 1 parks cars in 0.50 m".
+
+Gates: suite green twice (1,619); `kits` ok (331 s of 960) — `street_shots` is the one that
+photographs a shopfront, and it is unchanged on a street. The spec's §4.4 carries the record.
+
+## A113 half two — the house against its street (2026-10-03)
+
+The other half of Q102, and the expensive one: `HOUSE.width` **10 → 13 m** and the residential
+setback **3 → 1.5 m**, so a one-tile lot is 17 m across and a detached house fills 13 of it. The
+8 m carriageway is then **0.6 of a house**, which is the proportion D4 measured in the reference;
+it was 1.3 houses at street level and two from the air before the verge and this.
+
+The setback is an inset on all four sides, so halving it moves the GAPS rather than the house —
+which is why both numbers had to move together, and why the item said so.
+
+**Three tests were pinning the old geometry, and each was a constant that had been measured once:**
+
+- `homes.test.js` drove every case at 14 and 34 m lots — the old sizes — and asserted a house is
+  9–11.5 m wide. The lots are 17 and 37 now and the band is 9–14.5, with a second assertion that
+  says what the number is FOR: the house is wider than the street it stands on.
+- `facade.test.js` allowed a roof 8 m above the walls; the same pitch over a 13 m house is 8.1. It
+  measures the rise against the SPAN now (under three quarters of it), which is what "a roof, not a
+  spire" means at any size.
+- `cars.test.js` put a door within 20 m of its lot's centre. A two-tile lot's door is 20.9 m from
+  the centre because the lot is deeper, not because the door moved: it measures from the lot's own
+  BOX now, within a tile — which also allows the clamp that keeps a driveway out of a junction mouth.
+
+**And one gate number moved for a reason that is not about what it measures.** The share of car
+spawns that come out of a door went 41% → 24%, and the ladder says it is a step between setback 2.5
+and 2 rather than a slope: over the same fixture at 3, 2.5, 2, 1.5 and 1 it reads 41, 41, 24, 24, 24,
+while the street carries the same traffic (67 cars alive against 64) and every lot still has a door.
+So the criterion is a fifth rather than a third, with that table in the test, and a second assertion
+that the street is as busy — which is the number that would matter if this ever were a regression.
+
+Gates: suite green twice (1,619); `render` ok (lanes_dump 207 s) and `walkthrough` **unchanged** —
+0 unfinished, 0 refusals, 0 lots walked into, 0 cliffs — because the walker walks the pavement, which
+is a function of the corridor and not of the lot; `budget` ok (266 s); `kits` ok (331 s) — `street_shots` and `civic_shots` are the two that photograph
+a frontage and both still count what they asked for.
+
+`reports/.house-street.png` is the picture: a house that fills its frontage, with the carriageway a
+band in front of it rather than the subject.
+
+## A118 — the railway cuts and embanks (2026-10-04)
+
+Q120: R3's grading is keyed to the ROAD network, so a rail corridor followed the terrain. Grading it
+the way a road is graded would put the line in the HEIGHT FIELD, and the field is what every lot,
+lane, prop and walker reads — a re-measure of the whole project for a line nobody stands on.
+
+So the line gets its own profile and the ground stays where it is:
+
+- `profilesFor(network, sampleAt, …)` in `client/world/grade.js` is the shape `createGround` already
+  built for the roads, extracted so a second network can have one. The rail's is built from the BARE
+  land at `rail.maxGrade` — **4%**, a steep main line, against a road's 15%.
+- **A line's ends are not a junction with a street.** Pinned at the land, `gradeProfile` says so
+  itself ("nothing with fixed ends can obey it") and draws a straight line between them — which left
+  the track at the terrain's own gradient. With `freeEnds` the two ends are pulled toward each other
+  until the end-to-end grade fits, and the relaxation smooths what is between. That is what a cutting
+  IS.
+- `rails-l3` draws the ballast, the sleepers and both rails on the profile, and the kerb face under
+  the ballast becomes the **earthwork**: S13's per-point `drops` carry it down to the ground on an
+  embankment and up to it in a cutting, which is the retaining wall.
+- The train runs on `model.railHeightAt` rather than `heightAt`, or it would sink into its own
+  embankment.
+
+**Measured, with the lever (`rail.maxGrade: 0`) for the before:** on a played `hilly` 96 the line
+followed the ground at **7% with no earthwork at all**; it now climbs **4%** and gets there by
+cutting **2.19 m** and filling 0.88. On the 64 the gate photographs, the land is gentle: 4.2% → 4.0%
+and 2 cm of earthwork, which is the right answer for that ground and says nothing about the question
+— so the hilly arm is in the gate as a MEASUREMENT beside the three pictures.
+
+And the gate's gradient is read from the track **as drawn**, not from the profile: with the grading
+off there is no profile, and reading one reports 0% for a line following a hillside — a number that
+says "fine" about the defect it is there to catch.
+
+**And the `transport` set turned up a gate whose city had outgrown it.** `airport_shots` threw: "no
+flat 6x4 beside a road in seed 1003 after 20 years". It was not the slope rule and not the plinth —
+on a 48 map the deputy's city now covers every 6×4 the map has. Of 1,368 candidate footprints **678
+are crossed by a road, 291 hold a building, 251 are zoned and 148 are the wrong terrain; none is
+free**, where the tool's own comment had already once relaxed "beside a road" for the same reason.
+The item it serves is "an airport, drawn", not "an airport on a 48": the map is 64 now, where there
+are 222 sites, and the three pictures come back with `airport:ok` and a plane taxiing. That is the
+fourth instrument this round that was calibrated against a city five eras ago.
+
+Gates: suite green twice (1,620); `rail_shots` ok with the hilly arm; `transport` ok (241 s of 300).
+The renderer spec's §5.5 carries it.
+
+## A121 — the deputy goes looking for a crossing (2026-10-04, era 26)
+
+Q143, the last of P100's nine, and the one that asked a question rather than named a defect: **is the
+far bank worth anything?**
+
+S13 gave the deputy the ability to span a river its block happens to meet, and measured what that is
+worth — fifteen encounters in a twenty-year played 96 and not one bridge. `openTheCrossing` is the
+rule that goes and looks. It scans the town's OWN flooded tiles rather than the map, four directions
+from each, up to `build.bridgeSpan` tiles of water, landing on three tiles of ground that are ours to
+pave — and it only counts as a crossing if there is **room beyond it**: `deputy.bridgeNeedsRoom` (40)
+free unzoned tiles within `bridgeRoomReach` (6) of where the bridge lands. A crossing onto a rock is
+a crossing to nowhere.
+
+The levers come from a ladder over eight 64 `rolling` seeds: never → 1,740 residents; at 900 with
+room 40 → **1,830**; at 400 with room 40 → 1,829; at 400 with room 20 → 1,789; at 900 with room 20 →
+1,790. **The threshold barely matters and the room does.**
+
+**And then the two measurements disagreed, which is the finding.** The 200-game sweep reads flat —
+1,764 → 1,749 relaxed, 1,604 → 1,600 steady, 1,520 → 1,511 demanding, 1,580 → 1,565 nodisasters, the
+same one dead demanding city as era 25. The per-seed arm says something else entirely: over twelve
+seeds the rule **fires in two**, every city where it does not fire is unchanged to the resident, and
+the two where it does go **1,506 → 1,866** — seed 202 alone from 1,483 to **2,202**, half a city
+again.
+
+So the answer to Q143 is: **the far bank is worth a quarter of a city where the town is hemmed in by
+water, and nothing at all where it is not.** The sweep reads flat because two cities in twelve are
+hemmed in — the average of a rare large effect and ten zeroes. A number that is flat over two hundred
+games is not the same as a rule that does nothing, and the measurement that tells them apart is the
+one taken where the rule fires.
+
+Gates: `sim` ok (sweep 556 s) with `reports/balance-era26.md`; suite green twice (1,622); `render` ok
+(218 s of 240) and the played 96 is unmoved — 284 buildings, 0 refusals, 0 cliffs, the same 1,356
+steps of deck over 15 legs — because that city's river is wider than the span nearly everywhere,
+which is the same fact `saturatedCity` lays its own crossing for.
+
+## F2 — the shot list and the storyboard (2026-10-04)
+
+The film lane's second item, and the first instrument in this project that renders the game as a
+**minute** rather than as a frame. `client/world/film.js` is the arithmetic — five cameras, four
+easings, `problemsIn`, `lengthOf`, `shotAt`, `poseAt` — pure and in `client/world/` for the usual
+reason: framing that only exists inside three is framing nobody can check. `client/debug/tour.js`
+poses a renderer from it, and `tools/film.mjs` drives that over its own server, one PNG a frame
+plus an HTML contact sheet.
+
+**The caller owns the clock.** A frame is `frame(i, fps)` and nothing in the page reads
+`performance.now()`, so the storyboard at 1 fps and the film at 30 are the same camera, and a film
+reviewed on this machine is the film another machine renders.
+
+`data/film/sixty-seconds.json` is 61 s in seven shots, and its coordinates were **found in the
+fixture** rather than remembered: the longest straight street near the centre of mass (43.5,48.5 →
+56.5,48.5), the nearest four-armed crossroads (53.5,33.5), the civic cluster and the furthest
+suburb. `test/film.test.js` plays that same city — seed 1003, 96 tiles, twenty years with the
+deputy — and checks every walk endpoint against `model.nearestCorridor`, because the first version
+of that test validated the walks against a GENERATED world, which has no streets in it at all and
+therefore proves nothing.
+
+**Three defects, and all three were in the harness rather than in the city.**
+
+**One: a module served as `application/octet-stream`.** The page imports `tools/lib/saturated.mjs`
+and the tool's own static server had no `.mjs` in its type table, so Chrome refused the module and
+the page simply never became ready. Thirty seconds to fix and only because the readiness wait had
+already been taught to print the page's console errors instead of a timeout.
+
+**Two: `setTime` names a target that only a running clock arrives at.** `createTimeOfDay` fades
+over about a second and the fade is driven by `update(dt)` — and the film's frames were drawn with
+`dt: 0` for determinism. So the "night" street and the "sunset" high street were both rendered in
+flat daylight, with the stats cheerfully reporting `time: night`. The fix is a `jump`: a film CUTS
+between hours, so the hour arrives on the frame that asks for it. `setTime(name, instant)`, and
+`test/time-of-day.test.js` has it.
+
+**Three: `dt: 0` is `life=0` with extra steps — for the fourth time.** D4 found it in every
+screenshot the harness had ever taken; this is the same lesson one lane along. The first storyboard
+had an empty road in every frame. The film now settles the street cache frozen (`dt: 0`, so the
+chunk baker is deterministic) and then takes **one** step of life per frame, capped at a thirtieth
+of a second and derived from the frame number alone. Traffic fills over about ten steps, so a fixed
+warm-up of 24 steps runs before the first frame — otherwise the opening shot is a city nobody lives
+in and the closing one is not.
+
+**And the counter was aimed at the wrong crowd.** The gate's first life check read `stats.peds`,
+which is the STREET crowd alone — and that crowd is 0 on a street the city crowd already holds
+people on (B7's two crowds over one graph, `reserve: crowd.heldOn`). A walk frame with 216 people
+posed in it reported zero. It counts `peds + pedsCityPosed` now, which is what `role_shots` has
+always counted.
+
+**Then the storyboard did its job twice more.**
+
+**The traffic vanished on a cut.** Frames 49 and 56 came back with **0 cars** in a city that had 167
+the frame before: a style change builds a NEW renderer, and a new renderer's life starts at nobody.
+The warm-up is per renderer now, and the gate fails a frame that has no cars after one that did —
+which is a cheap check for a class of defect that a single-frame tool cannot have.
+
+**The high street was a factory.** The first list took "the longest straight corridor near the centre
+of mass" for its walk, and frame 021 is a sawtooth industrial roof: ten houses, a works and two
+shops. `tools/film_spots.mjs` ranks corridors by what STANDS on them now, and the high street is
+corridor 819 — six shopfronts over seven tiles, 43.5,39.5 → 43.5,46.5. The two walks take opposite
+pavements of it, and the frames have Optician, Books, Bakery, Deli, Cycles, Newsagent and Toys in
+them, lit at night. A proxy for a subject is not the subject, and the only instrument that could see
+it was a picture somebody opened.
+
+**Two more shots were aimed at a proxy.** "Out to the suburbs" panned to the FURTHEST house (79,26)
+and ended over a forest; "the works, in paint" orbited a point near the centre of mass with no works
+near it. `film_spots.mjs` prints the densest patch per zone now — homes 61.2,51.6 (seventeen within
+five tiles), works 35.6,41.9 (eight) — and both shots are aimed at those, the pan tightened from a
+24-tile span to 15 so a garden is a garden rather than a green square.
+
+**And it found Q146, which is not F2's to fix.** Those same walk frames have **nobody on the
+pavement**. The street crowd is 0 of a cap of 120 — B7's `reserve` working as designed, the spread
+city crowd having claimed the demand — while the city crowd reports 122 posed and 122 near in the
+same frame. Painted magenta, that frame has **0 magenta pixels of 230,400**. Counted, posed, and not
+where the camera is looking: E7's defect shape one crowd along, and the first time anything has
+looked at a street for a minute.
+
+Gates: `node tools/gates.mjs film` — it is a set of its own, for `kits`' reason (61 frames of a
+played 96 on SwiftShader is five minutes and no other set can absorb it). Measured: **61 frames in
+292.9 s**, 33k triangles at the aerial and 332k on the night high street, 115–167 cars. Suite green;
+`docs`, `purity`, `omissions` and `reachability` green; `client/precache.json` regenerated for the
+two new client files. `reports/storyboard/` is ignored — 61 PNGs and 15 MB, rewritten whole by every
+run, like the compare sheet's per-view captures; what a film delivers is F3's `media/`.
+
+**Four renders of the same minute, and every one of them changed the list.** That is the item's own
+claim doing its work: a storyboard costs five minutes and a film costs an afternoon, so the framing
+is decided by looking at sixty-one pictures rather than by watching a film.
+
+## W1 — the session seam (2026-10-04)
+
+The worker lane's first item, and the one that is supposed to be invisible. `client/session.js` is
+`state`, `apply`, `undo`, `tick`, `onChange` and `hash`, wrapping the reducer on the same thread.
+W2 moves the reducer into a worker behind those same six members; the point of building it
+empty-handed first is that nothing above it changes, and that is a claim the fixtures can check.
+
+**The test that matters is the fixtures replayed THROUGH it.** `tools/fixtures.mjs`'s `replay` takes
+a `through` now, so `test/session.test.js` runs all three pinned fixtures over the seam and checks
+every step's hash, result and events. A seam that dropped an event or re-ordered a system is event
+drift, which is the loudest alarm this project has. Beside it, a scripted six-command world played
+twice — once directly, once through the seam — compared by `hashState` after every command,
+including a refusal, which must be a refusal on both sides and must not move a hash.
+
+**Two things the item did not list.**
+
+`undoLast` is a **second hole in the seam**: the client's one way of changing the city that is not a
+command, called straight from the controller and mutating the state in place. W2 would have moved
+the state to another thread and left undo undoing a copy. The session owns it now, and the
+controller takes the SESSION where it used to take the state — so it cannot reach the reducer at
+all, which is the kind of boundary `test/purity.test.js` was written for.
+
+And `renderer.worldChanged()` does **not** hang off `onChange`, which the item assumed it would. It
+rebuilds the model — 53.3 ms on a 96, 184.7 ms on a 256 (Q60, D6) — and hanging it on every accepted
+command means paying that on every tick, eight times a second at fast speed. It stays at the build
+sites. What hangs off the seam is the tick's own work (the HUD, the audio cues, the walker's
+ambience, the autosave), which leaves the clock as `setInterval(() => sim.tick(), ms)` and gives
+`onChange` a real consumer rather than a capability with no control.
+
+**What it cost**, 3 runs of 2,400 ticks on a played 96 at era 26: direct 933.9 / 822.3 / 808.7 ms,
+through the seam 819.9 / 825.0 / 811.9 ms. The first run is JIT warm-up (the seam arm ran second and
+came out 12% *faster*); the two settled runs are **+0.3% and +0.4%**, which is 0.34 ms a tick either
+way. Both arms end at population 2,065. `node tools/gates.mjs quick` 494 s against 495 s before it.
+
+The engine's ten side-effect imports moved from `game.js` into `session.js` with the reducer, where
+they belong: they are what makes `apply` a whole game rather than an empty clock, and every node
+script that has ever ticked a dead city got it wrong by leaving them out.
+
+Gates: suite green twice (1,635 — the seam added 7 tests); `quick` green with every gate unchanged;
+`client/precache.json` regenerated.
+
+## W2 — the simulation on another thread (2026-10-04)
+
+`specs/plan.md` §0 put the simulation in a Web Worker in the first draft and `worker/` has been an
+empty directory for the life of the project. It is not empty now: `worker/sim-worker.js` is four
+lines of thread and `worker/sim-host.js` is the simulation — init, apply, undo, tick, snapshot,
+save — answering with `{ result, events, tick, hash, patch }`.
+
+**The host is a plain module on purpose.** Node cannot load a Web Worker, so everything that decides
+lives where node can reach it and the thread is plumbing. That is the rule the renderer already
+follows (ruling 037), and it is why `test/session-worker.test.js` can replay both generated fixtures
+through the simulation, patch a mirror from what comes back, and check `hashState(mirror)` against
+the worker's own hash at every step — in milliseconds, in the unit suite. The browser proves the
+thread itself; node proves the game.
+
+**What crosses.** The tile layers that actually changed, as transferred buffers — one pass over
+eighteen layers against the last copy sent, which is 0.4 ms on a 96 and needs no engine change (the
+item offered reducer-maintained dirty flags as the alternative; this one measured well enough that
+a second copy of the truth was not worth it). A road sends `road` and not `elevation`;
+`test/session-worker.test.js` asserts both halves of that. Everything else — buildings, players,
+requests, contracts, the scalars — is small and goes whole.
+
+**The mirror is the state.** `client/mirror.js` patches an ordinary engine state object in place,
+so the renderer, the HUD, the minimap and cityviewer's model read what they always read, and the
+object identity never changes. The desync detector hashes it once a month and shouts.
+
+### What it cost, and what it found
+
+**The worker was playing a different balance.** `worker_smoke`'s first run had the two arms at
+37 buildings, population 360 and the same tick — and **5,300 apart in the treasury**. The cause is
+`client/content.js`: the page loads `data/balance.json`, `data/buildings.json` and the quest
+catalogue into the engine at boot, and a worker that imports `engine/` gets the MIRRORS in
+`engine/rules.js` and `engine/catalogue.js` and no quests at all. The fix is not to let the worker
+fetch — two threads reading the same files can still read them at different times — but to hand the
+content across in the init message: the same bytes the page is running on, by construction.
+`loadedContent()` is what carries them.
+
+**Everything that wrote to the state in the page had to stop.** `CITY.state` is a mirror, and the
+next patch overwrites whatever was poked into it — which is exactly what happened to four gates:
+`save_smoke`'s fixture city came back with 0 buildings, population 0 and tick 2, because the city it
+had built was replaced by the worker's own between the last `await` and the return statement. Three
+answers, each where it belongs:
+
+- The UI gates go **through the seam**: `CITY.apply(command)`, `CITY.tick(400)` (one message for
+  four hundred ticks), and `?funds=` for the treasury they used to poke — the starting treasury is
+  an engine option and now a boot lever, so the money is part of the city rather than a write to a
+  copy of it.
+- The measurement harnesses — `budget_gate`, `play_shot`, `street_proof`, `mvp_acceptance` — take
+  **`?worker=0`** and say why. They deliberately drive the engine inside the page (and
+  `mvp_acceptance` arms a wildfire by setting `state.disaster`, which no command can do), and they
+  measure the renderer or the rules, neither of which cares which thread the reducer ran on.
+- The pointer gates **wait**: `tools/lib/settle.mjs` blocks until `CITY.pending` reaches zero. Not a
+  sleep — the count of commands posted and unanswered — so it returns as soon as the city is in hand
+  and fails when the simulation never answers.
+
+**A build click is a round trip now**, which the item called a UI fact and it is: the ghost is
+already hidden when the command goes out and the result — the toast, the model rebuild, the HUD
+refresh — arrives when the simulation has actually done it. `undo` crosses too; it was W1's second
+hole and it would have been undoing a copy.
+
+### The gate
+
+`tools/worker_smoke.mjs` plays the same 46 commands and 200 ticks in the real page twice, once on
+each arm, and compares: **1f41dfccc566819c on both**, 37 buildings, population 360, treasury
+9,030,261, tick 201 — and a city played on this thread loads into the worker at the same hash. It
+also checks that the worker is what the page uses when nobody says otherwise, because a fallback
+nobody notices is a feature nobody has. 6.6 s, in `quick` (504 s of 540).
+
+The omissions sweep on the slice's own work found the last one: `session.dispose()` existed and
+nothing called it, so a style change, a load and "new city" each left a worker still playing the old
+city in the background. `stop()` terminates it beside the renderer now.
+
+Gates: suite green twice (1,645 — the seam's two test files are 23 of them); `quick` green with the
+worker on, including `offline_smoke`, which proves the worker file is in the precache and the
+service worker serves it; `budget` green on the local arm (264 s). `engine/`, `shared/statehash.js`
+and every fixture hash are untouched, which was the item's own "must not change".

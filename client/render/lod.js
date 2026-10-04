@@ -18,6 +18,9 @@
 
 import { eyeOf, verticalSpan } from "../world/orbit.js";
 import { civicShape, parkHasPond } from "../world/civic-spec.js";
+import { vergeAt } from "../world/ground-colour.js";
+import { MOTION } from "../world/motion.js";
+import { getConfig } from "../world/config.js";
 import { TICKS_PER_YEAR } from "../constants-mirror.js";
 
 /** Tiers, coarsest last. Each names what it keeps. */
@@ -52,6 +55,13 @@ const DEFAULT_COSTS = {
   ped: 36,      // measured from the pedestrian pool by `createInstances` (E7)
   pedCity: 12,  // the figure seen from the air, `client/world/figure.js` (B7)
   marking: 2,
+  // A bridge's deck: a box a tile, measured in `instances.js` like the rest.
+  deck: 12,
+  // A verged road tile is three bands instead of one quad (A113): four
+  // triangles more, and arithmetic rather than a measurement.
+  verge: 4,
+  // A rain streak: two crossed quads, eight triangles (Q112, A115).
+  rain: 8,
   pole: 12,     // a box; vertical, so it cannot be flattened
   wireHub: 2,
   wireArm: 2,
@@ -330,6 +340,9 @@ function estimateOne(counts, plan) {
       ? (counts.pedsCity ?? 0) * costs.pedCity + (counts.pedsCityNear ?? 0) * costs.ped
       : 0)
     + (plan.markings ? counts.markArms * costs.marking * loose : 0)
+    + (counts.decks ?? 0) * costs.deck
+    + (counts.verges ?? 0) * costs.verge
+    + (counts.rain ?? 0) * costs.rain
     // Every network the renderer draws has a term here. Wire had none, and
     // `counts.poles` was computed and then never read — a term missing from
     // the estimate is a term the budget cannot trade away (P35). A pipe is not
@@ -685,13 +698,16 @@ function extrasOf(b, tick) {
   if (b.zone === 0 && def) {
     const shape = civicShape(def);
     if (shape.hub) n += 1;
-    n += (shape.emits?.length ?? 0) * 6;
+    n += (shape.emits?.length ?? 0) * MOTION.smoke.puffs;
     if (shape.flag) n += 1;
     if (def === "park") n += 3 + (parkHasPond(b) ? 1 : 0);
   }
   if (b.zone === 1 && (b.level ?? 0) <= 2) n += 1.5;
   if (Number.isFinite(tick) && tick - (b.builtTick ?? 0) < TICKS_PER_YEAR / 2) n += 1;
-  if ((b.flags & 4) !== 0) n += 6;
+  // A burning building (FLAG_BURNING): its column is denser than a chimney's
+  // since A114 — `MOTION.fire.puffs` rather than `MOTION.smoke.puffs` — and the
+  // estimate charges what the renderer actually pushes.
+  if ((b.flags & 4) !== 0) n += MOTION.fire.puffs;
   return n;
 }
 
@@ -704,6 +720,13 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   let roads = 0;
   let poles = 0;
   let markArms = 0;
+  // Road tiles standing on water: each is a deck slab, which is the only road
+  // surface a crossing has — the rest of a road is painted into the terrain
+  // mesh, and under a bridge the terrain is the riverbed (S13, ruling 047).
+  let decks = 0;
+  // Road tiles that keep their verges: the terrain mesh splits each into three
+  // bands, which is four triangles more than a plain tile (A113).
+  let verges = 0;
   let wireTiles = 0;
   let wireArms = 0;
   let railTiles = 0;
@@ -715,7 +738,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   const CHUNK = 16;
   const blank = () => ({
     buildings: 0, trees: 0, props: 0, roads: 0, poles: 0, groundChunks: 0,
-    markArms: 0, wireTiles: 0, wireArms: 0, railTiles: 0, railArms: 0, cars: 0, peds: 0,
+    markArms: 0, decks: 0, verges: 0, wireTiles: 0, wireArms: 0, railTiles: 0, railArms: 0, cars: 0, peds: 0,
     waterTiles: 0, kerbs: 0, groundProps: 0,
   });
   const chunkAt = (x, y) => {
@@ -732,6 +755,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   // Read once, and optional: a hand-built state with no zone layer is simply
   // unzoned (S2's plot kerbs are the first thing here to read it).
   const zones = state.tiles.zone;
+  const cfg = getConfig();
   const MARSH = 7;
   const WATER = 3;
   const SHALLOW = 4;
@@ -757,6 +781,9 @@ export function countScene(state, bounds, country = undefined, forest = undefine
       const arms = markingInstances(state.tiles.road[i] & 15);
       markArms += arms;
       part.markArms += arms;
+      const wet = state.tiles.terrain[i] === WATER || state.tiles.terrain[i] === SHALLOW;
+      if (wet) { decks += 1; part.decks += 1; }
+      if (vergeAt(state.tiles.road[i], cfg) !== undefined) { verges += 1; part.verges += 1; }
     }
     if ((state.tiles.wire[i] & NET) !== 0) {
       poles += 1;
@@ -901,7 +928,7 @@ export function countScene(state, bounds, country = undefined, forest = undefine
   }
   return {
     buildings, trees, props, roads, poles, groundChunks, waterTiles,
-    markArms, wireTiles, wireArms, railTiles, railArms, chunks, kerbs, groundProps,
+    markArms, decks, verges, wireTiles, wireArms, railTiles, railArms, chunks, kerbs, groundProps,
     // Filled in by the caller from what the street cache measured last frame.
     streetPerChunk: 0,
     // Filled in by the caller from the traffic system's live count: the number

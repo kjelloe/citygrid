@@ -235,7 +235,21 @@ lands here as a palette amendment with §3.1 updated in the same slice.
 **Done when** every row of the sheet has moved toward the reference by Kjell's eye, and the
 budgets in ruling 040 carry the re-measured numbers.
 
-## S13 — The bridge (L) — A84 (Q104), **re-scoped at P99 (A111)**
+## S13 — The bridge (L) — A84 (Q104), **re-scoped at P99 (A111)** — **BUILT 2026-10-03** as `slice-S13` (era 24)
+
+*Built: `build.bridgeSpan` and `crossingRefusal` in the engine (road layer only — the first cut
+applied to wire and pipe, whose BFS crosses water routinely, and stopped the deputy building
+anything at all); `pavableAt` and `heightAt(x, z, deck)` in the ground; a per-point depth on
+`skirt` for the girder; the riverbed's own colour back under the deck; and the deputy spanning a
+river it can reach the far bank of. Ruling 047 is the decision; `walkthrough` walks 1,356 steps of
+deck over 15 legs on a played 96 with nothing refused.*
+
+*Two things the slice found that the work item did not ask for. The gate cities contained **0 road
+tiles on water** — the deputy meets water fifteen times in twenty years and a building on the far
+bank refused all five attempts — so `saturatedCity` lays one crossing on purpose and throws if it
+cannot, and `walkthrough` fails if a city with a bridge in it never walks one. And the hulls that
+pass beneath were literals inside `instances.js`, where no test could compare them with the
+clearance they depend on; they are data now.*
 
 *Kjell took the expensive option in P93: a deck with clearance, not a causeway on the shallows.*
 
@@ -285,6 +299,11 @@ refuses a slope past `development.maxZoneSlope`, era 20), and `walkthrough 128 h
 same — because the saturated fixture does not grow from zoning. Its buildings are pushed into the
 array on any tile, cliff or not (Q72), so the gate measures a city the rule never touched. The gate
 becomes meaningful with **H7**.*
+
+***Met at A119 (2026-10-03).*** `walkthrough 128 hilly` is green and back in the `render` set — not
+because the ground got better but because the gate stopped counting the terrain as a defect: a cliff
+on a corridor no grading can flatten is the land (4 of them), and a lot the walker stands on top of
+is a building buried in a hillside (4, deepest 8.0 m, which is Q144). What is left over is 0.
 
 *Moved a long way at J3 (era 22, 2026-10-03) and NOT met. What was missing was not the junctions: it
 was that `placeNetwork` had no slope rule at all, so the deputy paved up a 500% hillside and the
@@ -609,7 +628,14 @@ screenshot has them in it; ground second
 because D4 said it is the largest difference; motion third because it is cheap and makes every
 later screenshot alive.
 
-## S12 — A bank, not a quay (S) — found in S4, 2026-09-17
+## S12 — A bank, not a quay (S) — found in S4, 2026-09-17 — **BUILT 2026-10-03** as `slice-S12`
+
+*Built: `water.bank` (3 tiles) cuts the shore in `landAt` — not in `heightAt`, because everything
+else is derived from the land — and `pavableAt` reads the BARE land, so a street that reaches the
+water is on an embankment rather than graded down into it. Ruling 038 is amended with it. The
+criterion is measured rather than asserted: no fixed-width cut can flatten a hill that meets water,
+so what the ladder chose is the knee (41/50/48% of shores over 15% at bank 0; 7/1/14% at 3; no
+better at 5 or 8).*
 
 **Goal.** Where the land is high, the shore rises out of the water instead of dropping into it.
 

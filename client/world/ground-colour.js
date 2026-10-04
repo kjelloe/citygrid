@@ -19,7 +19,7 @@
 
 import { jitter } from "./hash.js";
 import { getConfig } from "./config.js";
-import { NET_PRESENT } from "../constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../constants-mirror.js";
 import { zoneTint } from "./params.js";
 import { createCountryside } from "./countryside.js";
 import { TERRAIN_GRASS, TERRAIN_SAND, TERRAIN_WATER, TERRAIN_SHALLOW, TERRAIN_DIRT } from "../constants-mirror.js";
@@ -79,6 +79,30 @@ function floodFromRoads(state, rings) {
   // Everything the flood never reached is as far as far goes.
   for (let i = 0; i < out.length; i += 1) if (out[i] === 255) out[i] = rings;
   return out;
+}
+
+
+/** The VERGE of one road tile, from its layer byte: how wide its two grass
+ * strips are and which way they run, or `undefined` where there are none.
+ *
+ * Exported because two readers need the same answer — the terrain mesh, which
+ * splits a verged tile into three bands, and `lod.js`'s census, which prices
+ * them. A second copy of this predicate is a cost table that goes stale.
+ */
+export function vergeAt(road, cfg) {
+  if ((road & NET_PRESENT) === 0) return undefined;
+  const mask = road & 15;
+  // Only a STRAIGHT run. A junction, a corner and a stub are paved corner to
+  // corner, which is what they are on the ground.
+  if (mask !== 5 && mask !== 10) return undefined;
+  const spec = (road & NET_AVENUE) !== 0 ? cfg.road.avenue : cfg.road;
+  const metres = cfg.tileM / 2 - (spec.width / 2 + cfg.road.sidewalk);
+  // Narrower than `road.minVerge` and it is a sliver: four triangles a tile for
+  // a line nobody can see from the air. An avenue's would be half a metre, and
+  // an avenue filling its tile is correct. `minVerge` large turns the whole
+  // thing off, which is how one harness shoots the before and the after.
+  if (metres < cfg.road.minVerge) return undefined;
+  return { metres, eastWest: (mask & 10) !== 0 };
 }
 
 export function createGroundColour(state, palette) {
@@ -220,7 +244,13 @@ export function createGroundColour(state, palette) {
 
   function computeTile(x, y) {
     const index = y * width + x;
-    if (built(index)) {
+    const terrain = state.tiles.terrain[index];
+    // A bridge tile is a road over WATER, and the ground under a deck is still
+    // the river (S13). The road's own colour arrives with the carriageway the
+    // street baker lays at the deck's height; painting the bed asphalt as well
+    // put a tarmac stripe along the riverbed under every crossing.
+    const wet = terrain === TERRAIN_WATER || terrain === TERRAIN_SHALLOW;
+    if (built(index) && !wet) {
       // Flat, and deliberately so: the grid is the thing being protected.
       if ((state.tiles.road[index] & NET_PRESENT) !== 0) return palette.road;
       // A ZONE IS A COLOUR OF THE GROUND TOO (slice V4), for the same reason a
@@ -259,6 +289,24 @@ export function createGroundColour(state, palette) {
     return value;
   }
 
+  /** The VERGE of a road tile: how wide its two grass strips are and which way
+   * they run, or `undefined` where there are none (Q102, A113).
+   *
+   * A road tile is a carriageway, two pavements and two verges (ruling 035) —
+   * which is what the L3 bake draws at street level and what the city camera
+   * did not: it painted the whole 20 m tile asphalt, so from the air a street
+   * was two houses wide against the reference's two thirds of one.
+   *
+   * Only a STRAIGHT run has them. A junction, a corner and a stub are paved
+   * corner to corner, which is what they are on the ground — and only where the
+   * strip is wide enough to be worth four triangles: an avenue's is half a
+   * metre, and an avenue filling its tile is correct.
+   */
+  const verge = (x, y) => (inside(x, y) ? vergeAt(state.tiles.road[y * width + x], cfg) : undefined);
+
+  /** The colour a tile shows at its EDGE, which is its verge where it has one. */
+  const edgeColour = (x, y) => (verge(x, y) !== undefined ? natural(x, y) : tile(x, y));
+
   /** What the land here is made of, ignoring anything built on it (A38). */
   function natural(x, y) {
     return naturalTile(clampX(x), clampY(y));
@@ -270,7 +318,12 @@ export function createGroundColour(state, palette) {
    * tile's own colour the moment one of them is not — so a road, a zone or a
    * building has a hard edge and a meadow does not. */
   function corner(x, y, c) {
-    const own = tile(x, y);
+    // What the tile shows at its EDGE, which for a road with a verge is grass
+    // rather than tarmac (A113) — so the two sides of a tile boundary blend the
+    // same four colours and there is no seam between a verge and the field
+    // beside it. The hard edge did not go away; it moved inward, to the
+    // carriageway, where `terrain.js` splits the quad.
+    const own = edgeColour(x, y);
     if (blend <= 0) return own;
     const [dx, dy] = CORNER[c];
     let r = 0;
@@ -280,8 +333,10 @@ export function createGroundColour(state, palette) {
       for (let i = 0; i <= 1; i += 1) {
         const nx = x + dx + i;
         const ny = y + dy + j;
-        if (inside(nx, ny) && built(ny * width + nx)) return own;
-        const hex = tile(nx, ny);
+        // A road with a verge meets this corner with GRASS, so it is not a hard
+        // edge any more: the hard edge moved inward, to the carriageway (A113).
+        if (inside(nx, ny) && built(ny * width + nx) && verge(nx, ny) === undefined) return own;
+        const hex = edgeColour(nx, ny);
         r += r8(hex); g += g8(hex); b += b8(hex);
       }
     }
@@ -294,5 +349,5 @@ export function createGroundColour(state, palette) {
     );
   }
 
-  return { tile, corner, natural };
+  return { tile, corner, natural, verge };
 }

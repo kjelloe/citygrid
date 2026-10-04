@@ -105,17 +105,41 @@ export function markAllDirty(terrain) {
 /** Rebuilds one chunk: two triangles per tile, flat-shaded, coloured by terrain
  * type. Flat rather than smoothed because a city grid wants to read as tiles. */
 function buildChunk(state, chunk, styleName, ground, height) {
+  const tileM = getConfig().tileM;
   const x0 = chunk.cx * CHUNK;
   const y0 = chunk.cy * CHUNK;
   const x1 = Math.min(x0 + CHUNK, state.width);
   const y1 = Math.min(y0 + CHUNK, state.height);
   const tiles = (x1 - x0) * (y1 - y0);
 
-  const positions = new Float32Array(tiles * 6 * 3);
-  const colours = new Float32Array(tiles * 6 * 3);
+  // Six vertices a tile, and eighteen where a straight road keeps its verges
+  // (Q102, A113): three bands across the run — grass, carriageway, grass —
+  // because a road tile painted asphalt corner to corner is two houses wide
+  // from the air where the reference's is two thirds of one.
+  let verged = 0;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) if (ground.verge(x, y) !== undefined) verged += 1;
+  }
+  const positions = new Float32Array((tiles + verged * 2) * 6 * 3);
+  const colours = new Float32Array((tiles + verged * 2) * 6 * 3);
   const colour = new THREE.Color();
   let p = 0;
   let c = 0;
+
+  /** Two triangles over a band of the tile, wound so the normal points up. */
+  const band = (ax, az, bx, bz, hs, cs) => {
+    const quad = [
+      [ax, hs[0], az, cs[0]], [bx, hs[3], bz, cs[3]], [bx, hs[1], az, cs[1]],
+      [ax, hs[0], az, cs[0]], [ax, hs[2], bz, cs[2]], [bx, hs[3], bz, cs[3]],
+    ];
+    for (const [vx, vy, vz, hex] of quad) {
+      positions[p] = vx; positions[p + 1] = vy; positions[p + 2] = vz;
+      p += 3;
+      colour.setHex(hex);
+      colours[c] = colour.r; colours[c + 1] = colour.g; colours[c + 2] = colour.b;
+      c += 3;
+    }
+  };
 
   for (let y = y0; y < y1; y += 1) {
     for (let x = x0; x < x1; x += 1) {
@@ -138,22 +162,41 @@ function buildChunk(state, chunk, styleName, ground, height) {
       const c01 = ground.corner(x, y, 2);
       const c11 = ground.corner(x, y, 3);
 
-      // Two triangles, corners at integer coordinates so tiles meet exactly.
-      //
       // Counter-clockwise seen from +Y, so the normal points UP. Winding the
       // other way — which is the natural reading order — puts the normal at
       // -Y, and the whole ground plane is backface-culled: a city of roads and
       // buildings floating on an empty sky.
-      const quad = [
-        [x, h00, y, c00], [x + 1, h11, y + 1, c11], [x + 1, h10, y, c10],
-        [x, h00, y, c00], [x, h01, y + 1, c01], [x + 1, h11, y + 1, c11],
-      ];
-      for (const [vx, vy, vz, hex] of quad) {
-        positions[p] = vx; positions[p + 1] = vy; positions[p + 2] = vz;
-        p += 3;
-        colour.setHex(hex);
-        colours[c] = colour.r; colours[c + 1] = colour.g; colours[c + 2] = colour.b;
-        c += 3;
+      //
+      // The corners are at integer coordinates so tiles meet exactly; a verged
+      // tile splits along one axis only, so its two shared edges are untouched
+      // and it still meets its neighbours corner to corner.
+      const v = ground.verge(x, y);
+      if (v === undefined) {
+        band(x, y, x + 1, y + 1, [h00, h10, h01, h11], [c00, c10, c01, c11]);
+      } else {
+        const f = v.metres / tileM;
+        const paved = ground.tile(x, y);
+        // Along the run the band spans the whole tile; across it the splits are
+        // at `f` and `1 - f`. The heights come from the tile's own corners,
+        // linearly along the split axis — the same surface, cut in three.
+        const lerp = (a, b, t) => a + (b - a) * t;
+        if (v.eastWest) {
+          const hA0 = lerp(h00, h01, f);
+          const hA1 = lerp(h10, h11, f);
+          const hB0 = lerp(h00, h01, 1 - f);
+          const hB1 = lerp(h10, h11, 1 - f);
+          band(x, y, x + 1, y + f, [h00, h10, hA0, hA1], [c00, c10, c00, c10]);
+          band(x, y + f, x + 1, y + 1 - f, [hA0, hA1, hB0, hB1], [paved, paved, paved, paved]);
+          band(x, y + 1 - f, x + 1, y + 1, [hB0, hB1, h01, h11], [c01, c11, c01, c11]);
+        } else {
+          const h0A = lerp(h00, h10, f);
+          const h1A = lerp(h01, h11, f);
+          const h0B = lerp(h00, h10, 1 - f);
+          const h1B = lerp(h01, h11, 1 - f);
+          band(x, y, x + f, y + 1, [h00, h0A, h01, h1A], [c00, c00, c01, c01]);
+          band(x + f, y, x + 1 - f, y + 1, [h0A, h0B, h1A, h1B], [paved, paved, paved, paved]);
+          band(x + 1 - f, y, x + 1, y + 1, [h0B, h10, h1B, h11], [c10, c10, c11, c11]);
+        }
       }
     }
   }

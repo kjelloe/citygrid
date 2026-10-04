@@ -11,9 +11,12 @@
     "stopLine": 2,
     "maxGrade": 0.15,
     "junctionDrift": 6,
+    "deckClearance": 5,
+    "deckDepth": 1,
     "speed": 11,
     "maxDensity": 12,
     "dip": 0.16,
+    "minVerge": 1,
     "kerb": 0.15,
     "camber": 0.035,
     "lift": 0.02,
@@ -24,6 +27,7 @@
     }
   },
   "rail": {
+    "maxGrade": 0.04,
     "width": 4,
     "gauge": 1.5,
     "railHalf": 0.08,
@@ -42,6 +46,10 @@
     "perBody": 3,
     "openTilesPerBoat": 12,
     "mooredCap": 24,
+    "hullW": 2.2,
+    "hullH": 1.6,
+    "ferryW": 5,
+    "ferryH": 3.4,
     "sailSpeed": 4,
     "ferrySpeed": 9,
     "cargoSpeed": 6,
@@ -83,7 +91,7 @@
   "lot": {
     "setback": {
       "none": 2,
-      "residential": 3,
+      "residential": 1.5,
       "commercial": 0,
       "industrial": 2
     },
@@ -166,7 +174,8 @@
     "lift": 0.06,
     "wade": 0.4,
     "opacity": 0.7,
-    "shelf": 1
+    "shelf": 1,
+    "bank": 3
   },
   "fog": {
     "streetNear": 25,

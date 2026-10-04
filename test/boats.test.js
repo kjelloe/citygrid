@@ -244,3 +244,19 @@ test("the boats ask nobody for the time", () => {
     assert.equal(pattern.test(source), false, `client/life/boats.js uses ${pattern}`);
   }
 });
+
+// --- under the bridge (slice S13, A84) ----------------------------------------
+
+test("the tallest vessel in the city fits under a bridge deck", () => {
+  // S13's deck is a number chosen for this: `road.deckClearance` is the deck's
+  // surface over the water and `road.deckDepth` the girder under it, so what
+  // passes beneath has the difference. The hulls were literals inside
+  // `instances.js` until this slice — a three module, which node cannot read,
+  // so the clearance and the thing it is a clearance FOR could drift apart
+  // with nothing to notice.
+  const { deckClearance, deckDepth } = DEFAULTS.road;
+  const free = deckClearance - deckDepth;
+  const tallest = Math.max(DEFAULTS.boat.ferryH, DEFAULTS.boat.hullH);
+  assert.ok(free > tallest,
+    `${free} m under the girder and the tallest hull is ${tallest} m`);
+});

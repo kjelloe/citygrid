@@ -456,6 +456,12 @@ export async function runPerfCard({ play, hold, map: wanted }) {
     fixture: `saturated ${map.size}x${map.size} ${map.terrain}, seed 1003, 400 ticks, `
       + `commuter load ${TRAFFIC}`,
     simulation: "paused for the sweep",
+    // What the sweep was ASKED to hold each step for. `?perfHold=1` is a gate
+    // shortening a nine-step sweep, and on a software renderer a one-second
+    // hold of the street step is one frame — so a card that says 0 frames is
+    // reporting the hold, not a step that drew nothing, and the reader has to
+    // be able to tell those apart (`tools/ui_smoke.mjs`).
+    heldSeconds: hold > 0 ? hold : 0,
     build: await buildId(),
     machine: machine(session),
     steps: rows,

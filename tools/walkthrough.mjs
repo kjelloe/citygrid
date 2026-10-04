@@ -21,19 +21,29 @@
 //     because nothing grades a road ALONG its length (Q41). A hill is not a
 //     hole, and a gate that cannot tell them apart measures neither.
 //
-//   node tools/walkthrough.mjs [size]
+// Since S13 it also counts how much of the walk was spent ON a bridge deck, and
+// fails when the city has a crossing and the walk never set foot on one: the
+// three crossing counters above are FAILURE counters and all three read 0 in a
+// city with no bridge in it, which is every city this gate measured until
+// `saturatedCity` started laying one (ruling 047).
+//
+//   node tools/walkthrough.mjs [size] [terrain] [nobridge]
+//
+// `nobridge` builds the same city without that crossing — the before-and-after
+// lever, the same one `rail` has.
 
 import { saturatedCity } from "./lib/saturated.mjs";
 import { createModel } from "../client/world/model.js";
 import { createCollision } from "../client/world/collision.js";
 import { createWalker } from "../client/life/walker.js";
 import { DEFAULTS } from "../client/world/config.js";
+import { isWater } from "../engine/terrain.js";
 
 const size = Number(process.argv[2] ?? 96);
 // `node tools/<gate>.mjs <size> <terrain>` — Q64 is a question about a `hilly`
 // map and there was no way to run this on one (D6).
 const terrain = process.argv[3] ?? "rolling";
-const { state } = saturatedCity({ size, terrain });
+const { state } = saturatedCity({ size, terrain, bridge: process.argv[4] !== "nobridge" });
 
 const t0 = Date.now();
 const model = createModel(state);
@@ -43,15 +53,39 @@ const buildMs = Date.now() - t0;
 /** How far apart the ground is sampled, and the drop that counts as a hole. */
 const SAMPLE = 2;
 const CLIFF = 1;
+/** Ground this far from the bare land is FILL: the grade machinery holding a
+ * street up, not the terrain. */
+const FILL = 1;
 /** A leg is finished when the walker is within this of the far end. Two metres
  * is the length of the last stride, not a margin for failure. */
 const ARRIVED = 2;
 const DT = 0.1;
 
 const walker = createWalker(collision);
+/** Road tiles standing on water: what the deck is FOR, and what makes the
+ * crossing counters mean anything (S13). */
+let crossings = 0;
+for (let i = 0; i < state.tiles.road.length; i += 1) {
+  if ((state.tiles.road[i] & 16) !== 0 && isWater(state.tiles.terrain[i])) crossings += 1;
+}
 let legs = 0;
 let unfinished = 0;
 let cliffs = 0;
+// A cliff on a corridor no grading can flatten is the TERRAIN, counted under its
+// own name exactly as a steep refusal is (A119). The gate's criteria were
+// absolute — no cliff, nothing walked into — on a city that moves with every
+// balance era, so it was green at era 22 and red at era 23 with no change to the
+// rule it tests. Attribution rather than a looser number: what is left over is a
+// defect wherever it happens.
+let steepCliffs = 0;
+// And a third: the shoulder of an EMBANKMENT. Where the land is steep, the
+// grade machinery holds a street above it (S11's junction drift and R3's
+// profile) and the blend falls back to the land over `road.blend` metres — on
+// `hilly` that is 5.7 m of fill falling away over four, which the walker meets
+// as a cliff at the kerbside. It is cut-and-fill rather than a hole in the
+// ground, it is the same shape as A120's building plinth, and it is Q145.
+let shoulderCliffs = 0;
+let worstFill = 0;
 let refusals = 0;
 // Refused on a street the grade machinery could not flatten — the terrain, not
 // the ground under a street (H7).
@@ -60,6 +94,12 @@ let steepRefusals = 0;
 // builds and nothing draws a deck for (S13).
 let crossingRefusals = 0;
 let crossingLegs = 0;
+// And the other direction (S13): how much of the walk was actually ON a deck.
+// `crossingRefusals` and `crossingLegs` are failure counters, and both read 0
+// in a city with no crossing in it — which is every city these gates measured
+// until `saturatedCity` laid one on purpose.
+let deckSteps = 0;
+let deckLegs = 0;
 
 /** Is this point on a tile that carries a road AND water? */
 function onWater(city, x, z) {
@@ -114,6 +154,8 @@ for (const corridor of model.corridors) {
     walker.teleport(from.x, from.z, yaw, 0);
     let lastFloor = walker.foot;
     let sinceSample = 0;
+    const deckBefore = deckSteps;
+    const crossedHere = () => deckSteps > deckBefore;
     // Generous: the walk is 1.6 m/s, so this is three times the time the leg
     // needs even if the walker slides along a wall for part of it.
     const steps = Math.ceil((length / 1.6 / DT) * 3);
@@ -140,6 +182,7 @@ for (const corridor of model.corridors) {
         else if (steep) steepRefusals += 1;
         else refusals += 1;
       }
+      if (step > 1e-9 && onWater(state, walker.pose.x, walker.pose.z)) deckSteps += 1;
       travelled += step;
       sinceSample += step;
       if (sinceSample >= SAMPLE) {
@@ -147,8 +190,16 @@ for (const corridor of model.corridors) {
         const jump = Math.abs(walker.foot - lastFloor);
         if (jump > worstJump) worstJump = jump;
         if (jump > CLIFF) {
-          cliffs += 1;
-          if (failures.length < 8) {
+          // How far the ground here is from the bare land: the fill the street
+          // is standing on.
+          const fill = Math.abs(model.heightAt(walker.pose.x, walker.pose.z)
+            - model.landAt(walker.pose.x, walker.pose.z));
+          const onFill = fill > FILL;
+          if (onFill && fill > worstFill) worstFill = fill;
+          if (steep) steepCliffs += 1;
+          else if (onFill) shoulderCliffs += 1;
+          else cliffs += 1;
+          if (!steep && !onFill && failures.length < 8) {
             failures.push(`  ground jumped ${jump.toFixed(2)} m over ${SAMPLE} m at ${walker.pose.x.toFixed(0)}, ${walker.pose.z.toFixed(0)}`);
           }
         }
@@ -156,6 +207,7 @@ for (const corridor of model.corridors) {
       }
       if (Math.hypot(walker.pose.x - to.x, walker.pose.z - to.z) <= ARRIVED) break;
     }
+    if (crossedHere()) deckLegs += 1;
     metres += travelled;
     if (Math.hypot(walker.pose.x - to.x, walker.pose.z - to.z) > ARRIVED) {
       // Stopped AT the water's edge, or stopped by something else. The first is
@@ -184,6 +236,15 @@ for (const corridor of model.corridors) {
 // one. A player walks towards a building; so does this.
 let probed = 0;
 let entered = 0;
+// Standing inside a lot's FOOTPRINT on top of what is built there is not walking
+// through a wall: the building is BURIED (A119). A lot is seated on its lowest
+// corner and a plinth makes up the difference (ruling 038), so on a hillside the
+// ground at the lot's middle rises to the roof — all four of `hilly` 128's are
+// this, each with the walker's feet 7.9 m above the seat and within 15 cm of the
+// box's top. `resolve` is right not to treat it as a wall; the defect is that
+// the building is in the hill, which is Q144's question wearing another hat.
+let buried = 0;
+let worstBuried = 0;
 for (const lot of model.lots) {
   const from = model.nearestCorridor(lot.cx, lot.cz, DEFAULTS.tileM * 3);
   if (!from) continue;
@@ -193,10 +254,19 @@ for (const lot of model.lots) {
   for (let s = 0; s < 400; s += 1) walker.update(DT, { forward: 1, run: true });
   const inside = walker.pose.x > lot.x0 && walker.pose.x < lot.x1
     && walker.pose.z > lot.z0 && walker.pose.z < lot.z1;
-  if (inside) {
-    entered += 1;
-    if (failures.length < 8) failures.push(`  walked INTO lot ${lot.id} at ${walker.pose.x.toFixed(0)}, ${walker.pose.z.toFixed(0)}`);
+  if (!inside) continue;
+  const boxes = collision.near(walker.pose.x, walker.pose.z, 0.5);
+  // At or within a step of the roof: the walker is on the hillside over the
+  // building, not in a room.
+  const over = boxes.length > 0 && boxes.every((b) => walker.foot >= b.yTop - collision.stepUp);
+  if (over) {
+    buried += 1;
+    const deep = Math.max(...boxes.map((b) => walker.foot - b.yBase));
+    if (deep > worstBuried) worstBuried = deep;
+    continue;
   }
+  entered += 1;
+  if (failures.length < 8) failures.push(`  walked INTO lot ${lot.id} at ${walker.pose.x.toFixed(0)}, ${walker.pose.z.toFixed(0)}`);
 }
 
 // How steep the streets are, along their length (slice R3, A42).
@@ -254,16 +324,25 @@ console.log(`unfinished      ${unfinished}`);
 console.log(`blocked steps   ${walker.blocked}`);
 console.log(`refusals        ${refusals}`);
 console.log(`steep refusals  ${steepRefusals}   (on corridors no grading can flatten — the terrain, not a defect)`);
+console.log(`walked on decks ${deckSteps} steps over ${deckLegs} legs   (${crossings} road tiles stand on water)`);
 console.log(`crossing stops  ${crossingRefusals} steps, ${crossingLegs} legs   (at a road tile standing on water — the causeway S13 replaces with a deck)`);
-console.log(`lots walked at  ${probed}, walked into ${entered}`);
+console.log(`lots walked at  ${probed}, walked into ${entered}`
+  + `   (${buried} buried in the hill, deepest ${worstBuried.toFixed(1)} m — Q144, not a wall)`);
 console.log(`steepest street ${(steepest * 100).toFixed(1)}%`
   + `${steepestAt ? ` at ${steepestAt.x.toFixed(0)}, ${steepestAt.z.toFixed(0)}` : ""}`
   + `  (${over} of ${samples} samples over ${(DEFAULTS.road.maxGrade * 100).toFixed(0)}%)`);
 console.log(`ungradeable    ${ungradeable} of ${model.corridors.length} corridors`
   + `  — their two junctions are further apart than ${(DEFAULTS.road.maxGrade * 100).toFixed(0)}% allows`);
-console.log(`cliffs          ${cliffs} (steepest ${worstJump.toFixed(2)} m over ${SAMPLE} m, cliff at ${CLIFF})`);
+console.log(`cliffs          ${cliffs} (steepest ${worstJump.toFixed(2)} m over ${SAMPLE} m, cliff at ${CLIFF})`
+  + `   ${(cliffs / Math.max(1, metres / 1000)).toFixed(2)} per km walked`);
+console.log(`terrain cliffs  ${steepCliffs}   (on corridors no grading can flatten — the land, not the ground under a street)`);
+console.log(`shoulder cliffs ${shoulderCliffs}   (at the edge of an embankment the grading built, worst fill ${worstFill.toFixed(1)} m — Q145)`);
 for (const line of failures) console.log(line);
 
+if (crossings > 0 && deckLegs === 0) {
+  console.log("\nwalkthrough FAILED: the city has a bridge in it and the walk never set foot on one");
+  process.exit(1);
+}
 if (walker.blocked === 0) {
   console.log("\nwalkthrough FAILED: nothing was ever in the way, so this measured a field");
   process.exit(1);

@@ -250,16 +250,56 @@ surface and a plane at exactly the level z-fights with the sand under it.
    as seams and a cross-hatch (`smoke-S2-edge.png`). A corner's height is the mean of the water that
    meets there, so neighbouring tiles share it: a lake is one plane and a river still steps down.
 
-**No bridge, and no causeway either.** `isBuildable` refuses water, so no road can be placed on a
-water tile: over five played cities there were **0** road tiles on water. The causeway of Q58 —
-`surfaceAt` returning the road, `heightAt` holding the carriageway at the surface — is real code with
-a test behind it and nothing in the game can reach it (ruling 026's standard). **Q104** asks whether
-a road may cross water at all; until it is answered a bridge deck has nothing to stand on.
+**The railway has its own profile, and the ground does not move (Q120, A118).** R3's grading is the
+ROAD network's: a rail corridor followed the terrain, and on a hillside the track climbed gradients
+no train could take. It is graded now at `rail.maxGrade` (4%, against a road's 15%) by the same
+`gradeProfile`, through `profilesFor` — but the profiles stay OUT of `heightAt`, because the field is
+what every lot, lane, prop and walker reads and a line nobody stands on is not worth re-measuring the
+city for. `rails-l3` draws the ballast, the sleepers and the rails on the profile and hangs the
+earthwork under it with S13's per-point `skirt`: down to the ground on an embankment, up to it in a
+cutting. A line's ENDS are free, unlike a street's junction heights — pinned at the land,
+`gradeProfile` can only draw a straight line between them, which is what left the track on the
+terrain. Measured on a played `hilly` 96: 7% and no earthwork before, 4% with 2.19 m of cutting and
+0.88 m of fill after.
 
-**The walker stays out** (Q58). `collision.floorAt` refuses a water tile deeper than `water.wade`,
-so the edge is a paddle and open water is a wall. A causeway is exempt: `surfaceAt` returns the
-road rather than the water where a corridor crosses it, and `heightAt` holds the carriageway at the
-water's surface instead of on the riverbed — which is the causeway Q58 accepted.
+**The bank (S12, ruling 038 amended).** The cut above is the WET half. Its dry half is
+`water.bank` tiles wide: in `landAt`, the ground is the water's own level at the waterline and the
+bare land three tiles inland, eased between them, and never raised. One tile — which is what a
+surface capped at the bank amounts to — is a 7.44 m drop over 20 m where the land stands high, a
+quay wall rather than a shore. `pavableAt` reads the BARE land, so a street that reaches the water
+is on an embankment above the beach rather than graded down into it; `water.bank: 0` is the lever
+that measures the before and the after from one harness.
+
+**The bridge (S13, A84, ruling 047).** `isBuildable` refuses water, so a BUILDING cannot stand on
+it — but a road always could, and `build.roadOverWater` has always been charged for one. What was
+missing was the deck: `heightAt` clamped the carriageway to the water's surface, which is the
+causeway of Q58, and A84 overruled it. Four things make the deck:
+
+1. **`pavableAt` is what a road stands on**, and over water it is the water's level plus
+   `road.deckClearance`. The corridor's profile is graded from it, so the ramps either side come out
+   of `gradeProfile` inside `road.maxGrade` and the deck is level in the middle.
+2. **`heightAt(x, z, deck = false)` is what the GROUND does**, which under a deck is still the
+   riverbed. Three readers want that answer and take it through `cornerHeightAt`: the terrain mesh,
+   the overlay quads and the camera's ground orbit. With the deck in the corner table a crossing was
+   a four-metre earth embankment with the river inside it — measured as 0.206 m of lift on an
+   avenue's mesh corners, which a test now pins at zero.
+3. **The girder.** `skirt` takes a depth PER POINT (`options.drops`), so the kerb face at the
+   carriageway edge hangs from the deck down to `deckClearance - deckDepth` over the water and is a
+   kerb again at the bank. Without it the deck is a slab of tarmac floating in the air.
+4. **The bed keeps its colour.** `computeTile` answered `palette.road` for any road tile, so the
+   riverbed under a crossing was painted asphalt under the water plane.
+
+**What passes beneath reads the clearance.** `deckClearance` 5 m minus `deckDepth` 1 m is 4 m, and
+the tallest hull in the city is the ferry's 3.4 m. The hulls were literals inside `instances.js` —
+a three module, invisible to node — and are `boat.ferryH`/`hullH` now, so `test/boats.test.js` can
+compare the clearance with the thing it is a clearance for.
+
+**The walker stays out of the water, and on the deck** (Q58, S13). `collision.floorAt` refuses a
+water tile deeper than `water.wade`, so the edge is a paddle and open water is a wall. A crossing is
+exempt: `surfaceAt` returns the road rather than the water where a corridor crosses it, at the
+deck's height. `walkthrough` walks 1,356 steps over 15 legs on decks in a played 96 and reports both
+numbers, because the three crossing counters it already had were failure counters and read 0 in a
+city with no bridge in it.
 
 ## 5.6 Slope rules the world model must keep
 

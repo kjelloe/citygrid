@@ -64,8 +64,8 @@ export function createGround(state, network) {
   }
   minHeight -= cfg.water.depth;
 
-  /** The bare land, metres. */
-  function landAt(x, z) {
+  /** The bare land, metres — the bilinear field, with no water in it. */
+  function bareLandAt(x, z) {
     const u = x / tileM;
     const v = z / tileM;
     const i = Math.max(0, Math.min(width, Math.floor(u)));
@@ -79,6 +79,31 @@ export function createGround(state, network) {
     return (h00 * (1 - tx) + h10 * tx) * (1 - tz) + (h01 * (1 - tx) + h11 * tx) * tz;
   }
 
+  /** The land, with the BANK cut into it (S12).
+   *
+   * S4 capped the water at its lowest dry neighbour and cut a channel under it,
+   * which ended the river painted across a hillside — and left the cut one tile
+   * wide, so where the land stands high the shore fell 7.44 m over 20 m. That
+   * is 37%: a quay wall, and a cliff the walker cannot climb.
+   *
+   * The cut is `water.bank` tiles wide and it only ever CUTS: the ground is the
+   * water's own level at the waterline and the bare land `bank` tiles inland,
+   * eased between the two, and a point already at or below the water is left
+   * alone. It belongs here rather than in `heightAt` because everything else is
+   * derived from this: the corridor profiles are graded from `pavableAt`, the
+   * lots are seated on it, and a bank cut only into the blended field would
+   * leave the streets on it floating.
+   */
+  function landAt(x, z) {
+    const bare = bareLandAt(x, z);
+    const bank = cfg.water.bank;
+    if (bank <= 0) return bare;
+    const shore = water.shoreAt(x, z);
+    if (shore === undefined || shore.tiles >= bank) return bare;
+    if (bare <= shore.level) return bare;
+    return shore.level + (bare - shore.level) * sstep(0, bank, shore.tiles);
+  }
+
   // Heights at every tile CORNER, filled on first ask.
   //
   // The terrain mesh wants four per tile and its neighbours want the same ones:
@@ -90,7 +115,9 @@ export function createGround(state, network) {
     if (!corners) {
       corners = new Float32Array((width + 1) * (height + 1));
       for (let j = 0; j <= height; j += 1) {
-        for (let i = 0; i <= width; i += 1) corners[j * (width + 1) + i] = heightAt(i * tileM, j * tileM);
+        for (let i = 0; i <= width; i += 1) {
+          corners[j * (width + 1) + i] = heightAt(i * tileM, j * tileM, false);
+        }
       }
     }
     const i = cx < 0 ? 0 : cx > width ? width : cx;
@@ -106,6 +133,35 @@ export function createGround(state, network) {
   }
 
   const blend = cfg.road.blend;
+
+  /** The height a ROAD may sit at, which over water is a deck (S13, A84/A111).
+   *
+   * The crossings have always existed — `placeNetwork` charges
+   * `build.roadOverWater` and the deputy's streets reach both banks — and until
+   * this slice `heightAt` clamped the road down to the water's SURFACE, which is
+   * the causeway Q58 accepted and A84 rejected. The bank was then a step of
+   * about 0.7 m that the walker could not climb: `walkthrough` counted 939
+   * refused steps at crossings in one run and not one anywhere else.
+   *
+   * The deck rides `road.deckClearance` above the water. Everything else falls
+   * out of that, because this is what the corridor PROFILE is built from:
+   * `gradeProfile` ramps on and off it inside `road.maxGrade`, `heightAt` inside
+   * the corridor returns the profile, and the walker's floor, the lane graph,
+   * the ribbons and the kerbs all read the one height function (ruling 038).
+   */
+  function pavableAt(x, z) {
+    const tile = tileOf(x, z);
+    if (tile >= 0 && water.isWater(tile)) {
+      const level = water.levelOf(tile);
+      if (level !== undefined) return level + cfg.road.deckClearance;
+    }
+    // The BARE land, not the cut bank (S12). The bank is what the natural
+    // ground does at a shore; a road approaching one is on an embankment above
+    // it, and grading the approach from the cut dragged every street that
+    // reaches water down to the waterline — on the pond fixture the carriageway
+    // dived 3.9 m into the channel and the walker was stopped at the abutment.
+    return bareLandAt(x, z);
+  }
 
   /** Every corridor's graded profile, by corridor id (slice R3, A42).
    *
@@ -124,9 +180,9 @@ export function createGround(state, network) {
     // `road.junctionDrift` of its own ground (S11, A87). Shared by every
     // corridor that meets there, as it always was: two streets that disagree
     // about the height of the junction between them is a step in the road.
-    const nodeHeight = relaxNodes(network, landAt, maxGrade, cfg.road.junctionDrift);
+    const nodeHeight = relaxNodes(network, pavableAt, maxGrade, cfg.road.junctionDrift);
     for (const c of network.corridors) {
-      const profile = gradeProfile(c.points, landAt, {
+      const profile = gradeProfile(c.points, pavableAt, {
         maxGrade,
         // The junction box is level, and it is the same box the kerbside stops
         // short of (E3). Node heights alone were not enough: a street still
@@ -137,16 +193,24 @@ export function createGround(state, network) {
         // included, which is what lets a gate shoot the before and the after
         // from one harness (R3).
         flatEnds: maxGrade > 0 ? c.frontage : 0,
-        ends: [nodeHeight.get(c.from) ?? landAt(c.points[0].x, c.points[0].z),
-          nodeHeight.get(c.to) ?? landAt(c.points[c.points.length - 1].x, c.points[c.points.length - 1].z)],
+        ends: [nodeHeight.get(c.from) ?? pavableAt(c.points[0].x, c.points[0].z),
+          nodeHeight.get(c.to) ?? pavableAt(c.points[c.points.length - 1].x, c.points[c.points.length - 1].z)],
       });
       profiles.set(c.id, profile);
       if (profile.steepest > steepestStreet) steepestStreet = profile.steepest;
     }
   }
 
-  /** The ground, corridors and water applied. */
-  function heightAt(x, z) {
+  /** The ground, corridors and water applied.
+   *
+   * `deck` is what a ROAD stands on, which over a crossing is S13's bridge
+   * deck; without it the answer is the ground itself, which under that deck is
+   * still the riverbed. Three readers want the second: the terrain mesh, the
+   * overlay quads and the camera's orbit, all of them through
+   * `cornerHeightAt`. Everything that belongs to the street — the ribbons, the
+   * lane graph, the walker's floor, the props — wants the first.
+   */
+  function heightAt(x, z, deck = true) {
     const land = landAt(x, z);
     let wsum = 0;
     let hsum = 0;
@@ -183,17 +247,16 @@ export function createGround(state, network) {
     let h = (hsum + land * wBase) / (wsum + wBase);
     const tile = tileOf(x, z);
     if (tile >= 0 && water.isWater(tile)) {
-      // The SURFACE first, so a causeway stays a causeway: a road over water is
-      // the road's own profile clamped to the water it crosses, which is what
-      // Q58 accepted. Then the bed, but only where no corridor is holding the
-      // ground up — the road is not on the riverbed.
-      const level = water.levelOf(tile);
-      h = Math.min(h, level);
-      const loose = Math.exp(-6 * wsum);   // 1 in open water, ~0 under a road
       // The depth at the POINT, not at the tile (S4). Per tile it is 0 wherever
       // the tile touches land, so a river two tiles wide — every tile of which
       // touches land — had no bed at all and was a blue strip at bank height.
-      h = Math.min(h, level - water.depthAt(x, z) * loose);
+      const bed = water.levelOf(tile) - water.depthAt(x, z);
+      // Open water is the bed; under a corridor it is the corridor, because the
+      // deck rides over the water rather than on it (S13, A84). `open` is the
+      // same "no road here" weight the base blend uses, so the bed fades out
+      // under a deck with no kink at the bank.
+      const open = deck ? Math.exp(-6 * wsum) : 1;
+      h = open * Math.min(h, bed) + (1 - open) * h;
     }
     return h;
   }

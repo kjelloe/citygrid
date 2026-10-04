@@ -77,8 +77,10 @@ Built in three layers, in the Higashiyama order:
    plateau. And `heightAt` over water answers the BED, not the surface: `water.depth` below the
    level, flooded out from the shore over `water.shelf` tiles so a beach is a beach. `surfaceAt`
    still answers the water — what is AT a water tile is the water — with a `depth`, which is what
-   `collision.floorAt` refuses to stand in (Q58). A corridor crossing water beats both: a causeway
-   is a road at the water's surface, not tarmac on a riverbed. `client/world/water.js`.
+   `collision.floorAt` refuses to stand in (Q58). A corridor crossing water beats both: since S13 it
+   is a DECK `road.deckClearance` above the surface, not a causeway at it and not tarmac on a
+   riverbed, and `heightAt`'s third argument is how the terrain mesh asks for the bed underneath
+   it instead (ruling 047). `client/world/water.js`.
 
 Buildings are seated on the **lowest** corner of their lot and a plinth makes up the difference
 (both worlds do this; a building seated on the mean floats at one corner). Picking stops
@@ -125,6 +127,14 @@ a `SETBACK` that depends on zone (a shop stands on the pavement, a house behind 
 lawn pool already draws the garden). The **frontage** is the lot edge facing a road tile; ties
 resolve by the building id hash, and a lot with no road neighbour faces the nearest corridor
 (it also has no traffic, which the engine already models).
+
+A lot also records **which corridor it fronts** and that corridor's cross-section —
+`street: { id, half, kerb, avenue }` — because everything measured from the front edge outward was
+being answered from the CONFIG (Q114, A116). The parking bays took the strip between the shopfront
+and the kerb as `tileM / 2 + setback − (road.width / 2 + sidewalk)`, which is 3.5 m on a street and
+**0.25 m on T1b's avenue**, where the parked cars stood on top of one another. A strip narrower than
+a car is not a parking space: a shop on an avenue opens onto the pavement, which is what a high
+street looks like.
 
 The frontage is what the facade grammar builds against (06) and what the nav graph attaches
 doors to (09). `layoutPlots` from Higashiyama is not needed as such - the lots are given, not

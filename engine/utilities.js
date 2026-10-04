@@ -294,6 +294,15 @@ register(CMD_PLACE_BUILDING, function placeBuilding(state, command) {
   if (def.needsFlat === true && dropAcross(state, x, y, w, h) > rules().airport.maxDrop) {
     return fail(RESULT.INVALID);
   }
+  // And no building stands on a plinth taller than `development.maxPlinth`
+  // (A120, Q144). A building is seated on the lowest corner of its lot and a
+  // plinth makes up the difference (ruling 038), so a footprint spanning
+  // sixteen elevation steps is a building buried in a hillside with a four-
+  // metre wall of base on its downhill side — which is what S12's shore shot
+  // shows at the waterline, and what `walkthrough` counts as "buried".
+  if (dropAcross(state, x, y, w, h) > rules().development.maxPlinth) {
+    return fail(RESULT.TOO_STEEP);
+  }
   // A gate stands on its line (T2). Power and a road are reasons it is DEAD,
   // not reasons it cannot be built — `gates.js` says which.
   if (def.needsRail === true && !touchesRail(state, x, y, w, h)) {

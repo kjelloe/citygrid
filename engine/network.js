@@ -120,6 +120,41 @@ function isAdjacent(state, a, b) {
   return dx + dy === 1;
 }
 
+/** Does this run cross water in a way a bridge can be built over (S13, A84)?
+ *
+ * The engine has always allowed a road over water and charged
+ * `build.roadOverWater` for it; A84 believed otherwise, because no 64x64 deputy
+ * city had ever paved one, and H7's played 96 has ten road tiles standing on
+ * shallow water (A111). So the rule is not permission. It is:
+ *
+ *   - a crossing may be at most `build.bridgeSpan` tiles of water long, and
+ *   - it must reach dry land at BOTH ends — a pier is not a bridge, and a road
+ *     that stops in the river leaves the far bank where it was.
+ *
+ * Answered as a result code rather than silently, because the player is looking
+ * at the water they just tried to pave.
+ */
+function crossingRefusal(state, indices) {
+  var span = rules().build.bridgeSpan;
+  var run = 0;
+  for (var i = 0; i < indices.length; i += 1) {
+    var wet = isWater(state.tiles.terrain[indices[i]]);
+    if (!wet) { run = 0; continue; }
+    // A crossing has to START from land: the first cell of the run cannot be
+    // water, or the road begins in the river.
+    if (i === 0) return RESULT.INVALID;
+    run += 1;
+    if (run > span) return RESULT.INVALID;
+    // And it has to END on land, which is the next cell of the run — a run
+    // that finishes wet is a pier.
+    if (i === indices.length - 1) return RESULT.INVALID;
+    // Cells arrive in order; a jump to a non-neighbour is a second stroke in
+    // one command, and the water either side of the jump is two crossings.
+    if (!isAdjacent(state, indices[i - 1], indices[i])) return RESULT.INVALID;
+  }
+  return RESULT.OK;
+}
+
 export function placeNetwork(tx, kind, indices) {
   var spec = NETWORKS[kind];
   if (!spec) {
@@ -129,6 +164,21 @@ export function placeNetwork(tx, kind, indices) {
   var state = tx.state;
   var placed = [];
   var i;
+
+  // The crossing rule is about the RUN rather than about a tile, so it is asked
+  // once before the loop that stages them (S13) — and only of the ROAD layer. A
+  // bridge is what carries a vehicle and a person; a cable and a pipe cross
+  // water on their own terms and always have, which is what `wireOverWater` and
+  // `pipeOverWater` are, and the deputy's carrier search crosses a river every
+  // time it joins two banks to one grid. A rail crossing is a bridge too and is
+  // left for the slice that draws one.
+  if (spec.layer === "road") {
+    var crossing = crossingRefusal(state, indices);
+    if (crossing !== RESULT.OK) {
+      reject(tx, crossing);
+      return;
+    }
+  }
 
   for (i = 0; i < indices.length; i += 1) {
     var index = indices[i];

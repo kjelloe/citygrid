@@ -11,8 +11,10 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 23,
+  era: 26,
   build: {
+    _bridge: "S13 (A84, A111): how many tiles of water one crossing may span. The engine has always allowed a road over water and charged roadOverWater for it - A84 believed otherwise because no 64x64 deputy city had ever paved one, and H7's played 96 has ten such tiles - so the rule S13 adds is a SPAN and an end on dry land, not permission. Six tiles is 120 m, which is a river rather than a lake: the renderer gives the run a deck at a fixed height with a ramp either end inside road.maxGrade, and a ramp that long at 15% is already 18 m of climb.",
+    bridgeSpan: 6,
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
     pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
     clearForest: 3,
@@ -69,6 +71,8 @@ var RULES = {
   development: {
     _slope: "H6 (A100): the steepest step in elevation units between a tile and a four-neighbour that may still be zoned. Six, because that is the grade a STREET may climb: road.maxGrade is 15%, a tile is 20 m and an elevation step is 0.5 m, so 15% of 20 m is 3 m is six steps. You may not zone ground a street could not be built on. Measured over three 128 maps a style: it leaves rolling at 100% of its buildable tiles (93% are at 4 or less) and flat at 100%, and takes hilly from 100% to 41% - which is the point, and is still 17,000 tiles of city.",
     maxZoneSlope: 6,
+    _plinth: "A120 (Q144): the elevation SPREAD a building's footprint may stand on, in steps. A building is seated on the lowest corner of its lot and a plinth makes up the difference (ruling 038) - so on a hillside the ground at the lot's middle climbs to the roof and what is drawn is a building in the hill with a wall of base below it. S12 cut the natural shore and left exactly this: the hard edges at a waterline are lots on their plinths. Eight steps is four metres, a storey and a half - a basement level on a slope reads, and past it the building is buried: walkthrough's four 'walked into' lots on hilly 128 are each 16 steps, with the walker's feet within 15 cm of a roof. Measured over three played cities: flat 64 has a maximum spread of 1 step and loses nothing; rolling 96 has 11 of 284 buildings over 4 steps and NONE over 8, so it loses nothing either; hilly 128 has 31 of 185 over 4, 19 over 8 and 7 over 16, and the worst are the big civic footprints - a 3x3 coal plant at 28 steps is fourteen metres. So the rule bites hilly ground and only hilly ground, which is where the picture is wrong.",
+    maxPlinth: 8,
     _roadSlope: "J3 (A112): the steepest step ALONG a run that may still be paved, in elevation units. A lot refuses ground too rough to stand on - maxZoneSlope, the max step to any neighbour - and a road refuses a CLIMB too steep to drive, which is the step between consecutive tiles of the run; a street along a contour across a hillside has a gentle grade and a steep neighbour, and the first cut used the lot's test and took a played hilly city from 1,872 residents to 217. Twelve steps is six metres over a twenty-metre tile, about 30%: steeper than a street may be GRADED (road.maxGrade 15%), because this is the land a street may be laid ACROSS and S11's grading then flattens the street within its corridor. Measured as a ladder over four 64 maps a style, 25 years, with walkthrough 128 hilly beside it: rolling is unmoved from 10 upward; hilly reads 6 -> 147 residents, 10 -> 697, 11 -> 1,094, 12 -> 1,066, 13 -> 964, 14 -> 1,711, 20 and no limit -> 1,342. Fourteen beats NO LIMIT by a quarter - a deputy that stops at the foot of a hill builds where the city can be served - and fails the gate on one marginal cliff (1.03 m against a 1.00 m threshold). Twelve is the rung where walkthrough 128 hilly goes GREEN for the first time in the project: 0 cliffs, 0 refusals, 20 of 177 corridors ungradeable against 218 of 612, steepest street 500% -> 33.3%. The gate is what A112 named as the measurement, so the gate chose the number.",
     maxRoadSlope: 12,
     levels: 4,
@@ -164,7 +168,12 @@ var RULES = {
     avenueAtPopulation: 800,
     // How far either way along the busiest street the upgrade runs.
     avenueTiles: 7,
-    railAtPopulation: 900,
+    _bridge: "A121 (Q143): the deputy goes looking for a crossing. S13 taught buildBlockAlong to span a river its block happens to meet and measured what that is worth - in a twenty-year played 96 the deputy meets water fifteen times and a building on the far bank refused all five attempts, so it built none. Everything else structural it owns is sought on purpose: a line past railAtPopulation, a harbour past harbourAtPopulation. bridgeAtPopulation is the same shape, bridgeCap is how many it may seek in one game, and bridgeNeedsRoom is what makes it worth doing - free unzoned tiles within bridgeRoomReach of where the bridge LANDS, because a crossing onto a rock is a crossing to nowhere and this rule exists to open land.",
+    bridgeAtPopulation: 900,
+    bridgeCap: 2,
+    bridgeNeedsRoom: 40,
+    bridgeRoomReach: 6,
+        railAtPopulation: 900,
     harbourAtPopulation: 1100,
     roadReach: { expand: 4, balance: 3, green: 3, hold: 3 },
   },

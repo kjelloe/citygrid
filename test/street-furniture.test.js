@@ -115,7 +115,7 @@ import { repoRoot } from "./helpers/sources.js";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt } from "../shared/grid.js";
-import { NET_PRESENT, FLAG_RUINED } from "../client/constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE, FLAG_RUINED } from "../client/constants-mirror.js";
 import { createModel } from "../client/world/model.js";
 import { WALK_OFFSET } from "../client/world/nav.js";
 import {
@@ -273,4 +273,45 @@ test("no solid prop stands on the line a person walks (S3)", () => {
       assert.ok(Math.abs(d - walk) > reach, `a ${p.kind} ${d.toFixed(2)} m from corridor ${c.id}: on the walking line at ${walk}`);
     }
   }
+});
+
+test("a shop on an avenue measures its own street, and gets no bays (Q114, A116)", () => {
+  // `shopBays` measured the strip between the shopfront and the kerb from the
+  // CONFIG: `tileM / 2 + setback − (road.width / 2 + sidewalk)`. On a street
+  // that is 3.5 m; on T1b's fourteen-metre avenue it is 0.25 m, and the parked
+  // cars in it were nearly on top of one another. A lot records the corridor it
+  // fronts now, and a strip narrower than a car is not a parking space.
+  const cfg = getConfig();
+  const size = 24;
+  const state = createState(defaultOptions({ width: size, height: size, seed: 7 }));
+  state.tiles.elevation.fill(40);
+  const road = state.tiles.road;
+  const kind = NET_PRESENT | NET_AVENUE;
+  for (let x = 2; x < 22; x += 1) road[tileAt(size, x, 12)] = kind;
+  for (let x = 2; x < 22; x += 1) {
+    road[tileAt(size, x, 12)] = kind | adjacencyMask(size, size, x, 12, (i) => (road[i] & NET_PRESENT) !== 0);
+  }
+  let id = 1;
+  for (let x = 3; x < 11; x += 1) {
+    const building = { id: id++, def: "", zone: 2, x, y: 11, w: 1, h: 1, owner: 1, level: 1,
+      valueTier: 1, occupancy: 0, condition: 100, builtTick: 0, flags: 0 };
+    state.buildings.push(building);
+    state.tiles.buildingId[tileAt(size, x, 11)] = building.id;
+  }
+  const model = createModel(state);
+  const shops = model.lots.filter((l) => l.building.zone === 2);
+  assert.ok(shops.length > 0, "no shops to measure");
+  for (const lot of shops) {
+    assert.equal(lot.street.avenue, true, `lot ${lot.id} does not know it fronts an avenue`);
+    assert.equal(lot.street.kerb, cfg.road.avenue.width / 2 + cfg.road.sidewalk);
+    assert.equal(shopProps(lot).bays.length, 0,
+      `lot ${lot.id} parks cars in ${(cfg.tileM / 2 + (cfg.lot.setback.commercial ?? 0) - lot.street.kerb).toFixed(2)} m`);
+    assert.ok(shopProps(lot).props.length > 0, "the bench and the rack went with the bays");
+  }
+  // And the same shops on a street keep their bays, so this is the avenue and
+  // not the rule.
+  const { model: onStreet } = town();
+  const street = onStreet.lots.filter((l) => l.building.zone === 2 && (l.building.flags & FLAG_RUINED) === 0);
+  assert.ok(street.some((l) => shopProps(l).bays.length > 0), "a shop on a street lost its bays too");
+  for (const l of street) assert.equal(l.street.avenue, false);
 });

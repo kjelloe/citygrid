@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { adjacencyMask, tileAt } from "../shared/grid.js";
-import { NET_PRESENT } from "../client/constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 import { DEFAULTS, getConfig, setConfig } from "../client/world/config.js";
 import { createGroundColour } from "../client/world/ground-colour.js";
 import { PALETTES } from "../client/render/palettes.js";
@@ -24,6 +24,7 @@ import * as countryside from "../client/world/countryside.js";
 const PALETTE = PALETTES.plain;
 const GRASS = 0;
 const FOREST = 2;
+const WATER = 3;
 
 function blank(size = 16) {
   const state = createState(defaultOptions({ width: size, height: size, seed: 7 }));
@@ -43,6 +44,7 @@ function pave(state, ...groups) {
 }
 
 const row = (y, x0, x1) => Array.from({ length: x1 - x0 + 1 }, (_, k) => [x0 + k, y]);
+const column = (x, y0, y1) => Array.from({ length: y1 - y0 + 1 }, (_, k) => [x, y0 + k]);
 
 /** The colour source for a state, with the config the test wants. */
 function colours(state, overrides = {}) {
@@ -97,18 +99,24 @@ test("two tiles of the same terrain still meet in their own colour", () => {
 });
 
 test("a corner touching built land keeps the tile's own colour", () => {
-  // Otherwise the road bleeds into the verge and the grid stops reading, which
-  // is the thing the flat-tile decision was protecting.
+  // Otherwise the built thing bleeds into the field and the grid stops reading,
+  // which is what the flat-tile decision was protecting.
+  //
+  // **Amended at A113**: a straight road's EDGE is its verge, which is grass, so
+  // the hard edge there moved inward to the carriageway and a neighbour blends
+  // with it. What still hard-edges is everything paved corner to corner — a
+  // junction, a corner, a stub — which is what this now uses.
   const state = blank();
-  pave(state, row(6, 2, 12));
+  pave(state, row(6, 2, 12), column(6, 2, 12));
   const g = colours(state, { blend: 1, mottle: 0, farTone: 0 });
-  // The grass tile directly above the road: its two lower corners touch tarmac.
-  const own = g.tile(6, 5);
-  assert.equal(g.corner(6, 5, 2), own, "the corner below bled into the road");
-  assert.equal(g.corner(6, 5, 3), own, "the corner below bled into the road");
-  // And the road tile itself is flat on every corner.
+  assert.equal(g.verge(6, 6), undefined, "the crossroads is not paved corner to corner");
+  // The grass tile diagonally off the crossroads: one of its corners is the
+  // junction, which is tarmac from edge to edge.
+  const own = g.tile(5, 5);
+  assert.equal(g.corner(5, 5, 3), own, "the corner at the junction bled into the road");
+  // And the junction tile itself is flat on every corner.
   for (let c = 0; c < 4; c += 1) {
-    assert.equal(g.corner(6, 6, c), g.tile(6, 6), `the road's corner ${c} is not tarmac`);
+    assert.equal(g.corner(6, 6, c), g.tile(6, 6), `the junction's corner ${c} is not tarmac`);
   }
 });
 
@@ -285,4 +293,73 @@ test("sand that meets the water is wet", () => {
   const g = colours(state, { blend: 0, mottle: 0, farTone: 0 });
   const lum = (hex) => rgb(hex).reduce((s, v) => s + v, 0);
   assert.ok(lum(g.tile(6, 8)) < lum(g.tile(6, 7)), "the sand at the water's edge is as dry as the sand behind it");
+});
+
+test("the bed under a bridge keeps the river's colour, not the road's (S13)", () => {
+  const state = blank(8);
+  for (let y = 0; y < 8; y += 1) state.tiles.terrain[tileAt(8, 4, y)] = WATER;
+  pave(state, row(3, 1, 6));
+  const colours = createGroundColour(state, PALETTE);
+  // Exactly `palette.road` is the defect's own signature: the road branch
+  // returns the constant, so a bridge tile was the flat tarmac of a street
+  // while the water plane drew over the top of it. Comparing it with the same
+  // tile on an unpaved map would not work — `remoteness` darkens everything
+  // far from a road, so laying the road changes the bed's colour legitimately.
+  assert.notEqual(colours.tile(4, 3), PALETTE.road, "the riverbed went tarmac under the deck");
+  assert.equal(colours.tile(3, 3), PALETTE.road, "the road beside it is tarmac, as it should be");
+});
+
+// --- the verge from the air (Q102, A113) ----------------------------------------------
+
+test("a straight road tile keeps a verge; a junction is paved corner to corner", () => {
+  // From the air a road TILE is asphalt across its whole 20 m, so a street
+  // reads as two houses wide against the reference's two thirds of one. Ruling
+  // 035 already says what a road tile is — a carriageway, two pavements AND two
+  // verges — and L3 draws it that way at street level. This is the same
+  // cross-section at city zoom.
+  const state = blank(8);
+  pave(state, row(3, 1, 6), column(4, 1, 6));
+  const g = createGroundColour(state, PALETTE);
+  const { width, sidewalk, avenue } = DEFAULTS.road;
+
+  const straight = g.verge(2, 3);
+  assert.ok(straight, "a straight street has no verge at all");
+  assert.equal(straight.metres, DEFAULTS.tileM / 2 - (width / 2 + sidewalk));
+  assert.equal(straight.eastWest, true, "an east-west street's verges run east-west");
+  assert.equal(g.verge(4, 2).eastWest, false, "a north-south street's verges run the other way");
+
+  assert.equal(g.verge(4, 3), undefined, "a crossroads has a verge through the middle of it");
+  assert.equal(g.verge(1, 3), undefined, "the end of a run is a stub, and a stub is paved");
+  assert.equal(g.verge(0, 0), undefined, "unpaved ground has no verge");
+});
+
+test("an avenue has no room for a verge, and says so", () => {
+  // 14 m of carriageway plus two 2.5 m pavements is 19 m of a 20 m tile. Half a
+  // metre of grass each side is a sliver that costs four triangles a tile and
+  // draws a line nobody can see — and an avenue filling its tile is correct.
+  const state = blank(8);
+  const road = state.tiles.road;
+  for (let x = 1; x <= 6; x += 1) road[tileAt(8, x, 3)] = NET_PRESENT | NET_AVENUE;
+  for (let x = 1; x <= 6; x += 1) {
+    const mask = adjacencyMask(8, 8, x, 3, (i) => (road[i] & NET_PRESENT) !== 0);
+    road[tileAt(8, x, 3)] = NET_PRESENT | NET_AVENUE | mask;
+  }
+  const g = createGroundColour(state, PALETTE);
+  assert.equal(g.verge(3, 3), undefined, `an avenue's verge is ${DEFAULTS.tileM / 2 - (DEFAULTS.road.avenue.width / 2 + DEFAULTS.road.sidewalk)} m`);
+});
+
+test("the grass beside a verge meets it without a seam", () => {
+  // `corner()` returns a tile's own colour the moment a neighbour is BUILT, so
+  // a road's edge is hard. Where the road's edge is now grass, the hard edge
+  // belongs at the carriageway instead: both sides of the tile boundary have to
+  // compute the same colour there or the mesh shows a line.
+  const state = blank(8);
+  pave(state, row(3, 1, 6));
+  const g = createGroundColour(state, PALETTE);
+  // The corner shared by the road tile (3,3) and the grass tile (3,2): the
+  // road's north-west corner is the grass tile's south-west corner.
+  const onVerge = g.corner(3, 3, 0);
+  const onGrass = g.corner(3, 2, 2);
+  assert.equal(onVerge, onGrass, "the verge and the grass beside it are two colours");
+  assert.notEqual(onGrass, g.tile(3, 2), "the grass beside a road still hard-edges against it");
 });

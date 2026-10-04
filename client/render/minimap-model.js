@@ -123,3 +123,22 @@ export function walkerMark(view, size, width, height) {
 export function rectIsInformative(rect, size) {
   return rect.width < size * 0.98 || rect.height < size * 0.98;
 }
+
+/** How much lighter an avenue is than a street on the minimap (Q115, A117).
+ *
+ * A third: enough to read as a different KIND of road at one pixel a tile,
+ * little enough that it does not compete with the zone and territory colours
+ * the minimap already carries. A weight instead of a value was the alternative
+ * and there is no room for one — a street is one pixel wide. */
+const AVENUE_LIFT = 1.35;
+
+/** The minimap colour of one road tile.
+ *
+ * From the air an avenue reads by its two-dash centre line and its wider
+ * junction boxes; at one pixel a tile neither survives, so the city's one
+ * deliberate arterial was invisible on the screen built for finding your way.
+ */
+export function roadShade(road, street, avenueBit, lift = AVENUE_LIFT) {
+  if ((road & avenueBit) === 0) return street;
+  return street.map((c) => Math.min(255, Math.round(c * lift)));
+}

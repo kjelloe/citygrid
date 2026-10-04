@@ -17,7 +17,9 @@
 import * as THREE from "three";
 import { ribbon, skirt, dashes, clip, trim } from "./ribbon.js";
 import { getConfig } from "../world/config.js";
-import { NET_PRESENT } from "../constants-mirror.js";
+import { NET_PRESENT, NET_AVENUE } from "../constants-mirror.js";
+import { heightOnProfile } from "../world/grade.js";
+import { closestOnPolyline } from "../world/corridors.js";
 import { shadeHex } from "./palette.js";
 
 const IDENTITY = new THREE.Matrix4();
@@ -93,24 +95,42 @@ export function bakeRailCorridors(baker, state, model, corridors, from, stop, pa
 
   let i = from;
   while (i < corridors.length) {
-    const { runs } = corridors[i];
+    const { corridor, runs } = corridors[i];
     i += 1;
+    // The LINE's own graded profile (Q120, A118), not the height field: a
+    // railway cuts and embanks, and the field is what every lot, lane, prop and
+    // walker reads. `model.railHeightAt` answers the ballast's top; the ground
+    // is still the ground, and the difference between them is the earthwork
+    // this draws under the track.
+    const profile = model.railProfileOf?.(corridor.id);
+    const railAt = (x, z) => {
+      if (!profile) return height(x, z);
+      return heightOnProfile(profile, closestOnPolyline(corridor.points, x, z).s);
+    };
     for (const pts of runs) {
-      const hs = pts.map((p) => height(p.x, p.z));
+      const hs = pts.map((p) => railAt(p.x, p.z));
       // The bed, and the face it stands on. A track drawn flat on the ground
       // is a brown road; the `skirt` is what makes it a railway from the
-      // pavement.
-      addStrip(baker, ribbon(pts, half, height, { lift, heights: hs }), ballast);
-      addStrip(baker, skirt(pts, half, height, lift, { lift, heights: hs }), shadeHex(ballast, 0.82));
+      // pavement — and where the line stands above the land it IS the
+      // embankment, so the face reaches down to the ground rather than being a
+      // ten-centimetre lip. In a cutting the same face goes the other way and
+      // reads as the retaining wall it is.
+      const drops = pts.map((p, k) => {
+        const ground = height(p.x, p.z);
+        const fill = hs[k] + lift - ground;
+        return Math.abs(fill) < lift ? lift : fill;
+      });
+      addStrip(baker, ribbon(pts, half, railAt, { lift, heights: hs }), ballast);
+      addStrip(baker, skirt(pts, half, railAt, lift, { lift, heights: hs, drops }), shadeHex(ballast, 0.82));
       // Sleepers across, then the rails on top of them — in that order, so a
       // rail is never buried by the sleeper it rests on.
       for (const dash of dashes(pts, sleeperHalf * 2, sleeperEvery - sleeperHalf * 2)) {
         for (const tie of crossPieces(dash, gauge)) {
-          addStrip(baker, ribbon(tie, sleeperHalf, height, { lift: lift + 0.01 }), sleeper);
+          addStrip(baker, ribbon(tie, sleeperHalf, railAt, { lift: lift + 0.01 }), sleeper);
         }
       }
       for (const side of [-1, 1]) {
-        addStrip(baker, ribbon(shift(pts, side * gauge / 2), railHalf, height,
+        addStrip(baker, ribbon(shift(pts, side * gauge / 2), railHalf, railAt,
           { lift: lift + 0.05 }), steel);
       }
     }
@@ -163,7 +183,11 @@ export function bakeCrossings(baker, state, model, cx, cy, palette) {
       const eastWest = (roadMask & 2) !== 0 || (roadMask & 8) !== 0;
       const cxm = (tx + 0.5) * tileM;
       const czm = (ty + 0.5) * tileM;
-      const half = cfg.road.width / 2;
+      // The road's OWN half-width (A116): an avenue crossing a line is fourteen
+      // metres of carriageway, and a barrier drawn at a street's eight ends in
+      // the middle of it.
+      const avenue = (state.tiles.road[index] & NET_AVENUE) !== 0;
+      const half = (avenue ? cfg.road.avenue.width : cfg.road.width) / 2;
       const off = cfg.rail.width / 2 + 0.6;
       for (const side of [-1, 1]) {
         const bar = eastWest

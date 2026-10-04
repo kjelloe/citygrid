@@ -36,6 +36,7 @@ import { getConfig } from "../world/config.js";
 import { createWalker } from "../life/walker.js";
 import { deriveNav } from "../world/nav.js";
 import { eyeOf, PITCH } from "../world/orbit.js";
+import { anchorFor, rainsAt, RAIN } from "../world/rain.js";
 import { createPedestrians } from "../life/pedestrians.js";
 import { createServices } from "../life/services.js";
 import { createTrains } from "../life/train.js";
@@ -817,6 +818,12 @@ export function createRenderer(canvas, state, options = {}) {
     counts.hulls = boats.count();
     counts.wakes = boats.stats().plying * getConfig().boat.wake;
     counts.planes = planes.count();
+    // The rain, which exists only on foot and only in the overcast hour (Q112,
+    // A115). A fixed column rather than a function of the city, and a term the
+    // estimate must carry: B6's pool was taken out partly because a pool that
+    // draws nothing is still priced, and the answer to that is to price what is
+    // actually there.
+    counts.rain = timeOfDay.name === "rain" && rainsAt(view) ? RAIN.count : 0;
     // What the overlay actually drew last frame (P89). The alternative is
     // asking `bandAt` about every visible tile here, which is the overlay pass
     // run twice a frame to save two triangles a tile.
@@ -884,6 +891,10 @@ export function createRenderer(canvas, state, options = {}) {
         ...drawOptions, style: styleName, plan, bounds, model,
         // Whether it is raining, which is a LOOK and not an hour (B6).
         raining: timeOfDay.name === "rain",
+        // Where the camera actually IS, in tiles — not its target and not its
+        // orbit anchor (Q112, A115): the rain is a column around the eye, and
+        // B6's streaks were invisible twice over for being placed at neither.
+        eye: anchorFor(view, eyeOf(view)),
         // The baked chunks draw their own markings, poles and wires (slice E3).
         bakedChunks: streets.keys,
         // For the per-chunk plan (V5): under orthographic these are ignored.
@@ -1157,8 +1168,9 @@ export function createRenderer(canvas, state, options = {}) {
   /** The hour, by name (E6). `auto` is the caller's business: `game.js` maps
    * the game clock onto a preset and hands the name down, because the renderer
    * has no clock of its own and must not grow one. */
-  function setTime(name) {
-    timeOfDay.set(name);
+  function setTime(name, instant = false) {
+    if (instant) timeOfDay.jump(name);
+    else timeOfDay.set(name);
     return timeOfDay.target;
   }
 

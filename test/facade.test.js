@@ -76,7 +76,14 @@ test("a building stands on its seat and reaches its own height", () => {
   assert.ok(Math.abs(b.y0 - spec.seat) < 1e-6, `the walls start at ${b.y0}, the lot is at ${spec.seat}`);
   const wallTop = spec.seat + spec.groundH + (spec.storeys - 1) * spec.floorH;
   assert.ok(b.y1 > wallTop, "the roof must be above the walls");
-  assert.ok(b.y1 < wallTop + 8, `a ${(b.y1 - wallTop).toFixed(1)} m roof on a house`);
+  // A ROOF, not a spire: its rise is measured against the span it covers rather
+  // than against a constant. The constant was 8 m and it was chosen when a
+  // house was 10 m wide; A113 made it 13 and the same pitch came out at 8.1,
+  // which is the gate moving because the thing it measures grew (A119's
+  // lesson, in a unit test).
+  const span = Math.min(b.x1 - b.x0, b.z1 - b.z0);
+  assert.ok(b.y1 - wallTop < span * 0.75,
+    `a ${(b.y1 - wallTop).toFixed(1)} m roof over a ${span.toFixed(1)} m span`);
 });
 
 test("nothing but the eave reaches past the lot, and the eave is small", () => {

@@ -15,8 +15,8 @@ import { apply } from "../engine/reducer.js";
 import { makeDeputy, deputyTurn, deputyRoll } from "../engine/deputy.js";
 import { nextInt } from "../shared/prng.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
-import { TICKS_PER_YEAR, TICKS_PER_MONTH, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
-import { rules } from "../engine/rules.js";
+import { TICKS_PER_YEAR, TICKS_PER_MONTH, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED, TERRAIN_WATER, TERRAIN_SHALLOW } from "../engine/constants.js";
+import { rules, setRules } from "../engine/rules.js";
 import { gateStatus, gateTerms, railReach } from "../engine/gates.js";
 import { waterBodies, bodyAt } from "../engine/terrain.js";
 import { isAvenue, hasNet, NET_PRESENT } from "../engine/network.js";
@@ -496,3 +496,43 @@ test("a grid cut in two is repaired, and the dark buildings come back", () => {
     + `(the code this replaces left 65 of 164)`);
 });
 
+
+test("the deputy goes looking for a crossing, and only where the far bank is worth it (Q143, A121)", () => {
+  // S13 taught `buildBlockAlong` to span a river its block happens to meet, and
+  // measured what that is worth: in a twenty-year played 96 the deputy meets
+  // water fifteen times and a building on the far bank refused all five
+  // attempts, so it built none. This is the rule that goes and looks.
+  //
+  // Seed 202 is the city the era's arm measured: 1,483 residents without the
+  // rule and 2,202 with it, because its town is hemmed in by water. One seed
+  // and two arms, which is the shape that can SEE a rule that fires in two
+  // cities of twelve — a sweep over all of them reads flat (A121).
+  const base = rules();
+  const withRules = (over) => {
+    setRules({ ...base, deputy: { ...base.deputy, ...over } });
+    try {
+      const { state, deputy } = play(202, 64, 25);
+      let wet = 0;
+      for (let i = 0; i < state.tiles.road.length; i += 1) {
+        const t = state.tiles.terrain[i];
+        if ((t === TERRAIN_WATER || t === TERRAIN_SHALLOW) && (state.tiles.road[i] & NET_PRESENT) !== 0) wet += 1;
+      }
+      return { bridges: deputy.bridges, wet, population: state.population };
+    } finally {
+      setRules(base);
+    }
+  };
+
+  const sought = withRules({});
+  assert.ok(sought.bridges > 0, "the deputy never went looking for a crossing");
+  assert.ok(sought.wet > 0, "it counted a crossing it did not pave");
+
+  // And not onto nothing: `bridgeNeedsRoom` is free, unzoned ground within
+  // `bridgeRoomReach` of where the bridge LANDS. Ask for more than a map can
+  // hold and the rule stops firing — which is also what proves the room is the
+  // thing being tested rather than the threshold.
+  const none = withRules({ bridgeNeedsRoom: 100000 });
+  assert.equal(none.bridges, 0, "a crossing was sought onto ground with no room on it");
+  assert.ok(none.population > 0, "the city failed to grow at all, so this measures something else");
+});
+;

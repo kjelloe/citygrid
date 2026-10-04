@@ -305,7 +305,11 @@ test("the very edge of the water can be waded", () => {
   assert.equal(walls, 1, `the walker crosses the waterline ${walls} times`);
 });
 
-test("a causeway over water is walkable, and stepping off it is not", () => {
+test("a bridge deck is walkable, and stepping off it is not (S13)", () => {
+  // Was a causeway (Q58) until A84: the road is a DECK over the water now, so
+  // the floor on the crossing is `road.deckClearance` above the surface rather
+  // than at it. What has not changed is the other half — a step off the deck is
+  // into the river, and `floorAt` refuses it.
   const state = blank(16);
   state.tiles.elevation.fill(40);
   for (let y = 5; y <= 10; y += 1) {
@@ -317,9 +321,12 @@ test("a causeway over water is walkable, and stepping off it is not", () => {
   pave(state, row(7, 0, 15));
   const model = createModel(state);
   const collision = createCollision(model);
-  const on = collision.floorAt(7.5 * T, 7.5 * T, 15);
-  assert.notEqual(on, undefined, "the causeway is under water");
+  const level = model.waterLevelAt(7.5 * T, 7.5 * T);
+  const deck = model.surfaceAt(7.5 * T, 7.5 * T).y;
+  assert.ok(deck > level + 1, `the deck is ${(deck - level).toFixed(2)} m over the water`);
+  const on = collision.floorAt(7.5 * T, 7.5 * T, deck);
+  assert.notEqual(on, undefined, "the deck is not a floor to the walker on it");
   // A tile in from the shore, so it is open water rather than the paddle at
   // the edge — and outside the corridor's own frontage.
-  assert.equal(collision.floorAt(7.5 * T, 6.5 * T, on), undefined, "you can walk off a causeway");
+  assert.equal(collision.floorAt(7.5 * T, 6.5 * T, on), undefined, "you can walk off a bridge");
 });

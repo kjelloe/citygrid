@@ -283,7 +283,11 @@ Later additions:
   drawn over an existing road upgrades it in place for the avenue's price, which is the gesture a
   player reaches for, so the two rows above are one button rather than two (ruling 043).
 - One-way road.
-- Bridge.
+- ~~Bridge~~ — **built 2026-10-03** (S13): not a tool of its own. A road run simply crosses water,
+  charged at `build.roadOverWater`, and the engine asks only two things of it — that the water it
+  spans is no wider than `build.bridgeSpan` and that both ends stand on dry land. The renderer
+  gives the crossing a deck `road.deckClearance` above the surface with a girder under it, ramps
+  either side inside `road.maxGrade`, and clearance for a boat to pass beneath (A84, ruling 047).
 - Pedestrian path.
 - Bus stop.
 - ~~Rail~~ — **built 2026-09-25** (T2): a line of track, and a station that is LIVE only when the

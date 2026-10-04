@@ -8,8 +8,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   scaleFor, tileToPixel, pixelToTile, viewportRect, rectIsInformative,
-  viewportShape, walkerMark,
+  viewportShape, walkerMark, roadShade,
 } from "../client/render/minimap-model.js";
+import { NET_PRESENT, NET_AVENUE } from "../client/constants-mirror.js";
 
 const SIZE = 160;
 
@@ -157,4 +158,22 @@ test("out of the street there is no walker to show", () => {
   for (const mode of ["city", "ortho"]) {
     assert.equal(walkerMark({ mode, span: 20, targetX: 5, targetZ: 5 }, 160, 64, 64), undefined);
   }
+});
+
+test("an avenue is a lighter grey than a street (Q115, A117)", () => {
+  // At one pixel a tile the avenue's two-dash centre line and wider junction
+  // boxes are both gone, so the city's one deliberate arterial was invisible on
+  // the screen built for finding your way.
+  const street = [111, 114, 120];
+  assert.deepEqual(roadShade(NET_PRESENT, street, NET_AVENUE), street, "a street was lifted");
+  const avenue = roadShade(NET_PRESENT | NET_AVENUE, street, NET_AVENUE);
+  assert.notDeepEqual(avenue, street, "an avenue reads exactly like a street");
+  for (let i = 0; i < 3; i += 1) {
+    assert.ok(avenue[i] > street[i], "an avenue is not lighter on every channel");
+    assert.ok(avenue[i] <= 255, "a channel ran past white");
+  }
+  // A lift, not a new colour: it stays grey, so it does not compete with the
+  // zone and territory colours the minimap already carries.
+  const spread = (c) => Math.max(...c) - Math.min(...c);
+  assert.ok(Math.abs(spread(avenue) - spread(street)) <= 4, "the avenue drifted off grey");
 });

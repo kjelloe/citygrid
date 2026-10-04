@@ -241,8 +241,12 @@ const MANHOLE_EVERY = 40;
 const DRAIN_EVERY = 30;
 /** A post box on a street at least this many tiles long. */
 const POSTBOX_TILES = 3;
-/** A parking bay: how long, and how much clear kerb a door keeps either side. */
+/** A parking bay: how long, how wide a car needs it to be, and how much clear
+ * kerb a door keeps either side. `BAY_W` is a car's own width plus a little
+ * (`vehicle-spec.js` measures the widest at 2.0 m) — a strip narrower than that
+ * is not a parking space, which is what an avenue's frontage is (A116). */
 export const BAY_LEN = 6;
+export const BAY_W = 2.4;
 export const DOOR_CLEAR = 1.5;
 
 /** A polyline's arc lengths and a sampler: `(s) -> { x, z, tx, tz }`. */
@@ -372,8 +376,13 @@ export function shopProps(lot, cfg = getConfig()) {
   // setback; the pavement ends `half + sidewalk` from the centre. The bays sit
   // in the strip between the pavement and the shopfront, clear of the traffic.
   const toCentre = cfg.tileM / 2 + setback;
-  const pavementEdge = cfg.road.width / 2 + cfg.road.sidewalk;
-  const bayOut = (toCentre - pavementEdge) / 2;
+  // The street this lot actually fronts (Q114, A116), not the config's: an
+  // avenue's pavement ends 9.5 m from its centre line against a street's 6.5,
+  // so measuring from the config left a 0.25 m strip and a row of parked cars
+  // on top of one another.
+  const pavementEdge = lot.street?.kerb ?? (cfg.road.width / 2 + cfg.road.sidewalk);
+  const strip = toCentre - pavementEdge;
+  const bayOut = strip / 2;
   const point = (u, o) => ({ x: front.x0 + ux * u + out.x * o, z: front.z0 + uz * u + out.z * o });
   const door = flen / 2;
   const props = [
@@ -381,7 +390,10 @@ export function shopProps(lot, cfg = getConfig()) {
     { kind: "bikerack", ...point(door + 2.4, 0.9), along: { x: ux, z: uz }, lot: lot.id },
   ];
   const bays = [];
-  for (let u = 0.5; u + BAY_LEN <= flen - 0.5; u += BAY_LEN) {
+  // No room, no bays. A strip narrower than a car is not a parking space, and
+  // an avenue's frontage is exactly that: the shopfront opens onto the pavement
+  // instead, which is what a high street looks like.
+  for (let u = 0.5; strip >= BAY_W && u + BAY_LEN <= flen - 0.5; u += BAY_LEN) {
     // A driveway: the door's path crosses this strip to the pavement.
     if (u < door + DOOR_CLEAR && u + BAY_LEN > door - DOOR_CLEAR) continue;
     bays.push({ ...point(u + BAY_LEN / 2, bayOut), along: { x: ux, z: uz }, lot: lot.id, u0: u, u1: u + BAY_LEN });

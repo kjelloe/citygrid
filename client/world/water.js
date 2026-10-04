@@ -182,6 +182,86 @@ export function deriveWater(state, cfg = getConfig()) {
     return far;
   }
 
+  /** How far a point is from the water, in TILES, with the level of the water
+   * it is nearest to — the mirror of `distanceField`, flooding onto the dry
+   * side instead of into the wet one (S12).
+   *
+   * Two arrays on the same half-tile lattice, for the same reason: the bank of
+   * a one-tile channel is half a tile wide and a per-tile answer cannot hold
+   * it. The level travels with the flood, so a point inland of two bodies at
+   * different heights is cut toward the one it actually stands beside.
+   */
+  let shoreFar;
+  let shoreLevel;
+  function shoreField() {
+    if (shoreFar) return shoreFar;
+    shoreFar = new Float32Array(LAT * (height * 2 + 1)).fill(-1);
+    shoreLevel = new Float32Array(LAT * (height * 2 + 1));
+    const queue = [];
+    for (let j = 0; j <= height * 2; j += 1) {
+      for (let i = 0; i <= width * 2; i += 1) {
+        const x0 = Math.floor((i - 1) / 2);
+        const x1 = Math.floor(i / 2);
+        const y0 = Math.floor((j - 1) / 2);
+        const y1 = Math.floor(j / 2);
+        let best;
+        for (let ty = y0; ty <= y1; ty += 1) {
+          for (let tx = x0; tx <= x1; tx += 1) {
+            if (tx < 0 || ty < 0 || tx >= width || ty >= height) continue;
+            const tile = ty * width + tx;
+            if (!wet(tile)) continue;
+            const level = levelOf(tile);
+            // The LOWEST water it touches: a lattice point between two bodies
+            // is cut to the one that would flood it.
+            if (best === undefined || level < best) best = level;
+          }
+        }
+        if (best !== undefined) {
+          const k = j * LAT + i;
+          shoreFar[k] = 0;
+          shoreLevel[k] = best;
+          queue.push(k);
+        }
+      }
+    }
+    for (let head = 0; head < queue.length; head += 1) {
+      const at = queue[head];
+      const i = at % LAT;
+      const j = (at - i) / LAT;
+      for (const [dx, dy] of DIR) {
+        const ni = i + dx;
+        const nj = j + dy;
+        if (ni < 0 || nj < 0 || ni > width * 2 || nj > height * 2) continue;
+        const k = nj * LAT + ni;
+        if (shoreFar[k] >= 0) continue;
+        shoreFar[k] = shoreFar[at] + 0.5;
+        shoreLevel[k] = shoreLevel[at];
+        queue.push(k);
+      }
+    }
+    return shoreFar;
+  }
+
+  /** `{ tiles, level }` for a point on dry land, or `undefined` where there is
+   * no water at all. `tiles` is 0 at the waterline. */
+  function shoreAt(x, z) {
+    if (tiles.length === 0) return undefined;
+    const d = shoreField();
+    const u = Math.max(0, Math.min(width * 2, (x / tileM) * 2));
+    const v = Math.max(0, Math.min(height * 2, (z / tileM) * 2));
+    const i = Math.min(width * 2 - 1, Math.floor(u));
+    const j = Math.min(height * 2 - 1, Math.floor(v));
+    const tx = u - i;
+    const tz = v - j;
+    const far = (a, b) => Math.max(0, d[b * LAT + a]);
+    const top = far(i, j) * (1 - tx) + far(i + 1, j) * tx;
+    const bottom = far(i, j + 1) * (1 - tx) + far(i + 1, j + 1) * tx;
+    // The level is a step function, not a blend: halfway between two bodies is
+    // not a surface at the mean of their heights.
+    const k = (tz < 0.5 ? j : j + 1) * LAT + (tx < 0.5 ? i : i + 1);
+    return { tiles: top * (1 - tz) + bottom * tz, level: shoreLevel[k] };
+  }
+
   /** The depth at a POINT, metres (S4).
    *
    * `depthOf` is per tile and stays what E8 made it — the walker's rule and the
@@ -255,6 +335,7 @@ export function deriveWater(state, cfg = getConfig()) {
     /** How many tiles from the nearest shore: 0 touches land, `shelf + 1` is
      * open water. What "two from a shore" means. */
     ringOf: (tile) => (tile >= 0 && tile < rings.length ? rings[tile] : 0),
+    shoreAt,
     isWater: (tile) => tile >= 0 && tile < terrain.length && wet(tile),
     levelOf,
     depthOf,

@@ -18,7 +18,7 @@ import { bandAt, BAND } from "../ui/overlays.js";
 import {
   buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry, cityPersonGeometry,
   boulderVariants, BOULDER_VARIANTS, signGeometry,
-  rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, radarGeometry, planeGeometry,
+  rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, rainGeometry, radarGeometry, planeGeometry,
   FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
   carLampGeometry,
   TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
@@ -54,9 +54,11 @@ const BEDS = [0xc0587a, 0xd8a03a, 0x9a6ac0, 0xc8643c];
 const LAWN_TOP = 0.055;
 const REED = 0x8f9f58;
 import { getConfig } from "../world/config.js";
+import { streaksAround, rainsAt, RAIN } from "../world/rain.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
-  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, FLAG_RUINED, FLAG_BURNING, NET_PRESENT, NET_AVENUE,
+  TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, TERRAIN_WATER, TERRAIN_SHALLOW,
+  FLAG_RUINED, FLAG_BURNING, NET_PRESENT, NET_AVENUE,
 } from "../constants-mirror.js";
 
 /** Parked cars and flowers carry the only strong accent colours in the scene,
@@ -98,6 +100,12 @@ export function createInstances(scene, styleName = "plain") {
   // Every lift is applied at push time now (slice V4) so the whole table of
   // them is in one place and each can be reasoned about against the slope.
   make("mark", flatGeometry(styleName, 0.06, 1, 0), 0xffffff, 60000);
+  // A BRIDGE's deck (S13, ruling 047). The one piece of road surface that
+  // cannot be a colour of the terrain mesh: under a crossing the terrain is
+  // still the riverbed, so painting the tile tarmac would paint the bed. Scaled
+  // per instance — the carriageway and its two pavements across, the tile along
+  // — and `road.deckDepth` thick, which is what is seen from a boat.
+  make("deck", slabGeometry(styleName, 1, getConfig().road.deckDepth / getConfig().tileM, 1), 0xffffff, 512);
   make("wire", slabGeometry(styleName, 0.035, 0.34, 0.035), 0xffffff, 24000);
   // A hub and four possible arms per tile, so a run READS as a run. A square
   // per tile left a dotted line with a gap at every boundary — the playtest
@@ -135,8 +143,8 @@ export function createInstances(scene, styleName = "plain") {
   // quads rather than a ribbon rebuilt every frame for three metres of foam.
   const boat = getConfig().boat;
   const boatM = getConfig().tileM;
-  make("boat", slabGeometry(styleName, 2.2 / boatM, 1.6 / boatM, boat.length / boatM), 0xffffff, 96);
-  make("ferry", slabGeometry(styleName, 5 / boatM, 3.4 / boatM, (boat.length * 2.4) / boatM), 0xffffff, 16);
+  make("boat", slabGeometry(styleName, boat.hullW / boatM, boat.hullH / boatM, boat.length / boatM), 0xffffff, 96);
+  make("ferry", slabGeometry(styleName, boat.ferryW / boatM, boat.ferryH / boatM, (boat.length * 2.4) / boatM), 0xffffff, 16);
   make("wake", flatGeometry(styleName, 3.4 / boatM, 5 / boatM, 0), 0xffffff, 160);
   // The airport (T5b): one aircraft at a time and a radar head that turns.
   // Both are posed from modules node can load — `client/life/plane.js` and the
@@ -268,6 +276,23 @@ export function createInstances(scene, styleName = "plain") {
   addMotion(pools.crane.material, "crane", CRANE_SLEW);
   make("smoke", smokeGeometry(), 0xffffff, 3000);
   addMotion(pools.smoke.material, "smoke", SMOKE_HALF);
+  // A building on fire gets its own pool (Q107, A114): the puff count and the
+  // opacity are compiled into the shader, so "denser and more opaque for a fire
+  // only" is a second material, and a second material is a second pool. The cap
+  // is nine puffs on a hundred burning buildings, which no city has ever had.
+  make("fireSmoke", smokeGeometry(), 0xffffff, 900);
+  addMotion(pools.fireSmoke.material, "fire", SMOKE_HALF);
+  // The rain (Q112, A115). Its own pool, posed from `client/world/rain.js` —
+  // the placement is pure and tested there, because all three defects B6 found
+  // were about WHERE the streaks were and none of them could be seen from
+  // inside three.
+  make("rain", rainGeometry(RAIN.width / 2), 0xffffff, RAIN.count);
+  // Pale and see-through, and not writing depth: a raindrop is water, and a
+  // solid grey tile of it in front of the camera is what the first shot of this
+  // slice showed. The same two flags the smoke takes.
+  pools.rain.material.transparent = true;
+  pools.rain.material.opacity = RAIN.opacity;
+  pools.rain.material.depthWrite = false;
   make("lamp", lampGeometry(), 0xffffff, 8000);
   // What a car is DOING (B4): brakes at the back, an indicator at the corner.
   // Their own pools, pushed into only for the cars actually showing them, so a
@@ -347,6 +372,7 @@ export function createInstances(scene, styleName = "plain") {
       .map((m) => triangleCount(m.geometry)).reduce((a, b) => a + b, 0) / 6),
     prop: { 2: Math.round(propSample.reduce((a, b) => a + b, 0) / propSample.length), 1: 0, 0: 0 },
     road: 0,  // painted into the terrain mesh
+    deck: triangleCount(pools.deck.geometry),
     marking: triangleCount(pools.mark.geometry),
     pole: triangleCount(pools.wire.geometry),
     wireHub: triangleCount(pools.wireHub.geometry),
@@ -652,6 +678,18 @@ export function updateInstances(state, pools, options = {}) {
       const grassDetail = local.props !== false && options.props !== false;
 
       if (state.tiles.road[index] & NET_PRESENT) {
+        // Except over water, where the terrain mesh is the riverbed and the
+        // road is a deck above it (S13). Ungated by tier and by `markings`: a
+        // crossing with no deck is a hole in the city at every zoom, and there
+        // are a handful of these tiles in a city rather than thousands.
+        const terrain = state.tiles.terrain[index];
+        if (terrain === TERRAIN_WATER || terrain === TERRAIN_SHALLOW) {
+          const deckWidth = (getConfig().road.width + 2 * getConfig().road.sidewalk) / getConfig().tileM;
+          const eastWest = (state.tiles.road[index] & 10) !== 0;
+          const top = at(x + 0.5, y + 0.5);
+          push(pools.deck, x + 0.5, top - getConfig().road.deckDepth / getConfig().tileM, y + 0.5,
+            eastWest ? 1 : deckWidth, 1, eastWest ? deckWidth : 1, palette.road);
+        }
         // The road surface itself is the terrain mesh's colour; only the
         // markings are instanced. Below a few pixels a tile they are invisible
         // and there are thousands of them.
@@ -830,11 +868,17 @@ export function updateInstances(state, pools, options = {}) {
       t.scale, t.scale, t.scale, TREE_COLOURS[t.kind] ?? palette.tree ?? palette.terrain[TERRAIN_FOREST], t.spin);
   }
 
-  // B6's rain streaks were here and are not: the pool drew 1,140 instances the
-  // frame counted and no camera ever saw, in magenta, with the motion shader
-  // off, crossed quads and every scale checked. The OVERCAST hour is built and
-  // shipped; the streaks are Q112, with the measurements in the dev-log. A pool
-  // that draws nothing still gets priced, which is Q110's defect exactly.
+  // The rain (Q112, A115). B6's attempt drew 1,140 instances the frame counted
+  // and no camera ever saw; this one poses from a pure module whose placement a
+  // node test can read, and `rain_shots` reads back the first instance's matrix
+  // rather than the pool's count — a count is not a picture.
+  if (options.raining === true && rainsAt(options.view)) {
+    const eye = options.eye;
+    const streaks = streaksAround(eye, (options.now ?? 0) / 1000, RAIN);
+    for (const s of streaks) {
+      push(pools.rain, s.x, s.y, s.z, 1, s.length, 1, RAIN.colour, 0);
+    }
+  }
   // --- what the fire left (B1b) ---------------------------------------------
   //
   // Per PLOT, not per tile: the engine removes the building and flags the
@@ -948,9 +992,9 @@ export function updateInstances(state, pools, options = {}) {
       // why neither this smoke nor the coal plant's has ever been visible in a
       // shot: `smoke-S6-smoke-t2.png` has the plant dead centre and nothing
       // above it. The gate counted instances; nobody had looked.
-      const puffs = (at, colour, scale = 1) => {
-        for (let k = 0; k < MOTION.smoke.puffs; k += 1) {
-          push(pools.smoke, at.x, at.y, at.z, scale, scale, scale, colour, 0);
+      const puffs = (at, colour, scale = 1, pool = pools.smoke, spec = MOTION.smoke) => {
+        for (let k = 0; k < spec.puffs; k += 1) {
+          push(pool, at.x, at.y, at.z, scale, scale, scale, colour, 0);
         }
       };
       if (p.kind === "civic" && p.state.phase === "standing") {
@@ -1032,7 +1076,11 @@ export function updateInstances(state, pools, options = {}) {
         // 1.6, not 3.5: the shader's rise and drift are in LOCAL units, so the
         // instance scale multiplies them too — at 3.5 the column stood a
         // hundred metres up and drifted across the river.
-        puffs({ x: cx, y: roof, z: cz }, 0x3a3632, 1.6);
+        // 2.2, not 1.6, and nine puffs at three quarters opacity rather than
+        // six at three fifths (A114): B1b made this draw for the first time
+        // since S6 and what it drew was invisible from the city camera, which
+        // is the one place a fire has to be noticed.
+        puffs({ x: cx, y: roof, z: cz }, 0x3a3632, 2.2, pools.fireSmoke, MOTION.fire);
       }
     }
 

@@ -42,6 +42,27 @@ change after E0 is a change to all of them.
 - Worldgen, map size advice (011) and the balance are untouched: a tile is still a tile to
   the simulation.
 
+## Amended at A113 (2026-10-03) — the city camera agrees with the ruling
+
+"A road tile is a full right of way: an 8 m carriageway, 2.5 m sidewalks, verges to the lot line"
+has been true of the street-level bake since E3 and false of the city camera since N30: a road is a
+colour of the terrain mesh, and the mesh painted the WHOLE tile asphalt. From the air a street was
+therefore **two houses wide**, where the reference D4 compares against is two thirds of one — which
+is what Q102 is, and no amount of `road.width` fixes it, because `road.width` does not reach the
+mesh.
+
+The terrain mesh splits a straight road tile into three bands — grass, carriageway, grass — at the
+widths this ruling already states. Only a straight run: a junction, a corner and a stub are paved
+corner to corner, which is what they are on the ground. `road.minVerge` (1 m) is the width below
+which the strip is not worth four triangles, which is also what makes an avenue fill its tile:
+14 m of carriageway and two 2.5 m pavements leave half a metre.
+
+The hard edge between built and natural ground moved with it. `corner()` returned a tile's own
+colour the moment a neighbour was built; what a verged road shows at its edge is GRASS, so the
+neighbour blends with it and the hard edge is at the carriageway instead. Measured on a played 64:
+**410 of 1,398 road tiles** keep a verge, for 1,640 triangles on an 18,432-triangle ground, and the
+frame goes from 108,850 to 110,102.
+
 ## Enforced by
 
 - `specs/engine/04-city-model.md` §4.1 — the frame

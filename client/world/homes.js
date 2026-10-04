@@ -16,8 +16,17 @@
 // "half the lot" is whatever the lot happens to be.
 
 /** A detached house, in metres. The reference is suburban: a frontage a car
- * could park across and a depth with a garden behind it. */
-export const HOUSE = { width: 10, depth: 9, gap: 3.5 };
+ * could park across and a depth with a garden behind it.
+ *
+ * **Thirteen since A113** (Q102), with the residential setback halved to 1.5 m
+ * in the same breath. D4's compare sheet measured the street against the
+ * reference's and ours is far too wide: there, the carriageway kerb to kerb is
+ * about two thirds of a house; ours was 1.3 houses at street level and two from
+ * the air. The verge fixed the air (A113's first half); this is the other side
+ * of the same ratio — a 13 m house on a 17 m lot leaves two metres either side,
+ * and the 8 m carriageway is 0.6 of a house, which is the reference's number.
+ */
+export const HOUSE = { width: 13, depth: 9, gap: 3.5 };
 
 /** How deep the front garden is, as a share of the lot's depth. The path and
  * the hedge live here (V6), and it is what stops a house sitting on the kerb. */

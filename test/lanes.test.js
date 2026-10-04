@@ -647,3 +647,42 @@ test("the short corridor is still connected at both ends", () => {
   assert.deepEqual(orphans.map((link) => link.id), [], "block links joined to nothing at either end");
 });
 
+
+// --- the bridge (slice S13, A84) ----------------------------------------------
+
+test("a lane crosses water as ONE corridor, on the deck rather than in the river", () => {
+  // Water is not a break in the road: `deriveCorridors` walks the road layer
+  // and nothing in it asks about terrain, so the crossing has always been one
+  // corridor. What was wrong was its HEIGHT — the profile was clamped to the
+  // water's surface, so a car drove along the waterline and the banks were
+  // steps. The lanes read the corridor's profile (R4), which is now graded
+  // against the deck.
+  const state = blank(16);
+  state.tiles.elevation.fill(40);
+  for (let y = 6; y <= 9; y += 1) {
+    for (let x = 4; x <= 9; x += 1) {
+      const i = tileAt(state.width, x, y);
+      state.tiles.terrain[i] = 3;
+      state.tiles.elevation[i] = 30;
+    }
+  }
+  pave(state, row(7, 1, 14));
+  const model = createModel(state);
+  assert.equal(model.corridors.length, 1, `the crossing is ${model.corridors.length} corridors`);
+  const level = model.waterLevelAt(7.5 * T, 7.5 * T);
+  const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  let overWater = 0;
+  let submerged = 0;
+  for (const link of model.lanes.links) {
+    if (link.kind !== "block") continue;
+    for (let f = 0; f <= 1; f += 0.02) {
+      model.lanes.sample(link, link.len * f, out);
+      const tile = Math.floor(out.z / T) * state.width + Math.floor(out.x / T);
+      if (!model.water.isWater(tile)) continue;
+      overWater += 1;
+      if (out.y < level + 1) submerged += 1;
+    }
+  }
+  assert.ok(overWater > 10, `only ${overWater} lane samples are over the water at all`);
+  assert.equal(submerged, 0, `${submerged} of ${overWater} lane samples over water are at the waterline`);
+});

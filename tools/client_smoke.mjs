@@ -21,10 +21,24 @@ import { CIVIC_DEFS } from "../client/world/civic-spec.js";
  * it and B3b's **patrol cars** on a beat — pools that only exist when the
  * buildings that need them do. The ceiling was 97 and the frame draws 101.
  *
+ * **74 at S13**, and this one is a pool rather than a city: a bridge's deck
+ * cannot be a colour of the terrain mesh the way every other road is, because
+ * under a deck the terrain is the riverbed (ruling 047). One more pool, one
+ * more draw, whether or not the city has a crossing in it.
+ *
+ * **75 at A114**, the same way: a fire's smoke is denser and more opaque than a
+ * chimney's, and both numbers are compiled into the shader — so "louder for a
+ * fire only" is a second material, and a second material is a second pool.
+ *
+ * **76 at A115**, the rain's pool. It is empty from the city camera — the
+ * streaks are drawn on foot, where they can be seen — and an empty pool is
+ * hidden rather than drawn, so this costs a draw only in the rain at street
+ * level. The ceiling counts the pool either way.
+ *
  * This is the contents of a city changing, not instancing breaking, which is
  * what the message below would otherwise be telling somebody at two in the
  * morning. */
-const DRAW_BASE = 73;
+const DRAW_BASE = 76;
 
 // Declared here rather than imported: client/render/* imports the bare
 // specifier "three", which only the browser's importmap resolves. A Node tool

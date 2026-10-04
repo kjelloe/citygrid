@@ -10,8 +10,8 @@ measured when somebody last looked, which is a different claim and the only one 
   is a document. Nothing on `dev_night` changes what this page claims until the next slice does,
   and the docs test prints the drift as a note rather than a failure for exactly that reason.
 - **Date:** 2026-09-08
-- **Balance era:** era 23, re-measured 2026-10-03 over 200 games per configuration
-  (`reports/balance-era23.md`). Numbers from an earlier era are void, not roughly comparable —
+- **Balance era:** era 26, re-measured 2026-10-04 over 200 games per configuration
+  (`reports/balance-era26.md`). Numbers from an earlier era are void, not roughly comparable —
   and the frame numbers further down are renderer measurements, which belong to no balance era.
   This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
   doc test was pinning the words rather than reading `data/balance.json`.
@@ -45,6 +45,10 @@ vendored and pinned; `ws` is the server's only dependency.
 - **The renderer**, rebuilt over twenty slices as *cityviewer*: three styles, two projections, a
   street camera you can walk in, baked street chunks at eye level with facades, shopfronts,
   props, pedestrians, traffic, signals, water and a time of day.
+- **And since `main` was pushed** (on `dev_night`, measured but not released): a road crosses water
+  on a deck with clearance for a boat under it, the shore is a bank rather than a quay, a street's
+  verges are green from the air, rain falls at street level, a railway cuts and embanks instead of
+  following the ground, and the deputy will seek a river crossing when its own bank runs out.
 
 ## The numbers
 
@@ -102,13 +106,18 @@ and 4 cliffs**, down from 500% with 218 of 612 and 25 cliffs before J3 (era 22) 
 paving up a 30% hillside — and that gate could not be run at all until S11 taught the fixture that a
 network refuses rock. It is a tool rather than a gate: it was green at era 22 and red at era 23 with
 no change to the rule, because its criteria are absolute and the hilly city moves with every balance
-era (Q142).
+era (Q142). **Since A119 it is a gate again**, and green: a cliff on a corridor no grading can
+flatten is counted as terrain and a lot the walker stands on top of is a building buried in the hill
+(Q144), so what the criteria test is what is left over — which is nothing.
 
 ## What is missing, and known to be
 
-**7 open questions** are on the list (`dev-questions.md`, bottom section). Each names what it blocks and the
-assumption the code was built against, so each is cheap to reverse. The ones a reader should know
-about:
+**2 open questions** are on the list (`dev-questions.md`, bottom section). The nine that were there
+were all answered on 2026-10-03 (A113–A121) and are work in `plan-v1.md`'s order rather than
+decisions waiting on anybody; the two that are left were both found by instruments those answers
+built — Q145 (a street's embankment has no batter) by the hilly walk, and Q146 (a high street at
+eye height with nobody on it, while two counters say 122 people are posed there) by F2's
+storyboard, the first instrument in this project that looks at the game for a minute at a time. What a reader should still know:
 
 - **One real device has been measured, and no phone has.** `?perf=1` runs a nine-step frame sweep
   on whatever device the page is open on and ends with a **Copy** button; every card in

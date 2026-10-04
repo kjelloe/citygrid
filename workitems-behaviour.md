@@ -251,6 +251,15 @@ the renderer. **Not in it:** the falling streaks, the wet-road specular and the 
 pool drew 1,140 instances the frame counted and no camera ever saw — **Q112** carries what was ruled
 out — and a pool that draws nothing still gets priced, which is Q110's defect.*
 
+***The streaks are in it since A115 (2026-10-03).*** A column of 700 around the camera, drawn on foot
+and in photo mode only — at eighteen pixels a tile a raindrop is nothing, and what weather looks like
+from the air is the flat light B6a already ships. The placement is a pure module (`client/world/
+rain.js`) because every one of B6's defects, and three more of my own, were about WHERE the streaks
+were: an even disc instead of a hash that walks in order, tile units instead of metres (twice), and a
+crossed quad instead of a flat one. `rain_shots` reads back the first instance's MATRIX and how far
+the nearest and furthest streaks are from the camera, because a count is what B6 had every time.
+Still not in it: the wet-road specular and the puddles.*
+
 **Goal.** A fourth hour: overcast and rain, in the renderer only, until the simulation wants it.
 
 **Do.** A `rain` preset beside day, sunset and night: a lower key, a grey dome, wet roads (a

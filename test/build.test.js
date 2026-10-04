@@ -12,7 +12,7 @@ import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import "../engine/build-commands.js";
 import { price, undoLast, resetUndoHistory } from "../engine/build-commands.js";
-import { rules } from "../engine/rules.js";
+import { rules, buildCost } from "../engine/rules.js";
 import { hasNet, maskOf, NET_PRESENT } from "../engine/network.js";
 import {
   CMD_JOIN, CMD_PLACE_ROAD, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_RAIL, CMD_PLACE_BUILDING,
@@ -87,10 +87,15 @@ test("placing over an existing road is free rather than double-charged", () => {
 });
 
 test("a bridge over water costs more than a road on land", () => {
+  // Bank to bank, because since S13 a run may not start or finish in the river
+  // — the price is the same question and a one-tile pier is not a crossing.
   const state = world();
   state.tiles.terrain[at(4, 4)] = TERRAIN_WATER;
-  const land = price(state, { actor: 1, runs: encodeRuns([at(5, 5)]) }, "road");
-  const water = price(state, { actor: 1, runs: encodeRuns([at(4, 4)]) }, "road");
+  const dry = [at(6, 5), at(7, 5), at(8, 5)];
+  const wet = [at(3, 4), at(4, 4), at(5, 4)];
+  const land = price(state, { actor: 1, runs: encodeRuns(dry) }, "road");
+  const water = price(state, { actor: 1, runs: encodeRuns(wet) }, "road");
+  assert.equal(water.result, RESULT.OK, "a bank-to-bank crossing was refused");
   assert.ok(water.cost > land.cost, `bridge ${water.cost} should exceed road ${land.cost}`);
 });
 
@@ -477,3 +482,60 @@ test("a run that crosses a cliff is refused whole, and a slope at the limit is n
     `a slope of exactly ${limit} was refused`);
 });
 
+// --- the bridge, engine half (slice S13; A84, A111 / Q104) -------------------
+
+/** Water from `x0` to `x1` on row `y`, with land either side. */
+function river(state, y, x0, x1) {
+  for (let x = x0; x <= x1; x += 1) state.tiles.terrain[at(x, y)] = TERRAIN_WATER;
+}
+
+test("a road may cross water from bank to bank, and is charged the water price", () => {
+  // The engine has always allowed this and charges `build.roadOverWater` for it
+  // — A84 believed otherwise, because no 64x64 deputy city had ever paved one,
+  // and H7's played 96 has ten road tiles standing on shallow water (A111). So
+  // the rule S13 adds is not permission: it is a SPAN, and an end on dry land.
+  const state = world();
+  state.players[0].treasury = 100000;
+  river(state, 6, 6, 7);
+  const before = state.players[0].treasury;
+  const run = [at(5, 6), at(6, 6), at(7, 6), at(8, 6)];
+  assert.equal(apply(state, road(1, run)).result, RESULT.OK, "a bank-to-bank crossing was refused");
+  assert.ok(hasNet(state.tiles.road[at(6, 6)]), "the water tile carries no road");
+  const paid = before - state.players[0].treasury;
+  assert.ok(paid > 4 * buildCost(state, "road"),
+    `${paid} is not more than four plain road tiles — the water price was not charged`);
+});
+
+test("a crossing that ends on the water is refused", () => {
+  // A pier is not a bridge. The run has to REACH the far bank, or the city on
+  // the other side is still not part of the city.
+  const state = world();
+  state.players[0].treasury = 100000;
+  river(state, 8, 6, 9);
+  const before = hashState(state);
+  assert.equal(apply(state, road(1, [at(5, 8), at(6, 8), at(7, 8)])).result, RESULT.INVALID,
+    "a road was laid into the river and left there");
+  assert.equal(hashState(state), before, "a refused crossing changed the state");
+});
+
+test("a span longer than `build.bridgeSpan` is refused", () => {
+  const state = world();
+  state.players[0].treasury = 1000000;
+  const span = rules().build.bridgeSpan;
+  river(state, 10, 3, 3 + span);            // one tile wider than the span allows
+  const before = hashState(state);
+  const run = [];
+  for (let x = 2; x <= 5 + span; x += 1) run.push(at(x, 10));
+  assert.equal(apply(state, road(1, run)).result, RESULT.INVALID,
+    `a ${span + 1}-tile span was accepted against a limit of ${span}`);
+  assert.equal(hashState(state), before);
+
+  // And exactly at the span is a bridge.
+  const ok = world();
+  ok.players[0].treasury = 1000000;
+  river(ok, 10, 3, 2 + span);
+  const fits = [];
+  for (let x = 2; x <= 4 + span; x += 1) fits.push(at(x, 10));
+  assert.equal(apply(ok, road(1, fits)).result, RESULT.OK,
+    `a span of exactly ${span} was refused`);
+});

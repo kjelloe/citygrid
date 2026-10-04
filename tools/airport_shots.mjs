@@ -20,7 +20,13 @@
 import { shoot } from "./screenshot.mjs";
 
 const SEED = 1003;
-const SIZE = 48;
+// **Sixty-four since A118's round.** On a 48 after twenty years the deputy's
+// city now covers every 6x4 the map has: of 1,368 candidate footprints, 678 are
+// crossed by a road, 291 hold a building, 251 are zoned and 148 are the wrong
+// terrain — **none is free**, and the tool threw rather than photographing a
+// field. The item it serves is "an airport, drawn", not "an airport on a 48",
+// and the city grew into its fixture (eras 17 to 25). On a 64 there are 222.
+const SIZE = 64;
 const YEARS = 20;
 const problems = [];
 

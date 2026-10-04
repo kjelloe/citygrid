@@ -63,6 +63,13 @@ for (const k of [1, 2]) {
   frozen.push({ out, hash: sha(out), answer: r.answer, ok: r.ok, problems: r.problems });
 }
 console.log(`frozen: ${frozen[0].hash} and ${frozen[1].hash} ${frozen[0].hash === frozen[1].hash ? "— identical" : "— DIFFERENT"}`);
+// What the two runs SAW, so a difference says which half it is: a different
+// plan (the budget ladder landing on another rung) or the same plan drawn
+// differently (something in the scene that is not a function of the state). The
+// first time this fired, both runs reported the same plan and the same pools
+// and differed in 5,707 pixels — the band where the far street chunks were
+// still being baked, because the baker slices by wall clock (A119's round).
+for (const f of frozen) console.log(`   ${f.hash} ${JSON.stringify(f.answer)}`);
 if (frozen[0].hash !== frozen[1].hash) problems.push("two frozen shots differ");
 
 // 2 and 3. Alive, at two times, at the turbine and at the coal plant.

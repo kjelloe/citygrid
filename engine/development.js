@@ -258,6 +258,22 @@ function lotFree(state, x, y, w, h, zone, owner) {
       if (!isBuildable(state.tiles.terrain[index])) return false;
     }
   }
+  // And not on a plinth taller than `development.maxPlinth` (A120, Q144): a lot
+  // is seated on its lowest corner and the base makes up the difference, so a
+  // footprint spanning sixteen elevation steps grows a building buried in a
+  // hillside. The same rule `placeBuilding` applies — both halves, or the
+  // deputy's hand-placed civic buildings obey it and the city that GROWS does
+  // not, which is the shape G1 had to fix twice (ruling 046).
+  var low = 255;
+  var high = 0;
+  for (var ly = 0; ly < h; ly += 1) {
+    for (var lx = 0; lx < w; lx += 1) {
+      var e = state.tiles.elevation[tileAt(state.width, x + lx, y + ly)];
+      if (e < low) low = e;
+      if (e > high) high = e;
+    }
+  }
+  if (high - low > rules().development.maxPlinth) return false;
   return true;
 }
 

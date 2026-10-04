@@ -85,13 +85,30 @@ export function deriveLots(state, network, ground) {
       if (near) frontage = sideTowards(near.x - cx, near.z - cz);
       else { frontage = 0; facing = false; }
     }
+    // WHICH street this lot fronts, not just which side it faces (Q114, A116).
+    // Everything about the cross-section was answered from the config — the
+    // parking bays measured the strip between the shopfront and the kerb as
+    // `tileM / 2 + setback - (road.width / 2 + sidewalk)`, which is 3.5 m on a
+    // street and **0.25 m on an avenue**, where the parked cars ended up on top
+    // of one another. A lot records the corridor it fronts and its
+    // cross-section; the readers measure from that.
+    const edge = frontEdgeOf({ x0, z0, x1, z1, frontage });
+    const facingCorridor = network.nearest((edge.x0 + edge.x1) / 2, (edge.z0 + edge.z1) / 2, tileM * 2)
+      ?? network.nearest(cx, cz, tileM * 3);
+    const section = facingCorridor?.corridor ?? facingCorridor?.node;
+    const street = {
+      id: facingCorridor?.corridor?.id,
+      half: section?.half ?? cfg.road.width / 2,
+      kerb: section?.frontage ?? (cfg.road.width / 2 + cfg.road.sidewalk),
+      avenue: section?.avenue === true,
+    };
     const frontageLen = frontage === 0 || frontage === 2 ? x1 - x0 : z1 - z0;
     const bays = Math.max(1, Math.round(frontageLen / cfg.lot.bayW[key]));
     const seat = Math.min(
       ground.heightAt(x0, z0), ground.heightAt(x1, z0),
       ground.heightAt(x0, z1), ground.heightAt(x1, z1),
     );
-    const lot = { id: b.id, building: b, x0, z0, x1, z1, cx, cz, frontage, facing, frontageLen, bays, seat };
+    const lot = { id: b.id, building: b, x0, z0, x1, z1, cx, cz, frontage, facing, frontageLen, bays, seat, street };
     lots.push(lot);
     byId.set(b.id, lot);
   }

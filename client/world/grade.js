@@ -256,3 +256,48 @@ export function heightOnProfile(profile, s) {
   const t = seg > 1e-9 ? (d - cum[i - 1]) / seg : 0;
   return ys[i - 1] + (ys[i] - ys[i - 1]) * t;
 }
+
+/**
+ * Every corridor of a network, graded — the shape `createGround` builds for the
+ * roads, as a function, so a second network can have one too (Q120, A118).
+ *
+ * The railway is that second network. Grading it the way a road is graded would
+ * mean the HEIGHT FIELD carrying it, and the field is what every lot, lane,
+ * prop and walker reads — a line nobody stands on is not worth re-measuring the
+ * city for. So this returns the profiles and nothing else: `rails-l3` draws the
+ * track on them and hangs the cutting and the embankment under it, and the
+ * ground stays where it is.
+ */
+export function profilesFor(network, sampleAt, { maxGrade, drift = 0, flatEnds = 0, freeEnds = false } = {}) {
+  const profiles = new Map();
+  if (!network || maxGrade <= 0) return profiles;
+  const nodeHeight = drift > 0
+    ? relaxNodes(network, sampleAt, maxGrade, drift)
+    : new Map();
+  for (const c of network.corridors) {
+    const last = c.points[c.points.length - 1];
+    let ends = [
+      nodeHeight.get(c.from) ?? sampleAt(c.points[0].x, c.points[0].z),
+      nodeHeight.get(c.to) ?? sampleAt(last.x, last.z),
+    ];
+    // A railway's ends are not a junction with a street: they are the line's
+    // own, and a line that cannot make its gradient CUTS. Pinning them at the
+    // land is what left the track at the terrain's own 10% — `gradeProfile`
+    // says so itself ("nothing with fixed ends can obey it") and draws a
+    // straight line between them. So the two ends are pulled toward each other
+    // until the end-to-end gradient fits, and the relaxation below smooths what
+    // is between (Q120, A118).
+    if (freeEnds) {
+      const span = lengthOfPolyline(c.points);
+      const allowed = maxGrade * span;
+      const rise = ends[1] - ends[0];
+      if (Math.abs(rise) > allowed) {
+        const mid = (ends[0] + ends[1]) / 2;
+        const half = allowed / 2;
+        ends = rise > 0 ? [mid - half, mid + half] : [mid + half, mid - half];
+      }
+    }
+    profiles.set(c.id, gradeProfile(c.points, sampleAt, { maxGrade, ends, flatEnds }));
+  }
+  return profiles;
+}

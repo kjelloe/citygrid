@@ -505,3 +505,66 @@ test("a zoning quote and the command that follows it agree", () => {
     "the quote and the charge disagree");
 });
 
+
+test("a lot does not grow on a plinth taller than the limit (A120, Q144)", () => {
+  // A lot is seated on its lowest corner and a plinth makes up the difference
+  // (ruling 038), so a footprint spanning sixteen elevation steps grows a
+  // building buried in the hillside with four metres of base below it — which
+  // is what `walkthrough` counts as "buried" and what S12's shore shot shows at
+  // the waterline.
+  //
+  // Note what this rule can and cannot reach on GROWN land. A grown footprint
+  // is at most 2x2, so its spread is one tile step — and `canZone` already
+  // refuses a step past `maxZoneSlope` (6), which is under `maxPlinth` (8). So
+  // on today's numbers the grown half can never fire, and it is here for the
+  // same reason `lotFree` reads the road layer at all (ruling 046): the rule is
+  // about what may STAND somewhere, and a city that grows must obey it as
+  // surely as a building somebody places. The zone layer is written directly
+  // here, because the only way to reach this rule is ground `canZone` would
+  // refuse.
+  const limit = rules().development.maxPlinth;
+  const grown = (perTile) => {
+    const state = city();
+    // A RAMP across the zoned row, so every two-tile footprint spans exactly
+    // `perTile` — and flat from x=13, because `supply()` puts a 3x3 coal plant
+    // at 16,2 and the same rule refuses a plant on a ramp, which would leave the
+    // city unpowered and nothing grown for a reason that is not this one.
+    for (let y = 0; y < W; y += 1) {
+      for (let x = 0; x < W; x += 1) state.tiles.elevation[at(x, y)] = 40 + Math.min(x, 13) * perTile;
+    }
+    street(state, 6, ZONE_RESIDENTIAL);
+    for (let x = 2; x <= 12; x += 1) {
+      state.tiles.zone[at(x, 5)] = ZONE_RESIDENTIAL;
+      state.tiles.owner[at(x, 5)] = 1;
+    }
+    supply(state, 1);
+    months(state, 36);
+    return state;
+  };
+  /** The elevation spread under each grown lot — the plinth it stands on. */
+  const spreads = (state) => lots(state).map((b) => {
+    let low = 255;
+    let high = 0;
+    for (let dy = 0; dy < (b.h ?? 1); dy += 1) {
+      for (let dx = 0; dx < (b.w ?? 1); dx += 1) {
+        const e = state.tiles.elevation[at(b.x + dx, b.y + dy)];
+        if (e < low) low = e;
+        if (e > high) high = e;
+      }
+    }
+    return high - low;
+  });
+
+  const inside = grown(limit);
+  const over = grown(limit + 2);
+  assert.ok(lots(inside).length > 0, `nothing grew at ${limit} steps a tile`);
+  assert.ok(lots(over).length > 0, "nothing grew at all, so this measures something other than the plinth");
+  assert.equal(Math.max(...spreads(inside)), limit,
+    `nothing grew across the ramp at ${limit} steps a tile: spreads ${spreads(inside).join(",")}`);
+  assert.ok(spreads(over).every((v) => v <= limit),
+    `a lot grew on a plinth of ${Math.max(...spreads(over))} steps against a limit of ${limit}`);
+  assert.ok(lots(inside).some((b) => (b.w ?? 1) > 1), "no two-tile lot grew where one fits");
+  assert.ok(!lots(over).some((b) => (b.w ?? 1) > 1),
+    "a two-tile lot grew across a ramp its footprint cannot stand on");
+});
+;

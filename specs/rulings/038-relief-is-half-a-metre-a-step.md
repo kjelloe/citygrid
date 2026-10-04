@@ -57,6 +57,28 @@ none. `junctionDrift: 0` turns it off, so one harness can measure the before and
 It is not enough to make `hilly` playable on its own: at 6 m the walked route still meets 30 cliffs
 and 226 corridors are still ungradeable (Q134).
 
+## Amended at S12 (2026-10-03) — the shore is a bank, and a road is not on it
+
+S4 capped the water at its lowest dry neighbour and cut a channel under it, which ended the river
+painted across a hillside; what it left was a cut **one tile wide**, so where the land stands high
+the shore fell 7.44 m over 20 m. That is 37% — a quay wall, and a cliff the walker cannot climb.
+
+The cut is `water.bank` tiles wide now (3), and it lives in `landAt`, which makes it part of the
+LAND rather than a late clamp: the ground is the water's own level at the waterline and the bare
+land `bank` tiles inland, eased between the two, and a point already at or below the water is left
+alone. It only ever cuts.
+
+**The road is not on the bank.** `pavableAt` — what a corridor's profile is graded from — reads the
+BARE land, not the cut. Grading the approach from the cut dragged every street that reaches water
+down to the waterline: on the bridge fixture the carriageway dived 3.9 m into the channel and the
+walker was stopped at the abutment. A road at a shore is on an embankment above the beach, which is
+what the corridor blend already draws.
+
+Measured over three generated regions, as the share of shores climbing more than 15% in their first
+tile: **41% / 50% / 48% at bank 0**, 14/11/22 at 2, **7/1/14 at 3**, and 7/1/14 at 5 and at 8 — so 3
+is the knee, and past it the cut only eats more land. What is left is terrain: a hill that meets
+water is a sea cliff, and no fixed-width cut can flatten one without flattening the map.
+
 ## Consequences
 
 - Slice V4: `heightAt`, corridor flattening, seating, height-field picking, and every flat

@@ -16,7 +16,7 @@ table of what each one measured; §2b, §2d and §2e are the three review rounds
 - **Follow `.claude/skills/slice-workflow/SKILL.md`** to the letter: orient, tests first,
   implement, `./test.sh` green twice (read the fail count), run the item's gate, dev-log entry
   with measurements, sync docs, commit `slice-<id>` only when asked.
-- **The renderer never writes state** (CLAUDE.md 6). Nothing under `client/world/` or
+- **The renderer never writes state** (CLAUDE.md 7). Nothing under `client/world/` or
   `client/render/` may import `engine/` (read constants through `client/constants-mirror.js`,
   and add to it when you need one — `test/render.test.js` keeps the mirror honest).
 - **No hash moves.** Every one of these items is cosmetic. If `test/fixture.test.js` goes red,

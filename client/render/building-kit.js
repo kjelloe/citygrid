@@ -938,6 +938,22 @@ export function smokeGeometry() {
   return finish(parts);
 }
 
+/** A rain streak (Q112, A115): two crossed quads a metre tall and a few
+ * centimetres wide, both faces, so it reads from any angle and needs no
+ * billboarding. Built like the smoke puff, which is the geometry in this kit
+ * known to draw — the first attempt at rain used a single flat quad, and a flat
+ * quad built +x then +z faces DOWN and is culled (the lesson props-l3 has
+ * carried since S3). Unit height, scaled per instance. */
+export function rainGeometry(halfWidth = 0.02) {
+  const parts = makeParts();
+  const w = halfWidth;
+  pushQuad(parts, [-w, -0.5, 0], [w, -0.5, 0], [w, 0.5, 0], [-w, 0.5, 0], 1);
+  pushQuad(parts, [-w, -0.5, 0], [-w, 0.5, 0], [w, 0.5, 0], [w, -0.5, 0], 1);
+  pushQuad(parts, [0, -0.5, -w], [0, 0.5, -w], [0, 0.5, w], [0, -0.5, w], 1);
+  pushQuad(parts, [0, -0.5, -w], [0, -0.5, w], [0, 0.5, w], [0, 0.5, -w], 1);
+  return finish(parts);
+}
+
 export function pedVariants() {
   const list = [];
   for (let i = 0; i < PED_VARIANTS; i += 1) list.push(person(i));

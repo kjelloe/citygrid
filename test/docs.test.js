@@ -123,7 +123,11 @@ test("open questions agree between plan-v1.md and dev-questions.md", { skip: hav
 
   assert.deepEqual(onlyInPlan, [], `open in plan-v1.md but not in dev-questions.md: ${onlyInPlan}`);
   assert.deepEqual(onlyInQuestions, [], `open in dev-questions.md but not in plan-v1.md: ${onlyInQuestions}`);
-  assert.ok(openQuestions.size > 0, "the open list should not be silently empty");
+  // Empty is a legitimate state — P100 answered all nine at once — but only when
+  // it SAYS so. The thing this guards against is the section being emptied or
+  // deleted by accident, which looks exactly the same from here.
+  assert.ok(openQuestions.size > 0 || /deliberately empty/i.test(openSection),
+    "the open list is empty and does not say it is deliberately empty");
 });
 
 test("answered questions have left the open section", { skip: haveLocalDocs ? false : "dev-questions.md is local and not in this checkout" }, () => {
@@ -384,9 +388,15 @@ test("the release page carries the numbers a reader would otherwise have to run"
 test("the release page's open-question count matches dev-questions.md", () => {
   // The one number on the page that rots silently: "what is known to be
   // missing" is a count of the open list, and the open list grows every slice.
-  const open = readDoc("dev-questions.md").split("# OPEN QUESTIONS")[1]
-    .match(/^\| \*\*Q\d+\*\*/gm).length;
-  const claimed = /(\d+)\s+open questions/i.exec(readDoc("RELEASE.md"));
+  const open = (readDoc("dev-questions.md").split("# OPEN QUESTIONS")[1]
+    .match(/^\| \*\*Q\d+\*\*/gm) ?? []).length;
+  // "No open questions" is a count too, and it is the one the page will carry
+  // least often — the regex that only reads digits made an empty list unsayable.
+  const page = readDoc("RELEASE.md");
+  // "1 open question" is a count as well, and the list reaches one more often
+  // than it reaches none.
+  const claimed = /(\d+)\s+open questions?/i.exec(page)
+    ?? (/\bno\s+open\s+questions\b/i.test(page) ? [null, "0"] : undefined);
   assert.ok(claimed, "the release page does not say how many questions are open");
   assert.equal(Number(claimed[1]), open,
     `the page says ${claimed[1]} open questions and dev-questions.md has ${open}`);

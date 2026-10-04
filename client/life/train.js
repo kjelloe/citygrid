@@ -190,7 +190,7 @@ export function createTrains(state, model, options = {}) {
         for (let k = 0; k < spec.carriages; k += 1) {
           const s = line.s - line.dir * k * spec.carriageLen;
           if (s < 0 || s > line.length) continue;
-          sampleLine(line.points, line.cum, s, OUT, model.heightAt);
+          sampleLine(line.points, line.cum, s, OUT, model.railHeightAt ?? model.heightAt);
           list.push({
             corridor: line.corridor, carriage: k, stopped: line.stopped,
             x: OUT.x / tileM, y: OUT.y / tileM, z: OUT.z / tileM,
@@ -208,7 +208,7 @@ export function createTrains(state, model, options = {}) {
         for (let k = 0; k < spec.carriages; k += 1) {
           const s = line.s - line.dir * k * spec.carriageLen;
           if (s < 0 || s > line.length) continue;
-          sampleLine(line.points, line.cum, s, OUT, model.heightAt);
+          sampleLine(line.points, line.cum, s, OUT, model.railHeightAt ?? model.heightAt);
           const tx = OUT.x / tileM;
           const tz = OUT.z / tileM;
           if (bounds && (tx < bounds.x0 - 2 || tx > bounds.x1 + 2 || tz < bounds.z0 - 2 || tz > bounds.z1 + 2)) continue;

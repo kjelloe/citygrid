@@ -48,6 +48,9 @@ export function makeDeputy(seat, doctrine) {
     hubX: -1,
     hubY: -1,
     built: 0, avenues: 0, stations: 0, marinas: 0, terminals: 0,
+    // Crossings the deputy went looking for (Q143, A121), as against the ones a
+    // block happened to meet.
+    bridges: 0,
     // The index of the next draw from the deputy's own stream, reset every
     // turn (Q113).
     rolls: 0,
@@ -258,22 +261,50 @@ function buildBlockAlong(state, deputy, town, horizontal) {
   var y = deputy.cursorY;
 
   var roadCells = [];
-  for (var step = 0; step < length; step += 1) {
+  // A crossing in progress (S13, A84): water tiles the run has stepped onto and
+  // not yet brought to land. They join the run when a bank accepts them and are
+  // DROPPED if none does — a run that ends on water is refused by
+  // `crossingRefusal`, and a refused run is a deputy turn spent on nothing.
+  var pending = [];
+  var lastLand = -1;
+  // `length` is a count of STREET tiles, and the span of a bridge is not street
+  // — it is what the street crosses. Counting the water against the block's
+  // length meant a run that met a river had three tiles left for the far bank,
+  // so the five crossings a twenty-year city attempts all ran out before they
+  // reached it.
+  var lands = 0;
+  var step = -1;
+  while (lands < length) {
+    step += 1;
     var rx = horizontal ? x + step : x;
     var ry = horizontal ? y : y + step;
     if (!inBounds(state.width, state.height, rx, ry)) break;
     var index = tileAt(state.width, rx, ry);
-    if (!isBuildable(state.tiles.terrain[index])) break;
     var owner = state.tiles.owner[index];
     if (owner !== OWNER_NATURE && owner !== seat) break;
+    var wet = isWater(state.tiles.terrain[index]);
+    if (!wet && !isBuildable(state.tiles.terrain[index])) break;
+    if (wet) {
+      // Nothing to bridge FROM, or a span longer than a bridge: either way the
+      // block stops here. The span is the engine's own limit, so the deputy
+      // asks for exactly what `placeNetwork` will accept.
+      if (roadCells.length === 0 || pending.length >= rules().build.bridgeSpan) break;
+      pending.push(index);
+      continue;
+    }
     if (state.tiles.buildingId[index] !== 0) break;
     // And not up a cliff (J3, A112): the step ALONG the street, which is what it
     // climbs. A road run is a transaction, so one step too steep refuses the
     // whole block — the deputy stops the street at the foot of the hill rather
     // than discovering the refusal and wasting the turn, which is what it
     // already does when it zones.
-    if (roadCells.length > 0) {
-      var rise = state.tiles.elevation[index] - state.tiles.elevation[roadCells[roadCells.length - 1]];
+    //
+    // A step ACROSS water is not a climb: the deck spans it (S13), and a water
+    // tile's elevation is its bed — which is why the river was a cliff to this
+    // rule and the deputy had never crossed one. The far bank is measured
+    // against the near one, not against the bed.
+    if (lastLand >= 0 && pending.length === 0) {
+      var rise = state.tiles.elevation[index] - state.tiles.elevation[lastLand];
       if (rise < 0) rise = -rise;
       if (rise > rules().development.maxRoadSlope) break;
     }
@@ -281,7 +312,11 @@ function buildBlockAlong(state, deputy, town, horizontal) {
     // first street of a new city — there is no town to be near, and a rule with
     // no exception for it is a deputy that never lays one.
     if (town.lots > 0 && (town.dist[index] < 0 || town.dist[index] > reach)) break;
+    for (var p = 0; p < pending.length; p += 1) roadCells.push(pending[p]);
+    pending = [];
     roadCells.push(index);
+    lastLand = index;
+    lands += 1;
   }
   if (roadCells.length < 3) return false;
 
@@ -1096,6 +1131,134 @@ function connectToHub(state, deputy, from) {
 
 /** One turn of the deputy. Called on a cadence by the driver, not by the
  * reducer: a deputy is a player, and players act between ticks. */
+/**
+ * Spans the narrowest water between the town and ground it cannot otherwise
+ * reach (Q143, A121) — the first deputy rule whose purpose is to reach land it
+ * does not own.
+ *
+ * S13 taught `buildBlockAlong` to cross a river its block happens to meet, and
+ * measured what that is worth: in a twenty-year played 96 the deputy meets water
+ * fifteen times and a building on the far bank refused all five attempts, so it
+ * built no bridge at all. Everything else structural the deputy owns is sought
+ * on purpose — a line past `railAtPopulation`, a harbour past
+ * `harbourAtPopulation` — and a crossing is the one that opens land rather than
+ * serving land already taken.
+ *
+ * The scan is over the town's OWN tiles, not the map: `townReach` has already
+ * flooded them, and a crossing starts on ground the town can reach. From each
+ * such tile the four directions are walked up to `build.bridgeSpan` tiles of
+ * water; a candidate is one that lands on buildable ground with room on the far
+ * side, and the best is the shortest span with the most free land beyond it.
+ */
+function openTheCrossing(state, deputy, town) {
+  if (deputy.bridges >= rules().deputy.bridgeCap) return false;
+  if (state.population < rules().deputy.bridgeAtPopulation) return false;
+
+  var span = rules().build.bridgeSpan;
+  var seat = deputy.seat;
+  var width = state.width;
+  var height = state.height;
+  var best = -1;
+  var bestRun = undefined;
+  var i;
+  var d;
+  for (i = 0; i < town.lots; i += 1) {
+    var from = town.queue[i];
+    var fx = xOf(width, from);
+    var fy = yOf(width, from);
+    for (d = 0; d < 4; d += 1) {
+      var dx = DIR4[d].dx;
+      var dy = DIR4[d].dy;
+      // The bank: the last dry tile before the water, two tiles back so the
+      // run has an approach on this side.
+      var ax = fx - dx * 2;
+      var ay = fy - dy * 2;
+      if (!inBounds(width, height, ax, ay)) continue;
+      var run = [];
+      var ok = true;
+      var k;
+      for (k = 0; k < 3 && ok; k += 1) {
+        var bx = ax + dx * k;
+        var by = ay + dy * k;
+        var bi = tileAt(width, bx, by);
+        if (isWater(state.tiles.terrain[bi])) { ok = false; break; }
+        if (!free(state, bi, seat)) { ok = false; break; }
+        run.push(bi);
+      }
+      if (!ok || run.length < 3) continue;
+      // Then the water, up to the span.
+      var wet = 0;
+      var wx = fx + dx;
+      var wy = fy + dy;
+      while (wet <= span && inBounds(width, height, wx, wy)
+        && isWater(state.tiles.terrain[tileAt(width, wx, wy)])) {
+        run.push(tileAt(width, wx, wy));
+        wet += 1;
+        wx += dx;
+        wy += dy;
+      }
+      if (wet === 0 || wet > span) continue;
+      // And the far bank, three tiles of it, all of them ours to build on.
+      var landed = 0;
+      while (landed < 3 && inBounds(width, height, wx, wy)) {
+        var fi = tileAt(width, wx, wy);
+        if (isWater(state.tiles.terrain[fi]) || !free(state, fi, seat)) break;
+        run.push(fi);
+        landed += 1;
+        wx += dx;
+        wy += dy;
+      }
+      if (landed < 3) continue;
+      // What the far side is WORTH: buildable ground within the deputy's reach
+      // of where the bridge lands. A crossing onto a rock is a crossing to
+      // nowhere, and this rule exists to open land.
+      var room = roomAround(state, wx - dx, wy - dy, seat);
+      if (room < rules().deputy.bridgeNeedsRoom) continue;
+      var score = room * 100 - wet;
+      if (score > best) { best = score; bestRun = run; }
+    }
+  }
+  if (!bestRun) return false;
+  var laid = issue(state, deputy, {
+    type: CMD_PLACE_ROAD, actor: seat, runs: encodeRuns(bestRun),
+  });
+  if (laid.result !== RESULT.OK) {
+    deputy.refusals += 1;
+    return false;
+  }
+  deputy.bridges += 1;
+  dezoneUnder(state, deputy, bestRun);
+  return true;
+}
+
+/** Is this tile ours to pave: buildable, unbuilt, unpaved and not somebody
+ * else's? */
+function free(state, index, seat) {
+  if (!isBuildable(state.tiles.terrain[index])) return false;
+  if (state.tiles.buildingId[index] !== 0) return false;
+  if (hasNet(state.tiles.road[index])) return false;
+  var owner = state.tiles.owner[index];
+  return owner === OWNER_NATURE || owner === seat;
+}
+
+/** How much free ground there is around a tile, within the deputy's reach. */
+function roomAround(state, x, y, seat) {
+  var reach = rules().deputy.bridgeRoomReach;
+  var n = 0;
+  var dy;
+  var dx;
+  for (dy = -reach; dy <= reach; dy += 1) {
+    for (dx = -reach; dx <= reach; dx += 1) {
+      var nx = x + dx;
+      var ny = y + dy;
+      if (!inBounds(state.width, state.height, nx, ny)) continue;
+      var i = tileAt(state.width, nx, ny);
+      if (free(state, i, seat) && state.tiles.zone[i] === ZONE_NONE) n += 1;
+    }
+  }
+  return n;
+}
+
 export function deputyTurn(state, deputy, sink) {
   deputy.sink = sink;
   deputy.rolls = 0;
@@ -1151,6 +1314,10 @@ export function deputyTurn(state, deputy, sink) {
   // Burnt ground before new ground: a plot that already has streets and
   // services beside it is the cheapest place in the city to build (B1a).
   if (clearRuins(state, deputy, town)) return true;
+  // And the far bank, once the town is big enough to want one (Q143, A121).
+  // After the ruins and before the next block: a crossing is an expansion
+  // decision, and it competes with laying another street on this side.
+  if (openTheCrossing(state, deputy, town)) return true;
 
   var attempts = 0;
   while (attempts < 6) {
