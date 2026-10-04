@@ -1,5 +1,6 @@
 {
- "version": "dca7ca3f5a16",
+ "version": "ef76a9188c5f",
+ "build": "b71f1dc663e2",
  "generated": "2026-10-04",
  "files": [
   "./client/audio/audio-model.js",
@@ -187,6 +188,7 @@
   "./index.html",
   "./manifest.webmanifest",
   "./shared/arrays.js",
+  "./shared/build-hash.js",
   "./shared/canonical.js",
   "./shared/grid.js",
   "./shared/idiv.js",

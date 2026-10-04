@@ -143,6 +143,28 @@ test("a save made in the worker restores in the worker, hash for hash", () => {
   assert.equal(hashState(createMirror(reply.patch)), reply.hash);
 });
 
+test("a snapshot and a save are one shape (X0)", () => {
+  // The join payload §3.3 describes IS the worker's snapshot: a room sends a
+  // late joiner the same thing singleplayer sends its own mirror. Two shapes
+  // for one idea is how a client ends up with a city it can draw and not save.
+  const { host, mirror } = started();
+  send(host, mirror, { type: "apply", id: 1, command: { type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" } });
+  send(host, mirror, { type: "tick", id: 2, count: 24 });
+
+  const snapshot = host.handle({ type: "snapshot", id: 3 }).reply;
+  const saved = host.handle({ type: "save", id: 4 }).reply;
+
+  // The snapshot is layers plus the rest; the save is the same city written for
+  // disk. What must agree is the CITY: both restore to the simulation's hash.
+  assert.equal(hashState(createMirror(snapshot.patch)), snapshot.hash);
+  const other = createSimHost();
+  const restored = other.handle({ type: "init", id: 0, save: saved.save }).reply;
+  assert.equal(restored.hash, snapshot.hash, "a save and a snapshot are different cities");
+  // And the snapshot carries every layer, which is what makes it a join payload
+  // rather than a patch.
+  assert.equal(Object.keys(snapshot.patch.layers).length, TILE_LAYERS.length);
+});
+
 test("an unknown message is an error, not a silent drop", () => {
   const { host } = started();
   const { reply } = host.handle({ type: "nonsense", id: 9 });

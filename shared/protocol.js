@@ -6,9 +6,11 @@
 
 export const PROTOCOL_VERSION = 1;
 
-/** Bumped whenever the rules change — engine/ or data/. Set by the build step;
- * "dev" locally, where a mismatch is expected and tolerated. */
-export const BUILD_HASH = "dev";
+/** Which build's RULES these are — `engine/`, `shared/` and `data/`, hashed by
+ * `tools/make_precache.mjs` into `client/precache.json` and handed in at boot
+ * (X0). It was a literal `"dev"` until then, which meant the handshake could
+ * only ever compare two identical strings. `shared/build-hash.js` holds it. */
+export { buildHash, setBuildHash } from "./build-hash.js";
 
 export const SAVE_VERSION = 2;
 

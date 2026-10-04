@@ -10553,3 +10553,39 @@ nothing points at quietly stops being true, which is what that list is for.
 
 What is left of M7 is the merge: `main` is still at `2f26532`. The ff-only merge and `gates.mjs all`
 on the merged tree are a run of their own, and **the push is Kjell's**.
+
+## X0 — the ground under the server (2026-10-04)
+
+A125 says build the headless half now and nothing a player can see. This is everything the server
+needs that is not the server.
+
+**`ws`, as the siblings have it (A127).** `8.18.0`, pinned exact, in `dependencies` — the version
+both `../Fireline` and `../CarrierDominion` carry. The game in the browser still has none, and
+`test/purity.test.js` is what keeps that true rather than habit: nothing under `client/`, `engine/`,
+`shared/` or `worker/` may import it. A socket transport that reached for `ws` instead of the
+platform's `WebSocket` would ship a node module to a phone.
+
+**The build hash stops being a literal.** `shared/protocol.js` exported `BUILD_HASH = "dev"`, which
+is a handshake that cannot refuse anything. `shared/build-hash.js` holds it with a setter — the same
+shape `engine/rules.js` has, and for the same reason: that module may not do I/O.
+`tools/make_precache.mjs` computes it over **`engine/`, `shared/` and `data/` only** into
+`client/precache.json` beside the cache version, and `client/main.js` reads it at boot. Still no
+build step. `test/pwa.test.js` demonstrates the boundary rather than describing it: the same file
+list with `data/balance.json` removed hashes differently, with `client/style.css` removed it does
+not — a changed balance is a different game, a changed stylesheet is a new cache.
+
+**One shape for the join payload.** `test/session-worker.test.js` asserts that the worker's
+`snapshot` and its `save` restore to the same hash and that a snapshot carries every layer. §3.3's
+join payload IS the snapshot singleplayer already uses; two shapes for one idea is how a client ends
+up with a city it can draw and not save.
+
+**And a `room` set in the runner, empty until X1** with a 10-minute budget written before the first
+gate rather than after it — a budget chosen to fit a measurement is not a budget.
+
+Read first, as A127 asks, and named here so the ancestry is on the record: `../CarrierDominion/
+server/static.js` (the no-framework static handler with its root containment), `clock.js`,
+`save.js`, `reconnect.js`, `doorman.js`, `lobby.js`, `vote.js` and `watch.js`, and
+`../Fireline/server/metrics.js` (`jitterDigest` — p50, p99, max and late% over a ring, null below
+ten samples). Nothing is copied; X1's modules will say which of these each one descends from.
+
+Suite green twice (1,674); `render` 9 s; `offline_smoke` green with the new manifest field.

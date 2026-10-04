@@ -149,9 +149,14 @@ export const SETS = {
   // minute, which is how a shot that is right on its own and wrong after the
   // one before it is seen at all.
   film: ["film"],
+  // The room (X0, empty until X1 fills it). Declared now because a set that
+  // appears with its first gate is a set whose budget was chosen to fit that
+  // gate — and because `gates.mjs --list` is where somebody looks to find out
+  // what this project can check.
+  room: [],
 };
 SETS.all = [...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim, ...SETS.shots,
-  ...SETS.transport, ...SETS.kits, ...SETS.film];
+  ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -222,6 +227,10 @@ export const BUDGET_MS = {
   // two walk shots are half — a street frame on SwiftShader is a quarter of a
   // second and the film settles the street cache at every one of them.
   film: 8 * 60 * 1000,
+  // X1's `room_soak` is two `ws` clients driving deputies for five city years
+  // and `room_smoke` is two browser contexts on one page; the budget is written
+  // before them so the first measurement is read against something.
+  room: 10 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
   // transport 187 — which is where 35 minutes came from, and `kits` (365 s) was
   // added to `all` in P94 without it. Restated from the contents at P96, the

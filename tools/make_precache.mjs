@@ -49,6 +49,24 @@ export async function precacheList() {
   return [...new Set(files.map((f) => (f.startsWith("./") ? f : `./${f}`)))].sort();
 }
 
+/**
+ * The BUILD hash: the rules, not the assets (X0, plan.md §3.9).
+ *
+ * `engine/`, `shared/` and `data/` only — a changed balance file is a different
+ * game and a changed stylesheet is not. The join handshake compares this, and
+ * `shared/build-hash.js` is handed it at boot, so there is still no build step.
+ */
+export async function buildHashOf(files) {
+  const hash = createHash("sha256");
+  for (const file of files) {
+    const path = file.replace(/^\.\//, "");
+    if (!/^(engine|shared|data)\//.test(path)) continue;
+    hash.update(path);
+    try { hash.update(await readFile(join(root, path))); } catch { hash.update("missing"); }
+  }
+  return hash.digest("hex").slice(0, 12);
+}
+
 export async function precacheVersion(files) {
   const hash = createHash("sha256");
   for (const file of files) {
@@ -65,7 +83,8 @@ export async function precacheVersion(files) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const files = await precacheList();
   const version = await precacheVersion(files);
-  const body = { version, generated: new Date().toISOString().slice(0, 10), files };
+  const build = await buildHashOf(files);
+  const body = { version, build, generated: new Date().toISOString().slice(0, 10), files };
   await writeFile(join(root, "client", "precache.json"), `${JSON.stringify(body, undefined, 1)}\n`);
-  console.log(`client/precache.json: ${files.length} files, version ${version}`);
+  console.log(`client/precache.json: ${files.length} files, version ${version}, build ${build}`);
 }

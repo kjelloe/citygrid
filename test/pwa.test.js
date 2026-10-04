@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
-import { precacheList, precacheVersion } from "../tools/make_precache.mjs";
+import { precacheList, precacheVersion, buildHashOf } from "../tools/make_precache.mjs";
 
 const precache = JSON.parse(readFileSync(join(repoRoot, "client", "precache.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(join(repoRoot, "manifest.webmanifest"), "utf8"));
@@ -36,6 +36,26 @@ test("the version is the hash of the bytes, so a changed file is a new cache", a
   assert.equal(precache.version, await precacheVersion(files),
     "the version does not match the files. Run: node tools/make_precache.mjs");
   assert.match(precache.version, /^[0-9a-f]{12}$/);
+});
+
+test("the build hash is the RULES, not the assets (X0)", async () => {
+  // The join handshake compares this (plan.md §3.9): a changed balance file is a
+  // different game and a stale client must be refused rather than allowed to
+  // desync; a changed stylesheet is a new cache and the same game. Until X0 it
+  // was the literal "dev" on both sides, which is a handshake that cannot
+  // refuse anything.
+  const files = await precacheList();
+  assert.equal(precache.build, await buildHashOf(files),
+    "the build hash does not match engine/, shared/ and data/. Run: node tools/make_precache.mjs");
+  assert.match(precache.build, /^[0-9a-f]{12}$/);
+
+  // And it is those three directories, demonstrated rather than described: the
+  // same list with one balance file changed hashes differently; with one
+  // stylesheet changed it does not.
+  const balance = files.filter((f) => f !== "./data/balance.json");
+  const style = files.filter((f) => f !== "./client/style.css");
+  assert.notEqual(await buildHashOf(balance), precache.build, "a balance change is not a new build");
+  assert.equal(await buildHashOf(style), precache.build, "a stylesheet change is a new build");
 });
 
 test("everything the app needs to boot is cached", () => {

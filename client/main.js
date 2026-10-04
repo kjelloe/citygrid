@@ -16,6 +16,7 @@ import { hasWebGL2, preferredLocale, prefersReducedMotion } from "./capabilities
 import { choicesFromParams, optionsFor, paramsForChoices } from "./lobby/options-model.js";
 import { listSaves, getSave } from "./storage/db.js";
 import { fromSave } from "../engine/save.js";
+import { setBuildHash } from "../shared/build-hash.js";
 
 const params = new URLSearchParams(globalThis.location?.search ?? "");
 export const config = Object.freeze({
@@ -82,6 +83,16 @@ function rememberInUrl(choices) {
 }
 
 async function boot() {
+  // Which build's RULES this client is running (X0, plan.md §3.9). The manifest
+  // carries it beside the cache version, so there is still no build step, and
+  // the join handshake has something real to compare — it was the literal "dev"
+  // on both sides until now, which is a handshake that cannot refuse anything.
+  // A failure here leaves it "dev", which is what a developer's client is.
+  try {
+    const manifest = await (await fetch("./client/precache.json", { cache: "no-store" })).json();
+    setBuildHash(manifest.build);
+  } catch { /* offline, or a client served without its manifest */ }
+
   // A stored preference beats the browser's guess, and `?lang=` beats both —
   // a link that names a language is someone showing the game to someone else.
   const settings = loadSettings(preferredLocale());

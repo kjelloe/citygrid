@@ -61,6 +61,22 @@ test("engine/ imports nothing outside engine/ and shared/", () => {
   assert.deepEqual(offenders, [], `engine/ must not depend on adapters:\n  ${offenders.join("\n  ")}`);
 });
 
+test("nothing the client ships imports `ws` (X0)", () => {
+  // `ws` is the SERVER's one runtime dependency (CLAUDE.md 8, A127, as both
+  // sibling games have it). The game in the browser has none, and the way that
+  // stays true is a test rather than a habit: a socket transport that reached
+  // for `ws` instead of the platform's `WebSocket` would ship a node module to
+  // a phone and nobody would notice until the bundle that does not exist failed
+  // to build.
+  const offenders = [];
+  for (const dir of ["client", "engine", "shared", "worker"]) {
+    for (const file of jsFilesIn(dir)) {
+      if (/from\s+["']ws["']|require\(["']ws["']\)/.test(file.source)) offenders.push(file.path);
+    }
+  }
+  assert.deepEqual(offenders, [], `the client must not depend on ws:\n  ${offenders.join("\n  ")}`);
+});
+
 test("worker/ imports nothing outside engine/ and shared/ (W2)", () => {
   // The simulation's thread may not reach for the page: no `client/`, no DOM,
   // no three — and no bare specifier either, because a module worker gets no
