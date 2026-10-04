@@ -154,8 +154,10 @@ is a shared-consequence system by design, and one of the main reasons neighbours
 - `copyState` deep-copies every nested mutable array on day one, including the new nested state
   (players, requests, contracts, sectors).
 - Fixtures: `test/fixtures/founding.json` pins the singleplayer founding sequence;
-  `test/fixtures/two_player.json` pins a join, a cross-border build, a demolition request and its
-  approval, with every intermediate hash.
+  `test/fixtures/two_player.json` pins two joins, a cross-border build attempt, a bulldoze and a tax
+  change, with every intermediate hash. *(Corrected 2026-10-04: this line said "a demolition request
+  and its approval" from the first draft, and the request commands have never had a handler — X3a
+  in `workitems-multiplayer.md` builds them and extends the fixture.)*
 - Canonical serialization never depends on object key iteration order or on `sort()` stability —
   keys are emitted from an explicit ordered field list, entity lists are sorted by id.
 
@@ -398,8 +400,10 @@ The seam is built, so this is checkable rather than aspirational. What exists an
 - `client/transport/` (W4): the mirror takes a transport, the worker is one implementation and
   `echo.js` is the stub that answers with a sequence number. The socket is the third, and nothing
   above the seam has to know.
-- Multiplayer state the reducer already keeps and the fixtures already pin: seats, ownership,
-  requests, contracts, the two-player fixture.
+- Multiplayer state the reducer already keeps and the fixtures already pin: seats and ownership.
+  **Not requests or contracts** (corrected 2026-10-04): `state.requests` and `state.contracts` are
+  arrays nothing writes, and thirteen commands have a constant and no handler — listed with their
+  slices in `test/omissions.test.js`.
 
 What is declared and **not read by anything** — thirteen options in `engine/options.js`, some of
 them also numbers in `data/balance.json`: `derelictYears`, `absenceYears`, `abandonYears`,

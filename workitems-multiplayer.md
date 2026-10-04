@@ -27,8 +27,10 @@ X1 and lands before X3 (A126).
 - **The session owns the clock** (`session.setSpeed`), so a remote session can tick when a frame
   says to.
 - `shared/protocol.js`: `C2S`, `S2C`, `REFUSAL`, `LIMITS`, `compatible()` — written, no caller.
-- The reducer already keeps seats, ownership, requests, contracts; `test/fixtures/two_player.json`
-  pins a join, a cross-border build, a demolition request and its approval.
+- The reducer keeps seats and ownership, and `test/fixtures/two_player.json` pins two joins, a
+  cross-border build attempt, a bulldoze and a tax change. **It does not pin a demolition request
+  and its approval, and it could not**: see the omissions pass below. `state.requests` and
+  `state.contracts` are empty arrays nothing writes.
 - Thirteen options declared and read by nothing, pinned by `test/omissions.test.js` (A124). Each
   item below says which of them it finally reads — the test goes red in the right direction.
 
@@ -55,6 +57,40 @@ X1 and lands before X3 (A126).
 6. **`BUILD_HASH` is `"dev"`.** There is no build step and there must not be one (CLAUDE.md). The
    precache already computes a hash of every shipped file; the handshake's hash is that mechanism
    restricted to `engine/`, `shared/` and `data/`.
+
+## Omissions pass (2026-10-04, after P103) — what the lane had wrong
+
+*Checked against the code rather than against the plan's description of it.*
+
+1. **Thirteen commands have a constant and no handler**, and `test/omissions.test.js` has listed
+   them honestly all along: `requestDemolition`, `resolveRequest`, `withdrawRequest`,
+   `reportNuisance`, `ping` (slice 5.3), `setRequestPolicy` (5.4), `claimSector`, `openBorder`,
+   `mutualAid`, `offerContract`, `resolveContract`, `transferFunds` (6.1) and `takeLoan`
+   (singleplayer, gamedesign §9.5). **X3 was written as if the request system existed and only
+   needed a screen. It is engine work**: handlers, hashed state, the permission matrix, a
+   `copyState` test, a fixture — and `specs/plan.md` §2.5 and §3.9b said the two-player fixture
+   pinned "a demolition request and its approval", which it never has (corrected). X3 is split
+   below.
+2. **Rank is one number for the whole city.** `engine/unlock.js` reads `variableOf(state, "rank")`
+   and quests are global, so in a room one mayor finishing a quest unlocks the airport for
+   everybody. A69 said "the seat's rank". Right for Shared City, wrong for rivals — **Q152**.
+3. **There is no speed command and there should not be one.** The tick count rides the frame, so
+   speed is the room's, not the state's: a `C2S` message, host-only at the MVP, with the majority
+   vote of plan §3.4 adapted from `../CarrierDominion/server/vote.js` afterwards. X2.
+4. **The seven `REFUSAL` codes have no words** in either catalogue (ruling 027; a refusal needs
+   words and a warning). X1's client half.
+5. **Not written down at all until now:** hosting a room from a save (X2); the seat token kept in
+   `localStorage` and what a second tab on the same token gets (X1 client half: the newer socket
+   wins and the older one is told why); a service-worker update arriving mid-room (plan §3.9 —
+   the handshake refuses, the client says reload, a room is never swapped under a player); what
+   singleplayer controls mean in a room (Space is a personal pause of the VIEW, speed keys are a
+   request to the host, import-save is refused); and socket hardening the siblings learned —
+   `maxPayload` from `LIMITS`, an origin check, per-IP connection caps, frames validated against
+   an allowlist before they reach the queue (X1 room half).
+6. **A watchdog.** `../CarrierDominion/server/watch.js` records the first tick the state goes
+   somewhere it should not; a room's soak wants the same — negative funds, a tile owned by a seat
+   that does not exist, a building on a network — as invariants checked every month in
+   `room_soak`, not only at the end.
 
 ## X0 — The ground under the server (S)
 
@@ -132,7 +168,9 @@ in the dev-log as the first measured row of plan §3.8.
 **Do.** The new-game screen (N12) gains **Host a room** and **Join a room**: room creation with
 the options record hashed into the initial state, a human-typeable join code and its QR (Q5),
 the seed preview and regenerate (the diorama, already built), seats and names, ready, spectate,
-host controls (start, kick, speed), and joining a room that has started. Reads `lateJoin` and
+host controls (start, kick, **speed as a `C2S` message — the tick count rides the frame, so speed
+is the room's and never the state's**), **hosting a room from a save**, and joining a room that
+has started. Reads `lateJoin` and
 `privacy`. Every string in both catalogues; the join code field is the game's first text input,
 so `a11y_smoke` and the sanitiser (`LIMITS.NAME_BYTES`) get it.
 
@@ -141,7 +179,26 @@ every client (the hash of the generated state); a full room refuses; a code is c
 confusable-insensitive. **Gate.** `room_smoke` with four contexts: configure, ready, start, all on
 one hash; `reach_smoke` and `ui_smoke` cover the two new screens.
 
-## X3 — Ownership in play (L) — slice 5.3
+## X3a — Requests in the engine (L) — slice 5.3, the half the plan thought was built
+
+**Goal.** A demolition request is state, a command and a hash.
+
+**Do.** Handlers for `requestDemolition`, `resolveRequest`, `withdrawRequest`, `reportNuisance`
+and `ping`, in `engine/requests.js`, registered like every other: a request is a record in
+`state.requests` (id, from, to, target, reason, tick, status), resolved by the owner or by their
+standing policy, expiring after `requestExpiryMonths`, moot when its target burns down; an
+approved one executes the bulldoze and moves the compensation between treasuries in one
+transaction. `ping` writes nothing hashed and is refused by the reducer as a no-op with `OK` — it
+is a frame for the other clients' cameras. The hashed-field list changes in both places; the
+permission matrix gains a row per command per relation per mode; `copyState` deep-copies the
+records; **the two-player fixture is extended to the request and its approval it was always
+described as pinning, and re-pinned through `/fixture-repin` with that reason.** The deputy
+answers by policy (X4 builds the policy command; here it approves nothing).
+
+**Tests first.** `test/requests.test.js`; the matrix; the fixture. **Gate.** the `sim` set
+(`disaster_soak` with requests in play); `room_soak` issues requests between its two deputies.
+
+## X3b — Ownership in play, on the screen (L) — slice 5.3
 
 **Goal.** Nothing you did not build is yours to destroy, and the way to ask is on the screen.
 
@@ -186,7 +243,7 @@ singleplayer playtest was.
 
 ## Order
 
-**X0 → X1's room half ∥ W6 second half — and there it stops until Kjell has played (A125).** Then
-X1's client half → X2 → X3 → X4. W6 runs beside X1 because they touch
+**X0 → X1's room half ∥ W6 second half ∥ X3a (engine, no player-visible change) — and there it
+stops until Kjell has played (A125).** Then X1's client half → X2 → X3b → X4. W6 runs beside X1 because they touch
 different files and X3 cannot be played without it. Wave 6 (modes, seasons, scale to sixteen,
 operations) is not in this file and does not start until the release gate above is met.

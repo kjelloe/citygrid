@@ -9,6 +9,11 @@ the end can be handed over as work items. It reads against `specs/gamedesign.md`
 §25–26, `specs/plan.md` §2.4–2.6, `specs/referencedata.md` §5.1, §7.2 and §9.2, and the engine as it
 is at `a4f1c7b`.*
 
+> **Status, 2026-10-04: built.** The paragraph above describes the study as written. Its six
+> questions were answered (A65–A70) and its lanes T1–T7 were built between 2026-09-24 and
+> 2026-10-02 (eras 5–11, `workitems-transport.md`). This file is kept as the reasoning; the code
+> and `specs/gamedesign.md` §34 are what is true now.
+
 ## 0. What the engine can and cannot absorb
 
 Everything below is judged against five constraints that are already rulings, because a transport

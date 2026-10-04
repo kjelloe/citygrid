@@ -20,6 +20,13 @@ Two things are built in from day one anyway, at one seat:
 - **The session seam** — `session.state`, `session.apply()`, `session.onChange` — so that no UI
   module ever learns whether a socket exists.
 
+*Amended 2026-10-04 (P103, A125).* **"Does not begin" means nothing a player can see.** The
+headless half of Wave 5 — `server/`, the pump, the relay, the store, the request commands in the
+engine and the two-client soak — is built before acceptance, because it changes nothing a
+singleplayer player touches and singleplayer still opens no socket (`offline_smoke`). The socket
+transport in the page, `?room=`, the lobby and everything after them wait for Kjell's playtest,
+exactly as this ruling has always said.
+
 ## Why
 
 Wave 5 is expensive. Carrying server complexity through every early slice while the core loop is

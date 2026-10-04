@@ -200,6 +200,9 @@ balance eras: the page names `782e759` from 2026-09-08 and says every commit sin
   merged tree, the three newest commits in the dev-log. **The push is Kjell's.**
 - `test/docs.test.js`'s drift note becomes a failure past fifty commits: a release page a hundred
   commits stale is not a note.
+- `REQUIRED_DOCS` in the same test names seven lane files and misses three that exist —
+  `workitems-transport.md`, `workitems-rules.md`, `workitems-multiplayer.md` — and
+  `specs/transport-and-landmarks.md`. A plan nothing points at quietly stops being true; add them.
 
 **Done when** `main` is `dev_night`, the page names its own commit, and Kjell has pushed.
 

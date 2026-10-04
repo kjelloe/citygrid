@@ -64,36 +64,25 @@ true at that commit and carries the measured numbers; this file stays the plan.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
-was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 4**
-(`reports/balance-era4.md` — B1a's fire that spreads, and the deputy's fire service. Era 3 was B9's
-road reach, A81; era 2 is left to T1/T2).
+was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 26**
+(`reports/balance-era26.md`; each era between is one measured rule change, named in `dev-log.md`).
 
-**Where the night's work got to (P70's order, 2026-09-14 → 24).** R5, S3a, S3b, B5, B9, S4, B1a,
-B1b, S7, B3a, B3b and S8a are built and committed, each with its gate and its dev-log entry, and so
-are **M6** (the omissions tidy-up) and **B6a** (the overcast hour). **P70's list is finished** apart
-from S8's verdict, which is your eye and waits on Q102.
+**Where the work stands (2026-10-04, era 26).** Everything P70, P93, P97, P99 and P100 ordered is
+built: the world lane through S13, behaviour through B10, the whole transport lane (T1–T7, eras
+5–11), the rules lanes (G1–G5, H1–H8, J1–J4, eras 12–26), the film lane's F1 and F2, and the worker
+lane's W1–W5. The balance report is `reports/balance-era26.md`.
 
-**Six of those slices found a defect older than themselves**, and each is a question below rather
-than a silent fix: the smoke that had never drawn a visible pixel (Q107), a hashed field nothing
-writes (Q108), damage states with no state to read (Q109), an estimate that prices cars it never
-draws (Q110), a deputy that builds no police station (Q111) and a pool that counts 1,140 instances
-nobody can see (Q112).
+**Two open questions** (Q152: is rank the city's or the seat's; Q153: borrowing, designed and never
+built). P103 answered the four before them — A125 to A128.
 
-**Six open questions**, and they are one group: the pictures and the defects a person has to look at
-— **Q102** (the street is wider than its houses from the air, which blocks S8's compare sheet),
-**Q107** (is the smoke enough of a fire), **Q112** (the rain draws nothing and seven causes are ruled
-out), **Q114** (parking bays collapse on an avenue), **Q115** (the minimap draws an avenue as a road)
-and **Q120** (the ground does not flatten under a railway). P97 answered twenty-four in one batch and
-P99 the seven the work itself raised — A96 to A112 — and each of those that needs building is a work
-item now, not a question.
-
-**What is unblocked and unbuilt**, in rough order of value: **B3b's siblings** (ambulances, and cars
-yielding to an engine), the rest of the **transport lane** (T5–T7; **T1 the avenue**, **T2 rail,
-the station and the Outside** **T3 the track, the crossings and the train** and **T4 the harbour, the boats and the ferry** are built, and T2
-carried the fixture re-pin the lane was waiting for), the rest of the **worker lane** (**W3–W4**,
-the door to Wave 5; W1's seam and W2's worker were built 2026-10-04), **F3** in the film lane (F2 built 2026-10-04, F3 waits on
-a phone's frame rate and on `ffmpeg`), and **Q84's** weather coupling. The measurement
-lane (D2/D3/D5) still waits on your phone.
+**What is unblocked and unbuilt**, in the order the review of 2026-10-04 set: **S18** (the camera
+that can see a retaining wall, then the wall; the bridge's deck and the water's surface), a re-run
+of every shot set on the played fixture, **S15** (tone and proportion against the compare sheet),
+**M7** (a true `RELEASE.md` and a merge — `main` is 122 commits behind), then **S16, S17, S19** and
+**B12, B13**. Beside them, on different files: **W6's second half with B11** (stable identity, a
+dirty set, life that survives a build — a build action costs 115 ms today) and the **headless half
+of multiplayer** (`workitems-multiplayer.md` X0, X1's room, X3a's request commands). F3 and the
+measurement lane's D3 and D5 still wait on a phone.
 
 **The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as an automated
 script on desktop and on a 390×844 phone.
@@ -218,7 +207,10 @@ automated acceptance script, on desktop and on a real phone.
 
 ## Wave 5 — Multiplayer → **Multiplayer MVP**
 
-Does not start until the singleplayer MVP is accepted.
+Does not start until the singleplayer MVP is accepted — **amended 2026-10-04 (A125, ruling 003): the
+headless half is built now** (`workitems-multiplayer.md`: X0, X1's room half, X3a's request
+commands), and nothing a player sees is. The slices below map onto that file as 5.1 = X0 + X1,
+5.2 = X2, 5.3 = X3a + X3b, 5.4 = X4.
 
 | # | Slice | Depends on | Done when |
 |---|---|---|---|
@@ -424,6 +416,8 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
+| Q152 | Is rank the city's or the seat's? One global variable today | slice 6.2 |
+| Q153 | Borrowing: `CMD_TAKE_LOAN` designed, never built — build or delete | **Kjell** |
 | ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |
 | ~~Q107~~ | **Answered A114** — the fire reads as a fire (scale, opacity and puff count up for a FIRE only); the chimney is unchanged |
