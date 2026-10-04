@@ -124,6 +124,11 @@ node tools/gates.mjs film      # the sixty-second storyboard, every frame counte
 node tools/gates.mjs room      # the headless room — `room_soak`, 5 s, since X1a
 ```
 
+**Do not edit source while a gate is running.** A browser gate reads the module tree as it goes for
+two to four minutes: `budget_gate` failed twice through the runner and passed four times standalone,
+and both failures were runs started while files were being rewritten. The failure looks like a flake
+and is not one.
+
 `film` is the only gate that renders the game as a MINUTE rather than as a frame, so it is the one
 that can see a shot that is right on its own and wrong after the one before it. Run it when a slice
 changes the hour, the styles, the camera or what the street looks like at eye height — and **look at
