@@ -76,6 +76,35 @@ test("a city with buildings on it grows a crowd", () => {
   assert.ok(peds.people().length > 0, "nobody came out");
 });
 
+test("nobody is drawn inside the lens (B10)", () => {
+  // The walker has no collision and walks through the crowd. Once the pavements
+  // had people on them at all, a street frame could be one torso filling it —
+  // a person standing where the camera is. They are dropped from the POSE, not
+  // moved: where somebody is stays the crowd's business.
+  const { state, model, nav } = town();
+  const peds = createPedestrians(state, model, nav, { cap: 200 });
+  run(peds, 20);
+  const bounds = { x0: 0, x1: 24, y0: 0, y1: 24 };
+  const posedFrom = (eye) => {
+    peds.update(0, bounds, eye);
+    const seen = [];
+    const pools = { ped0: {}, ped1: {}, ped2: {}, ped3: {}, pedCity: {} };
+    peds.pose(pools, (pool, x, y, z) => seen.push({ x, z }), [0xffffff], bounds, undefined, undefined);
+    return seen;
+  };
+  const all = posedFrom(undefined);
+  assert.ok(all.length > 0, "nobody was posed at all");
+  // Stand exactly where somebody is standing: they vanish, and only they do.
+  const victim = all[0];
+  const near = posedFrom({ x: victim.x, z: victim.z });
+  assert.ok(near.length < all.length, "a person standing in the camera was drawn anyway");
+  assert.ok(near.length >= all.length - 3, `${all.length - near.length} people vanished for one eye`);
+  for (const p of near) {
+    const d = Math.hypot(p.x - victim.x, p.z - victim.z) * DEFAULTS.tileM;
+    assert.ok(d >= DEFAULTS.ped.clearance - 1e-6, `somebody is ${d.toFixed(2)} m from the eye`);
+  }
+});
+
 test("an empty city has nobody on it", () => {
   // The demand comes from the buildings; a bare road should not manufacture
   // pedestrians out of nothing, which is the shape of "the gate measured the

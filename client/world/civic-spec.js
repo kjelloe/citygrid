@@ -43,9 +43,18 @@ const box = (x0, y0, z0, x1, y1, z1, mat = "concrete", round = false, shade = 1)
  * Each is a list of masses and a `tall` flag — the one thing the LOD cares
  * about, because a stack or a mast has to survive the silhouette pass that
  * flattens everything else (`TIER.BLOCK`). Read the shapes as elevations: the
- * first mass is the main volume and the rest sit on or beside it. */
+ * first mass is the main volume and the rest sit on or beside it.
+ *
+ * **`pull`** is how many people this building's door draws onto the pavement
+ * outside it (B10, Q146). It is here rather than derived because the engine has
+ * no such number: `occupancy` is RESIDENTS and every civic building in a played
+ * city has none, so a pavement outside a school asked for nobody and neither
+ * crowd could put a person on it. A utility pulls 0 — nobody strolls past a
+ * pump — and `test/civic-spec.test.js` refuses a definition that does not say,
+ * so a new building cannot inherit a silent zero. */
 export const CIVIC_SHAPES = Object.freeze({
   coalPlant: {
+    pull: 0,
     tall: true,
     masses: [
       box(-1, 0, -0.55, 0.35, 0.62, 1, "brick"),            // turbine hall
@@ -62,6 +71,7 @@ export const CIVIC_SHAPES = Object.freeze({
     emits: [{ x: -0.29, y: 1.85, z: -0.14 }, { x: -0.29, y: 1.5, z: 0.41 }],
   },
   gasPlant: {
+    pull: 0,
     tall: true,
     masses: [
       box(-1, 0, -0.5, 0.3, 0.55, 1, "brick"),
@@ -73,6 +83,7 @@ export const CIVIC_SHAPES = Object.freeze({
     emits: [{ x: -0.36, y: 1.45, z: 0.29 }],
   },
   windTurbine: {
+    pull: 0,
     tall: true,
     masses: [
       box(-0.1, 0, -0.1, 0.1, 2.2, 0.1, "white", true),     // mast
@@ -89,6 +100,7 @@ export const CIVIC_SHAPES = Object.freeze({
     hub: { x: 0, y: 2.31, z: 0 },
   },
   solarPlant: {
+    pull: 0,
     tall: false,
     masses: [
       box(-0.86, 0, -0.86, 0.86, 0.06, 0.86, "concrete"),   // the yard
@@ -99,6 +111,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   waterPump: {
+    pull: 0,
     tall: false,
     masses: [
       box(-0.6, 0, -0.4, 0.6, 0.5, 0.5, "brick"),           // hut
@@ -108,6 +121,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   groundwaterPump: {
+    pull: 0,
     tall: false,
     masses: [
       box(-0.55, 0, -0.55, 0.35, 0.5, 0.45, "brick"),       // hut
@@ -116,6 +130,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   waterTreatment: {
+    pull: 0,
     tall: false,
     masses: [
       box(-1, 0, -1, -0.1, 0.45, -0.1, "brick"),            // control building
@@ -126,6 +141,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   waterTower: {
+    pull: 0,
     tall: true,
     masses: [
       box(-0.55, 0.95, -0.55, 0.55, 1.6, 0.55, "tank", true),  // the tank
@@ -137,6 +153,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   fireStation: {
+    pull: 1,
     // A flag on the roof (S6): a public service flies one.
     flag: true,
     tall: true,
@@ -152,6 +169,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   policeStation: {
+    pull: 2,
     // A flag on the roof (S6): a public service flies one.
     flag: true,
     tall: false,
@@ -163,6 +181,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   hospital: {
+    pull: 6,
     // A flag on the roof (S6): a public service flies one.
     flag: true,
     tall: true,
@@ -186,6 +205,7 @@ export const CIVIC_SHAPES = Object.freeze({
   // through the baker — the platform, the footbridge and the clock — and this
   // is what has to agree with it (the L2/L3 rule, E5).
   railStation: {
+    pull: 8,
     tall: false,
     masses: [
       // The hall, along the street half of a 3×2 lot.
@@ -207,6 +227,7 @@ export const CIVIC_SHAPES = Object.freeze({
   // its own axis and reads from any side: a jetty that runs both ways, a
   // canopy across the whole front, a crane over the middle of the quay.
   marina: {
+    pull: 2,
     tall: false,
     masses: [
       // The clubhouse, in one corner, and its deck.
@@ -222,6 +243,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   ferryTerminal: {
+    pull: 4,
     tall: false,
     masses: [
       box(-0.85, 0, -0.9, 0.85, 0.62, 0.05, "white"),
@@ -236,6 +258,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   freightPort: {
+    pull: 1,
     // A crane is a mast: it has to survive the silhouette pass that flattens
     // everything else, or a port reads as a warehouse.
     tall: true,
@@ -259,6 +282,7 @@ export const CIVIC_SHAPES = Object.freeze({
   // close up — the runway and taxiway ribbons with their markings, the apron
   // lights, and the radar that turns on the tower.
   cityHall: {
+    pull: 4,
     // The cupola is the recognising part, so it has to survive the silhouette
     // pass that flattens everything else.
     tall: true,
@@ -280,6 +304,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   airport: {
+    pull: 6,
     // The tower is a mast: an airport whose tower is flattened to its terminal
     // is a shopping centre with a car park.
     tall: true,
@@ -321,6 +346,7 @@ export const CIVIC_SHAPES = Object.freeze({
   // bigger or smaller version of at a glance: a clinic from a hospital, a
   // headquarters from a station, a reservoir from a water tower.
   clinic: {
+    pull: 3,
     tall: false,
     masses: [
       // One tile, so it is small and must still read: a flat-roofed box, a
@@ -333,6 +359,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   policeHQ: {
+    pull: 3,
     // A tower over the station: the thing that says HEADQUARTERS from across
     // the city is that it is taller than the station it replaced.
     tall: true,
@@ -348,6 +375,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   fireHQ: {
+    pull: 2,
     tall: true,
     masses: [
       // Four doors rather than the station's two, and the drill tower.
@@ -362,6 +390,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   reservoir: {
+    pull: 0,
     // A tank in the ground rather than on legs, which is what tells it from
     // the water tower beside it in the menu.
     tall: false,
@@ -378,6 +407,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   wasteFacility: {
+    pull: 0,
     tall: true,
     masses: [
       // A shed with a chimney and two skips: the chimney is the recognising
@@ -398,6 +428,7 @@ export const CIVIC_SHAPES = Object.freeze({
   // pavement: a stadium is a bowl, a school is a long low block with a yard, a
   // library has a portico and a plaza is not a building at all.
   plaza: {
+    pull: 6,
     // Paving, trees in it and a fountain. No building (the park's own rule):
     // what makes a square is that it is OPEN.
     tall: false,
@@ -411,6 +442,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   library: {
+    pull: 4,
     tall: false,
     masses: [
       box(-0.85, 0, -0.8, 0.85, 0.78, 0.6, "brick"),
@@ -427,6 +459,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   stadium: {
+    pull: 8,
     // The bowl is the whole building and it has to survive the silhouette
     // pass: a flattened stadium is a car park with a fence.
     tall: true,
@@ -450,6 +483,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   school: {
+    pull: 6,
     tall: false,
     masses: [
       // A long low block with a wing, and a yard in front of it: the yard is
@@ -466,6 +500,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   university: {
+    pull: 8,
     // A tower over a quad: the tower is the recognising part at any zoom.
     tall: true,
     masses: [
@@ -484,6 +519,7 @@ export const CIVIC_SHAPES = Object.freeze({
     ],
   },
   park: {
+    pull: 4,
     // No building (S1's own words). The lawn and its path; S5 puts the benches
     // and the trees on it.
     //

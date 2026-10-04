@@ -47,10 +47,28 @@ const FIND = `(state) => {
   return undefined;
 }`;
 
+// People are counted by DISTANCE FROM THE EYE, not by how many are on screen
+// (B10, Q146). `stats.peds` said 122 on a high street where the nearest person
+// was 137 metres away: under perspective at eye height the visible box stretches
+// to the horizon, so "on screen" and "on this pavement" are different questions
+// and only one of them is a picture.
 const COUNT = `(state, view) => {
   const pools = view.pools ?? {};
   const cars = Object.keys(pools).filter((k) => /^car\\d+$/.test(k)).reduce((n, k) => n + (pools[k].count ?? 0), 0);
-  return { cars, live: view.stats?.streets?.live ?? 0, keys: view.stats?.streets?.keys ?? "" };
+  const eye = view.view.camera.position;
+  const tileM = view.model.tileM;
+  let near = 0;
+  let people = 0;
+  for (const [name, pool] of Object.entries(pools)) {
+    if (!/^ped/i.test(name) || !pool.instanceMatrix) continue;
+    for (let i = 0; i < pool.count; i += 1) {
+      const m = pool.instanceMatrix.array;
+      const d = Math.hypot(m[i * 16 + 12] - eye.x, m[i * 16 + 14] - eye.z) * tileM;
+      people += 1;
+      if (d <= 40) near += 1;
+    }
+  }
+  return { cars, people, near, live: view.stats?.streets?.live ?? 0, keys: view.stats?.streets?.keys ?? "" };
 }`;
 
 const problems = [];
@@ -75,6 +93,11 @@ for (const [out, camera] of shots) {
   console.log(`${out} ${JSON.stringify(camera)} ok=${r.ok} tri=${r.report?.triangles} ${JSON.stringify(r.answer)}`);
   if (!r.ok) problems.push(...r.problems.slice(0, 2));
   if (!(r.answer?.live > 0)) problems.push(`${out}: no street chunk baked — a picture of instanced boxes`);
+  // A shopping street with nobody on it is what Q146 was: counted, posed, and
+  // all of it a hundred metres away.
+  if (!(r.answer?.near > 0)) {
+    problems.push(`${out}: nobody within 40 m of the eye (${r.answer?.people ?? 0} posed in the whole frame)`);
+  }
 }
 
 // Beside D4's reference row 3 (TERRACE): one image, the reference left, and

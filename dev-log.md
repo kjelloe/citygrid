@@ -10232,3 +10232,60 @@ command would add minutes to a gate that already takes four.
 
 Gates: `quick` green at 504 s of 540 with every member on the shipped configuration; suite green
 twice.
+
+## B10 — the pavement nobody is standing on (2026-10-04)
+
+Q146, found by F2's storyboard: a high street with six shopfronts on it, at dusk and at night, and
+nobody in either frame — while `stats` reported 122 people posed and 122 "near", and the magenta
+shot had 0 magenta pixels of 230,400.
+
+**The instrument first, and it answered a deeper question than the one it was pointed at.**
+`tools/crowd_probe.mjs` reads the instanced pools back and prints the distance from the eye to every
+posed person. On the film's own played 96, standing on the high street:
+
+```
+  0–10 m    0      80–160 m   12
+  10–20 m   0      160–320 m  83
+  20–40 m   0      320 m+     27
+  40–80 m   0      nearest: 137.3 m
+```
+
+Not one person within eighty metres, and the street crowd 0 of a cap of 120. E7's defect shape —
+counted, posed, and not where the camera is looking — but the cause is not the drawing.
+
+**`occupancy` is RESIDENTS.** `client/world/nav.js` priced every door at `occupancy × perOccupant`,
+and the engine only ever fills occupancy for residential buildings: on that same city the 22 shops,
+50 works and 81 civic buildings have **zero between them**. A pavement outside a shop asked for
+nobody, `walks` keeps only edges with demand, and so neither crowd could put a person on a high
+street at all. Every pedestrian in every City Grid city has been standing outside a house.
+
+`client/world/signals.js` learned exactly this at S3b — its comment says *"Not `occupancy`: the
+engine fills it with RESIDENTS, so every shop in a played city has none… painted no crossing at a
+shop in any real game"* — and fixed it for crossings. The other reader kept the bug for seven
+slices. Two readers, one field, one of them corrected: that is what a shared field does.
+
+**What a door asks for now** (`doorPull`): a home by who lives in it, as before; a shop and a works
+by their LEVEL (`ped.perShop` 3, `ped.perWorks` 1 — a level-1 corner shop pulls about what a
+half-full house does, a level-3 parade twice it, a factory a third); and a civic building by its own
+number in `civic-spec.js`, where **every one of the 28 definitions now says**: 0 for a pump, a
+reservoir and a waste facility, 8 for a railway station and a stadium, 6 for a school and a
+hospital. `test/civic-spec.test.js` refuses a definition that does not say, so a new building
+cannot inherit a silent zero — which is the whole failure mode this slice is about.
+
+Afterwards, same probe, same spot: **nearest 10.0 m**, 46 people within 80 m, the street crowd
+filled to 108 of its 120, and the storyboard's high street has people on it.
+
+**And the first picture after the fix showed the next thing.** A person standing where the walker
+is: the walker has no collision and walks through the crowd, so frame 027 was a red torso filling
+a third of the frame. `ped.clearance` (1.2 m) drops anybody that close from the POSE rather than
+pushing them aside — moving somebody to flatter the camera would be the renderer deciding where a
+person is.
+
+**The gate that could not fail before**: `street_shots` counts people **within 40 m of the eye** and
+fails at zero. `stats.peds` said 122 on a street with nobody on it, so the counter had to change
+rather than the threshold.
+
+Gates: suite green twice (1,651); `kits` 336 s green (role and street shots), `budget` 258 s green —
+the crowd grew from 308 held to 600 and the air frame is 391k of 400k triangles with the ladder
+giving up street detail at 40 tiles across for resolution reasons, not budget ones; `render` 217 s
+green. The storyboard was re-rendered and looked at.

@@ -23,6 +23,23 @@ test("every catalogue definition has a shape, and no shape is an orphan", () => 
     "the shape table and the catalogue disagree about which buildings exist");
 });
 
+test("every definition says how many people its door draws (B10)", () => {
+  // `pull` is what a pavement outside this building asks for, and it has no
+  // engine field behind it: `occupancy` is residents, so every civic building
+  // in a played city has none and their streets were empty by construction
+  // (Q146). A definition that forgot to say would inherit a silent zero, which
+  // is exactly the failure this project keeps finding — so it must say.
+  for (const def of CIVIC_DEFS) {
+    const pull = CIVIC_SHAPES[def].pull;
+    assert.equal(typeof pull, "number", `${def} does not say what its door draws`);
+    assert.ok(pull >= 0 && pull <= 12, `${def} pulls ${pull}`);
+  }
+  // And the two ends of the scale are the point of the field: a utility draws
+  // nobody, a station draws a crowd.
+  assert.equal(CIVIC_SHAPES.groundwaterPump.pull, 0);
+  assert.ok(CIVIC_SHAPES.railStation.pull > 4);
+});
+
 test("no two definitions are the same building", () => {
   // The whole item. Two definitions with the same masses is the six-generic-
   // silhouettes problem wearing twelve names.

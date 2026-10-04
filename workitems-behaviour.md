@@ -16,7 +16,23 @@ it opened era 3.*
 **Two invariants from D7, kept by test:** life fills and moves at a rate per second scaled by
 `dt`, never per frame; and the population of cars and people is never a function of the camera.
 
-## B10 — The pavement nobody is standing on (M) — Q146, found by F2 2026-10-04
+## B10 — The pavement nobody is standing on (M) — **done 2026-10-04 as `slice-B10`**
+
+`tools/crowd_probe.mjs` answered it in one run: not one posed person within eighty metres of a
+walker on the high street, nearest **137 m**. The cause was not the drawing. `occupancy` is
+RESIDENTS — the 22 shops, 50 works and 81 civic buildings on the film's own 96 have zero between
+them — so `nav.js`'s `people: occupancy × perOccupant` asked for nobody outside any of them, and
+`walks` keeps only edges with demand. `signals.js` had learned this at S3b for crossings and says so
+in its own comment; this was the other reader.
+
+`doorPull` prices a home by its residents, a shop and a works by their level (`ped.perShop` 3,
+`ped.perWorks` 1) and a civic building by its own `pull` in `civic-spec.js` — every one of the 28
+definitions says, and a test refuses one that does not. Afterwards: nearest **10 m**, 46 within
+80 m, the street crowd at 108 of its 120 cap. `ped.clearance` (1.2 m) keeps the crowd out of the
+lens, which the first picture after the fix asked for. `street_shots` counts people within 40 m of
+the eye and fails at zero.
+
+## B10 — The pavement nobody is standing on (M) — the item as written
 
 **The reading.** F2's storyboard walks a high street with six shopfronts on it, at dusk and at
 night, and there is **not one person in either frame**. The instruments disagree with the picture

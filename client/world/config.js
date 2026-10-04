@@ -158,6 +158,18 @@ export const DEFAULTS = Object.freeze({
     // to its demand, 5% was 86 people on the whole played 64×64 and an empty
     // street; 15% is about the picture that was accepted.
     pace: 1.35, paceVary: 0.35, perOccupant: 0.15,
+    // What a shop and a works pull, per LEVEL (B10): the engine keeps no
+    // occupancy for either, so without these two numbers a high street is a
+    // pavement nobody is allowed to stand on. 3 puts a level-1 corner shop at
+    // about the pull of a half-full house and a level-3 parade at twice it; a
+    // works is a third of that, because people go through a factory gate twice
+    // a day and into a shop all afternoon.
+    perShop: 3, perWorks: 1,
+    // How close somebody gets to the EYE before they stop being drawn, in
+    // metres (B10). The walker has no collision and walks through the crowd;
+    // at 1.2 m a person is a torso across the whole frame, and at the lens they
+    // are a red wall. Not a push: the renderer does not get to move people.
+    clearance: 1.2,
     bob: 0.055, stride: 0.85, spacing: 1.6, crossWait: 1,
   },
   // Time of day (E6, spec §7.3). Presets, not a slider: each one is a

@@ -33,6 +33,35 @@ import { getConfig } from "./config.js";
 import { offsetPolyline, trim, packWithHeight, sampleAlong, closestAlong } from "./polyline.js";
 import { frontEdgeOf, OUTWARD } from "./lots.js";
 import { doorPoint } from "./street-furniture.js";
+import { CIVIC_SHAPES } from "./civic-spec.js";
+import { ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, FLAG_RUINED } from "../constants-mirror.js";
+
+/**
+ * What a building asks for on the pavement outside it (B10, Q146).
+ *
+ * **Not `occupancy`.** The engine fills that with RESIDENTS: on the film's own
+ * played 96 the 22 shops, 50 works and 81 civic buildings have none between
+ * them, so their pavements asked for nobody — and `walks` keeps only edges with
+ * demand, so neither crowd could put a person on a high street at all. The
+ * storyboard walked one and the nearest posed person was 137 m away.
+ * `signals.js` learned the same thing for crossings at S3b and says so in its
+ * own comment; this is the other reader.
+ *
+ * A home pulls by who lives in it. Everything else pulls by what it is: a shop
+ * and a works by their LEVEL — a level-3 parade is busier than a corner shop —
+ * and a civic building by its own `pull` in `civic-spec.js`, which is 0 for a
+ * pump and eight for a station, because nobody strolls past a reservoir.
+ */
+export function doorPull(building, cfg = getConfig()) {
+  if (!building) return 0;
+  // A ruin draws nobody (the same exclusion `signals.js` makes for crossings).
+  if ((building.flags & FLAG_RUINED) !== 0) return 0;
+  const level = Math.max(1, building.level ?? 1);
+  if (building.zone === ZONE_RESIDENTIAL) return (building.occupancy ?? 0) * cfg.ped.perOccupant;
+  if (building.zone === ZONE_COMMERCIAL) return level * cfg.ped.perShop;
+  if (building.zone === ZONE_INDUSTRIAL) return level * cfg.ped.perWorks;
+  return CIVIC_SHAPES[building.def]?.pull ?? 0;
+}
 
 const AXIS = ["ns", "ew", "ns", "ew"];   // DIR4 order: N, E, S, W
 
@@ -193,10 +222,7 @@ export function deriveNav(state, model) {
     if (!best) continue;
     const door = {
       lot: lot.id, x: point.x, z: point.z, edge: best.edge, s: best.s, dist: best.dist,
-      // What the building asks for on the pavement outside it. Occupancy, so a
-      // tower is busier than a bungalow (spec §9.3) — and level, because an
-      // empty new-built block should not have a crowd outside it.
-      people: (lot.building.occupancy ?? 0) * cfg.ped.perOccupant,
+      people: doorPull(lot.building, cfg),
     };
     doors.push(door);
     edges[best.edge].doors.push(doors.length - 1);

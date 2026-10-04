@@ -216,6 +216,44 @@ test("how many people a pavement asks for follows the occupancy on it", () => {
   assert.equal(total(navOf(blank()).nav), 0, "an empty city wants people on it");
 });
 
+test("a street of shops is not a ghost town — demand is not only residents (B10, Q146)", () => {
+  // **The engine keeps `occupancy` for RESIDENTS.** Every shop, works and civic
+  // building in a played city has 0 of it — 22 shops, 50 works and 81 civic
+  // buildings on the film's own 96, all with zero — so a pavement outside them
+  // asked for nobody, and `walks` filters on `demand > 0`, so neither crowd
+  // could put a person there at all. F2's storyboard walked a high street with
+  // six shopfronts on it and the nearest posed person was **137 m away**.
+  //
+  // `signals.js` learned this for crossings at S3b and says so in its own
+  // comment; this is the same defect in the other reader.
+  const street = (zone, def = "") => {
+    const state = blank();
+    pave(state, row(8, 2, 13));
+    for (let i = 0; i < 4; i += 1) {
+      place(state, { id: i + 1, x: 4 + i * 2, y: 9, w: 1, h: 1, zone, occupancy: 0, def });
+    }
+    const { nav } = navOf(state);
+    return nav.edges.reduce((n, e) => n + nav.demandOf(e), 0);
+  };
+  assert.ok(street(2) > 0, "a street of shops asks for nobody on its pavement");
+  assert.ok(street(3) > 0, "a street of works asks for nobody on its pavement");
+  assert.ok(street(0, "school") > 0, "a street of schools asks for nobody on its pavement");
+  // And a civic building says for itself: nobody strolls past a water pump.
+  assert.equal(street(0, "groundwaterPump"), 0, "a pavement outside a pump is busy");
+  // And a shop pulls more than a factory: people go TO a shop and through a
+  // factory gate twice a day.
+  assert.ok(street(2) > street(3), `shops ${street(2)} against works ${street(3)}`);
+});
+
+test("an empty lot asks for nobody, whatever its zone (B10)", () => {
+  // The zone is painted long before anything stands on it, and a pavement
+  // outside a field is not busy.
+  const state = blank();
+  pave(state, row(8, 2, 13));
+  const { nav } = navOf(state);
+  assert.equal(nav.edges.reduce((n, e) => n + nav.demandOf(e), 0), 0);
+});
+
 // --- sampling -----------------------------------------------------------------
 
 test("sampling an edge walks it end to end and clamps outside it", () => {

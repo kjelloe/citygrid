@@ -609,12 +609,21 @@ export function createPedestrians(state, model, nav, options = {}) {
     pose(pools, push, colours, bounds, figureAt, colour) {
       ensureSettled(bounds);
       const tileM = model.tileM;
+      // Nobody inside the lens (B10). The walker has no collision and walks
+      // through the crowd, so once the pavements actually had people on them a
+      // street frame could be a torso: a person standing where the camera is,
+      // filling it. Dropped within `clearance` of the eye rather than nudged
+      // aside, because moving somebody to flatter the camera is the renderer
+      // deciding where a person is.
+      const clearance = cfg.ped.clearance;
+      const eye = focusPoint;
       let posed = 0;
       for (const person of people) {
         const edge = nav.edges[person.edge];
         if (!edge) continue;
         if (!onScreen(edge, bounds)) continue;
         nav.sample(edge, person.s, out);
+        if (eye && Math.hypot(out.x - eye.x * tileM, out.z - eye.z * tileM) < clearance) continue;
         // Which figure (B7): the caller says what this spot's zoom resolves —
         // E7's person, the figure from the air, or nothing. The same person
         // on the same stride either way, so zooming in changes the detail and
