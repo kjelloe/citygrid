@@ -20,6 +20,7 @@ import { createServer } from "node:http";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { settle } from "./lib/settle.mjs";
 import { createHash } from "node:crypto";
 import { SWEEP } from "../client/debug/perf-sweep.js";
 import { OVERLAY_NAMES } from "../client/ui/overlays.js";
@@ -58,10 +59,12 @@ function check(name, condition, detail = "") {
 async function buildCity(page) {
   return page.evaluate(async () => {
     const { state, renderer } = globalThis.CITY;
-    const { apply } = await import("/engine/reducer.js");
     const c = await import("/engine/commands.js");
+    // Through the SEAM (W2): the reducer is on the other side of it and
+    // `CITY.state` is a mirror, so a command applied here would change a copy.
+    // The money is `?funds=` in the URL for the same reason.
+    const apply = (unused, command) => globalThis.CITY.apply(command);
     globalThis.CITY.pause();
-    state.players[0].treasury = 9000000;
 
     let row = -1;
     for (let y = 12; y < state.height - 10 && row < 0; y += 1) {
@@ -77,24 +80,24 @@ async function buildCity(page) {
     if (row < 0) return { reason: "no dry ground on this map" };
 
     const W = state.width;
-    apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [row * W + 8, 26] });
-    apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [(row + 4) * W + 8, 26] });
+    await apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [row * W + 8, 26] });
+    await apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [(row + 4) * W + 8, 26] });
     const band = (y0, y1, zone) => {
       const runs = [];
       for (let y = y0; y <= y1; y += 1) runs.push(y * W + 8, 26);
-      apply(state, { type: c.CMD_PAINT_ZONE, actor: 1, runs, zone });
+      return apply(state, { type: c.CMD_PAINT_ZONE, actor: 1, runs, zone });
     };
-    band(row + 1, row + 3, 1);            // residential between the two roads
-    band(row - 3, row - 1, 2);            // commercial above
-    band(row + 5, row + 6, 3);            // industry below, so pollution has a source
+    await band(row + 1, row + 3, 1);      // residential between the two roads
+    await band(row - 3, row - 1, 2);      // commercial above
+    await band(row + 5, row + 6, 3);      // industry below, so pollution has a source
 
-    apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 11, y: row - 6 });
+    await apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 11, y: row - 6 });
     // ON the spine, not near it. The pump is 1x1; at x=21 with the pipe at
     // x=23 it was two tiles short of its own network, so the water side had no
     // source at all and nothing could develop. The coal plant is 3x3 and
     // reached its spine by accident of size, which is what made the failure
     // look like a power problem when it was a water one.
-    apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "groundwaterPump", x: 23, y: row - 6 });
+    await apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "groundwaterPump", x: 23, y: row - 6 });
     // Both networks down BOTH spines. supplyReach is 4 and a lot needs power
     // AND water within that, so running the wire at x=10 and the pipe at x=20
     // left no tile in reach of both and nothing could ever develop — the city
@@ -116,10 +119,11 @@ async function buildCity(page) {
       wire.push((row - 3) * W + x, 1);
       pipe.push((row - 3) * W + x, 1);
     }
-    apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
-    apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });
+    await apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
+    await apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });
 
-    for (let i = 0; i < 400; i += 1) apply(state, { type: c.CMD_TICK });
+    // One message for four hundred ticks (W2).
+    await globalThis.CITY.tick(400);
     renderer.worldChanged();
 
     const { focusOn } = await import("/client/render/camera.js");
@@ -152,7 +156,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
   page.on("pageerror", (error) => problems.push(`page error — ${error.message}`));
-  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
+  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0&funds=9000000`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
   await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
@@ -426,10 +430,11 @@ try {
   await page.click('#tools button[data-tool="road"]');
   await page.evaluate(async () => {
     const { state } = globalThis.CITY;
-    const { apply } = await import("/engine/reducer.js");
     const c = await import("/engine/commands.js");
     globalThis.UNDO_ROW = 4;
-    apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [4 * state.width + 4, 6] });
+    // Through the seam, and the undo below goes through it too (W2): an undo
+    // applied to the mirror would leave the simulation holding the road.
+    await globalThis.CITY.apply({ type: c.CMD_PLACE_ROAD, actor: 1, runs: [4 * state.width + 4, 6] });
   });
   const beforeUndo = await page.evaluate(() => {
     const { state } = globalThis.CITY;
@@ -438,6 +443,7 @@ try {
     return n;
   });
   await page.click("#undo");
+  await settle(page);
   const afterUndo = await page.evaluate(() => {
     const { state } = globalThis.CITY;
     let n = 0;
@@ -605,7 +611,7 @@ try {
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const phonePage = await phone.newPage();
   phonePage.on("pageerror", (error) => problems.push(`phone page error — ${error.message}`));
-  await phonePage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
+  await phonePage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0&funds=9000000`);
   await phonePage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
   await phonePage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   await buildCity(phonePage);
@@ -907,9 +913,22 @@ try {
   check("the card names the machine, not only the numbers",
     Boolean(parsed?.machine?.userAgent && parsed?.machine?.deviceClass && parsed?.machine?.tier),
     JSON.stringify(parsed?.machine ?? {}).slice(0, 60));
+  // The whole ROW for a step that drew nothing, not its name: "street walk 60m"
+  // is the label of a failure whose cause is `entered: false`, or no frames, or
+  // a walk that went nowhere — three different problems with one message.
+  //
+  // And a HELD card is not asked for two frames. This gate drives `?perfHold=1`
+  // to shorten a nine-step sweep to one second a step, and the street step on
+  // SwiftShader draws a frame every two seconds: `frames: 0` with 156k
+  // triangles on the screen is the hold doing its job, not a step that drew
+  // nothing. The check that means what its name says is the triangle count.
+  const held = (parsed?.heldSeconds ?? 0) > 0;
+  const drew = (row) => row.triangles > 0 && (held || row.frames > 1);
+  check("the card says whether its steps were held short", parsed?.heldSeconds === 1,
+    `heldSeconds ${parsed?.heldSeconds}`);
   check("every step drew something",
-    parsed?.steps?.every((row) => row.triangles > 0 && row.frames > 1) === true,
-    (parsed?.steps ?? []).filter((r) => !(r.triangles > 0 && r.frames > 1)).map((r) => r.step).join(", "));
+    parsed?.steps?.every(drew) === true,
+    (parsed?.steps ?? []).filter((r) => !drew(r)).map((r) => JSON.stringify(r)).join(" | "));
   await cardContext.close();
 } finally {
   await browser.close();

@@ -128,6 +128,20 @@ It took two playtests: N27 joined the runs and N28 found them still reading as d
 was wider than its arms and at city zoom the arm fell under a pixel. Look at it **at the zoom the
 player uses**, not only at the zoom that proves the change.
 
+**A shot aimed by a proxy photographs the proxy.** F2's first shot list picked its subjects with
+"the longest straight corridor", "the furthest house" and "near the centre of mass", and the
+storyboard came back with a sawtooth factory roof where the high street should be, a forest where
+the suburb should be, and no works at all in the shot called "the works". The fix is to ask the
+fixture for the SUBJECT — the corridor with the most shopfronts on it, the densest patch of each
+zone — which is what `tools/film_spots.mjs` prints. Every aiming rule in this repo has now been
+wrong at least once; the instrument that catches it is a person opening the picture.
+
+**And `node tools/gates.mjs film` is the only gate that renders a MINUTE.** Sixty-one frames of a
+played city, each counted for triangles and for life. It is what sees a defect that only exists
+between frames: a style change builds a new renderer, and the new renderer's traffic starts at
+nobody, so every car in the city vanished on two cuts. No single-frame tool can have that bug, and
+no single-frame tool can see it.
+
 **A screenshot proves nothing if the fixture has nothing to show.** V7's overlay wash was invisible
 in three screenshots while every diagnostic said the shader had compiled, the uniform was set and
 the byte plane was filled — and the plane was filled, with band GOOD for the whole map, because the
@@ -258,6 +272,35 @@ that cannot fail is not a gate. Every sweep should count how often the thing it 
 fired, and refuse to report success when that count is zero; the same check turned E3's
 passability sweep from "narrowest street 33 m" (the search ceiling wearing a number's clothes) into
 a real measurement.
+
+**A gate that fails oddly may have outgrown its fixture.** Six instruments in one round were
+measuring a city five eras old: `budget_gate` laid its demonstration road across a 27-tile river and
+reported "nobody braked"; the perf card asked for two frames from a one-second hold; `walkthrough`'s
+three crossing counters read 0 in a city with no crossing; `disaster_shot` counted fire smoke out of
+a pool fires no longer use; `airport_shots` looked for a free 6×4 on a 48-tile map the deputy now
+covers completely; and a "frozen" screenshot was never reproducible because the street baker slices
+by wall clock. **When a gate fails in a way that does not match the change, ask what its own fixture
+looks like today** — print the thing it is searching for, not only the result.
+
+**A conditional rule needs a conditional arm.** A 200-game sweep answers "did anything break across
+every kind of city". It cannot answer "what is this worth" for a rule that only applies to some
+worlds: era 26's bridge rule read FLAT over two hundred games and, measured per seed, fires in two
+cities of twelve and gives those two a quarter of a city each. Record how often a rule fired, and
+compare the cities where it fired against the same seeds with it off.
+
+**A failure counter reads zero in a world with no subject in it.** `walkthrough` grew three
+counters for crossings at H7 — refusals at the water's edge, legs abandoned there, steep refusals —
+and at S13 all three read 0 because the played 96 contains no road tile on water at all (its river
+is wider than `build.bridgeSpan` nearly everywhere). The gate was green about a thing that was not
+there. Count the SUBJECT beside the failures (`1,356 steps over 15 legs on decks`, `4 road tiles
+stand on water`), fail when the city has one and the walk never touched it, and put one in the
+fixture deliberately if the city only sometimes grows one.
+
+**A scripted city must read the result of its own commands.** S13 refused a road run spanning more
+than six tiles of water; the middle row of seed 1003 crosses twenty-seven, so `budget_gate`,
+`a11y_smoke`, `play_smoke` and `shoot.html` each laid NOTHING and reported numbers about brakes,
+contrast and street mode. `apply()` returns a result. One command per CLEAR stretch, and check what
+came back before measuring anything on it.
 
 **A pass that returns nothing looks exactly like a pass whose conditions were not met.** E5's prop
 pass built no lamps, no hedges and no paths for a whole slice, because `bakeLots` called

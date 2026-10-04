@@ -30,11 +30,12 @@ import { setCatalogue } from "../engine/catalogue.js";
  */
 export async function loadRuleset(base = "./data/") {
   const problems = [];
-  for (const [file, apply] of [["balance.json", setRules], ["buildings.json", setCatalogue]]) {
+  for (const [file, apply, key] of [["balance.json", setRules, "rules"], ["buildings.json", setCatalogue, "catalogue"]]) {
     try {
       const loaded = await (await fetch(`${base}${file}`)).json();
       delete loaded.note;
       apply(loaded);
+      content[key] = loaded;
     } catch (error) {
       problems.push(`${file}: ${error.message ?? error}`);
     }
@@ -42,6 +43,19 @@ export async function loadRuleset(base = "./data/") {
   for (const problem of problems) console.error(`ruleset: ${problem} — running on the mirror`);
   return { problems };
 }
+
+/**
+ * What was loaded, so the SIMULATION can be given the same numbers (W2).
+ *
+ * The worker does no I/O and has no import map; it is handed this in its init
+ * message instead. That is not a convenience — a worker that fetched the files
+ * itself could be running a different balance from the page beside it, and the
+ * first evidence would be a desync. `worker_smoke` found exactly that: the two
+ * arms diverged by 5,300 in the treasury because one had read `data/` and the
+ * other was on `engine/rules.js`'s mirror, with no quests at all.
+ */
+const content = { rules: undefined, catalogue: undefined, quests: undefined };
+export function loadedContent() { return content; }
 
 export async function loadQuests(base = "./data/quests/") {
   const index = await (await fetch(`${base}index.json`)).json();
@@ -58,5 +72,6 @@ export async function loadQuests(base = "./data/quests/") {
     for (const problem of problems) console.error(`  ${problem}`);
   }
   setQuests(all);
+  content.quests = all;
   return { quests: all, problems };
 }

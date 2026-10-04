@@ -22,7 +22,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 /** Everything the app needs to boot and play with the network off. Directories
  * are walked; anything not listed is not cached, which is the point — reports,
  * debugging output and the test suite are not part of the app. */
-const ROOTS = ["client", "engine", "shared", "data", "vendor"];
+// `worker/` joined the list in W2: the simulation runs there, and a game that
+// works online and will not start offline is exactly what this file exists to
+// prevent.
+const ROOTS = ["client", "engine", "shared", "worker", "data", "vendor"];
 const FILES = ["index.html", "manifest.webmanifest"];
 const SKIP = /\.(md|png|jpg|jpeg|zip)$/i;
 

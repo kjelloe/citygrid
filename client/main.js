@@ -47,6 +47,20 @@ export const config = Object.freeze({
   // slice's to take, but a gate that cannot reach a style cannot measure it,
   // and `budget_gate` has to (P2, Q47).
   style: params.get("style") ?? "",
+  // `?funds=` — the treasury a NEW city starts with (W2). The gates used to
+  // write `CITY.state.players[0].treasury` before building their fixture city;
+  // since the simulation moved behind the seam that writes to a mirror and the
+  // simulation never sees it, so the money has to be part of the city rather
+  // than a poke at the copy of it. It is `startingTreasury`, which the engine
+  // has always had as an option.
+  funds: Number(params.get("funds") ?? 0) || 0,
+  // `?worker=0` keeps the simulation on this thread (W2). It is the fallback's
+  // lever: a path that only runs when something goes wrong is a path nothing
+  // measures, and `tools/worker_smoke.mjs` drives both arms with it. It is also
+  // what a gate uses when it deliberately drives the engine inside the page —
+  // with the worker on, `CITY.state` is a mirror and writing to it changes a
+  // copy the next patch overwrites.
+  worker: params.get("worker") !== "0",
 });
 
 function show(html) {
@@ -152,6 +166,8 @@ async function boot() {
   }
 
   async function play(given) {
+    // `?funds=` applies to any NEW city, whichever screen started it (W2).
+    if (config.funds > 0 && given.options) given.options.startingTreasury = config.funds;
     app.innerHTML = "";
     app.classList.remove("choosing");
     app.classList.add("playing");
@@ -168,6 +184,7 @@ async function boot() {
       // set `data-motion` and nothing in the renderer read it, so a player who
       // asked for stillness got streaming traffic and a cycling sun.
       reducedMotion: document.documentElement.dataset.motion === "reduced",
+      worker: config.worker,
       tier: preferences.quality,
       mode: preferences.camera,
       time: preferences.time,
@@ -188,7 +205,10 @@ async function boot() {
     const record = await getSave(slot);
     const restored = record ? fromSave(record.save) : { ok: false };
     if (!restored.ok) { await newGame(); return; }
-    await play({ world: { ok: true, state: restored.state } }).catch(failed);
+    // The BYTES, not the state: the simulation restores them on its own side of
+    // the seam (W2), and `fromSave` here is the validity check that decides
+    // between resuming and offering a new city.
+    await play({ save: record.save }).catch(failed);
   }
 
   async function newGame() {

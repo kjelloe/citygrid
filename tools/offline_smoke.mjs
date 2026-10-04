@@ -13,6 +13,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { settle } from "./lib/settle.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = {
@@ -133,6 +134,9 @@ try {
   await offline.mouse.down();
   await offline.mouse.move(at.x + 120, at.y, { steps: 4 });
   await offline.mouse.up();
+  // The seam is asynchronous (W2) — and offline it is a worker served out of
+  // the precache, which is the thing this gate is really about.
+  await settle(offline);
   const roads = await offline.evaluate(() => {
     let n = 0;
     const s = globalThis.CITY.state;

@@ -17,6 +17,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { settle } from "./lib/settle.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = {
@@ -261,6 +262,14 @@ try {
     //
     // The seven `result.*` strings were in both catalogues from the first commit
     // and nothing rendered one: a build you could not afford showed "0 tiles".
+    // A POOR city, started poor (W2): the treasury used to be written straight
+    // into `CITY.state` here, which since the simulation moved behind the seam
+    // would change the mirror and leave the simulation rich. `?funds=` is the
+    // starting treasury, so the city the simulation is playing is the poor one
+    // — and the reload proves the chosen language survives one, which the poke
+    // never did.
+    await page.goto(`${base}?seed=1003&size=48&lock=0&funds=10`);
+    await started(page);
     const at = await page.evaluate(async () => {
       const { renderer, state, controller } = globalThis.CITY;
       // Three tiles clear in each direction, for a 3x3 plant.
@@ -274,7 +283,6 @@ try {
         return true;
       };
       globalThis.CITY.pause();
-      state.players[0].treasury = 10;
       const THREE = await import("/vendor/three.module.js");
       controller.setTool("building", "coalPlant");
       const canvas = document.getElementById("city");
@@ -294,6 +302,7 @@ try {
     await page.mouse.move(at.x, at.y);
     await page.mouse.down();
     await page.mouse.up();
+    await settle(page);
     const told = await page.evaluate(() => ({
       text: document.querySelector(".hud-readout")?.textContent ?? "",
       code: document.querySelector(".hud-readout")?.dataset.result ?? "",

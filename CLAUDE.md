@@ -29,17 +29,21 @@ and label anything derived from it `era 0, untuned`.
    no `Map`/`Set`, no exceptions, plain functions over plain objects and typed arrays, index maths
    only through named helpers. `shared/`, `worker/`, `server/` and `client/` use idiomatic modern
    JS. Enforced by `test/subset.test.js` (ruling 004).
-5. **Permission checks live in the reducer.** A check that exists only in the UI is not a rule, it
+5. **The client changes the city only through the seam.** `client/session.js` owns `apply`, `undo`
+   and `tick`; since W2 the reducer runs in a Web Worker and **`CITY.state` is a MIRROR** — writing
+   into it changes a copy that the next patch overwrites. A gate that must drive the engine inside
+   the page takes `?worker=0` and says why; a gate that clicks waits on `tools/lib/settle.mjs`.
+6. **Permission checks live in the reducer.** A check that exists only in the UI is not a rule, it
    is a suggestion, and the next client build will forget it.
-6. **The renderer never writes to state.** Ever. It reads and draws. And it never *imports*
+7. **The renderer never writes to state.** Ever. It reads and draws. And it never *imports*
    `engine/` either: `client/world/`, `client/render/` and `client/life/` read the handful of
    constants they need through `client/constants-mirror.js` (rulings 032, 037). `client/world/`
    is pure and re-derivable — no three, no DOM, no clock; `client/life/` may remember things
    between frames but takes its time as a delta from the caller, which is what makes `?life=0`
    freeze it. Enforced by `test/purity.test.js`.
-7. **Zero runtime dependencies** in the game itself. `three.js` is vendored and pinned; `ws` is
+8. **Zero runtime dependencies** in the game itself. `three.js` is vendored and pinned; `ws` is
    the only server dependency; dev tools may have their own.
-8. **No build step.** Plain ES modules and an importmap.
+9. **No build step.** Plain ES modules and an importmap.
 
 ## The slice ritual
 

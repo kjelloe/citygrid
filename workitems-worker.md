@@ -41,7 +41,31 @@ discovered:
    becomes a building: a few milliseconds on a desktop, more on a phone. The optimistic ghost
    already exists and is never state; the seam keeps it on screen until the result comes back.
 
-## W1 — The session seam, on the main thread first (M)
+## W1 — The session seam, on the main thread first (M) — **done 2026-10-04 as `slice-W1`**
+
+`client/session.js`: `state`, `apply`, `undo`, `tick`, `onChange`, `hash` — the reducer on this
+thread, and the engine's ten side-effect imports moved behind it, so the seam is what makes `apply`
+a whole game. `client/game.js` and `client/input/controller.js` are the only callers; the controller
+takes the SESSION where it took the state, so it cannot reach the reducer at all.
+
+Two things the item did not list and the slice found. **`undoLast` is a second hole in the seam** —
+the client's one change to the city that is not a command, mutating state directly from the
+controller — so the session owns it. And **`renderer.worldChanged()` does not hang off `onChange`**
+as the item assumed: it rebuilds the model (53.3 ms on a 96), and hanging it on every accepted
+command would pay that on every tick. It stays at the build sites; what hangs off the seam is the
+tick's own work — the HUD, the audio cues, the ambience and the autosave — which leaves
+`setInterval(() => sim.tick(), ms)` as the whole clock.
+
+**Measured** (3 runs of 2,400 ticks on a played 96, era 26): direct 933.9 / 822.3 / 808.7 ms, through
+the seam 819.9 / 825.0 / 811.9 ms — +0.3% and +0.4% after the first run's JIT warm-up, and both arms
+end at population 2,065. `quick` 494 s against 495 s before. The seam costs nothing measurable, which
+is the point of doing it empty-handed first.
+
+**Gate:** suite green twice (1,635); `quick` green; `test/session.test.js` replays all three fixtures
+THROUGH the seam with every pinned hash, result and event matching — `tools/fixtures.mjs`'s `replay`
+takes a `through` for exactly that.
+
+
 
 **Goal.** `client/session.js` with `session.state`, `session.apply(command)`,
 `session.onChange`, `session.hash()`, wrapping the reducer on the same thread. Every caller of
@@ -63,7 +87,33 @@ seam with every hash matching (`test/fixture.test.js` gains a seam variant).
 **Gate.** Every gate green, unchanged. The dev-log records that the seam cost nothing
 measurable, which is the point of doing it first.
 
-## W2 — The worker (M)
+## W2 — The worker (M) — **done 2026-10-04 as `slice-W2`**
+
+`worker/sim-worker.js` is four lines of thread; `worker/sim-host.js` is the simulation and is a
+plain module, because node cannot load a Web Worker and a decision nothing can instantiate is a
+decision no test can see (ruling 037's rule, one lane along). `client/session.js` is the mirror side
+and the chooser; `client/session-local.js` is W1's seam, kept as the fallback and as `?worker=0`;
+`client/mirror.js` patches an ordinary state object in place.
+
+**Three deviations from the plan above**, each with its reason in the dev-log: the node test drives
+the HOST rather than node's `Worker` (same decisions, no thread, and the browser proves the thread);
+the content — balance, catalogue, quests — is handed across in the init message rather than fetched
+by the worker, because the first `worker_smoke` run had the two arms 5,300 apart in the treasury
+with the worker on `engine/rules.js`'s mirror and no quests at all; and `toSave` runs on the mirror
+rather than in the worker, which is sound precisely because the mirror hashes identically.
+
+**Gates:** `worker_smoke` (both arms, 46 commands and 200 ticks, hash `1f41dfccc566819c` on each,
+6.6 s, in `quick`); `quick` green with the worker on (504 s of 540), `offline_smoke` included, which
+is what proves the worker file is precached and served; `budget` green. `test/session-worker.test.js`
+replays both generated fixtures through the simulation and checks the mirror's hash at every step;
+`test/purity.test.js` pins that `worker/` imports nothing but `engine/` and `shared/`.
+
+**What the gates had to learn.** `CITY.state` is a mirror now, so a gate that wrote into it was
+writing to a copy the next patch overwrote. The UI gates go through the seam (`CITY.apply`,
+`CITY.tick`, and `?funds=` for the treasury they used to poke); the measurement harnesses take
+`?worker=0` and say why; the pointer gates wait on `tools/lib/settle.mjs`.
+
+
 
 **Goal.** `worker/sim-worker.js` owns the state and runs the reducer; `client/session.js`
 becomes the mirror side of the seam; `client/session-local.js` (the W1 wrapper) stays as the

@@ -85,7 +85,12 @@ try {
   // `style=plain` PINNED: R2 made the style a setting whose default is
   // `painted` on a desktop, and every number in this gate's history was
   // measured on plain. The painted rows below load their own page.
-  await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=96&life=0&style=plain&lock=0`);
+// **`?worker=0`.** This gate lays its own saturated city by driving the engine
+// inside the page, and since W2 `CITY.state` is a mirror of the simulation's —
+// a command applied here would change a copy the next patch overwrites. It is a
+// RENDERER measurement either way: the triangles, the ladder and the frame are
+// the same city whichever thread the reducer ran on.
+  await page.goto(`http://127.0.0.1:${port}/index.html?worker=0&seed=1003&size=96&life=0&style=plain&lock=0`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
   await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
@@ -474,7 +479,7 @@ try {
   // of it are the same picture, and a frozen city has no traffic to look at.
   const carsPage = await context.newPage();
   carsPage.on("pageerror", (error) => errors.push(`cars: ${error.message}`));
-  await carsPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`);
+  await carsPage.goto(`http://127.0.0.1:${port}/index.html?worker=0&seed=1003&size=64&lock=0`);
   await carsPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
   await carsPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const cars = await carsPage.evaluate(async () => {
@@ -485,15 +490,43 @@ try {
     const W = state.width;
     // A road with traffic on it. The engine's commuter layer is what the
     // renderer's cars read (ruling 037).
+    //
+    // One command per DRY STRETCH, and the result is read (S13). The row
+    // through the middle of seed 1003 crosses twenty-seven tiles of river, and
+    // since `crossingRefusal` a run spanning more than `build.bridgeSpan` of it
+    // is refused WHOLE — so this block laid no road at all, the city had no
+    // street, and the two lamp checks failed on "nobody braked" rather than on
+    // anything about a brake. There is no fully dry row on this map: the
+    // stretch is the unit, which is the pattern the rail fixture has used for
+    // slices.
     const mid = Math.round(W / 2);
-    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [mid * W + 4, W - 8] });
+    const wet = (i) => state.tiles.terrain[i] === 3 || state.tiles.terrain[i] === 4;
+    const laid = [];
+    let best = { from: 0, len: 0 };
+    let start = -1;
+    for (let x = 4; x <= W - 4; x += 1) {
+      const dry = x < W - 4 && !wet(mid * W + x);
+      if (dry && start < 0) start = x;
+      if (!dry && start >= 0) {
+        if (x - start >= 3) {
+          laid.push(apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [mid * W + start, x - start] }).result);
+          if (x - start > best.len) best = { from: start, len: x - start };
+        }
+        start = -1;
+      }
+    }
     // A CROSSING, not just a straight (B4). A free-flowing straight has nothing
     // to turn into and nothing to close on, so the lamp counts on one are zero
-    // whether the feature works or not — a gate that cannot fail.
-    for (const x of [mid - 6, mid + 6]) {
+    // whether the feature works or not — a gate that cannot fail. On the longest
+    // dry stretch, a third of the way in from each end, so both side roads meet
+    // the street rather than the river.
+    const centre = best.from + Math.round(best.len / 2);
+    for (const x of [centre - Math.round(best.len / 4), centre + Math.round(best.len / 4)]) {
       const runs = [];
-      for (let y = mid - 6; y <= mid + 6; y += 1) runs.push(y * W + x, 1);
-      apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs });
+      for (let y = mid - 6; y <= mid + 6; y += 1) {
+        if (!wet(y * W + x) && y > 2 && y < W - 2) runs.push(y * W + x, 1);
+      }
+      if (runs.length > 0) laid.push(apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs }).result);
     }
     for (let i = 0; i < state.tiles.road.length; i += 1) {
       if (state.tiles.road[i] & 16) state.tiles.traffic[i] = 200;
@@ -504,7 +537,7 @@ try {
     const renderer = globalThis.CITY.renderer;
     const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     globalThis.CITY.setQuality("high");
-    focusOn(renderer.view, W / 2, Math.round(W / 2) + 0.5);
+    focusOn(renderer.view, centre + 0.5, mid + 0.5);
     zoomBy(renderer.view, 14 / renderer.view.span);
     for (let i = 0; i < 40; i += 1) await frame();
 
@@ -533,6 +566,9 @@ try {
       // threshold that has stopped discriminating.
       brake,
       turn,
+      laid,
+      row: mid,
+      stretch: best,
       inCity: renderer.traffic.count(),
       counted: renderer.stats.counted,
       lod: renderer.stats.lod,
@@ -543,6 +579,11 @@ try {
     + `ladder at "${cars.lod}"`);
   console.log(`      lamps: ${cars.brake} braking, ${cars.turn} indicating `
     + `(${cars.inPools > 0 ? Math.round(100 * cars.brake / cars.inPools) : 0}% of the cars on screen)`);
+  // The instrument first: a block whose road was refused measures nothing, and
+  // every check below reads 0 exactly as it would if the feature were broken.
+  check("the street this block measures on was actually laid (S13)",
+    cars.laid.length > 0 && cars.laid.every((r) => r === "ok"),
+    `results ${cars.laid.join(", ")} on row ${cars.row}, longest dry stretch ${JSON.stringify(cars.stretch)}`);
   check("cars are moving at a street zoom", cars.inCity > 0, JSON.stringify(cars));
   check("and they are drawn", cars.inPools > 0, JSON.stringify(cars));
   check("no pool is hidden after the cars went into it (R1.2)", cars.hidden === 0,
@@ -657,7 +698,7 @@ try {
   const paintedPage = await context.newPage();
   paintedPage.on("pageerror", (error) => errors.push(`painted: ${error.message}`));
   paintedPage.on("console", (m) => { if (m.type() === "error") errors.push(`painted: ${m.text()}`); });
-  await paintedPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=painted&lock=0`);
+  await paintedPage.goto(`http://127.0.0.1:${port}/index.html?worker=0&seed=1003&size=64&life=0&style=painted&lock=0`);
   await paintedPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
   await paintedPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const painted = await paintedPage.evaluate(async () => {
@@ -764,7 +805,7 @@ try {
   // not care how big the map is, and four times the pixels on a software
   // rasteriser is expensive enough without four times the city as well. At 96
   // this section cost 100 s, over the minute D8 allows itself.
-  await bigPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&life=0&style=plain&lock=0`);
+  await bigPage.goto(`http://127.0.0.1:${port}/index.html?worker=0&seed=1003&size=64&life=0&style=plain&lock=0`);
   await bigPage.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
   await bigPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
   const big = await bigPage.evaluate(async () => {

@@ -1,6 +1,6 @@
 {
- "version": "df464e530ae3",
- "generated": "2026-10-03",
+ "version": "2ddf15c666c8",
+ "generated": "2026-10-04",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -10,6 +10,7 @@
   "./client/debug.js",
   "./client/debug/perf-card.js",
   "./client/debug/perf-sweep.js",
+  "./client/debug/tour.js",
   "./client/game.js",
   "./client/i18n.js",
   "./client/icon-maskable.svg",
@@ -32,6 +33,7 @@
   "./client/lobby/new-game.js",
   "./client/lobby/options-model.js",
   "./client/main.js",
+  "./client/mirror.js",
   "./client/precache.json",
   "./client/render/airport-l3.js",
   "./client/render/atmosphere.js",
@@ -77,6 +79,8 @@
   "./client/render/time-of-day.js",
   "./client/render/trees-l3.js",
   "./client/render/water.js",
+  "./client/session-local.js",
+  "./client/session.js",
   "./client/storage/db.js",
   "./client/storage/saves.js",
   "./client/style.css",
@@ -111,6 +115,7 @@
   "./client/world/damage.js",
   "./client/world/facade-spec.js",
   "./client/world/figure.js",
+  "./client/world/film.js",
   "./client/world/fit.js",
   "./client/world/foliage.js",
   "./client/world/grade.js",
@@ -128,6 +133,7 @@
   "./client/world/params.js",
   "./client/world/photo.js",
   "./client/world/polyline.js",
+  "./client/world/rain.js",
   "./client/world/raymarch.js",
   "./client/world/rush.js",
   "./client/world/signals.js",
@@ -138,6 +144,7 @@
   "./data/balance.json",
   "./data/buildings.json",
   "./data/cityviewer.json",
+  "./data/film/sixty-seconds.json",
   "./data/i18n/en.json",
   "./data/i18n/no.json",
   "./data/names.json",
@@ -183,6 +190,8 @@
   "./shared/prng.js",
   "./shared/protocol.js",
   "./shared/statehash.js",
-  "./vendor/three.module.js"
+  "./vendor/three.module.js",
+  "./worker/sim-host.js",
+  "./worker/sim-worker.js"
  ]
 }

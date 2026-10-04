@@ -9,22 +9,12 @@
 // means; a client that advanced anything itself would desync the moment a
 // second client existed.
 
-import { generateWorld } from "../engine/worldgen.js";
-import { defaultOptions } from "../engine/options.js";
-import { apply } from "../engine/reducer.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
-import { RESULT } from "../shared/protocol.js";
-import "../engine/build-commands.js";
-import "../engine/development.js";
-import "../engine/utilities.js";
-import "../engine/economy.js";
-import "../engine/civic.js";
-import "../engine/fire.js";
-import "../engine/disasters.js";
-import "../engine/traffic.js";
-import "../engine/history.js";
-import "../engine/quests.js";
+// The seam (W1, W2). Nothing here calls the reducer, generates a world or
+// registers a subsystem any more: all of that is on the other side of it, which
+// is a worker thread unless the browser or `?worker=0` says otherwise.
+import { openSession } from "./session.js";
 
 import { createRenderer } from "./render/scene.js";
 import { focusOn } from "./render/camera.js";
@@ -44,7 +34,7 @@ import { loadQuests } from "./content.js";
 import { questCatalogue, activeQuests } from "../engine/quests.js";
 import { CMD_QUEST_CHOICE, CMD_SET_TAX, CMD_SET_FUNDING } from "../engine/commands.js";
 import { clampRate, clampFunding } from "./ui/budget-model.js";
-import { toSave, fromSave } from "../engine/save.js";
+import { toSave } from "../engine/save.js";
 import { shouldAutosave, slotSummary, packExport, unpackImport, SLOTS } from "./storage/saves.js";
 import { putSave, getSave, listSaves, available } from "./storage/db.js";
 import { t, locale as currentLocale } from "./i18n.js";
@@ -94,14 +84,21 @@ export async function startGame(root, given = {}) {
     disasters: true,
     quests: true,
   };
-  const world = given.world ?? generateWorld(defaultOptions(options));
-  if (!world.ok) throw new Error(`generation failed: ${world.reason}`);
-  const state = world.state;
+  // The seam. A city somebody already has — the lobby's preview, a restored
+  // save, a restyle — crosses to the simulation as its own save bytes; with
+  // nothing given, the simulation generates one. `state` is the MIRROR when the
+  // worker is running and the real state when it is not, and nothing below this
+  // line can tell the difference (W2).
+  const sim = await openSession({
+    state: given.world?.state, save: given.save, options, worker: given.worker,
+  });
+  const state = sim.state;
+
   // A restored city already has its seat, and CMD_JOIN on an existing seat
   // touches `lastSeenTick` — which is hashed, so re-joining a loaded save would
   // move it away from the checksum it was saved with.
   if (!state.players.some((p) => p.seat === SEAT)) {
-    apply(state, {
+    await sim.apply({
       type: CMD_JOIN, actor: SEAT, seat: SEAT,
       // The reducer caps and sanitises it; this only carries what was typed.
       name: given.mayorName || t("player.you"),
@@ -181,7 +178,7 @@ export async function startGame(root, given = {}) {
   hudRoot.addEventListener("pointerdown", unlockAudio);
   globalThis.addEventListener?.("keydown", unlockAudio);
 
-  const controller = createController(canvas, state, renderer, {
+  const controller = createController(canvas, sim, renderer, {
     actor: SEAT,
     onChange: () => {
       hud.refresh();
@@ -238,15 +235,17 @@ export async function startGame(root, given = {}) {
     onDismissControlsCard: () => saveSettings({ ...loadSettings(), controlsCard: false }),
     onNewCity: onNewCity && (() => { session.stop(); onNewCity(); }),
     onQuestChoice(id, option) {
-      apply(state, { type: CMD_QUEST_CHOICE, actor: SEAT, id, option });
-      hud.refresh();
+      // The seam answers when the simulation has actually done it (W2): the
+      // HUD is refreshed from the city the choice produced, not from the one
+      // that was on screen when it was clicked.
+      sim.apply({ type: CMD_QUEST_CHOICE, actor: SEAT, id, option }).then(() => hud.refresh());
     },
     quests: { catalogue: questCatalogue, active: () => activeQuests(state) },
     onTax(rate) {
-      apply(state, { type: CMD_SET_TAX, actor: SEAT, rate: clampRate(rate) });
+      sim.apply({ type: CMD_SET_TAX, actor: SEAT, rate: clampRate(rate) });
     },
     onFunding(service, percent) {
-      apply(state, { type: CMD_SET_FUNDING, actor: SEAT, service, percent: clampFunding(percent) });
+      sim.apply({ type: CMD_SET_FUNDING, actor: SEAT, service, percent: clampFunding(percent) });
     },
     onSave: save,
     onLoad: load,
@@ -278,25 +277,29 @@ export async function startGame(root, given = {}) {
     clock = undefined;
     const { labelKey, ms } = SPEEDS[speed];
     hud.setSpeedLabel(labelKey);
-    if (ms > 0) {
-      clock = setInterval(() => {
-        const outcome = apply(state, { type: CMD_TICK });
-        hud.tick(outcome.events);
-        for (const cue of cuesFor(outcome.events)) audio.play(cue);
-        // Where the WALKER is standing, when they are down there (V8): a busy
-        // arterial and a cul-de-sac two streets away are the same city and very
-        // different places. `tiles.traffic` under their feet is hashed state,
-        // so this is still a projection and a muted client stays hash-identical
-        // to a loud one.
-        audio.setAmbience(streetAmbienceFor(state, walkerTile(), trafficUnderWalker()));
-        if (shouldAutosave(state.tick, lastAutosaveTick)) {
-          lastAutosaveTick = state.tick;
-          save(SLOTS.auto);
-        }
-      }, ms);
-    }
+    // The clock is a CALLER of the seam, and what a tick does to the HUD, the
+    // audio and the autosave is a listener on it (W1). The schedule is the only
+    // thing left here, which is what lets a gate step the city by hand and get
+    // exactly what the interval would have done.
+    if (ms > 0) clock = setInterval(() => sim.tick(), ms);
   }
   setSpeed(1);
+
+  sim.onChange((change) => {
+    if (change.command.type !== CMD_TICK) return;
+    hud.tick(change.events);
+    for (const cue of cuesFor(change.events)) audio.play(cue);
+    // Where the WALKER is standing, when they are down there (V8): a busy
+    // arterial and a cul-de-sac two streets away are the same city and very
+    // different places. `tiles.traffic` under their feet is hashed state, so
+    // this is still a projection and a muted client stays hash-identical to a
+    // loud one.
+    audio.setAmbience(streetAmbienceFor(state, walkerTile(), trafficUnderWalker()));
+    if (shouldAutosave(state.tick, lastAutosaveTick)) {
+      lastAutosaveTick = state.tick;
+      save(SLOTS.auto);
+    }
+  });
 
   // --- saving ---------------------------------------------------------------
 
@@ -323,14 +326,13 @@ export async function startGame(root, given = {}) {
    * Everything that cached the old state has to be pointed at the new one.
    * Doing this by rebuilding the world in place, rather than by reloading the
    * page, is what lets a load keep the camera where the player left it. */
-  function adopt(saveData, message) {
-    const restored = fromSave(saveData);
+  async function adopt(saveData, message) {
+    // Through the seam: the simulation restores the city and sends back a whole
+    // one, which the mirror takes field by field into the object the renderer,
+    // the HUD and the controller all hold (W2). A load that only replaced the
+    // copy on this thread would leave the worker playing the old city.
+    const restored = await sim.load(saveData);
     if (!restored.ok) { hud.setStatus(t("status.loadFailed", { reason: restored.reason })); return false; }
-    // Copy field by field into the existing object: the renderer, the HUD and
-    // the controller all hold a reference to it, and replacing the reference
-    // would leave every one of them drawing a city that no longer exists.
-    for (const key of Object.keys(state)) delete state[key];
-    Object.assign(state, restored.state);
     lastAutosaveTick = undefined;
     renderer.worldChanged();
     minimap?.worldChanged();
@@ -343,7 +345,7 @@ export async function startGame(root, given = {}) {
     return packExport(toSave(current.state));
   }
 
-  function importSave(text) {
+  async function importSave(text) {
     const parsed = unpackImport(text);
     if (!parsed.ok) { hud.setStatus(t("status.importFailed", { reason: parsed.reason })); return false; }
     return adopt(parsed.data, t("status.imported"));
@@ -435,6 +437,22 @@ export async function startGame(root, given = {}) {
   // mock. A gate that tests a mock proves the mock works.
   const session = {
     state, renderer, controller,
+    /** Which side of the seam the simulation is on, and how far behind the
+     * mirror is (W2). A gate drives the page and then waits for the city to
+     * have actually changed; without this it would guess at a delay, and a
+     * guessed delay is a flake or a gate that cannot fail. */
+    get worker() { return !sim.local; },
+    get pending() { return sim.pending; },
+    /** The seam itself, for the gates that build a city in the page. They used
+     * to import the reducer and apply to `CITY.state` — which since W2 is a
+     * MIRROR, so that would change a copy and leave the simulation playing a
+     * different city. This is the only way to change the city from outside. */
+    apply: (command) => sim.apply(command),
+    tick: (count) => sim.tick(count),
+    /** The checksum of the city the SIMULATION is playing, read through the
+     * seam: with the worker on it is the mirror's, which is the same number or
+     * the seam is broken. */
+    hash: () => sim.hash(),
     get hud() { return hud; },
     /** Rebuild the HUD in the current language. */
     relocalise() {
@@ -492,6 +510,10 @@ export async function startGame(root, given = {}) {
       minimap?.dispose();
       hud.dispose?.();
       renderer.dispose();
+      // And the thread the simulation is on (W2). A new city, a style change
+      // and "new city" all build a fresh session, and a worker nobody
+      // terminates is a city still being played in the background.
+      sim.dispose();
     },
   };
   globalThis.CITY = session;

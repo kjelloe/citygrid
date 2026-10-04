@@ -11,8 +11,7 @@
 //   - a drag becomes ONE command with run-length encoded tiles, never one per
 //     tile crossed.
 
-import { apply } from "../../engine/reducer.js";
-import { price, undoLast, lastUndoFor } from "../../engine/build-commands.js";
+import { price, lastUndoFor } from "../../engine/build-commands.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { footprintAt, isOrientable } from "../ui/build-model.js";
 import { RESULT } from "../../shared/protocol.js";
@@ -38,7 +37,12 @@ function pixelsToTiles(view, canvasHeight, pixels) {
   return (pixels / canvasHeight) * view.span;
 }
 
-export function createController(canvas, state, renderer, options = {}) {
+export function createController(canvas, session, renderer, options = {}) {
+  // The seam, not the state (W1): the controller reads the city and asks the
+  // session to change it. `session.state` never changes identity — loading a
+  // save copies field by field — so this is the same object everything else
+  // holds.
+  const state = session.state;
   const actor = options.actor ?? 1;
   const onChange = options.onChange ?? (() => {});
   const onPreview = options.onPreview ?? (() => {});
@@ -142,12 +146,17 @@ export function createController(canvas, state, renderer, options = {}) {
       : buildCommand(ui.tool, actor, { runs: toRuns(tiles.map((t) => tileIndex(t.x, t.y, state.width))) });
     if (!command) return;
 
-    const outcome = apply(state, command);
-    onResult(outcome.result, command);
-    if (outcome.result === RESULT.OK) {
-      renderer.worldChanged();
-      onChange();
-    }
+    // The seam answers when the simulation has done it, which with the worker
+    // running is a round trip (W2). Nothing waits on screen: the ghost is
+    // already hidden and the optimistic trail is cleared above, so what arrives
+    // late is the RESULT — the toast, the model rebuild and the HUD refresh.
+    session.apply(command).then((outcome) => {
+      onResult(outcome.result, command);
+      if (outcome.result === RESULT.OK) {
+        renderer.worldChanged();
+        onChange();
+      }
+    });
   }
 
   /** The ground point the drag started on, in tile coordinates. Under
@@ -1073,13 +1082,14 @@ export function createController(canvas, state, renderer, options = {}) {
   }
 
   function undo() {
-    const result = undoLast(state, actor);
-    onResult(result, { type: "undo", actor });
-    if (result === RESULT.OK) {
-      renderer.worldChanged();
-      onChange();
-    }
-    return result;
+    return session.undo(actor).then((result) => {
+      onResult(result, { type: "undo", actor });
+      if (result === RESULT.OK) {
+        renderer.worldChanged();
+        onChange();
+      }
+      return result;
+    });
   }
 
   return {

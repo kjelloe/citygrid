@@ -137,7 +137,17 @@ const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
-const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`;
+// **`?worker=0`.** This script drives the ENGINE inside the page in three
+// places — it lays the fixture city, it runs four hundred ticks by hand, and it
+// arms a wildfire by setting `state.disaster` — and since W2 moved the
+// simulation behind the seam, `CITY.state` is a mirror whose next patch
+// overwrites anything written into it. There is no command that arms a
+// disaster, so the acceptance city is played on this thread on purpose.
+//
+// The seam itself is gated elsewhere, with the worker ON: `worker_smoke` plays
+// both arms and compares the hash, and `save_smoke`, `ui_smoke`, `play_smoke`
+// and `lobby_smoke` all drive the shipped configuration.
+const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0&worker=0`;
 const pageErrors = [];
 
 try {

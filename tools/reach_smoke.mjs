@@ -47,18 +47,20 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
   page.on("pageerror", (e) => problems.push(`page error — ${e.message}`));
-  await page.goto(`${base}?seed=1003&size=48&lock=0`);
+  // `?funds=` buys the toolbar's affordances: a write into `CITY.state` would
+  // change the mirror and leave the simulation poor (W2).
+  await page.goto(`${base}?seed=1003&size=48&lock=0&funds=900000`);
   await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
   await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
 
   // A city with a quest running and money to spend, so the advisor is on screen
   // and nothing is disabled for lack of funds.
   await page.evaluate(async () => {
-    const { apply } = await import("/engine/reducer.js");
-    const { CMD_TICK } = await import("/engine/commands.js");
     globalThis.CITY.pause();
-    globalThis.CITY.state.players[0].treasury = 900000;
-    for (let i = 0; i < 24; i += 1) globalThis.CITY.hud.tick(apply(globalThis.CITY.state, { type: CMD_TICK }).events);
+    // Through the seam (W2), which is where the simulation is. The HUD hears
+    // the events the same way it does from the clock.
+    const outcome = await globalThis.CITY.tick(24);
+    globalThis.CITY.hud.tick(outcome.events);
   });
   await page.waitForTimeout(300);
 

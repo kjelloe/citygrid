@@ -18,6 +18,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { settle } from "./lib/settle.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = {
@@ -92,6 +93,7 @@ async function run(page, label, { touch, mode }) {
     await page.mouse.move(from.x + (to.x - from.x) * f, from.y + (to.y - from.y) * f);
   }
   await page.mouse.up();
+  await settle(page);
 
   const road = await page.evaluate(() => {
     const { state } = globalThis.CITY;
@@ -109,6 +111,7 @@ async function run(page, label, { touch, mode }) {
 
   // --- undo puts it back ----------------------------------------------------
   await page.click("#undo");
+  await settle(page);
   const afterUndo = await page.evaluate(() => {
     const { state } = globalThis.CITY;
     let paved = 0;
@@ -122,6 +125,7 @@ async function run(page, label, { touch, mode }) {
   await page.mouse.down();
   await page.mouse.move(to.x, to.y);
   await page.mouse.up();
+  await settle(page);
 
   // --- zoning beside it -----------------------------------------------------
   await page.click('.hud-toolbar button[data-tool="zoneResidential"]');
@@ -131,6 +135,7 @@ async function run(page, label, { touch, mode }) {
   await page.mouse.down();
   await page.mouse.move(zoneB.x, zoneB.y);
   await page.mouse.up();
+  await settle(page);
 
   const zoned = await page.evaluate(() => {
     const { state } = globalThis.CITY;
@@ -583,11 +588,32 @@ async function run(page, label, { touch, mode }) {
     await import("/engine/build-commands.js");
     const state = globalThis.CITY.state;
     const W = state.width;
+    // One command per DRY STRETCH (S13): no row of seed 1003 is free of the
+    // river, and a road run spanning more than `build.bridgeSpan` tiles of
+    // water is refused WHOLE — so a single run across the map lays nothing and
+    // the street this pass needs is not there (ruling 047).
+    const wet = (i) => state.tiles.terrain[i] === 3 || state.tiles.terrain[i] === 4;
+    const paveRow = (row, from, to) => {
+      let best = { from: 0, len: 0 };
+      let start = -1;
+      for (let x = from; x <= to; x += 1) {
+        const dry = x < to && !wet(row * W + x);
+        if (dry && start < 0) start = x;
+        if (!dry && start >= 0) {
+          if (x - start >= 3) {
+            apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [row * W + start, x - start] });
+            if (x - start > best.len) best = { from: start, len: x - start };
+          }
+          start = -1;
+        }
+      }
+      return best;
+    };
     const y = Math.round(W / 2);
-    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [y * W + 8, W - 16] });
+    const best = paveRow(y, 8, W - 8);
     globalThis.CITY.renderer.worldChanged();
     const { focusOn } = await import("/client/render/camera.js");
-    focusOn(globalThis.CITY.renderer.view, W / 2, y + 0.5);
+    focusOn(globalThis.CITY.renderer.view, best.from + best.len / 2, y + 0.5);
     return { paved: state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0), y };
   });
   check(`${label}: the street gate has a street to stand in`, street.paved > 10,
@@ -984,14 +1010,28 @@ try {
       const C = await import("/engine/commands.js");
       const state = globalThis.CITY.state;
       const W = state.width;
+      // The same stretch rule as above (S13): one command per dry run.
+      const wet2 = (i) => state.tiles.terrain[i] === 3 || state.tiles.terrain[i] === 4;
       const y = Math.round(W / 2);
       // The same recipe the rows above use — run-length pairs, not an object,
       // which is the shape `CMD_PLACE_ROAD` actually takes — and the view moved
       // onto the pavement, because `enterStreet` stands where the camera looks.
-      apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [y * W + 8, W - 16] });
+      let best2 = { from: 0, len: 0 };
+      let run2 = -1;
+      for (let x = 8; x <= W - 8; x += 1) {
+        const dry = x < W - 8 && !wet2(y * W + x);
+        if (dry && run2 < 0) run2 = x;
+        if (!dry && run2 >= 0) {
+          if (x - run2 >= 3) {
+            apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [y * W + run2, x - run2] });
+            if (x - run2 > best2.len) best2 = { from: run2, len: x - run2 };
+          }
+          run2 = -1;
+        }
+      }
       globalThis.CITY.renderer.worldChanged();
       const { focusOn } = await import("/client/render/camera.js");
-      focusOn(globalThis.CITY.renderer.view, W / 2, y + 0.5);
+      focusOn(globalThis.CITY.renderer.view, best2.from + best2.len / 2, y + 0.5);
       return state.tiles.road.reduce((n, t) => n + (t & 16 ? 1 : 0), 0);
     });
     check("locked: the pass has a street to stand in", paved > 10, `${paved} tiles paved`);

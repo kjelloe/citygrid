@@ -102,13 +102,27 @@ produced — not "passed".
 time and writes it to `reports/gates-<date>.json`:
 
 ```sh
-node tools/gates.mjs quick     # after ANY change — 11 gates, ~5.5 min on SwiftShader
+node tools/gates.mjs quick     # after ANY change — 11 gates, ~8 min on SwiftShader
 node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump
-node tools/gates.mjs budget    # and the triangle budget — its own set since B3a, ~4 min
-node tools/gates.mjs shots     # the world and behaviour lanes' pictures, ~4 min
+node tools/gates.mjs budget    # and the triangle budget — its own set since B3a, ~5 min
+node tools/gates.mjs shots     # the world and behaviour lanes' pictures, ~4.5 min
 node tools/gates.mjs transport # T1-T4's pictures — avenue, rail, harbour (T4b split them), ~3 min
 node tools/gates.mjs sim       # a gameplay slice as well: the three soaks, ~10 min
+node tools/gates.mjs kits      # one picture per catalogue definition and per kit, ~6 min
+node tools/gates.mjs film      # the sixty-second storyboard, every frame counted, ~5 min (F2)
 ```
+
+`film` is the only gate that renders the game as a MINUTE rather than as a frame, so it is the one
+that can see a shot that is right on its own and wrong after the one before it. Run it when a slice
+changes the hour, the styles, the camera or what the street looks like at eye height — and **look at
+`reports/storyboard/sixty-seconds/index.html`**, which is the whole point of a storyboard.
+
+**The simulation is behind the seam (W2).** `CITY.state` in the page is a MIRROR of the worker's
+state: writing into it changes a copy that the next patch overwrites, and nothing throws. A gate
+that builds a city in the page calls `CITY.apply(command)` and `CITY.tick(count)`; one that needs
+the engine under its own hand takes `?worker=0` and says why; one that clicks waits on
+`tools/lib/settle.mjs` rather than reading `CITY.state` in the next line. `?funds=` is the starting
+treasury, for the gates that used to poke it.
 
 **`node --test test/docs.test.js` before EVERY commit** (Kjell, P70). It is seconds, and it is the
 only thing that catches a question added to `dev-questions.md` and nowhere else, a renderer slice
@@ -177,6 +191,19 @@ run, not that both exist in the source.
 locator, reports it visible, and never returns. `page.evaluate(() => el.getBoundingClientRect())`
 is the same number without the actionability machinery. Suspect any Playwright call that waits on
 element state after a gate enters a pointer-locked mode.
+
+**An era's verdict is the sweep PLUS the arm that can see the rule.** The sweep says nothing broke;
+it does not say what a rule is worth when the rule is conditional on something the world may not
+have. Era 26's crossing rule is flat over two hundred games and worth a quarter of a city in the two
+seeds of twelve where it fires. Report both, and say which number answers which question.
+
+**The sets get slower because the FIXTURE grows, not because the gates do.** `saturatedCity` has
+been a played city since H7, so every era that changes what the deputy builds changes what four
+gates measure: `render` was restated at H7 (lanes_dump 60 s → 150) and `quick` at S13 (490 s
+measured, ui_smoke 197 s against about 110 at P96, because the perf card's nine steps are nine
+views of a city that has grown parks, police stations, people and a bridge). Restating a budget
+from a measurement with the cause named is not raising it to fit a gate that grew — M2's rule is
+about the gates, and the question to answer first is which of the two it is.
 
 **`budget_gate` is in `render`, not `quick`** (K1, A64). It is a renderer measurement — three
 tiers, two projections, four spans, and a second viewport at a real desktop's pixel count — and at

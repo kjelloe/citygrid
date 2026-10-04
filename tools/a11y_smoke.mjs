@@ -52,7 +52,10 @@ const base = `http://127.0.0.1:${port}/index.html`;
 // `lock=0`: Playwright cannot drive a page that has taken the pointer, and
 // this gate presses F and C (K3, A58). The locked path has its own pass in
 // `play_smoke`.
-const game = `${base}?seed=1003&size=64&lock=0`;
+// `?funds=` rather than a write into `CITY.state`: since W2 that state is a
+// mirror of the simulation's, and the next patch overwrites anything poked into
+// it (W2).
+const game = `${base}?seed=1003&size=64&lock=0&funds=500000`;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
 const pageErrors = [];
 /** Waits for the city, then puts the first-run controls card away.
@@ -168,9 +171,6 @@ try {
   //
   // The whole point, and the thing the checks above only imply.
   const built = await page.evaluate(async () => {
-    const { apply } = await import("/engine/reducer.js");
-    const c = await import("/engine/commands.js");
-    globalThis.CITY.state.players[0].treasury = 500000;
     let roads = 0;
     for (let i = 0; i < globalThis.CITY.state.tiles.road.length; i += 1) {
       if (globalThis.CITY.state.tiles.road[i] & 16) roads += 1;
@@ -403,7 +403,29 @@ try {
     await import("/engine/build-commands.js");
     const state = globalThis.CITY.state;
     const W = state.width;
-    apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [Math.round(W / 2) * W + 4, W - 8] });
+    // One command per DRY STRETCH (S13): no row of seed 1003 is free of the
+    // river, and a road run spanning more than `build.bridgeSpan` tiles of
+    // water is refused WHOLE — so a single run across the map lays nothing and
+    // every count after it reads zero for a reason that has nothing to do with
+    // what is being measured (ruling 047).
+    const wet = (i) => state.tiles.terrain[i] === 3 || state.tiles.terrain[i] === 4;
+    const paveRow = (row, from, to) => {
+      let best = { from: 0, len: 0 };
+      let start = -1;
+      for (let x = from; x <= to; x += 1) {
+        const dry = x < to && !wet(row * W + x);
+        if (dry && start < 0) start = x;
+        if (!dry && start >= 0) {
+          if (x - start >= 3) {
+            apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [row * W + start, x - start] });
+            if (x - start > best.len) best = { from: start, len: x - start };
+          }
+          start = -1;
+        }
+      }
+      return best;
+    };
+    paveRow(Math.round(W / 2), 4, W - 4);
     for (let i = 0; i < state.tiles.road.length; i += 1) {
       if (state.tiles.road[i] & 16) state.tiles.traffic[i] = 200;
     }
@@ -418,7 +440,7 @@ try {
   const stillContext = await browser.newContext({ viewport: { width: 1000, height: 700 }, reducedMotion: "reduce" });
   const stillPage = await stillContext.newPage();
   stillPage.on("pageerror", (error) => problems.push(`motion: ${error.message}`));
-  await stillPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48&lock=0`);
+  await stillPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48&lock=0&funds=500000`);
   await started(stillPage);
   const stillCars = await seedTraffic(stillPage);
   const still = await stillPage.evaluate(async () => {

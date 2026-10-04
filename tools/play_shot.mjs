@@ -23,7 +23,9 @@ const b = await chromium.launch({args:["--use-gl=swiftshader","--enable-unsafe-s
 for (const [name, vp] of [["desktop",{width:1280,height:720}],["phone",{width:390,height:844}]]) {
   const c = await b.newContext({viewport: vp, hasTouch: name==="phone", isMobile: name==="phone"});
   const page = await c.newPage();
-  await page.goto(`http://127.0.0.1:${p}/index.html?seed=1003&size=64`);
+// `?worker=0`: this harness drives the engine in the page to build what it
+// photographs, and since W2 `CITY.state` is a mirror (W2).
+  await page.goto(`http://127.0.0.1:${p}/index.html?worker=0&seed=1003&size=64`);
   await page.waitForFunction(()=>globalThis.CITY!==undefined,undefined,{timeout:60000});
   await page.evaluate(async ()=>{
     const {state,renderer}=globalThis.CITY;

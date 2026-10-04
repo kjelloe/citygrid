@@ -61,6 +61,25 @@ test("engine/ imports nothing outside engine/ and shared/", () => {
   assert.deepEqual(offenders, [], `engine/ must not depend on adapters:\n  ${offenders.join("\n  ")}`);
 });
 
+test("worker/ imports nothing outside engine/ and shared/ (W2)", () => {
+  // The simulation's thread may not reach for the page: no `client/`, no DOM,
+  // no three — and no bare specifier either, because a module worker gets no
+  // import map and "three" would simply fail to resolve inside it.
+  const offenders = [];
+  for (const file of jsFilesIn("worker")) {
+    for (const match of file.source.matchAll(/from\s+["']([^"']+)["']/g)) {
+      const spec = match[1];
+      const local = spec.startsWith(".");
+      const allowed = local && !/\.\.\/(client|server|vendor|tools)\//.test(spec);
+      if (!allowed) offenders.push(`${file.path} -> ${spec}`);
+    }
+    for (const pattern of [/\bdocument\b/, /(?:^|[^.\w])window\s*[.[]/, /Math\.random/, /Date\.now/]) {
+      if (pattern.test(file.source)) offenders.push(`${file.path}: ${pattern}`);
+    }
+  }
+  assert.deepEqual(offenders, [], `worker/ must be engine and shared only:\n  ${offenders.join("\n  ")}`);
+});
+
 test("the purity guard actually catches a planted violation", () => {
   const planted = [{
     path: "engine/planted.js",

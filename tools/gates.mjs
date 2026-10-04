@@ -42,6 +42,7 @@ export const GATES = {
   serve_smoke: { args: ["tools/serve_smoke.mjs"], what: "the REAL server, so a CSP that blocks the importmap goes red" },
   ui_smoke: { args: ["tools/ui_smoke.mjs"], what: "every button hit-tested, every overlay rendered" },
   update_smoke: { args: ["tools/update_smoke.mjs"], what: "a new build reaches a returning player" },
+  worker_smoke: { args: ["tools/worker_smoke.mjs"], what: "the same city played on the worker and on this thread, hash for hash (W2)" },
   mvp_acceptance: { args: ["tools/mvp_acceptance.mjs"], what: "all thirteen §24 criteria, desktop and phone" },
   budget_gate: { args: ["tools/budget_gate.mjs"], what: "3 tiers × 2 projections × 4 spans, plus every added row" },
 
@@ -57,27 +58,34 @@ export const GATES = {
   avenue_shots: { args: ["tools/avenue_shots.mjs"], what: "the deputy's own avenue: its width, its median and its two lanes each way" },
   rail_shots: { args: ["tools/rail_shots.mjs"], what: "the track, a level crossing and a train that is actually posed on the line" },
   harbour_shots: { args: ["tools/harbour_shots.mjs"], what: "boats at a marina, a ferry with a wake, and a port with its ship" },
+  bridge_shots: { args: ["tools/bridge_shots.mjs"], what: "a crossing from the bank, from the deck and side on, with the deck, the water and the bed measured beside each" },
   airport_shots: { args: ["tools/airport_shots.mjs"], what: "a runway with its markings, an apron lit at night, and an aircraft on the ground" },
   civic_shots: { args: ["tools/civic_shots.mjs"], what: "one street-level picture per catalogue definition, counting that the reducer accepted each one" },
   foliage_shots: { args: ["tools/foliage_shots.mjs"], what: "trees, gardens and a park, counted before they are called a picture" },
   motion_shots: { args: ["tools/motion_shots.mjs"], what: "the things that move at rest and in motion — rotor, flag, crane, smoke" },
   role_shots: { args: ["tools/role_shots.mjs"], what: "a building per role, told apart" },
   street_shots: { args: ["tools/street_shots.mjs"], what: "a street at eye height, with what S3 put on it counted" },
+  film: { args: ["tools/film.mjs"], what: "the sixty-second shot list, a frame a second, each one counted for triangles and for life" },
 
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
   // The same walk on the terrain S11 and J3 are about. It could not be RUN at
   // all until S11 taught the fixture that a network refuses rock, and J3 took it
   // from 25 cliffs and 218 of 612 ungradeable corridors to 0 and 20 of 177.
   //
-  // **Not in a set**, and the reason is a lesson rather than a defect: its
-  // criteria are absolute (no cliff, nothing walked into) and the hilly city
-  // changes with every balance era. It was green at era 22 and red at era 23 —
-  // four cliffs, four lots walked into — with no change to the rule, because
-  // the economy moved what the deputy builds and `maxRoadSlope` had been chosen
-  // at the rung that made THIS gate pass on THAT city. A gate whose pass depends
-  // on a constant tuned to one city is a gate that will be red on the next era's
-  // city. Run it by hand, read the four numbers, and see Q142.
-  walkthrough_hilly: { args: ["tools/walkthrough.mjs", "128", "hilly"], what: "the same walk on a hilly 128 — a tool, not a gate (Q142)" },
+  // Out of every set between era 23 and A119, and the reason was a lesson rather
+  // than a defect: its criteria were absolute (no cliff, nothing walked into) and
+  // the hilly city changes with every balance era. It was green at era 22 and red
+  // at era 23 with no change to the rule, because the economy moved what the
+  // deputy builds and `maxRoadSlope` had been chosen at the rung that made THIS
+  // gate pass on THAT city.
+  //
+  // **Back in at A119**, and not by loosening a number: the counts are
+  // ATTRIBUTED. A cliff on a corridor no grading can flatten is terrain and is
+  // counted under its own name, exactly as a steep refusal already was; a lot
+  // the walker stands on top of is a building buried in a hillside (Q144), not a
+  // wall it walked through. What is left over is a defect wherever it happens,
+  // which is a criterion a moving city cannot drift through.
+  walkthrough_hilly: { args: ["tools/walkthrough.mjs", "128", "hilly"], what: "the same walk on a hilly 128, where the terrain is attributed rather than counted (A119)" },
   passability: { args: ["tools/passability.mjs"], what: "a lane wide enough for a walker, everywhere" },
   lanes_dump: { args: ["tools/lanes_dump.mjs"], what: "the lane graph, its height error and its step time" },
 
@@ -92,7 +100,7 @@ export const SETS = {
   quick: [
     "a11y_smoke", "client_smoke", "lobby_smoke", "offline_smoke", "play_smoke",
     "reach_smoke", "save_smoke", "serve_smoke", "ui_smoke", "update_smoke",
-    "mvp_acceptance",
+    "worker_smoke", "mvp_acceptance",
   ],
   // `budget_gate` moved here from `quick` in K1 (Q79 → A64). It is a renderer
   // MEASUREMENT — three tiers, two projections, four spans, and since D8 a
@@ -105,7 +113,7 @@ export const SETS = {
   // (budget_gate 235, lanes_dump 60), so the next slice would have had to
   // raise the budget to fit — which the rule forbids. It is a set of its own
   // now, and `render` is restated from what is left in it.
-  render: ["walkthrough", "passability", "lanes_dump"],
+  render: ["walkthrough", "walkthrough_hilly", "passability", "lanes_dump"],
   budget: ["budget_gate"],
   // The picture tools that CHECK themselves (P75's omissions round): each one
   // counts what it photographed and exits non-zero when the count is wrong, and
@@ -117,7 +125,7 @@ export const SETS = {
   // forbids. The line is the lane — `shots` is the world and behaviour lanes'
   // pictures, `transport` is T1–T4's — so a slice runs the set its own lane
   // owns and the two halves stay honest about what they cost.
-  shots: ["water_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots"],
+  shots: ["water_shots", "bridge_shots", "disaster_shot", "service_shots", "window_shots", "rain_shots"],
   transport: ["avenue_shots", "rail_shots", "harbour_shots", "airport_shots"],
   // Its own set (M2's rule: split rather than raise). One picture per catalogue
   // definition is twenty-eight shots and seven minutes, which no other set can
@@ -125,9 +133,16 @@ export const SETS = {
   // non-zero when the reducer refused what it was photographing.
   kits: ["civic_shots", "foliage_shots", "motion_shots", "role_shots", "street_shots"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
+  // The storyboard (F2). A set of its own for the same reason `kits` is one: it
+  // is 61 frames of a played 96-tile city on SwiftShader and nothing else can
+  // absorb five minutes. It is also the only gate that renders the game as a
+  // film — every other picture tool shoots one frame and this one shoots a
+  // minute, which is how a shot that is right on its own and wrong after the
+  // one before it is seen at all.
+  film: ["film"],
 };
 SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots,
-  ...SETS.transport, ...SETS.kits];
+  ...SETS.transport, ...SETS.kits, ...SETS.film];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -156,7 +171,17 @@ SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.
  * number set when the set took three seconds.
  */
 export const BUDGET_MS = {
-  quick: 8 * 60 * 1000,
+  // **Restated at S13 from a measured run: 490 s.** Not a gate that grew — the
+  // FIXTURE under one did, which is the same restatement `render` took at H7.
+  // `ui_smoke` carries the perf card, the card measures `saturatedCity`, and
+  // that recipe has been a played city since H7: eras 17 to 24 gave it parks,
+  // police stations, a bigger population and (here) a bridge, and the card's
+  // nine steps are nine views of whatever it has become. Measured today:
+  // ui_smoke 197 s against about 110 at P96, play_smoke 91, reach_smoke 62.
+  // 540 s, and `worker_smoke` (7 s, W2) fits inside it: the set was measured at
+  // 494 s with the seam in place, which is 46 s of headroom and the reason this
+  // gate went here rather than into a set of its own.
+  quick: 9 * 60 * 1000,
   // Measured after the split (B3a): walkthrough 2, passability 0, lanes_dump 60.
   // Restated at H7, when the FIXTURE changed: `saturatedCity` plays the deputy
   // now, so the lane graph is 7,694 links against 2,436 and the walk is 405 real
@@ -179,6 +204,10 @@ export const BUDGET_MS = {
   transport: 5 * 60 * 1000,
   kits: 16 * 60 * 1000,
   sim: 15 * 60 * 1000,
+  // The storyboard, measured at F2: 61 frames in 291 s at 960×540, of which the
+  // two walk shots are half — a street frame on SwiftShader is a quarter of a
+  // second and the film settles the street cache at every one of them.
+  film: 8 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
   // transport 187 — which is where 35 minutes came from, and `kits` (365 s) was
   // added to `all` in P94 without it. Restated from the contents at P96, the
@@ -186,7 +215,10 @@ export const BUDGET_MS = {
   // sim 768, shots 385, transport 181, kits 347. That is a restatement, not a
   // raise to fit a gate that grew (M2's rule): the set gained a member and the
   // number it was measured from no longer described it.
-  all: 45 * 60 * 1000,
+  // Restated again at F2, which added `film` (291 s) to the contents: a set
+  // gained a member, so the number is restated from what is in it rather than
+  // raised to fit a gate that grew (M2's rule).
+  all: 50 * 60 * 1000,
 };
 
 export function gatesIn(set) {

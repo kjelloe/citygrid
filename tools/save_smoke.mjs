@@ -49,10 +49,14 @@ function check(name, condition, detail = "") {
  * hash: roads, all three zones, utilities, buildings, money spent, time passed. */
 const BUILD = async () => {
   const { state, renderer } = globalThis.CITY;
-  const { apply } = await import("/engine/reducer.js");
   const c = await import("/engine/commands.js");
+  // Through the SEAM (W2). The reducer is on the other side of it — a worker
+  // thread unless the browser says otherwise — and `CITY.state` is the mirror,
+  // so a command applied here would change a copy and leave the simulation
+  // playing a different city. The money comes from `?funds=`, for the same
+  // reason: it has to be part of the city, not a poke at the copy.
+  const apply = (unused, command) => globalThis.CITY.apply(command);
   globalThis.CITY.pause();
-  state.players[0].treasury = 9000000;
   const W = state.width;
   let row = -1;
   for (let y = 12; y < state.height - 10 && row < 0; y += 1) {
@@ -66,18 +70,18 @@ const BUILD = async () => {
     if (clear) row = y;
   }
   if (row < 0) return { reason: "no dry ground" };
-  apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [row * W + 8, 26] });
-  apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [(row + 4) * W + 8, 26] });
+  await apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [row * W + 8, 26] });
+  await apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [(row + 4) * W + 8, 26] });
   const band = (y0, y1, zone) => {
     const runs = [];
     for (let y = y0; y <= y1; y += 1) runs.push(y * W + 8, 26);
-    apply(state, { type: c.CMD_PAINT_ZONE, actor: 1, runs, zone });
+    return apply(state, { type: c.CMD_PAINT_ZONE, actor: 1, runs, zone });
   };
-  band(row + 1, row + 3, 1);
-  band(row - 3, row - 1, 2);
-  band(row + 5, row + 6, 3);
-  apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 11, y: row - 6 });
-  apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "groundwaterPump", x: 23, y: row - 6 });
+  await band(row + 1, row + 3, 1);
+  await band(row - 3, row - 1, 2);
+  await band(row + 5, row + 6, 3);
+  await apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "coalPlant", x: 11, y: row - 6 });
+  await apply(state, { type: c.CMD_PLACE_BUILDING, actor: 1, def: "groundwaterPump", x: 23, y: row - 6 });
   const wire = [];
   const pipe = [];
   // Beside the plant, never through it (G1, ruling 046): the coal plant is 3x3
@@ -90,9 +94,11 @@ const BUILD = async () => {
     for (let y = from; y <= row + 7; y += 1) { wire.push(y * W + spine, 1); pipe.push(y * W + spine, 1); }
   }
   for (let x = 13; x <= 23; x += 1) { wire.push((row - 3) * W + x, 1); pipe.push((row - 3) * W + x, 1); }
-  apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
-  apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });
-  for (let i = 0; i < 400; i += 1) apply(state, { type: c.CMD_TICK });
+  await apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
+  await apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });
+  // One message for four hundred ticks: the seam takes a count, so a fixture
+  // city costs one round trip rather than four hundred.
+  await globalThis.CITY.tick(400);
   renderer.worldChanged();
   const { hashState } = await import("/engine/state.js");
   return { row, hash: hashState(state), buildings: state.buildings.length, population: state.population, tick: state.tick };
@@ -102,7 +108,9 @@ const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
-const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0`;
+// `?funds=` buys the fixture city: the treasury is part of the city now rather
+// than a write to the state object this page holds (W2).
+const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0&funds=9000000`;
 
 try {
   // One CONTEXT throughout: it owns the origin's storage. Closing the context
@@ -200,13 +208,11 @@ try {
 
   // --- autosave -------------------------------------------------------------
   const auto = await second.evaluate(async () => {
-    const { state } = globalThis.CITY;
-    const { apply } = await import("/engine/reducer.js");
-    const { CMD_TICK } = await import("/engine/commands.js");
     globalThis.CITY.resume();
     // Run a game year's worth of ticks by hand so the autosave interval passes
-    // without waiting a real minute for the clock.
-    for (let i = 0; i < 200; i += 1) apply(state, { type: CMD_TICK });
+    // without waiting a real minute for the clock — through the seam, which is
+    // where the simulation is (W2).
+    await globalThis.CITY.tick(200);
     await new Promise((r) => setTimeout(r, 1200));
     const { listSaves } = await import("/client/storage/db.js");
     return (await listSaves()).map((r) => r.slot);

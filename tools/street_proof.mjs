@@ -38,7 +38,9 @@ const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await context.newPage();
 page.on("console", (m) => { if (m.type() === "error") console.log("  console error:", m.text().slice(0, 120)); });
-await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64`);
+// `?worker=0`: this proof builds its street by driving the engine in the page,
+// and since W2 `CITY.state` is a mirror (W2).
+await page.goto(`http://127.0.0.1:${port}/index.html?worker=0&seed=1003&size=64`);
 await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 90000 });
 
 const report = await page.evaluate(async () => {

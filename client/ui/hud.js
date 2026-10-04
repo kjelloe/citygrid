@@ -260,7 +260,9 @@ export function createHud(root, {
   const undoButton = el("button", "tool", t("hud.undo"));
   undoButton.type = "button";
   undoButton.id = "undo";
-  undoButton.addEventListener("click", () => { onUndo?.(); refresh(); });
+  // The seam answers asynchronously (W2), so the refresh waits for the city to
+  // have actually changed rather than redrawing the one that was on screen.
+  undoButton.addEventListener("click", () => { Promise.resolve(onUndo?.()).then(() => refresh()); });
   toolbar.append(undoButton);
 
   // Turning a building has a key (T), and a key is nothing on a phone — §13.2's
