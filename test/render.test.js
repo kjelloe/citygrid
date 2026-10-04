@@ -483,14 +483,27 @@ test("the cars are posed into the pools the parked ones use", () => {
   assert.match(scene, /plan\.cars !== false/, "the cars ignore the LOD plan");
 });
 
-test("a rebuilt world rebuilds the traffic with it", () => {
-  // The lane graph is part of the model, so a car holding a link id from a
-  // graph that no longer exists is a car in a field.
+test("a rebuilt world re-derives the model and carries its life across (B11, W6b)", () => {
+  // What this has to be true ABOUT, not what the line says. It used to pin the
+  // literal `createModel(state)` and went red when W6b taught the renderer to
+  // pass the previous model — a test transcribing a call rather than a claim.
+  //
+  // The claims: a rebuild derives the model again and tells it what the model
+  // used to be (the dirty set), the traffic and the crowd are rebuilt on the
+  // new graph, and both are handed what they were doing (`carry`). That the
+  // carry WORKS is `test/cars.test.js` and `test/pedestrians.test.js`; what
+  // cannot be tested in node is that `worldChanged` is the function doing it,
+  // because nothing here can import three.js.
   const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
   const changed = scene.slice(scene.indexOf("function worldChanged()"),
     scene.indexOf("function showGhost("));
-  assert.match(changed, /createModel\(state\)/);
+  assert.match(changed, /createModel\(\s*state\s*,/, "the rebuild does not pass the previous model");
+  assert.match(changed, /deriveNav\(\s*state\s*,[^)]*,/, "the nav graph is derived from scratch every build");
   assert.match(changed, /createTraffic\(/, "the cars survive a rebuild of the graph they drive on");
+  for (const carried of ["traffic", "trains", "boats", "planes", "crowd", "pedestrians"]) {
+    assert.match(changed, new RegExp(`carry:\\s*carried\\.${carried}`),
+      `${carried} is thrown away by a build action rather than carried (B11)`);
+  }
 });
 
 test("?life=0 reaches the renderer, or no picture gate is repeatable", () => {

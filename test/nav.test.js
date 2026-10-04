@@ -352,3 +352,84 @@ test("a park's path is reachable from the pavement, and leads back out (S5)", ()
   // And a person who walked in on one path has the other to walk out on.
   assert.ok(nav.next(park[0], 1).includes(park[1].id), "a dead end in the middle of the park");
 });
+
+// --- the dirty set (W6b) -----------------------------------------------------
+
+/** A town with streets crossing, buildings down two of them and a park, so the
+ * graph has pavements, crossings, corners, doors and a park path in it. */
+function navTown() {
+  const state = blank(24);
+  pave(state, [...row(4, 2, 20), ...row(12, 2, 20), ...col(12, 2, 21), ...col(5, 4, 12)]);
+  for (let i = 0; i < 6; i += 1) place(state, { id: i + 1, x: 3 + i * 2, y: 13 });
+  for (let i = 0; i < 3; i += 1) place(state, { id: 20 + i, x: 14 + i * 2, y: 5 });
+  place(state, { id: 40, def: "park", x: 8, y: 5, zone: 0 });
+  return state;
+}
+
+test("an incremental nav graph is the same graph as a full one (W6b)", () => {
+  // The same claim the lane graph makes, and the same way of holding it: derive
+  // both and compare by KEY. A pavement is packed on `heightAt`, which blends
+  // every corridor within `road.blend` of the point — so the reuse rule here is
+  // stricter than a lane's, and this is the test that it is strict enough.
+  const builds = {
+    "a tile that extends a street": (state) => pave(state, [[21, 4]]),
+    "a tile beside the pavement itself": (state) => pave(state, [[12, 13]]),
+    "a whole new street": (state) => pave(state, row(18, 4, 20)),
+    "a street removed": (state) => {
+      for (const [x, y] of col(12, 2, 21)) state.tiles.road[tileAt(state.width, x, y)] = 0;
+      pave(state, [...row(4, 2, 20), ...row(12, 2, 20), ...col(5, 4, 12)]);
+    },
+  };
+
+  for (const [what, build] of Object.entries(builds)) {
+    const state = navTown();
+    const { model, nav } = navOf(state);
+    build(state);
+    const after = createModel(state, model);
+    const full = deriveNav(state, after);
+    const incremental = deriveNav(state, after, nav);
+
+    const shape = (graph) => {
+      const byKey = new Map();
+      for (const edge of graph.edges) {
+        byKey.set(edge.key, {
+          kind: edge.kind,
+          len: Number(edge.len.toFixed(9)),
+          pts: [...edge.pts].map((v) => Number(v.toFixed(9))).join(","),
+          from: graph.nodes[edge.from].key,
+          to: graph.nodes[edge.to].key,
+          doors: edge.doors.map((i) => graph.doors[i].key).sort(),
+          demand: edge.demand,
+        });
+      }
+      return byKey;
+    };
+    const a = shape(full);
+    const b = shape(incremental);
+    assert.deepEqual([...b.keys()].sort(), [...a.keys()].sort(), `${what}: different edges`);
+    for (const [key, expected] of a) {
+      assert.deepEqual(b.get(key), expected, `${what}: edge ${key} came out differently`);
+    }
+    assert.deepEqual(incremental.doors.map((d) => d.key).sort(), full.doors.map((d) => d.key).sort(),
+      `${what}: the doors moved`);
+    // Enough graph to mean something: the town is five streets with shops, a
+    // park and crossings, and the "street removed" arm keeps three of them.
+    assert.ok(full.edges.length > 20, `${what}: only ${full.edges.length} edges`);
+  }
+});
+
+test("the nav dirty set reuses the pavements the build did not touch (W6b)", () => {
+  const state = navTown();
+  const { model, nav } = navOf(state);
+  pave(state, [[21, 4]]);
+  const after = createModel(state, model);
+  const incremental = deriveNav(state, after, nav);
+  const { reusedEdges, packedEdges } = incremental.stats;
+  assert.ok(reusedEdges > 0, "nothing was reused");
+  assert.ok(packedEdges > 0, "nothing was packed, so the build changed nothing");
+  assert.ok(reusedEdges > packedEdges, `${reusedEdges} reused against ${packedEdges} packed`);
+
+  // And nothing is reused from a graph that was never derived, or from another
+  // city's graph.
+  assert.equal(deriveNav(state, after).stats.reusedEdges, 0);
+});

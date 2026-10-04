@@ -76,7 +76,13 @@ function time(label, runs, fn) {
     out = fn();
     times.push(performance.now() - t);
   }
-  return { label, ms: median(times), out };
+  const sorted = [...times].sort((a, b) => a - b);
+  // `min` as well as the median, because a derivation that allocates eight
+  // thousand objects pays for a garbage collection in SOME of its runs and not
+  // others: two readings of the same build action came out 31 ms and 39 ms, and
+  // a change cannot be judged against a number that moves by a quarter. The
+  // median is what a player feels; the min is what the code costs.
+  return { label, ms: median(times), min: sorted[0], max: sorted[sorted.length - 1], out };
 }
 
 const state = played();
@@ -208,6 +214,48 @@ const actions = [
     runs: encodeRuns(Array.from({ length: 10 }, (unused, i) => (empty.y + 2) * W + empty.x + i)) }],
   ["a building", { type: CMD_PLACE_BUILDING, actor: 1, def: "clinic", x: empty.x + 2, y: empty.y + 5 }],
 ];
+
+// --- 3. what a build action actually costs now (W6b) -------------------------
+//
+// The number W6's "done when" is about: not what a full derivation costs, but
+// what the RENDERER pays when it is told what the model used to be. Measured on
+// the same played 96, with a one-tile build attached to the network — which is
+// the build a player makes most.
+{
+  const road = state.tiles.road;
+  let site = -1;
+  for (let i = W + 1; i < road.length - W - 1 && site < 0; i += 1) {
+    if ((road[i] & 16) !== 0 || state.tiles.buildingId[i] !== 0) continue;
+    if ([i - 1, i + 1, i - W, i + W].some((j) => (road[j] & 16) !== 0)) site = i;
+  }
+  const previous = createModel(state);
+  const navBefore = deriveNav(state, previous);
+  const outcome = apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([site]) });
+
+  // Warm the incremental path too, or this compares a cold reading against the
+  // warm ones above (the lesson this gate itself taught, 2026-10-04).
+  for (let n = 0; n < 3; n += 1) deriveNav(state, createModel(state, previous));
+  // Twenty runs, not six: this is the number W6 is judged on.
+  const dirty = time("createModel(state, previous)", 20, () => createModel(state, previous));
+  const dirtyNav = time("deriveNav(state, model, previous)", 20,
+    () => deriveNav(state, dirty.out, navBefore));
+  const stats = dirty.out.lanes.stats;
+  const frame = 1000 / 60;
+
+  const navStats = dirtyNav.out.stats;
+  console.log(`\nwhat a build action costs, told what the model was (${outcome.result}):`);
+  console.log(`  ${"createModel(state, previous)".padEnd(32)} ${dirty.ms.toFixed(2).padStart(8)} ms  `
+    + `(min ${dirty.min.toFixed(2)}, max ${dirty.max.toFixed(2)}) — `
+    + `${stats.reused} corridors reused, ${stats.derived} re-derived`);
+  console.log(`  ${"deriveNav(state, model, previous)".padEnd(32)} ${dirtyNav.ms.toFixed(2).padStart(8)} ms  `
+    + `(min ${dirtyNav.min.toFixed(2)}, max ${dirtyNav.max.toFixed(2)}) — `
+    + `${navStats.reusedEdges} edges reused, ${navStats.packedEdges} packed`);
+  const total = dirty.ms + dirtyNav.ms;
+  const best = dirty.min + dirtyNav.min;
+  console.log(`  ${"one build action".padEnd(32)} ${total.toFixed(2).padStart(8)} ms  `
+    + `${total < frame ? "INSIDE" : "over"} a 60 Hz frame (${frame.toFixed(1)} ms); `
+    + `best run ${best.toFixed(2)} ms`);
+}
 
 console.log("\nwhat one action invalidates (of the whole model):");
 const before = fingerprint(model);

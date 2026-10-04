@@ -15,7 +15,15 @@ import { profilesFor, heightOnProfile } from "./grade.js";
 import { closestOnPolyline } from "./corridors.js";
 import { TERRAIN_WATER, TERRAIN_SHALLOW } from "../constants-mirror.js";
 
-export function createModel(state) {
+/**
+ * The city model, derived — or re-derived from the one before it (W6b).
+ *
+ * `previous` is the model this one replaces. Nothing in it is shared: the parts
+ * that can be proved identical are CLONED, by key, and everything else is
+ * derived as it always was. Passing nothing is a full derivation, which is what
+ * a first frame, a test and every pure gate do.
+ */
+export function createModel(state, previous) {
   const cfg = getConfig();
   const network = deriveCorridors(state, "road");
   const ground = createGround(state, network);
@@ -26,7 +34,7 @@ export function createModel(state) {
   // graded profile directly (R4), because re-sampling the height field at the
   // corridor's own twenty-metre points interpolates straight across the level
   // junction box R3 put at each end.
-  const lanes = deriveLanes(state, network, ground);
+  const lanes = deriveLanes(state, network, ground, previous?.lanes);
   // The railway is a network of its own on the same machinery (T3): the same
   // polylines, the same nodes, its own width and no pavement. Nothing else in
   // the model reads it — the ground does not flatten under it and no lot

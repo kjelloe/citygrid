@@ -26,6 +26,7 @@ import { LONGEST_BODY } from "./vehicle-spec.js";
 // Shared with the nav graph pedestrians walk on (E7): one copy of "offset a
 // centre line" and "stop short of a junction", not two.
 import { rightOf, offsetPolyline, trim, lengthOf } from "./polyline.js";
+import { sameProfile } from "./grade.js";
 
 /** A quadratic through a junction: out of one lane's end, round the corner,
  * into the next lane's start. The control point is where the two LANE lines
@@ -183,18 +184,98 @@ const AXIS = ["ns", "ew", "ns", "ew"];   // DIR4 order: N, E, S, W
  * junction is broken. */
 const AMBER = 3;
 
-export function deriveLanes(state, network, ground) {
+/**
+ * The lane graph (E1), re-derived — or **not** (W6b).
+ *
+ * `previous` is the graph from before the build action. A corridor whose key,
+ * geometry, graded profile and end-node kinds are all unchanged produces
+ * exactly the lanes it produced last time, so they are cloned instead of
+ * packed again: a build action invalidates 2 corridors of 1,402 and 12 lanes of
+ * 8,896, and packing the other 8,884 is the work this skips.
+ *
+ * Cloned, not shared: `id` is an array index in THIS graph and `next`/`preds`
+ * are rebuilt, so the object is copied while `pts`, `cum` and the rest of the
+ * packed geometry — which nothing mutates — are passed by reference.
+ *
+ * The claim is equality, and `test/lanes.test.js` holds it: a full derivation
+ * and an incremental one are compared link for link, by key, across five shapes
+ * of build.
+ */
+export function deriveLanes(state, network, ground, previous) {
   const cfg = getConfig();
   const { stopLine } = cfg.road;
   const nodeById = new Map(network.nodes.map((n) => [n.id, n]));
 
   const links = [];
   const lanes = [];
+  /** corridor key → what this derivation made of it, for the NEXT one. */
+  const byCorridorKey = new Map();
+  /** node key → its turn links, same purpose. */
+  const turnsAtNode = new Map();
+  let reused = 0;
+  let derived = 0;
+  /** Which corridors came across whole, which is what decides whether the
+   * junctions at their ends can come across too. */
+  const reusedCorridorKeys = new Set();
+  /** Crossing turns, as pairs, collected junction by junction. */
+  const conflictPairs = [];
+
+  const samePoints = (a, b) => {
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i].x !== b[i].x || a[i].z !== b[i].z) return false;
+    }
+    return true;
+  };
+  /** A corridor is the same street as last time when nothing a lane is packed
+   * from has moved: its own geometry, the ground under it, how many lanes it
+   * carries, and the KIND of node at each end — an end becoming a junction
+   * changes where the lane stops short. */
+  const unchanged = (corridor, profile, was) => was !== undefined
+    && samePoints(corridor.points, was.points)
+    && sameProfile(profile, was.profile)
+    && corridor.lanes === was.perDir
+    && corridor.half === was.half
+    && corridor.kind === was.kind
+    && nodeById.get(corridor.from)?.kind === was.fromKind
+    && nodeById.get(corridor.to)?.kind === was.toKind;
+
+  /** The same link in this graph's numbering. `pts` and friends are shared. */
+  const cloneLink = (link, over) => ({ ...link, id: links.length, next: [], preds: [], ...over });
 
   // --- a lane per direction per kind along every corridor ---------------------
   for (const corridor of network.corridors) {
     // Once per corridor, shared by both directions.
     const profile = profileOf(corridor, ground);
+    const was = previous?.byCorridorKey?.get(corridor.key);
+    if (unchanged(corridor, profile, was)) {
+      reused += 1;
+      reusedCorridorKeys.add(corridor.key);
+      const record = {
+        points: corridor.points, profile, perDir: corridor.lanes, half: corridor.half,
+        kind: corridor.kind, fromKind: was.fromKind, toKind: was.toKind,
+        lanes: [], blocks: [],
+      };
+      for (let i = 0; i < was.lanes.length; i += 1) {
+        const lane = { ...was.lanes[i], id: lanes.length, from: corridor.from, to: corridor.to };
+        if (was.lanes[i].dir === 1) { lane.from = corridor.to; lane.to = corridor.from; }
+        lanes.push(lane);
+        const block = cloneLink(was.blocks[i], { lane: lane.id, corridor: corridor.id, from: lane.from, to: lane.to });
+        links.push(block);
+        record.lanes.push(lane);
+        record.blocks.push(block);
+      }
+      byCorridorKey.set(corridor.key, record);
+      continue;
+    }
+    derived += 1;
+    const record = {
+      points: corridor.points, profile, perDir: corridor.lanes, half: corridor.half,
+      kind: corridor.kind,
+      fromKind: nodeById.get(corridor.from)?.kind, toKind: nodeById.get(corridor.to)?.kind,
+      lanes: [], blocks: [],
+    };
+    byCorridorKey.set(corridor.key, record);
     const corridorLen = lengthOf(corridor.points);
     // How many lanes this street has each way (T1): one on a street, and on an
     // avenue two, offset round the median by `laneOffset`.
@@ -267,7 +348,8 @@ export function deriveLanes(state, network, ground) {
           corridor: corridor.id, dir, index: k, of: perDir, from, to,
         };
         lanes.push(lane);
-        links.push({
+        record.lanes.push(lane);
+        const block = {
           id: links.length, key: `b|${lane.key}`, kind: "block", lane: lane.id, corridor: corridor.id, dir,
           // Which lane of how many, counted from the middle of the road outward
           // — the rule at a junction is "the kerbside lane turns right, the
@@ -281,7 +363,9 @@ export function deriveLanes(state, network, ground) {
           // back through a polyline for a number that was in hand (A45).
           s0, dirSign,
           ...packed, next: [], preds: [], entry: false, exit: false, turn: "",
-        });
+        };
+        links.push(block);
+        record.blocks.push(block);
       }
     }
   }
@@ -305,19 +389,80 @@ export function deriveLanes(state, network, ground) {
   //
   // Every arriving lane joins every leaving lane except the one that would be a
   // U-turn. The grid has no turn restrictions, so this is the whole rule.
-  const blocks = links.slice();
-  const arriving = new Map();
-  const leaving = new Map();
-  for (const link of blocks) {
-    if (!arriving.has(link.to)) arriving.set(link.to, []);
-    if (!leaving.has(link.from)) leaving.set(link.from, []);
-    arriving.get(link.to).push(link);
-    leaving.get(link.from).push(link);
+  // Only the junctions that have to be DERIVED need this index, and after a
+  // build action that is one of 1,402 (W6b). Built on first use.
+  let arriving;
+  let leaving;
+  function armsIndex() {
+    if (arriving) return;
+    arriving = new Map();
+    leaving = new Map();
+    for (const link of links) {
+      if (link.kind !== "block") continue;
+      if (!arriving.has(link.to)) arriving.set(link.to, []);
+      if (!leaving.has(link.from)) leaving.set(link.from, []);
+      arriving.get(link.to).push(link);
+      leaving.get(link.from).push(link);
+    }
   }
 
+  // Every block link by key, so a reused turn can be hung back on the lanes it
+  // joins without caring what either one's id is this time (W6b).
+  const blockByKey = new Map();
+  for (const link of links) if (link.kind === "block") blockByKey.set(link.key, link);
+
   for (const node of network.nodes) {
+    // **A junction whose every arm was reused turns the same way it did.** The
+    // curves through a node are packed from the ENDS of the lanes that meet
+    // there, so if none of those lanes moved, neither did any of the curves —
+    // and a played 96 spends most of `deriveLanes` on 6,088 of them.
+    const wasTurns = previous?.turnsAtNode?.get(node.key);
+    const armsHeld = wasTurns !== undefined
+      && node.corridors.every((id) => reusedCorridorKeys.has(network.corridors[id].key))
+      && wasTurns.arms === node.corridors.length
+      && wasTurns.half === node.half;
+    if (armsHeld) {
+      let ok = true;
+      const cloned = [];
+      for (const turn of wasTurns.turns) {
+        const into = blockByKey.get(turn.intoKey);
+        const out = blockByKey.get(turn.outKey);
+        // A lane that is gone means this junction is not the junction it was,
+        // whatever its arms say: derive it properly rather than guess.
+        if (!into || !out) { ok = false; break; }
+        cloned.push({ turn, into, out });
+      }
+      if (ok) {
+        const turns = [];
+        const here = new Map();
+        for (const { turn, into, out } of cloned) {
+          const link = cloneLink(turn, {
+            from: node.id, to: node.id, node: node.id, tiles: [node.tile],
+            next: [{ link: out.id, turn: turn.turn }],
+          });
+          links.push(link);
+          into.next.push({ link: link.id, turn: turn.turn });
+          turns.push(link);
+          here.set(link.key, link);
+        }
+        // The junction box comes across with the turns: the same curves in the
+        // same places cross in the same places.
+        for (const [aKey, bKey] of wasTurns.pairKeys) {
+          const a = here.get(aKey);
+          const b = here.get(bKey);
+          if (a && b) conflictPairs.push([a, b]);
+        }
+        turnsAtNode.set(node.key, {
+          arms: node.corridors.length, half: node.half, turns, pairKeys: wasTurns.pairKeys,
+        });
+        continue;
+      }
+    }
+
+    armsIndex();
     const ins = arriving.get(node.id) ?? [];
     const outs = leaving.get(node.id) ?? [];
+    const turns = [];
     for (const into of ins) {
       const fin = headingIn(into);
       for (const out of outs) {
@@ -334,8 +479,10 @@ export function deriveLanes(state, network, ground) {
         if (packed.len < 1e-6) continue;
         const link = {
           // A turn is the pair of lanes it joins, so it is stable exactly when
-          // they are.
+          // they are — and it carries both their KEYS, which is what lets a
+          // later derivation hang a reused turn back on them (W6b).
           id: links.length, key: `t|${into.key}>${out.key}`,
+          intoKey: into.key, outKey: out.key,
           kind: "turn", lane: -1, corridor: -1, dir: into.dir,
           from: node.id, to: node.id, node: node.id, tiles: [node.tile],
           axis: AXIS[armOf(into, node)], turn,
@@ -343,8 +490,15 @@ export function deriveLanes(state, network, ground) {
         };
         links.push(link);
         into.next.push({ link: link.id, turn });
+        turns.push(link);
       }
     }
+    const pairs = conflictsAt(turns, (key) => blockByKey.get(key));
+    for (const pair of pairs) conflictPairs.push(pair);
+    turnsAtNode.set(node.key, {
+      arms: node.corridors.length, half: node.half, turns,
+      pairKeys: pairs.map(([a, b]) => [a.key, b.key]),
+    });
   }
 
   /**
@@ -387,21 +541,31 @@ export function deriveLanes(state, network, ground) {
     return best;
   }
 
-  const byId = new Map(links.map((l) => [l.id, l]));
+  // `id` IS the index into `links` — a Map of 8,896 entries keyed by the
+  // numbers 0..8,895 was a second copy of the array (W6b).
   for (const link of links) {
-    for (const step of link.next) byId.get(step.link).preds.push(link.id);
+    for (const step of link.next) links[step.link].preds.push(link.id);
   }
   for (const link of links) {
-    const node = nodeById.get(link.to);
     link.exit = link.next.length === 0;
     link.entry = link.preds.length === 0 && link.kind === "block";
-    if (link.kind === "block" && node) link.axis = AXIS[armOf(link, node)];
+    // A reused block already carries the axis of the arm it arrives by: it is
+    // computed from its own last few metres, and those did not move.
+    if (link.kind === "block" && link.axis === undefined) {
+      const node = nodeById.get(link.to);
+      if (node) link.axis = AXIS[armOf(link, node)];
+    }
   }
 
   // --- the junction box (B8, A74) ----------------------------------------------
-  // Which turns cross which, per junction. Derived once with the graph; the
+  // Which turns cross which, collected per junction above — computed for the
+  // junctions that changed and carried across for the ones that did not. The
   // traffic reads it to keep two crossing turns from being driven at once.
-  const conflicts = deriveConflicts(links);
+  const conflicts = new Map();
+  for (const [a, b] of conflictPairs) {
+    if (conflicts.has(a.id)) conflicts.get(a.id).push(b.id); else conflicts.set(a.id, [b.id]);
+    if (conflicts.has(b.id)) conflicts.get(b.id).push(a.id); else conflicts.set(b.id, [a.id]);
+  }
 
   // --- signals ----------------------------------------------------------------
   const signals = new Map();
@@ -555,7 +719,13 @@ export function deriveLanes(state, network, ground) {
     sample,
     /** Turn link id → the turn links at the same junction whose paths it crosses. */
     conflicts,
+    // For the NEXT derivation (W6b). Not part of the graph a frame reads: these
+    // are what `deriveLanes` hands its future self.
+    byCorridorKey,
+    turnsAtNode,
     stats: {
+      reused,
+      derived,
       lanes: lanes.length,
       links: links.length,
       blocks: links.filter((l) => l.kind === "block").length,
@@ -582,39 +752,42 @@ const CONFLICT_M = 3.0;
  * start because they are one queue, and the following model keeps them apart.
  * Two straights along one street run in their own lanes and never meet.
  */
-function deriveConflicts(links) {
-  const byNode = new Map();
-  for (const link of links) {
-    if (link.kind !== "turn") continue;
-    if (byNode.has(link.node)) byNode.get(link.node).push(link);
-    else byNode.set(link.node, [link]);
-  }
-  const out = new Map();
-  const add = (a, b) => {
-    if (out.has(a)) out.get(a).push(b);
-    else out.set(a, [b]);
-  };
-  for (const turns of byNode.values()) {
-    for (let i = 0; i < turns.length; i += 1) {
-      for (let j = i + 1; j < turns.length; j += 1) {
-        const a = turns[i];
-        const b = turns[j];
-        if (a.preds[0] === b.preds[0]) continue;
-        // The same two streets driven in opposite directions — round a bend,
-        // or a left and the mirrored right at a crossroads — are on their own
-        // sides of the road and never cross. At a tight bend the two curves
-        // pinch under a car's width, and listing them held a car on the played
-        // city for the whole two minutes it was watched, behind oncoming
-        // traffic that never stopped (B8).
-        if (streetOf(links, a.preds[0]) === streetOf(links, b.next[0].link)
-          && streetOf(links, a.next[0].link) === streetOf(links, b.preds[0])) continue;
-        if (!pathsWithin(a, b, CONFLICT_M)) continue;
-        add(a.id, b.id);
-        add(b.id, a.id);
-      }
+/**
+ * Which turns at ONE junction cross each other (B8, A74).
+ *
+ * Per node rather than over the whole graph since W6b: a junction whose arms
+ * did not move has the same crossings it had, and this is the most expensive
+ * thing in the lane graph — 6,088 turn curves on a played 96, compared
+ * pairwise within their junctions, **12 ms of a 22 ms incremental rebuild**
+ * before it could be reused.
+ *
+ * Returns the pairs, as the turn objects, so the caller can record them by key
+ * and hand them to its future self.
+ */
+function conflictsAt(turns, blockOf) {
+  const pairs = [];
+  for (let i = 0; i < turns.length; i += 1) {
+    for (let j = i + 1; j < turns.length; j += 1) {
+      const a = turns[i];
+      const b = turns[j];
+      const aIn = blockOf(a.intoKey);
+      const bIn = blockOf(b.intoKey);
+      // Two turns out of the SAME lane are driven one at a time anyway.
+      if (aIn === bIn) continue;
+      const aOut = blockOf(a.outKey);
+      const bOut = blockOf(b.outKey);
+      // The same two streets driven in opposite directions — round a bend,
+      // or a left and the mirrored right at a crossroads — are on their own
+      // sides of the road and never cross. At a tight bend the two curves
+      // pinch under a car's width, and listing them held a car on the played
+      // city for the whole two minutes it was watched, behind oncoming
+      // traffic that never stopped (B8).
+      if (aIn.corridor === bOut.corridor && aOut.corridor === bIn.corridor) continue;
+      if (!pathsWithin(a, b, CONFLICT_M)) continue;
+      pairs.push([a, b]);
     }
   }
-  return out;
+  return pairs;
 }
 
 /**
@@ -632,11 +805,6 @@ function cornerOf(a, da, b, db) {
   const span = Math.hypot(b.x - a.x, b.z - a.z);
   if (!(s > 0) || s > span) return mid;
   return { x: a.x + da.x * s, z: a.z + da.z * s };
-}
-
-/** Which corridor a block link belongs to. */
-function streetOf(links, id) {
-  return links[id]?.corridor ?? -1;
 }
 
 /**

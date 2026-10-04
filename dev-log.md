@@ -10990,3 +10990,68 @@ third player is refused as full.
 The strings have no screen yet — the toast is X1's client half and the join screen is X2's — so they
 are in `test/reachability.test.js`'s `NOT_YET` list with the slice that will show each one, which is
 how that list is supposed to grow. Suite 1,739 green twice; `room` 5 s.
+
+## slice-W6b — the dirty set: 1,401 corridors of 1,402 reused (2026-10-05)
+
+W6's last half. `createModel(state, previous)` and `deriveNav(state, model, previous)` re-derive only
+what the build touched; everything else is **cloned by key**, which W6a made possible.
+
+| | measured (played 96, era 26) |
+| --- | --- |
+| a build action, warm, before W6b | 98.3 ms |
+| after the instrument and the two scans were fixed (W6b part) | 58.9 ms |
+| **after the dirty set** | **28.6 ms median, 20.3 ms best run** |
+| what is reused | **1,401 corridors of 1,402; 7,611 nav edges of 7,678** |
+
+**What is reused, and the rule for each.** A corridor's lanes come across when its key, its points,
+its graded profile, its lane count, its width and the KIND of node at each end are all unchanged —
+an end becoming a junction moves where the lane stops short. A junction's turns come across when
+every arm of it did, because a turn curve is packed from the ends of the lanes that meet there. The
+junction box comes with the turns, by key. A pavement is stricter than a lane: a lane is packed on
+its own corridor's profile, but a pavement is packed on `heightAt`, which **blends** every corridor
+within `road.blend` — so a corridor is clean for nav only when nothing changed within that reach of
+it, measured in tiles and rounded up, plus one.
+
+**Equality is the claim, and it is tested as one.** `test/lanes.test.js` and `test/nav.test.js` each
+derive the graph twice — once fresh, once told what it used to be — and compare **link for link and
+edge for edge by key**: kind, length, every packed coordinate, `s0`, the axis, entry and exit, the
+adjacency as keys, and the junction box as keys. Five shapes of build for the lanes (a tile that
+extends a street, a tile that splits one, a whole new street, a street removed, an avenue laid over
+a street) and four for nav. Plus the counters: a test that cannot tell reuse from a full
+re-derivation is a test of the equality and nothing else.
+
+**Four things found on the way, three of them in the instruments:**
+
+1. **`deriveConflicts` was 12 ms of a 22 ms incremental rebuild** — the junction boxes, recomputed
+   for all 1,402 junctions pairwise over 6,088 turn curves. It is per junction now (`conflictsAt`),
+   so it is computed for the junctions that changed and carried for the rest. `streetOf`, which it
+   was the only reader of, is gone with it.
+2. **A Map of 8,896 entries keyed by the numbers 0 to 8,895.** `byId` was a second copy of the links
+   array; `id` IS the index into it.
+3. **Comparing profiles by reference can never match.** Nav's first cut tested
+   `model.profileOf(id) === was.profile`, which is a new object every derivation — so nothing was
+   ever clean, and the dirty set reported itself working by being slow. `sameProfile` is now one
+   function in `grade.js` with two readers, comparing by value.
+4. **The measurement moved by a quarter between two runs** (31 ms and 39 ms) because a derivation
+   that allocates eight thousand objects pays for a garbage collection in some runs and not others.
+   `tools/model_cost.mjs` takes twenty runs and prints the median, the min and the max: the median is
+   what a player feels, the min is what the code costs, and a change cannot be judged against a
+   number that moves by 25%.
+
+**Still over a frame, and the profile says why.** A CPU profile of 200 incremental rebuilds:
+`deriveLanes` 5.3 ms self, **garbage collection 5.1 ms**, `deriveNav` 3.9, the previous graph's
+string-keyed lookups 1.7 (now direct references), then the ground, the corridors and the lots at
+~8 ms between them. What is left is not an algorithm but an allocation: both graphs still BUILD
+8,896 link objects and 7,678 edge records every time, because ids are array indices and every
+consumer reads `links[id]`. Getting under 16.7 ms means an in-place graph with stable handles, which
+is a cross-cutting change to the traffic, the crowd, the services and the renderer — written up as
+**W6c** rather than started here.
+
+A build action is **3.4× cheaper than it was this morning** and the city no longer blinks (B11).
+Every gate reads what it read before: suite 1,744 green twice, `render` 8 s, `lanes` 212 s,
+`budget` 259 s with its own numbers unmoved.
+
+**And one lesson about running them.** `budget_gate` failed twice through the runner and passed four
+times standalone, both failures in runs started while I was editing source files — a 250-second
+browser gate reads the module tree as it goes, so an edit mid-flight is a half-written module.
+Nothing to fix in the product; the rule is not to edit while a gate is running.

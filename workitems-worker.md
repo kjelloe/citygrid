@@ -226,8 +226,17 @@ one lot more. (The earlier "1 of 1,402, 2 of 8,896" was measured with a tile on 
 is no corridor at all: a lone road tile has no neighbour, so that row was a measurement of nothing
 printed as the best possible result.)
 
-**What is left of W6 is the dirty set** (item 2 below): `createModel(state, previous)` re-deriving
-only what the changed tiles touch. Identity was the obstacle and it is gone.
+**The dirty set is BUILT (slice-W6b, 2026-10-05).** `createModel(state, previous)` and
+`deriveNav(state, model, previous)` reuse **1,401 corridors of 1,402 and 7,611 nav edges of 7,678**
+on a one-tile build, and a build action costs **28.6 ms median / 20.3 ms best** against 98.3 ms warm
+this morning. Equality is tested as equality: both graphs are derived twice, fresh and incremental,
+and compared link for link and edge for edge by key across five shapes of build (lanes) and four
+(nav).
+
+**What is left is W6c**, below: the last 28 ms is not an algorithm but an allocation — a CPU profile
+of 200 rebuilds reads `deriveLanes` 5.3 ms self, **GC 5.1**, `deriveNav` 3.9, and the ground, the
+corridors and the lots at ~8 between them, because both graphs still build 8,896 link objects and
+7,678 edge records every time. A frame is 16.7 ms.
 
 **And the 115 ms was never 115 ms** (slice-W6b part, 2026-10-04). The gate timed `createModel` cold
 and its phases warm, so 29 ms of the "stall" was JIT warmup; warm, a build action was **98.3 ms**,
@@ -276,7 +285,40 @@ beat) rather than to carry a stale route.
    and nothing else.
 
 **Done when** a build action on a played 96 costs under a frame of derivation, and every gate reads
-what it read before.
+what it read before. — **Half done.** Every gate reads what it read before; the frame does not, at
+28.6 ms, and W6c is what the remaining 12 would cost.
+
+## W6c — The graph that is not rebuilt (L) — found by W6b's profile, 2026-10-05
+
+**Goal.** A build action's derivation fits in a frame.
+
+**Analysis.** W6b reuses the WORK (packing, curves, junction boxes) but still rebuilds the
+STRUCTURE: 8,896 link objects, 2,808 lanes, 7,678 nav edges and 5,623 nav nodes are allocated on
+every build action, because `id` is an index into an array that is built fresh and every consumer
+reads `links[id]`, `edges[id]`, `nodes[id]`. The profile of 200 incremental rebuilds:
+
+| | ms per rebuild |
+| --- | --- |
+| `deriveLanes` (self) | 5.3 |
+| **garbage collection** | **5.1** |
+| `deriveNav` (self) | 3.9 |
+| `createGround`, `deriveCorridors`, `deriveLots`, `deriveWater` | ~8 together |
+
+**Do (the shape, not yet the plan).** Stable handles: a link's `id` becomes a number that does not
+change when the array does — an index into a pool with a free list, or the key itself with the
+arrays patched in place. Then a rebuild mutates the graph: remove the links of the corridors that
+changed, add the new ones, repatch the junctions at their ends. Every consumer that holds an id
+across a frame (traffic, crowd, services, the renderer's pickers) must then tolerate a handle that
+can be dead — which is the same contract B11 already gave them for keys, so the shape is known.
+
+**Risk, stated.** This is the first change in the project where the renderer, the traffic, the
+crowd, the services and the gates all read one structure and all of them have to agree about its
+identity at once. The equality tests W6b wrote are what make it attemptable: a graph patched in
+place must still compare link for link against a full derivation.
+
+**Not obviously worth it yet.** 28.6 ms is a hitch, not a stall, and B11 means the city no longer
+blinks through it. Kjell decides whether a frame matters more than the next ten items in the world
+and behaviour lanes.
 
 ## W6 — The model off the render thread (L) — the item as written
 

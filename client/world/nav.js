@@ -31,6 +31,7 @@
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
 import { offsetPolyline, trim, packWithHeight, sampleAlong, closestAlong } from "./polyline.js";
+import { sameProfile } from "./grade.js";
 import { frontEdgeOf, OUTWARD } from "./lots.js";
 import { doorPoint } from "./street-furniture.js";
 import { CIVIC_SHAPES } from "./civic-spec.js";
@@ -84,7 +85,24 @@ function armOf(node, x, z) {
   return best;
 }
 
-export function deriveNav(state, model) {
+/**
+ * The pavements, crossings, corners, doors and park paths (E7) — re-derived, or
+ * **reused** (W6b).
+ *
+ * `previous` is the nav graph from before the build action. The structure here
+ * is cheap: 5,623 nodes and 7,708 edge records are built either way. What costs
+ * is PACKING them — 16,360 points, each one a `heightAt` through the corridor
+ * blend — so an edge whose geometry cannot have moved keeps the packed arrays
+ * it already had.
+ *
+ * "Cannot have moved" is stricter than for a lane, and deliberately so: a lane
+ * is packed on its own corridor's graded profile, but a pavement is packed on
+ * `heightAt`, which BLENDS every corridor within `road.blend` of the point. So
+ * a corridor is clean only when its own geometry and profile are unchanged
+ * **and** no changed corridor is within that reach of it — measured in tiles,
+ * rounded up, plus one.
+ */
+export function deriveNav(state, model, previous) {
   const cfg = getConfig();
 
   // The pavement's surface, not the ground: E3 lays the carriageway a `lift`
@@ -93,11 +111,84 @@ export function deriveNav(state, model) {
   const surface = (x, z) => model.heightAt(x, z) + cfg.road.lift + cfg.road.kerb;
   const clearAt = (corridor) => corridor.half + cfg.road.sidewalk;
 
+  // --- what the build touched -------------------------------------------------
+  const reach = Math.ceil((cfg.road.blend + cfg.road.width / 2 + cfg.road.sidewalk) / cfg.tileM) + 1;
+  const cleanCorridors = new Set();
+  const cleanNodes = new Set();
+  let reusedEdges = 0;
+  let packedEdges = 0;
+  if (previous?.byCorridorKey) {
+    const dirtyTiles = new Set();
+    const spread = (tile) => {
+      const x = tile % state.width;
+      const y = (tile - x) / state.width;
+      for (let dz = -reach; dz <= reach; dz += 1) {
+        for (let dx = -reach; dx <= reach; dx += 1) {
+          const tx = x + dx;
+          const ty = y + dz;
+          if (tx < 0 || ty < 0 || tx >= state.width || ty >= state.height) continue;
+          dirtyTiles.add(ty * state.width + tx);
+        }
+      }
+    };
+    const samePoints = (a, b) => {
+      if (!a || !b || a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i += 1) if (a[i].x !== b[i].x || a[i].z !== b[i].z) return false;
+      return true;
+    };
+    for (const corridor of model.corridors) {
+      const was = previous.byCorridorKey.get(corridor.key);
+      const held = was !== undefined && samePoints(corridor.points, was.points)
+        && sameProfile(model.profileOf?.(corridor.id), was.profile);
+      if (!held) for (const tile of corridor.tiles) spread(tile);
+    }
+    // A corridor that has gone takes its ground with it.
+    for (const [key, was] of previous.byCorridorKey) {
+      if (!model.corridorByKey?.(key)) for (const tile of was.tiles) spread(tile);
+    }
+    for (const corridor of model.corridors) {
+      const was = previous.byCorridorKey.get(corridor.key);
+      if (!was || !samePoints(corridor.points, was.points)) continue;
+      if (!sameProfile(model.profileOf?.(corridor.id), was.profile)) continue;
+      if (corridor.tiles.some((tile) => dirtyTiles.has(tile))) continue;
+      cleanCorridors.add(corridor.key);
+    }
+    for (const node of model.nodes) {
+      if (dirtyTiles.has(node.tile)) continue;
+      if (!node.corridors.every((id) => cleanCorridors.has(model.corridors[id].key))) continue;
+      cleanNodes.add(node.key);
+    }
+  }
+
+  /**
+   * The packed geometry this edge had last time, if nothing under it moved.
+   *
+   * `was` is the previous edge handed in by the caller from a per-corridor or
+   * per-node record, not looked up by string: hashing 7,708 keys like
+   * `w|road:290-300x11|-1` cost 1.7 ms of a 31 ms build action, which a direct
+   * reference does not.
+   */
+  const packOr = (was, clean, points) => {
+    if (clean && was) {
+      reusedEdges += 1;
+      return { pts: was.pts, cum: was.cum, len: was.len };
+    }
+    packedEdges += 1;
+    return packWithHeight(points, surface);
+  };
+
   const nodes = [];
   const edges = [];
+  /** corridor key → what this derivation knew about it, for the next one. */
+  const byCorridorKey = new Map();
+  /** node key → its crossings and corners, same purpose. */
+  const atNodeKey = new Map();
   /** node key → nav node id. A corner belongs to one network node, one
    * corridor and one side, which is exactly what a pavement end is. */
   const corners = new Map();
+  /** The same corners as objects: which junction, which street, which side —
+   * so nothing has to read them back out of a string. */
+  const cornerRecords = [];
 
   function navNode(x, z, at, key) {
     const id = nodes.length;
@@ -117,6 +208,7 @@ export function deriveNav(state, model) {
     if (id === undefined) {
       id = navNode(x, z, networkNode, `c|${nodeKeyOf(networkNode)}|${corridorKeyOf(corridorId)}|${side}`);
       corners.set(key, id);
+      cornerRecords.push({ node: networkNode, corridor: corridorId, side, id });
     }
     return id;
   }
@@ -138,14 +230,20 @@ export function deriveNav(state, model) {
       const line = offsetPolyline(corridor.points, WALK_OFFSET(cfg, corridor.half) * side);
       const cut = trim(line, clearAt(corridor), clearAt(corridor));
       if (cut.length < 2) continue;
-      const packed = packWithHeight(cut, surface);
+      const key = `w|${corridor.key}|${side}`;
+      const wasCorridor = previous?.byCorridorKey?.get(corridor.key);
+      const packed = packOr(wasCorridor?.walk?.[side === -1 ? 0 : 1],
+        cleanCorridors.has(corridor.key), cut);
       if (packed.len < 1e-6) continue;
       const from = cornerAt(corridor.from, corridor.id, side, cut[0].x, cut[0].z);
       const to = cornerAt(corridor.to, corridor.id, side, cut[cut.length - 1].x, cut[cut.length - 1].z);
-      addEdge({
-        key: `w|${corridor.key}|${side}`,
+      const edge = addEdge({
+        key,
         kind: "walk", corridor: corridor.id, side, from, to, doors: [], demand: 0, ...packed,
       });
+      const record = byCorridorKey.get(corridor.key) ?? { walk: [] };
+      record.walk[side === -1 ? 0 : 1] = edge;
+      byCorridorKey.set(corridor.key, record);
     }
   }
 
@@ -160,20 +258,26 @@ export function deriveNav(state, model) {
       const a = corners.get(`${node.id}:${corridorId}:-1`);
       const b = corners.get(`${node.id}:${corridorId}:1`);
       if (a === undefined || b === undefined) continue;
-      const packed = packWithHeight([nodes[a], nodes[b]], surface);
+      const corridorKey = corridorKeyOf(corridorId);
+      const key = `x|${node.key}|${corridorKey}`;
+      const packed = packOr(previous?.atNodeKey?.get(node.key)?.cross?.get(corridorKey),
+        cleanNodes.has(node.key), [nodes[a], nodes[b]]);
       if (packed.len < 1e-6) continue;
       // An axis only where there IS a signal (T1, A51): since only a crossing
       // of two real streets is signalled, most nodes are give-way, and a
       // pedestrian holding for a phase that never changes waits for ever.
       const signalled = model.lanes.signals.has(node.id);
-      addEdge({
-        key: `x|${node.key}|${corridorKeyOf(corridorId)}`,
+      const crossing = addEdge({
+        key,
         kind: "cross", corridor: corridorId, node: node.id,
         axis: signalled
           ? AXIS[armOf(node, (nodes[a].x + nodes[b].x) / 2, (nodes[a].z + nodes[b].z) / 2)]
           : undefined,
         from: a, to: b, doors: [], demand: 0, ...packed,
       });
+      const record = atNodeKey.get(node.key) ?? { cross: new Map(), corners: new Map() };
+      record.cross.set(corridorKey, crossing);
+      atNodeKey.set(node.key, record);
     }
   }
 
@@ -188,28 +292,34 @@ export function deriveNav(state, model) {
   // opposite corners of an eight-metre crossroads, which is a pavement edge
   // diagonally through the traffic.
   const reachAt = (id) => ((model.nodes[id]?.half ?? cfg.road.width / 2) + cfg.road.sidewalk) * 1.6;
+  // Grouped from what `cornerAt` already knew, rather than by taking its string
+  // key back apart: this loop parsed `"<node>:<corridor>:<side>"` once per
+  // corner to group them and twice more per pair to compare streets (W6b).
   const byNode = new Map();
-  for (const [key, id] of corners) {
-    const at = Number(key.split(":")[0]);
-    const list = byNode.get(at);
-    if (list) list.push({ key, id }); else byNode.set(at, [{ key, id }]);
+  for (const corner of cornerRecords) {
+    const list = byNode.get(corner.node);
+    if (list) list.push(corner); else byNode.set(corner.node, [corner]);
   }
   for (const [at, list] of byNode) {
     const cornerReach = reachAt(at);
     for (let i = 0; i < list.length; i += 1) {
       for (let j = i + 1; j < list.length; j += 1) {
-        const [, ci] = list[i].key.split(":");
-        const [, cj] = list[j].key.split(":");
-        if (ci === cj) continue;
+        if (list[i].corridor === list[j].corridor) continue;
         const a = nodes[list[i].id];
         const b = nodes[list[j].id];
         const d = Math.hypot(a.x - b.x, a.z - b.z);
         if (d > cornerReach || d < 1e-6) continue;
-        const packed = packWithHeight([a, b], surface);
-        addEdge({
-          key: `k|${nodes[list[i].id].key}>${nodes[list[j].id].key}`,
+        const key = `k|${a.key}>${b.key}`;
+        const nodeKey = model.nodes[at]?.key;
+        const packed = packOr(previous?.atNodeKey?.get(nodeKey)?.corners?.get(key),
+          cleanNodes.has(nodeKey), [a, b]);
+        const corner = addEdge({
+          key,
           kind: "corner", from: list[i].id, to: list[j].id, doors: [], demand: 0, ...packed,
         });
+        const record = atNodeKey.get(nodeKey) ?? { cross: new Map(), corners: new Map() };
+        record.corners.set(key, corner);
+        atNodeKey.set(nodeKey, record);
       }
     }
   }
@@ -401,10 +511,21 @@ export function deriveNav(state, model) {
   const edgeKeys = new Map();
   for (const edge of edges) edgeKeys.set(edge.key, edge);
 
+  for (const corridor of model.corridors) {
+    const record = byCorridorKey.get(corridor.key) ?? { walk: [] };
+    record.points = corridor.points;
+    record.profile = model.profileOf?.(corridor.id);
+    record.tiles = corridor.tiles;
+    byCorridorKey.set(corridor.key, record);
+  }
+
   return {
     nodes,
     edges,
     doors,
+    // What `deriveNav` hands its future self (W6b), and what it did last time.
+    byCorridorKey,
+    atNodeKey,
     /** By key, for a person who was walking somewhere before a build action
      * re-derived the graph under them (B11). */
     edgeByKey: (key) => edgeKeys.get(key),
@@ -415,6 +536,10 @@ export function deriveNav(state, model) {
     /** How many people this edge's buildings ask for. */
     demandOf(edge) { return edge.demand; },
     stats: {
+      // What came across from the previous graph and what had to be packed
+      // again (W6b): a build action should pack a handful of edges, not 7,708.
+      reusedEdges,
+      packedEdges,
       nodes: nodes.length,
       edges: edges.length,
       walks: walks.length,

@@ -244,6 +244,22 @@ export function relaxNodes(network, landAt, maxGrade, maxDrift, passes = PASSES)
   return height;
 }
 
+/**
+ * Is this the same graded profile as that one? (W6b.)
+ *
+ * By VALUE, because every derivation builds new objects: a dirty set that
+ * compared profiles by reference would find nothing reusable and say so by
+ * being slow rather than by failing. One definition, read by the lane graph
+ * (which packs lanes on a corridor's own profile) and by the nav graph (which
+ * uses it to decide whether the ground under a pavement moved).
+ */
+export function sameProfile(a, b) {
+  if (a === b) return true;
+  if (!a || !b || a.len !== b.len || a.ys.length !== b.ys.length) return false;
+  for (var i = 0; i < a.ys.length; i += 1) if (a.ys[i] !== b.ys[i]) return false;
+  return true;
+}
+
 export function heightOnProfile(profile, s) {
   const { cum, ys } = profile;
   const last = ys.length - 1;

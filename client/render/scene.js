@@ -486,7 +486,9 @@ export function createRenderer(canvas, state, options = {}) {
       crowd: crowd?.snapshot(),
       pedestrians: pedestrians?.snapshot(),
     };
-    model = createModel(state);
+    // Told what it used to be (W6b): every street the build did not touch
+    // keeps the lanes, links and turns it already had, which is 99.86% of them.
+    model = createModel(state, model);
     traffic = createTraffic(state, model, {
       cap: carCap(), life: options.life, phase: startPhase, carry: carried.traffic,
     });
@@ -509,7 +511,10 @@ export function createRenderer(canvas, state, options = {}) {
     water.dispose();
     water = createWater(state, model, styleName);
     scene.add(water.group);
-    nav = deriveNav(state, model);
+    // Told what it used to be as well (W6b): a pavement whose street and whose
+    // ground are both unchanged keeps the points it was packed at, and packing
+    // is where the nav graph's time goes.
+    nav = deriveNav(state, model, nav);
     crowd = createPedestrians(state, model, nav, {
       cap: pedCapCity(), life: options.life, spread: true, phase: startPhase, carry: carried.crowd,
     });

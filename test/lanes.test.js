@@ -686,3 +686,121 @@ test("a lane crosses water as ONE corridor, on the deck rather than in the river
   assert.ok(overWater > 10, `only ${overWater} lane samples are over the water at all`);
   assert.equal(submerged, 0, `${submerged} of ${overWater} lane samples over water are at the waterline`);
 });
+
+// --- the dirty set (W6b) -----------------------------------------------------
+//
+// `deriveLanes(state, network, ground, previous)` reuses the lanes, links and
+// turns of every corridor the build did not touch. The whole slice rests on one
+// claim — that the graph it produces is the graph a full derivation produces —
+// and the only honest way to hold it is to derive both and compare them link
+// for link, by KEY, on several shapes of build.
+
+/** Every link by key, with the fields a car actually reads. */
+function shapeOf(lanes) {
+  const byKey = new Map(lanes.links.map((l) => [l.key, l]));
+  const out = new Map();
+  for (const link of lanes.links) {
+    out.set(link.key, {
+      kind: link.kind,
+      dir: link.dir,
+      index: link.index,
+      of: link.of,
+      turn: link.turn,
+      axis: link.axis,
+      entry: link.entry,
+      exit: link.exit,
+      s0: link.s0,
+      dirSign: link.dirSign,
+      len: Number(link.len.toFixed(9)),
+      pts: [...link.pts].map((v) => Number(v.toFixed(9))).join(","),
+      // Adjacency as KEYS: ids are array indices and the two derivations
+      // number them differently, which is the whole reason keys exist.
+      next: link.next.map((step) => `${byKey.get(lanes.links[step.link].key) ? lanes.links[step.link].key : "?"}:${step.turn}`).sort(),
+      preds: link.preds.map((id) => lanes.links[id].key).sort(),
+      conflicts: (lanes.conflicts.get(link.id) ?? []).map((id) => lanes.links[id].key).sort(),
+    });
+  }
+  return out;
+}
+
+function sameGraph(a, b, what) {
+  const full = shapeOf(a);
+  const incremental = shapeOf(b);
+  assert.deepEqual([...incremental.keys()].sort(), [...full.keys()].sort(),
+    `${what}: the two derivations do not even hold the same links`);
+  for (const [key, expected] of full) {
+    assert.deepEqual(incremental.get(key), expected, `${what}: link ${key} came out differently`);
+  }
+  assert.deepEqual([...b.signals.keys()].map((id) => id).sort(), [...a.signals.keys()].sort(),
+    `${what}: the signals moved`);
+}
+
+/** A town with junctions, bends, ends and a long run — and lots, so the ground
+ * has something to blend against. */
+function laneTown(size = 40) {
+  const state = blank(size);
+  pave(state,
+    row(6, 2, 36), row(14, 2, 36), row(22, 4, 32), row(30, 6, 30),
+    column(4, 6, 22), column(13, 6, 30), column(22, 6, 30), column(31, 6, 22), column(36, 6, 14));
+  return state;
+}
+
+test("an incremental lane graph is the same graph as a full one (W6b)", () => {
+  const builds = {
+    "a tile that extends a street": (state) => pave(state, [[37, 14]]),
+    "a tile that splits a street": (state) => pave(state, [[9, 15]]),
+    "a whole new street": (state) => pave(state, row(10, 4, 32)),
+    "a street removed": (state) => {
+      for (const [x, y] of row(22, 4, 32)) state.tiles.road[tileAt(state.width, x, y)] = 0;
+      pave(state);   // re-mask what is left
+    },
+    "an avenue through the middle": (state) => {
+      for (const [x, y] of row(14, 2, 36)) {
+        state.tiles.road[tileAt(state.width, x, y)] |= NET_AVENUE;
+      }
+      pave(state);
+    },
+  };
+
+  for (const [what, build] of Object.entries(builds)) {
+    const state = laneTown();
+    const before = createModel(state);
+    build(state);
+
+    // The reference: a model that has never seen the one before it.
+    const full = createModel(state).lanes;
+    // The same thing, told what it used to be.
+    const incremental = createModel(state, before).lanes;
+    sameGraph(full, incremental, what);
+    // Enough graph that the comparison means something: this town is nine
+    // streets, so it has junctions, bends, ends, a split and ~180 links.
+    assert.ok(full.links.length > 150, `${what}: only ${full.links.length} links, so this proves little`);
+  }
+});
+
+test("the dirty set actually reuses something, and says how much (W6b)", () => {
+  // A test that cannot tell reuse from a full re-derivation is a test of the
+  // equality above and nothing else.
+  const state = laneTown();
+  const before = createModel(state);
+  pave(state, [[37, 14]]);
+  const after = createModel(state, before);
+  const reused = after.lanes.stats.reused ?? 0;
+  const derived = after.lanes.stats.derived ?? 0;
+  assert.ok(reused > 0, "nothing was reused");
+  assert.ok(derived > 0, "nothing was re-derived, so the build changed nothing and this proves little");
+  assert.ok(reused / (reused + derived) > 0.9,
+    `only ${reused} of ${reused + derived} corridors were reused`);
+});
+
+test("a model with no previous is a full derivation (W6b)", () => {
+  const state = laneTown();
+  const fresh = createModel(state);
+  assert.equal(fresh.lanes.stats.reused ?? 0, 0, "a first derivation reused something that does not exist");
+  // And a previous from a DIFFERENT city reuses nothing, rather than reusing
+  // something that happens to share a key.
+  const other = createModel(blank(40));
+  const built = createModel(state, other);
+  assert.equal(built.lanes.stats.reused ?? 0, 0);
+  sameGraph(fresh.lanes, built.lanes, "a previous from another city");
+});
