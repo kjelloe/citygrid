@@ -215,7 +215,16 @@ multiplayer:    client ──> session-remote.js ──ws──> server/room.js 
 
 The **session seam** is the whole investment: `session.state`, `session.apply(command)`,
 `session.onChange`. Every UI module uses only that and never knows whether a socket exists.
-This exists from day one even while multiplayer is unimplemented.
+
+**Built 2026-10-04** (W1, W2), and it did not exist from day one — every `apply()` ran on the
+render thread for the life of the project until then. What is there now: `state`, `apply`, `undo`,
+`tick`, `onChange`, `hash`, `pending` and `dispose`, asynchronous on both sides of the choice.
+`client/session.js` is the mirror over `worker/sim-worker.js`; `client/session-local.js` is the
+same API with the reducer on this thread, which is what `?worker=0` forces and what a browser
+without `Worker` gets. The mirror is patched from the changed tile layers, it never replaces the
+state object everything holds, and it hashes to the worker's own number once a month — which is
+what `tools/worker_smoke.mjs` checks on both arms. `undo` is on the seam too: it is the one change
+to the city that is not a command.
 
 ### 3.2 Command relay, not state streaming
 

@@ -14,8 +14,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createSimHost } from "../worker/sim-host.js";
 import { createMirror, applyPatch } from "../client/mirror.js";
+import { openLocalSession } from "../client/session-local.js";
 import { hashState, TILE_LAYERS } from "../engine/state.js";
-import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD } from "../engine/commands.js";
+import { CMD_JOIN, CMD_PLACE_ROAD, CMD_PAINT_ZONE } from "../engine/commands.js";
 import { RESULT } from "../shared/protocol.js";
 import { readFixture, fixtureNames, loadSystems } from "../tools/fixtures.mjs";
 import { encodeRuns } from "../shared/grid.js";
@@ -128,6 +129,42 @@ test("an unknown message is an error, not a silent drop", () => {
   const { reply } = host.handle({ type: "nonsense", id: 9 });
   assert.equal(reply.type, "error");
   assert.equal(reply.id, 9);
+});
+
+test("the local seam and the worker play the same game, command for command", async () => {
+  // What `tools/worker_smoke.mjs` proves in a browser, in milliseconds and
+  // without one: the two sides of the seam are interchangeable or the lane has
+  // not delivered anything. It is a different question from the fixtures above,
+  // which prove the worker matches the PINNED hashes — this one proves the two
+  // implementations match each other over a city neither of them has seen.
+  const script = [
+    { type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" },
+    road(1, 8, 8, 12, 48),
+    road(1, 8, 12, 12, 48),
+    { type: CMD_PAINT_ZONE, actor: 1, runs: encodeRuns(
+      Array.from({ length: 36 }, (unused, i) => (9 + Math.floor(i / 12)) * 48 + 8 + (i % 12))) },
+  ];
+  const options = { seed: 11, width: 48, height: 48, seats: 1 };
+
+  const host = createSimHost();
+  const ready = host.handle({ type: "init", id: 0, options }).reply;
+  const mirror = createMirror(ready.patch);
+  const local = await openLocalSession({ options });
+
+  for (const command of script) {
+    const reply = send(host, mirror, { type: "apply", id: 1, command: { ...command } });
+    const outcome = await local.apply({ ...command });
+    assert.equal(outcome.result, reply.result, `${command.type}: the two seams disagree`);
+    assert.equal(await local.hash(), reply.hash, `${command.type}: the hash moved`);
+  }
+  // And a tick COUNT is the same as that many ticks: the seam takes one so a
+  // fixture city costs one message, and a count that drifted would be a city
+  // that is a month ahead on one thread.
+  const ticked = send(host, mirror, { type: "tick", id: 2, count: 60 });
+  await local.tick(60);
+  assert.equal(await local.hash(), ticked.hash);
+  assert.equal(hashState(mirror), ticked.hash, "the mirror fell behind over sixty ticks");
+  assert.ok(local.state.population >= 0 && local.state.tick === 60);
 });
 
 // --- the fixtures, through the worker ---------------------------------------

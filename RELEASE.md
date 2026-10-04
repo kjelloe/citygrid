@@ -130,9 +130,14 @@ storyboard, the first instrument in this project that looks at the game for a mi
   `reports/perf/README.md`. What is still missing is a phone: the tier budgets and the governor's
   trigger are both set against a machine that has never struggled
   (`workitems-measurement.md` D2, D3, D5).
-- **The simulation is on the render thread.** `specs/plan.md` §0 says "always a Web Worker" and
-  `worker/` is empty. A model rebuild of 53.3 ms on 96×96 — 184.7 ms on 256×256 — sits beside a
-  4 ms tick (Q60, D6).
+- **The simulation is off the render thread** (W1, W2, 2026-10-04). `worker/sim-worker.js` owns the
+  state; the page holds a mirror patched from the tile layers that changed, and
+  `tools/worker_smoke.mjs` plays the same 46 commands and 200 ticks on both arms for the same
+  hash. `?worker=0` keeps it on this thread, which is the fallback's lever and what a browser
+  without `Worker` gets. **What has NOT moved is the expensive half**: the model rebuild of
+  53.3 ms on 96×96 — 184.7 ms on 256×256 — is cityviewer's, it is on the render thread still, and
+  it dwarfs the 4 ms tick that moved (Q60, D6). That measurement is W3, and it is the item that
+  will say what the worker actually bought.
 - **Multiplayer is not started.** Ruling 003 holds Wave 5 behind the singleplayer MVP being
   *accepted*, and acceptance is a playtest, not a green suite. The seam is built in — commands
   cross the wire, not state — and nothing has crossed it yet. The territory overlay has no

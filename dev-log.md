@@ -10082,6 +10082,12 @@ each arm, and compares: **1f41dfccc566819c on both**, 37 buildings, population 3
 also checks that the worker is what the page uses when nobody says otherwise, because a fallback
 nobody notices is a feature nobody has. 6.6 s, in `quick` (504 s of 540).
 
+`test/session-worker.test.js` also runs `worker_smoke`'s claim in node and without a browser: the
+local seam and the worker host play the same four-command city and sixty ticks and are compared by
+`hashState` at every step, which is a different question from the fixtures (those prove the worker
+matches the PINNED hashes; this proves the two implementations match each other on a city neither
+has seen).
+
 The omissions sweep on the slice's own work found the last one: `session.dispose()` existed and
 nothing called it, so a style change, a load and "new city" each left a worker still playing the old
 city in the background. `stop()` terminates it beside the renderer now.
