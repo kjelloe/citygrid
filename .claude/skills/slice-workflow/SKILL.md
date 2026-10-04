@@ -111,6 +111,7 @@ node tools/gates.mjs transport # T1-T4's pictures — avenue, rail, harbour (T4b
 node tools/gates.mjs sim       # a gameplay slice as well: the three soaks, ~10 min
 node tools/gates.mjs kits      # one picture per catalogue definition and per kit, ~6 min
 node tools/gates.mjs film      # the sixty-second storyboard, every frame counted, ~5 min (F2)
+node tools/gates.mjs room      # the headless room — empty until X1 fills it
 ```
 
 `film` is the only gate that renders the game as a MINUTE rather than as a frame, so it is the one
@@ -128,6 +129,14 @@ treasury, for the gates that used to poke it.
 **`node --test test/docs.test.js` before EVERY commit** (Kjell, P70). It is seconds, and it is the
 only thing that catches a question added to `dev-questions.md` and nowhere else, a renderer slice
 with no row in `plan-v1.md`, or a palette value the art direction still quotes the old way.
+
+**A picture change needs a camera that can stand there.** S14 built a shoulder facing twice and
+reverted it because four shots came back byte-identical: a street camera at a steep shoulder stands
+inside the embankment, and a city camera cannot bake L3 street geometry at all. The photo camera
+(`photo=<x>,<z>,<eye>,<yaw>,<pitch>` in `tools/shoot.html`) stands anywhere, with its eye above the
+SURFACE — over water that is the water. And the shot tool prints how many street chunks baked and
+fails at zero, because baked geometry that was never baked looks exactly like a change that was
+never made.
 
 A slice that changes what the SEAM costs runs `node tools/seam_cost.mjs [size] [terrain]` (node, no
 browser): the reducer, the patch, the desync hash and `createModel`, before and after, on a played

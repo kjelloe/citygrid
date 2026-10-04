@@ -93,7 +93,24 @@ X1 and lands before X3 (A126).
    that does not exist, a building on a network — as invariants checked every month in
    `room_soak`, not only at the end.
 
-## X0 — The ground under the server (S)
+## X0 — The ground under the server (S) — **done 2026-10-04 as `slice-X0`**
+
+`ws` 8.18.0 pinned exact (the siblings' version), with `test/purity.test.js` keeping it out of
+everything the browser ships. `shared/build-hash.js` holds the build hash with a setter — the shape
+`engine/rules.js` has, since that module may not do I/O — computed by `tools/make_precache.mjs` over
+`engine/`, `shared/` and `data/` only, written into `client/precache.json` beside the cache version
+and read by `client/main.js` at boot. `BUILD_HASH` the literal is gone. `test/pwa.test.js`
+demonstrates the boundary (drop `data/balance.json` from the list and the hash moves; drop
+`client/style.css` and it does not), and `test/protocol.test.js` — the first test this protocol has
+ever had — asserts what `compatible()` does with a version mismatch, a build mismatch and a dev
+build on either side. The `room` set exists in the runner, empty, with its budget written before its
+first gate. `test/session-worker.test.js` asserts the snapshot and the save restore one city.
+
+Ancestry, as A127 asks: read `../CarrierDominion/server/{static,clock,save,reconnect,doorman,lobby,
+vote,watch}.js` and `../Fireline/server/metrics.js` before writing anything; X1's modules name which
+of them each descends from.
+
+## X0 — The ground under the server (S) — the item as written
 
 **Goal.** Everything the server needs that is not the server.
 

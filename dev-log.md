@@ -10589,3 +10589,28 @@ server/static.js` (the no-framework static handler with its root containment), `
 ten samples). Nothing is copied; X1's modules will say which of these each one descends from.
 
 Suite green twice (1,674); `render` 9 s; `offline_smoke` green with the new manifest field.
+
+## The round after X0 — the protocol's first test, and what the sweep says (2026-10-04)
+
+**`test/protocol.test.js`.** `compatible()` was written in Wave 0, had no caller and no test, and
+X0 gave it a real build hash to compare — so this is the first time the handshake has been asked
+whether it does what plan.md §3.9 says. A version mismatch is refused before a build mismatch (a
+client two protocols old would otherwise be told its rules are stale, which is true and is not the
+reason); different rules are refused; a `dev` build on either side talks to anything; and
+`setBuildHash` falls back to `"dev"` for anything that is not a hash, rather than to an empty string
+that would compare equal to another empty string.
+
+It found one thing on the way: `chat` is in **both** message tables. That is correct — a player says
+something and the room repeats it, one idea in two directions — so the test asserts distinctness
+*within* each direction and pins the sameness of `chat` deliberately, which is the difference
+between a protocol rule and a coincidence.
+
+**The omissions sweep.** Reachability, omissions, purity, gates and tools green. The export sweep is
+the familiar list of per-file constants and engine copy helpers — and it is **eight entries shorter**
+than this morning: `compatible`, `PROTOCOL_VERSION`, `C2S`, `S2C`, `REFUSAL`, `BUILD_HASH`,
+`isCooperative` and `ownershipPartitions` have left it, because the protocol test reads them. Wave 5
+scaffolding written early is fine; scaffolding nothing reads is how `setRules` sat with no caller
+for the life of the project.
+
+`quick` 510 s of 540 after the boot change (`main.js` now reads the manifest for the build hash
+before anything else), `offline_smoke` included.
