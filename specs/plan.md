@@ -401,13 +401,19 @@ The seam is built, so this is checkable rather than aspirational. What exists an
 - Multiplayer state the reducer already keeps and the fixtures already pin: seats, ownership,
   requests, contracts, the two-player fixture.
 
-What is declared and **not read by anything**: `derelictYears`, `absenceYears`, `abandonYears`,
+What is declared and **not read by anything** — thirteen options in `engine/options.js`, some of
+them also numbers in `data/balance.json`: `derelictYears`, `absenceYears`, `abandonYears`,
 `requestExpiryMonths`, `disasterAid`, `splitRule`, `lateJoin`, `chatEnabled`, `freeTextReasons`,
-`privacy` and `seasonYears` are options in `engine/options.js` (and some of them numbers in
-`data/balance.json`) that no engine code reads. That is the honest state of §3.3's regency and
-abandonment rules: the knobs exist, the mechanics do not. They are listed here because a number in
-`data/` that nothing reads is indistinguishable from a number that *stopped* being read, and the
-next person to tune one deserves to know which it is (**Q148**).
+`privacy`, `mutualAid`, `seasonYears` and `keepForDays`. That is the honest state of §3.3's regency
+and abandonment rules: the knobs exist, the mechanics do not. (`mutualAid` the OPTION is unread;
+`CMD_MUTUAL_AID` the command is a different thing with the same name, which is why the test that
+pins this list strips strings as well as comments.)
+
+**The list is pinned by `test/omissions.test.js`** (A124, Q148): adding a fourteenth is a deliberate
+act and wiring one up turns the test red in the direction that means somebody did the work. It is
+pinned rather than deleted because `options` is hashed state — removing a field is a save migration
+and a fixture re-pin for no gameplay gain — and left declared rather than ignored because a number
+nothing reads is indistinguishable from a number that *stopped* being read.
 
 ### 3.10 Ops
 

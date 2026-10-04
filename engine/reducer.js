@@ -64,10 +64,16 @@ export function apply(state, command) {
 
 /** Subsystems register here rather than the tick handler importing them, so
  * that adding a system never edits the reducer. Order is explicit and part of
- * the determinism contract. */
+ * the determinism contract.
+ *
+ * There were three lists until Q148: a YEARLY one existed, nothing had ever
+ * registered into it, and the pass ran over an empty array every game year. A
+ * registration slot with no caller is the same shape as a number nothing reads
+ * — it looks like a feature and is a comment — so it was deleted. The season
+ * slice (`seasonYears`) is what would want it, and can add it back in four
+ * lines on the day it needs it. */
 var FAST_SYSTEMS = [];
 var MONTH_SYSTEMS = [];
-var YEAR_SYSTEMS = [];
 
 /** Systems declare an explicit order rather than inheriting import order.
  * Land value must be current before development scores a lot, and the lot must
@@ -88,16 +94,11 @@ export function registerFast(name, fn, order) {
 export function registerMonthly(name, fn, order) {
   insertOrdered(MONTH_SYSTEMS, { name: name, fn: fn, order: order === undefined ? 50 : order });
 }
-export function registerYearly(name, fn, order) {
-  insertOrdered(YEAR_SYSTEMS, { name: name, fn: fn, order: order === undefined ? 50 : order });
-}
-
 export function systemNames() {
   var names = [];
   var i;
   for (i = 0; i < FAST_SYSTEMS.length; i += 1) names.push("fast:" + FAST_SYSTEMS[i].name);
   for (i = 0; i < MONTH_SYSTEMS.length; i += 1) names.push("month:" + MONTH_SYSTEMS[i].name);
-  for (i = 0; i < YEAR_SYSTEMS.length; i += 1) names.push("year:" + YEAR_SYSTEMS[i].name);
   return names;
 }
 
@@ -115,7 +116,6 @@ register(CMD_TICK, function tick(state) {
   state.tick += 1;
   runSystems(FAST_SYSTEMS, state, events);
   if (state.tick % TICKS_PER_MONTH === 0) runSystems(MONTH_SYSTEMS, state, events);
-  if (state.tick % TICKS_PER_YEAR === 0) runSystems(YEAR_SYSTEMS, state, events);
   return ok(events);
 });
 

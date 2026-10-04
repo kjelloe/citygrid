@@ -10324,3 +10324,28 @@ difference would have been found by a UI module rather than by a test.
 Gates: suite green twice (1,661 — W4's file is 8 of them); `quick` 508 s of 540, every gate green
 with the worker on. `client/transport/` left `test/omissions.test.js`'s empty-directory list, which
 is how that list is supposed to shrink.
+
+## Q148 — the unread options are pinned, and the empty yearly slot is gone (2026-10-04)
+
+Thirteen, not eleven. `engine/options.js` declares `derelictYears`, `absenceYears`, `abandonYears`,
+`requestExpiryMonths`, `disasterAid`, `splitRule`, `lateJoin`, `chatEnabled`, `freeTextReasons`,
+`privacy`, `mutualAid`, `seasonYears` and `keepForDays`, and **nothing anywhere reads any of them**.
+They are Wave 5's contract declared ahead of its mechanics, which is reasonable; leaving it
+unwritten is how `setRules` sat with no caller for the life of the project.
+
+Deleting them is the project's usual rule and costs more than it is worth here: `options` is hashed
+state, so removal is a save migration and a fixture re-pin for no gameplay gain. So the list is
+**pinned** by `test/omissions.test.js`. Adding a fourteenth is a deliberate act; wiring one up turns
+the test red in the direction that means somebody did the work.
+
+**The first cut of the test was wrong in the way this project keeps finding.** It searched
+`engine/` for each name and reported eleven — because `copyOptions` and `writeState` mention every
+option by name, and because a mention in a COMMENT counted as a reader. The comment it counted was
+one I had written ten minutes earlier, in `reducer.js`, saying that `seasonYears` was the thing that
+would have used the yearly slot. The rule is stated in the test now and strips comments and strings
+across `engine/`, `client/`, `shared/` and `worker/` — which is also what tells `mutualAid` the
+unread OPTION from `CMD_MUTUAL_AID` the command, two different things with one name.
+
+And `registerYearly` is deleted: a registration slot with no caller whose pass ran over an empty
+array every game year. The season slice can add it back in four lines on the day it needs it. Suite
+green twice (1,662).

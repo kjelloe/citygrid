@@ -15,7 +15,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot } from "./helpers/sources.js";
+import { OPTION_FIELDS } from "../engine/options.js";
+import { repoRoot, jsFilesIn, stripCommentsAndStrings } from "./helpers/sources.js";
 import { knownCommands } from "../engine/reducer.js";
 import * as COMMANDS from "../engine/commands.js";
 import "../engine/build-commands.js";
@@ -134,6 +135,33 @@ test("the placeholder directories are still empty, or their slice has started", 
     assert.deepEqual(contents, [],
       `${dir} has files but its wave has not started — move them or start the slice: ${contents.join(", ")}`);
   }
+});
+
+test("the options the project declares and nothing reads are exactly these (Q148)", () => {
+  // Thirteen options are declared in `engine/options.js` — most of them Wave 5's
+  // contract, §3.3's regency and abandonment rules, the season length, the
+  // lobby's chat and privacy switches — and **no code anywhere reads them**.
+  // Declaring ahead of the mechanics is reasonable; leaving it unwritten is how
+  // `setRules` sat with no caller for the life of the project, because a number
+  // nothing reads is indistinguishable from a number that STOPPED being read.
+  //
+  // The rule, exactly: no mention outside `options.js` and `rules.js` in
+  // `engine/`, `client/`, `shared/` or `worker/`, with comments and strings
+  // stripped — the first cut of this test counted a mention in a COMMENT as a
+  // reader, and the comment was one I had just written about the option.
+  //
+  // So the list is pinned rather than argued about. Adding a fourteenth is a
+  // deliberate act; wiring one up turns this red in the direction that means
+  // somebody did the work.
+  const files = ["engine", "client", "shared", "worker"].flatMap((dir) => jsFilesIn(dir))
+    .filter((f) => !/(engine\/options|engine\/rules)\.js$/.test(f.path))
+    .map((f) => stripCommentsAndStrings(f.source));
+  const unread = OPTION_FIELDS.filter((name) => !files.some((src) => new RegExp(`\\b${name}\\b`).test(src)));
+  assert.deepEqual(unread.sort(), [
+    "abandonYears", "absenceYears", "chatEnabled", "derelictYears", "disasterAid",
+    "freeTextReasons", "keepForDays", "lateJoin", "mutualAid", "privacy",
+    "requestExpiryMonths", "seasonYears", "splitRule",
+  ], "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
 });
 
 test("every module the client imports actually exists", () => {

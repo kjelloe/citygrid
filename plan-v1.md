@@ -433,7 +433,6 @@ by number from the code they create.
 | ~~Q142~~ | **Answered A119** — relative criteria (cliffs per km, lots as a share), and the same is owed to `walkthrough` on rolling |
 | ~~Q143~~ | **Answered A121, built 2026-10-04 (era 26)** — the far bank is worth a quarter of a city where the town is hemmed in by water, and nothing where it is not |
 | Q145 | a street on a hillside stands on up to 14.7 m of fill that falls away over four metres: the embankment has no batter | Kjell — a picture decision, and widening the blend re-measures the height field |
-| Q148 | eleven multiplayer options are declared in `engine/options.js` and read by nothing | nobody yet; Wave 5's first checklist (`specs/plan.md` §3.9b) |
 | ~~Q144~~ | **Answered A120** — `lot.maxPlinth` is a reducer rule in the shape of `maxZoneSlope`; the quay as a thing is a later content slice |
 
 ## What would make us stop and re-plan
