@@ -10856,3 +10856,49 @@ before: `render` 9 s, `lanes` 212 s, `budget` 252 s, suite 1,719 green twice.
    module in `client/`, `worker/`, `server/`, `shared/` and `engine/` — 0.65 s for the renderer's 44
    files — and it was proved to fail on a planted syntax error. This is the "renderer defects the
    suite cannot see" memory with a cheap instrument finally attached to it.
+
+## slice-W6b (part) — the measurement, and 40 ms that was never the model (2026-10-04)
+
+W6's shape was argued from `tools/model_cost.mjs`, and **the instrument was wrong**. It timed
+`createModel` first — six runs, paying for every JIT decision in the process — and every phase
+afterwards, warm. The phase list accounted for 55% of the rebuild, which should have been the tell:
+the missing 29 ms was warmup, not work. Warming everything first (including the nav graph) and
+timing the whole again at the end closes the accounting to **99%**, and the cold number is kept as
+its own row, because a player does pay it once on their first build after the page loads.
+
+| | before | after the instrument was fixed |
+| --- | --- | --- |
+| `createModel`, warm | "65.8 ms" | **31–36 ms** |
+| `createModel`, cold first run | — | 57–64 ms |
+| `deriveNav` | 64.5 ms | 65 ms (the one number that held) |
+
+So the stall is ~98 ms warm, of which **two thirds was the nav graph**, not the model — and W6's
+item had been pointing at `deriveLanes` (42% of the model, 25% of the stall). `deriveNav` was timed
+twice from different points in the run, because it is now the biggest number in the gate and the one
+most worth doubting: 65.1 and 63.7 ms.
+
+**Then two things that were not derivation at all.**
+
+1. **The door search was every lot against every pavement.** 284 lots × 2,804 walk edges, each a
+   projection onto every segment. It is now a ring search outward from the door's own tile that
+   stops when the next ring cannot hold anything closer than the best found, with the full scan as
+   the fallback for a door with no pavement within twelve tiles — the same answer, not a near one.
+   `deriveNav` **65 → 40 ms**.
+2. **`heightAt` walked every node in the network, to use the handful with no corridor on them.** The
+   filter was inside the loop: 1,402 nodes on a played 96, 16,360 points in the nav graph, **23
+   million iterations** to find the lone nodes. Listing them once when the ground is built —
+   identical predicate, identical values — took `heightAt` over those points from **27 ms to 4.9**,
+   `deriveNav` from 40 to **22**, and the pavement packing from 11 to 3.
+
+**One build action, warm: 98.3 ms → 58.9 ms**, every gate reading what it read before (suite 1,719
+green twice, `render` 8 s, `lanes` 215 s, `budget` 257 s, and `lanes_dump`'s and `budget_gate`'s own
+numbers unmoved). What is left is the dirty set, and the numbers now name it properly:
+**`deriveLanes` 27 ms** (2,808 lanes and 6,088 turn curves, ~2.8 µs each — genuine geometry, no
+hidden scan), `deriveNav` 22, `createGround` 3.2, `deriveCorridors` 1.9. A build action still
+invalidates **2 corridors of 1,402 and 12 lanes of 8,896**, so the work the dirty set would skip is
+99.86% of it.
+
+**Why this is its own entry.** Two of the three numbers W6 was planned against were artefacts of
+when they were taken, and the two fixes above are not the dirty set, do not change a single derived
+value, and would have been invisible under it. A plan built on a cold measurement aims at the
+warmup.

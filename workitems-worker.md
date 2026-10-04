@@ -227,7 +227,19 @@ is no corridor at all: a lone road tile has no neighbour, so that row was a meas
 printed as the best possible result.)
 
 **What is left of W6 is the dirty set** (item 2 below): `createModel(state, previous)` re-deriving
-only what the changed tiles touch. Identity was the obstacle and it is gone; the 115 ms is not.
+only what the changed tiles touch. Identity was the obstacle and it is gone.
+
+**And the 115 ms was never 115 ms** (slice-W6b part, 2026-10-04). The gate timed `createModel` cold
+and its phases warm, so 29 ms of the "stall" was JIT warmup; warm, a build action was **98.3 ms**,
+two thirds of it the NAV graph rather than the model. Two fixes that are not the dirty set took it
+to **58.9 ms**: the door search was every lot against every pavement (ring search now,
+`deriveNav` 65 → 40 ms), and `heightAt` walked all 1,402 network nodes per call to use the lone ones
+(listed once; `heightAt` over the nav graph's 16,360 points 27 → 4.9 ms, `deriveNav` 40 → 22).
+
+The dirty set's target is now exact: **`deriveLanes` 27 ms** — 2,808 lanes and 6,088 turn curves at
+~2.8 µs each, genuine geometry with no hidden scan left in it — plus `deriveNav` 22, `createGround`
+3.2 and `deriveCorridors` 1.9, against a build action that invalidates 2 corridors of 1,402 and 12
+lanes of 8,896. A frame is 16.7 ms, so the only way there is to skip the 99.86%.
 
 **So W6 is: stable identity, then a dirty set.**
 1. A corridor's identity is its geometry, not its index — a key that survives a rebuild (the ends of

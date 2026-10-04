@@ -210,6 +210,13 @@ export function createGround(state, network) {
    * `cornerHeightAt`. Everything that belongs to the street — the ribbons, the
    * lane graph, the walker's floor, the props — wants the first.
    */
+  /** The nodes a blend has to consider on its own: a junction with corridors on
+   * it is already represented by them. Computed once per ground, because the
+   * network does not change under a derived ground. */
+  const loneNodes = network
+    ? network.nodes.filter((n) => n.corridors.length === 0 || n.kind === "isolated")
+    : [];
+
   function heightAt(x, z, deck = true) {
     const land = landAt(x, z);
     let wsum = 0;
@@ -231,8 +238,12 @@ export function createGround(state, network) {
         const profile = profiles.get(c.id);
         hsum += w * (profile ? heightOnProfile(profile, hit.s) : landAt(hit.x, hit.z));
       }
-      for (const n of network.nodes) {
-        if (n.corridors.length > 0 && n.kind !== "isolated") continue;
+      // Only the LONE nodes, listed once (W6b). The filter was inside the loop,
+      // so every `heightAt` walked all 1,402 nodes of a played 96 to use the
+      // handful with no corridor on them — 23 million iterations across the
+      // 16,360 points the nav graph asks about, and `heightAt` was 27 ms of
+      // `deriveNav`'s 40.
+      for (const n of loneNodes) {
         const d = Math.max(Math.abs(x - n.x), Math.abs(z - n.z));
         const half = n.half ?? network.half;
         if (d > half + blend) continue;

@@ -221,15 +221,66 @@ export function deriveNav(state, model) {
   // would split every pavement it sat on, and what a pedestrian needs is where
   // to appear, not a junction.
   const walks = edges.filter((e) => e.kind === "walk");
+
+  /**
+   * **The nearest pavement to a door, found by RINGS** (W6b).
+   *
+   * This loop was every lot against every pavement: 284 lots × 2,800 walk edges
+   * on a played 96, each one a projection onto every segment, and it was most of
+   * why `deriveNav` cost **65 ms** — two thirds of the 98 ms a build action
+   * spends on derivation, and more than the whole city model beside it.
+   *
+   * The answer is the same one, not a near one: rings are searched outward from
+   * the door's own tile and the search stops only when the next ring cannot hold
+   * anything closer than the best found so far. A door with no pavement within
+   * the cap falls back to the full scan, so the one case this cannot index is
+   * still correct rather than missing.
+   */
+  const walkIndex = new Map();
+  for (const edge of walks) {
+    const n = edge.pts.length / 3;
+    for (let i = 0; i < n; i += 1) {
+      const tile = Math.floor(edge.pts[i * 3 + 2] / cfg.tileM) * state.width
+        + Math.floor(edge.pts[i * 3] / cfg.tileM);
+      const list = walkIndex.get(tile);
+      if (list) { if (list[list.length - 1] !== edge) list.push(edge); } else walkIndex.set(tile, [edge]);
+    }
+  }
+  const RINGS = 12;
+  function nearestWalk(x, z) {
+    const cx = Math.floor(x / cfg.tileM);
+    const cz = Math.floor(z / cfg.tileM);
+    let best;
+    const seen = new Set();
+    for (let r = 0; r <= RINGS; r += 1) {
+      // Everything in ring `r` is at least `(r - 1) * tileM` away, so once the
+      // best is nearer than that, no further ring can beat it.
+      if (best && (r - 1) * cfg.tileM > best.dist) return best;
+      for (let dz = -r; dz <= r; dz += 1) {
+        for (let dx = -r; dx <= r; dx += 1) {
+          if (r > 0 && Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+          for (const edge of walkIndex.get((cz + dz) * state.width + (cx + dx)) ?? []) {
+            if (seen.has(edge.id)) continue;
+            seen.add(edge.id);
+            const hit = closestAlong(edge, x, z);
+            if (!best || hit.dist < best.dist) best = { edge: edge.id, s: hit.s, dist: hit.dist };
+          }
+        }
+      }
+    }
+    if (best) return best;
+    for (const edge of walks) {
+      const hit = closestAlong(edge, x, z);
+      if (!best || hit.dist < best.dist) best = { edge: edge.id, s: hit.s, dist: hit.dist };
+    }
+    return best;
+  }
+
   const doors = [];
   for (const lot of model.lots) {
     const front = frontEdgeOf(lot);
     const point = doorPoint(front, OUTWARD[lot.frontage]);
-    let best;
-    for (const edge of walks) {
-      const hit = closestAlong(edge, point.x, point.z);
-      if (!best || hit.dist < best.dist) best = { edge: edge.id, s: hit.s, dist: hit.dist };
-    }
+    const best = nearestWalk(point.x, point.z);
     if (!best) continue;
     const door = {
       key: `d|${lot.id}`,

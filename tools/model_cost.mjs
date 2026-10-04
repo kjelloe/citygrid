@@ -88,7 +88,21 @@ console.log(`${size}×${size} ${terrain}, ${YEARS} years: ${state.buildings.leng
 // In the order `createModel` runs them, each one given what the ones before it
 // produced, so the numbers add up to the whole rather than to an argument.
 
+// **The cold run, kept as its own number.** The first derivation in a process
+// pays for every JIT decision in it, and it is also what a player pays on their
+// first build action after the page loads — so it is measured first, reported
+// separately, and never used as the denominator for a share.
 const whole = time("createModel (everything)", 6, () => createModel(state));
+// Then everything is warmed, INCLUDING the nav graph, before a single phase is
+// timed. The first cut of this gate timed `createModel` cold and every phase
+// warm, which is how the phase list came to account for 55% of the rebuild: the
+// missing 29 ms was warmup, not work, and W6's shape was argued from it.
+for (let n = 0; n < 3; n += 1) {
+  const warmModel = createModel(state);
+  deriveNav(state, warmModel);
+  deriveCorridors(state, "road");
+  deriveWater(state, cfg);
+}
 const corridors = time("deriveCorridors (road)", 6, () => deriveCorridors(state, "road"));
 const network = corridors.out;
 const water = time("deriveWater", 6, () => deriveWater(state, cfg));
@@ -103,20 +117,39 @@ const railProfiles = time("profilesFor (rail)", 6, () =>
 // left this behind would have moved half the stall (E7).
 const model = whole.out;
 const nav = time("deriveNav (scene.js, beside it)", 6, () => deriveNav(state, model));
+// Timed again after everything else, because this is the biggest single number
+// in the gate and the one most worth doubting: two readings from different
+// points in the run that agree are a measurement, and one is a guess.
+const navAgain = time("deriveNav (again, last)", 6, () => deriveNav(state, model));
+
+// **The whole, measured again, warm.** The first `createModel` above is the
+// first thing this process does: its six runs pay for every JIT decision in the
+// derivation, and the phases below it are then timed on a warmed-up engine. The
+// gap was 45% of the rebuild — 29 ms that the phase list did not account for and
+// that nothing in the model was spending — and a dirty-set slice aimed at 29 ms
+// of nothing would have been a slice aimed at the measurement.
+const wholeWarm = time("createModel (everything, warm)", 6, () => createModel(state));
 
 const phases = [corridors, water, ground, lots, lanes, rail, railProfiles];
 const accounted = phases.reduce((n, p) => n + p.ms, 0);
 console.log("what a model rebuild is made of:");
 for (const p of [...phases].sort((a, b) => b.ms - a.ms)) {
-  const share = (100 * p.ms / whole.ms).toFixed(0);
+  const share = (100 * p.ms / wholeWarm.ms).toFixed(0);
   console.log(`  ${p.label.padEnd(32)} ${p.ms.toFixed(2).padStart(8)} ms  ${share.padStart(3)}%`
-    + `  ${"#".repeat(Math.round(p.ms / whole.ms * 40))}`);
+    + `  ${"#".repeat(Math.round(p.ms / wholeWarm.ms * 40))}`);
 }
 console.log(`  ${"accounted for".padEnd(32)} ${accounted.toFixed(2).padStart(8)} ms  `
-  + `${(100 * accounted / whole.ms).toFixed(0).padStart(3)}%`);
-console.log(`  ${"createModel, whole".padEnd(32)} ${whole.ms.toFixed(2).padStart(8)} ms`);
+  + `${(100 * accounted / wholeWarm.ms).toFixed(0).padStart(3)}%`);
+console.log(`  ${"createModel, whole (warm)".padEnd(32)} ${wholeWarm.ms.toFixed(2).padStart(8)} ms`);
+console.log(`  ${"createModel, whole (COLD, first)".padEnd(32)} ${whole.ms.toFixed(2).padStart(8)} ms`
+  + `  — what a player pays once, and what every number in this gate before W6b was`);
 console.log(`  ${nav.label.padEnd(32)} ${nav.ms.toFixed(2).padStart(8)} ms  `
-  + `(+${(100 * nav.ms / whole.ms).toFixed(0)}% on top, and on the same thread)`);
+  + `(+${(100 * nav.ms / wholeWarm.ms).toFixed(0)}% on top, and on the same thread)`);
+console.log(`  ${navAgain.label.padEnd(32)} ${navAgain.ms.toFixed(2).padStart(8)} ms  `
+  + `(the same measurement from the other end of the run)`);
+console.log(`\n  one build action, warm: ${(wholeWarm.ms + nav.ms).toFixed(1)} ms of derivation `
+  + `— ${(100 * nav.ms / (wholeWarm.ms + nav.ms)).toFixed(0)}% of it the NAV graph, `
+  + `${(100 * lanes.ms / (wholeWarm.ms + nav.ms)).toFixed(0)}% the lane graph`);
 
 // --- 2. what ONE build action invalidates ------------------------------------
 //
