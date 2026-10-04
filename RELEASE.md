@@ -112,12 +112,15 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**2 open questions** are on the list (`dev-questions.md`, bottom section). The nine that were there
+**4 open questions** are on the list (`dev-questions.md`, bottom section). The nine that were there
 were all answered on 2026-10-03 (A113–A121) and are work in `plan-v1.md`'s order rather than
 decisions waiting on anybody; the two that are left were both found by instruments those answers
 built — Q145 (a street's embankment has no batter) by the hilly walk, and Q146 (a high street at
 eye height with nobody on it, while two counters say 122 people are posed there) by F2's
-storyboard, the first instrument in this project that looks at the game for a minute at a time. What a reader should still know:
+storyboard, the first instrument in this project that looks at the game for a minute at a time. The
+other two came out of reviewing the multiplayer plan against the seam W1 and W2 actually built:
+Q147 (undo changes the city and is not a command, so it cannot cross a wire) and Q148 (eleven
+multiplayer options the engine does not read). What a reader should still know:
 
 - **One real device has been measured, and no phone has.** `?perf=1` runs a nine-step frame sweep
   on whatever device the page is open on and ends with a **Copy** button; every card in

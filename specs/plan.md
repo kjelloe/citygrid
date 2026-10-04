@@ -226,6 +226,18 @@ state object everything holds, and it hashes to the worker's own number once a m
 what `tools/worker_smoke.mjs` checks on both arms. `undo` is on the seam too: it is the one change
 to the city that is not a command.
 
+**What W2 changed about this diagram.** The client's "local engine copy" IS the worker. A remote
+session does not replace `session.js`; it replaces where the COMMANDS come from. The worker stays
+exactly where it is, the mirror stays where it is, and `session-remote.js` is the thing that takes
+the server's accepted frames and feeds them to the same `worker/sim-host.js` that singleplayer
+drives directly. Two consequences, both now decided rather than discovered later:
+
+- the init message's `content` (balance, catalogue, quests) must be the ROOM's content, not the
+  client's — which is what §3.9's build hash is for, and what makes the handshake load-bearing
+  rather than ceremonial;
+- the snapshot the server sends on join and the `snapshot` reply the worker already produces are
+  the same shape, and should stay one shape.
+
 ### 3.2 Command relay, not state streaming
 
 The server is a thin pump: queue commands, apply through the same reducer, broadcast the
@@ -236,6 +248,12 @@ local and immediate.
 
 - Ordering: commands are applied in `(tick, seq)` order, `seq` assigned by the server on
   arrival. Ties never exist. Same order on every machine, forever.
+- **Everything that changes the city must BE a command.** W1 found the exception the hard way:
+  `undoLast(state, actor)` changes the city and is not a command, so it cannot cross a wire — in a
+  room it would change one client's copy and desync it. Undo is either a command (`CMD_UNDO`,
+  validated and ordered like any other, which also makes it fair: you can only undo your own last
+  action) or it is refused in multiplayer. That is **Q147**, and it is the one thing the seam
+  cannot carry as built.
 - Rejection: an illegal command is rejected identically by client and server; the client's
   optimistic ghost preview is never state, so a rejection is a UI toast, not a rollback.
 - Desync: a hash mismatch triggers a resync — the server sends a full snapshot and the client
@@ -259,6 +277,13 @@ local and immediate.
   pattern from `batch-a-refinement.md`.
 
 ### 3.4 Clock authority
+
+**Who calls `tick()` is a property of the session, not of the game.** As built, `client/game.js`
+owns a `setInterval` that calls `sim.tick()`; a remote session must take that over, because the
+frame carries the tick count and a client that also ran its own interval would run the world twice.
+W4's drop-in test is the place this gets settled: the local session keeps an interval, the remote
+session ticks when a frame says to, and `game.js` asks the session for a speed rather than owning
+a clock.
 
 The server owns the clock. Speed is a lobby setting plus an in-game **majority vote**
 (`SET_SPEED_VOTE`); the host can force it. No single player can pause the world — pausing is
@@ -364,6 +389,26 @@ it is the *default* failure after every deploy, and a mismatched reducer silentl
   reload, so an in-progress singleplayer session is never swapped out mid-play.
 - Singleplayer saves carry the same build hash: loading a save from a newer build warns; older
   builds migrate.
+
+### 3.9b What Wave 5 has already, and what it does not (reviewed 2026-10-04)
+
+The seam is built, so this is checkable rather than aspirational. What exists and is waiting:
+
+- `shared/protocol.js`'s `compatible(clientVersion, clientBuild, serverBuild)` — §3.9's handshake,
+  written and with no caller, which is correct for a wave that has not started.
+- `engine/permissions.js`'s `ownershipPartitions` and `isCooperative` — the modes §4 describes.
+- `worker/sim-host.js`'s `snapshot` and `save` messages — §3.3's join payload, in the shape the
+  singleplayer client already uses.
+- Multiplayer state the reducer already keeps and the fixtures already pin: seats, ownership,
+  requests, contracts, the two-player fixture.
+
+What is declared and **not read by anything**: `derelictYears`, `absenceYears`, `abandonYears`,
+`requestExpiryMonths`, `disasterAid`, `splitRule`, `lateJoin`, `chatEnabled`, `freeTextReasons`,
+`privacy` and `seasonYears` are options in `engine/options.js` (and some of them numbers in
+`data/balance.json`) that no engine code reads. That is the honest state of §3.3's regency and
+abandonment rules: the knobs exist, the mechanics do not. They are listed here because a number in
+`data/` that nothing reads is indistinguishable from a number that *stopped* being read, and the
+next person to tune one deserves to know which it is (**Q148**).
 
 ### 3.10 Ops
 

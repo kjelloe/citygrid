@@ -235,6 +235,32 @@ lands here as a palette amendment with §3.1 updated in the same slice.
 **Done when** every row of the sheet has moved toward the reference by Kjell's eye, and the
 budgets in ruling 040 carry the re-measured numbers.
 
+## S14 — The embankment has a batter (M) — Q145, found by J3's hilly walk 2026-10-04 — **waits on Kjell**
+
+**The reading.** Where the land is steep, R3's corridor profile and S11's junction drift hold a
+street ABOVE the land, and the height field blends back over `road.blend` — four metres. On a
+played `hilly` 128 that is **up to 14.7 m of fill falling away over four metres**, a 1:0.27 face
+the walker meets as a cliff at the kerbside. A real embankment batters at about 1:1.5. It is the
+same shape as A120's plinth: a thing standing on a wall of its own making.
+
+**Why it is not a constant.** `road.blend` is read by the height field every lot, lane, walk and
+chunk bake asks about, so widening it on steep ground moves the ground under the whole city — it
+is a slice with its own re-measure, not a number. That is why it is written here rather than fixed
+in the gate that found it.
+
+**Do, if Kjell wants it.**
+- A blend that is a function of the DROP rather than a constant: `blend = clamp(drop * batter,
+  road.blend, road.maxBlend)` with `batter` ≈ 1.5, so a flat city is untouched (drop ≈ 0 keeps
+  today's four metres) and only the steep shoulders widen. The cost is in `heightAt`'s inner loop,
+  which every chunk bake and every lane point pays — measure it with `lanes_dump` before and after.
+- The lot rule has to agree: a wider shoulder eats buildable ground, and `bareLandAt` /
+  `pavableAt` / `landAt` each answer a different question about the same tile (the trap
+  S12 and S13 both fell into).
+- `walkthrough 128 hilly` counts `shoulderCliffs` already; it is the gate.
+
+**Measure, don't assume:** the picture is the point. The shots are the ones S11 and J3 took, and
+the comparison is before and after on the same seed, not a number in a table.
+
 ## S13 — The bridge (L) — A84 (Q104), **re-scoped at P99 (A111)** — **BUILT 2026-10-03** as `slice-S13` (era 24)
 
 *Built: `build.bridgeSpan` and `crossingRefusal` in the engine (road layer only — the first cut

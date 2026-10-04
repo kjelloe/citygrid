@@ -175,7 +175,7 @@ fallback and the worker in turn and compares the hash after 200 ticks and 50 com
 **Done when** the dev-log has a table: build action stall, month tick stall, frame p95 on the
 phone, before W2 and after.
 
-## W4 — The server reuses the seam (S, the door to Wave 5)
+## W4 — The server reuses the seam (M, the door to Wave 5) — **designed 2026-10-04 after W2**
 
 **Goal.** Not the server — ruling 003 keeps Wave 5 behind playtest acceptance — but the proof
 that `session-remote.js` is a drop-in: a stub transport in `client/transport/` that echoes
@@ -183,11 +183,54 @@ commands back with a sequence number, and the session running against it with th
 as the local session. When Wave 5 starts, the socket replaces the echo and nothing above the
 seam knows.
 
+**W2 settled three things this item has to carry**, and they are the whole of its design:
+
+1. **A transport is an argument, not a module.** `client/session.js` builds its own `Worker` and
+   posts to it, which is why its half of the seam cannot be instantiated in node and has no test
+   outside a browser. Give it a transport — `{ post(message, transfer) → Promise<reply> }` — and
+   the worker becomes one implementation, the echo another, and `test/session-remote.test.js` can
+   drive both. This is also what gives the lane the member-for-member parity test it has never had:
+   three sessions, one list of members, one assertion.
+2. **Who calls `tick()` belongs to the session.** `client/game.js` owns a `setInterval` today. A
+   remote session cannot: the server owns the clock and the frame carries the tick count, so a
+   client running its own interval would run the world twice (plan.md §3.4). `session.setSpeed(n)`
+   on both sides, the interval inside the local one, the frame inside the remote one, and
+   `game.js` asking for a speed rather than owning a clock.
+3. **Undo is not a command, and everything that changes the city must be one.** `undoLast` changes
+   the state directly; across a wire it would change one client's copy and desync it. Either
+   `CMD_UNDO` (validated and ordered like any other, which also makes it fair — you undo your own
+   last action) or undo is refused in a room. **Q147**, and it blocks this item's "drop-in" claim
+   rather than the item itself.
+
 **Tests.** `test/session-remote.test.js`: the echo transport and the local session agree on
 every hash of the founding fixture; a rejected command produces the toast path and no state
-change.
+change; all three sessions expose the same members; a frame that carries ticks advances the
+remote session and nothing else does.
+
+## W5 — The gates on the shipped configuration (S) — **found by W2, 2026-10-04**
+
+**Goal.** Four gates run with `?worker=0` because they drive the engine inside the page, and the
+one that matters is `mvp_acceptance`: the thirteen §24 criteria are the release claim, and they are
+currently proven on a configuration the player does not get.
+
+**Do.**
+- A scenario is a SAVE, built in node. `engine/save.js` recomputes the hash on load and refuses a
+  hand-edited file — but a save written by `toSave` after setting `state.disaster` in node carries
+  a hash that is correct by construction. So `tools/lib/scenario.mjs` builds the acceptance city and
+  arms the wildfire in node, the gate hands the bytes to the page, and `CITY.importSave` loads them
+  through the seam. The gate then drops `?worker=0` and plays the shipped configuration.
+- `budget_gate`, `play_shot` and `street_proof` keep `?worker=0` and keep saying why: they are
+  renderer measurements, the reducer's thread cannot change a triangle count, and a round trip per
+  command would add minutes to a gate that already takes four.
+- The audit the migration implies: every gate that reads `CITY.state` after a pointer or keyboard
+  action waits on `tools/lib/settle.mjs`. Four were found by failing; the rest pass today on
+  timing, which is not the same as being right.
+
+**Done when** `mvp_acceptance` is green with the worker on, and no gate reads the city in the
+statement after the click that changed it.
 
 ## Order
 
-W1 → W2 → W3 → W4. W1 is safe and cheap and makes W2 a swap rather than a rewrite; W3 is a
-measurement with an optional second half; W4 is the receipt for the whole plan.
+W1 → W2 → W3 → W4, with **W5** any time after W2 (it is a gate repair, not a feature). W1 is safe
+and cheap and makes W2 a swap rather than a rewrite; W3 is a measurement with an optional second
+half; W4 is the receipt for the whole plan.

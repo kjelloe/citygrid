@@ -16,6 +16,49 @@ it opened era 3.*
 **Two invariants from D7, kept by test:** life fills and moves at a rate per second scaled by
 `dt`, never per frame; and the population of cars and people is never a function of the camera.
 
+## B10 — The pavement nobody is standing on (M) — Q146, found by F2 2026-10-04
+
+**The reading.** F2's storyboard walks a high street with six shopfronts on it, at dusk and at
+night, and there is **not one person in either frame**. The instruments disagree with the picture
+and with each other: the STREET crowd is 0 of a cap of 120 (`stats.peds`, `pedsHeld`), the city
+crowd reports 122 posed and 122 near in the same frame, and the frame painted magenta
+(`?crowd=magenta`, E7's trick) has **0 magenta pixels of 230,400**. Counted, posed, and not where
+the camera is looking.
+
+**What is already known.** B7 put two crowds over one graph: a spread city crowd with its own cap,
+and a near crowd filled towards each pavement's demand with `reserve: crowd.heldOn` so the two
+cannot both fill the same shortfall. B7's own measurement had the near crowd at 6% of the people
+once the spread crowd had settled — so a street crowd of 0 is that design working, and the people
+on screen are supposed to be the city crowd's. The defect is therefore not "nobody spawned"; it is
+**posed people that are not in front of the camera**, which is E7's defect shape one crowd along.
+
+**Do — in this order, and stop when the picture changes.**
+1. Instrument first, change nothing: a histogram of posed people by distance from the eye in street
+   mode (E7's method, which is what found three placement defects the counts could not see), on the
+   same played 96 the film uses. The question is whether the 122 are behind the camera, beyond the
+   fog, under the ground, or at the wrong scale.
+2. Ask what `pedsCityNear` is near TO. Under perspective at eye height the visible box stretches to
+   the horizon; "near" measured against the box's centre is a hundred metres in front of the walker
+   (A39's lesson, and `pedestrians.js` already carries the fix for its own crowd — `figureAt` and
+   the spread order may not).
+3. Check `figureAt`'s resolution rule at eye height: it picks a person from 50 px a tile and this
+   figure from 30 (`RESOLVE.pedsCity`, B7). A street camera's tile pixels are large, so this should
+   pick the fine model — if it picks nothing, the crowd is posed into a pool the frame plan then
+   drops, which `pedsCityPosed` would still count.
+4. Only then decide between: the near crowd's `reserve` should not let the spread crowd starve the
+   pavement the player is standing on (a floor per edge within N metres of the eye), or the spread
+   crowd's placement is right and its DRAWING is wrong.
+
+**Tests first.** A pure test in `client/world/` or `client/life/` for whatever rule comes out of
+step 4 — a floor, a near-edge demand, a resolution rule — asserted on the played fixture rather
+than on a constructed one (the engine keeps shops at 0 occupants; a hand-made crowd proves
+nothing).
+
+**Gate.** `role_shots` and `street_shots` already photograph a street at eye height: both gain a
+count of people **within 40 m of the eye** and fail at zero, which is the counter this defect hid
+behind for the life of the project. The film's own frames 019–039 are the acceptance picture, and
+somebody looks at them.
+
 ## B9 — The deputy lays roads near the town (S, engine) — A81 — **built 2026-09-14** (era 3, `deputy.roadReach`)
 
 *As built: reach is `data/balance.json` `deputy.roadReach` (expand 4, the others 3), and a blocked

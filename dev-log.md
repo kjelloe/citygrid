@@ -10101,3 +10101,60 @@ Gates: suite green twice (1,645 — the seam's two test files are 23 of them); `
 worker on, including `offline_smoke`, which proves the worker file is in the precache and the
 service worker serves it; `budget` green on the local arm (264 s). `engine/`, `shared/statehash.js`
 and every fixture hash are untouched, which was the item's own "must not change".
+
+## The unplanned, planned — and the multiplayer plan read against the seam (2026-10-04)
+
+Kjell asked for the loose ends to be analysed, designed and written down rather than carried, and
+for the multiplayer plan to be reviewed now that the seam under it is real. Nothing was built in
+this round; four items and two questions were written.
+
+**The multiplayer plan holds, with three corrections**, all of them things W1 and W2 settled by
+being built (`specs/plan.md` §3):
+
+- §3.1's diagram needed a sentence: the client's "local engine copy" **is** the worker.
+  `session-remote.js` does not replace `session.js` — it replaces where the COMMANDS come from, and
+  the worker and the mirror stay exactly where they are. Two consequences fall out: the init
+  message's content must be the ROOM's balance, catalogue and quests (which is what §3.9's build
+  hash is for, and what makes the handshake load-bearing rather than ceremonial), and the server's
+  join snapshot and the worker's `snapshot` reply should stay one shape.
+- §3.2 gained the rule the lane learned the hard way: **everything that changes the city must BE a
+  command.** `undoLast` is not one. In a room it would change one client's copy and desync it, so
+  undo is either `CMD_UNDO` — validated and ordered like any other, which also settles fairness —
+  or it is refused in multiplayer. That is **Q147**, and it is the single thing the seam as built
+  cannot carry.
+- §3.4: **who calls `tick()` belongs to the session**, not to `game.js`. The remote session ticks
+  when a frame says to; a client that also ran its own interval would run the world twice.
+
+And a new §3.9b, which is the honest state of Wave 5: `compatible()`, `ownershipPartitions`,
+`isCooperative` and the worker's `snapshot`/`save` messages are written and waiting, which is
+correct for a wave that has not started — and **eleven options the engine does not read**
+(`derelictYears`, `absenceYears`, `abandonYears`, `requestExpiryMonths`, `disasterAid`,
+`splitRule`, `lateJoin`, `chatEnabled`, `freeTextReasons`, `privacy`, `seasonYears`), plus
+`registerYearly`, a registration slot with no caller whose yearly pass runs over an empty list.
+That is **Q148**: a number nothing reads is indistinguishable from a number that stopped being
+read, and this project has already been bitten by exactly that (`setRules`, P90).
+
+**The four unplanned items now have designs:**
+
+- **B10 — the pavement nobody is standing on** (Q146). Instrument before changing anything: a
+  histogram of posed people by distance from the eye, the question of what `pedsCityNear` is near
+  TO, and `figureAt`'s resolution rule at eye height — in that order, stopping when the picture
+  changes. The gate is `role_shots` and `street_shots` counting people **within 40 m of the eye**
+  and failing at zero, which is the counter this hid behind.
+- **S14 — the embankment has a batter** (Q145). A blend that is a function of the drop rather than
+  a constant, which leaves a flat city untouched and widens only steep shoulders — written up as a
+  slice with its own re-measure, because `road.blend` is read by every lot, lane, walk and bake.
+  Kjell's call.
+- **W4 — the drop-in**, redesigned around what W2 proved: a transport is an argument rather than a
+  module (which is also the member-for-member parity test the lane has never had), the session owns
+  the clock, and Q147's undo.
+- **W5 — the gates on the shipped configuration.** `mvp_acceptance` proves the thirteen release
+  criteria on `?worker=0`, which is not what a player gets. The answer is that a scenario is a
+  SAVE built in node: `fromSave` refuses a hand-edited file, but a save written by `toSave` after
+  arming a wildfire carries a hash that is correct by construction, so the gate can hand the bytes
+  to the page and drop the lever. `budget_gate`, `play_shot` and `street_proof` keep it and keep
+  saying why — a reducer's thread cannot change a triangle count.
+
+Two of the seven loose ends needed no item. The boot levers are already driven: `?worker=0` by
+`worker_smoke` on both arms, `?funds=` by four gates that would fail without it. And the parity
+test folds into W4, where the transport argument makes it possible at all.
