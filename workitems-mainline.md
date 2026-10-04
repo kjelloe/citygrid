@@ -195,7 +195,9 @@ balance eras: the page names `782e759` from 2026-09-08 and says every commit sin
   with High at 400,000, the gate sets as they are now (eleven sets — `quick`, `budget`, `shots`,
   `transport`, `kits`, `film`, `render`, `sim`) with their measured times, what works (transport,
   gates and the Outside, ranks, leisure and education, the worker), and what is missing (a phone
-  card; Wave 5; W6's stall, with its 115 ms).
+  card; Wave 5; W6's stall — **58.9 ms warm**, not the 115 ms the page will want to copy: that was
+  `createModel` timed cold beside an unwarmed nav graph, and `deriveLanes` is now the 27 ms the dirty
+  set is for).
 - `git checkout main && git merge --ff-only dev_night`, the suite twice and `gates.mjs all` on the
   merged tree, the three newest commits in the dev-log. **The push is Kjell's.**
 - `test/docs.test.js`'s drift note becomes a failure past fifty commits: a release page a hundred

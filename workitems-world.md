@@ -659,7 +659,8 @@ minutes it wants its census sampled or its own set — not a larger number.
 - **`plan-v1.md`'s lane table is stale** in four rows (world "started", behaviour "written",
   transport, rules missing). Fixed in this round.
 - **W6 is a multiplayer prerequisite**, not only a stall: in a room every other mayor's build
-  action costs every client 115 ms and resets its traffic. `workitems-multiplayer.md` says so and
+  action costs every client 115 ms and resets its traffic (both void: 58.9 ms warm since slice-W6b
+  part, and life survives a build since B11). `workitems-multiplayer.md` says so and
   orders it before X3.
 
 ## S20 — The shot tools aim themselves (S) — found while re-running them, 2026-10-04

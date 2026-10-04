@@ -112,8 +112,14 @@ what its day frame costs, because at that span the ladder has already dropped th
 night's lamps and lit windows live inside them. A chunk is 33.7k triangles and bakes in 9 ms on
 the 4090 (13 on SwiftShader) against an 8 ms budget. A person is 42 triangles and a car 76.
 
-**The city under it**: a build action costs **about 115 ms of derivation on the render thread** on a
-played 96 — `createModel` 49.6 ms and `deriveNav` 64.5 beside it, which nothing had ever timed until
+**The city under it**: a build action costs **58.9 ms of derivation on the render thread, warm**, on a
+played 96 — `deriveLanes` 27 ms of it, `deriveNav` 22 — after slice-W6b took out a door search that
+compared every lot against every pavement and a `heightAt` that walked every node in the network per
+call. The older figure of 115 ms is void: it was `createModel` timed on its first run in the process
+beside a nav graph nothing had warmed. A build no longer resets the city's traffic either (B11).
+What W6 still owes is the dirty set, since one build action invalidates 2 corridors of 1,402 and 12
+lanes of 8,896 — the derivation it skips is 99.86% of the work. Previously measured as
+`createModel` 49.6 ms and `deriveNav` 64.5 beside it, which nothing had ever timed until
 W3 (`tools/model_cost.mjs`). The worker took the month tick off that thread (3.6 ms) and left this,
 which is Q60 standing where it has stood since R1 and is now W6: **one build action changes 0.07% of
 the model** — 1 corridor of 1,402, 2 lanes of 8,896 — and the whole thing is rebuilt because ids are

@@ -36,7 +36,7 @@ X1 and lands before X3 (A126).
 
 ## What has changed since the wave was planned, and matters
 
-1. **A build action costs every client 115 ms and resets its traffic.** W6 measured it: a model
+1. **A build action costs every client 115 ms and resets its traffic.** **(void since slice-W6b part, 2026-10-04: that number was `createModel` timed COLD plus a nav graph nobody had warmed. Warm, a build action was 98.3 ms and is 58.9 ms now — and life survives a build since B11.)** W6 measured it: a model
    rebuild plus `deriveNav` on every accepted command, and `worldChanged` throws away the cars,
    the crowd, the trains and the boats each time. In singleplayer that is one hitch per action
    the player chose to take. **In a room it is one hitch per action anybody takes** — eight
