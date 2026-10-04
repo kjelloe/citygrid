@@ -10528,3 +10528,28 @@ Raising the budget to fit is what M2's rule forbids, so `render` is split for th
 rule has fired: `render` is the two walks and `passability` — **9 s of a 120 s budget**, a set any
 slice can afford to run, which is what it was for — and `lanes` is `lanes_dump` alone at 215 s of
 360.
+
+## M7 — the release page says what is true, and the drift note has teeth (2026-10-04)
+
+`RELEASE.md` named `782e759` from 2026-09-08. HEAD was **129 commits and twenty-five balance eras**
+past it, and every number on the page was measured against a game that no longer existed — the one
+thing the page exists not to be.
+
+The note that was supposed to catch that is M3's, and it was right to be a note: a release page is
+stale the moment the next slice lands, and a test that went red for one commit would be re-dated
+rather than read. But a note is only a note while somebody reads it. **It fails past fifty commits
+now**, which is the distance at which "stale" stops meaning "yesterday".
+
+The page is rewritten at this commit: era 26, the nine gate sets with the times measured one at a
+time (`quick` 512 of 540, `render` 9 of 120 after S18's split, `lanes` 215, `budget` 258, `shots`
+394, `kits` 346, `film` 292, `sim` 556), 1,671 tests, the worker and the seam under "what works",
+the faced wall and the people on the pavements, and — under what is missing — **a build action's
+115 ms of derivation** rather than the 53.3 ms `createModel` figure the page carried, because
+`deriveNav` sits beside it and nothing had timed that until W3.
+
+And `REQUIRED_DOCS` gains the three lane files it had missed — `workitems-transport.md`,
+`workitems-rules.md`, `workitems-multiplayer.md` — and `specs/transport-and-landmarks.md`. A plan
+nothing points at quietly stops being true, which is what that list is for.
+
+What is left of M7 is the merge: `main` is still at `2f26532`. The ff-only merge and `gates.mjs all`
+on the merged tree are a run of their own, and **the push is Kjell's**.

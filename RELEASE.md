@@ -4,18 +4,20 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `782e759` on `dev_night`, the end of `workitems-measurement.md`'s buildable half —
-  which is what the numbers below were measured at. **`main` is the release and `dev_night` carries
-  what has landed since**: `main` was pushed on 2026-09-08 at `2f26532`, and every commit between
-  is a document. Nothing on `dev_night` changes what this page claims until the next slice does,
-  and the docs test prints the drift as a note rather than a failure for exactly that reason.
-- **Date:** 2026-09-08
+- **Commit:** `8f1d80a` on `dev_night`, after the worker lane, the film's storyboard, the rules
+  lane and twenty-six balance eras — which is what the numbers below were measured at. **`main` is
+  the release and `dev_night` carries what has landed since**: `main` was pushed on 2026-09-08 at
+  `2f26532`. This page named that commit until 2026-10-04, **129 commits and twenty-five eras
+  later**, with every number on it measured against a game that no longer existed — so the docs
+  test now fails past fifty commits of drift rather than printing a note nobody reads (M7).
+- **Date:** 2026-10-04
 - **Balance era:** era 26, re-measured 2026-10-04 over 200 games per configuration
   (`reports/balance-era26.md`). Numbers from an earlier era are void, not roughly comparable —
   and the frame numbers further down are renderer measurements, which belong to no balance era.
   This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
   doc test was pinning the words rather than reading `data/balance.json`.
-- **184 commits**, one per slice, no squash and no merge commits.
+- **229 commits**, one per slice, no squash and no merge commits.
+- **1,671 tests**, green twice in a row on every slice (`./test.sh`), and nine gate sets.
 
 ## Running it
 
@@ -45,10 +47,17 @@ vendored and pinned; `ws` is the server's only dependency.
 - **The renderer**, rebuilt over twenty slices as *cityviewer*: three styles, two projections, a
   street camera you can walk in, baked street chunks at eye level with facades, shopfronts,
   props, pedestrians, traffic, signals, water and a time of day.
+- **The simulation is off the render thread.** `worker/sim-worker.js` owns the state and the page
+  holds a mirror patched from the tile layers that changed; `tools/worker_smoke.mjs` plays the same
+  46 commands and 200 ticks on both arms for the same hash, and `?worker=0` is the lever that
+  forces the local one. Every change to the city is a command — undo included, since W4.
 - **And since `main` was pushed** (on `dev_night`, measured but not released): a road crosses water
   on a deck with clearance for a boat under it, the shore is a bank rather than a quay, a street's
   verges are green from the air, rain falls at street level, a railway cuts and embanks instead of
-  following the ground, and the deputy will seek a river crossing when its own bank runs out.
+  following the ground, the deputy will seek a river crossing when its own bank runs out, a street
+  that stands a storey above the water has a faced wall with a coping, there are people on the
+  pavements outside shops and schools at last (every non-residential building asked for nobody until
+  B10), and the whole thing can be rendered as a sixty-second film from a shot list.
 
 ## The numbers
 
@@ -70,18 +79,23 @@ which is what made the governor spend its whole ladder on a machine hitting 60 f
 
 **The gates**, all green, through the runner (`node tools/gates.mjs <set>`):
 
-Measured 2026-09-24 at `slice-T1b`, on SwiftShader. A gate time is only comparable within an era.
+Measured 2026-10-04 at this commit, on SwiftShader, **one set at a time** — a set measured beside
+another measures the machine. A gate time is only comparable within an era.
 
 | Set | Gates | Time | Budget | What it is |
 |---|---|---|---|---|
-| `quick` | 11 | **404 s** | 480 s | the ten browser smokes and the §24 acceptance script |
-| `render` | 3 | **57 s** | 120 s | `walkthrough`, `passability`, `lanes_dump` |
-| `budget` | 1 | **235 s** | 360 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
-| `shots` | 6 | **305 s** | 360 s | the picture gates that count what they photographed |
-| `sim` | 3 | **554 s** | 900 s | `disaster_soak`, `traffic_gate`, `sim_sweep` |
+| `quick` | 12 | **512 s** | 540 s | the eleven browser smokes and the §24 acceptance script |
+| `render` | 3 | **9 s** | 120 s | the two walks and `passability` |
+| `lanes` | 1 | **215 s** | 360 s | `lanes_dump` — its own set since S18, because it was 95% of `render` |
+| `budget` | 1 | **258 s** | 360 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
+| `shots` | 7 | **394 s** | 420 s | the world lane's picture gates, each counting what it photographed |
+| `transport` | 4 | **187 s** | 300 s | T1–T4's pictures (last measured at T4b) |
+| `kits` | 5 | **346 s** | 960 s | one picture per catalogue definition, per kit, per role, per street |
+| `film` | 1 | **292 s** | 480 s | the sixty-second storyboard, every frame counted for triangles and for life |
+| `sim` | 3 | **556 s** | 900 s | `disaster_soak`, `traffic_gate`, `sim_sweep` |
 
-The slowest single gate is `budget_gate` at **235 s**, then `ui_smoke` at 131 and `play_smoke` at
-88. Each run writes `reports/gates-<date>.json`.
+The slowest single gate is `budget_gate` at **258 s**, then `lanes_dump` at 215, `ui_smoke` at 203
+and `embankment_shots` at 103. Each run writes `reports/gates-<date>.json`.
 
 `quick` was 375 s when M2 measured it and set the budget as "the measurement plus room". By
 2026-09-10 it had reached **477 s of 480** — three seconds of headroom — because the measurement
@@ -98,9 +112,12 @@ what its day frame costs, because at that span the ladder has already dropped th
 night's lamps and lit windows live inside them. A chunk is 33.7k triangles and bakes in 9 ms on
 the 4090 (13 on SwiftShader) against an 8 ms budget. A person is 42 triangles and a car 76.
 
-**The city under it**: the model rebuild after a build action is **53.3 ms on 96×96, 68.3 on a
-128 `hilly`, and 184.7 ms on 256×256** — eleven frames on the largest map the lobby offers, on the
-render thread (Q60, D6). The steepest street is 18.8% against a 15% limit on `rolling`, with no
+**The city under it**: a build action costs **about 115 ms of derivation on the render thread** on a
+played 96 — `createModel` 49.6 ms and `deriveNav` 64.5 beside it, which nothing had ever timed until
+W3 (`tools/model_cost.mjs`). The worker took the month tick off that thread (3.6 ms) and left this,
+which is Q60 standing where it has stood since R1 and is now W6: **one build action changes 0.07% of
+the model** — 1 corridor of 1,402, 2 lanes of 8,896 — and the whole thing is rebuilt because ids are
+array indices. The steepest street is 18.8% against a 15% limit on `rolling`, with no
 corridor that grading cannot fix. On a 128 `hilly` it is **42.7% with 205 of 929 ungradeable corridors
 and 4 cliffs**, down from 500% with 218 of 612 and 25 cliffs before J3 (era 22) stopped the deputy
 paving up a 30% hillside — and that gate could not be run at all until S11 taught the fixture that a
@@ -144,7 +161,12 @@ no caller. What is left is Q145. What a reader should still know:
   53.3 ms on 96×96 — 184.7 ms on 256×256 — is cityviewer's, it is on the render thread still, and
   it dwarfs the 4 ms tick that moved (Q60, D6). That measurement is W3, and it is the item that
   will say what the worker actually bought.
-- **Multiplayer is not started.** Ruling 003 holds Wave 5 behind the singleplayer MVP being
+- **Multiplayer is started, headless.** `workitems-multiplayer.md` lays Wave 5 out against the seam
+  that W1–W4 actually built, and A125 says what may be built before the playtest: the server's
+  ground, the room half of the relay and the request commands in the engine. **Nothing a player can
+  see** — no socket in the page, no lobby, no `?room=` — until Kjell has played the singleplayer
+  game and said it is fun.
+- **Multiplayer is not played.** Ruling 003 holds Wave 5 behind the singleplayer MVP being
   *accepted*, and acceptance is a playtest, not a green suite. The seam is built in — commands
   cross the wire, not state — and nothing has crossed it yet. The territory overlay has no
   control because it is a multiplayer view (Q61).

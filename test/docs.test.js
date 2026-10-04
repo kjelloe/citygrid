@@ -35,6 +35,13 @@ const REQUIRED_DOCS = [
   "workitems-navigation.md",
   "workitems-world.md",
   "workitems-behaviour.md",
+  // The three lanes and the study this list had missed (M7, 2026-10-04). They
+  // exist, `plan-v1.md` names them, and a plan nothing points at quietly stops
+  // being true — which is the whole reason this list is a test.
+  "workitems-transport.md",
+  "workitems-rules.md",
+  "workitems-multiplayer.md",
+  "specs/transport-and-landmarks.md",
 ];
 
 /** cityviewer's specification (ruling 032). The README is its index and every
@@ -352,17 +359,24 @@ test("the release page's commit is a commit that exists", () => {
   assert.equal(known, "commit", `${sha} is a ${known}, not a commit`);
 });
 
-test("the release page says how far behind HEAD it is, or warns", () => {
-  // A WARNING, not a failure, exactly as M3 asks. A stale release page is a
-  // normal state — it is stale the moment the next slice lands — and a test
-  // that goes red for it would be re-dated rather than read.
+const STALE_AT = 50;
+
+test("the release page says how far behind HEAD it is, and is not a hundred commits stale", () => {
+  // A warning up to `STALE_AT`, a FAILURE past it (M7). M3 asked for a note
+  // rather than a failure, and it was right: a release page is stale the moment
+  // the next slice lands, and a test that goes red for one commit would be
+  // re-dated rather than read. But the note is only a note while somebody is
+  // reading it — this page described a commit **122 behind HEAD**, through
+  // twenty-five balance eras, and every number on it was from a game that no
+  // longer existed.
   const sha = /^- \*\*Commit:\*\* `([0-9a-f]{7,40})`/m.exec(readDoc("RELEASE.md"))[1];
   const behind = Number(execFileSync("git", ["rev-list", "--count", `${sha}..HEAD`],
     { cwd: repoRoot, encoding: "utf8" }).trim());
   if (behind > 0) {
     console.log(`      note: RELEASE.md describes ${sha}, ${behind} commit(s) behind HEAD`);
   }
-  assert.ok(Number.isFinite(behind));
+  assert.ok(behind <= STALE_AT,
+    `RELEASE.md describes ${sha}, ${behind} commits behind HEAD — re-measure it and name this commit`);
 });
 
 test("the release page carries the numbers a reader would otherwise have to run", () => {
