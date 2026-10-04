@@ -517,6 +517,36 @@ RATE, not a single step, and plant the old behaviour to see it fire.
 more standing buildings, which means more demand satisfied and more population. If it moves more
 than the others, that is the finding, not a problem.
 
+## L1 — Borrowing (S, engine + one control) — A130 (Q153)
+
+**Goal.** A city in trouble has a way out that costs something. `specs/gamedesign.md` §9.5 has
+described it since the first draft and `CMD_TAKE_LOAN` has had a constant and no handler since the
+first commit. Era 21 (H8) is what makes it matter: a developed lot now costs money to serve.
+
+**Do.**
+- `engine/economy.js`: `takeLoan { amount }` and `repayLoan { amount }` (a second command — a debt
+  you cannot pay down is a trap, not a loan). A seat's `debt` is hashed state on the player record;
+  the ceiling is a table by rank in `data/balance.json`; interest is billed monthly with the
+  utilities at a rate in the same file; a seat at its ceiling that cannot pay the interest gets the
+  existing bankruptcy warning one month earlier, not a new failure mode.
+- The permission matrix gains both rows; `copyState` and the hashed-field list in both places;
+  the fixtures re-pinned through `/fixture-repin` (a new field on the player record).
+- The budget drawer gains the control: the debt, the ceiling, the monthly interest, Borrow and
+  Repay in three steps like funding's (ruling 027: both catalogues; `reach_smoke`, `ui_smoke`).
+- **The deputy never borrows** — it is the measurement instrument, and an instrument that can go
+  into debt measures its own credit line. `test/deputy.test.js` asserts it.
+- `takeLoan` leaves `NOT_BUILT` in `test/omissions.test.js`.
+
+**Tests first.** `test/economy.test.js`: a loan raises the treasury and the debt by the same
+amount; interest is integer and monotone in the debt; the ceiling refuses with `NO_FUNDS`'s
+sibling (a new `RESULT`, with its words in both catalogues — a refusal needs words and a
+warning); repaying more than is owed repays what is owed. **Gate.** the `sim` set on a new era:
+the sweep's medians unmoved (the deputy does not borrow), `disaster_soak` green; `quick` for the
+control.
+
+**Order.** After W6's second half; any time before M7's merge is fine, and not in the same era as
+B13.
+
 ## Order
 
 **G4 → G2 → G1 → G3.** Decay first because it is the smallest change with the largest expected

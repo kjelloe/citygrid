@@ -72,8 +72,9 @@ built: the world lane through S13, behaviour through B10, the whole transport la
 5–11), the rules lanes (G1–G5, H1–H8, J1–J4, eras 12–26), the film lane's F1 and F2, and the worker
 lane's W1–W5. The balance report is `reports/balance-era26.md`.
 
-**Two open questions** (Q152: is rank the city's or the seat's; Q153: borrowing, designed and never
-built). P103 answered the four before them — A125 to A128.
+**No open questions.** P103 answered four (A125–A128) and P104 the two the omissions pass raised:
+rank is the city's until rivals mode and each seat places its own rank buildings (A129), and
+borrowing is built as rules slice **L1** (A130).
 
 **What is unblocked and unbuilt**, in the order the review of 2026-10-04 set: **S18** (the camera
 that can see a retaining wall, then the wall; the bridge's deck and the water's surface), a re-run
@@ -416,8 +417,6 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q152 | Is rank the city's or the seat's? One global variable today | slice 6.2 |
-| Q153 | Borrowing: `CMD_TAKE_LOAN` designed, never built — build or delete | **Kjell** |
 | ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |
 | ~~Q107~~ | **Answered A114** — the fire reads as a fire (scale, opacity and puff count up for a FIRE only); the chimney is unchanged |

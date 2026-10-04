@@ -71,9 +71,10 @@ X1 and lands before X3 (A126).
    `copyState` test, a fixture — and `specs/plan.md` §2.5 and §3.9b said the two-player fixture
    pinned "a demolition request and its approval", which it never has (corrected). X3 is split
    below.
-2. **Rank is one number for the whole city.** `engine/unlock.js` reads `variableOf(state, "rank")`
-   and quests are global, so in a room one mayor finishing a quest unlocks the airport for
-   everybody. A69 said "the seat's rank". Right for Shared City, wrong for rivals — **Q152**.
+2. **Rank is one number for the whole city — and that is the ruling for the MVP (A129).**
+   Shared City has one ladder; rank becomes per seat in slice 6.2. Each seat places its own rank
+   buildings: `onePerSeat` is already checked against the actor, so X3a adds the two-seat test
+   (both mayors build a city hall, neither a second) and X3b shows whose each one is.
 3. **There is no speed command and there should not be one.** The tick count rides the frame, so
    speed is the room's, not the state's: a `C2S` message, host-only at the MVP, with the majority
    vote of plan §3.4 adapted from `../CarrierDominion/server/vote.js` afterwards. X2.
