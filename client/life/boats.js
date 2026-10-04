@@ -89,6 +89,9 @@ export function createBoats(state, model, options = {}) {
       const tz = ((tile - (tile % state.width)) / state.width) + 0.5;
       if (!sailable(tx, tz)) continue;
       sailing.push({
+        // Its seed tile is its identity (B11): the hash walk always puts this
+        // boat on this tile, so a rebuild can find it again.
+        key: `s${tile}`,
         x: tx, z: tz, dir: (jitter(tile, 17) * 8) | 0, body: body.id,
         speed: spec.sailSpeed * (0.7 + jitter(tile, 19) * 0.6),
       });
@@ -190,6 +193,8 @@ export function createBoats(state, model, options = {}) {
     }
     return {
       kind: b.def === "freightPort" ? "cargo" : "ferry",
+      // The terminal's building id, which the engine owns and never reuses.
+      key: `v${b.id}`,
       points, cum, length: cum[cum.length - 1], at: 0, dir: 1, waited: 0,
       speed: b.def === "freightPort" ? spec.cargoSpeed : spec.ferrySpeed,
       wake: [],
@@ -244,7 +249,38 @@ export function createBoats(state, model, options = {}) {
     return { x: POINT.x, z: POINT.z, tx: POINT.tx * vessel.dir, tz: POINT.tz * vessel.dir };
   }
 
+  // The boats from before this rebuild (B11). Nothing a road build does moves
+  // a water body, so without this a handful of hulls jump back to their seed
+  // tile every time the player paves anything.
+  if (options.carry) {
+    const was = new Map(options.carry.map((boat) => [boat.key, boat]));
+    for (const boat of sailing) {
+      const saved = was.get(boat.key);
+      if (!saved) continue;
+      boat.x = saved.x;
+      boat.z = saved.z;
+      boat.dir = saved.dir;
+    }
+    for (const vessel of plying) {
+      const saved = was.get(vessel.key);
+      if (!saved) continue;
+      vessel.at = Math.min(saved.at, vessel.length);
+      vessel.dir = saved.dir;
+      vessel.waited = saved.waited;
+    }
+  }
+
   return {
+    /** Every hull that MOVES, by its own key (B11). The moorings are static and
+     * re-derive identically, so they are not carried. */
+    snapshot() {
+      const out = sailing.map((boat) => ({ key: boat.key, x: boat.x, z: boat.z, dir: boat.dir }));
+      for (const vessel of plying) {
+        out.push({ key: vessel.key, at: vessel.at, dir: vessel.dir, waited: vessel.waited });
+      }
+      return out;
+    },
+
     update(dt) {
       if (!live) return;
       for (const boat of sailing) sail(boat, dt);

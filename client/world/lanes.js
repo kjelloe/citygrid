@@ -259,10 +259,16 @@ export function deriveLanes(state, network, ground) {
         const covers = Math.max(0, corridorLen - keepFrom - keepTo);
         const packed = packAlong(cut, profile, { s0, dirSign, run: covers });
         if (packed.len < 1e-6) continue;
-        const lane = { id: lanes.length, corridor: corridor.id, dir, index: k, of: perDir, from, to };
+        // A lane's identity (W6a): its corridor's key, its direction and its
+        // place across the road, which is everything that makes it this lane
+        // and nothing that makes it the fourth entry in an array.
+        const lane = {
+          id: lanes.length, key: `${corridor.key}|${dir}|${k}`,
+          corridor: corridor.id, dir, index: k, of: perDir, from, to,
+        };
         lanes.push(lane);
         links.push({
-          id: links.length, kind: "block", lane: lane.id, corridor: corridor.id, dir,
+          id: links.length, key: `b|${lane.key}`, kind: "block", lane: lane.id, corridor: corridor.id, dir,
           // Which lane of how many, counted from the middle of the road outward
           // — the rule at a junction is "the kerbside lane turns right, the
           // inner one turns left", and it needs both numbers (T1b).
@@ -327,7 +333,10 @@ export function deriveLanes(state, network, ground) {
         const packed = packBetween(turnCurve(a, cornerOf(a, fin, b, fout), b), into.pts[n - 2], out.pts[1]);
         if (packed.len < 1e-6) continue;
         const link = {
-          id: links.length, kind: "turn", lane: -1, corridor: -1, dir: into.dir,
+          // A turn is the pair of lanes it joins, so it is stable exactly when
+          // they are.
+          id: links.length, key: `t|${into.key}>${out.key}`,
+          kind: "turn", lane: -1, corridor: -1, dir: into.dir,
           from: node.id, to: node.id, node: node.id, tiles: [node.tile],
           axis: AXIS[armOf(into, node)], turn,
           ...packed, next: [{ link: out.id, turn }], preds: [], entry: false, exit: false,
@@ -460,9 +469,88 @@ export function deriveLanes(state, network, ground) {
     return out;
   }
 
+  /**
+   * The lane nearest a point that runs the same way (B11's second half).
+   *
+   * A key match is exact and cheap, but it cannot survive a SPLIT: a junction
+   * laid in the middle of a street ends one corridor and begins two, and a
+   * corridor is its extent, so both halves are new. A car driving along that
+   * street has not moved, though — so when its key is gone it is re-seated
+   * geometrically: the nearest block link at its own position, heading the same
+   * way, which on a split is the half it was already on.
+   *
+   * Indexed by tile and built once per graph, because the alternative is every
+   * link for every car: 189 cars against 8,902 links is ten million point
+   * comparisons on a played 96.
+   */
+  let blockIndex;
+  function indexOfBlocks() {
+    if (blockIndex) return blockIndex;
+    blockIndex = new Map();
+    for (const link of links) {
+      if (link.kind !== "block") continue;
+      for (const tile of link.tiles) {
+        const list = blockIndex.get(tile);
+        if (list) list.push(link); else blockIndex.set(tile, [link]);
+      }
+    }
+    return blockIndex;
+  }
+
+  const heading = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  function nearestBlock(x, z, tx, tz) {
+    const index = indexOfBlocks();
+    const tileM = cfg.tileM;
+    const cx = Math.floor(x / tileM);
+    const cz = Math.floor(z / tileM);
+    let best;
+    for (let dz = -1; dz <= 1; dz += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const tile = (cz + dz) * state.width + (cx + dx);
+        for (const link of index.get(tile) ?? []) {
+          const n = link.pts.length / 3;
+          // Along the SEGMENTS, not the nearest packed point: the points are a
+          // few metres apart and snapping to one put a car up to 8 m from where
+          // it was standing, which is a jump a player sees.
+          for (let i = 1; i < n; i += 1) {
+            const ax = link.pts[(i - 1) * 3];
+            const az = link.pts[(i - 1) * 3 + 2];
+            const bx = link.pts[i * 3];
+            const bz = link.pts[i * 3 + 2];
+            const ex = bx - ax;
+            const ez = bz - az;
+            const span = ex * ex + ez * ez;
+            const t = span > 1e-9 ? Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / span)) : 0;
+            const px = ax + ex * t;
+            const pz = az + ez * t;
+            const d = (px - x) * (px - x) + (pz - z) * (pz - z);
+            if (best && d >= best.d) continue;
+            const s = ((i - 1 + t) / Math.max(1, n - 1)) * link.len;
+            sample(link, s, heading);
+            // Heading matters: the lane on the other side of the same street is
+            // just as near and goes the wrong way.
+            if (tx !== undefined && heading.tx * tx + heading.tz * tz < 0.5) continue;
+            best = { d, link, s };
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  const linkKeys = new Map();
+  for (const link of links) linkKeys.set(link.key, link);
+  const laneKeys = new Map();
+  for (const lane of lanes) laneKeys.set(lane.key, lane);
+
   return {
     lanes,
     links,
+    /** The link with this key in THIS graph, or nothing — what a car holding a
+     * link from the graph before a build action asks after one (B11). */
+    linkByKey: (key) => linkKeys.get(key),
+    laneByKey: (key) => laneKeys.get(key),
+    nearestBlock,
     nodes: network.nodes,
     signals,
     phaseAt,

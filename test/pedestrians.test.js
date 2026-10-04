@@ -558,3 +558,67 @@ test("at every hour the crowd is what the pavements ask for, not more", () => {
     assert.ok(peds.people().length > 0, `phase ${phase}: nobody out`);
   }
 });
+
+// --- life survives a build (B11, with W6's stable keys) ----------------------
+
+test("a build somewhere else leaves everybody where they were", () => {
+  const { state, model, nav } = town();
+  const peds = createPedestrians(state, model, nav, { cap: 200 });
+  run(peds, 20);
+  const before = peds.snapshot();
+  assert.ok(before.length > 3, `only ${before.length} people to carry`);
+
+  // A second street at the other end of the map: a new corridor, new nav
+  // edges, every id after it renumbered, and nobody standing on any of it.
+  pave(state, row(4, 2, 21));
+  const rebuilt = createModel(state);
+  const navAfter = deriveNav(state, rebuilt);
+  const carried = createPedestrians(state, rebuilt, navAfter, { cap: 200, carry: before });
+
+  const after = new Map(carried.snapshot().map((p) => [p.id, p]));
+  // **Not everybody, and the exception is the interesting part.** The new
+  // street crosses the old column, which puts a junction in the middle of it
+  // and SPLITS one corridor into two — so both halves are new streets with new
+  // keys, and whoever was standing on that pavement is re-settled rather than
+  // carried. A corridor IS its extent, so no key can survive a split; what
+  // survives is everybody on the streets that did not change, which is D7's
+  // invariant (the settled count within 2%) rather than "all of them".
+  assert.equal(after.size, before.length,
+    "somebody was dropped by a build at the other end of the map");
+  for (const person of before) {
+    const now = after.get(person.id);
+    assert.ok(now, `person ${person.id} vanished`);
+    // **Position, not key.** The new street crosses the old column, which puts
+    // a junction in the middle of it and SPLITS one corridor into two — and a
+    // corridor IS its extent, so both halves are new pavements with new keys.
+    // Somebody standing on one has not moved, though, so they are re-seated
+    // geometrically rather than dropped: the claim is where they are, which is
+    // what a player would see.
+    assert.ok(Math.hypot(now.x - person.x, now.z - person.z) < 1,
+      `person ${person.id} moved ${Math.hypot(now.x - person.x, now.z - person.z).toFixed(2)} m`);
+    if (now.key === person.key) {
+      assert.equal(now.s.toFixed(6), person.s.toFixed(6), `person ${person.id} slid along their own pavement`);
+    }
+    // The walk cycle comes across too, or the whole crowd re-phases together
+    // and reads as one object rather than as people.
+    assert.equal(now.phase, person.phase, `person ${person.id} restarted their stride`);
+    assert.equal(now.pace, person.pace, `person ${person.id} changed pace`);
+  }
+});
+
+test("somebody whose pavement is gone is not carried onto a street that is", () => {
+  const { state, model, nav } = town();
+  const peds = createPedestrians(state, model, nav, { cap: 200 });
+  run(peds, 20);
+  const before = peds.snapshot();
+
+  // A different city entirely: one short street, nothing of the old one's
+  // geometry. Nobody's key can survive that.
+  const elsewhere = blank(24);
+  pave(elsewhere, row(20, 2, 8));
+  const other = createModel(elsewhere);
+  const otherNav = deriveNav(elsewhere, other);
+  const carried = createPedestrians(elsewhere, other, otherNav, { cap: 200, carry: before });
+  assert.equal(carried.snapshot().length, 0,
+    "somebody was re-seated onto a pavement that is not the one they were on");
+});

@@ -879,6 +879,43 @@ export function createTraffic(state, model, options = {}) {
     clock += dt;
   }
 
+  /**
+   * The cars from the graph before this one (B11, with W6a's stable keys).
+   *
+   * A car holds a link id, and a rebuild renumbers every link — which is why
+   * every accepted build action used to throw away every car in the city and
+   * refill the streets over the following seconds. A car whose LANE still
+   * exists, by key, is the same car at the same metre at the same speed; one
+   * whose lane is gone is not carried, which is the honest version of "leaves
+   * by the nearest door" for a vehicle whose street no longer exists.
+   *
+   * The id comes across too: a car's body, colour and spawn jitter are all
+   * hashes of it, so a new id would be a different car wearing the old one's
+   * place.
+   */
+  function adopt(carried) {
+    for (const saved of carried) {
+      if (cars.length >= cap) break;
+      const byKey = lanes.linkByKey(saved.key);
+      // A key match is the same lane and the same metre. Failing that — which
+      // means the street was SPLIT by a new junction, so both halves are new
+      // corridors — the car is re-seated where it actually is, on the nearest
+      // lane heading the way it was heading. Only a car whose road is really
+      // gone is dropped.
+      const at = byKey
+        ? { link: byKey, s: Math.min(saved.s, byKey.len) }
+        : lanes.nearestBlock(saved.x, saved.z, saved.tx, saved.tz);
+      if (!at) continue;
+      cars.push({
+        id: saved.id, link: at.link.id, s: Math.min(at.s, at.link.len),
+        v: saved.v, v0: saved.v0, variant: saved.variant, colour: saved.colour,
+      });
+      if (saved.id >= nextId) nextId = saved.id + 1;
+    }
+    bucket();
+  }
+  if (options.carry) adopt(options.carry);
+
   // A frozen road still has cars on it (`?life=0` is for screenshots, and an
   // empty street is not the picture anyone wants to check). Settle first, then
   // stop the clock.
@@ -906,6 +943,25 @@ export function createTraffic(state, model, options = {}) {
      * traffic keeps are one hour. */
     setPhase(at) {
       phase = at;
+    },
+
+    /** Every car as something a rebuilt graph can re-seat: its lane by KEY
+     * rather than by index, and the numbers that make it this car (B11). */
+    snapshot() {
+      const out_ = [];
+      for (const car of cars) {
+        const link = links[car.link];
+        if (!link) continue;
+        // Its position and heading travel with it, because a key cannot
+        // survive a street being split in two and a car can.
+        lanes.sample(link, car.s, out);
+        out_.push({
+          id: car.id, key: link.key, s: car.s, v: car.v, v0: car.v0,
+          variant: car.variant, colour: car.colour,
+          x: out.x, z: out.z, tx: out.tx, tz: out.tz,
+        });
+      }
+      return out_;
     },
 
     /** How many cars have been taken off the road to break a gridlock (B8). */

@@ -8,6 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { jsFilesIn, findViolations, repoRoot } from "./helpers/sources.js";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 const pure = () => [...jsFilesIn("engine"), ...jsFilesIn("shared")];
@@ -281,4 +282,26 @@ test("client/world imports three nowhere at all", () => {
     const source = readFileSync(join(repoRoot, "client", "world", name), "utf8");
     assert.equal(/from "three"/.test(source), false, `client/world/${name} imports three`);
   }
+});
+
+test("every module parses, including the ones the suite can never import", () => {
+  // **The suite was green with a broken page.** W6a/B11 left a second `const
+  // was` in `client/render/scene.js`; nothing in `test/` imports that file,
+  // because it imports three.js and node cannot load it — so 1,717 tests
+  // passed and the game did not boot. The browser gates caught it, which is
+  // forty seconds later and only if one happens to run.
+  //
+  // `node --check` parses a module without resolving or executing a single
+  // import, which is exactly the half that was missing: the renderer's 44
+  // files cost 0.65 s to parse and no test can reach them any other way.
+  const files = ["client", "worker", "server", "shared", "engine"]
+    .flatMap((dir) => jsFilesIn(dir))
+    .filter((file) => !file.path.includes("/vendor/"));
+  assert.ok(files.length > 100, `only ${files.length} modules found`);
+  const broken = [];
+  for (const file of files) {
+    const result = spawnSync(process.execPath, ["--check", join(repoRoot, file.path)], { encoding: "utf8" });
+    if (result.status !== 0) broken.push(`${file.path}: ${(result.stderr ?? "").split("\n")[2] ?? "did not parse"}`);
+  }
+  assert.deepEqual(broken, [], `modules that do not parse:\n  ${broken.join("\n  ")}`);
 });

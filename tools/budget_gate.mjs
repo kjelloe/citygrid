@@ -557,8 +557,31 @@ try {
       brake = Math.max(brake, pools.carBrake?.count ?? 0);
       turn = Math.max(turn, pools.carTurn?.count ?? 0);
     }
+    // **Life survives a build** (B11), measured where there are actually cars:
+    // lay ONE more road tile and re-derive the world the way an accepted build
+    // action does. Before this slice the count went to zero here every time and
+    // climbed back over the following seconds. `play_smoke`'s city has no
+    // commuter load, so its car count is zero before and after — a check that
+    // cannot fail — which is why this one lives in the gate that has traffic.
+    const standing = renderer.traffic.count();
+    let grew = false;
+    for (let y = mid - 7; y >= 3 && !grew; y -= 1) {
+      const i = y * W + centre;
+      if ((state.tiles.road[i] & 16) !== 0 || wet(i)) continue;
+      grew = apply(state, { type: C.CMD_PLACE_ROAD, actor: 1, runs: [i, 1] }).result === "ok";
+    }
+    state.tiles.traffic.fill(0);
+    for (let i = 0; i < state.tiles.road.length; i += 1) {
+      if (state.tiles.road[i] & 16) state.tiles.traffic[i] = 200;
+    }
+    renderer.worldChanged();
+    const kept = renderer.traffic.count();
+
     const keys = ["car0", "car1"];
     return {
+      grew,
+      standing,
+      kept,
       inPools: keys.reduce((n, k) => n + (pools[k]?.count ?? 0), 0),
       hidden: keys.filter((k) => (pools[k]?.count ?? 0) > 0 && !pools[k].visible).length,
       // What the cars are DOING (B4). Two pools that ride the bodies; the
@@ -577,6 +600,15 @@ try {
   await carsPage.close();
   console.log(`      cars: ${cars.inPools} in the pools, ${cars.inCity} moving in the city, `
     + `ladder at "${cars.lod}"`);
+  // Cars only. This page lays ROADS on seed 1003 and places no buildings, so it
+  // has no doors and therefore no pedestrians — `0 → 0 people` was the first
+  // cut of this check and it could not have failed. The crowd's half of B11 is
+  // measured on the deputy's town in `lanes_dump`, where 400 people are
+  // standing on pavements that have buildings behind them.
+  console.log(`      over a build: ${cars.kept} of ${cars.standing} cars survived one more road tile (B11)`);
+  check("a build does not empty the streets (B11)",
+    cars.grew && cars.standing > 20 && cars.kept >= Math.floor(cars.standing * 0.9),
+    `${cars.standing} → ${cars.kept} cars${cars.grew ? "" : " — and no tile was laid, so this proves nothing"}`);
   console.log(`      lamps: ${cars.brake} braking, ${cars.turn} indicating `
     + `(${cars.inPools > 0 ? Math.round(100 * cars.brake / cars.inPools) : 0}% of the cars on screen)`);
   // The instrument first: a block whose road was refused measures nothing, and

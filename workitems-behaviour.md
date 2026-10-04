@@ -393,7 +393,21 @@ junction that clears slower is expected, one that locks is not); no car waits fo
 `lanes_dump`'s `overlaps` row reaches 0 in a junction and becomes a gate; D7's settled rows
 re-baselined; `smoke-B4-morning.png` re-taken.
 
-## B11 — Life survives a build (M) — with W6's second half
+## B11 — Life survives a build (M) — **BUILT (slice-W6a, 2026-10-04), with W6a's keys**
+
+**Measured.** `lanes_dump` on the deputy's played town, two build shapes: a tile that EXTENDS a
+street and a tile that SPLITS one, the second laid deliberately beside a street something is
+standing on. Both: **189 of 189 cars and 400 of 400 people came across**; the split renamed one
+person's pavement and re-seated them **1.3 m** from where they stood. `budget_gate` in the browser:
+**40 of 40 cars** survive one more road tile, where before this slice the count went to zero on
+every accepted build action and climbed back over the following seconds.
+
+Two things the item did not say. A key cannot survive a split, so a carried entity whose key is gone
+is re-seated **geometrically** — nearest lane heading the same way, nearest pavement — and only one
+whose road is really gone is dropped; and the browser check lives in `budget_gate` rather than
+`play_smoke`, because `play_smoke`'s city has no commuter load and its car count is zero before and
+after, which is a check that cannot fail.
+
 
 **Goal.** Laying a road does not restart the city. Today every accepted build action throws away
 every car, person, train, boat and aircraft and settles them again, because their link and edge

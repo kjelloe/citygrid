@@ -543,6 +543,51 @@ export function createPedestrians(state, model, nav, options = {}) {
     return x >= bounds.x0 - 1 && x <= bounds.x1 + 1 && z >= bounds.y0 - 1 && z <= bounds.y1 + 1;
   }
 
+  /**
+   * The people from the graph before this one (B11, with W6a's stable keys).
+   *
+   * Same shape as the traffic's: a person holds a nav EDGE id, and a rebuild
+   * renumbers edges, so every build action used to empty the pavements and
+   * refill them over the next fifteen seconds. Somebody whose pavement still
+   * exists keeps their place, their pace and their phase — the phase matters,
+   * because it is where their legs are in the walk cycle, and a crowd that
+   * re-phases together reads as one object rather than as people.
+   *
+   * Their JOURNEY is re-planned rather than carried: the route is a list of
+   * node ids in a graph that no longer exists, and `plan` is deterministic in
+   * the person's id, so the same person at the same hour chooses the same kind
+   * of errand again.
+   */
+  function adopt(carried) {
+    for (const saved of carried) {
+      if (people.length >= cap) break;
+      // A key match is the same pavement at the same metre; failing that —
+      // a junction laid mid-street splits a corridor, so both of its pavements
+      // are new — they are re-seated where they are standing. Only somebody
+      // whose pavement is really gone is dropped.
+      const byKey = nav.edgeByKey(saved.key);
+      const at = byKey
+        ? { edge: byKey, s: Math.min(saved.s, byKey.len) }
+        : nav.nearestEdge(saved.x, saved.z);
+      if (!at) continue;
+      const edge = at.edge;
+      const person = {
+        ...saved, edge: edge.id, s: Math.min(at.s, edge.len),
+        origin: edge.id, waiting: 0, sit: 0,
+      };
+      delete person.key;
+      delete person.x;
+      delete person.z;
+      const door = nav.doors[edge.doors[0]];
+      if (door) plan(person, door);
+      else person.role = "crosser";
+      people.push(person);
+      if (saved.id >= nextId) nextId = saved.id + 1;
+    }
+    bucket();
+  }
+  if (options.carry) adopt(options.carry);
+
   // A frozen street still has people on it (`?life=0` is for screenshots).
   // Settle first, then stop the clock — the traffic's decision, for the same
   // reason (V1).
@@ -570,6 +615,24 @@ export function createPedestrians(state, model, nav, options = {}) {
   }
 
   return {
+    /** Everybody as something a rebuilt nav graph can re-seat (B11). */
+    snapshot() {
+      const out = [];
+      const where = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+      for (const person of people) {
+        const edge = nav.edges[person.edge];
+        if (!edge) continue;
+        nav.sample(edge, person.s, where);
+        out.push({
+          id: person.id, key: edge.key, s: person.s, dir: person.dir, v: person.v,
+          pace: person.pace, phase: person.phase, left: person.left,
+          variant: person.variant, colour: person.colour, role: person.role,
+          x: where.x, z: where.z,
+        });
+      }
+      return out;
+    },
+
     /** Wires the crossings to the cars (T1). */
     setTraffic(isBusy) { busyOn = isBusy; },
 

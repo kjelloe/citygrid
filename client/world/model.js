@@ -72,6 +72,11 @@ export function createModel(state) {
     return { kind: "ground", y: base, dist: near ? near.dist : Infinity };
   }
 
+  const corridorKeys = new Map();
+  for (const corridor of network.corridors) corridorKeys.set(corridor.key, corridor);
+  const nodeKeys = new Map();
+  for (const node of network.nodes) nodeKeys.set(node.key, node);
+
   return {
     tileM: cfg.tileM,
     reliefM: cfg.reliefM,
@@ -91,6 +96,11 @@ export function createModel(state) {
       return heightOnProfile(profile, hit.s);
     },
     nearestCorridor: network.nearest,
+    // By KEY rather than by index (W6a): a corridor's identity survives a
+    // rebuild, so a life system holding one can ask whether its street is still
+    // there instead of being thrown away with the array it was an index into.
+    corridorByKey: (key) => corridorKeys.get(key),
+    nodeByKey: (key) => nodeKeys.get(key),
     heightAt: ground.heightAt,
     // A street's own graded profile (R3, A42), for anything that wants what the
     // carriageway does along its length rather than what the blended field does

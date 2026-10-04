@@ -105,7 +105,23 @@ export function createPlanes(state, model, options = {}) {
     const flight = flightFor(plan, spec);
     // Staggered by the building's id, so two airports in one region are not
     // one aircraft seen twice.
-    flights.push({ plan, flight, t: (state.buildings[i].id * 37) % flight.period, turn: 0 });
+    flights.push({
+      // The airfield's building id (B11): what makes this aircraft this one,
+      // and what lets a rebuild find it mid-approach instead of restarting its
+      // cycle.
+      key: `a${state.buildings[i].id}`,
+      plan, flight, t: (state.buildings[i].id * 37) % flight.period, turn: 0,
+    });
+  }
+
+  if (options.carry) {
+    const was = new Map(options.carry.map((entry) => [entry.key, entry]));
+    for (const entry of flights) {
+      const saved = was.get(entry.key);
+      if (!saved) continue;
+      entry.t = saved.t;
+      entry.turn = saved.turn;
+    }
   }
 
   function poseOf(entry) {
@@ -115,6 +131,11 @@ export function createPlanes(state, model, options = {}) {
   }
 
   return {
+    /** Where each aircraft is in its cycle, by its airfield's key (B11). */
+    snapshot() {
+      return flights.map((entry) => ({ key: entry.key, t: entry.t, turn: entry.turn }));
+    },
+
     update(dt) {
       if (!live || !(dt > 0)) return;
       for (const entry of flights) entry.t += dt;

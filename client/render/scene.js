@@ -469,15 +469,36 @@ export function createRenderer(canvas, state, options = {}) {
 
   function worldChanged() {
     worldEpoch += 1;
+    // **What the city was doing, before the graph it was doing it on is thrown
+    // away** (B11, on W6a's stable keys). Every life system can hand out its
+    // entities keyed by geometry rather than by array index, and take them back
+    // on the other side: a car whose lane still exists is the same car at the
+    // same metre, and somebody whose pavement still exists keeps their stride.
+    // Without this, laying one road tile emptied every street in the city and
+    // refilled it over the following fifteen seconds — which a player sees as
+    // the traffic blinking, and in a room would happen every time ANYBODY
+    // built anything.
+    const carried = {
+      traffic: traffic?.snapshot(),
+      trains: trains?.snapshot(),
+      boats: boats?.snapshot(),
+      planes: planes?.snapshot(),
+      crowd: crowd?.snapshot(),
+      pedestrians: pedestrians?.snapshot(),
+    };
     model = createModel(state);
-    // The lane graph is part of the model, so the cars have to start again on
-    // the new one: a car holding a link id from a graph that no longer exists
-    // is a car in a field.
-    traffic = createTraffic(state, model, { cap: carCap(), life: options.life, phase: startPhase });
+    traffic = createTraffic(state, model, {
+      cap: carCap(), life: options.life, phase: startPhase, carry: carried.traffic,
+    });
+    // NOT carried: a service vehicle holds a ROUTE — a list of link ids — and a
+    // route half of which is gone is a vehicle driving down a street that no
+    // longer exists. An engine exists only while its fire does and a patrol
+    // re-routes from its station, so re-dispatching is the correct recovery and
+    // it is one or two vehicles rather than hundreds.
     services = createServices(state, model, { life: options.life });
-    trains = createTrains(state, model, { life: options.life });
-    boats = createBoats(state, model, { life: options.life });
-    planes = createPlanes(state, model, { life: options.life });
+    trains = createTrains(state, model, { life: options.life, carry: carried.trains });
+    boats = createBoats(state, model, { life: options.life, carry: carried.boats });
+    planes = createPlanes(state, model, { life: options.life, carry: carried.planes });
     // The nav graph is derived from the same corridors, so it goes the same
     // way: a person holding an edge id from a graph that no longer exists is a
     // person in a field (E7).
@@ -489,9 +510,12 @@ export function createRenderer(canvas, state, options = {}) {
     water = createWater(state, model, styleName);
     scene.add(water.group);
     nav = deriveNav(state, model);
-    crowd = createPedestrians(state, model, nav, { cap: pedCapCity(), life: options.life, spread: true, phase: startPhase });
+    crowd = createPedestrians(state, model, nav, {
+      cap: pedCapCity(), life: options.life, spread: true, phase: startPhase, carry: carried.crowd,
+    });
     pedestrians = createPedestrians(state, model, nav, {
-      cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId), phase: startPhase,
+      cap: pedCap(), life: options.life, reserve: (edgeId) => crowd.heldOn(edgeId),
+      phase: startPhase, carry: carried.pedestrians,
     });
     pedestrians.setTraffic((corridor, node) => traffic.busyAt(corridor, node));
     crowd.setTraffic((corridor, node) => traffic.busyAt(corridor, node));

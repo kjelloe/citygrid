@@ -99,17 +99,23 @@ export function deriveNav(state, model) {
    * corridor and one side, which is exactly what a pavement end is. */
   const corners = new Map();
 
-  function navNode(x, z, at) {
+  function navNode(x, z, at, key) {
     const id = nodes.length;
-    nodes.push({ id, x, z, at, edges: [] });
+    nodes.push({ id, key, x, z, at, edges: [] });
     return id;
   }
+
+  /** The key of a network thing, for building nav keys out of (W6a). A nav
+   * graph derived from corridors inherits their identity: both of these are
+   * geometry, so a build elsewhere leaves them alone. */
+  const corridorKeyOf = (id) => model.corridors[id]?.key ?? `c${id}`;
+  const nodeKeyOf = (id) => model.nodes[id]?.key ?? `n${id}`;
 
   function cornerAt(networkNode, corridorId, side, x, z) {
     const key = `${networkNode}:${corridorId}:${side}`;
     let id = corners.get(key);
     if (id === undefined) {
-      id = navNode(x, z, networkNode);
+      id = navNode(x, z, networkNode, `c|${nodeKeyOf(networkNode)}|${corridorKeyOf(corridorId)}|${side}`);
       corners.set(key, id);
     }
     return id;
@@ -137,6 +143,7 @@ export function deriveNav(state, model) {
       const from = cornerAt(corridor.from, corridor.id, side, cut[0].x, cut[0].z);
       const to = cornerAt(corridor.to, corridor.id, side, cut[cut.length - 1].x, cut[cut.length - 1].z);
       addEdge({
+        key: `w|${corridor.key}|${side}`,
         kind: "walk", corridor: corridor.id, side, from, to, doors: [], demand: 0, ...packed,
       });
     }
@@ -160,6 +167,7 @@ export function deriveNav(state, model) {
       // pedestrian holding for a phase that never changes waits for ever.
       const signalled = model.lanes.signals.has(node.id);
       addEdge({
+        key: `x|${node.key}|${corridorKeyOf(corridorId)}`,
         kind: "cross", corridor: corridorId, node: node.id,
         axis: signalled
           ? AXIS[armOf(node, (nodes[a].x + nodes[b].x) / 2, (nodes[a].z + nodes[b].z) / 2)]
@@ -198,7 +206,10 @@ export function deriveNav(state, model) {
         const d = Math.hypot(a.x - b.x, a.z - b.z);
         if (d > cornerReach || d < 1e-6) continue;
         const packed = packWithHeight([a, b], surface);
-        addEdge({ kind: "corner", from: list[i].id, to: list[j].id, doors: [], demand: 0, ...packed });
+        addEdge({
+          key: `k|${nodes[list[i].id].key}>${nodes[list[j].id].key}`,
+          kind: "corner", from: list[i].id, to: list[j].id, doors: [], demand: 0, ...packed,
+        });
       }
     }
   }
@@ -221,6 +232,7 @@ export function deriveNav(state, model) {
     }
     if (!best) continue;
     const door = {
+      key: `d|${lot.id}`,
       lot: lot.id, x: point.x, z: point.z, edge: best.edge, s: best.s, dist: best.dist,
       people: doorPull(lot.building, cfg),
     };
@@ -249,7 +261,8 @@ export function deriveNav(state, model) {
       sampleAlong(edge, s0 + ((door.s - s0) * i) / steps, at);
       along.push({ x: at.x, z: at.z });
     }
-    const middle = navNode(lot.cx, lot.cz, -1);
+    // A lot's id is the engine's building id, which is already stable.
+    const middle = navNode(lot.cx, lot.cz, -1, `p|${lot.id}`);
     const dx = lot.cx - door.x;
     const dz = lot.cz - door.z;
     const run = Math.hypot(dx, dz) || 1;
@@ -259,7 +272,10 @@ export function deriveNav(state, model) {
       const packed = packWithHeight([...along, { x: door.x + px, z: door.z + pz },
         { x: lot.cx + px, z: lot.cz + pz }], surface);
       if (packed.len < 1e-6) continue;
-      addEdge({ kind: "park", lot: lot.id, from: end, to: middle, doors: [], demand: 0, ...packed });
+      addEdge({
+        key: `g|${lot.id}|${edge.key}|${lean}`,
+        kind: "park", lot: lot.id, from: end, to: middle, doors: [], demand: 0, ...packed,
+      });
     }
   }
 
@@ -273,10 +289,78 @@ export function deriveNav(state, model) {
 
   const out = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
 
+  /**
+   * The walkable edge nearest a point (B11's second half).
+   *
+   * Same reason the lane graph has one: a key cannot survive a street being
+   * split, and somebody standing on that pavement has not moved. Indexed by
+   * tile for the same reason — a played city has thousands of edges and
+   * hundreds of people.
+   */
+  let edgeIndex;
+  function indexOfEdges() {
+    if (edgeIndex) return edgeIndex;
+    edgeIndex = new Map();
+    const tileM = cfg.tileM;
+    for (const edge of edges) {
+      const n = edge.pts.length / 3;
+      for (let i = 0; i < n; i += 1) {
+        const tile = Math.floor(edge.pts[i * 3 + 2] / tileM) * state.width
+          + Math.floor(edge.pts[i * 3] / tileM);
+        const list = edgeIndex.get(tile);
+        if (list) { if (list[list.length - 1] !== edge) list.push(edge); } else edgeIndex.set(tile, [edge]);
+      }
+    }
+    return edgeIndex;
+  }
+
+  function nearestEdge(x, z) {
+    const index = indexOfEdges();
+    const tileM = cfg.tileM;
+    const cx = Math.floor(x / tileM);
+    const cz = Math.floor(z / tileM);
+    let best;
+    for (let dz = -1; dz <= 1; dz += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        for (const edge of index.get((cz + dz) * state.width + (cx + dx)) ?? []) {
+          const n = edge.pts.length / 3;
+          // Along the segments rather than to the nearest packed point, for the
+          // reason the lane graph's version says: snapping to a point is a jump
+          // of half the point spacing, and somebody re-seated three metres up
+          // the pavement is somebody a player saw teleport.
+          for (let i = 1; i < n; i += 1) {
+            const ax = edge.pts[(i - 1) * 3];
+            const az = edge.pts[(i - 1) * 3 + 2];
+            const ex = edge.pts[i * 3] - ax;
+            const ez = edge.pts[i * 3 + 2] - az;
+            const span = ex * ex + ez * ez;
+            const t = span > 1e-9 ? Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / span)) : 0;
+            const px = ax + ex * t;
+            const pz = az + ez * t;
+            const d = (px - x) * (px - x) + (pz - z) * (pz - z);
+            if (best && d >= best.d) continue;
+            best = { d, edge, s: ((i - 1 + t) / Math.max(1, n - 1)) * edge.len };
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  const edgeKeys = new Map();
+  for (const edge of edges) edgeKeys.set(edge.key, edge);
+  const nodeKeys = new Map();
+  for (const node of nodes) nodeKeys.set(node.key, node);
+
   return {
     nodes,
     edges,
     doors,
+    /** By key, for a person who was walking somewhere before a build action
+     * re-derived the graph under them (B11). */
+    edgeByKey: (key) => edgeKeys.get(key),
+    nearestEdge,
+    navNodeByKey: (key) => nodeKeys.get(key),
     next,
     /** Position and unit tangent `s` metres along an edge. */
     sample(edge, s, into = out) { return sampleAlong(edge, s, into); },

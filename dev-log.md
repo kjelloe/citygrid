@@ -10796,3 +10796,63 @@ the file. Suite 1,707 green twice before it and after.
 changed nothing the deputy decides, so era 26's numbers still describe the city they were measured
 on. `room` 5 s of 600 with the requests in it, `quick` re-run after the save version bumped.
 
+
+## slice-W6a — a street's identity, and the city that keeps moving across a build (2026-10-04)
+
+W6's measurement said the obstacle was identity, not performance: every id in `client/world/` is an
+array index assigned at derivation, so one new junction renumbers every corridor, lane, link and nav
+edge after it — which is why `worldChanged` threw away **every car, person, train, boat and
+aircraft** in the city on every accepted build action, and why the first cut of the measurement
+itself reported that one road tile changed 8,896 of 8,896 lanes.
+
+**W6a is the identity.** A key is made of what the engine owns and of geometry: a node is its tile,
+a corridor its two end tiles and its tile count, a lane its corridor's key plus direction and place
+across the road, a block link its lane, a turn the pair of lanes it joins, a nav corner its junction
+and street, a pavement its corridor and side, a lot the engine's own building id. `model`, `lanes`
+and `nav` answer by key. `test/world-keys.test.js` pins the claim in the direction that matters: a
+build at the other end of the map leaves every other key alone **while the ids move**, and the test
+asserts an id moved, or the city it ran on could not have shown what a key is for.
+
+**B11 is what the identity was for.** Each life system hands out its entities keyed by geometry and
+takes them back on the other side. Measured, `lanes_dump` on the deputy's played town:
+
+| build | cars | people | corridors | re-seated |
+| --- | --- | --- | --- | --- |
+| a tile that **extends** a street | 189 of 189 | 400 of 400 | 1283 → 1283 | none |
+| a tile that **splits** a street | 189 of 189 | 400 of 400 | 1283 → 1285 | 1 person, 1.3 m |
+
+And in the browser (`budget_gate`): **40 of 40 cars** over one more road tile, where it used to be
+zero. `tools/model_cost.mjs`, re-keyed to the model's own keys: **one road tile touching the network
+changes 2 corridors of 1,402 and 12 lanes of 8,896** (0.14%). Every other gate reads what it read
+before: `render` 9 s, `lanes` 212 s, `budget` 252 s, suite 1,719 green twice.
+
+**Five things this slice taught, three of them about the instruments:**
+
+1. **A key cannot survive a split, and the entity on it has not moved.** A junction laid in the
+   middle of a street ends one corridor and begins two — a corridor IS its extent — so both halves
+   are new. Carrying by key alone dropped those cars and people. They are re-seated
+   **geometrically**: nearest lane heading the way they were heading, nearest pavement, and only
+   something whose road is really gone is dropped. The first version of that snapped to the nearest
+   packed POINT of the polyline and moved cars up to **8 m**; projecting onto the segments brought
+   the worst move to **3.2 m**, which is a car standing exactly where the new junction box went and
+   having to come out of it.
+2. **The split case had no subject.** The gate's first cut chose any mid-street tile, split a
+   street nobody was standing on, and reported "0.0% re-seated" — a failure counter with nothing
+   behind it. It now requires the split to touch an occupied tile and prints how many lost their key
+   and how far the furthest of them moved, beside the losses.
+3. **A measurement of nothing, printed as success.** `model_cost`'s "one road tile" laid its tile on
+   empty ground at (2,2). A lone road tile has no neighbour, so it is no corridor and no lane, and
+   the row read 0 of 1,402 — the best possible result, from a build that did not happen. It attaches
+   to the network now.
+4. **The pedestrian half of the browser check could not fail.** `budget_gate`'s traffic page lays
+   roads and places no buildings, so it has no doors and no people: `0 → 0` passed every threshold.
+   That half is measured on the deputy's town in `lanes_dump`, which has 400 people on pavements
+   with buildings behind them, and the browser keeps the cars.
+5. **The suite was green with a page that did not boot.** This slice left a second `const was` in
+   `client/render/scene.js`. Nothing in `test/` imports that file — it imports three.js and node
+   cannot load it — so **1,717 tests passed** and `client_smoke` was the first thing to notice,
+   forty seconds later, and only because a renderer gate happened to run. `node --check` parses a
+   module without resolving or executing one import, so `test/purity.test.js` now parses **every**
+   module in `client/`, `worker/`, `server/`, `shared/` and `engine/` — 0.65 s for the renderer's 44
+   files — and it was proved to fail on a planted syntax error. This is the "renderer defects the
+   suite cannot see" memory with a cheap instrument finally attached to it.

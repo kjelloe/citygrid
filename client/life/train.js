@@ -107,6 +107,7 @@ export function createTrains(state, model, options = {}) {
     if (lines.length >= cap) break;
     lines.push({
       corridor: corridor.id,
+      key: corridor.key,
       points: corridor.points,
       cum,
       length,
@@ -120,6 +121,21 @@ export function createTrains(state, model, options = {}) {
       waited: 0,
       stopped: false,
     });
+  }
+
+  // The trains from the graph before this one (B11). A line is a rail corridor,
+  // so its key is that corridor's: a train on a line nobody touched keeps its
+  // place, its direction and its dwell instead of reappearing a carriage off
+  // the end of the track.
+  if (options.carry) {
+    for (const saved of options.carry) {
+      const line = lines.find((l) => l.key === saved.key);
+      if (!line) continue;
+      line.s = Math.min(saved.s, line.length);
+      line.dir = saved.dir;
+      line.waited = saved.waited;
+      line.stopped = saved.stopped;
+    }
   }
 
   function advance(line, dt) {
@@ -170,6 +186,13 @@ export function createTrains(state, model, options = {}) {
     /** How many trains exist, whatever the camera is looking at. */
     count() {
       return lines.length;
+    },
+
+    /** Every line's train, by the key of the line it runs on (B11). */
+    snapshot() {
+      return lines.map((line) => ({
+        key: line.key, s: line.s, dir: line.dir, waited: line.waited, stopped: line.stopped,
+      }));
     },
 
     stats() {

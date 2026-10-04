@@ -368,4 +368,146 @@ if (orphans.length > 0) {
   if (police > 0 && st.patrols === 0) console.error("FAIL — a police station with no patrol");
 }
 
+// --- life survives a build (B11, on W6a's stable keys) -----------------------
+//
+// Settle the traffic and the crowd on the deputy's town, lay ONE road tile,
+// re-derive the model the way `worldChanged` does, and count how many came
+// across. Before this slice the answer was zero, every time, for every car and
+// every person in the city — and the gate could not say so, because nothing had
+// ever counted it.
+//
+// **Two builds, because they are not the same build.** A tile on the END of a
+// street extends one corridor; a tile beside the MIDDLE of one puts a junction
+// there and splits it into two, and a corridor IS its extent, so no key can
+// survive that — the people and cars on it are re-seated. One configuration
+// would have proved one configuration, and it would have been the easy one.
+{
+  const { createTraffic } = await import("../client/life/traffic.js");
+  const { createPedestrians } = await import("../client/life/pedestrians.js");
+  const { deriveNav } = await import("../client/world/nav.js");
+  const { NET_PRESENT } = await import("../client/constants-mirror.js");
+  const { adjacencyMask } = await import("../shared/grid.js");
+
+  // The deputy's town, not this gate's own city: `state` is paved roads with
+  // `buildings: false` — a lane graph is derived from roads — so it has no
+  // doors, and the first cut of this check reported "0 of 0 people kept their
+  // pavement" and passed by dividing zero by zero.
+  const town = globalThis.__townForServices;
+  const remask = (tiles) => {
+    for (let i = 0; i < tiles.length; i += 1) {
+      if ((tiles[i] & NET_PRESENT) === 0) continue;
+      const x = i % town.width;
+      const y = (i - x) / town.width;
+      tiles[i] = (tiles[i] & ~15) | adjacencyMask(town.width, town.height, x, y,
+        (j) => (tiles[j] & NET_PRESENT) !== 0);
+    }
+  };
+  const degreeOf = (road, i) => {
+    let n = 0;
+    const mask = road[i] & 15;
+    for (let d = 0; d < 4; d += 1) if (mask & (1 << d)) n += 1;
+    return n;
+  };
+  /**
+   * An empty tile touching exactly one road tile of this degree — an extension
+   * when that neighbour is an end, a new junction when it is not.
+   *
+   * `occupied` is the set of tiles something is standing on, and for the split
+   * it is REQUIRED: the first cut of this check split a street nobody was on
+   * and reported "0.0% re-seated", which is a failure counter with no subject
+   * behind it. A split that touches nobody proves nothing about carrying life
+   * across a split.
+   */
+  const siteNextTo = (road, wantedDegree, occupied) => {
+    for (let i = town.width + 1; i < road.length - town.width - 1; i += 1) {
+      if ((road[i] & NET_PRESENT) !== 0) continue;
+      const x = i % town.width;
+      const y = (i - x) / town.width;
+      if (x < 1 || y < 1 || x >= town.width - 1 || y >= town.height - 1) continue;
+      const neighbours = [i - 1, i + 1, i - town.width, i + town.width]
+        .filter((j) => (road[j] & NET_PRESENT) !== 0);
+      if (neighbours.length !== 1) continue;
+      if (degreeOf(road, neighbours[0]) !== wantedDegree) continue;
+      if (occupied && !occupied.has(neighbours[0])) continue;
+      return i;
+    }
+    return -1;
+  };
+
+  const base = town.tiles.road.slice();
+  let worst = 0;
+  for (const [what, wantedDegree] of [["extends a street", 1], ["splits a street", 2]]) {
+    town.tiles.road.set(base);
+    const before = createModel(town);
+    const navBefore = deriveNav(town, before);
+    const traffic = createTraffic(town, before, { life: true, cap: 600 });
+    for (let t = 0; t < 400; t += 1) traffic.update(0.25);
+    const crowd = createPedestrians(town, before, navBefore, { life: true, cap: 400, spread: true });
+    for (let t = 0; t < 600; t += 1) crowd.update(1 / 30);
+    const cars = traffic.snapshot();
+    const people = crowd.snapshot();
+
+    const tileOf = (p) => Math.floor(p.z / before.tileM) * town.width + Math.floor(p.x / before.tileM);
+    const occupied = new Set([...cars.map(tileOf), ...people.map(tileOf)]);
+    const site = siteNextTo(town.tiles.road, wantedDegree, wantedDegree === 2 ? occupied : undefined);
+    if (site < 0) {
+      console.error(`FAIL — nowhere to lay a tile that ${what}, so this check proves nothing`);
+      process.exit(1);
+    }
+    town.tiles.road[site] = NET_PRESENT;
+    remask(town.tiles.road);
+
+    const after = createModel(town);
+    const navAfter = deriveNav(town, after);
+    const carriedCars = new Map(createTraffic(town, after, { life: true, cap: 600, carry: cars })
+      .snapshot().map((car) => [car.id, car]));
+    const carriedPeople = new Map(createPedestrians(town, after, navAfter, {
+      life: true, cap: 400, spread: true, carry: people,
+    }).snapshot().map((person) => [person.id, person]));
+    // **The subject, beside the failures.** `renamed` is how many were standing
+    // on something whose key the build destroyed — the only ones the geometric
+    // re-seat has to answer for — and `moved` is how far the furthest of them
+    // went. A junction box is a few metres wide, so a car standing where one
+    // appears has to come out of it; anything beyond that is a teleport.
+    const renamedCars = cars.filter((car) => after.lanes.linkByKey(car.key) === undefined);
+    const renamedPeople = people.filter((p) => navAfter.edgeByKey(p.key) === undefined);
+    const movedBy = (was, now) => (now ? Math.hypot(now.x - was.x, now.z - was.z) : -1);
+    const carMoves = cars.map((car) => movedBy(car, carriedCars.get(car.id)));
+    const pedMoves = people.map((p) => movedBy(p, carriedPeople.get(p.id)));
+    const worstMove = Math.max(0, ...carMoves, ...pedMoves);
+    const lostCars = carMoves.filter((d) => d < 0).length;
+    const lostPeople = pedMoves.filter((d) => d < 0).length;
+    const carShare = cars.length > 0 ? lostCars / cars.length : 1;
+    const pedShare = people.length > 0 ? lostPeople / people.length : 1;
+    worst = Math.max(worst, carShare, pedShare);
+
+    console.log(`\nlife over a build  one tile at ${site % town.width},${(site - (site % town.width)) / town.width} — ${what}`);
+    console.log(`                ${cars.length - lostCars} of ${cars.length} cars and `
+      + `${people.length - lostPeople} of ${people.length} people came across, `
+      + `corridors ${before.corridors.length} → ${after.corridors.length}`);
+    console.log(`                ${renamedCars.length} car(s) and ${renamedPeople.length} person(s) `
+      + `lost the key they were standing on and were re-seated by geometry; furthest move ${worstMove.toFixed(1)} m`);
+
+    if (cars.length < 20 || people.length < 20) {
+      console.error(`FAIL — only ${cars.length} cars and ${people.length} people settled, so this proves nothing`);
+      process.exit(1);
+    }
+    if (wantedDegree === 2 && renamedCars.length + renamedPeople.length === 0) {
+      console.error("FAIL — the split touched nobody, so it says nothing about carrying life across one");
+      process.exit(1);
+    }
+    if (worstMove > 6) {
+      console.error(`FAIL — something was re-seated ${worstMove.toFixed(1)} m from where it stood`);
+      process.exit(1);
+    }
+  }
+  // D7's invariant, held across both builds: the settled count before and after
+  // a one-tile build is the same within 2% (B11).
+  if (worst > 0.02) {
+    console.error(`FAIL — a one-tile build re-seated ${(worst * 100).toFixed(1)}% of the city's life (B11 allows 2%)`);
+    process.exit(1);
+  }
+  town.tiles.road.set(base);
+}
+
 console.log("\nlanes dump ok");

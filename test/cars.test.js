@@ -1486,3 +1486,97 @@ test("somebody six metres out on an avenue is in the road, and on a street is no
   assert.equal(Math.round(drive(avenue.frontage)), Math.round(empty),
     "somebody on the pavement stopped the traffic");
 });
+
+// --- life survives a build (B11, with W6's stable keys) ----------------------
+
+test("a build somewhere else leaves every car where it was", () => {
+  // Today's `worldChanged` throws away every car on every accepted build
+  // action, because a car holds a link ID and a rebuild renumbers them. With
+  // keys, a car whose lane still exists is the same car at the same metre.
+  const size = 24;
+  const state = blank(size);
+  pave(state, row(6, 2, size - 3));
+  load(state, 255);
+  const model = createModel(state);
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 30);
+  const before = traffic.snapshot();
+  assert.ok(before.length > 5, `only ${before.length} cars to carry`);
+
+  // A street in the other half of the map: nothing a car on row 6 is standing on.
+  pave(state, row(6, 2, size - 3), row(18, 2, size - 3));
+  load(state, 255);
+  const rebuilt = createModel(state);
+  const carried = createTraffic(state, rebuilt, { cap: 400, carry: before });
+
+  const after = new Map(carried.snapshot().map((car) => [car.id, car]));
+  assert.equal(after.size, before.length, "cars were lost to a build they were nowhere near");
+  for (const car of before) {
+    const now = after.get(car.id);
+    assert.ok(now, `car ${car.id} vanished`);
+    assert.equal(now.key, car.key, `car ${car.id} changed lane`);
+    assert.equal(now.s.toFixed(6), car.s.toFixed(6), `car ${car.id} moved`);
+    assert.equal(now.v.toFixed(6), car.v.toFixed(6), `car ${car.id} changed speed`);
+  }
+});
+
+test("a car on a street that is SPLIT keeps driving, where it was", () => {
+  // The case a key cannot answer. A junction laid in the middle of a street
+  // ends one corridor and begins two, so every key on it is new — and the car
+  // has not moved. It is re-seated at its own position, on a lane heading the
+  // way it was heading, which is the half of the street it was already on.
+  const size = 24;
+  const state = blank(size);
+  pave(state, row(6, 2, size - 3));
+  load(state, 255);
+  const model = createModel(state);
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 30);
+  const before = traffic.snapshot();
+  assert.ok(before.length > 5, `only ${before.length} cars`);
+
+  // A side street into the middle of it: one corridor becomes two plus a stub.
+  pave(state, row(6, 2, size - 3), column(12, 6, 10));
+  load(state, 255);
+  const rebuilt = createModel(state);
+  const split = before.filter((car) => rebuilt.lanes.linkByKey(car.key) === undefined);
+  assert.ok(split.length > 0, "no car's lane was renamed, so this proves nothing");
+
+  const carried = createTraffic(state, rebuilt, { cap: 400, carry: before });
+  const after = new Map(carried.snapshot().map((car) => [car.id, car]));
+  for (const car of split) {
+    const now = after.get(car.id);
+    assert.ok(now, `car ${car.id} was dropped although its street is still there`);
+    // Four metres: a car standing exactly where the new junction box went has
+    // to come out of it to the nearest stop line, and that is the furthest any
+    // of them moves (measured: 3.2 m on this city, and under a metre for most).
+    assert.ok(Math.hypot(now.x - car.x, now.z - car.z) < 4,
+      `car ${car.id} was re-seated ${Math.hypot(now.x - car.x, now.z - car.z).toFixed(1)} m from where it was`);
+    assert.ok(now.tx * car.tx + now.tz * car.tz > 0.5, `car ${car.id} was turned around`);
+  }
+});
+
+test("a car whose lane is gone leaves, and the rest do not", () => {
+  const size = 24;
+  const state = blank(size);
+  pave(state, row(6, 2, size - 3), row(18, 2, size - 3));
+  load(state, 255);
+  const model = createModel(state);
+  const traffic = createTraffic(state, model, { cap: 400 });
+  run(traffic, 30);
+  const before = traffic.snapshot();
+
+  // Row 18 is bulldozed. Its cars have nowhere to be; row 6's are untouched.
+  const kept = blank(size);
+  pave(kept, row(6, 2, size - 3));
+  load(kept, 255);
+  const rebuilt = createModel(kept);
+  const carried = createTraffic(kept, rebuilt, { cap: 400, carry: before });
+
+  const survivors = carried.snapshot();
+  const onRowSix = before.filter((car) => rebuilt.lanes.linkByKey(car.key) !== undefined);
+  assert.ok(onRowSix.length > 0 && onRowSix.length < before.length,
+    `the two rows are not telling apart: ${onRowSix.length} of ${before.length}`);
+  assert.equal(survivors.length, onRowSix.length,
+    "a car was kept on a street that no longer exists, or one was dropped that still had its lane");
+});

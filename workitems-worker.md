@@ -211,6 +211,24 @@ new corridor renumbers every corridor, lane and lot — which is why `worldChang
 traffic, the services and the trains each time. (The first cut of the measurement was keyed by id
 and reported that one road tile changed 8,896 of 8,896 lanes: a measure of renumbering.)
 
+**W6a — stable identity — is BUILT (slice-W6a, 2026-10-04), and B11 with it.** Every derived
+thing carries a `key` made of what the engine owns and of geometry: a node is its tile, a corridor
+its two end tiles and its length in tiles, a lane its corridor's key with its direction and its
+place across the road, a block link its lane, a turn the pair of lanes it joins, a nav corner its
+junction and street, a pavement its corridor and side, a lot the engine's building id. `model`,
+`lanes` and `nav` answer `corridorByKey`, `linkByKey`, `edgeByKey` and the rest, and
+`test/world-keys.test.js` pins that a build at the other end of the map leaves every other key
+alone while the IDS move — which is the test that would have caught the measurement's first cut.
+
+Measured with the model's own keys (`tools/model_cost.mjs`, era 26, played 96): **one road tile
+touching the network changes 2 corridors of 1,402 and 12 lanes of 8,896** — 0.14% — and a building
+one lot more. (The earlier "1 of 1,402, 2 of 8,896" was measured with a tile on empty ground, which
+is no corridor at all: a lone road tile has no neighbour, so that row was a measurement of nothing
+printed as the best possible result.)
+
+**What is left of W6 is the dirty set** (item 2 below): `createModel(state, previous)` re-deriving
+only what the changed tiles touch. Identity was the obstacle and it is gone; the 115 ms is not.
+
 **So W6 is: stable identity, then a dirty set.**
 1. A corridor's identity is its geometry, not its index — a key that survives a rebuild (the ends of
    its polyline, or a hash of its tiles). Same for a lot (its anchor tile) and a lane (its corridor
@@ -218,8 +236,12 @@ and reported that one road tile changed 8,896 of 8,896 lanes: a measure of renum
 2. `createModel(state, previous)` re-derives only what the changed tiles touch, and returns the rest
    by reference. The engine already knows which tiles a command wrote — that is what the patch in
    `worker/sim-host.js` carries.
-3. `deriveNav` and the life systems keep their entities across a rebuild where their keys still
-   exist, instead of being recreated wholesale.
+3. ~~`deriveNav` and the life systems keep their entities across a rebuild where their keys still
+   exist, instead of being recreated wholesale.~~ **Done as B11** (`workitems-behaviour.md`): cars,
+   people, trains, boats and aircraft carry over by key, and by GEOMETRY when the key is gone —
+   because a junction laid mid-street splits a corridor, and a corridor is its extent, so both
+   halves are new. Services are deliberately not carried: a service vehicle holds a route, and half
+   a route is a vehicle driving down a street that no longer exists.
 4. The gate is `tools/model_cost.mjs` again — a build action under a frame on a played 96 — plus
    `budget_gate`, `walkthrough` and `traffic_gate` unmoved, because this must change what it COSTS
    and nothing else.

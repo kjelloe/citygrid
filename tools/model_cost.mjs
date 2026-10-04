@@ -124,23 +124,22 @@ console.log(`  ${nav.label.padEnd(32)} ${nav.ms.toFixed(2).padStart(8)} ms  `
 // road tile changes two chunks' worth of derivation, the second shape is cheap
 // and needs no staleness rule at all.
 
-// Keyed by GEOMETRY, never by id. The first cut of this keyed everything by
-// `c.id` and reported that one road tile changed 8,896 of 8,896 lanes — which
-// is true of the ids and false of the city: ids are array indices assigned at
-// derivation, so adding one corridor renumbers every one of them. A measure of
-// how much changed must not be a measure of how much was renumbered.
+// Keyed by the model's own KEYS, never by id. The first cut of this keyed
+// everything by `c.id` and reported that one road tile changed 8,896 of 8,896
+// lanes — which is true of the ids and false of the city: ids are array indices
+// assigned at derivation, so adding one corridor renumbers every one of them. A
+// measure of how much changed must not be a measure of how much was renumbered.
+//
+// The second cut built its own geometric fingerprint here, because the model had
+// no stable identity to offer. **W6a gave it one**, so this now reads the same
+// `key` the life systems re-seat themselves by (B11) — one definition of "the
+// same street", in the model rather than in the instrument.
 const place = (p) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`;
 const fingerprint = (m) => ({
-  corridors: new Map(m.corridors.map((c) => [
-    `${place(c.points[0])}|${place(c.points[c.points.length - 1])}`,
-    c.points.map(place).join(" "),
-  ])),
-  lots: new Map(m.lots.map((l) => [`${l.cx.toFixed(1)},${l.cz.toFixed(1)}`,
+  corridors: new Map(m.corridors.map((c) => [c.key, c.points.map(place).join(" ")])),
+  lots: new Map(m.lots.map((l) => [`lot${l.id}`,
     `${l.frontage},${l.building?.def ?? ""},${l.building?.level ?? 0}`])),
-  lanes: new Map((m.lanes?.links ?? []).map((l) => [
-    `${(l.pts?.[0] ?? 0).toFixed(1)},${(l.pts?.[1] ?? 0).toFixed(1)}`,
-    `${(l.pts?.[l.pts.length - 2] ?? 0).toFixed(1)},${(l.pts?.[l.pts.length - 1] ?? 0).toFixed(1)}`,
-  ])),
+  lanes: new Map((m.lanes?.links ?? []).map((l) => [l.key, `${(l.len ?? 0).toFixed(2)}`])),
 });
 const changed = (a, b) => {
   const out = { corridors: 0, lots: 0, lanes: 0, chunks: new Set() };
@@ -153,8 +152,25 @@ const changed = (a, b) => {
 
 const empty = { x: 2, y: 2 };
 const W = state.width;
+/** An empty tile TOUCHING a road, which is what a player's next tile is.
+ *
+ * The first cut laid its single tile on empty ground at (2,2): a lone road tile
+ * has no neighbour, so it is no corridor and no lane, and the row read "0 of
+ * 1402, 0 of 8896" — a measurement of nothing, printed as the best possible
+ * result. */
+const attached = (() => {
+  const road = state.tiles.road;
+  for (let i = W + 1; i < road.length - W - 1; i += 1) {
+    if ((road[i] & 16) !== 0) continue;
+    if (state.tiles.buildingId[i] !== 0) continue;
+    const touching = [i - 1, i + 1, i - W, i + W].some((j) => (road[j] & 16) !== 0);
+    if (touching) return i;
+  }
+  return empty.y * W + empty.x;
+})();
+
 const actions = [
-  ["one road tile", { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([empty.y * W + empty.x]) }],
+  ["one road tile", { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([attached]) }],
   ["a ten-tile drag", { type: CMD_PLACE_ROAD, actor: 1,
     runs: encodeRuns(Array.from({ length: 10 }, (unused, i) => (empty.y + 2) * W + empty.x + i)) }],
   ["a building", { type: CMD_PLACE_BUILDING, actor: 1, def: "clinic", x: empty.x + 2, y: empty.y + 5 }],

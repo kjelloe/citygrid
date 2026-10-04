@@ -129,6 +129,35 @@ export function closestOnPolyline(points, x, z) {
   return { dist: Math.sqrt(best), x: bx, z: bz, s: bs };
 }
 
+/**
+ * A derived thing's identity (W6a).
+ *
+ * Every id in this directory is an array index assigned at derivation, so one
+ * new junction renumbers every corridor, lane and nav edge after it — which is
+ * why a build action throws away every car, person, train and boat in the city.
+ * A key is built from what the ENGINE owns (tile indices) and from geometry, so
+ * the same street is the same street across a rebuild.
+ *
+ * A node is at one tile, so its tile IS its key. A corridor is its two end
+ * tiles and its length in tiles: the ends alone are not enough (a ring of road
+ * leaves and returns to the same node, and two corridors can join the same pair
+ * of junctions), and the whole tile list would make a key that changes when a
+ * neighbour is paved — which it should not, because the corridor itself has not
+ * moved.
+ *
+ * The ends are written low-first so that the key does not depend on which end
+ * the walk started from.
+ */
+function keyOfNode(tile) {
+  return `n${tile}`;
+}
+
+function keyOfCorridor(kindOfTile, fromTile, toTile, tiles) {
+  const low = Math.min(fromTile, toTile);
+  const high = Math.max(fromTile, toTile);
+  return `${kindOfTile}:${low}-${high}x${tiles.length}`;
+}
+
 export function deriveCorridors(state, kindOfTile = "road") {
   const cfg = getConfig();
   const tileM = cfg.tileM;
@@ -148,7 +177,7 @@ export function deriveCorridors(state, kindOfTile = "road") {
     if (!present(i)) continue;
     const kind = nodeKind(maskOf(i));
     if (!kind) continue;
-    const node = { id: nodes.length, tile: i, ...centreOf(width, i, tileM), mask: maskOf(i), degree: degree(maskOf(i)), kind, corridors: [] };
+    const node = { id: nodes.length, key: keyOfNode(i), tile: i, ...centreOf(width, i, tileM), mask: maskOf(i), degree: degree(maskOf(i)), kind, corridors: [] };
     nodes.push(node);
     nodeAt.set(i, node);
   }
@@ -171,7 +200,7 @@ export function deriveCorridors(state, kindOfTile = "road") {
       if (!avenueAt(j)) seam = true;
     }
     if (!seam) continue;
-    const node = { id: nodes.length, tile: i, ...centreOf(width, i, tileM), mask, degree: degree(mask), kind: "seam", corridors: [] };
+    const node = { id: nodes.length, key: keyOfNode(i), tile: i, ...centreOf(width, i, tileM), mask, degree: degree(mask), kind: "seam", corridors: [] };
     nodes.push(node);
     nodeAt.set(i, node);
   }
@@ -221,7 +250,8 @@ export function deriveCorridors(state, kindOfTile = "road") {
       taken.add(`${node.tile}:${d}`);
       const { points, tiles, end } = walk(node, d);
       const corridor = {
-        id: corridors.length, kind: kindOfTile, points, tiles,
+        id: corridors.length, key: keyOfCorridor(kindOfTile, node.tile, end.tile, tiles),
+        kind: kindOfTile, points, tiles,
         ...sectionFor(tiles), length: polyLength(points), from: node.id, to: end.id,
       };
       corridors.push(corridor);
@@ -237,13 +267,17 @@ export function deriveCorridors(state, kindOfTile = "road") {
   for (let i = 0; i < layer.length; i += 1) {
     if (!present(i) || covered.has(i) || nodeAt.has(i)) continue;
     const mask = maskOf(i);
-    const node = { id: nodes.length, tile: i, ...centreOf(width, i, tileM), mask, degree: 2, kind: "loop", corridors: [] };
+    const node = { id: nodes.length, key: keyOfNode(i), tile: i, ...centreOf(width, i, tileM), mask, degree: 2, kind: "loop", corridors: [] };
     nodes.push(node);
     nodeAt.set(i, node);
     const d = (mask & 1) ? 0 : 1;
     taken.add(`${i}:${d}`);
     const { points, tiles } = walk(node, d);
-    const corridor = { id: corridors.length, kind: kindOfTile, points, tiles, ...sectionFor(tiles), length: polyLength(points), from: node.id, to: node.id };
+    const corridor = {
+      id: corridors.length, key: keyOfCorridor(kindOfTile, node.tile, node.tile, tiles),
+      kind: kindOfTile, points, tiles, ...sectionFor(tiles), length: polyLength(points),
+      from: node.id, to: node.id,
+    };
     corridors.push(corridor);
     node.corridors.push(corridor.id);
     for (const t of tiles) covered.add(t);
