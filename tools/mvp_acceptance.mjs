@@ -24,6 +24,8 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { armDisaster } from "./lib/scenario.mjs";
+import { settle } from "./lib/settle.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = {
@@ -61,11 +63,11 @@ function criterion(number, name, ok, detail = "") {
  * exactly that: this script passed 13 of 13 while the toolbar had no way to
  * place a building at all, so no human player could power or water a city. */
 const LAY_GROUND = async () => {
-  const { state, renderer } = globalThis.CITY;
-  const { apply } = await import("/engine/reducer.js");
+  const { state } = globalThis.CITY;
   const c = await import("/engine/commands.js");
+  // Through the seam (W5). The money is `?funds=`.
+  const apply = (unused, command) => globalThis.CITY.apply(command);
   globalThis.CITY.pause();
-  state.players[0].treasury = 9000000;
   const W = state.width;
   let row = -1;
   for (let y = 12; y < state.height - 10 && row < 0; y += 1) {
@@ -80,16 +82,16 @@ const LAY_GROUND = async () => {
   }
   if (row < 0) return { reason: "no dry ground" };
 
-  apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [row * W + 8, 26] });
-  apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [(row + 4) * W + 8, 26] });
+  await apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [row * W + 8, 26] });
+  await apply(state, { type: c.CMD_PLACE_ROAD, actor: 1, runs: [(row + 4) * W + 8, 26] });
   const band = (y0, y1, zone) => {
     const runs = [];
     for (let y = y0; y <= y1; y += 1) runs.push(y * W + 8, 26);
-    apply(state, { type: c.CMD_PAINT_ZONE, actor: 1, runs, zone });
+    return apply(state, { type: c.CMD_PAINT_ZONE, actor: 1, runs, zone });
   };
-  band(row + 1, row + 3, 1);
-  band(row - 3, row - 1, 2);
-  band(row + 5, row + 6, 3);
+  await band(row + 1, row + 3, 1);
+  await band(row - 3, row - 1, 2);
+  await band(row + 5, row + 6, 3);
   return { row };
 };
 
@@ -97,8 +99,8 @@ const LAY_GROUND = async () => {
  * the pump have been placed through the toolbar. */
 const RUN_CITY = async (row) => {
   const { state, renderer } = globalThis.CITY;
-  const { apply } = await import("/engine/reducer.js");
   const c = await import("/engine/commands.js");
+  const apply = (unused, command) => globalThis.CITY.apply(command);
   const W = state.width;
   const wire = [];
   const pipe = [];
@@ -112,15 +114,14 @@ const RUN_CITY = async (row) => {
     for (let y = from; y <= row + 7; y += 1) { wire.push(y * W + spine, 1); pipe.push(y * W + spine, 1); }
   }
   for (let x = 13; x <= 23; x += 1) { wire.push((row - 3) * W + x, 1); pipe.push((row - 3) * W + x, 1); }
-  apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
-  apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });
+  await apply(state, { type: c.CMD_PLACE_WIRE, actor: 1, runs: wire });
+  await apply(state, { type: c.CMD_PLACE_PIPE, actor: 1, runs: pipe });
 
   const treasuryBefore = state.players[0].treasury;
-  const eventKinds = new Set();
-  for (let i = 0; i < 400; i += 1) {
-    const outcome = apply(state, { type: c.CMD_TICK });
-    for (const event of outcome.events ?? []) eventKinds.add(event.kind);
-  }
+  // One message for four hundred ticks, and it carries every tick's events —
+  // not the last one's, which is what the seam had to learn for this (W5).
+  const outcome = await globalThis.CITY.tick(400);
+  const eventKinds = new Set((outcome.events ?? []).map((event) => event.kind));
   renderer.worldChanged();
   return {
     row,
@@ -137,17 +138,14 @@ const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
-// **`?worker=0`.** This script drives the ENGINE inside the page in three
-// places — it lays the fixture city, it runs four hundred ticks by hand, and it
-// arms a wildfire by setting `state.disaster` — and since W2 moved the
-// simulation behind the seam, `CITY.state` is a mirror whose next patch
-// overwrites anything written into it. There is no command that arms a
-// disaster, so the acceptance city is played on this thread on purpose.
+// The SHIPPED configuration: the worker on, like a player gets (W5). Everything
+// this script sets up goes through the seam — the fixture city by command, the
+// four hundred ticks in one message, and the wildfire as a SAVE armed in node
+// (`tools/lib/scenario.mjs`), because no command arms a disaster and a write
+// into `CITY.state` would change a mirror the next patch overwrites.
 //
-// The seam itself is gated elsewhere, with the worker ON: `worker_smoke` plays
-// both arms and compares the hash, and `save_smoke`, `ui_smoke`, `play_smoke`
-// and `lobby_smoke` all drive the shipped configuration.
-const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0&worker=0`;
+// `?funds=` buys the fixture city for the same reason.
+const url = `http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0&funds=9000000`;
 const pageErrors = [];
 
 try {
@@ -193,6 +191,7 @@ try {
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 3 });
   await page.mouse.up();
+  await settle(page);
   const roadTiles = await page.evaluate(() => {
     const { state } = globalThis.CITY;
     let n = 0;
@@ -211,6 +210,7 @@ try {
     await page.mouse.down();
     await page.mouse.move(b.x, b.y, { steps: 2 });
     await page.mouse.up();
+    await settle(page);
     zoned[zone] = await page.evaluate((z) => {
       const { state } = globalThis.CITY;
       let n = 0;
@@ -254,6 +254,7 @@ try {
     await target.mouse.move(at.x, at.y);
     await target.mouse.down();
     await target.mouse.up();
+    await settle(target);
     const placed = await target.evaluate(([d, x, y]) =>
       globalThis.CITY.state.buildings.some((b) => b.def === d && b.x === x && b.y === y),
     [def, tx, ty]);
@@ -276,12 +277,15 @@ try {
   // from the economy slice with nothing in the interface to send it.
   // The tax control moved into the budget drawer on the left rail (P29).
   await page.click("#rail-budget");
-  const taxed = await page.evaluate(() => {
+  const taxed = await page.evaluate(async () => {
     const slider = document.getElementById("tax");
     if (!slider) return { reason: "no tax control" };
     const before = globalThis.CITY.state.tax;
     slider.value = String(Math.min(Number(slider.max), before + 3));
     slider.dispatchEvent(new Event("input", { bubbles: true }));
+    // The rate crosses the seam (W2), so the city has the new one a round trip
+    // later — reading it in the next statement is reading the old city.
+    while (globalThis.CITY.pending > 0) await new Promise((r) => setTimeout(r, 4));
     return { before, after: globalThis.CITY.state.tax, shown: slider.value };
   });
   criterion(7, "Collect taxes and pay maintenance",
@@ -316,25 +320,23 @@ try {
     services.map((r) => `${r.def}: ${r.result}`).join(", ") + " — all by pointer");
 
   // §24.10 — respond to a fire or civic incident
-  const incident = await page.evaluate(async () => {
+  // The city this page is playing, armed with a wildfire and handed back (W5).
+  // No command arms a disaster, and a write into `CITY.state` would change the
+  // mirror rather than the simulation — so the save goes out, `armDisaster`
+  // changes it in node where `toSave` can write a correct hash, and it comes
+  // back through the ordinary import path.
+  const armed = armDisaster(await page.evaluate(() => globalThis.CITY.exportSave()));
+  const incident = await page.evaluate(async (text) => {
+    const loaded = await globalThis.CITY.importSave(text);
+    const outcome = await globalThis.CITY.tick(200);
     const { state } = globalThis.CITY;
-    const { apply } = await import("/engine/reducer.js");
-    const { CMD_TICK } = await import("/engine/commands.js");
-    const { DISASTER_WILDFIRE, PHASE_WARNING } = await import("/engine/disasters.js");
-    // Arm a real disaster and let it run its course, warning included.
-    state.disaster.kind = DISASTER_WILDFIRE;
-    state.disaster.phase = PHASE_WARNING;
-    state.disaster.ticks = 1;
-    state.disaster.x = 20;
-    state.disaster.y = 20;
-    state.disaster.radius = 4;
-    const seen = new Set();
-    for (let i = 0; i < 200; i += 1) {
-      const outcome = apply(state, { type: CMD_TICK });
-      for (const event of outcome.events ?? []) seen.add(event.kind);
-    }
-    return { seen: [...seen], population: state.population, buildings: state.buildings.length };
-  });
+    return {
+      loaded,
+      seen: [...new Set((outcome.events ?? []).map((event) => event.kind))],
+      population: state.population,
+      buildings: state.buildings.length,
+    };
+  }, armed);
   criterion(10, "Respond to a fire or civic incident",
     incident.seen.includes("disasterStruck") && incident.buildings > 0,
     `${incident.seen.filter((k) => k.startsWith("disaster") || k.startsWith("fire")).join(", ")}; ${incident.buildings} buildings survive`);
@@ -397,6 +399,7 @@ try {
   await phonePage.mouse.down();
   await phonePage.mouse.move(pFrom.x + 90, pFrom.y, { steps: 4 });
   await phonePage.mouse.up();
+  await settle(phonePage);
   const phoneCheck = await phonePage.evaluate(() => {
     const { state } = globalThis.CITY;
     let roads = 0;

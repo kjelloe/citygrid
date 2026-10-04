@@ -10196,3 +10196,39 @@ measurement now says which questions to ask of them. 38 ms is two and a half fra
 machine with headroom; D6's 184.7 ms on a 256 is eleven.
 
 The phone half of this item (the governor's p95 before and after) stays blocked on D2's card.
+
+## W5 — the acceptance gate on the shipped configuration (2026-10-04)
+
+W2 left four gates running with `?worker=0` because they drove the engine inside the page, and one
+of them was `mvp_acceptance`: the thirteen §24 criteria are the release claim, and they were being
+proven on a configuration no player gets.
+
+**A scenario is a SAVE, built in node.** `fromSave` recomputes the hash and refuses a hand-edited
+file — but a save written by `toSave` after changing the state in node carries a hash that is
+correct by construction. So `tools/lib/scenario.mjs`'s `armDisaster` takes the city the page is
+playing (`CITY.exportSave()`), arms a wildfire at `PHASE_WARNING` in node, and hands the bytes back
+through `CITY.importSave`, which loads them through the seam like any other save. No command arms a
+disaster and none needs to.
+
+Everything else in the gate goes through the seam: the fixture city by command, the four hundred
+ticks in one message, `?funds=` for the treasury it used to poke. **13 of 13 with the worker on.**
+
+**The seam had to learn one thing for it.** `mvp_acceptance` collects event kinds across 400 ticks
+to prove that taxes are collected and maintenance paid, and a batched `tick(400)` was answering with
+the LAST tick's events — 399 ticks' worth dropped, and the criterion would have been asserting that
+nothing ever happened. Both sides of the seam accumulate now, and `test/session-worker.test.js`
+checks that a batch of 48 carries more than one event and that the two sides agree on which.
+
+**The audit the migration implied.** Every gate that reads the city after a pointer action was swept
+for a read that does not wait on `tools/lib/settle.mjs`. Most hits were false — a tool-select click
+followed by a BASELINE read is reading the old city on purpose — but two in `play_smoke` were real
+and worse than the four that failed outright: both assert that **nothing was built** (a right-drag
+with a tool in hand, and the hand-pan), and a "nothing happened" check that reads before the seam
+answers passes whether or not a command went out. They wait now.
+
+`budget_gate`, `play_shot` and `street_proof` keep `?worker=0` and keep saying why: they are
+renderer measurements, a reducer's thread cannot change a triangle count, and a round trip per
+command would add minutes to a gate that already takes four.
+
+Gates: `quick` green at 504 s of 540 with every member on the shipped configuration; suite green
+twice.

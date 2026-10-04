@@ -101,9 +101,15 @@ export async function openLocalSession(given) {
       return result;
     },
     async tick(count = 1) {
+      // Every tick's events, as the worker does it: a batched tick that reports
+      // only the last tick's events is a gate asserting nothing happened.
       let outcome;
-      for (let n = 0; n < count; n += 1) outcome = run({ type: CMD_TICK });
-      return outcome;
+      const events = [];
+      for (let n = 0; n < count; n += 1) {
+        outcome = run({ type: CMD_TICK });
+        for (const event of outcome.events) events.push(event);
+      }
+      return { result: outcome.result, events };
     },
     /** A loaded city, copied field by field into the state everything holds —
      * replacing the reference would leave the renderer drawing a city that no

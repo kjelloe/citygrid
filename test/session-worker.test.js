@@ -99,6 +99,25 @@ test("a hundred ticks, and the mirror still hashes like the worker", () => {
   assert.equal(mirror.tick, 100);
 });
 
+test("a batched tick carries every tick's events, not the last one's", async () => {
+  // W5: `mvp_acceptance` collects event kinds over four hundred ticks to prove
+  // that taxes are collected and maintenance paid. One message for four hundred
+  // ticks that reported only the last tick's events would have it asserting that
+  // nothing ever happened.
+  const { host, mirror } = started({ ...OPTIONS, width: 48, height: 48 });
+  send(host, mirror, { type: "apply", id: 1, command: { type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" } });
+  const batched = send(host, mirror, { type: "tick", id: 2, count: 48 });
+  const kinds = new Set(batched.events.map((e) => e.kind));
+  assert.ok(batched.events.length > 1, `a batch of 48 ticks carried ${batched.events.length} events`);
+  assert.ok(kinds.size >= 1, "no kinds at all");
+
+  // And the local seam says the same thing, because the two are one API.
+  const local = await openLocalSession({ options: { ...OPTIONS, width: 48, height: 48 } });
+  await local.apply({ type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" });
+  const same = await local.tick(48);
+  assert.deepEqual(same.events.map((e) => e.kind).sort(), batched.events.map((e) => e.kind).sort());
+});
+
 test("a snapshot is the whole city, whatever the mirror had", () => {
   const { host, mirror } = started();
   send(host, mirror, { type: "apply", id: 1, command: { type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" } });

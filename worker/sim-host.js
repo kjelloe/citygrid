@@ -121,9 +121,17 @@ export function createSimHost() {
         return answer("result", { id, result, events: [] });
       }
       case "tick": {
+        // Every tick's events, not the last one's. A count of one is the game's
+        // clock and is unchanged; a count of four hundred is a gate building a
+        // fixture city in one message, and dropping 399 ticks' events there is
+        // how a gate ends up asserting that nothing happened.
         let outcome;
-        for (let n = 0; n < (message.count ?? 1); n += 1) outcome = apply(state, { type: CMD_TICK });
-        return answer("result", { id, result: outcome.result, events: outcome.events });
+        const events = [];
+        for (let n = 0; n < (message.count ?? 1); n += 1) {
+          outcome = apply(state, { type: CMD_TICK });
+          for (const event of outcome.events) events.push(event);
+        }
+        return answer("result", { id, result: outcome.result, events });
       }
       case "snapshot":
         return answer("ready", { id }, true);

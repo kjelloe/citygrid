@@ -470,6 +470,10 @@ async function run(page, label, { touch, mode }) {
     await page.mouse.down({ button: "right" });
     for (let i = 1; i <= 8; i += 1) await page.mouse.move(from.x + i * 14, from.y - i * 9);
     await page.mouse.up({ button: "right" });
+    // This step asserts that NOTHING was built, so it has to wait for anything
+    // that was: a "nothing happened" check read before the seam answers passes
+    // whether or not a command went out (W5).
+    await settle(page);
     const orbited = await page.evaluate(() => {
       const v = globalThis.CITY.renderer.view;
       return {
@@ -811,6 +815,9 @@ async function run(page, label, { touch, mode }) {
     await page.mouse.move(cx - 150, cy, { steps: 8 });
     await page.mouse.up({ button: "left" });
     await page.keyboard.up("h");
+    // Same reason: the check below is "the tool builds nothing while the hand is
+    // down", and it can only see a build that has landed.
+    await settle(page);
     const panAfter = await view();
     const roadAfter = await page.evaluate(() =>
       [...globalThis.CITY.state.tiles.road].reduce((a, v) => a + (v & 16 ? 1 : 0), 0));

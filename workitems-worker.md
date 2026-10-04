@@ -252,7 +252,17 @@ every hash of the founding fixture; a rejected command produces the toast path a
 change; all three sessions expose the same members; a frame that carries ticks advances the
 remote session and nothing else does.
 
-## W5 — The gates on the shipped configuration (S) — **found by W2, 2026-10-04**
+## W5 — The gates on the shipped configuration (S) — **done 2026-10-04 as `slice-W5`**
+
+`tools/lib/scenario.mjs` arms the wildfire in node and the gate hands the bytes back through
+`CITY.importSave`; the fixture city and the four hundred ticks go through the seam; `?funds=` buys
+it. **`mvp_acceptance` is 13 of 13 with the worker on.** The seam learned to accumulate a batched
+tick's events (it was answering with the last tick's, which would have had the tax criterion
+asserting that nothing happened), and the settle audit found two checks in `play_smoke` that assert
+NOTHING was built and could not have seen it if it had been. `budget_gate`, `play_shot` and
+`street_proof` keep the lever, with the reason in each file.
+
+## W5 — The gates on the shipped configuration (S) — the item as written
 
 **Goal.** Four gates run with `?worker=0` because they drive the engine inside the page, and the
 one that matters is `mvp_acceptance`: the thirteen §24 criteria are the release claim, and they are
