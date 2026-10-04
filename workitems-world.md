@@ -244,11 +244,21 @@ carriageway, nothing dragged: steepness untouched, and **674 of 1,376 corridors*
 a graded street on a hilly map routinely stands 2–3 m above the land. The first run of that arm
 buried a lot.
 
+**Third attempt: a stone FACING on the verge** — the cheap version of a retaining wall, a surface
+rather than a structure. Built and reverted too, and for a reason outside the code: **nothing can
+photograph a steep shoulder.** Four shots came back byte-identical, including one with the facing
+painted magenta at a millimetre threshold — the tool had no instrument. With one: the kerb camera
+bakes seven chunks and the other three bake none; a city camera cannot bake L3 street geometry at
+all (21–44 tile pixels, "street detail not resolvable"); and a street camera at the deep cases on
+the hilly map stands inside the embankment. Where a camera CAN stand — the rolling 96 — the rule
+fires in three places at 1.7 m, which is a stone strip on a gentle slope and not a wall.
+
 **A batter needs space, and the city is built to the kerb.** And the four cases are not hillsides:
 the walk prints their positions now and all four are within two tiles of water, where the "fill" is
 the depth of S12's bank cut below a waterside street. The choice Q145 now offers is a **retaining
 wall** — a renderer feature that changes no height, buries no lot and re-measures nothing — or
-leaving it counted.
+leaving it counted. **Either way a camera comes first**: a harness that can stand beside a steep
+shoulder, which nothing in `tools/` can do today.
 
 `tools/embankment_shots.mjs` takes the three pictures (the kerb, the drop, side on) at a tile the
 walk names; `reports/smoke-S14-*-before.png` are the ones taken for this attempt.

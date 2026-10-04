@@ -10389,6 +10389,35 @@ That last line is the real answer. **A batter needs space, and the city is alrea
 kerb.** Ground beside a 10 m embankment belongs to lots; raising it buries them, which is Q144's
 defect arriving from the other direction.
 
+**Third attempt, the same evening: face the slope in stone instead of moving it.** Kjell chose the
+retaining wall, and the cheap version of one is a surface rather than a structure — the verge, drawn
+in a wall colour where it falls away, so a fifteen-metre grass cliff reads as a city holding a road
+up instead of as a terrain fault. Built (`client/world/retaining.js` deciding where, pure and
+node-tested; the baker drawing it; a one-sided `skirt`), and then reverted too, for a reason that
+had nothing to do with the code:
+
+- **Nothing could photograph it.** The first four shots came back byte-identical to the before ones,
+  including a run with the facing painted magenta and its threshold at a millimetre. The tool had no
+  instrument, so it reported four identical pictures as a change — `street_shots` has checked
+  `streets.live > 0` since E3 and this one checked nothing. With the check in: the kerb camera bakes
+  seven chunks, and the other three bake **none**. A city camera cannot bake one at all — at span 14
+  to 30 the tile pixels are 21 to 44 and the plan says "street detail not resolvable", so L3 street
+  geometry only exists under a street camera.
+- **And a street camera at the deep cases stands underground.** At tile 75,36 and 61,35 on the
+  hilly 128 the walker is dropped inside the embankment and the frame is a grey mass.
+- **Where a camera can stand, there is nothing to see.** On the rolling 96 the rule fires in exactly
+  **3 places**, the deepest 1.7 m: a stone strip on a gentle slope, which is not a wall and not an
+  improvement. The 10–15 m cases are all on the hilly map, which is the one the camera cannot stand
+  in.
+
+So the third attempt is reverted as well, and what is left of it is the instrument: the shot tool
+now prints how many street chunks were baked and says so when the answer is none.
+
+**The blocker for Q145 is a camera, not a wall.** Nothing can photograph a steep shoulder today, and
+this project does not ship a picture change nobody has seen (ruling: the only instrument is a person
+looking at a screenshot). The next step is a harness that can stand beside one — which is small,
+concrete, and has to come first.
+
 So Q145 stays open with better facts and two different options than the ones it was answered
 against: **a retaining wall** — which is what a city actually has where a street stands ten metres
 above a river, and which is a renderer feature that changes no height, buries no lot and re-measures

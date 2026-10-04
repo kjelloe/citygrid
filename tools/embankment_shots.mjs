@@ -19,23 +19,40 @@ const tag = process.argv[4] ?? "before";
 const common = { seed: 1003, years: 20, size: 128, terrain: "hilly", tier: "high", streets: 40,
   frames: 60, width: 1280, height: 720 };
 
-const shots = [
-  // From the kerb, looking along the street: the fill is under the camera.
-  [`reports/smoke-S14-kerb-${tag}.png`, { street: `${tx},${tz}`, yaw: 1, pitch: -14 }],
-  // Facing out over the shoulder, which is where the drop is.
-  [`reports/smoke-S14-drop-${tag}.png`, { street: `${tx},${tz}`, yaw: 2, pitch: -22 }],
-  // Side on and CLOSE: a fourteen-metre face is invisible at span 24 — the
-  // first cut of this tool framed the whole town and the subject was four
-  // pixels of it. The span floors at 8; 11 is about a street's width of
-  // context, and the two yaws are a quarter turn apart so one of them is
-  // across the street rather than along it.
-  [`reports/smoke-S14-side-${tag}.png`, { mode: "city", span: 11, pitch: 7, yaw: 0.8, fx: tx, fy: tz }],
-  [`reports/smoke-S14-side2-${tag}.png`, { mode: "city", span: 11, pitch: 7, yaw: 2.4, fx: tx, fy: tz }],
-];
+// Four ways to look at the same place, from the street — which is the only
+// camera that bakes a street chunk at all (city mode at span 11 baked nothing,
+// which is why the first cut of this tool reported four identical pictures).
+// A shoulder is beside the street, so the camera looks ACROSS it and down.
+const shots = [0, 1, 2, 3].map((yaw) => [
+  `reports/smoke-S14-${tag}-yaw${yaw}.png`,
+  { street: `${tx},${tz}`, yaw, pitch: -25 },
+]);
 
+// What the street bake actually did, because a picture of a city with no baked
+// chunk in it is a picture of instanced boxes — and a shoulder is baked
+// geometry. `street_shots` has checked this since E3; the first cut of this tool
+// checked nothing and reported four identical pictures as a change.
+const ASK = `(state, view) => ({
+  live: view.stats?.streets?.live ?? 0,
+  keys: view.stats?.streets?.keys ?? "",
+  total: view.stats?.streets?.total ?? 0,
+})`;
+
+let baked = 0;
 for (const [out, camera] of shots) {
-  const r = await shoot({ out, ...common, ...camera });
-  console.log(`${out} ${JSON.stringify(camera)} ok=${r.ok} tri=${r.report?.triangles}`);
+  const r = await shoot({ out, ...common, ...camera, extra: { __ask: ASK } });
+  console.log(`${out} ${JSON.stringify(camera)} ok=${r.ok} tri=${r.report?.triangles} `
+    + `streets=${JSON.stringify(r.answer)}`);
   if (!r.ok) console.error(`  ${r.problems.slice(0, 2).join("\n  ")}`);
+  baked += r.answer?.live ?? 0;
+}
+// Printed, not failed: this is a picture tool for an open question (Q145), and
+// `test/gates.test.js` holds `_shots` tools that are not in a set to having no
+// way to fail. The number is the point — a shoulder is BAKED geometry, so a
+// picture with no baked chunk in it cannot show one, and that is what the first
+// four of these turned out to be.
+if (baked === 0) {
+  console.warn("\nnot one street chunk was baked — these are pictures of instanced boxes,"
+    + " and a shoulder is baked geometry (the camera is the problem, not the ground)");
 }
 console.log(`\nembankment shots (${tag}) at tile ${tx},${tz}`);
