@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "Q128 (A94): decayOneIn is 3 rather than 6 — decline mirrors growth instead of being 2.7 times slower than it",
+ "why": "X3a: the fixture carries the request and its approval it was always described as pinning — the refused bulldoze is now followed by seat 2 asking and seat 1 approving, and a request record is new hashed state (kind, from, to, runs, title, reason, offer, two ticks, status)",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -18,7 +18,8 @@
   "civic",
   "fire",
   "traffic",
-  "history"
+  "history",
+  "requests"
  ],
  "expect": {
   "players": 2,
@@ -143,12 +144,44 @@
   },
   {
    "command": {
+    "type": "requestDemolition",
+    "actor": 2,
+    "runs": [
+     258,
+     12
+    ],
+    "title": "Your road splits my block",
+    "reason": "I would run my pipe along it",
+    "offer": 250
+   },
+   "result": "ok",
+   "hash": "26f0d01e7ca762bc",
+   "events": [
+    "requestFiled"
+   ]
+  },
+  {
+   "command": {
+    "type": "resolveRequest",
+    "actor": 1,
+    "id": 1,
+    "approve": true
+   },
+   "result": "ok",
+   "hash": "a55ed667def67917",
+   "events": [
+    "built",
+    "requestResolved"
+   ]
+  },
+  {
+   "command": {
     "type": "setTax",
     "actor": 1,
     "rate": 8
    },
    "result": "ok",
-   "hash": "2c065762987dc0fb",
+   "hash": "9499d8e6f603c116",
    "events": [
     "taxSet"
    ]
@@ -159,7 +192,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "8a47c3338e785766",
+   "hash": "92a9bbff73fb5062",
    "events": [
     "budget"
    ]
@@ -170,12 +203,12 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "47bb32f4ae7c334c",
+   "hash": "1bef711567ed464c",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 13,
- "repinnedAt": "2026-10-02"
+ "era": 26,
+ "repinnedAt": "2026-10-04"
 }

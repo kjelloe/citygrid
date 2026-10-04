@@ -19,6 +19,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 import { civicPass, pollutionPass, coveragePass } from "../engine/civic.js";
 import { firePass, ignitionPass, isBurning, isRuined } from "../engine/fire.js";
 import { utilitiesPass } from "../engine/utilities.js";

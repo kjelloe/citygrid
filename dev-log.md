@@ -10719,3 +10719,80 @@ string. Comments stripped, strings kept; proved to fail by adding an orphan.
 
 Suite 1,692 green twice; `quick` 506 s of 540; `room` 5 s of 600. `client/precache.json` regenerated
 because `shared/build-hash.js` and `worker/patch.js` are new bytes under the hashed prefixes.
+
+## slice-X3a — asking instead of taking (2026-10-04)
+
+The half of slice 5.3 the plan thought was built. `canDemolish` has refused another player's work
+since slice 1.3, and `specs/plan.md` §2.5 and §3.9b both said the two-player fixture pinned "a
+demolition request and its approval" — while `requestDemolition`, `resolveRequest`,
+`withdrawRequest`, `reportNuisance` and `ping` had constants, a record shape in `state.requests`, a
+place in the hash, a `copyRequests` deep copy and a line in `test/omissions.test.js` saying they
+belonged to slice 5.3, and **no handler anywhere**. That is N11's failure in its multiplayer form:
+the engine could describe a request and the game could not make one.
+
+`engine/requests.js` is five handlers and a monthly pass. **One record, two kinds** — a nuisance
+report "uses the same channel" (§25.4), so it shares the inbox, the per-pair cap and the clock, and
+differs in exactly one way: it cannot be approved, only acknowledged. That is one `kind` field
+rather than a second array, which is also a save version: **2 → 3**, with a migration that gives
+every old record `demolition` and drops the checksum, for the same reason the 1 → 2 rail migration
+does.
+
+**The approval is one transaction with two purses.** The transaction is the OWNER's, because
+`canDemolish` must see the owner; its charge is moved to the requester, so the owner is never out
+of pocket for agreeing and never has to be able to afford what they are agreeing to. If the
+requester cannot pay the demolition plus the compensation, nothing happens at all and the request
+stays pending — pinned by a hash comparison, not by a tile check.
+
+Measured, `node tools/room_soak.mjs 5` (era 26): 124 commands accepted and **none refused**, **9
+requests filed and 9 approved over the wire**, one hash on the room and both clients with the clock
+stopped, worst beat 11.63 ms of 20. The ids the two clients trade are ids their own reducers
+assigned, independently, which is the whole claim of the wave in one number.
+
+**What the slice found, in the order it found it:**
+
+1. **A bulldoze is free at two of the three difficulties** (now Q155). `buildCost` is
+   `idiv(base × buildCostPercent, 100)` and `bulldoze` is **1**: relaxed 70% → 0, steady 90% → 0,
+   demanding 120% → 1. Clearing ground has cost nothing on the default difficulty for the life of
+   the project. It was found by an assertion that the requester pays "the demolition and the
+   compensation", where the demolition came to zero — and the test now asks `price()` for the
+   number rather than pinning one, which is what kept it from becoming a test that pins a defect.
+2. **`toSave` aliased the live state.** X1a found it from the outside (a joiner's save stopped
+   matching its own hash) and patched the room; this fixes it at the source. Every nested part of a
+   save now comes off `copyState`, rather than a hand-written list of which five to copy — the
+   field copied in four places and forgotten in the fifth is this project's most repeated mistake.
+3. **The omissions option-scan could not see `server/`.** The X0 review claimed `keepForDays`
+   would leave the declared-but-unread list when `server/store.js` read it, "and the pin goes red
+   in the direction that means somebody did the work". It never went red: the scan covered
+   `engine`, `client`, `shared` and `worker`. An instrument that cannot see where the work happened
+   reports that no work happened. With `server` in it, and with `requestExpiryMonths` and
+   `freeTextReasons` now read here, the list is **ten** rather than thirteen.
+4. **`room_soak` counted the commands it SENT.** Seed 1003's row 24 is water, so seat two's roads
+   were refused `invalid` every time and the gate reported "104 commands" over a five-year run in
+   which that seat built nothing. It now reads the room's own result code for every command it is
+   the author of, and goes red on a single refusal; the ground is found by asking the city instead
+   of by remembering a row.
+5. **The three-way hash compare raced the pump.** The room never pauses, so reading three hashes
+   while a frame is in flight compares a client to a city that has moved on — it called one client
+   diverged on the first run with requests in it. The gate sets the room to speed 0 (a city that
+   stands still while frames keep flowing) and then compares.
+6. **A request remembered is a request about land that changed hands.** Targeting ground captured
+   seven beats earlier refused one ask in twelve, correctly: an approval had cleared that road two
+   beats before and the ground had gone back to nature. The ask reads the owner off the mirror at
+   the moment of asking.
+
+**Not built, deliberately, and written in the module:** `setRequestPolicy` is 5.4's, the deputy
+answers nothing, and §25.4's **derelict override** — a neighbour approving the demolition of a ruin
+against its owner's wishes — needs a clock the building record does not have. `builtTick` is when
+the building went up; nothing records when it was abandoned, and inventing that field is five
+places plus a re-pin of every fixture. It is in `workitems-multiplayer.md` instead of half here.
+
+The fixture re-pin: `two_player.json` gained the two steps the documents always said it had — seat
+two asks about seat one's road, seat one approves — so the refused bulldoze is now followed by the
+command that exists because it refuses. Five of thirteen hashes moved, era 26, reason written into
+the file. Suite 1,707 green twice before it and after.
+
+**Gates.** `sim` 830 s of 900 (disaster_soak 132, traffic_gate 147, sim_sweep 552) — all green, and
+`reports/balance-era26.md` came back **byte-identical**, which is the claim worth recording: X3a
+changed nothing the deputy decides, so era 26's numbers still describe the city they were measured
+on. `room` 5 s of 600 with the requests in it, `quick` re-run after the save version bumped.
+

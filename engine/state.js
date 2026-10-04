@@ -302,6 +302,9 @@ export function copyRequests(requests) {
     var r = requests[i];
     out.push({
       id: r.id,
+      // X3a: one record, two kinds — a demolition request and a nuisance report
+      // share the inbox, the cap and the clock (gamedesign.md §25.4).
+      kind: r.kind,
       from: r.from,
       to: r.to,
       runs: r.runs.slice(),
@@ -437,6 +440,7 @@ export function writeState(sink, state) {
   for (var r = 0; r < state.requests.length; r += 1) {
     var request = state.requests[r];
     writeI32(sink, request.id);
+    writeString(sink, request.kind);
     writeU8(sink, request.from);
     writeU8(sink, request.to);
     writeI32(sink, request.runs.length);

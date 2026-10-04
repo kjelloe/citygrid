@@ -40,6 +40,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 import { NET_PRESENT } from "../engine/network.js";
 
 const W = 40;

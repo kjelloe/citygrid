@@ -26,6 +26,7 @@ import "../engine/civic.js";
 import "../engine/disasters.js";
 import "../engine/fire.js";
 import "../engine/quests.js";
+import "../engine/requests.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { createModel } from "../client/world/model.js";
 import { PALETTES } from "../client/render/palettes.js";

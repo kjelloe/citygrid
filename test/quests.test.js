@@ -25,6 +25,7 @@ import { repoRoot } from "./helpers/sources.js";
 import { rules } from "../engine/rules.js";
 import "../engine/build-commands.js";
 import "../engine/quests.js";
+import "../engine/requests.js";
 
 function blank() {
   const state = createState(defaultOptions({ seed: 4, width: 16, height: 16, seats: 1, quests: true }));

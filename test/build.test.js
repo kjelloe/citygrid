@@ -22,6 +22,7 @@ import { knownCommands } from "../engine/reducer.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
 import "../engine/economy.js";
+import "../engine/requests.js";
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import {
@@ -377,6 +378,54 @@ test("permission matrix: zoning and placement obey the same rules", () => {
   }
 });
 
+test("permission matrix: the request commands, against every relation (X3a)", () => {
+  // The inverse of the rows above. The four build commands REFUSE another
+  // player's ground; a demolition request is the command that exists *because*
+  // they do, so its row is the opposite shape: it is refused everywhere there
+  // is nobody to ask, and accepted on exactly the relation the others refuse.
+  const relations = [
+    { name: "own land", owner: 1, expect: RESULT.INVALID },
+    { name: "nature", owner: OWNER_NATURE, expect: RESULT.INVALID },
+    { name: "commons", owner: OWNER_COMMONS, expect: RESULT.INVALID },
+    { name: "another player", owner: 2, expect: RESULT.OK },
+  ];
+  for (const command of ["requestDemolition", "reportNuisance"]) {
+    for (const relation of relations) {
+      const state = world({ openBorders: false });
+      const cell = at(7, 3);
+      state.tiles.road[cell] = NET_PRESENT;
+      state.tiles.owner[cell] = relation.owner;
+      const outcome = apply(state, {
+        type: command, actor: 1, runs: encodeRuns([cell]), title: "t", reason: "r", offer: 0,
+      });
+      assert.equal(outcome.result, relation.expect, `${command} on ${relation.name}`);
+    }
+  }
+
+  // And the two commands that name a record rather than a tile: the owner
+  // answers, the sender withdraws, and neither may do the other's half.
+  const state = world({ openBorders: false });
+  const cell = at(7, 3);
+  state.tiles.road[cell] = NET_PRESENT;
+  state.tiles.owner[cell] = 2;
+  apply(state, { type: "requestDemolition", actor: 1, runs: encodeRuns([cell]), title: "t", reason: "r", offer: 0 });
+  const id = state.requests[0].id;
+  assert.equal(apply(state, { type: "resolveRequest", actor: 1, id, approve: true }).result,
+    RESULT.NOT_OWNER, "the sender answered their own request");
+  assert.equal(apply(state, { type: "withdrawRequest", actor: 2, id }).result,
+    RESULT.NOT_OWNER, "the owner withdrew somebody else's request");
+  assert.equal(apply(state, { type: "resolveRequest", actor: 2, id, approve: false }).result,
+    RESULT.OK);
+
+  // `ping` is a camera gesture: it names no tile, owns nothing, and writes
+  // nothing — the one command in the game whose permission is only "is a seat".
+  const before = hashState(state);
+  assert.equal(apply(state, { type: "ping", actor: 1, x: 3, z: 3 }).result, RESULT.OK);
+  assert.equal(apply(state, { type: "ping", actor: 9, x: 3, z: 3 }).result, RESULT.INVALID,
+    "a seat nobody holds pinged the map");
+  assert.equal(hashState(state), before, "a ping wrote to the city");
+});
+
 test("permission matrix: every registered command is covered by a row", () => {
   // The check that keeps the matrix honest as the command set grows.
   const asserted = new Set([
@@ -396,6 +445,8 @@ test("permission matrix: every registered command is covered by a row", () => {
     // graph for the first time — a no-op, since the quest catalogue is empty
     // until an adapter loads one.
     "questChoice",
+    // X3a's five, asserted in the row above and in test/requests.test.js.
+    "requestDemolition", "resolveRequest", "withdrawRequest", "reportNuisance", "ping",
   ]);
   const uncovered = knownCommands().filter((name) => !asserted.has(name));
   assert.deepEqual(uncovered, [], `commands with no permission assertion: ${uncovered}`);

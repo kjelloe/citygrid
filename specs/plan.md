@@ -154,10 +154,11 @@ is a shared-consequence system by design, and one of the main reasons neighbours
 - `copyState` deep-copies every nested mutable array on day one, including the new nested state
   (players, requests, contracts, sectors).
 - Fixtures: `test/fixtures/founding.json` pins the singleplayer founding sequence;
-  `test/fixtures/two_player.json` pins two joins, a cross-border build attempt, a bulldoze and a tax
-  change, with every intermediate hash. *(Corrected 2026-10-04: this line said "a demolition request
-  and its approval" from the first draft, and the request commands have never had a handler — X3a
-  in `workitems-multiplayer.md` builds them and extends the fixture.)*
+  `test/fixtures/two_player.json` pins two joins, a cross-border build attempt, a refused bulldoze,
+  **a demolition request and its approval**, and a tax change, with every intermediate hash.
+  *(History, because the correction is the interesting part: this line claimed the request from the
+  first draft and the request commands had no handler until X3a, 2026-10-04 — the fixture was
+  extended and re-pinned in the slice that built them.)*
 - Canonical serialization never depends on object key iteration order or on `sort()` stability —
   keys are emitted from an explicit ordered field list, entity lists are sorted by id.
 
@@ -463,9 +464,16 @@ Auto-bulldoze only ever consumes the actor's own rubble.
 `REQUEST_DEMOLITION {cells, title, reason?, offer?}` creates a request entity:
 
 ```
-{id, from, to, cells, title, reason, offer, createdTick, expiresTick, status}
-status: pending | approved | denied | withdrawn | expired | auto-approved | auto-denied
+{id, kind, from, to, runs, title, reason, offer, createdTick, expiresTick, status}
+kind:   demolition | nuisance          — one record, two kinds (X3a; §25.4 shares the channel)
+status: pending | approved | declined | withdrawn | expired | moot | acknowledged
 ```
+
+**As built (X3a).** `cells` is `runs`, the same run-length encoding every area command carries;
+`denied` is `declined`; `auto-approved`/`auto-denied` wait for `SET_REQUEST_POLICY` in 5.4, and
+`moot` is the ending §25.3 describes for a target that is already gone. `to` is read off the
+GROUND rather than taken from the command — a recipient the sender chooses is a recipient the
+sender can get wrong — so a request spanning two owners, or naming your own land, is `INVALID`.
 
 The owner sees it in an inbox with a **camera jump to the location**, the title, the reason if
 given, and the compensation offered. Approving executes the demolition as a single transaction

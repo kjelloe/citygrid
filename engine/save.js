@@ -8,7 +8,7 @@
 // compresses to a few dozen kilobytes.
 
 import { SAVE_VERSION } from "../shared/protocol.js";
-import { createState, TILE_LAYERS, hashState } from "./state.js";
+import { createState, TILE_LAYERS, hashState, copyState } from "./state.js";
 import { copyOptions, defaultOptions, OPTION_FIELDS } from "./options.js";
 import { HISTORY_FIELDS, FUNDING_SERVICES } from "./constants.js";
 
@@ -51,9 +51,17 @@ export function toSave(state) {
     var name = TILE_LAYERS[i].name;
     tiles[name] = encodeLayer(state.tiles[name]);
   }
+  // **Every nested part comes off a COPY.** `toSave` is handed to a joiner by
+  // `server/room.js` and held there, and a save that is a WINDOW into the live
+  // state stops matching its own hash the moment the next command lands — found
+  // in X1a, where the second seat to join changed the first one's save. Taking
+  // them all from `copyState` rather than copying a list of them by hand is the
+  // same reason the list below exists at all: a field copied in four places and
+  // forgotten in the fifth is this project's most repeated mistake.
+  var copy = copyState(state);
   return {
     v: SAVE_VERSION,
-    options: copyOptions(state.options),
+    options: copy.options,
     tick: state.tick,
     rng: state.rng.s,
     treasury: state.treasury,
@@ -72,15 +80,15 @@ export function toSave(state) {
     // and the result was a save that loaded a subtly different city — caught by
     // the MVP acceptance script's hash comparison, not by the save tests, whose
     // fixture had all three at their defaults.
-    disaster: state.disaster,
-    traffic: state.traffic,
-    quests: state.quests,
-    history: state.history,
-    funding: state.funding,
-    players: state.players,
-    buildings: state.buildings,
-    requests: state.requests,
-    contracts: state.contracts,
+    disaster: copy.disaster,
+    traffic: copy.traffic,
+    quests: copy.quests,
+    history: copy.history,
+    funding: copy.funding,
+    players: copy.players,
+    buildings: copy.buildings,
+    requests: copy.requests,
+    contracts: copy.contracts,
     tiles: tiles,
     // The hash the save believed in when it was written. On load it is
     // recomputed and compared: a mismatch means the file was edited, or a
@@ -116,6 +124,34 @@ registerMigration(1, function railLayer(data) {
     if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
   }
   out.v = 2;
+  return out;
+});
+
+/**
+ * 2 → 3: X3a gave a request a `kind`.
+ *
+ * A save from version 2 can only hold demolition requests — there was no
+ * nuisance report to file — so every record gets that kind, and the checksum
+ * goes for the same reason it went in the 1 → 2 migration: the digest was taken
+ * over a field list without `kind` in it.
+ */
+registerMigration(2, function requestKind(data) {
+  var out = {};
+  for (var key in data) {
+    if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
+  }
+  var requests = [];
+  var old = data.requests ? data.requests : [];
+  for (var i = 0; i < old.length; i += 1) {
+    var request = {};
+    for (var field in old[i]) {
+      if (Object.hasOwn(old[i], field)) request[field] = old[i][field];
+    }
+    if (request.kind === undefined) request.kind = "demolition";
+    requests.push(request);
+  }
+  out.requests = requests;
+  out.v = 3;
   return out;
 });
 

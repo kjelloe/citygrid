@@ -26,6 +26,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 function town(overrides) {
   // `disasters` defaults to FALSE (options.js) — free-build is the default

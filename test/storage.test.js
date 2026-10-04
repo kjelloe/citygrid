@@ -31,6 +31,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 function city(ticks = 40) {
   const state = createState(defaultOptions({ seed: 11, width: 16, height: 16, seats: 1 }));

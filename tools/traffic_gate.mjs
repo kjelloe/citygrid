@@ -31,6 +31,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 const GAMES = Number(process.argv[2] ?? 200);
 const YEARS = Number(process.argv[3] ?? 25);

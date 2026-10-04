@@ -1,6 +1,6 @@
 {
- "version": "3e24cf1272c3",
- "build": "b71f1dc663e2",
+ "version": "d4b5bfac27a2",
+ "build": "4b9ebdc67279",
  "generated": "2026-10-04",
  "files": [
   "./client/audio/audio-model.js",
@@ -175,6 +175,7 @@
   "./engine/quests.js",
   "./engine/reducer.js",
   "./engine/region-name.js",
+  "./engine/requests.js",
   "./engine/rules.js",
   "./engine/save.js",
   "./engine/state.js",

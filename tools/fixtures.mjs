@@ -52,6 +52,7 @@ const SYSTEMS = {
   disasters: () => import("../engine/disasters.js"),
   traffic: () => import("../engine/traffic.js"),
   quests: () => import("../engine/quests.js"),
+  requests: () => import("../engine/requests.js"),
   history: () => import("../engine/history.js"),
 };
 

@@ -29,6 +29,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 function play(seed, size, years, doctrine = "expand", over = {}) {
   const world = generateWorld(defaultOptions({ seed, width: size, height: size, seats: 1, waterStyle: "river", ...over }));

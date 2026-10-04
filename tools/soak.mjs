@@ -26,6 +26,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 const DEFAULT_SEEDS = [1001, 1002, 1003, 1004, 1005];
 

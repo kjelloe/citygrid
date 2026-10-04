@@ -72,8 +72,10 @@ built: the world lane through S13, behaviour through B10, the whole transport la
 5–11), the rules lanes (G1–G5, H1–H8, J1–J4, eras 12–26), the film lane's F1 and F2, and the worker
 lane's W1–W5. The balance report is `reports/balance-era26.md`.
 
-**One open question**, and nothing waits on it: Q154 asks whether a faced shoulder at a storey is
-the right ladder (S18's pictures are taken and the answer is two minutes with them). P103 answered
+**Two open questions**, and nothing waits on either: Q154 asks whether a faced shoulder at a storey
+is the right ladder (S18's pictures are taken and the answer is two minutes with them), and Q155
+reports that a bulldoze is free at two of the three difficulties — `idiv(1 × 90, 100)` is 0 — which
+is a balance era whenever it moves (found in X3a). P103 answered
 four (A125–A128) and P104 the two the omissions pass raised:
 rank is the city's until rivals mode and each seat places its own rank buildings (A129), and
 borrowing is built as rules slice **L1** (A130).
@@ -84,7 +86,7 @@ of every shot set on the played fixture, **S15** (tone and proportion against th
 **M7** (a true `RELEASE.md` and a merge — `main` is 122 commits behind), then **S16, S17, S19** and
 **B12, B13**. Beside them, on different files: **W6's second half with B11** (stable identity, a
 dirty set, life that survives a build — a build action costs 115 ms today) and the **headless half
-of multiplayer** (`workitems-multiplayer.md` X0, X1's room, X3a's request commands). F3 and the
+of multiplayer** (`workitems-multiplayer.md` ~~X0~~, ~~X1's room~~, ~~X3a's request commands~~ — all three built 2026-10-04). F3 and the
 measurement lane's D3 and D5 still wait on a phone.
 
 **The Singleplayer MVP release gate is met**: the thirteen §24 criteria pass as an automated
@@ -108,7 +110,7 @@ the file to open first.
 | `workitems-behaviour.md` | the simulation made visible and life made realistic (P59, P61, P63, P102) | **B1–B10 built 2026-09-11 → 10-04** (damage, ageing, service vehicles, doors and rush hour, roles, the overcast hour, the crowd from the air, junction conflict zones, the deputy's road reach, the pavement that asks for who a building has). **After the review of 2026-10-04: B11 (life survives a build, with W6), B12 (ambulances, pulling over), B13 (weather causes disasters, A61)** |
 | `workitems-transport.md` | the transport lane from `specs/transport-and-landmarks.md` (P61, P62): T1 the avenue; T2–T3 rail and the station; T4 water bodies, marina, ferry and port; T5 ranks, city hall, the airport; ~~T6 leisure and education coverage~~ **built 2026-10-02** (era 10, two hashed layers re-pinned); T7 the cheap catalogue rows | written 2026-09-11, Q87–Q92 answered (A65–A70); **after behaviour** — it is the first lane since cityviewer that moves the hash |
 | `workitems-rules.md` | the rules eras the transport lane and the night's measurements asked for (P93–P100) | **G1–G5, H1–H8, J1–J4 built 2026-10-03/04** — eras 12 to 26, each measured alone |
-| `workitems-multiplayer.md` | Wave 5 as work items against the seam as built (P102): ~~X0~~ **built 2026-10-04** (ws pinned, the build hash real, the `room` set declared), ~~X1's room half~~ **built 2026-10-04** (slice-X1a: room, pump, store, the socket, `room_soak` at five years with one hash and a 9.81 ms worst beat), X1's client half, X2 the lobby, X3 ownership in play, X4 drop-in and absence | written 2026-10-04. **A125: the headless room now (X0, X1's room half); everything a player sees waits for Kjell's playtest.** W6's second half runs beside X1 and lands before X3 (A126); `ws` as the sibling games have it (A127) |
+| `workitems-multiplayer.md` | Wave 5 as work items against the seam as built (P102): ~~X0~~ **built 2026-10-04** (ws pinned, the build hash real, the `room` set declared), ~~X1's room half~~ **built 2026-10-04** (slice-X1a: room, pump, store, the socket, `room_soak` at five years with one hash and a 9.81 ms worst beat), X1's client half, X2 the lobby, ~~X3a~~ **built 2026-10-04** (slice-X3a: five handlers, one record with two kinds, the fixture re-pinned, nine requests over the wire), X3b ownership on the screen, X4 drop-in and absence | written 2026-10-04. **A125: the headless room now (X0, X1's room half); everything a player sees waits for Kjell's playtest.** W6's second half runs beside X1 and lands before X3 (A126); `ws` as the sibling games have it (A127) |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
 The frame-time governor exists to decide what a phone gives up and has never run on a phone. D1
@@ -211,8 +213,8 @@ automated acceptance script, on desktop and on a real phone.
 ## Wave 5 — Multiplayer → **Multiplayer MVP**
 
 Does not start until the singleplayer MVP is accepted — **amended 2026-10-04 (A125, ruling 003): the
-headless half is built now** (`workitems-multiplayer.md`: X0, X1's room half, X3a's request
-commands), and nothing a player sees is. The slices below map onto that file as 5.1 = X0 + X1,
+headless half is built now** (`workitems-multiplayer.md`: X0, X1's room half and X3a's request
+commands, all three done 2026-10-04), and nothing a player sees is. The slices below map onto that file as 5.1 = X0 + X1,
 5.2 = X2, 5.3 = X3a + X3b, 5.4 = X4.
 
 | # | Slice | Depends on | Done when |
@@ -419,6 +421,7 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
+| Q155 | a bulldoze costs 0 at relaxed and steady (`idiv(base × buildCostPercent, 100)` with `bulldoze: 1`) — raise the price or round up? | Kjell; either answer voids the era-26 sweep, so it waits for a balance round rather than a slice |
 | Q154 | a faced shoulder is a storey deep (3 m: 130 on a hilly 128, none on a rolling 96) — is that the right ladder? | Kjell, two minutes with `reports/smoke-S18-wall*-{before,after}.png`; nothing waits on it |
 | ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |

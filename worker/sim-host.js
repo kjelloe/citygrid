@@ -36,6 +36,7 @@ import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
 import "../engine/quests.js";
+import "../engine/requests.js";
 
 export function createSimHost() {
   let state;

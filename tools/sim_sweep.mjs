@@ -36,6 +36,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const GAMES = Number(process.argv[2] ?? 200);

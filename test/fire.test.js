@@ -33,6 +33,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 const SIZE = 32;
 const TERRACE = { x0: 12, y0: 12, x1: 19, y1: 15 };

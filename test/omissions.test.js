@@ -29,6 +29,7 @@ import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
 import "../engine/quests.js";
+import "../engine/requests.js";
 
 /** Commands with a constant and no reducer handler, each with the slice that
  * will build it. Every one of these is multiplayer or a budget mechanic that
@@ -36,18 +37,17 @@ import "../engine/quests.js";
  * list exists to keep honest. */
 const NOT_BUILT = {
   takeLoan: "gamedesign.md §10 — borrowing",
+  // X3a built five of these: `requestDemolition`, `resolveRequest`,
+  // `withdrawRequest`, `reportNuisance` and `ping` left this list in the commit
+  // that gave them handlers, which is the rule below working in the direction
+  // that means somebody did the work.
   transferFunds: "slice 6.1 — multiplayer treasuries",
-  requestDemolition: "slice 5.3",
-  resolveRequest: "slice 5.3",
-  withdrawRequest: "slice 5.3",
   setRequestPolicy: "slice 5.4",
-  reportNuisance: "slice 5.3",
   claimSector: "slice 6.1",
   openBorder: "slice 6.1",
   mutualAid: "slice 6.1",
   offerContract: "slice 6.1",
   resolveContract: "slice 6.1",
-  ping: "slice 5.3",
 };
 
 function commandNames() {
@@ -157,7 +157,7 @@ test("every module under server/ is reached from its entry point (X1)", () => {
 });
 
 test("the options the project declares and nothing reads are exactly these (Q148)", () => {
-  // Thirteen options are declared in `engine/options.js` — most of them Wave 5's
+  // Ten options are declared in `engine/options.js` — most of them Wave 5's
   // contract, §3.3's regency and abandonment rules, the season length, the
   // lobby's chat and privacy switches — and **no code anywhere reads them**.
   // Declaring ahead of the mechanics is reasonable; leaving it unwritten is how
@@ -172,14 +172,17 @@ test("the options the project declares and nothing reads are exactly these (Q148
   // So the list is pinned rather than argued about. Adding a fourteenth is a
   // deliberate act; wiring one up turns this red in the direction that means
   // somebody did the work.
-  const files = ["engine", "client", "shared", "worker"].flatMap((dir) => jsFilesIn(dir))
+  // `server` is in the list since X1a, and it had to be: the X0 review claimed
+  // `keepForDays` would leave this list when `server/store.js` read it, and it
+  // did not, because the scan could not see the server at all. An instrument
+  // that cannot see where the work happened reports that no work happened.
+  const files = ["engine", "client", "shared", "worker", "server"].flatMap((dir) => jsFilesIn(dir))
     .filter((f) => !/(engine\/options|engine\/rules)\.js$/.test(f.path))
     .map((f) => stripCommentsAndStrings(f.source));
   const unread = OPTION_FIELDS.filter((name) => !files.some((src) => new RegExp(`\\b${name}\\b`).test(src)));
   assert.deepEqual(unread.sort(), [
     "abandonYears", "absenceYears", "chatEnabled", "derelictYears", "disasterAid",
-    "freeTextReasons", "keepForDays", "lateJoin", "mutualAid", "privacy",
-    "requestExpiryMonths", "seasonYears", "splitRule",
+    "lateJoin", "mutualAid", "privacy", "seasonYears", "splitRule",
   ], "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
 });
 

@@ -27,6 +27,7 @@ import "../engine/civic.js";
 import "../engine/fire.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/requests.js";
 
 function blank() {
   const state = createState(defaultOptions({ seed: 5, width: 16, height: 16, seats: 1 }));

@@ -39,6 +39,7 @@ import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
 import "../engine/quests.js";
+import "../engine/requests.js";
 
 setConfig(DEFAULTS);
 const cfg = getConfig();

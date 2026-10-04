@@ -11,6 +11,7 @@ import "../engine/civic.js";
 import "../engine/disasters.js";
 import "../engine/fire.js";
 import "../engine/quests.js";
+import "../engine/requests.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
 import { createModel } from "../client/world/model.js";

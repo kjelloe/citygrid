@@ -104,6 +104,28 @@ test("one city hall per seat, and the refusal is not 'that cannot go there'", ()
   assert.equal(place(state, "cityHall", 12, 12, 2).result, RESULT.OK);
 });
 
+test("rank is the CITY's, and each seat places its own rank buildings (A129)", () => {
+  // The ruling, as a test. Shared City has one region, one quest ladder and one
+  // `rank`; A69's "the seat's rank" waits for Region Rivals (slice 6.2), where
+  // quest variables become keyed by seat. The half that was never proved is
+  // this one: a seat that has completed NOTHING may build the rank-2 building,
+  // because the city earned it and the city is what rank belongs to — and it
+  // gets exactly one, because `onePerSeat` is checked against the actor.
+  const state = city();
+  setRank(state, 2);
+  assert.ok(isUnlocked(state, "cityHall"), "the city did not earn its own rank");
+
+  for (const seat of [1, 2]) {
+    assert.equal(place(state, "cityHall", 2 + seat * 6, 4, seat).result, RESULT.OK,
+      `seat ${seat} could not place the hall the CITY unlocked`);
+    assert.equal(place(state, "cityHall", 2 + seat * 6, 12, seat).result, RESULT.ALREADY_BUILT,
+      `seat ${seat} got a second hall`);
+  }
+  const halls = state.buildings.filter((b) => b.def === "cityHall");
+  assert.deepEqual(halls.map((b) => b.owner).sort(), [1, 2],
+    "two halls, one each, and the inspector can say whose (X3b shows it)");
+});
+
 // --- the progression ---------------------------------------------------------
 
 test("every rank the catalogue gates on is a rank some quest grants", () => {

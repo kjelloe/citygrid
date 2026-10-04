@@ -74,7 +74,9 @@ X1 and lands before X3 (A126).
 2. **Rank is one number for the whole city — and that is the ruling for the MVP (A129).**
    Shared City has one ladder; rank becomes per seat in slice 6.2. Each seat places its own rank
    buildings: `onePerSeat` is already checked against the actor, so X3a adds the two-seat test
-   (both mayors build a city hall, neither a second) and X3b shows whose each one is.
+   (both mayors build a city hall, neither a second) and X3b shows whose each one is. **Done in
+   X3a** (`test/unlock.test.js`): a seat that has completed nothing places the rank-2 building,
+   because the CITY earned it, and gets exactly one.
 3. **There is no speed command and there should not be one.** The tick count rides the frame, so
    speed is the room's, not the state's: a `C2S` message, host-only at the MVP, with the majority
    vote of plan §3.4 adapted from `../CarrierDominion/server/vote.js` afterwards. X2.
@@ -242,6 +244,21 @@ one hash; `reach_smoke` and `ui_smoke` cover the two new screens.
 
 ## X3a — Requests in the engine (L) — slice 5.3, the half the plan thought was built
 
+**BUILT (slice-X3a, 2026-10-04).** `engine/requests.js`: five handlers, one record with two kinds,
+a monthly pass for the clock and the quiet endings. `test/requests.test.js` (14 tests), the
+permission matrix's request rows, A129's two-seat city-hall proof in `test/unlock.test.js`, the
+two-player fixture extended to the request and its approval and re-pinned, and `room_soak` now
+files nine requests over the wire and answers them from the owner's inbox. Save version 2 → 3 with
+a migration, because a request gained a `kind`. Three things came out of it: **a bulldoze is free
+at two of three difficulties** (Q155 — `idiv(1 × 90, 100)` is 0, which is how the money assertion
+found it), **`toSave` aliased the live state** and now builds off `copyState`, and the omissions
+option-scan **could not see `server/`**, so the X0 review's claim that `keepForDays` would leave
+the unread list was wrong until the scan was widened. What is NOT built, deliberately:
+`setRequestPolicy` (5.4, X4's regency) and §25.4's **derelict override** — a neighbour approving
+the demolition of a ruin against its owner's wishes needs a clock the building record does not
+have (`builtTick` is when it went up, not when it was abandoned), and inventing one is a hashed
+field in five places and a re-pin of every fixture. Written here rather than half-built.
+
 **Goal.** A demolition request is state, a command and a hash.
 
 **Do.** Handlers for `requestDemolition`, `resolveRequest`, `withdrawRequest`, `reportNuisance`
@@ -257,7 +274,17 @@ described as pinning, and re-pinned through `/fixture-repin` with that reason.**
 answers by policy (X4 builds the policy command; here it approves nothing).
 
 **Tests first.** `test/requests.test.js`; the matrix; the fixture. **Gate.** the `sim` set
-(`disaster_soak` with requests in play); `room_soak` issues requests between its two deputies.
+(`disaster_soak` with requests in play); `room_soak` issues requests between its two clients —
+scripted, not deputies, for the reason the gate's own header gives.
+
+**Measured at X3a.** `room_soak` five years: 124 commands accepted and **none refused**, 9 requests
+filed and 9 approved over the wire, one hash on all three machines with the clock stopped, worst
+beat 11.63 ms. Two of those numbers are new instruments rather than new behaviour, and both found
+something: the gate used to count the commands it **sent** (on seed 1003 one seat's rows are water,
+so a whole seat built nothing for five years while the gate reported a busy city), and it used to
+compare the three hashes **while the pump was still beating**, which read one client a frame behind
+and called it a divergence. It now reads the room's own result code for every command, and stops
+the clock before comparing.
 
 ## X3b — Ownership in play, on the screen (L) — slice 5.3
 
@@ -304,7 +331,8 @@ singleplayer playtest was.
 
 ## Order
 
-**~~X0~~ → ~~X1's room half~~ ∥ W6 second half ∥ X3a (engine, no player-visible change) — and
-there it stops until Kjell has played (A125).** X0 and X1's room half are built (2026-10-04). Then X1's client half → X2 → X3b → X4. W6 runs beside X1 because they touch
+**~~X0~~ → ~~X1's room half~~ ∥ W6 second half ∥ ~~X3a~~ (engine, no player-visible change) — and
+there it stops until Kjell has played (A125).** X0, X1's room half and X3a are built (2026-10-04);
+what is left before the playtest is W6's second half, which is a renderer slice. X0 and X1's room half are built (2026-10-04). Then X1's client half → X2 → X3b → X4. W6 runs beside X1 because they touch
 different files and X3 cannot be played without it. Wave 6 (modes, seasons, scale to sixteen,
 operations) is not in this file and does not start until the release gate above is met.
