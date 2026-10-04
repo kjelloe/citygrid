@@ -517,6 +517,50 @@ RATE, not a single step, and plant the old behaviour to see it fire.
 more standing buildings, which means more demand satisfied and more population. If it moves more
 than the others, that is the finding, not a problem.
 
+## L2 — The price of clearing ground (S, balance era) — Q155, found in X3a
+
+**Goal.** A cost the rules declare is a cost somebody pays.
+
+**Analysis.** `buildCost` is `idiv(base × buildCostPercent, 100)` and `bulldoze` is **1**, so:
+
+| difficulty | `buildCostPercent` | a bulldoze costs |
+| --- | --- | --- |
+| relaxed | 70 | **0** |
+| steady (the default) | 90 | **0** |
+| demanding | 120 | 1 |
+
+Clearing ground has been free on the default difficulty since slice 1.3, and nobody chose that.
+Every other entry survives the scaling — `dezone` 2 → 1, `clearForest` 3 → 2, `road` 10 → 9 — so this
+is the smallest value in the table being annihilated by a floor, not a tuning question. It was found
+by an assertion in X3a that an approved request charges the requester "the demolition and the
+compensation", where the demolition came to zero.
+
+**Three answers, and a recommendation.**
+
+1. **A floor of 1 where the base is non-zero** — `idiv` as it is, then `Math.max(1, …)`. Moves
+   exactly one number at exactly two difficulties, which is the defect and nothing else. Same shape
+   as the fix in [a rate applied to a tap is zero]: a price that exists must be payable.
+2. **Round up instead of down** in `buildCost`. Honest arithmetic, and it moves `zone` (10 → 11 at
+   steady), `dezone` (1 → 2), `clearForest` (2 → 3) and several others at once — a real balance era
+   on a table nobody asked to change.
+3. **Raise the base** to survive scaling (`bulldoze: 5`). Changes the feel of demolition at every
+   difficulty, including demanding, where it is already priced.
+
+**Recommended: (1).** It is the only one whose blast radius is the defect.
+
+**But it is still an era.** The deputy clears ruins (B1a) and dezones what it paves (H4), so a
+bulldoze that costs money changes what it can afford in a turn — **a change to what the deputy
+decides voids every sweep number** (CLAUDE.md). So: two arms of the 200-game sweep, the floor and
+the null, the era bumped and the report naming the difference even if it is nothing.
+
+**Tests first.** `test/build.test.js`: a bulldoze is charged at every difficulty, and the quote the
+tool shows equals what the player is charged (one code path, J1's rule). `test/economy.test.js` if
+clearing now shows up in the month's spend.
+**Gate.** The `sim` set with both arms, and `reports/balance-era<N>.md` saying what moved.
+
+**Done when** clearing ground costs something at every difficulty, the sweep has measured what that
+did to the deputy's city, and the era says so.
+
 ## L1 — Borrowing (S, engine + one control) — A130 (Q153)
 
 **Goal.** A city in trouble has a way out that costs something. `specs/gamedesign.md` §9.5 has

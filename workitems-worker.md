@@ -241,6 +241,23 @@ The dirty set's target is now exact: **`deriveLanes` 27 ms** — 2,808 lanes and
 3.2 and `deriveCorridors` 1.9, against a build action that invalidates 2 corridors of 1,402 and 12
 lanes of 8,896. A frame is 16.7 ms, so the only way there is to skip the 99.86%.
 
+**Sub-corridor identity: analysed, and NOT an item.** A key cannot survive a street being split,
+so B11 re-seats those entities geometrically, and the obvious next thought is a finer identity —
+keying a lane by its first tile rather than by its corridor. It does not help: a split changes the
+lane's *extent*, so a car at metre 30 of a 50 m lane is a car at metre 30 of a 20 m lane, a junction
+and a 25 m lane, and mapping that needs the geometry anyway. The geometric re-seat is already
+measured (`lanes_dump`: one person, **1.3 m**, on a one-tile split of the deputy's played town) and
+is correct where a finer key would be an approximation. Written down so it is a decision rather
+than an omission.
+
+**Services across a build: analysed, and NOT an item.** A service vehicle holds a ROUTE of link ids
+and half a route is a vehicle driving down a street that no longer exists. The played town carries
+**1 engine and 6 patrols** (`lanes_dump`); an engine exists only while its fire does and a patrol
+re-routes from its station, so the blink is up to seven vehicles for a fraction of a second against
+hundreds of cars and people that now survive. If a dispatch blink is ever *seen*, the fix is to
+re-route from where the vehicle stands (`leg()` already does exactly that when a patrol reaches a
+beat) rather than to carry a stale route.
+
 **So W6 is: stable identity, then a dirty set.**
 1. A corridor's identity is its geometry, not its index — a key that survives a rebuild (the ends of
    its polyline, or a hash of its tiles). Same for a lot (its anchor tile) and a lane (its corridor

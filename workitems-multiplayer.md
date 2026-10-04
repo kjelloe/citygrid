@@ -227,6 +227,80 @@ in the dev-log as the first measured row of plan §3.8.
 
 **Must not change:** any fixture hash; `offline_smoke`; the worker's message shapes.
 
+## X1b — The door has words (S) — found 2026-10-04, ruling 027
+
+**Goal.** Every way the door can say no is a sentence a player can read, in both catalogues, before
+anybody is standing at it.
+
+**Analysis.** `shared/protocol.js` has seven `REFUSAL` codes and **not one of them has words**, in
+either locale. `RESULT` codes are covered — `test/i18n.test.js` asserts both directions, and P98
+built that after H6's `TOO_STEEP` nearly shipped mute — and the refusals were simply never added to
+the same test, so the gap is invisible rather than known. Two of them are load-bearing in a way the
+others are not: `versionMismatch` and `buildMismatch` are the *only* thing standing between a stale
+client and a silent desync (plan §3.9), and what the player must read is **reload**, not "refused".
+
+And a defect found while reading them: **a taken seat is refused as `ROOM_FULL`**
+(`server/room.js`). A room with one of four seats taken is not full, and a player told "the room is
+full" will not try another seat. `REFUSAL.SEAT_TAKEN` is the eighth code.
+
+**Do.**
+- `REFUSAL.SEAT_TAKEN`, used where `join` means it.
+- `refused.<code>` in `data/i18n/en.json` and `no.json` — eight keys each. The two mismatch strings
+  say **reload**; `rateLimit` borrows the register of `result.rateLimited`, which already exists.
+- `test/i18n.test.js` gains the same pair of assertions it makes for `RESULT`: every code has words
+  in every catalogue, and every `refused.*` string is a code the protocol can actually give.
+
+**Not in this item.** Showing them. The join screen is X2's and the toast is X1's client half; this
+is the half that can be done now and the half that is cheapest to forget once a screen exists.
+
+**Done when** the suite refuses to go green with a wordless refusal code, in either direction.
+
+## X3c — The derelict override (M) — gamedesign §25.4, found in X3a
+
+**Goal.** A ruin left to rot against a neighbour's park can be removed on the neighbour's request,
+against the owner's wishes, after `derelictYears`.
+
+**Analysis — the clock does not exist.** §25.4 says "a building abandoned for longer than a set
+number of years may have its demolition approved on a neighbour's request". The engine knows a tile
+is a ruin (`FLAG_RUINED`, set by `fire.js` and `disasters.js`) and it knows when every *building*
+went up (`builtTick`), and **nothing records when a tile became a ruin** — a ruin is not a building
+record at all, it is a flag on a tile whose building is already gone. So the rule cannot be written
+without new hashed state. Four shapes were considered:
+
+| shape | cost | verdict |
+| --- | --- | --- |
+| a `since` tile layer (u16 months) | a new `TILE_LAYERS` entry: the RLE save, the hash, `copyState`, the patch, 32 KB at 128² before compression | rejected — a whole layer for a few dozen tiles |
+| `ruinedTick` on the building record | ruins have no building record | impossible |
+| derive it from `state.history` | city-wide samples, not per tile | impossible |
+| **a `derelicts` list in state** | the same shape `requests` and `contracts` already have: five places, sparse, canonical by tile order | **chosen** |
+
+A list also answers a second question for free: **B1a's deputy scans the map for ruins** to clear
+them, and a list is what it should be reading.
+
+**Do.**
+- `state.derelicts: [{ tile, sinceTick }]`, kept sorted by tile — written where `FLAG_RUINED` is
+  set, removed where it is cleared (`bulldozeInto`, and whatever rebuilds on the tile).
+- The five places, every time: `createState`, `copyState`, `writeState`, `HASHED_FIELDS` in
+  `test/fixture.test.js`, and the save with a **`SAVE_VERSION` bump** and a migration that starts an
+  old save's ruins at its own tick (the honest default: nobody can prove how long they have stood).
+- `resolveRequest`: the **requester** may approve their own demolition request when every target tile
+  is in `derelicts` and `state.tick - sinceTick >= derelictYears * TICKS_PER_YEAR`. The owner keeps
+  every earlier answer they have today; this is an extra door, not a replacement.
+- The deputy reads the list instead of scanning (B1a's `keepClear`), and the sweep says whether that
+  changes what it does — **a change to what the deputy decides voids every sweep number** (CLAUDE.md),
+  so it is the same slice or a stated era bump.
+- "Derelict buildings are visibly marked" (§25.4) is the renderer's half and belongs with X3b.
+
+**Tests first.** `test/requests.test.js`: a ruin younger than `derelictYears` cannot be force-approved
+and the refusal says which (`NOT_OWNER` is wrong here — the ground is not the reason, the clock is,
+so this wants its own `RESULT` code and therefore words in both catalogues, three layers, ruling 027);
+an older one can; bulldozing clears the entry; two ruins of different ages in one request take the
+younger one's answer. `test/save.test.js`: the list round-trips and an old save migrates.
+**Gate.** `disaster_soak` (ruins are what it makes) and the `sim` set with the deputy's new reader.
+
+**Done when** a neighbour can clear a five-year ruin, a four-year one is refused with a reason that
+names the clock, and the sweep says what the deputy's new reader did to the city.
+
 ## X2 — The lobby (M) — slice 5.2
 
 **Goal.** Four people configure and start a room without a URL parameter.
