@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
-import { RESULT } from "../shared/protocol.js";
+import { RESULT, REFUSAL } from "../shared/protocol.js";
 
 const dir = join(repoRoot, "data", "i18n");
 const locales = Object.fromEntries(
@@ -48,6 +48,47 @@ test("every result.* string is a code the reducer can actually give", () => {
       .map((key) => key.slice("result.".length))
       .filter((code) => !codes.has(code));
     assert.deepEqual(orphans, [], `${name} has words for results the reducer cannot give: ${orphans.join(", ")}`);
+  }
+});
+
+// --- and every way the DOOR can say no (X1b, ruling 027) ---------------------
+
+test("every REFUSAL code has a string in every catalogue", () => {
+  // The same claim as the one above, for the seven — now eight — ways a room
+  // can turn a client away, and it was simply never made: `RESULT` was covered
+  // after P98 and `REFUSAL` was added to the protocol in the same wave with
+  // nothing watching it. Two of these are the only thing between a stale client
+  // and a silent desync (plan §3.9), so what the player reads has to be
+  // "reload", not "refused".
+  for (const code of Object.values(REFUSAL)) {
+    for (const [name, catalogue] of Object.entries(locales)) {
+      assert.ok(Object.hasOwn(catalogue, `refused.${code}`),
+        `${name} has no words for REFUSAL ${code} — a player turned away for this reason reads "refused.${code}"`);
+    }
+  }
+});
+
+test("every refused.* string is a code the door can actually give", () => {
+  const codes = new Set(Object.values(REFUSAL));
+  for (const [name, catalogue] of Object.entries(locales)) {
+    const orphans = Object.keys(catalogue)
+      .filter((key) => key.startsWith("refused."))
+      .map((key) => key.slice("refused.".length))
+      .filter((code) => !codes.has(code));
+    assert.deepEqual(orphans, [], `${name} has words for refusals the door cannot give: ${orphans.join(", ")}`);
+  }
+});
+
+test("the two mismatch refusals tell the player to reload", () => {
+  // Not decoration: a client one deploy behind is refused precisely so that it
+  // does not diverge silently, and a refusal the player cannot act on wastes
+  // the only thing the handshake bought.
+  for (const [name, catalogue] of Object.entries(locales)) {
+    for (const code of [REFUSAL.VERSION_MISMATCH, REFUSAL.BUILD_MISMATCH]) {
+      const words = catalogue[`refused.${code}`] ?? "";
+      assert.match(words, /reload|last inn|oppdater/i,
+        `${name}: "${words}" does not tell the player to reload (${code})`);
+    }
   }
 });
 

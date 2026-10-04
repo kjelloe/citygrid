@@ -269,15 +269,25 @@ test("a client that has diverged is found at the month and resynced", () => {
   assert.equal(ca.hash(), room.hash(), "a resynced client diverged again at the next month");
 });
 
-test("a seat that is taken is refused, and the room says why", () => {
-  const room = createRoom({ options: OPTIONS });
+test("a seat that is taken is refused as TAKEN, and a full room as full (X1b)", () => {
+  // Two different refusals, because they tell the player to do two different
+  // things: pick another seat, or go away. `join` answered `ROOM_FULL` for
+  // both, so a room with three seats free told a player it was full.
+  const room = createRoom({ options: { ...OPTIONS, seats: 2 } });
   joined(room, "a", 1);
-  const connection = wire("b");
-  const refusal = room.join(connection, {
+  const sameSeat = wire("b");
+  assert.equal(room.join(sameSeat, {
     type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 1,
-  });
-  assert.equal(refusal, REFUSAL.ROOM_FULL);
-  assert.equal(connection.last(S2C.REFUSED)?.reason, REFUSAL.ROOM_FULL);
+  }), REFUSAL.SEAT_TAKEN);
+  assert.equal(sameSeat.last(S2C.REFUSED)?.reason, REFUSAL.SEAT_TAKEN);
+
+  // The second seat is free, so this one is let in — and then the room IS full.
+  joined(room, "b", 2);
+  const third = wire("c");
+  assert.equal(room.join(third, {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 3,
+  }), REFUSAL.ROOM_FULL);
+  assert.equal(third.last(S2C.REFUSED)?.reason, REFUSAL.ROOM_FULL);
 });
 
 test("the pump records its own jitter, and says nothing until it has enough", () => {

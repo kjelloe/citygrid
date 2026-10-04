@@ -50,6 +50,10 @@ export const REFUSAL = Object.freeze({
   VERSION_MISMATCH: "versionMismatch",
   BUILD_MISMATCH: "buildMismatch",
   ROOM_FULL: "roomFull",
+  // X1b: a room with one of four seats taken is not full, and a player told it
+  // is will not try another seat. `join` had been answering `ROOM_FULL` for
+  // both, which is a refusal that lies about what to do next.
+  SEAT_TAKEN: "seatTaken",
   ROOM_CLOSED: "roomClosed",
   BAD_CODE: "badCode",
   BANNED: "banned",

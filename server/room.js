@@ -87,7 +87,9 @@ export function createRoom(given = {}) {
     const mismatch = compatible(hello.version, hello.build, buildHash());
     if (mismatch) return refuse(mismatch);
     const seat = Number(hello.seat) || 1;
-    if (seats.has(seat)) return refuse(REFUSAL.ROOM_FULL);
+    // `SEAT_TAKEN`, not `ROOM_FULL` (X1b): the room may have three seats free.
+    if (seats.has(seat)) return refuse(REFUSAL.SEAT_TAKEN);
+    if (seats.size >= state.options.seats) return refuse(REFUSAL.ROOM_FULL);
 
     // **A seat joining is a COMMAND, not a side effect.** `CMD_JOIN` adds a
     // player and touches `lastSeenTick`, which is hashed — so a room that

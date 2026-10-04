@@ -10965,3 +10965,28 @@ fixture re-pin) and `HASHED_FIELDS` does *not* change, so the two-file rule cann
 instrument before timing a phase**; and a green suite does not mean the page boots. The
 slice-workflow skill learned the parse test, the precache step and the two sync targets a protocol or
 an event touches. Memories: `the-first-run-is-warmup`, `an-event-nobody-can-see`.
+
+## slice-X1b — the door has words, and a taken seat is not a full room (2026-10-05)
+
+Ruling 027 says a refusal needs words. `test/i18n.test.js` has asserted exactly that for every
+`RESULT` code since P98 — both directions, so a string for a code the reducer cannot give is also
+red — and **`REFUSAL` was never added to it**. Seven codes, two catalogues, fourteen missing
+strings, and the gap was invisible rather than known.
+
+Sixteen strings now (eight codes × two locales), beside the `result.*` block where a reader looks,
+with three assertions: every code has words in every catalogue, every `refused.*` string is a code
+the door can give, and **the two mismatch refusals tell the player to reload** — matched against
+`/reload|last inn|oppdater/i`, because those two are the only thing standing between a stale client
+and a silent desync (plan §3.9) and a refusal the player cannot act on wastes what the handshake
+bought.
+
+**The defect found while reading them.** `join` answered `REFUSAL.ROOM_FULL` when the SEAT was
+taken, so a room with three of four seats free told a player it was full — a refusal that lies about
+what to do next. `REFUSAL.SEAT_TAKEN` is the eighth code, `join` now checks the two separately
+(`seats.size >= state.options.seats` is the full room, which nothing had ever checked), and
+`test/room.test.js` drives both: the same seat is refused as taken, the free seat is let in, and the
+third player is refused as full.
+
+The strings have no screen yet — the toast is X1's client half and the join screen is X2's — so they
+are in `test/reachability.test.js`'s `NOT_YET` list with the slice that will show each one, which is
+how that list is supposed to grow. Suite 1,739 green twice; `room` 5 s.
