@@ -117,24 +117,43 @@ test("every command the singleplayer game needs has a way to reach it", () => {
   }
 });
 
-test("the placeholder directories are still empty, or their slice has started", () => {
-  // `server/`, `worker/` and `client/transport/` were created by the Wave 0
-  // skeleton and are empty. That is correct — Waves 5 and 6 have not started.
-  // This test exists so that half-finished work in one of them cannot sit
-  // unnoticed between waves.
+test("every module under server/ is reached from its entry point (X1)", () => {
+  // This replaces "the placeholder directories are still empty". `server/`,
+  // `worker/` and `client/transport/` were created empty by the Wave 0
+  // skeleton and this test asserted they stayed that way until their slice —
+  // `worker/` left the list in W2, `client/transport/` in W4, `client/lobby/`
+  // when the new-game screen was built, and **`server/` leaves it in X1**. The
+  // list is now empty, and a loop over an empty list is a test that cannot
+  // fail.
   //
-  // `client/lobby/` left this list when the new-game screen was built: it is
-  // the singleplayer half of slice 5.2, and slice 5.2 adds seats to it rather
-  // than replacing it (Q22). `worker/` left it in W2 and `client/transport/`
-  // in W4, which are their slices: the reducer runs in `worker/` now, and the
-  // mirror takes a transport rather than building its own worker.
-  for (const dir of ["server"]) {
-    const path = join(repoRoot, dir);
-    if (!existsSync(path)) continue;
-    const contents = readdirSync(path);
-    assert.deepEqual(contents, [],
-      `${dir} has files but its wave has not started — move them or start the slice: ${contents.join(", ")}`);
-  }
+  // What takes its place is the same question asked of started work: X1 is five
+  // modules and one of them could be imported by nothing. A name grep would be
+  // the wrong instrument — `server/store.js` appears in no test by name and is
+  // reached through `server/index.js` — so the imports are FOLLOWED, from the
+  // entry point the process actually starts at.
+  const entry = "index.js";
+  const dir = join(repoRoot, "server");
+  if (!existsSync(dir)) return;
+  const present = readdirSync(dir).filter((name) => name.endsWith(".js"));
+  assert.ok(present.includes(entry), "server/ has no index.js to start from");
+
+  const reached = new Set();
+  const follow = (name) => {
+    if (reached.has(name)) return;
+    reached.add(name);
+    // Comments stripped but strings kept: an import specifier IS a string, and
+    // `stripCommentsAndStrings` would delete the very path being looked for —
+    // which is how the first cut of this test reported all four modules as
+    // orphans.
+    const text = readFileSync(join(dir, name), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    for (const match of text.matchAll(/from\s*"\.\/([\w.-]+\.js)"/g)) follow(match[1]);
+  };
+  follow(entry);
+
+  const orphans = present.filter((name) => !reached.has(name));
+  assert.deepEqual(orphans, [],
+    `server/ modules nothing imports: ${orphans.join(", ")} — wire them up or delete them`);
 });
 
 test("the options the project declares and nothing reads are exactly these (Q148)", () => {

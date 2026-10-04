@@ -48,20 +48,27 @@ the desync detector, the replay verifier and the multiplayer acceptance gate.
 
 ```sh
 node tools/serve.mjs        # then open the printed URL — boots straight into a playable city
+node server/index.js 8123   # the same page, plus a room on /ws for the headless gate (X1)
 ```
+
+The second one is X1's server. It serves singleplayer exactly as `serve.mjs` does: there is no
+`?room=`, no socket in the page and no lobby until the multiplayer client half is built (A125), so
+the only thing that talks to `/ws` today is `tools/room_soak.mjs`.
 
 Build a road, zone beside it, place a power plant and a pump, and watch it grow.
 One finger paints when a tool is selected and pans when none is; two fingers are
 always the camera. Tap with no tool to inspect a tile.
 
-**Gates.** One runner, three sets, and a time budget each — a gate that grows past its share is
+**Gates.** One runner, ten sets, and a time budget each — a gate that grows past its share is
 a finding rather than a fact of life. Every gate that exists is in a set, and `test/gates.test.js`
 fails if one is not.
 
 ```sh
 node tools/gates.mjs quick    # the ten browser smokes and the §24 acceptance script
-node tools/gates.mjs render   # walkthrough, passability, lanes_dump, budget_gate — after a renderer slice
+node tools/gates.mjs render   # walkthrough, passability — nine seconds, after any renderer slice
+node tools/gates.mjs lanes    # lanes_dump, and node tools/gates.mjs budget for budget_gate (split at S18)
 node tools/gates.mjs sim      # the soaks: disaster_soak, traffic_gate, sim_sweep
+node tools/gates.mjs room     # two ws clients, one room, five city years on one hash (X1)
 node tools/gates.mjs all      # everything
 node tools/gates.mjs --list   # every gate, which sets run it, and what it checks
 ```

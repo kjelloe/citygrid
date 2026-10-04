@@ -1,5 +1,5 @@
 {
- "version": "ef76a9188c5f",
+ "version": "3e24cf1272c3",
  "build": "b71f1dc663e2",
  "generated": "2026-10-04",
  "files": [
@@ -196,6 +196,7 @@
   "./shared/protocol.js",
   "./shared/statehash.js",
   "./vendor/three.module.js",
+  "./worker/patch.js",
   "./worker/sim-host.js",
   "./worker/sim-worker.js"
  ]

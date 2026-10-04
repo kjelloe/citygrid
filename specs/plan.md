@@ -238,7 +238,11 @@ drives directly. Two consequences, both now decided rather than discovered later
   client's — which is what §3.9's build hash is for, and what makes the handshake load-bearing
   rather than ceremonial;
 - the snapshot the server sends on join and the `snapshot` reply the worker already produces are
-  the same shape, and should stay one shape (asserted by `test/session-worker.test.js` since X0);
+  the same shape, and should stay one shape (asserted by `test/session-worker.test.js` since X0)
+  — **restated by X1**: a joiner and a resyncing client are sent the SAVE, because what they do
+  with it is start a reducer, and the worker's `{layers, rest}` patch is what a mirror is built
+  from afterwards. One city, two shapes, each with one job: bytes to start from, a patch to draw
+  from. `server/room.js` carries the reason;
 - and the transport contract needs an inbound channel. `post(message) → Promise<reply>` is all a
   worker needs; a room broadcasts a frame carrying **other seats'** commands, which no promise is
   waiting for. `onMessage(handler)` is the member that makes a socket a transport rather than a
@@ -260,8 +264,11 @@ local and immediate.
   your own last action, refused once somebody else owns the ground it would rewind.
 - Rejection: an illegal command is rejected identically by client and server; the client's
   optimistic ghost preview is never state, so a rejection is a UI toast, not a rollback.
-- Desync: a hash mismatch triggers a resync — the server sends a full snapshot and the client
+- Desync: a hash mismatch triggers a resync — the server sends the city and the client
   logs the divergent sequence number to a replay artifact. The alarm is loud, never silent.
+  **A resync is a re-join** (X1): the client restarts its reducer from the save in the SNAPSHOT.
+  The first cut sent the mirror patch instead and `room_soak` showed it heals nothing — the
+  client's own simulation is what diverged, and it writes over a patched mirror at the next frame.
 - Bandwidth: worst case at 128×128 a full snapshot is ~250 KB before compression; that is a join
   cost, not a per-tick cost.
 

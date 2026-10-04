@@ -10652,3 +10652,70 @@ before anything else), `offline_smoke` included.
   taken, and it is a picture decision rather than a measurement.
 - S18's other two halves — the deck as one profile, the water as one surface — were already in the
   item and stay there.
+
+## slice-X1a — the room half: a server, a pump and two clients on one hash (2026-10-04)
+
+The headless half of X1 (A125: the room now, nothing a player sees until the playtest). Five
+modules, and because the instruction was to take the siblings' practice rather than their code
+(A127), each one names what it descends from — read first, then written against this game:
+
+| module | ancestor | what was taken, and what was not |
+| --- | --- | --- |
+| `server/room.js` | `../CarrierDominion/server/app.js`, `doorman.js` | one authoritative state, a queue drained on a beat, a frame to every connection; a refusal carries a reason. **Not** its wire: that game broadcasts fog-filtered snapshots, this one broadcasts accepted commands (plan §3.6). |
+| `server/pump.js` | `../CarrierDominion/server/clock.js` + `../Fireline/server/metrics.js` | an injectable clock that owes ticks rather than sleeping, and Fireline's `jitterDigest` shape — p50/p99/max/late% and **undefined below ten samples**, because a jitter number from three beats is a rumour. |
+| `server/store.js` | `../CarrierDominion/server/save.js` | write to a temp file and rename, so a process that dies mid-write leaves the previous save whole; started and never awaited by the beat. |
+| `server/index.js` | `../CarrierDominion/server/index.js`, `static.js`, `doorman.js` | one HTTP server with the socket attached, resolve-then-contain for static paths, nothing before HELLO, an allowlist before the queue. |
+| `worker/patch.js` | ours (extracted from `worker/sim-host.js`) | so the room and the worker cannot grow two shapes for one city. |
+
+**Measured** (era 26, `node tools/room_soak.mjs 5`, two real `ws` clients on a real HTTP server,
+each running the same `worker/sim-host.js` the game runs):
+
+| | |
+| --- | --- |
+| city years | 5 (tick 936 of 720) |
+| beats | 480 at a 10 ms pump |
+| commands | 104, interleaved from two seats |
+| monthly hash checks | 79, every one agreeing |
+| divergences | 0 |
+| end hashes | room, client one and client two identical |
+| worst beat | **9.81 ms** of plan §3.8's 20 ms |
+| jitter | p50 10 ms, p99 11 ms, max 11 ms, late **0%** |
+| gate cost | 5 s (`room` set, 600 s budget) |
+
+`test/room.test.js` is 11 tests with no sockets in them — a connection is anything with `send`,
+which is what let the room be tested before the socket existed. Both generated fixtures replay
+through a room against their pinned hashes; no fixture hash moved.
+
+**Two findings, both of them the room telling me the design was wrong:**
+
+1. **A seat joining is a COMMAND, not a side effect.** `join()` applied `CMD_JOIN` directly, which
+   moved `players` and `lastSeenTick` — hashed — without telling the clients already in the room.
+   Both of them diverged at the next monthly hash. It is queued like anything else now, and WELCOME
+   is the city *before* the join: the joiner applies its own arrival from a frame, in the order
+   everybody else does.
+2. **A resync is a re-join, not a patch.** The first cut sent `snapshotOf(state)` — the worker's
+   `{layers, rest}` — and the soak's corruption check passed with **no resync having happened**: a
+   mirror edited by hand is overwritten by the next patch (a memory this project already had), so
+   corrupting a mirror is not a divergence at all. Corrupting the client's *simulation* instead — a
+   road only it has — made it diverge, and then showed that a patch heals the mirror for exactly one
+   frame, because the diverged reducer writes over it. SNAPSHOT carries the **save**, the client
+   restarts its reducer from it, and the gate now checks the month *after* the snapshot too.
+   `plan.md` §3.2 and §3.3 are restated: one city, two shapes, each with one job — bytes to start
+   from, a patch to draw from.
+
+**Also found, and fixed in the same slice:** `toSave` **aliases the live state** (`disaster`,
+`quests`, `requests` and the players are references into it), so a save handed to a joiner was a
+window into the room and stopped matching its own hash the moment the next seat joined. Every save
+that leaves the room is copied, which also makes the in-process room behave like the wire one.
+
+**And the omissions test that could no longer fail.** "The placeholder directories are still empty,
+or their slice has started" looped over `["server"]`, and `server/` is now built — leaving a loop
+over an empty list. It is replaced by the same question asked of started work: **every module under
+`server/` is reached by following imports from `server/index.js`**. A name grep would have been the
+wrong instrument (`server/store.js` appears in no test by name and is reached through the entry
+point), and the first cut of the new one reported all four modules as orphans because
+`stripCommentsAndStrings` deletes the import specifier it was looking for — an import path *is* a
+string. Comments stripped, strings kept; proved to fail by adding an orphan.
+
+Suite 1,692 green twice; `quick` 506 s of 540; `room` 5 s of 600. `client/precache.json` regenerated
+because `shared/build-hash.js` and `worker/patch.js` are new bytes under the hashed prefixes.

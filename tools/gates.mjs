@@ -93,6 +93,12 @@ export const GATES = {
   disaster_soak: { args: ["tools/disaster_soak.mjs", "200", "25"], what: "every disaster fires, no unrepairable cities" },
   traffic_gate: { args: ["tools/traffic_gate.mjs", "200", "25"], what: "routing fits the month tick" },
   sim_sweep: { args: ["tools/sim_sweep.mjs", "200", "25"], what: "200 games × 4 configs → reports/balance-eraN.md" },
+
+  // The room (X1). Two real `ws` clients on a real HTTP server, each running
+  // the same `worker/sim-host.js` the game runs, for five city years — and the
+  // hash compared every sim-month rather than at the end, because a divergence
+  // at month two found at year five does not say which command caused it.
+  room_soak: { args: ["tools/room_soak.mjs", "5"], what: "two clients, one room, five city years: one order, one hash, and the pump's jitter beside it" },
 };
 
 /** What a slice runs. `quick` after any change, `render` for a renderer slice,
@@ -149,11 +155,11 @@ export const SETS = {
   // minute, which is how a shot that is right on its own and wrong after the
   // one before it is seen at all.
   film: ["film"],
-  // The room (X0, empty until X1 fills it). Declared now because a set that
-  // appears with its first gate is a set whose budget was chosen to fit that
-  // gate — and because `gates.mjs --list` is where somebody looks to find out
-  // what this project can check.
-  room: [],
+  // The room (X0, declared empty; filled by X1's `room_soak`). Declared before
+  // it had a gate because a set that appears with its first gate is a set whose
+  // budget was chosen to fit that gate — and because `gates.mjs --list` is
+  // where somebody looks to find out what this project can check.
+  room: ["room_soak"],
 };
 SETS.all = [...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim, ...SETS.shots,
   ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room];
@@ -227,9 +233,14 @@ export const BUDGET_MS = {
   // two walk shots are half — a street frame on SwiftShader is a quarter of a
   // second and the film settles the street cache at every one of them.
   film: 8 * 60 * 1000,
-  // X1's `room_soak` is two `ws` clients driving deputies for five city years
-  // and `room_smoke` is two browser contexts on one page; the budget is written
-  // before them so the first measurement is read against something.
+  // Written before X1 had a gate, so the first measurement is read against
+  // something: 10 minutes for `room_soak` plus the `room_smoke` that X3b owes.
+  // Measured at X1a: **room_soak 5 s** — 466 beats at a 10 ms pump, two
+  // clients, two simulations of their own and a hash every sim-month. It is
+  // wall-clock rather than work (the beat is a timer, so the gate cannot
+  // outrun the years it plays), and the only reason it is seconds is that the
+  // soak's pump runs at 10 ms where a real room's is 100. The budget stands
+  // as written because `room_smoke` is still to come.
   room: 10 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
   // transport 187 — which is where 35 minutes came from, and `kits` (365 s) was

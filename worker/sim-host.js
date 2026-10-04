@@ -17,7 +17,8 @@
 // is the same `hashState` the save, the replay and the desync detector use.
 
 import { apply } from "../engine/reducer.js";
-import { TILE_LAYERS, copyState, hashState } from "../engine/state.js";
+import { hashState } from "../engine/state.js";
+import { patchOf } from "./patch.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { toSave, fromSave } from "../engine/save.js";
@@ -36,12 +37,6 @@ import "../engine/traffic.js";
 import "../engine/history.js";
 import "../engine/quests.js";
 
-function same(a, b) {
-  if (a === undefined || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
-  return true;
-}
-
 export function createSimHost() {
   let state;
   /** The bytes the mirror has, per layer: what "changed" is measured against.
@@ -51,28 +46,7 @@ export function createSimHost() {
    * 96×96 and needs no engine change at all). */
   const sent = new Map();
 
-  function layerPatch(everything) {
-    const layers = {};
-    const transfer = [];
-    for (const layer of TILE_LAYERS) {
-      const live = state.tiles[layer.name];
-      if (!everything && same(sent.get(layer.name), live)) continue;
-      const copy = live.slice();
-      // Two copies: one is transferred (and detached by the post), one is what
-      // the next comparison is made against.
-      sent.set(layer.name, live.slice());
-      layers[layer.name] = copy.buffer;
-      transfer.push(copy.buffer);
-    }
-    return { layers, transfer };
-  }
-
-  function patchFor(everything) {
-    const { layers, transfer } = layerPatch(everything);
-    const rest = copyState(state);
-    delete rest.tiles;
-    return { patch: { layers, rest }, transfer };
-  }
+  const patchFor = (everything) => patchOf(state, sent, everything);
 
   function answer(type, extra, everything = false) {
     const { patch, transfer } = patchFor(everything);

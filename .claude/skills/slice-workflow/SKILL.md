@@ -111,7 +111,7 @@ node tools/gates.mjs transport # T1-T4's pictures — avenue, rail, harbour (T4b
 node tools/gates.mjs sim       # a gameplay slice as well: the three soaks, ~10 min
 node tools/gates.mjs kits      # one picture per catalogue definition and per kit, ~6 min
 node tools/gates.mjs film      # the sixty-second storyboard, every frame counted, ~5 min (F2)
-node tools/gates.mjs room      # the headless room — empty until X1 fills it
+node tools/gates.mjs room      # the headless room — `room_soak`, 5 s, since X1a
 ```
 
 `film` is the only gate that renders the game as a MINUTE rather than as a frame, so it is the one

@@ -163,6 +163,16 @@ of them each descends from.
 
 **Goal.** Two real clients play one city, hash for hash, through a real socket.
 
+**The room half is BUILT (slice-X1a, 2026-10-04).** `server/{room,pump,store,index}.js`,
+`worker/patch.js`, `test/room.test.js` (11 tests), `tools/room_soak.mjs` in a `room` gate set
+that is now a set with a member in it. Measured: five city years, 480 beats, **no divergence and
+one hash for all three** (room, both clients), monthly checks 79 of 79, **worst beat 9.81 ms of a
+20 ms budget**, jitter p50 10 / p99 11 / late 0%. Each module names its ancestor in its header
+(A127) and the dev-log entry lists them. Two findings came out of it and are written where they
+can be read: **a seat joining is a COMMAND, not a side effect** (`server/room.js`), and **a
+resync is a re-join, not a patch** (`server/room.js`, plan.md §3.2). What is left of X1 is the
+client half below, which waits for the playtest (A125).
+
 **Do — the room, headless first.**
 - `server/room.js`: one room is one state and one reducer. The pump (`server/pump.js`, an
   injectable clock, 100 ms): drain the inbound queue, assign `seq`, validate through `apply`,
@@ -198,9 +208,14 @@ frames after it equals the state of a client that was there from the start; a co
 detected at the next monthly hash and resynced; a mismatched build is refused. Both generated
 fixtures replay through a room against their pinned hashes. The permission matrix runs unchanged.
 
-**Gate.** `tools/room_soak.mjs` (the `room` set): the real server, two real `ws` clients driving
-deputies, **five city years, identical hashes every month**; one client's state is corrupted on
+**Gate.** `tools/room_soak.mjs` (the `room` set): the real server, two real `ws` clients,
+**five city years, identical hashes every month**; one client's state is corrupted on
 purpose and is resynced; a client with a different build hash is refused with the reload reason.
+All of that is green at X1a with two amendments, both written in the tool: the clients are
+**scripted rather than deputies** (`deputyTurn` applies to a state rather than emitting commands,
+so a deputy client is X4's regency work, not this gate's), and the corruption is of a client's
+**simulation** rather than its mirror — a mirror edited by hand is overwritten by the next patch,
+so the first cut of that check passed with no resync having happened at all.
 `tools/room_smoke.mjs`: two browser contexts on the real page — one builds a road, the other sees
 it within two frames, and both light clocks are within a game hour. Pump time and frame bytes go
 in the dev-log as the first measured row of plan §3.8.
@@ -289,7 +304,7 @@ singleplayer playtest was.
 
 ## Order
 
-**X0 → X1's room half ∥ W6 second half ∥ X3a (engine, no player-visible change) — and there it
-stops until Kjell has played (A125).** Then X1's client half → X2 → X3b → X4. W6 runs beside X1 because they touch
+**~~X0~~ → ~~X1's room half~~ ∥ W6 second half ∥ X3a (engine, no player-visible change) — and
+there it stops until Kjell has played (A125).** X0 and X1's room half are built (2026-10-04). Then X1's client half → X2 → X3b → X4. W6 runs beside X1 because they touch
 different files and X3 cannot be played without it. Wave 6 (modes, seasons, scale to sixteen,
 operations) is not in this file and does not start until the release gate above is met.
