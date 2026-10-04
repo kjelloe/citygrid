@@ -731,7 +731,12 @@ the lamps B4 poses still sit on a car's body. **Gate.** `harbour_shots`, `rail_s
 - **The deck is one profile**: a single graded line from abutment to abutment (R3's
   `gradeProfile` with the two bank heights as its ends), so the slabs do not step; a parapet or
   railing both sides, piers at the tile joints down to the bed, lamps at the ends.
-- **The retaining wall** (Q145 — the slice in flight): where a street stands more than a storey
+- **The camera first, then the wall (A128, Kjell 2026-10-04).** The stone facing was built and
+  reverted because nothing could photograph it: a street camera on a hilly shoulder stands inside
+  the embankment and a city camera cannot bake street geometry. `tools/embankment_shots.mjs`
+  takes the PHOTO camera (F1: an eye set directly) to a named tile, three metres out from the
+  shoulder at eye height, prints the baked chunk count and fails at zero. Then:
+- **The retaining wall** (Q145 → A128): where a street stands more than a storey
   above the shore, a wall face in stone tone from kerb to ground, with a coping. Renderer-only,
   no height changes, `walkthrough`'s shoulder-cliff count becomes a wall count.
 - **The water is one surface**: shared vertices with a level blended across each tile's corners

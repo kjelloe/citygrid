@@ -9,9 +9,10 @@ client run one reducer and must agree on one hash**, and a divergence that survi
 investigation is a stop-and-re-plan condition (`plan-v1.md`).*
 
 **Ruling 003 holds Wave 5 behind the singleplayer MVP being accepted, and acceptance is Kjell's,
-not a green suite.** Q149 asks whether P102 is that acceptance. Until it is answered, X0 and the
-headless half of X1 are safe to build — they add a directory and a dependency and change nothing
-a singleplayer player touches — and nothing a player sees is built.
+not a green suite. A125 (Kjell, 2026-10-04): the headless room is built now — X0 and X1's room
+half — because it adds a directory and a dependency and changes nothing a singleplayer player
+touches. X1's client half, X2, X3 and X4 wait for the playtest.** W6's second half runs beside
+X1 and lands before X3 (A126).
 
 ## What is already there (plan.md §3.9b, checked 2026-10-04)
 
@@ -60,9 +61,16 @@ a singleplayer player touches — and nothing a player sees is built.
 **Goal.** Everything the server needs that is not the server.
 
 **Do.**
-- `ws` as the server's one runtime dependency, pinned exact, in `dependencies` (the client still
-  has none; `test/purity.test.js` asserts nothing under `client/`, `engine/`, `shared/` or
-  `worker/` imports it). Q151.
+- `ws` as the server's one runtime dependency, **set up as the sibling games have it** (A127):
+  the version `../Fireline` and `../CarrierDominion` both pin, attached to the one HTTP server
+  that serves the client, no web framework. The client still has no dependency;
+  `test/purity.test.js` asserts nothing under `client/`, `engine/`, `shared/` or `worker/`
+  imports it.
+- **Read `../CarrierDominion/server/` before writing `server/`** — `static.js`, `clock.js`,
+  `save.js`, `reconnect.js`, `doorman.js`, `lobby.js`, `vote.js`, `watch.js` — and
+  `../Fireline/server/metrics.js` for the jitter ring. They are the shape to adapt, rewritten
+  against this engine and this protocol, never copied in: that game hosts one war per server
+  and this one hosts rooms. Say in the dev-log which module each of ours descends from.
 - `shared/build-hash.js`: the hash of `engine/`, `shared/` and `data/` as shipped, computed by
   `tools/make_precache.mjs` into `client/precache.json` beside the version and read at boot — no
   build step. `BUILD_HASH` stops being a literal. `test/pwa.test.js`: a changed balance file is a
@@ -178,7 +186,7 @@ singleplayer playtest was.
 
 ## Order
 
-**X0 → X1 (headless room, then the socket transport) ∥ W6 second half → X2 → X3 → X4.** X0 and
-the headless half of X1 are safe before Q149 is answered. W6 runs beside X1 because they touch
+**X0 → X1's room half ∥ W6 second half — and there it stops until Kjell has played (A125).** Then
+X1's client half → X2 → X3 → X4. W6 runs beside X1 because they touch
 different files and X3 cannot be played without it. Wave 6 (modes, seasons, scale to sixteen,
 operations) is not in this file and does not start until the release gate above is met.

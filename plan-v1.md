@@ -116,7 +116,7 @@ the file to open first.
 | `workitems-behaviour.md` | the simulation made visible and life made realistic (P59, P61, P63, P102) | **B1–B10 built 2026-09-11 → 10-04** (damage, ageing, service vehicles, doors and rush hour, roles, the overcast hour, the crowd from the air, junction conflict zones, the deputy's road reach, the pavement that asks for who a building has). **After the review of 2026-10-04: B11 (life survives a build, with W6), B12 (ambulances, pulling over), B13 (weather causes disasters, A61)** |
 | `workitems-transport.md` | the transport lane from `specs/transport-and-landmarks.md` (P61, P62): T1 the avenue; T2–T3 rail and the station; T4 water bodies, marina, ferry and port; T5 ranks, city hall, the airport; ~~T6 leisure and education coverage~~ **built 2026-10-02** (era 10, two hashed layers re-pinned); T7 the cheap catalogue rows | written 2026-09-11, Q87–Q92 answered (A65–A70); **after behaviour** — it is the first lane since cityviewer that moves the hash |
 | `workitems-rules.md` | the rules eras the transport lane and the night's measurements asked for (P93–P100) | **G1–G5, H1–H8, J1–J4 built 2026-10-03/04** — eras 12 to 26, each measured alone |
-| `workitems-multiplayer.md` | Wave 5 as work items against the seam as built (P102): X0 the ground under the server, X1 server and relay, X2 the lobby, X3 ownership in play, X4 drop-in and absence | written 2026-10-04. **Ruling 003's gate is Q149.** X0 and the headless half of X1 are safe before it is answered; W6's second half runs beside X1 and must land before X3 |
+| `workitems-multiplayer.md` | Wave 5 as work items against the seam as built (P102): X0 the ground under the server, X1 server and relay, X2 the lobby, X3 ownership in play, X4 drop-in and absence | written 2026-10-04. **A125: the headless room now (X0, X1's room half); everything a player sees waits for Kjell's playtest.** W6's second half runs beside X1 and lands before X3 (A126); `ws` as the sibling games have it (A127) |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
 The frame-time governor exists to decide what a phone gives up and has never run on a phone. D1
@@ -434,10 +434,6 @@ by number from the code they create.
 | ~~Q120~~ | **Answered A118** — the rail corridor gets its own profile and S13's per-point skirt draws the cutting; the height field does not move |
 | ~~Q142~~ | **Answered A119** — relative criteria (cliffs per km, lots as a share), and the same is owed to `walkthrough` on rolling |
 | ~~Q143~~ | **Answered A121, built 2026-10-04 (era 26)** — the far bank is worth a quarter of a city where the town is hemmed in by water, and nothing where it is not |
-| Q145 | a street at the WATER stands on up to 14.7 m of fill; three fixes built and reverted, and the blocker turns out to be that nothing can photograph a steep shoulder | Kjell — the next step is a camera that can stand beside one, not a wall |
-| Q149 | Is P102 the acceptance ruling 003 asks for — may Wave 5 start? | **Kjell**; X0 and the headless room are safe meanwhile |
-| Q150 | W6's second half before X3: stable identity, a dirty set, life that survives a build | **Kjell**: order, not design |
-| Q151 | `ws` as the server's one pinned dependency | X0 |
 | ~~Q144~~ | **Answered A120** — `lot.maxPlinth` is a reducer rule in the shape of `maxZoneSlope`; the quay as a thing is a later content slice |
 
 ## What would make us stop and re-plan
