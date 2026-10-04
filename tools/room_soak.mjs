@@ -20,7 +20,11 @@
 // the interleaving the ordering rules exist for.
 
 import { WebSocket } from "ws";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { startServer } from "../server/index.js";
+import { createStore } from "../server/store.js";
 import { createSimHost } from "../worker/sim-host.js";
 import { createMirror, applyPatch } from "../client/mirror.js";
 import { hashState } from "../engine/state.js";
@@ -178,8 +182,17 @@ function ownedRoad(state, seat) {
   return undefined;
 }
 
+// Its own directory under the OS temp, removed at the end: the server keeps
+// checkpoints and resumes them, and a gate that left a city in `rooms/` would
+// hand the next run the last run's world — a measurement of the order the gates
+// ran in (CLAUDE.md), and an untracked file in the repo.
+const roomDir = await mkdtemp(join(tmpdir(), "citygrid-soak-"));
+
 const server = await startServer({
   port: 0,
+  store: createStore({ dir: roomDir }),
+  // A fresh region every run, for the same reason.
+  fresh: true,
   tickMs: 10,                     // the soak's beat; the room still owes 2 ticks a beat at speed 1
   options: { seed: 1003, width: SIZE, height: SIZE, seats: 4 },
   roomId: "soak",
@@ -315,6 +328,7 @@ try {
   b.close();
 } finally {
   await server.close();
+  await rm(roomDir, { recursive: true, force: true });
 }
 
 if (problems.length > 0) {

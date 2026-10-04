@@ -9,6 +9,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as COMMANDS from "../engine/commands.js";
 import { compatible, PROTOCOL_VERSION, REFUSAL, C2S, S2C } from "../shared/protocol.js";
 import { buildHash, setBuildHash } from "../shared/build-hash.js";
 
@@ -81,4 +82,20 @@ test("every refusal has a code of its own", () => {
   const codes = Object.values(REFUSAL);
   assert.ok(codes.length >= 5, `only ${codes.length} refusals`);
   assert.equal(new Set(codes).size, codes.length);
+});
+
+test("no message type is also a command type (X3a)", () => {
+  // `C2S.PING` was `"ping"` and the engine's camera gesture is `CMD_PING`,
+  // which is also `"ping"`: one name on one wire for a latency probe and for a
+  // command that rides the ordered stream. Nothing broke — a command travels
+  // nested inside `{type: "cmd", command: {...}}` — but a reader cannot tell
+  // them apart, and the first person to send the command type at the top level
+  // would have had it answered with a `pong`. The probe is `"latency"` now.
+  const messages = new Set([...Object.values(C2S), ...Object.values(S2C)]);
+  const commands = Object.entries(COMMANDS)
+    .filter(([name]) => name.startsWith("CMD_"))
+    .map(([, value]) => value);
+  const collisions = commands.filter((type) => messages.has(type));
+  assert.deepEqual(collisions, [],
+    `command types that are also message types: ${collisions.join(", ")}`);
 });

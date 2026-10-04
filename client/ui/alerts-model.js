@@ -52,6 +52,13 @@ const KINDS = {
   fireOut: { severity: SEVERITY.INFO, textKey: "alert.fireOut" },
 };
 
+/** Every event kind this model has words for. `test/omissions.test.js` reads
+ * it against the kinds the engine can emit, so an event the player could never
+ * see is either an alert or declared silent on purpose. */
+export function alertKinds() {
+  return Object.keys(KINDS);
+}
+
 /** Every key this model can ask the view to render. `test/hud.test.js` checks
  * each one against both catalogues, so a new alert kind with no translation is
  * a red suite rather than a raw `alert.congestion` on someone's screen. */

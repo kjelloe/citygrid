@@ -132,6 +132,36 @@ rule, 4–6 without; cleared 12 (day) and 19 (rush); 28–32% of cars stopped ag
 definition every check uses — the first metric, centres under 2 m apart, counted two cars passing
 1.8 m apart round a bend and missed a car sitting on another's rear.
 
+## 9.1d As built (B11, 2026-10-04) — life survives a build
+
+Before this, every accepted build action threw away every car, person, train, boat and aircraft in
+the city: each holds an id from a graph that a rebuild renumbers, so `worldChanged` recreated the
+lot and the streets refilled over the following seconds. A player saw the traffic blink; in a room
+it would have blinked whenever anybody built anything.
+
+Each life system now answers `snapshot()` — its entities keyed by the model's own keys (§4.6b),
+with their position and heading — and takes a `carry` on the way back in. The rule, in order:
+
+1. the **key** matches: the same lane at the same metre, the same pavement at the same step;
+2. the key is gone (its street was split): re-seated **geometrically** at its own position, on a
+   lane heading the way it was heading;
+3. nothing near: dropped, which is what "a car whose link is gone leaves" means for a road that is
+   really not there any more.
+
+A person's journey is re-planned rather than carried, because a route is a list of node ids in a
+graph that no longer exists — and `plan` is deterministic in the person's id, so the same person at
+the same hour chooses the same kind of errand again. Their `phase` *is* carried: it is where their
+legs are in the walk cycle, and a crowd that re-phases together reads as one object.
+
+**Services are deliberately not carried.** An engine or a patrol holds a route of link ids, and half
+a route is a vehicle driving down a street that no longer exists; an engine exists only while its
+fire does and a patrol re-routes from its station, so re-dispatching is the correct recovery — and it
+is one or two vehicles rather than hundreds.
+
+Measured (`lanes_dump`, the deputy's played town): **189 of 189 cars and 400 of 400 people** across
+a tile that extends a street and across a tile that splits one, the split re-seating one person 1.3 m
+from where they stood. In the browser (`budget_gate`): 40 of 40 cars over one more road tile.
+
 ## 9.2 Signals
 
 Nodes with degree ≥ 3 on a corridor of `road` kind get a two-phase cycle (Union Square:

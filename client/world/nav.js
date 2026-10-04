@@ -400,8 +400,6 @@ export function deriveNav(state, model) {
 
   const edgeKeys = new Map();
   for (const edge of edges) edgeKeys.set(edge.key, edge);
-  const nodeKeys = new Map();
-  for (const node of nodes) nodeKeys.set(node.key, node);
 
   return {
     nodes,
@@ -411,7 +409,6 @@ export function deriveNav(state, model) {
      * re-derived the graph under them (B11). */
     edgeByKey: (key) => edgeKeys.get(key),
     nearestEdge,
-    navNodeByKey: (key) => nodeKeys.get(key),
     next,
     /** Position and unit tangent `s` metres along an edge. */
     sample(edge, s, into = out) { return sampleAlong(edge, s, into); },

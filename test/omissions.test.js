@@ -19,6 +19,7 @@ import { OPTION_FIELDS } from "../engine/options.js";
 import { repoRoot, jsFilesIn, stripCommentsAndStrings } from "./helpers/sources.js";
 import { knownCommands } from "../engine/reducer.js";
 import * as COMMANDS from "../engine/commands.js";
+import { alertKinds } from "../client/ui/alerts-model.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
@@ -154,6 +155,68 @@ test("every module under server/ is reached from its entry point (X1)", () => {
   const orphans = present.filter((name) => !reached.has(name));
   assert.deepEqual(orphans, [],
     `server/ modules nothing imports: ${orphans.join(", ")} — wire them up or delete them`);
+});
+
+test("every event the engine can emit is either an alert or deliberately silent", () => {
+  // The N11 question, asked of EVENTS. An engine event the player cannot see is
+  // the same defect as a command the player cannot send: `pushAlerts` looks its
+  // kind up in `KINDS` and skips what it does not know, so a new kind is
+  // silently dropped rather than shown as a raw key. X3a added `requestFiled`,
+  // `requestResolved` and `requestWithdrawn` and nothing noticed — correctly,
+  // because the inbox is X3b's, but "correctly" has to be written down or it is
+  // indistinguishable from forgotten.
+  //
+  // Comments stripped, strings KEPT: the kinds are string literals, which is
+  // the opposite of the options audit's rule and the reason that one got it
+  // wrong once already.
+  const SILENT = {
+    // Routine bookkeeping. An alert a player gets every month is furniture.
+    budget: "a monthly accrual, not news",
+    built: "the thing appearing on the map IS the feedback",
+    placed: "as `built`",
+    zoned: "as `built`",
+    dezoned: "as `built`",
+    avenue: "as `built`",
+    developed: "the lot growing is the feedback",
+    upgraded: "the building changing is the feedback",
+    taxSet: "the slider the player just moved",
+    fundingSet: "the slider the player just moved",
+    bankrupt: "shown by the treasury readout and the budget drawer",
+    fireSpread: "`fireStarted` is the alert; a spread would be an alert a minute",
+    burntDown: "`wrecked` covers the loss",
+    // The quest card is its own interface (N14).
+    questOffered: "the advisor card",
+    questCompleted: "the advisor card",
+    questChoice: "the player's own click",
+    questReward: "the card and the treasury",
+    // Seats. The lobby and the roster are X2's; nothing in singleplayer.
+    seatJoined: "the lobby (X2)",
+    seatLeft: "the roster (X2)",
+    seatReclaimed: "the roster (X2)",
+    seatStatus: "the roster (X2)",
+    // X3a's three, and the camera gesture. The inbox that shows them is X3b.
+    requestFiled: "the request inbox (X3b)",
+    requestResolved: "the request inbox (X3b)",
+    requestWithdrawn: "the request inbox (X3b)",
+    ping: "a camera gesture: the other player's marker is X3b",
+  };
+
+  const emitted = new Set();
+  for (const file of jsFilesIn("engine")) {
+    const source = file.source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    for (const match of source.matchAll(/kind:\s*"([A-Za-z]+)"/g)) emitted.add(match[1]);
+  }
+  assert.ok(emitted.size > 30, `only ${emitted.size} event kinds found — the scan is broken`);
+
+  const unaccounted = [...emitted].filter((kind) => !alertKinds().includes(kind) && !Object.hasOwn(SILENT, kind));
+  assert.deepEqual(unaccounted.sort(), [],
+    `event kinds the player can never see and that nobody declared silent: ${unaccounted.join(", ")}`);
+
+  // And the other direction: an alert kind the engine no longer emits is a
+  // translation nobody will ever read.
+  const orphanAlerts = alertKinds().filter((kind) => !emitted.has(kind));
+  assert.deepEqual(orphanAlerts, [],
+    `alert kinds no engine event produces: ${orphanAlerts.join(", ")}`);
 });
 
 test("the options the project declares and nothing reads are exactly these (Q148)", () => {

@@ -93,6 +93,16 @@ Obey the non-negotiables in `CLAUDE.md`. The ones most often forgotten:
 
 **Read the fail count, not the exit code.** A chained pipeline has hidden failing tests before.
 
+**And a green suite does not mean the page boots.** Nothing in `test/` can import
+`client/render/` — those modules import three.js and node cannot load it — so a syntax error there
+passes 1,700 tests. `test/purity.test.js` parses every module in `client/`, `worker/`, `server/`,
+`shared/` and `engine/` with `node --check` (2.8 s) since W6a, which is what catches it; a renderer
+change still wants one browser gate before the commit.
+
+**`client/precache.json` is part of green.** A change under `client/` moves the file hashes and a
+change under `engine/`, `shared/` or `data/` moves the BUILD hash (which is what a room's handshake
+compares): `node tools/make_precache.mjs`, then run the suite again.
+
 ## 5. Run the gate
 
 The gate is whatever the slice's "done when" column names. Run it, and record the *numbers* it
@@ -254,6 +264,11 @@ If the slice changed any of these, update them in the same slice, not later:
 - `dev-questions.md` — if a question was answered or a new one appeared.
 - `.claude/skills/` — if a workflow changed.
 - Memory — if something durable about the project or the user's preferences changed.
+- `shared/protocol.js` — a **message name is the wire**: renaming one is a `PROTOCOL_VERSION` bump
+  (X3a renamed `C2S.PING` to `LATENCY`, because the engine's own `ping` command had the same string).
+- `client/ui/alerts-model.js` — a new engine EVENT either gets words there or a line in
+  `test/omissions.test.js`'s silent list saying which slice will surface it. `pushAlerts` skips a
+  kind it does not know, so an event the player can never see is silent rather than broken.
 
 ## 8. Commit
 

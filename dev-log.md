@@ -10902,3 +10902,66 @@ invalidates **2 corridors of 1,402 and 12 lanes of 8,896**, so the work the dirt
 when they were taken, and the two fixes above are not the dirty set, do not change a single derived
 value, and would have been invisible under it. A plan built on a cold measurement aims at the
 warmup.
+
+## Tests, docs and the omissions round after X1a/X3a/W6a (2026-10-04)
+
+No new feature. The rule from P75 applied to the four slices above — **run the omissions sweep on
+the slice you just wrote** — and it found seven things, three of them in code that existed and
+could not work.
+
+**Half-built, not missing:**
+
+1. **A room could be "hosted from a save" and the save was ignored.** `createRoom({ save })`
+   returned `{ ok: true, state: undefined }` — a room with no city in it. Nothing called that
+   branch, so nothing said so. It goes through `fromSave` now, the same function the client restores
+   through, checksum and migrations included.
+2. **The store was write-only.** `server/index.js` wrote a checkpoint every thirty beats and
+   **nothing ever read one**, so plan §3.5's "a room persists as state plus command log; a restart
+   resumes it" was true of the writing half only. `startServer` now opens the checkpoint and hosts
+   from it, with `fresh: true` as the lever for a test or a new region — and `room_soak` takes it,
+   plus its own temp directory, because a gate that inherited the last run's city would be measuring
+   the order the gates ran in.
+3. **`prune` had no caller.** `keepForDays` was read, the sweep was written, and nobody ran it —
+   `setRules` with a different name, and the second time this exact shape has been found in a
+   fortnight. Called at startup and daily now.
+
+**One name, two things:**
+
+4. **`C2S.PING` and `CMD_PING` were both `"ping"`** — a round-trip timing probe and a player's "look
+   at this", which rides the ordered command stream. Nothing was broken, because a command travels
+   nested inside `{type: "cmd", command: {…}}`, but a reader cannot tell them apart and the first
+   person to send the command type at the top level would have been answered with a `pong`. The
+   probe is `C2S.LATENCY`, **`PROTOCOL_VERSION` is 2** (a message name *is* the wire; a rename is
+   free only while nobody outside the repo speaks it), and `test/protocol.test.js` pins the two
+   namespaces as disjoint.
+
+**Nothing to see:**
+
+5. **An engine event the player can never see.** `pushAlerts` looks a kind up in `KINDS` and skips
+   what it does not know — right, because a raw `alert.requestFiled` on screen is worse — so X3a's
+   `requestFiled`, `requestResolved`, `requestWithdrawn` and `ping` were dropped silently and the
+   suite had no opinion. `test/omissions.test.js` now censuses the kinds `engine/` can emit against
+   the alerts table plus a `SILENT` map whose value is *why* ("the thing appearing on the map IS the
+   feedback", "the advisor card", "the request inbox (X3b)"), both directions, and it was proved to
+   fail on a planted kind.
+
+**Exports nothing read:** `laneByKey` and `navNodeByKey` had no reader at all and are gone;
+`corridorByKey`, `nodeByKey`, `requestById` and `room.seats()` are pinned by tests instead (the last
+is what X2's roster will be built from, and it had no reader either).
+
+**Tests written:** `test/store.test.js` (6 — the store had none, which is why `prune` was never
+called), the carry-over for **trains, boats and aircraft** (B11 claimed five systems and only cars
+and people were tested), a room hosted from a save and a save it cannot read, `seats()`, the request
+commands in **all three modes** (the item asked for a row per mode; the answer is that the rule is
+mode-independent, pinned on purpose so the day a mode wants to forbid asking it goes red), a request
+naming a record that does not exist, and the message/command namespace check. **1,736 green twice**,
+up from 1,719.
+
+**Docs:** `specs/engine/04-city-model.md` §4.6b is the key table and why a key cannot survive a
+split; §9.1d in `09-life.md` is the carry-over rule in order, including why services are deliberately
+not carried. `CLAUDE.md` gained three rules — a new FIELD on an existing nested record touches
+**four** places (its copy helper, `writeState`, a save migration with a `SAVE_VERSION` bump, a
+fixture re-pin) and `HASHED_FIELDS` does *not* change, so the two-file rule cannot see it; **warm the
+instrument before timing a phase**; and a green suite does not mean the page boots. The
+slice-workflow skill learned the parse test, the precache step and the two sync targets a protocol or
+an event touches. Memories: `the-first-run-is-warmup`, `an-event-nobody-can-see`.

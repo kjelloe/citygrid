@@ -20,7 +20,7 @@ import { apply } from "../engine/reducer.js";
 import { hashState } from "../engine/state.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
-import { toSave } from "../engine/save.js";
+import { toSave, fromSave } from "../engine/save.js";
 import { CMD_TICK, CMD_JOIN } from "../engine/commands.js";
 import { TICKS_PER_MONTH } from "../engine/constants.js";
 import { C2S, S2C, REFUSAL, PROTOCOL_VERSION, compatible, LIMITS } from "../shared/protocol.js";
@@ -53,10 +53,15 @@ const nextToken = () => `seat-${(tokens += 1)}-${Math.floor(Date.now() % 1e6)}`;
  * other end.
  */
 export function createRoom(given = {}) {
+  // A room is generated, or RESTORED. The first cut of this had the save branch
+  // return `{ ok: true, state: undefined }` — a room with no city in it, which
+  // looked supported and was not; nothing called it, so nothing said so.
+  // `fromSave` is the same function the client restores through, checksum and
+  // migrations included (X3a made that version 3).
   const world = given.save === undefined
     ? generateWorld(defaultOptions(given.options))
-    : { ok: true, state: undefined };
-  if (given.save === undefined && !world.ok) throw new Error(`generation failed: ${world.reason}`);
+    : fromSave(given.save);
+  if (!world.ok) throw new Error(`a room could not start: ${world.reason}`);
   const state = world.state;
   const seats = new Map();
   const queue = [];

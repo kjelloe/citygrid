@@ -52,6 +52,9 @@ Every change is a slice, named after its entry in `plan-v1.md`:
 1. Tests first. A slice that cannot state its gate is not a slice yet.
 2. Implement.
 3. `./test.sh` — the suite, twice, green both times. **Read the fail count, not the exit code.**
+   A green suite does not mean the page boots: nothing in `test/` can import `client/render/`, so
+   `test/purity.test.js` parses every module with `node --check` and that is what catches a syntax
+   error in the renderer. A renderer change still wants one browser gate.
 4. Run the slice's gate from `plan-v1.md` (soak, sweep, event census, UI acceptance, perf).
 5. A `dev-log.md` entry naming what was measured, including anything that failed on the way.
 6. Sync docs, rulings, skills and memory if the slice changed any of them.
@@ -66,6 +69,12 @@ Every change is a slice, named after its entry in `plan-v1.md`:
   A field in one and not the other is a red suite.
 - **New nested state touches five places**: `copyState` deep copy, both hash functions, the save
   migration, the snapshot projection, and the lobby options record. Every time.
+- **A new FIELD on an existing nested record touches four**: its `copy…` helper in `engine/state.js`,
+  `writeState`, a **save migration with a `SAVE_VERSION` bump** (the old records have to be given
+  the new field, and the stored checksum is dropped because it was taken over a shorter field list),
+  and a fixture re-pin if any fixture holds one. `HASHED_FIELDS` does NOT change — it lists the
+  top-level field, which was already there, so the two-file rule cannot see this one. X3a's
+  `request.kind` is the worked example.
 - Prefer silent state changes for routine ticks. A new event inside a pinned fixture is drift, and
   means the reducer is wrong, not the fixture. Re-pin only through `/fixture-repin`, which runs
   `node tools/repin.mjs "<reason>"` — the reason is required and is written into the fixture, and
@@ -85,6 +94,11 @@ Every change is a slice, named after its entry in `plan-v1.md`:
   previous era are void, not "roughly comparable".
 - **Telemetry must record failure**, not only success. Verify the instrument before believing the
   reading — a probe filtering on a wrong field reports zeros in a world full of events.
+- **Warm the instrument before timing a phase.** W6's whole shape was argued from a gate that timed
+  `createModel` on its first run and every phase afterwards: 29 ms of the "stall" was JIT warmup,
+  the phase list accounted for 55% of the whole, and the biggest real cost was in a different module
+  from the one the item named. Warm everything, then time; keep the cold run as its own row, because
+  a player does pay it once; and take the biggest number twice, from both ends of the run.
 - **A change to what the deputy DECIDES voids every sweep number, including a change that keeps
   every rule.** The pinned fixtures cannot see it — they are built by explicit commands, not by a
   deputy — so the suite stays green while every measured city in the project becomes a different

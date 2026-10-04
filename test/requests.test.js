@@ -18,7 +18,9 @@ import assert from "node:assert/strict";
 import { createState, copyState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
-import { TICKS_PER_MONTH } from "../engine/constants.js";
+import {
+  TICKS_PER_MONTH, MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS,
+} from "../engine/constants.js";
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import {
@@ -26,7 +28,7 @@ import {
   CMD_REQUEST_DEMOLITION, CMD_RESOLVE_REQUEST, CMD_WITHDRAW_REQUEST,
   CMD_REPORT_NUISANCE, CMD_PING,
 } from "../engine/commands.js";
-import { REQUEST_DEMOLITION, REQUEST_NUISANCE, PENDING, APPROVED, DECLINED, WITHDRAWN, EXPIRED, MOOT, ACKNOWLEDGED } from "../engine/requests.js";
+import { requestById, REQUEST_DEMOLITION, REQUEST_NUISANCE, PENDING, APPROVED, DECLINED, WITHDRAWN, EXPIRED, MOOT, ACKNOWLEDGED } from "../engine/requests.js";
 import { price } from "../engine/build-commands.js";
 import "../engine/build-commands.js";
 import "../engine/requests.js";
@@ -259,4 +261,32 @@ test("every request field survives a copy and a hash", () => {
   const other = copyState(state);
   other.requests[0].offer += 1;
   assert.notEqual(hashState(other), hashState(state), "the hash cannot see a request's offer");
+});
+
+test("a request is the same rule in every mode, deliberately (X3a)", () => {
+  // The item asked for "a row per command per relation per mode". The rows per
+  // relation are in `test/build.test.js`; this is the mode axis, and the answer
+  // is that there ISN'T one: §25.3 gives every mode the same channel, so the
+  // reducer checks ownership and never the mode. Pinned on purpose — the day a
+  // mode wants to forbid asking (or to auto-approve inside a district), this
+  // goes red and names the decision instead of being discovered in a lobby.
+  for (const mode of [MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS]) {
+    const { state, theirs } = world({ mode });
+    const filed = apply(state, asking(1, theirs, { offer: 50 }));
+    assert.equal(filed.result, RESULT.OK, `${mode}: a request was refused`);
+    const request = requestById(state, state.requests[0].id);
+    assert.equal(request.to, 2, `${mode}: the request found the wrong owner`);
+
+    const answered = apply(state, { type: CMD_RESOLVE_REQUEST, actor: 2, id: request.id, approve: true });
+    assert.equal(answered.result, RESULT.OK, `${mode}: the owner could not approve`);
+    assert.equal(state.tiles.road[theirs[0]], 0, `${mode}: approving cleared nothing`);
+  }
+});
+
+test("a request names a record that exists, or it is invalid", () => {
+  const { state } = world();
+  assert.equal(requestById(state, 99), undefined);
+  assert.equal(apply(state, { type: CMD_RESOLVE_REQUEST, actor: 2, id: 99, approve: true }).result,
+    RESULT.INVALID);
+  assert.equal(apply(state, { type: CMD_WITHDRAW_REQUEST, actor: 1, id: 99 }).result, RESULT.INVALID);
 });

@@ -260,3 +260,30 @@ test("the tallest vessel in the city fits under a bridge deck", () => {
   assert.ok(free > tallest,
     `${free} m under the girder and the tallest hull is ${tallest} m`);
 });
+
+test("a boat keeps sailing where it was across a build (B11)", () => {
+  // Nothing a road build does moves a water body, and yet every build action
+  // used to recreate the whole fleet at its seeded tile. A sailing boat's key
+  // IS that tile, so it can be found again.
+  const state = bay();
+  const model = createModel(state);
+  const boats = createBoats(state, model, { life: true });
+  run(boats, 60);
+  const before = boats.snapshot();
+  assert.ok(before.length > 0, "the bay carries no boats, so this proves nothing");
+  assert.ok(before.every((b) => b.key), "a hull with no key");
+
+  // A road inland: a new corridor, a renumbered model, the same water.
+  apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([at(3, 2), at(4, 2), at(5, 2)]) });
+  const rebuilt = createModel(state);
+  const carried = new Map(createBoats(state, rebuilt, { life: true, carry: before })
+    .snapshot().map((b) => [b.key, b]));
+
+  for (const boat of before) {
+    const now = carried.get(boat.key);
+    assert.ok(now, `boat ${boat.key} vanished`);
+    assert.equal(now.x, boat.x, `boat ${boat.key} jumped back to its seed tile`);
+    assert.equal(now.z, boat.z);
+    assert.equal(now.dir, boat.dir, `boat ${boat.key} forgot its heading`);
+  }
+});

@@ -322,3 +322,46 @@ for (const name of names) {
     assert.deepEqual(problems, [], `\n  ${problems.join("\n  ")}`);
   });
 }
+
+test("a room can be hosted from a save, and that is how a restart resumes (X1)", () => {
+  // The branch existed and returned a room with NO CITY in it: `{ok: true,
+  // state: undefined}`. Nothing called it, so nothing said so — and the store
+  // was writing a checkpoint every thirty beats that nobody ever opened, which
+  // made "a room persists so a restart resumes it" true of the writing half
+  // only.
+  const first = createRoom({ options: OPTIONS, speed: 1 });
+  const a = joined(first, "a", 1);
+  first.submit(1, road(first, 1, 6));
+  first.beat();
+  for (let n = 0; n < 12; n += 1) first.beat();
+  const tick = first.tick();
+  const hash = first.hash();
+  assert.ok(tick > 0 && a.welcome !== undefined);
+
+  const resumed = createRoom({ save: first.save(), speed: 1 });
+  assert.equal(resumed.tick(), tick, "the resumed room is at a different hour");
+  assert.equal(resumed.hash(), hash, "the resumed room is a different city");
+  // And it plays on: a seat rejoins without being treated as a new player,
+  // because `CMD_JOIN` reclaims a seat the save already holds.
+  const back = joined(resumed, "a again", 1);
+  resumed.beat();
+  assert.equal(back.welcome.tick, tick);
+  assert.ok(resumed.tick() > tick, "the resumed room's clock never started");
+});
+
+test("a save the room cannot read is a refusal, not a room with no city", () => {
+  assert.throws(() => createRoom({ save: { v: 99, nonsense: true } }), /could not start/);
+  assert.throws(() => createRoom({ save: {} }), /could not start/);
+});
+
+test("the seats a room holds are the ones it welcomed, with distinct tokens", () => {
+  // `seats()` is what X2's ROSTER is built from and it had no reader at all.
+  const room = createRoom({ options: OPTIONS });
+  joined(room, "a", 1);
+  joined(room, "b", 2);
+  const seats = room.seats();
+  assert.deepEqual(seats.map((s) => s.seat).sort(), [1, 2]);
+  assert.equal(new Set(seats.map((s) => s.token)).size, 2, "two seats share one token");
+  room.leave(1);
+  assert.deepEqual(room.seats().map((s) => s.seat), [2]);
+});

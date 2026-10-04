@@ -4,7 +4,11 @@
 // stale client meeting a new server. A mismatched reducer desyncs silently,
 // which is the worst way to find out. The handshake makes it loud instead.
 
-export const PROTOCOL_VERSION = 1;
+// **2 since X3a**, because `C2S.PING` became `C2S.LATENCY`: a message name is
+// the wire, so renaming one is a protocol change whether or not anybody is
+// speaking it yet. Nothing outside this repo is — X1 is headless and the client
+// half is unbuilt — which is exactly when a version bump is free.
+export const PROTOCOL_VERSION = 2;
 
 /** Which build's RULES these are — `engine/`, `shared/` and `data/`, hashed by
  * `tools/make_precache.mjs` into `client/precache.json` and handed in at boot
@@ -19,7 +23,15 @@ export const C2S = Object.freeze({
   HELLO: "hello",
   COMMAND: "cmd",
   RESYNC_REQUEST: "resync",
-  PING: "ping",
+  // `"latency"`, not `"ping"` (X3a). The engine gained a `ping` COMMAND — a
+  // player's "look at this", which rides the command stream in order like
+  // everything else — and this is a round-trip timing probe that never reaches
+  // the reducer. Two different things with one name on one wire is a message
+  // that gets handled by whichever reader saw it first, and the nested command
+  // type would have been indistinguishable from the top-level message type to
+  // anybody reading the protocol. `test/protocol.test.js` pins the two
+  // namespaces as disjoint.
+  LATENCY: "latency",
   CHAT: "chat",
 });
 

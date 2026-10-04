@@ -540,8 +540,6 @@ export function deriveLanes(state, network, ground) {
 
   const linkKeys = new Map();
   for (const link of links) linkKeys.set(link.key, link);
-  const laneKeys = new Map();
-  for (const lane of lanes) laneKeys.set(lane.key, lane);
 
   return {
     lanes,
@@ -549,7 +547,6 @@ export function deriveLanes(state, network, ground) {
     /** The link with this key in THIS graph, or nothing — what a car holding a
      * link from the graph before a build action asks after one (B11). */
     linkByKey: (key) => linkKeys.get(key),
-    laneByKey: (key) => laneKeys.get(key),
     nearestBlock,
     nodes: network.nodes,
     signals,

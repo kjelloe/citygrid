@@ -187,3 +187,46 @@ test("sampling a line carries the tangent, so a carriage faces where it goes", (
   sampleLine(points, cum, 900, out);
   assert.deepEqual([out.x, out.z], [100, 100]);
 });
+
+test("a train keeps its place across a build (B11)", () => {
+  // The lines are rail corridors, so they carry W6a's keys: a build that does
+  // not touch the track leaves the train where it was, instead of putting it
+  // back a carriage off the end of the line to arrive all over again.
+  const { state, model } = city();
+  const trains = createTrains(state, model, { life: true });
+  for (let t = 0; t < 120; t += 1) trains.update(0.25);
+  const before = trains.snapshot();
+  assert.equal(before.length, 1, `expected one line, got ${before.length}`);
+  assert.ok(before[0].s > 0, "the train never left the end of the line");
+
+  // A road somewhere else: a new corridor, and every id in the model after it
+  // renumbered.
+  const road = state.tiles.road;
+  for (let x = 4; x < 12; x += 1) road[at(x, 6)] = NET_PRESENT;
+  for (let x = 4; x < 12; x += 1) {
+    road[at(x, 6)] = NET_PRESENT | adjacencyMask(W, W, x, 6, (i) => (road[i] & NET_PRESENT) !== 0);
+  }
+  const rebuilt = createModel(state);
+  const carried = createTrains(state, rebuilt, { life: true, carry: before }).snapshot();
+
+  assert.equal(carried.length, before.length);
+  assert.equal(carried[0].key, before[0].key, "the line lost its identity");
+  assert.equal(carried[0].s, before[0].s, "the train restarted its run");
+  assert.equal(carried[0].dir, before[0].dir);
+  assert.equal(carried[0].stopped, before[0].stopped, "the train forgot it was at a platform");
+});
+
+test("a train whose line is gone is not put on another one (B11)", () => {
+  const { state, model } = city();
+  const trains = createTrains(state, model, { life: true });
+  for (let t = 0; t < 120; t += 1) trains.update(0.25);
+  const before = trains.snapshot();
+
+  // A different city, with its line somewhere else entirely.
+  const other = city({ from: 2, to: 20 });
+  const carried = createTrains(other.state, other.model, { life: true, carry: before }).snapshot();
+  assert.equal(carried.length, 1, "the other city lost its own line");
+  assert.notEqual(carried[0].key, before[0].key, "the two lines are the same line, so this proves nothing");
+  assert.equal(carried[0].s, -DEFAULTS.rail.carriageLen,
+    "a train was re-seated onto a line it was never on");
+});

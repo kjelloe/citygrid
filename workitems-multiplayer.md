@@ -166,7 +166,8 @@ of them each descends from.
 **Goal.** Two real clients play one city, hash for hash, through a real socket.
 
 **The room half is BUILT (slice-X1a, 2026-10-04).** `server/{room,pump,store,index}.js`,
-`worker/patch.js`, `test/room.test.js` (11 tests), `tools/room_soak.mjs` in a `room` gate set
+`worker/patch.js`, `test/room.test.js` (11 tests), `test/store.test.js` (6, added in the round after — the store had
+none, which is why `prune` was never called by anybody), `tools/room_soak.mjs` in a `room` gate set
 that is now a set with a member in it. Measured: five city years, 480 beats, **no divergence and
 one hash for all three** (room, both clients), monthly checks 79 of 79, **worst beat 9.81 ms of a
 20 ms budget**, jitter p50 10 / p99 11 / late 0%. Each module names its ancestor in its header
@@ -185,7 +186,9 @@ client half below, which waits for the playtest (A125).
   with the reason; allowlist-validated inbound frames; `LIMITS` enforced; per-seat rate limits as
   a `RATE_LIMITED` result, never a disconnect.
 - `server/store.js`: a room persists as state plus command log, written off the pump; a restart
-  resumes it. `keepForDays` is read here.
+  resumes it. `keepForDays` is read here — and **`prune` is called** (startup and daily from
+  `server/index.js`), which it was not when it was written: an option read by a sweep nobody runs is
+  the `setRules` shape with a different name.
 - Resync: a client whose monthly hash differs gets a snapshot and the divergent `seq` is written
   to a replay artifact. Loud, never silent.
 
@@ -244,7 +247,8 @@ one hash; `reach_smoke` and `ui_smoke` cover the two new screens.
 
 ## X3a — Requests in the engine (L) — slice 5.3, the half the plan thought was built
 
-**BUILT (slice-X3a, 2026-10-04).** `engine/requests.js`: five handlers, one record with two kinds,
+**BUILT (slice-X3a, 2026-10-04; tests and omissions round the same day).** `engine/requests.js`:
+five handlers, one record with two kinds,
 a monthly pass for the clock and the quiet endings. `test/requests.test.js` (14 tests), the
 permission matrix's request rows, A129's two-seat city-hall proof in `test/unlock.test.js`, the
 two-player fixture extended to the request and its approval and re-pinned, and `room_soak` now
@@ -253,7 +257,15 @@ a migration, because a request gained a `kind`. Three things came out of it: **a
 at two of three difficulties** (Q155 — `idiv(1 × 90, 100)` is 0, which is how the money assertion
 found it), **`toSave` aliased the live state** and now builds off `copyState`, and the omissions
 option-scan **could not see `server/`**, so the X0 review's claim that `keepForDays` would leave
-the unread list was wrong until the scan was widened. What is NOT built, deliberately:
+the unread list was wrong until the scan was widened. Found in the round after: **`C2S.PING` and `CMD_PING` were the same string** — a latency probe and
+a camera gesture with one name on one wire, which nothing would have caught until somebody sent the
+command type at the top level and got a `pong`. The probe is `C2S.LATENCY` now, `PROTOCOL_VERSION`
+is **2** (a message name is the wire, and a rename is free only while nobody outside the repo speaks
+it), and `test/protocol.test.js` pins the two namespaces as disjoint. Also: X3a's three events are
+invisible to the player, which is correct until X3b builds the inbox and is now *declared* in
+`test/omissions.test.js`'s event census rather than merely true.
+
+What is NOT built, deliberately:
 `setRequestPolicy` (5.4, X4's regency) and §25.4's **derelict override** — a neighbour approving
 the demolition of a ruin against its owner's wishes needs a clock the building record does not
 have (`builtTick` is when it went up, not when it was abandoned), and inventing one is a hashed

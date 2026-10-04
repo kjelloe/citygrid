@@ -213,6 +213,35 @@ Measured on a saturated 96×96 (`tools/lanes_dump.mjs`): 773 corridors, 460 node
 5,810 links (1,546 block and 4,264 turn), 372 signals, turns balanced left 1,423 / right 1,423 /
 straight 1,418, shortest link 8.32 m against a 4.5 m car.
 
+## 4.6b Identity — as built (W6a, 2026-10-04)
+
+Every derived thing carries a **`key`** beside its `id`, and the two answer different questions:
+`id` is where it is in this derivation's array, `key` is which thing in the world it is. The ids
+are what `next`, `preds`, `from` and `to` are written in and what a frame's arithmetic uses; the
+keys are what anything that outlives a rebuild holds.
+
+| thing | key | made of |
+| --- | --- | --- |
+| node | `n<tile>` | its tile — a node is at one tile |
+| corridor | `<kind>:<low>-<high>x<tiles>` | its two end tiles, low first, and its length in tiles |
+| lane | `<corridor key>\|<dir>\|<index>` | which street, which way, which lane across it |
+| block link | `b\|<lane key>` | its lane |
+| turn link | `t\|<from lane>><to lane>` | the pair of lanes it joins |
+| nav corner | `c\|<node key>\|<corridor key>\|<side>` | the junction, the street, the side |
+| pavement | `w\|<corridor key>\|<side>` | the street and the side |
+| crossing | `x\|<node key>\|<corridor key>` | the junction and the arm |
+| door | `d\|<lot id>` | the engine's building id, which is already stable |
+
+Nothing in a key is an array index, which is the whole point: adding one junction renumbers every
+corridor, lane and nav edge after it, and before W6a that renumbering was indistinguishable from
+change — `tools/model_cost.mjs`'s first cut reported one road tile changing 8,896 of 8,896 lanes.
+
+**A key cannot survive a SPLIT**, and it should not: a junction laid in the middle of a street ends
+one corridor and begins two, and a corridor *is* its extent. The thing standing on it has not moved,
+so `lanes.nearestBlock(x, z, tx, tz)` and `nav.nearestEdge(x, z)` re-seat by geometry when the key is
+gone (§9.1d). Both project onto the SEGMENTS rather than the nearest packed point: snapping to a
+point moved cars up to 8 m, and projecting moved them under one.
+
 ## 4.7 Life inputs
 
 `state.tiles.traffic` is a hashed u8 commuter load per tile that only an overlay tint reads

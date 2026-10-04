@@ -63,11 +63,19 @@ function serveStatic(req, res) {
   }).catch(() => res.writeHead(404).end("Not found"));
 }
 
-export async function startServer({ port = 0, options, tickMs = 100, roomId = "room", store } = {}) {
+export async function startServer({ port = 0, options, tickMs = 100, roomId = "room", store, fresh = false } = {}) {
   await readBuildHash();
-  const room = createRoom({ options: options ?? { seed: 1003, width: 64, height: 64, seats: LIMITS.SEATS_MAX } });
-  const pump = createPump(room, { tickMs });
   const saves = store ?? createStore();
+  // **A room survives a restart** (plan.md §3.5) — which it did not until this
+  // read existed. The store wrote a checkpoint every thirty beats and nobody
+  // ever opened one: "persists so a restart resumes it" was true of the writing
+  // half only. `fresh: true` is the lever a test or a new region takes to
+  // ignore what is on disk.
+  const kept = fresh ? undefined : await saves.get(roomId);
+  const room = kept?.save
+    ? createRoom({ save: kept.save })
+    : createRoom({ options: options ?? { seed: 1003, width: 64, height: 64, seats: LIMITS.SEATS_MAX } });
+  const pump = createPump(room, { tickMs });
 
   const http = createServer(serveStatic);
   const sockets = new WebSocketServer({
@@ -124,7 +132,7 @@ export async function startServer({ port = 0, options, tickMs = 100, roomId = "r
         return;
       }
       if (message.type === C2S.RESYNC_REQUEST) room.resync(connection, seat);
-      if (message.type === C2S.PING) connection.send({ type: S2C.PONG, at: message.at });
+      if (message.type === C2S.LATENCY) connection.send({ type: S2C.PONG, at: message.at });
     });
 
     socket.on("close", () => {
@@ -142,12 +150,24 @@ export async function startServer({ port = 0, options, tickMs = 100, roomId = "r
     saves.put(roomId, { save: room.save(), tick: room.tick() });
   }, tickMs * 30);
 
+  // **And the rooms nobody came back to.** `prune` had no caller when it was
+  // written — `keepForDays` was read, the sweep existed, and nothing ever ran
+  // it, which is `setRules` with a different name (A124). Once at startup,
+  // before this process writes anything of its own, and then daily for a server
+  // left running.
+  await saves.prune();
+  const sweep = setInterval(() => { saves.prune(); }, 24 * 60 * 60 * 1000);
+  sweep.unref?.();
+
   return {
     port: http.address().port,
     room,
     pump,
+    /** Whether this room came off the disk, for a caller that wants to say so. */
+    restored: kept?.save !== undefined,
     async close() {
       clearInterval(checkpoint);
+      clearInterval(sweep);
       stop();
       for (const socket of sockets.clients) socket.terminate();
       sockets.close();

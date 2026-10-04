@@ -183,3 +183,24 @@ test("the plane asks nobody for the time", () => {
     assert.equal(pattern.test(source), false, `client/life/plane.js uses ${pattern}`);
   }
 });
+
+test("an aircraft keeps its place in the cycle across a build (B11)", () => {
+  // A flight is a clock reading, and the clock used to restart at
+  // `(buildingId * 37) % period` on every accepted build action — so an
+  // aircraft on final approach was back on the apron whenever anybody paved
+  // anything. Its key is the airfield's building id.
+  const state = city();
+  const model = createModel(state);
+  const planes = createPlanes(state, model, { life: true });
+  run(planes, 20);
+  const before = planes.snapshot();
+  assert.equal(before.length, 1);
+  assert.ok(before[0].t > 0, "the aircraft never left the start of its cycle");
+
+  apply(state, { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([at(3, 3), at(4, 3)]) });
+  const rebuilt = createModel(state);
+  const carried = createPlanes(state, rebuilt, { life: true, carry: before }).snapshot();
+  assert.equal(carried.length, 1);
+  assert.equal(carried[0].key, before[0].key, "the airfield lost its identity");
+  assert.equal(carried[0].t, before[0].t, "the flight restarted its cycle");
+});
