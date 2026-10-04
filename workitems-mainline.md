@@ -185,6 +185,24 @@ be able to see it — a control that exists and a function that does not, or nei
 **Gate.** `node --test test/omissions.test.js test/reachability.test.js`, and the export sweep in
 the review-round skill comes back without these three.
 
+## M7 — The release, again (S, needs Kjell for the push) — review of 2026-10-04
+
+**Goal.** `main` is the game and `RELEASE.md` is true. Neither is, by 122 commits and twenty-five
+balance eras: the page names `782e759` from 2026-09-08 and says every commit since is a document.
+
+**Do.**
+- `RELEASE.md` rewritten at the head of `dev_night`: the era (26) and its report, the tier table
+  with High at 400,000, the gate sets as they are now (eleven sets — `quick`, `budget`, `shots`,
+  `transport`, `kits`, `film`, `render`, `sim`) with their measured times, what works (transport,
+  gates and the Outside, ranks, leisure and education, the worker), and what is missing (a phone
+  card; Wave 5; W6's stall, with its 115 ms).
+- `git checkout main && git merge --ff-only dev_night`, the suite twice and `gates.mjs all` on the
+  merged tree, the three newest commits in the dev-log. **The push is Kjell's.**
+- `test/docs.test.js`'s drift note becomes a failure past fifty commits: a release page a hundred
+  commits stale is not a note.
+
+**Done when** `main` is `dev_night`, the page names its own commit, and Kjell has pushed.
+
 ## Order
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after

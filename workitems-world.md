@@ -599,6 +599,140 @@ sign geometry had no colour attribute, since R2; and S9's porch stood half insid
    round runs `node --test test/docs.test.js` before a commit, since `dev-questions.md` is local
    and the suite is the only thing that sees it.
 
+## Review after W6's first half (2026-10-04) — P102
+
+*Read on `dev_night` at `33ac6e2`, 87 commits and twenty-three balance eras after the last review.
+The suite is green twice on a clean checkout of that commit (1,662 tests); the working tree is red
+on two checks that belong to an uncommitted slice in flight (a retaining wall: `road.wallOut` read
+by nothing yet, and a stale precache). Everything landed is **accepted**: the transport lane
+(T1–T7), the rules lanes (G, H, J — eras 12 to 26), the rest of world and behaviour, F2, and the
+worker lane through W5. The discipline held under an unattended night: each era measured alone,
+each defect older than its slice written down as a question rather than fixed silently, and W3's
+"the worker bought nothing a player can see" is the kind of sentence a review exists to check and
+found already written.*
+
+**Looked at, by the reviewer.** `reports/compare-S8.png`, the storyboard, and the transport, bridge
+and fire shots.
+
+- **The town has an edge** (storyboard 005, 012): a city in countryside with a river past it. B9
+  and S2 did what D4 asked.
+- **The largest remaining difference from the reference is tone and proportion, not geometry.**
+  On the compare sheet the reference is red, orange and cream roofs on light grey streets in lime
+  grass; ours is navy, black and brown roofs on near-black asphalt, and asphalt is the largest
+  single colour in every aerial frame. S8 built the tool and left the verdict to Kjell; the
+  reviewer's reading is that row 2 and row 3 are still two different games. → **S15**.
+- **Shops and works are flat dark slabs from the air** (`smoke-T3-train.png`): the houses got S9
+  and S10, and the commercial and industrial kits did not. → **S16**.
+- **The transport lane's movers are boxes**: white slabs at the marina, a blue box for a ferry, a
+  cross of two slabs for an aircraft, and from the pavement a car is two flat slabs
+  (`smoke-S3-street.png`). → **S17**.
+- **The bridge is a row of deck slabs that step**, with no railing and no pier in the picture
+  (`smoke-S13-bridge.png`), and the water under it still shows its tiles. → **S18**.
+- **An awning is a roof over the camera** (`smoke-S3-street.png`, storyboard 020): a dark slab
+  across the top third of a street frame, with thin posts hanging from it. → S16.
+- **Building sites dominate a young city**: grey scaffold lattices are the loudest thing in
+  `smoke-T3-train.png`. → S16.
+- **Several shot sets predate the played fixture (H7)** and still show the one-tile road
+  checkerboard (`smoke-T4-marina.png`, `smoke-B1-street.png`). Re-run `shots`, `transport` and
+  `kits` and look, before any of the items below is judged.
+
+**Three omissions that are not pictures.**
+- **`RELEASE.md` is a release note for a different game.** It names `782e759` (2026-09-08) and
+  says every commit since is a document; there have been 122 commits and twenty-five eras. `main`
+  is 122 behind. → `workitems-mainline.md` **M7**.
+- **`plan-v1.md`'s lane table is stale** in four rows (world "started", behaviour "written",
+  transport, rules missing). Fixed in this round.
+- **W6 is a multiplayer prerequisite**, not only a stall: in a room every other mayor's build
+  action costs every client 115 ms and resets its traffic. `workitems-multiplayer.md` says so and
+  orders it before X3.
+
+## S15 — Tone and proportion, against the sheet (M) — S8's verdict
+
+**Goal.** The compare sheet's rows 2 and 3 read as one family. Measured, not eyeballed first.
+
+**Do.** The method S2 used for grass (memory: match LIT pixels, not palette values): histogram
+both halves of each row with one rule and move ours toward the reference, one channel at a time.
+- **Roofs**: the residential set gains terracotta, orange, cream and light slate and loses the
+  near-blacks; commercial flat roofs go to light grey and buff. D4's finding 3, never landed.
+- **Asphalt**: lighter and cooler (the reference's streets are a mid grey), pavements lighter
+  still, so a street is a line in the town rather than a hole in it.
+- **Water**: brighter and more cyan at the same night behaviour (E8's lit material stays).
+- **Proportion**: A113 widened the house against its street; measure road area as a share of an
+  aerial frame on the played 96 before and after, and record it. If it is still the largest
+  colour, the lever is `road.width` per kind (data), re-baselining `walkthrough` and `passability`.
+- `specs/art-direction.md` §3.1 changes in the same slice (`test/docs.test.js` compares the hex
+  values); `a11y_smoke`'s overlay contrast is the gate that says a lighter road has not cost the
+  overlays their bands.
+
+**Gate.** `tools/compare_sheet.mjs --before <sha>`: the three rows before and after in one image,
+with the histograms' medians in the caption. The dev-log says what the eye sees. `budget_gate`
+unmoved (colour, not geometry).
+
+## S16 — Shops and works with more on them (M)
+
+**Goal.** A high street and an industrial estate get what S9 and S10 gave a terrace.
+
+**Do.** `client/world/shop-spec.js` and `works-spec.js`, pure, in the house-spec shape:
+- **Shops**: a parapet with a cornice, roof plant (a vent, a condenser, a skylight), a rear yard
+  with a bin store and a delivery door, upper-floor windows with blinds (S7), a hanging sign and
+  a wall sign. **The awning is a sloped strip one metre deep over the shop window**, not a
+  canopy over the pavement — measured from the pavement camera so it never covers more than a
+  tenth of a street frame.
+- **Works**: sawtooth and shallow-pitched roofs in light metal, a loading bay with a dock and a
+  roller door, a yard with stacked pallets and a tank, a stack on the heavy ones (S6's smoke), a
+  fence and a gate; a name board (S1b's sign canvas).
+- **A density ladder for commerce** (S10's idea): level 1 a single shop or a shed, level 2 a
+  parade or a unit, level 3 a block with shops under flats or a factory.
+- **Building sites, calmer**: scaffold on the street face only and in a muted tone, a hoarding at
+  the pavement, one crane per site; the lattice is not the loudest thing in the frame.
+- Flat things flat, and furniture in the nearest chunks only (S9's two rules); the L2 box gets
+  the parapet and the roof plant as one extra box each.
+
+**Tests first.** The two spec modules as `house-spec` is tested: pure in `(id, level, variant)`,
+a floor and a ceiling on triangles, every level reachable. **Gate.** `role_shots` and
+`street_shots` on a played city, looked at; `budget_gate` re-measured; the chunk bake under 8 ms.
+
+## S17 — Movers you can tell apart (M)
+
+**Goal.** A boat is a boat, a train is a train, an aircraft is an aircraft.
+
+**Do.** One pure `client/world/vehicle-spec.js` family, the way B3a built the car kit: a sailing
+boat (hull, mast, a sail that S6's wind moves), a ferry (hull, superstructure, funnel, a wake —
+exists), a cargo ship (hull, bridge, containers by hash), a locomotive and carriages (bogies,
+windows, a livery per line), an aircraft (fuselage, swept wings, tail, engines), and a second
+pass on the car so it is not two flat slabs from the pavement (a cabin with glass, wheel arches).
+Each within a stated triangle ceiling, each with an L2 silhouette of a few boxes.
+
+**Tests first.** `test/vehicle-spec.test.js`: every mover has a spec, a ceiling and an L2 form;
+the lamps B4 poses still sit on a car's body. **Gate.** `harbour_shots`, `rail_shots`,
+`airport_shots`, `service_shots` re-taken and looked at; the car rows in `budget_gate`.
+
+## S18 — The bridge, the wall and the water (M) — Q145
+
+**Goal.** A crossing reads as a bridge and a lake as one sheet.
+
+**Do.**
+- **The deck is one profile**: a single graded line from abutment to abutment (R3's
+  `gradeProfile` with the two bank heights as its ends), so the slabs do not step; a parapet or
+  railing both sides, piers at the tile joints down to the bed, lamps at the ends.
+- **The retaining wall** (Q145 — the slice in flight): where a street stands more than a storey
+  above the shore, a wall face in stone tone from kerb to ground, with a coping. Renderer-only,
+  no height changes, `walkthrough`'s shoulder-cliff count becomes a wall count.
+- **The water is one surface**: shared vertices with a level blended across each tile's corners
+  the way the terrain's are (the amendment S4 was given and did not need to take), a slow normal
+  ripple as a uniform (S6; still under reduced motion), a pale line where it meets the shore.
+
+**Gate.** `bridge_shots` and `water_shots` re-taken; `embankment_shots` after beside before;
+`walkthrough` and `passability` unmoved.
+
+## S19 — The terminal, the station and the hall, by eye (S)
+
+**Goal.** S1b's second pass for the transport lane's buildings: the airport terminal is a long
+dark slab, and the station, the ferry terminal, the port and the city hall have had one pass
+each. A glazed concourse and a tower for the airport; a canopy and a clock for the station; a
+ramp and a waiting room for the ferry; cranes for the port; steps and a portico for the hall.
+One shot per definition beside the previous one in the dev-log.
+
 ## S9 — Houses with more on them (M) — P61 — **done 2026-09-11 as `slice-S9`**
 
 *Kjell, 2026-09-11: "houses need more details." The residential kit has six silhouettes and
@@ -665,6 +799,8 @@ chimney, a plinth and nothing else. A house that draws no SHAPE (porch, dormer o
 porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
+
+**After the review of 2026-10-04: re-run the shot sets and look → S18 (the slice in flight) → S15 → S16 → S17 → S19**, beside the multiplayer lane and W6.
 
 **S9, S1, S10, S1b, S2, S6 and S5 are done (2026-09-11/13), with B4, B7 and B8 from the behaviour lane. After the review of 2026-09-13: R5 → S3 → B5 → B9 → S4 → B1 → S7 → B3 → S8**, interleaved with `workitems-behaviour.md` where it says
 so (S9 and S1 with B2, S6 with B1). Houses first because Kjell asked for them by name (P61) and every

@@ -112,7 +112,7 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**1 open question** is on the list (`dev-questions.md`, bottom section). The nine that were there
+**4 open questions** are on the list (`dev-questions.md`, bottom section). The nine that were there
 were all answered on 2026-10-03 (A113–A121) and are work in `plan-v1.md`'s order rather than
 decisions waiting on anybody; the two that are left were both found by instruments those answers
 built — Q145 (a street's embankment has no batter) by the hilly walk, and Q146 (a high street at

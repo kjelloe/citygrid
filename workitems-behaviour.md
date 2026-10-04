@@ -393,6 +393,49 @@ junction that clears slower is expected, one that locks is not); no car waits fo
 `lanes_dump`'s `overlaps` row reaches 0 in a junction and becomes a gate; D7's settled rows
 re-baselined; `smoke-B4-morning.png` re-taken.
 
+## B11 — Life survives a build (M) — with W6's second half
+
+**Goal.** Laying a road does not restart the city. Today every accepted build action throws away
+every car, person, train, boat and aircraft and settles them again, because their link and edge
+ids are array indices that a rebuild renumbers (W6's measurement). A player sees the traffic
+blink; in a room they would see it blink every time anybody builds.
+
+**Do.** This is item 3 of W6 (`workitems-worker.md`), named here because it is behaviour: once
+corridors, lanes and nav edges have stable keys, each life system re-seats its entities by key —
+a car whose link still exists keeps its place and speed, one whose link is gone leaves by the
+nearest door — instead of being recreated. D7's invariants hold: the settled count before and
+after a one-tile build is the same within 2%.
+
+**Tests first.** `test/cars.test.js`, `test/pedestrians.test.js`: after a build that touches one
+corridor, every entity not on it is where it was. **Gate.** `lanes_dump` settles, builds one tile,
+and reports how many cars moved; `play_smoke` builds a road and the car count on screen does not
+drop to zero.
+
+## B12 — The rest of the emergency services (S)
+
+**Goal.** B3b's siblings: an ambulance from a hospital to a tile whose `healthRisk` crosses a
+threshold (the engine layer exists), and **cars pull over for a vehicle with its lights on** — the
+yield mechanism A45 built, with the engine, the patrol and the ambulance as its points. One
+planner call per dispatch, as B3 does.
+
+**Tests first.** `test/services.test.js`: an ambulance exists only while a qualifying tile and a
+hospital do; a car ahead of an engine stops at the kerb side and resumes. **Gate.** `service_shots`.
+
+## B13 — Weather causes disasters (M, engine) — A61
+
+**Goal.** Kjell's ruling at P60: lightning starts a fire and a downpour floods the sewer. The
+overcast hour is a picture today (B6a); this makes it a cause.
+
+**Do.** In `engine/disasters.js`, two triggers that reuse what exists: a **storm** disaster may
+ignite one tile through `igniteAt` (fire then spreads and is fought as any fire is, A62), and a
+**downpour** floods tiles whose pipe network is over capacity, for a few ticks. Both are rolls on
+the disaster schedule, behind the `disasters` option, with a warning phase like the others. The
+renderer shows the rain preset while one is warned or active (the room's hour applies, A63). A
+`sim` change: its own era, `disaster_soak` green, no unrepairable cities.
+
+**Tests first.** `test/disasters.test.js`: a storm with fire cover in range burns less than one
+without; a downpour floods only over-capacity pipes; neither fires with disasters off.
+
 ## Noted, not items — engine-side realism (each a question, each moves the hash)
 
 **The avenue is now a yes (Q83 → A60, 2026-09-10).** Kjell: *"yes add second road kind."* It stays
@@ -409,6 +452,8 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 - **One-way streets and turn restrictions**: lane-graph flags that the engine would have to own.
 
 ## Order
+
+**After the review of 2026-10-04: B11 (with W6) → B12 → B13.** Everything above B11 is built.
 
 B2 (done) → B4 (done) → B7 (done) → B8 (done) → **next behaviour item right after the world lane's S1b** (P63: "realistic in simulation behaviour" — the cars and the crowd are what a player sees move) → B5 → **B9** → B1 → B3 → B6, interleaved with `workitems-world.md` — the cars and the crowd
 moved up on 2026-09-11 because P61 asked for them by name —: B2 with S1 (the same kit
