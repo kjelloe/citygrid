@@ -1,0 +1,90 @@
+{
+  "name": "sixty-seconds",
+  "title": "City Grid in sixty seconds",
+  "seed": 1003,
+  "size": 96,
+  "years": 20,
+  "_note": "The subjects were FOUND in the fixture rather than remembered (F2): tools/film_spots.mjs plays this city and prints them, and the coordinates below are that city at seed 1003, 20 years. The high street is the corridor with the most SHOPFRONTS on it (819: six shops over seven tiles), not the longest straight one -- the longest had ten houses and a works along it, and the first storyboard's high street at dusk was a picture of a sawtooth factory roof. The two walks take opposite pavements of it. The suburb pan and the works orbit are aimed at the DENSEST patch of each kind (homes 61.2,51.6 with seventeen within five tiles; works 35.6,41.9 with eight) rather than at the furthest house, which the first list did and which put a forest in the frame. test/film.test.js checks every walk endpoint against the same played city.",
+  "shots": [
+    {
+      "title": "A city on a river",
+      "subtitle": "ninety-six tiles, twenty years, one mayor",
+      "camera": "crane",
+      "from": { "x": 46, "z": 41 },
+      "to": { "x": 48, "z": 44 },
+      "span": 110, "spanTo": 70,
+      "pitch": 55, "pitchTo": 38,
+      "look": { "x": 50, "z": 44 },
+      "time": "day", "style": "plain", "ease": "smooth",
+      "duration": 9, "hold": 1
+    },
+    {
+      "title": "Down to a crossroads",
+      "subtitle": "traffic, signals and a kerb",
+      "camera": "crane",
+      "from": { "x": 53.5, "z": 28 },
+      "to": { "x": 53.5, "z": 32 },
+      "span": 60, "spanTo": 12,
+      "pitch": 40, "pitchTo": 16,
+      "look": { "x": 53.5, "z": 33.5 },
+      "time": "day", "style": "plain", "ease": "smooth",
+      "duration": 8, "hold": 1
+    },
+    {
+      "title": "A high street at dusk",
+      "subtitle": "shopfronts, bays and the people on them",
+      "camera": "walk",
+      "from": { "x": 43.2, "z": 40.0 },
+      "to": { "x": 43.2, "z": 46.2 },
+      "yaw": 0,
+      "time": "sunset", "style": "plain", "ease": "linear",
+      "duration": 10, "hold": 1
+    },
+    {
+      "title": "The same street, lit",
+      "subtitle": "windows, lamps and a car's lights",
+      "camera": "walk",
+      "from": { "x": 43.8, "z": 46.2 },
+      "to": { "x": 43.8, "z": 40.2 },
+      "yaw": 3.141592653589793,
+      "time": "night", "style": "plain", "ease": "linear",
+      "duration": 9, "hold": 1
+    },
+    {
+      "title": "Out to the suburbs",
+      "subtitle": "gardens, hedges and a verge",
+      "camera": "pan",
+      "from": { "x": 57.5, "z": 47.5 },
+      "to": { "x": 64.5, "z": 55.5 },
+      "span": 15, "spanTo": 12,
+      "pitch": 26,
+      "yaw": 0.6, "yawTo": 1.1,
+      "time": "day", "style": "plain", "ease": "smooth",
+      "duration": 8, "hold": 1
+    },
+    {
+      "title": "The works, in paint",
+      "subtitle": "the same city, a different hand",
+      "camera": "orbit",
+      "from": { "x": 31.5, "z": 38 },
+      "to": { "x": 37.5, "z": 46 },
+      "span": 20,
+      "pitch": 42,
+      "look": { "x": 35.6, "z": 41.9 },
+      "time": "day", "style": "painted", "ease": "smooth",
+      "duration": 6, "hold": 1
+    },
+    {
+      "title": "And back",
+      "subtitle": "a city somebody built",
+      "camera": "crane",
+      "from": { "x": 50, "z": 44 },
+      "to": { "x": 46, "z": 41 },
+      "span": 30, "spanTo": 120,
+      "pitch": 24, "pitchTo": 52,
+      "look": { "x": 46, "z": 41 },
+      "time": "sunset", "style": "plain", "ease": "out",
+      "duration": 4, "hold": 1
+    }
+  ]
+}

@@ -54,3 +54,7 @@ reports/.smoke-frozen-*.png
 # pairs. Named one by one they were missed one by one, and bulk commits kept
 # them (review round before B9).
 reports/.*.png
+# The storyboard's frames (F2). 61 PNGs and 15 MB, rewritten whole by every
+# `node tools/gates.mjs film` run — working files, like the compare sheet's
+# per-view captures. What a film DELIVERS is F3's `media/`, which is committed.
+reports/storyboard/

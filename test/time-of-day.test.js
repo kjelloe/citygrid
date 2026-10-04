@@ -101,6 +101,27 @@ test("the first preset is arrived at immediately, not faded in from nowhere", ()
   assert.deepEqual(createTimeOfDay().current, presetFor("day"));
 });
 
+test("a jump is a cut: the hour arrives on the frame it is asked for (F2)", () => {
+  // A film cuts between hours, and its frames are drawn by a tool that runs no
+  // clock — the first storyboard's "night" street was rendered in daylight,
+  // because the fade had never been handed a delta.
+  const clock = createTimeOfDay("day");
+  clock.jump("night");
+  assert.deepEqual(clock.current, presetFor("night"));
+  assert.equal(clock.target, "night");
+  // And it stays there with no time passing at all, which is the whole point.
+  clock.update(0);
+  assert.deepEqual(clock.current, presetFor("night"));
+  // Mid-fade, a jump lands rather than continuing.
+  clock.set("day");
+  clock.update(0.2);
+  clock.jump("day");
+  assert.deepEqual(clock.current, presetFor("day"));
+  // An hour that does not exist is the day, as `set` has it.
+  clock.jump("elevenses");
+  assert.deepEqual(clock.current, presetFor("day"));
+});
+
 test("changing the target mid-fade continues from where it is", () => {
   const clock = createTimeOfDay("day");
   clock.set("night");

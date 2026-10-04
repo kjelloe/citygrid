@@ -76,7 +76,33 @@ size arrived (Playwright's download event).
 **Gate.** `play_smoke` enters and leaves photo mode from city and from street on both
 viewports; `budget_gate` in photo mode at one span.
 
-## F2 — The shot list and the storyboard (M)
+## F2 — The shot list and the storyboard (M) — **done 2026-10-04 as `slice-F2`**
+
+`client/world/film.js` is the arithmetic, pure and node-tested: five cameras, four easings,
+`problemsIn` (a list's faults as sentences), `lengthOf`, `shotAt` and `poseAt`.
+`client/debug/tour.js` is the plumbing — it poses the renderer, teleports the walker for a `walk`
+shot and rebuilds it for a style change — and `tools/film.mjs` drives it over its own static
+server. The caller owns the clock: a frame is `frame(i, fps)` and nothing in the page reads
+`performance.now()`, so the storyboard at 1 fps and the film at 30 are the same camera.
+
+`data/film/sixty-seconds.json` is the first list, 61 s in seven shots, and its coordinates were
+**found in the fixture** rather than remembered: the longest straight street near the centre of
+mass, the nearest four-armed crossroads, the civic cluster and the furthest suburb.
+
+**Gate:** `node tools/gates.mjs film` — 61 frames of the played 96 in 291 s on SwiftShader, each
+one counted for triangles and for life, and every frame looked at. `tools/film_spots.mjs` is what
+aims the shots: it plays the fixture and prints the corridor with the most shopfronts on it, the
+nearest four-armed crossroads and the densest patch of each zone, because the first list used
+"longest", "furthest" and "near the centre" as proxies and the storyboard showed a factory, a forest
+and no works at all. `reports/storyboard/` is ignored (working files, 15 MB a run).
+
+**Three defects, all of them in the harness rather than in the city** (dev-log F2): a module
+served as `application/octet-stream`, so the page never loaded at all; `setTime` naming a target
+that only a running clock arrives at, so the "night" street was rendered in daylight; and `dt: 0`
+on every draw, so the first storyboard had no car and nobody on it — `life/` takes its time from
+the caller, which is the fourth time that has cost this project a picture.
+
+
 
 **Goal.** A film is a list of shots the tool can render one frame per second in a minute, so
 the framing is decided by looking at a storyboard rather than by rendering the film.
@@ -127,7 +153,7 @@ minute on SwiftShader, and every frame is looked at.
 **Do.**
 - `tools/film_encode.mjs`: frames → `media/<name>.mp4` (H.264, 30 fps, CRF 20) and
   `media/<name>-preview.gif` (480 px wide, 12 fps, the first ten seconds), plus three stills.
-  `ffmpeg` is a **dev** tool on the path, not a dependency of the game (CLAUDE.md 7 is about
+  `ffmpeg` is a **dev** tool on the path, not a dependency of the game (CLAUDE.md 8 is about
   the game); the tool says so when it is missing and does nothing else.
 - `media/` is committed with the film, the preview and the stills, sized like fable51's
   (about 10 MB for a minute). `.gitignore` keeps the frame directories out.

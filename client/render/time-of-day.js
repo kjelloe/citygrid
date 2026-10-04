@@ -130,6 +130,16 @@ export function createTimeOfDay(name = "day") {
       return current;
     },
 
+    /** Arrives at `next` now, with no fade. A film CUTS between hours (F2): the
+     * fade is a function of a clock the film tool does not run, so a shot that
+     * asks for night and is drawn once would otherwise be drawn in daylight. */
+    jump(next) {
+      target = PRESET_NAMES.includes(next) ? next : "day";
+      from = presetFor(target);
+      current = from;
+      t = 1;
+    },
+
     applyTo(rig) { return applyTo(current, rig); },
 
     /** Which preset is being walked towards, so the frame can ask whether it is

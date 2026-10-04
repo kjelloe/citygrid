@@ -124,10 +124,17 @@ if (placeList.length > 0) {
   // a single house the deputy had put on the row refused the entire road, and
   // the park was photographed beside a field with "ok" in the log (the shot
   // reported `park:ok@5,33` and the aiming step found no street to stand on).
-  const laneRuns = (type, y) => {
+  //
+  // Water breaks a stretch too since S13, for the road: a run that spans more
+  // than `build.bridgeSpan` tiles of it is refused whole (ruling 047), and a
+  // row through the middle of a river map crosses twenty-odd. The road stops at
+  // the bank, which is also what a shot wants — a street to stand on.
+  const laneRuns = (type, y, dryOnly = false) => {
     let start = -1;
     for (let x = 3; x <= W - 3; x += 1) {
-      const clear = x < W - 3 && state.tiles.buildingId[y * W + x] === 0;
+      const terrain = state.tiles.terrain[y * W + x];
+      const wet = dryOnly && (terrain === 3 || terrain === 4);
+      const clear = x < W - 3 && !wet && state.tiles.buildingId[y * W + x] === 0;
       if (clear && start < 0) start = x;
       if (!clear && start >= 0) {
         apply(state, { type, actor: 1, runs: [y * W + start, x - start] });
@@ -135,7 +142,7 @@ if (placeList.length > 0) {
       }
     }
   };
-  laneRuns(CMD_PLACE_ROAD, row);
+  laneRuns(CMD_PLACE_ROAD, row, true);
   // A LINE two rows north of the road, so a definition with `needsRail` has
   // something to stand on. The rail station has never had a picture: the
   // harness laid a road and nothing else, so `placeBuilding` answered `invalid`
@@ -423,6 +430,28 @@ if (planeAt > 0) view.planes?.update(planeAt);
 const step = life ? { dt: 1 / 60, frameMs: 16 } : {};
 for (let f = 0; f < frames; f += 1) stats = view.draw({ ...drawOptions, ...step, now: f * 16 });
 
+// And then until the street cache has nothing left to build.
+//
+// It bakes with a WALL-CLOCK slice (R5: one phase a frame, `LOT_SLICE_MS`), so
+// how much of a city exists after N frames depends on how fast the machine was
+// for those N frames. That is how two `life=0` screenshots of one frozen city
+// came back with different bytes — 5,707 pixels of it, all in the band where
+// the far chunks were still arriving — and the frozen check in `motion_shots`
+// had been passing only because the bake happened to finish inside its thirty.
+//
+// Time does NOT advance while it settles: `now` stays where the last frame left
+// it and `dt` is zero, so the motion pose, the clock and the traffic are exactly
+// what the caller asked for and only the geometry catches up. A one-frame shot
+// is left alone: that is a caller asking for one frame.
+let settleFrames = 0;
+if (frames > 1) {
+  const held = { ...drawOptions, ...step, dt: 0, now: (frames - 1) * 16 };
+  while (settleFrames < 600 && (stats?.streets?.built ?? 0) > 0) {
+    stats = view.draw(held);
+    settleFrames += 1;
+  }
+}
+
 const firstChunk = view.terrain.chunks[0];
 const pos = firstChunk.mesh.geometry.getAttribute("position");
 globalThis.SHOT_REPORT = {
@@ -523,6 +552,9 @@ globalThis.SHOT_REPORT = {
   counted: stats.counted,
   shadows: stats.shadows,
   rebuilds: stats.rebuilds,
+  // How many extra frames the street cache needed after the ones asked for. A
+  // shot that settles for hundreds is a shot of a city that was still arriving.
+  settleFrames,
   overBudget: stats.overBudget,
   pools: Object.entries(view.pools).filter(([, m]) => m.count > 0)
     .map(([n, m]) => `${n}:${m.count}x${m.geometry.getAttribute("position").count / 3}`)
@@ -535,6 +567,75 @@ globalThis.SHOT_VIEW = view;
 // is a query, not a coordinate somebody remembered (S9).
 globalThis.SHOT_STATE = state;
 globalThis.SHOT_PLACED = placed;
+// A FILM (F2): `?film=<name>` loads `data/film/<name>.json` and hands the page
+// a player. The tool drives it frame by frame — `window.FILM.frame(i, fps)` —
+// because the caller owns the clock: a storyboard at one frame a second and a
+// film at thirty are then the same camera, and the same on any machine.
+const filmName = params.get("film");
+if (filmName) {
+  const { createTour } = await import("../client/debug/tour.js");
+  const list = await (await fetch(`../data/film/${filmName}.json`)).json();
+  let shown = view;
+  const rebuild = async (styleName) => {
+    shown.dispose?.();
+    shown = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true,
+      style: styleName, tier, life, mode, time, post: params.get("post") !== "0" });
+    return shown;
+  };
+  const tour = createTour(list, view, { rebuild });
+  // Life starts empty and FILLS: the traffic reached a hundred cars after ten
+  // steps and the film's first second had an empty city in it. A fixed number
+  // of steps before the first frame, so the first shot is as alive as the last
+  // and the count is still a function of nothing but this code.
+  //
+  // Kept per RENDERER, not once: a style change builds a new renderer and a new
+  // renderer has nobody in it, so the first frame of the painted orbit and the
+  // first frame of the pull-back after it both came back with 0 cars — a film
+  // in which the traffic vanishes on the cut.
+  let warmedOn = null;
+  globalThis.FILM = {
+    name: list.name,
+    title: list.title,
+    seconds: tour.seconds,
+    frames: (fps) => tour.frames(fps),
+    /** Poses frame `i` and draws it, settling the street cache the way a shot
+     * does — a frame of a city still arriving is the defect A115's round found
+     * in the frozen screenshots. */
+    frame: async (i, fps) => {
+      const pose = await tour.frame(i, fps);
+      // The road's hour follows the SHOT's hour, so a night street carries
+      // night traffic rather than a midday rush under a dark sky (B4).
+      const options = { ...drawOptions, dayPhase: params.has("hour")
+        ? Number(params.get("hour")) : phaseForPreset(pose.time ?? time) };
+      const now = (i * 1000) / fps;
+      let stats;
+      for (let f = 0; f < 8; f += 1) stats = tour.renderer.draw({ ...options, dt: 0, now });
+      let settle = 0;
+      while (settle < 400 && (stats?.streets?.built ?? 0) > 0) {
+        stats = tour.renderer.draw({ ...options, dt: 0, now });
+        settle += 1;
+      }
+      // Then ONE step of life, because `client/life/` takes its time from the
+      // caller (ruling 037): settled with `dt: 0` alone, every frame has an
+      // empty road and nobody on the pavement — which is what the first
+      // storyboard was. The step is capped at a thirtieth so a storyboard's
+      // one-second frames cannot throw a car through a junction, and it is a
+      // function of the frame number alone, so the picture is the same on any
+      // machine.
+      if (life && warmedOn !== tour.renderer) {
+        for (let f = 0; f < 24; f += 1) tour.renderer.draw({ ...options, dt: 1 / 30, frameMs: 16, now: f * 33 });
+        warmedOn = tour.renderer;
+      }
+      if (life) stats = tour.renderer.draw({ ...options, dt: Math.min(1 / fps, 1 / 30), frameMs: 16, now: now + 16 });
+      // POSED, and both crowds: `stats.peds` is the street crowd alone, and it
+      // is 0 on a street the city crowd already holds people on (B7's two
+      // crowds over one graph) — a film gate reading it would call a pavement
+      // full of people empty.
+      return { ...pose, settle, triangles: stats?.triangles ?? 0, cars: stats?.cars ?? 0,
+        people: (stats?.pedsCityPosed ?? 0) + (stats?.peds ?? 0) };
+    },
+  };
+}
 globalThis.SHOT_READY = true;
 </script>
 </body>
