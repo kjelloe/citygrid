@@ -85,6 +85,8 @@ let steepCliffs = 0;
 // as a cliff at the kerbside. It is cut-and-fill rather than a hole in the
 // ground, it is the same shape as A120's building plinth, and it is Q145.
 let shoulderCliffs = 0;
+let worstFillAt;
+const shoulders = [];
 let worstFill = 0;
 let refusals = 0;
 // Refused on a street the grade machinery could not flatten — the terrain, not
@@ -102,6 +104,17 @@ let deckSteps = 0;
 let deckLegs = 0;
 
 /** Is this point on a tile that carries a road AND water? */
+/** Any water within two tiles of a point — the question "is this a hillside or a
+ * riverbank", which the fill alone cannot answer. */
+function waterNear(state, x, z, reach = 2) {
+  for (let dx = -reach; dx <= reach; dx += 1) {
+    for (let dz = -reach; dz <= reach; dz += 1) {
+      if (onWater(state, x + dx * 20, z + dz * 20)) return true;
+    }
+  }
+  return false;
+}
+
 function onWater(city, x, z) {
   const tx = Math.floor(x / DEFAULTS.tileM);
   const ty = Math.floor(z / DEFAULTS.tileM);
@@ -195,9 +208,25 @@ for (const corridor of model.corridors) {
           const fill = Math.abs(model.heightAt(walker.pose.x, walker.pose.z)
             - model.landAt(walker.pose.x, walker.pose.z));
           const onFill = fill > FILL;
-          if (onFill && fill > worstFill) worstFill = fill;
+          if (onFill && fill > worstFill) {
+            worstFill = fill;
+            // WHERE, not just how much: a number with no coordinates is a thing
+            // nobody can photograph, and the first instrument S14 needed was a
+            // place to stand (Q145).
+            worstFillAt = { x: walker.pose.x, z: walker.pose.z };
+          }
           if (steep) steepCliffs += 1;
-          else if (onFill) shoulderCliffs += 1;
+          else if (onFill) {
+            shoulderCliffs += 1;
+            // Every one of them, with the fill and whether there is water
+            // nearby: S14 went looking for a hillside and the worst fill in the
+            // city turned out to be at a river (Q145).
+            if (shoulders.length < 12) {
+              shoulders.push(`  ${fill.toFixed(1)} m of fill at ${walker.pose.x.toFixed(0)}, ${walker.pose.z.toFixed(0)} m`
+                + ` (tile ${(walker.pose.x / 20).toFixed(0)},${(walker.pose.z / 20).toFixed(0)})`
+                + `${waterNear(state, walker.pose.x, walker.pose.z) ? " — water within 2 tiles" : ""}`);
+            }
+          }
           else cliffs += 1;
           if (!steep && !onFill && failures.length < 8) {
             failures.push(`  ground jumped ${jump.toFixed(2)} m over ${SAMPLE} m at ${walker.pose.x.toFixed(0)}, ${walker.pose.z.toFixed(0)}`);
@@ -336,7 +365,9 @@ console.log(`ungradeable    ${ungradeable} of ${model.corridors.length} corridor
 console.log(`cliffs          ${cliffs} (steepest ${worstJump.toFixed(2)} m over ${SAMPLE} m, cliff at ${CLIFF})`
   + `   ${(cliffs / Math.max(1, metres / 1000)).toFixed(2)} per km walked`);
 console.log(`terrain cliffs  ${steepCliffs}   (on corridors no grading can flatten — the land, not the ground under a street)`);
-console.log(`shoulder cliffs ${shoulderCliffs}   (at the edge of an embankment the grading built, worst fill ${worstFill.toFixed(1)} m — Q145)`);
+for (const line of shoulders) console.log(line);
+console.log(`shoulder cliffs ${shoulderCliffs}   (at the edge of an embankment the grading built, worst fill ${worstFill.toFixed(1)} m`
+  + `${worstFillAt ? ` at ${worstFillAt.x.toFixed(0)}, ${worstFillAt.z.toFixed(0)} m — tile ${(worstFillAt.x / 20).toFixed(0)},${(worstFillAt.z / 20).toFixed(0)}` : ""} — Q145)`);
 for (const line of failures) console.log(line);
 
 if (crossings > 0 && deckLegs === 0) {

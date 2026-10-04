@@ -29,7 +29,12 @@ const NOT_A_GATE = ["i18n_review", "screenshot", "serve", "repin", "make_precach
   // G1's evidence (ruling 046): it photographs a state the engine can no longer
   // produce, so it is run against a worktree of an older commit and can never
   // fail here.
-  "street_proof"];
+  "street_proof",
+  // S14's before/after pictures of a street's shoulder (Q145). It takes three
+  // shots at a place `walkthrough 128 hilly` names and asserts nothing: the
+  // question it serves is a picture decision, and the walk is what counts the
+  // cliffs.
+  "embankment_shots"];
 
 /** Files under `tools/` that are gates by their name.
  *

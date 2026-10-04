@@ -235,7 +235,25 @@ lands here as a palette amendment with §3.1 updated in the same slice.
 **Done when** every row of the sheet has moved toward the reference by Kjell's eye, and the
 budgets in ruling 040 carry the re-measured numbers.
 
-## S14 — The embankment has a batter (M) — Q145, found by J3's hilly walk 2026-10-04 — **waits on Kjell**
+## S14 — The embankment has a batter (M) — **TRIED AND REVERTED 2026-10-04** (Q145)
+
+Built twice and measured both times (dev-log). As a wider blend: shoulder cliffs 4 → 0, and the
+walked street 53.5% → **71.8%** steep, because widening the blend widens a corridor's influence as
+well as its shoulder. As a floor on the ground — the land may not fall faster than 1:1.5 from the
+carriageway, nothing dragged: steepness untouched, and **674 of 1,376 corridors** qualified, because
+a graded street on a hilly map routinely stands 2–3 m above the land. The first run of that arm
+buried a lot.
+
+**A batter needs space, and the city is built to the kerb.** And the four cases are not hillsides:
+the walk prints their positions now and all four are within two tiles of water, where the "fill" is
+the depth of S12's bank cut below a waterside street. The choice Q145 now offers is a **retaining
+wall** — a renderer feature that changes no height, buries no lot and re-measures nothing — or
+leaving it counted.
+
+`tools/embankment_shots.mjs` takes the three pictures (the kerb, the drop, side on) at a tile the
+walk names; `reports/smoke-S14-*-before.png` are the ones taken for this attempt.
+
+## S14 — The embankment has a batter (M) — the item as written
 
 **The reading.** Where the land is steep, R3's corridor profile and S11's junction drift hold a
 street ABOVE the land, and the height field blends back over `road.blend` — four metres. On a

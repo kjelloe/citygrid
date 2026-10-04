@@ -10349,3 +10349,53 @@ unread OPTION from `CMD_MUTUAL_AID` the command, two different things with one n
 And `registerYearly` is deleted: a registration slot with no caller whose pass ran over an empty
 array every game year. The season slice can add it back in four lines on the day it needs it. Suite
 green twice (1,662).
+
+## S14 — the embankment has no batter, and it cannot have one yet (2026-10-04)
+
+Q145 asked for a batter on a street's shoulder, and Kjell chose to build it. **It is not built, and
+the measurement is why.** Two findings, in the order they arrived.
+
+**One: the four cases are not on a hillside.** `walkthrough 128 hilly` prints the worst fill, so the
+first thing S14 needed was a place to stand — it prints every shoulder cliff's position now, and
+whether there is water within two tiles:
+
+```
+  9.6 m of fill at tile 75,36 — water within 2 tiles
+  9.7 m of fill at tile 75,35 — water within 2 tiles
+  10.0 m of fill at tile 75,37 — water within 2 tiles
+  10.0 m of fill at tile 75,36 — water within 2 tiles
+  worst fill 14.7 m at tile 61,35   (a marina, which is what the first shot showed)
+```
+
+All four are at the water. A road along a bank stands above the shore level S12 cuts to, and the
+"fill" is the bank's depth. The question Q145 was answered against — a street on a HILLSIDE — is not
+the thing the gate is counting.
+
+**Two: the batter was built, measured, and reverted.** `road.batter` 1.5 up to `road.maxBlend` 16,
+tried twice:
+
+- as a wider BLEND (the shoulder reaches further): the shoulder cliffs went 4 → 0, and the walked
+  street went from **53.5% to 71.8% steep** with eight more corridors ungradeable, because widening
+  the blend widens a corridor's INFLUENCE as well as its shoulder — every street near a high one was
+  dragged toward it;
+- as a FLOOR on the ground (the land may not fall faster than 1:1.5 from the carriageway, nothing
+  dragged, ground only ever raised): the street steepness was untouched, and **674 of 1,376
+  corridors** qualified for a shoulder, because on a hilly map a graded street routinely stands two
+  or three metres above the land. At that volume it is not four embankments, it is the whole city's
+  ground — and the walk immediately reported a lot **walked into**: the raised shoulder had buried
+  a building.
+
+That last line is the real answer. **A batter needs space, and the city is already built to the
+kerb.** Ground beside a 10 m embankment belongs to lots; raising it buries them, which is Q144's
+defect arriving from the other direction.
+
+So Q145 stays open with better facts and two different options than the ones it was answered
+against: **a retaining wall** — which is what a city actually has where a street stands ten metres
+above a river, and which is a renderer feature that changes no height, buries no lot and re-measures
+nothing — or **leave it**, counted by the walk.
+
+What is kept from the attempt: the walk prints where each shoulder cliff is and whether it is at
+water, and `tools/embankment_shots.mjs` takes the three pictures at a named tile (the kerb, the
+drop, and side on). The before shots are in `reports/smoke-S14-*-before.png`. The first framing of
+those was wrong in the usual way — span 24 at a low pitch under perspective is the whole town, and
+the subject was four pixels of it.
