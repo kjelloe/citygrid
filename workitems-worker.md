@@ -151,7 +151,24 @@ fallback and the worker in turn and compares the hash after 200 ticks and 50 com
 
 **Must not change:** `engine/`, `shared/statehash.js`, any fixture hash.
 
-## W3 — The renderer off the tick (S)
+## W3 — The renderer off the tick (S) — **done 2026-10-04 as the measurement; the second half is W6**
+
+`tools/seam_cost.mjs` (node, not a browser: a frame time here is SwiftShader's and does not travel,
+a blocked thread is CPU and does). On a played 96 at era 26 — 284 buildings, 2,051 residents:
+
+- a build command on the main thread: **0.00 ms before the seam, 0.01 ms after** (the reducer's
+  share was too small to measure either way);
+- a month tick: **3.62 ms before, 0.00 ms after** — this is what moved, and 7.78 ms on a 128 hilly;
+- the desync check the seam added back: **1.24 ms a sim-month**;
+- `createModel`, which never moved: **38.5 ms p50 on the 96, 43.6 on the 128 hilly**, and D6
+  measured 184.7 ms on a 256.
+
+**A build action blocks the render thread for 38.47 ms before the seam and 38.47 ms after it.** The
+model rebuild is 100% of what is left. The worker is what multiplayer needs and what made
+`worker_smoke` possible; it is not what a player will notice. The phone half (the governor's p95
+before and after) stays blocked on D2.
+
+## W3 — The renderer off the tick (S) — the item as written
 
 **Goal.** Measure what the worker bought, and take the second half if it is there.
 
@@ -174,6 +191,34 @@ fallback and the worker in turn and compares the hash after 200 ticks and 50 com
 
 **Done when** the dev-log has a table: build action stall, month tick stall, frame p95 on the
 phone, before W2 and after.
+
+## W6 — The model off the render thread (L) — **what W3 measured, 2026-10-04**
+
+**Goal.** The 38.5 ms (96), 43.6 ms (128 hilly) and 184.7 ms (256) that `createModel` blocks the
+render thread for after **every accepted build action** — two and a half frames at 60 Hz on a
+machine with headroom, eleven on the biggest map. This is Q60, and W3 is what finally priced it
+against everything else: it is now 100% of the stall.
+
+**Two shapes, and the measurement says what to ask of each.**
+
+1. **A model worker.** `client/world/` is pure and takes typed arrays, so a second worker can
+   derive corridors, lanes and lots from the patched layers and transfer the result back. The
+   question to ask first is not performance, it is **what the renderer does while the model is
+   stale**: every frame reads `model` synchronously — the walker stands on it, the cars drive on
+   it, picking uses it. An async rebuild means a frame drawn against last tick's lots, which is
+   fine for a building that just appeared and wrong for a road the player is dragging over.
+2. **Per-chunk derivation keyed by `chunkHash`** (E0's deferral in
+   `specs/engine/03-architecture.md`, and what Q51/Q60 have pointed at since R1). A build action
+   touches a handful of chunks; the lane graph is two thirds of the cost at every size and is the
+   part that is hardest to make local, because a lane leaves its chunk.
+
+**Do first, before choosing:** split the 38.5 ms by phase on a played city (`lanes_dump` prints
+corridors and lanes; `deriveNav` and `deriveWater` have never been timed), and count how much of it
+a single build action actually invalidates. A rebuild that only had to redo one chunk's lots is a
+different item from one that has to redo the lane graph.
+
+**Done when** a build action on a played 96 blocks the render thread for under a frame, measured by
+`tools/seam_cost.mjs` with the same city, and `budget_gate` and `walkthrough` are unmoved.
 
 ## W4 — The server reuses the seam (M, the door to Wave 5) — **designed 2026-10-04 after W2**
 
@@ -231,6 +276,6 @@ statement after the click that changed it.
 
 ## Order
 
-W1 → W2 → W3 → W4, with **W5** any time after W2 (it is a gate repair, not a feature). W1 is safe
+W1 → W2 → W3 → W4, with **W5** any time after W2 and **W6** when Kjell wants the stall gone (it is a gate repair, not a feature). W1 is safe
 and cheap and makes W2 a swap rather than a rewrite; W3 is a measurement with an optional second
 half; W4 is the receipt for the whole plan.

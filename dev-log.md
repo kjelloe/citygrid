@@ -10158,3 +10158,41 @@ read, and this project has already been bitten by exactly that (`setRules`, P90)
 Two of the seven loose ends needed no item. The boot levers are already driven: `?worker=0` by
 `worker_smoke` on both arms, `?funds=` by four gates that would fail without it. And the parity
 test folds into W4, where the transport argument makes it possible at all.
+
+## W3 — what the worker bought (2026-10-04, era 26)
+
+The item's own done-when is a table, and `tools/seam_cost.mjs` is the instrument: **node, not a
+browser**, because the frame times this project can take are SwiftShader's and do not travel, while
+the time a reducer or a model rebuild blocks a thread for is CPU and does. A played city — seed
+1003, twenty years with the deputy, 284 buildings and 2,051 residents on the 96.
+
+| On the main thread | 96 rolling | 128 hilly |
+|---|---|---|
+| a build command, **before** (the reducer, inline) | 0.00 ms p50, 0.08 max | 0.00 ms p50, 0.03 max |
+| a fast tick, **before** | 0.01 ms | 0.01 ms |
+| a month tick, **before** | **3.62 ms** | **7.78 ms** |
+| a build command, **after** (the patch) | 0.01 ms | 0.01 ms |
+| a tick, **after** (the patch) | 0.00 ms | 0.00 ms |
+| the monthly desync check (hash of the mirror) | **1.24 ms** | 2.07 ms |
+| on the worker: a tick, reducer and patch built | 1.58 ms p50, 4.68 max | 2.72 ms p50, 13.11 max |
+| **`createModel`, which never moved** | **38.5 ms p50, 88.8 max** | **43.6 ms p50, 75.0 max** |
+
+**The worker bought a month tick, and a month tick was never the stall.** A build action blocks the
+render thread for **38.47 ms before the seam and 38.47 ms after it**: the reducer's share of it was
+too small to measure, and cityviewer's model rebuild is **100% of what is left**. What actually
+moved off the thread is 3.62 ms once every twelve ticks — at fast speed, a 3.6 ms hitch every
+1.4 s — and the seam ADDED 1.24 ms a month back in the desync check, so the net is about two
+milliseconds a sim-month.
+
+That is not an argument against W1 and W2. The seam is what multiplayer needs (ruling 003 built it
+in from day one for exactly this reason), the mirror is what makes a server's snapshot a known
+shape, and `worker_smoke` is now the strongest determinism gate in the project. But the honest
+answer to "what did the worker buy for the player" is **nothing they can see**, and the number that
+says why has been sitting in Q60 since R1: the model rebuild.
+
+**So W3's optional second half is not optional, it is the whole item**, and it is written up as
+**W6** rather than taken here, because it is an architecture decision with two shapes and the
+measurement now says which questions to ask of them. 38 ms is two and a half frames at 60 Hz on a
+machine with headroom; D6's 184.7 ms on a 256 is eleven.
+
+The phone half of this item (the governor's p95 before and after) stays blocked on D2's card.

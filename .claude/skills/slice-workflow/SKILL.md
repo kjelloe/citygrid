@@ -128,6 +128,10 @@ treasury, for the gates that used to poke it.
 only thing that catches a question added to `dev-questions.md` and nowhere else, a renderer slice
 with no row in `plan-v1.md`, or a palette value the art direction still quotes the old way.
 
+A slice that changes what the SEAM costs runs `node tools/seam_cost.mjs [size] [terrain]` (node, no
+browser): the reducer, the patch, the desync hash and `createModel`, before and after, on a played
+city. It is CPU rather than SwiftShader, so its numbers travel.
+
 A slice that changes what a frame costs also runs `node tools/perf_card.mjs` (70 s) and puts the
 table in the dev-log. It is not a gate — it produces numbers, not a pass — and its frame times are
 SwiftShader, so quote them as such; the triangles, draw calls and ladder decisions in the same file
