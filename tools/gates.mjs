@@ -114,7 +114,14 @@ export const SETS = {
   // (budget_gate 235, lanes_dump 60), so the next slice would have had to
   // raise the budget to fit — which the rule forbids. It is a set of its own
   // now, and `render` is restated from what is left in it.
-  render: ["walkthrough", "walkthrough_hilly", "passability", "lanes_dump"],
+  // **Split at S18**, for the fourth time M2's rule has fired. The reviewer read
+  // `render` at 248 s of 240 with `lanes_dump` at 239 of it; this machine reads
+  // 220 with `lanes_dump` at 211. Both are the same finding: one gate is 95% of
+  // the set, it grows with every era's city, and raising the budget to fit is
+  // what the rule forbids. What is left is nine seconds — a set any slice can
+  // afford to run, which is what `render` was for.
+  render: ["walkthrough", "walkthrough_hilly", "passability"],
+  lanes: ["lanes_dump"],
   budget: ["budget_gate"],
   // The picture tools that CHECK themselves (P75's omissions round): each one
   // counts what it photographed and exits non-zero when the count is wrong, and
@@ -143,7 +150,7 @@ export const SETS = {
   // one before it is seen at all.
   film: ["film"],
 };
-SETS.all = [...SETS.quick, ...SETS.render, ...SETS.budget, ...SETS.sim, ...SETS.shots,
+SETS.all = [...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim, ...SETS.shots,
   ...SETS.transport, ...SETS.kits, ...SETS.film];
 
 /**
@@ -192,7 +199,10 @@ export const BUDGET_MS = {
   // rather than a gate that grew (M2's rule), and the fixture was chosen at ONE
   // mayor and twenty years for exactly this reason — at four mayors lanes_dump
   // had not finished in thirteen minutes.
-  render: 4 * 60 * 1000,
+  render: 2 * 60 * 1000,
+  // `lanes_dump` alone: 211 s here, 239 s on the reviewer's machine, and it
+  // derives a model per size and terrain — so it tracks the city, not the code.
+  lanes: 6 * 60 * 1000,
   // `budget_gate` alone, 235 s at B3a with three tiers, two projections, four
   // spans and the desktop viewport D8 added.
   budget: 6 * 60 * 1000,

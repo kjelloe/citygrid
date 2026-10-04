@@ -103,7 +103,8 @@ time and writes it to `reports/gates-<date>.json`:
 
 ```sh
 node tools/gates.mjs quick     # after ANY change — 12 gates (worker_smoke since W2), ~9 min on SwiftShader
-node tools/gates.mjs render    # a renderer slice as well: walkthrough, passability, lanes_dump
+node tools/gates.mjs render    # a renderer slice as well: the two walks and passability, ~9 s
+node tools/gates.mjs lanes     # the lane graph's own numbers — its own set since S18, ~4 min
 node tools/gates.mjs budget    # and the triangle budget — its own set since B3a, ~5 min
 node tools/gates.mjs shots     # the world and behaviour lanes' pictures, ~4.5 min
 node tools/gates.mjs transport # T1-T4's pictures — avenue, rail, harbour (T4b split them), ~3 min

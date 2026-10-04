@@ -10510,3 +10510,21 @@ has always counted.
 Gates: `shots` 394 s of 420 with `embankment_shots` in it (103 s, the set's slowest); `kits` 346 s;
 suite green twice (1,671). The pictures are in `reports/smoke-S18-wall*-{before,after}.png` and the
 difference is a grass bank becoming a faced one with a coping along its top.
+
+## The gate sets, re-measured one at a time — and `render` is split (2026-10-04)
+
+The reviewer read `quick` at 537 s of 540 and `render` 8 s over with `lanes_dump` at 239 s. One set
+at a time on this machine, with nothing else running:
+
+| set | here | the reviewer | budget |
+|---|---|---|---|
+| `quick` | **512 s** | 537 s | 540 |
+| `render` | **220 s** (lanes_dump 211) | 248 s (lanes_dump 239) | 240 |
+
+Two readings of the same gate, 25 s apart on a set whose budget is 240 — which is the measurement
+saying the same thing twice rather than disagreeing: **one gate is 95% of that set**, it derives a
+model per size and terrain, and it therefore grows with every era's city rather than with the code.
+Raising the budget to fit is what M2's rule forbids, so `render` is split for the fourth time that
+rule has fired: `render` is the two walks and `passability` — **9 s of a 120 s budget**, a set any
+slice can afford to run, which is what it was for — and `lanes` is `lanes_dump` alone at 215 s of
+360.
