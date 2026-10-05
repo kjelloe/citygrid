@@ -284,6 +284,16 @@ narrow units carry less wall than one 40 m frontage), 100,488 → 111,120 from t
 boxes where there was one). `budget_gate` cannot see any of it: its saturated city paints each zone
 one tile wide, so no lot in it is wide enough to divide.
 
+## 6.1c-iv A works stands on a yard (S16c, 2026-10-06)
+
+An industrial lot has no `lawn` colour (houses and civic buildings have one), and nothing else drew
+its open ground — so a shed stood on the countryside's grass at every zoom. The yard is hardstanding
+over the whole LOT, which is why a sub-lot carries `lotBox`: since S16a the facade spec is the shed.
+It is built twice, as everything on the ground is: a **mesh** on `model.heightAt` in the baked
+extras (one quad per 8 m cell — a single quad across a 35 m lot with a 1.9 m fall is buried under
+its own terrain), and the instanced quad the lawn uses, in hardstanding, for the chunks that are not
+baked.
+
 ## 6.1c-iii What is drawn ON a wall (S9, corrected S16b 2026-10-05)
 
 A course of brick, a shutter, a fanlight, a number plate, a garage door: quads a couple of

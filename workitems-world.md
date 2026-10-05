@@ -798,6 +798,20 @@ ask for the glazing rather than guess a colour.
 past it into the empty interior and out the far side — the bright slivers between the bays. One
 quad per unit spanning the frontage, behind the glass, is S16b's.
 
+## S16c — The works gets a yard (M) — **BUILT 2026-10-06** as `slice-S16c`
+
+`client/world/works-spec.js` and the rest of `trade-parts.js`: hardstanding over the whole lot, a
+loading dock with a roller door, a name board, a tank and pallets in the service strip, gate posts.
+The yard needed the parent lot's box (`sublots.js` keeps `lotBox` on every sub-lot now, since `spec`
+is the SHED), and it was invisible three times before it was right — wound face-down, drawn by a
+builder with no height field, and one quad across a lot with a 1.9 m fall. It is a mesh on
+`model.heightAt` in the extras pass, plus a hardstanding colour on the instanced quad for the zooms
+that are not baked, which is where "sheds on a lawn" was spotted.
+
+**Left of S16 as written:** the density ladder for commerce is S16a's; the calmer building site
+(scaffold on the street face only, a hoarding, one crane) is still open and belongs with B2's age
+geometry.
+
 ## S16b — A shop has furniture (M) — **BUILT 2026-10-05** as `slice-S16b`
 
 `client/world/shop-spec.js` and `client/render/trade-parts.js`: the interior behind the glass (one

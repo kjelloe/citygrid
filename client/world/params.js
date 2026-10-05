@@ -138,6 +138,10 @@ function definitionCapacity(building) {
   return 40 * (1 + (building.level ?? 0));
 }
 
+/** Hardstanding, mirrored from `client/render/trade-parts.js` — a module
+ * `client/world/` may not import, because it is the renderer's (ruling 032). */
+const YARD = 0x6c6a63;
+
 export function buildingParams(building, palette, family, showOwner = false, tick = undefined) {
   const kind = kindOf(building.zone);
   const cfg = getConfig();
@@ -176,6 +180,10 @@ export function buildingParams(building, palette, family, showOwner = false, tic
     lawn: kind === "residential" || kind === "civic"
       ? varyColour(palette.lawn, building.id * 5 + 3, 0.6)
       : 0,
+    // And a works stands on a YARD (S16c). Industry had neither, so a shed sat
+    // on the countryside's own grass at every zoom — which is what an estate
+    // from the air looked like: business units in a meadow.
+    yard: kind === "industrial" ? varyColour(YARD, building.id * 5 + 7, 0.1) : 0,
     // The rest of the garden (slice V6): a hedge across the frontage and a path
     // to the door. Only on the variants where the kit did NOT build a fence
     // into the geometry, because a fence and a hedge on the same boundary is a

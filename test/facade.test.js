@@ -90,13 +90,22 @@ test("nothing but the eave reaches past the lot, and the eave is small", () => {
   for (const zone of Object.values(ZONES)) {
     const { spec, pieces } = built({ zone, w: 2, h: 2 });
     const b = boundsOf(pieces);
+    // Against the LOT, not against the building's own box. Since S16a a trade
+    // building is a unit ON a lot — a shed with a yard round it — and S16c puts
+    // the yard, the tanks and the gate in that yard, which is outside the shed
+    // and inside the lot. `lotBox` is the same box for everything else.
+    const lot = spec.lotBox ?? spec;
     // A portico and a porch stand in front of the wall, so the allowance is the
-    // deepest of them — but it is an allowance, not "anything goes".
-    const reach = 1.8;
-    assert.ok(b.x0 >= spec.x0 - reach, `${zone} reaches ${spec.x0 - b.x0} m west of its lot`);
-    assert.ok(b.x1 <= spec.x1 + reach, `${zone} reaches ${b.x1 - spec.x1} m east of its lot`);
-    assert.ok(b.z0 >= spec.z0 - reach, `${zone} reaches ${spec.z0 - b.z0} m north of its lot`);
-    assert.ok(b.z1 <= spec.z1 + reach, `${zone} reaches ${b.z1 - spec.z1} m south of its lot`);
+    // deepest of them — but it is an allowance, not "anything goes". A works'
+    // loading dock is deeper, because a lorry backs onto it: 2.2 m of platform
+    // in the yard, which on a real lot is inside the lot by several metres (the
+    // ladder sets a shed back 16% of its depth from the kerb) and only reaches
+    // past the box in a fixture that puts the shed on the whole lot.
+    const reach = zone === ZONES.industrial ? 2.6 : 1.8;
+    assert.ok(b.x0 >= lot.x0 - reach, `${zone} reaches ${lot.x0 - b.x0} m west of its lot`);
+    assert.ok(b.x1 <= lot.x1 + reach, `${zone} reaches ${b.x1 - lot.x1} m east of its lot`);
+    assert.ok(b.z0 >= lot.z0 - reach, `${zone} reaches ${lot.z0 - b.z0} m north of its lot`);
+    assert.ok(b.z1 <= lot.z1 + reach, `${zone} reaches ${b.z1 - lot.z1} m south of its lot`);
   }
 });
 

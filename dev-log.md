@@ -11676,3 +11676,51 @@ quote. The shop frame is the measurement anybody will actually use: nine named f
 shopfronts with their interiors behind, three awnings.
 
 Suite 1,810 green twice.
+
+## S16c — the works gets a yard, and the yard had to be a mesh (2026-10-06)
+
+S16a's air shot showed the industrial estate as sheds on a lawn: `params.js` gives a `lawn` colour
+to houses and civic buildings, industry gets 0, and nothing else draws anything on an industrial
+lot's open ground. So a works stood on the countryside's own grass at every zoom.
+
+`client/world/works-spec.js` (pure) and `client/render/trade-parts.js`: the **yard** as
+hardstanding over the whole lot, a **loading dock** (1.2 m, a lorry bed) with a **roller door** over
+it on the street side, a **name board** beside the door rather than over it, a **tank** and a stack
+of **pallets** in the service strip, and **gate posts** in the boundary. The yard is not
+furniture-gated — a shed on grass is wrong from the air, which is the zoom the furniture is dropped
+at.
+
+**The yard needed `lotBox`.** `spec` is the SHED since S16a, not the lot, and the first version drew
+a yard the size of the building. `sublots.js` keeps the parent lot's box on every sub-lot now, which
+is also what a gate and a tank are placed against.
+
+**And then it was invisible three times over, each for a different reason.**
+
+1. **Wound face-down.** +x then +z faces DOWN and is culled — the lesson `props-l3.js` has carried
+   since S3, arrived at again.
+2. **Drawn by the facade builder**, which has no height field, so it sat at the building's seat.
+   Lifting it 1.5 m to find out showed it edge-on as a line across the wall: it was there, and under
+   the ground. It is built in `bakeLotExtras` now, from `model.heightAt`, with the props.
+3. **One quad for a 35 m lot.** A quad takes its height from its four corners, and across a lot with
+   a 1.9 m fall the ground in the middle rises above the line between them. The terrain is a mesh;
+   anything laid on it has to be one too — 8 m cells, about twenty triangles a yard.
+
+**And the air sees a different yard from the street.** The baked chunks draw the mesh; everywhere
+else is the instanced pass, which is where "sheds on a lawn" was spotted in the first place — so
+`params.yard` is a hardstanding colour on the same quad the lawn uses, skipped inside a baked chunk
+exactly as the lawn is.
+
+`test/works-spec.test.js`: the yard covers more than half its lot on every frontage, the dock and
+the roller door are on the street side, nothing in the yard stands inside the shed (24 hashes), and
+the built yard is a mesh whose triangles face up and lie on the ground they were given.
+
+**Gate: `trade_shots`, green, and both pairs comparable this run** — the shop lot 180,880 →
+176,750 (0.98×) at 6 → 6 baked chunks, the works lot 263,326 → 259,110 (0.98×) at 5 → 5. The yard,
+the dock, the doors and the tanks cost nothing a frame can see.
+
+**And the street shot does not show the yard, which is right.** The works that gate photographs has
+its two sheds side by side ON the frontage, so its yard runs behind them: from the pavement you see
+the sheds, and the green in front of them is the road's verge, not the lot. The yard is an AIR
+feature on this lot, and the air is where the defect was found.
+
+Suite 1,816 green twice.

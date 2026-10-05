@@ -17,7 +17,7 @@ import { sink } from "./solid.js";
 import { EDGES, originOf, outwardQuad } from "./edges.js";
 import { roof } from "./roof-kit.js";
 import { buildHouseParts } from "./house-parts.js";
-import { buildShopParts } from "./trade-parts.js";
+import { buildShopParts, buildWorksParts } from "./trade-parts.js";
 import { buildCivic, buildAge } from "./civic-parts.js";
 import { windowTreatment, windowLit, CURTAIN_TONES, INSET } from "../world/windows.js";
 // Re-exported so `signs.js` and anything else that draws on a wall keeps one
@@ -358,6 +358,8 @@ export function buildFacade(spec) {
   // the awning the grammar has asked for since it was written, the roof plant,
   // the delivery door and the bins.
   out.push(...buildShopParts(spec, { groundTop, wallTop, trim, glass }));
+  // And the works' yard, dock and tanks (S16c).
+  out.push(...buildWorksParts(spec, { groundTop, trim }));
   // What age and neglect add (B2): a scaffold while it is going up, boards over
   // the windows when its condition has gone. Nothing at all for a building in
   // good repair, which is most of them.

@@ -116,3 +116,104 @@ export function buildShopParts(spec, { groundTop, wallTop, trim, glass }) {
 }
 
 const SHOP_KINDS = new Set(["interior", "awning", "roofPlant", "deliveryDoor", "binStore"]);
+const WORKS_KINDS = new Set(["yard", "dock", "rollerDoor", "nameBoard", "tank", "pallets", "gate"]);
+
+/**
+ * The works' own pieces, as `[{ part, colour, name }]` (S16c).
+ *
+ * The yard is the one that matters from the air: an industrial lot has no lawn
+ * (`params.js` gives one to houses and civic buildings only), so until this a
+ * shed stood on the terrain's own grass and an estate read as a business park
+ * in a meadow.
+ */
+export function buildWorksParts(spec, { groundTop, trim, heightAt }) {
+  const parts = (spec.extras ?? []).filter((p) => WORKS_KINDS.has(p.kind));
+  if (parts.length === 0) return [];
+
+  const shell = sink();     // dock, tanks, pallets — the works' own colour
+  const metal = sink();     // roller door, gate, name board
+
+  for (const part of parts) {
+    if (part.kind === "dock") {
+      const [x, z] = atEdge(spec, part.side, part.u, -part.depth / 2);
+      shell.box(x - part.w / 2, spec.seat, z - part.depth / 2,
+        x + part.w / 2, spec.seat + part.h, z + part.depth / 2);
+    }
+    if (part.kind === "rollerDoor") {
+      panel(metal, spec, part.side, part.u - part.w / 2, part.u + part.w / 2,
+        spec.seat + 0.1, spec.seat + 0.1 + part.h);
+    }
+    if (part.kind === "nameBoard") {
+      panel(metal, spec, part.side, part.u - part.w / 2, part.u + part.w / 2,
+        groundTop - part.h - 0.4, groundTop - 0.4);
+    }
+    if (part.kind === "tank") {
+      // A box, not a cylinder: at the distance a tank is read from, the
+      // silhouette is the thing and twelve triangles buy the whole of it.
+      const y = heightAt ? heightAt(part.x, part.z) : spec.seat;
+      shell.box(part.x - part.r, y, part.z - part.r, part.x + part.r, y + part.h, part.z + part.r);
+    }
+    if (part.kind === "pallets") {
+      const y = heightAt ? heightAt(part.x, part.z) : spec.seat;
+      shell.box(part.x - part.w / 2, y, part.z - part.w / 2,
+        part.x + part.w / 2, y + part.h, part.z + part.w / 2);
+    }
+    if (part.kind === "gate") {
+      // Two posts in the boundary. The fence itself is the kit's (`addFence`).
+      for (const at of [part.u - part.w / 2, part.u + part.w / 2]) {
+        const [x, z] = atEdge(spec, part.side, at, -0.3);
+        metal.box(x - 0.12, spec.seat, z - 0.12, x + 0.12, spec.seat + 1.8, z + 0.12);
+      }
+    }
+  }
+
+  return [
+    { part: shell.done(), colour: spec.wall, name: "worksShell" },
+    { part: metal.done(), colour: trim, name: "worksMetal" },
+  ].filter((piece) => piece.part.triangles > 0);
+}
+
+/** Hardstanding: a grey the lawn green cannot be mistaken for, and darker than
+ * the pavement so a yard does not read as a car park. */
+export const YARD_COLOUR = 0x6c6a63;
+
+/**
+ * The yards of a chunk's industrial lots, as one piece (S16c).
+ *
+ * Here rather than in `buildWorksParts` because a yard is GROUND: it follows
+ * the terrain, and the facade builder has no height field — which is exactly
+ * why the first version sat at the building's seat and was buried under the
+ * slope in front of its own shed. Lifting it 1.5 m to find out showed it
+ * edge-on as a line across the wall, which is what a flat quad at eye height
+ * looks like when it is there and in the wrong place.
+ */
+export function buildWorksYards(specs, { heightAt, lift = 0.15, cell = 8 }) {
+  const ground = sink();
+  for (const spec of specs) {
+    for (const part of spec.extras ?? []) {
+      if (part.kind !== "yard") continue;
+      const at = (x, z) => [x, heightAt(x, z) + lift, z];
+      // ONE QUAD PER CELL, not one per yard. A single quad takes its height from
+      // its four corners, and across a 35 m lot with a 1.9 m fall the ground in
+      // the middle rises above the straight line between them — so the yard was
+      // buried under its own terrain and showed only as a line when lifted
+      // 60 cm into the air. The terrain is a mesh; anything laid on it has to
+      // be one too.
+      const nx = Math.max(1, Math.round((part.x1 - part.x0) / cell));
+      const nz = Math.max(1, Math.round((part.z1 - part.z0) / cell));
+      for (let i = 0; i < nx; i += 1) {
+        for (let j = 0; j < nz; j += 1) {
+          const x0 = part.x0 + ((part.x1 - part.x0) * i) / nx;
+          const x1 = part.x0 + ((part.x1 - part.x0) * (i + 1)) / nx;
+          const z0 = part.z0 + ((part.z1 - part.z0) * j) / nz;
+          const z1 = part.z0 + ((part.z1 - part.z0) * (j + 1)) / nz;
+          // Wound to face UP: +x then +z faces DOWN and is culled (props-l3 has
+          // had that one since S3, and four green shots showed no asphalt).
+          ground.quad(at(x0, z0), at(x0, z1), at(x1, z1), at(x1, z0));
+        }
+      }
+    }
+  }
+  const part = ground.done();
+  return part.triangles > 0 ? [{ part, colour: YARD_COLOUR, name: "yard" }] : [];
+}

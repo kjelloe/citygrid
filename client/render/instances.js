@@ -948,6 +948,12 @@ export function updateInstances(state, pools, options = {}) {
     if (p.lawn && !lotIsBaked(lot)) {
       push(pools.lawn, cx, h, cz, building.w, 1, building.h, p.lawn);
     }
+    // A works' yard, the same quad in hardstanding (S16c). The baked chunks
+    // draw their own, which follows the ground as a mesh — this is the one the
+    // air sees, and the air is where "sheds on a lawn" was spotted.
+    if (p.yard && !lotIsBaked(lot)) {
+      push(pools.lawn, cx, h, cz, building.w, 1, building.h, p.yard);
+    }
     // The rest of the front garden (slice V6): a boundary and a way in. Both
     // sit on the lot's own seat like the lawn, and both are skipped inside a
     // baked chunk, where E5's prop pass draws the real thing.

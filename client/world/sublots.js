@@ -52,6 +52,11 @@ export function placeUnits(lot, units) {
     return {
       ...lot,
       x0, z0, x1, z1,
+      // The whole lot, kept: a sub-lot is a building's footprint and the yard,
+      // the gate and the tanks belong to the GROUND around it (S16c). Without
+      // this a works' tank is placed off the side of its own shed and lands on
+      // the neighbour's.
+      lotBox: lot.lotBox ?? { x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z1 },
       cx: (x0 + x1) / 2,
       cz: (z0 + z1) / 2,
       frontageLen: alongX ? x1 - x0 : z1 - z0,

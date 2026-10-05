@@ -20,6 +20,7 @@ import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
 import { unitsOf } from "../world/units.js";
+import { buildWorksYards } from "./trade-parts.js";
 import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
@@ -407,6 +408,12 @@ export function bakeLotFacades(baker, state, lots, from, stop, acc, palette, sty
 /** What a chunk's lots share once their facades are done: the props, the
  * trees, the lamps and the signs (R5: its own frame). */
 export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName = "plain", locale = "en") {
+  // The works' yards (S16c): ground, so they follow the terrain and belong with
+  // the extras rather than with the facade — an industrial lot has no lawn, and
+  // without this a shed stands on the countryside's own grass.
+  for (const piece of buildWorksYards(acc.specs, { heightAt: model.heightAt })) {
+    baker.addPart(piece.part, piece.colour, piece.options);
+  }
   const cfg = getConfig();
   const box = chunkBox(cx, cy, cfg.chunkTiles, cfg.tileM);
   // S3's props and bays in this chunk, from the list the colliders read.

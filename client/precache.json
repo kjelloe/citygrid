@@ -1,5 +1,5 @@
 {
- "version": "224f031b785d",
+ "version": "14c48132b01c",
  "build": "7006947afd33",
  "generated": "2026-10-05",
  "files": [
@@ -150,6 +150,7 @@
   "./client/world/vehicle-spec.js",
   "./client/world/water.js",
   "./client/world/windows.js",
+  "./client/world/works-spec.js",
   "./data/balance.json",
   "./data/buildings.json",
   "./data/cityviewer.json",

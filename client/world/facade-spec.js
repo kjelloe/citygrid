@@ -21,6 +21,7 @@ import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
 import { houseParts } from "./house-spec.js";
 import { shopParts } from "./shop-spec.js";
+import { worksParts } from "./works-spec.js";
 import { civicShape, civicSpin, turnMass, civicSignFace, civicPointOnLot, civicHeightM } from "./civic-spec.js";
 /**
  * The names over the shops — a mirror of `data/names.json`, one list per locale.
@@ -209,6 +210,10 @@ export function facadeSpec(lot, params, locale = "en", furniture = true, style =
     storeys: lot.storeys ?? params.storeys,
     seat: lot.seat,
     x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z1,
+    // The whole lot this building stands on — the same box when it is not a
+    // sub-lot. A yard, a gate and a tank are placed against this, not against
+    // the shed (S16c).
+    lotBox: lot.lotBox ?? { x0: lot.x0, z0: lot.z0, x1: lot.x1, z1: lot.z1 },
     edges,
     storefronts: [],
     extras: [],
@@ -239,6 +244,10 @@ export function facadeSpec(lot, params, locale = "en", furniture = true, style =
   // What makes one shop that shop (S16b). The interior comes whatever the
   // distance; the rest is furniture, like a house's.
   if (kind === "commercial") spec.extras = spec.extras.concat(shopParts(spec, { furniture }));
+  // And what makes one works that works (S16c). The YARD comes whatever the
+  // distance — an industrial lot has no lawn, so without it a shed stands on
+  // grass from every zoom — and the rest is furniture.
+  if (kind === "industrial") spec.extras = spec.extras.concat(worksParts(spec, { furniture }));
   // What makes one house that house (S9). Appended rather than merged into
   // `extrasOf`, because these are residential furniture and that function is
   // the four categories' shared list — and a renderer that does not know a
