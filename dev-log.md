@@ -11912,3 +11912,15 @@ and `test/window-facing.test.js` asserts the walls themselves, per face, which i
 held before.
 
 Suite 1,825 green twice.
+
+## The round after S21b (2026-10-06)
+
+**A test for where the rule lives.** Four copies of `out[0] + out[1] > 0` existed in three files and
+two were backwards for five weeks. `test/window-facing.test.js` now refuses a fifth: no module under
+`client/` may choose a winding from the outward normal, because `outwardQuad` is that decision.
+Writing one in turns it red and names the file.
+
+**And the predicate that never got a reader is gone.** X3d gave `ownershipPartitions` a real caller;
+`isCooperative` was its opposite and was read by one line of one test, which asserted only that the
+two were opposites. The test says which modes partition ownership now, by name, and the function is
+deleted — with its import, which `test/unused-imports.test.js` asked for in the same run.

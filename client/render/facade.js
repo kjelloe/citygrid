@@ -38,7 +38,6 @@ const DEPTH = 0.14;
 function panels(s, edge, origin, holes, y0, y1) {
   const [ox, oz] = origin;
   const [ax, az] = edge.along;
-  const [nx, nz] = edge.out;
   const at = (u, y) => [ox + ax * u, y, oz + az * u];
   const ys = new Set([y0, y1]);
   for (const h of holes) { ys.add(h.y0); ys.add(h.y1); }

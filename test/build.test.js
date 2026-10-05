@@ -29,7 +29,7 @@ import {
   OWNER_NATURE, OWNER_COMMONS, TERRAIN_WATER, TERRAIN_ROCK, TERRAIN_FOREST, TERRAIN_GRASS,
   MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS,
 } from "../engine/constants.js";
-import { ownershipPartitions, isCooperative } from "../engine/permissions.js";
+import { ownershipPartitions } from "../engine/permissions.js";
 
 const W = 16;
 function world(over) {
@@ -718,9 +718,10 @@ test("what Districts actually refuses, and what it does not (review round)", () 
   assert.equal(shared.building, RESULT.OK);
   assert.equal(shared.road, RESULT.OK);
 
-  // And the two predicates are opposites, which is the whole of what they say.
-  for (const mode of [MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS]) {
-    assert.equal(isCooperative(mode), !ownershipPartitions(mode),
-      `${mode}: cooperative and partitioned have stopped being opposites`);
-  }
+  // And the predicate that now carries the rule says which modes partition
+  // ownership. `isCooperative` was its opposite and had no caller but this
+  // line; X3d gave `ownershipPartitions` a real one and the other was deleted.
+  assert.equal(ownershipPartitions(MODE_SHARED_CITY), false);
+  assert.equal(ownershipPartitions(MODE_DISTRICTS), true);
+  assert.equal(ownershipPartitions(MODE_REGION_RIVALS), true);
 });

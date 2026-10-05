@@ -7,7 +7,7 @@
 import { RESULT } from "../shared/protocol.js";
 import {
   OWNER_NATURE, OWNER_COMMONS, SEAT_MIN, SEAT_MAX,
-  MODE_DISTRICTS, MODE_SHARED_CITY, MODE_REGION_RIVALS,
+  MODE_DISTRICTS, MODE_REGION_RIVALS,
 } from "./constants.js";
 import { xOf, yOf, DIR4, neighbour } from "../shared/grid.js";
 import { rules } from "./rules.js";
@@ -165,6 +165,3 @@ export function ownershipPartitions(mode) {
   return mode === MODE_DISTRICTS || mode === MODE_REGION_RIVALS;
 }
 
-export function isCooperative(mode) {
-  return mode === MODE_SHARED_CITY;
-}

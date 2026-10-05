@@ -26,6 +26,7 @@ import { buildingParams } from "../client/world/params.js";
 import { buildFacade } from "../client/render/facade.js";
 import { PALETTES } from "../client/render/palettes.js";
 import { EDGES, outwardQuad } from "../client/render/edges.js";
+import { jsFilesIn, stripButKeepInterpolations } from "./helpers/sources.js";
 import { tileAt, adjacencyMask } from "../shared/grid.js";
 import { NET_PRESENT } from "../client/constants-mirror.js";
 
@@ -218,4 +219,23 @@ test("every WALL faces out of the building it encloses", () => {
     }
     assert.ok(checked > 20, `frontage ${frontage}: only ${checked} wall triangles were on a face`);
   }
+});
+
+test("the winding rule lives in one place", () => {
+  // Four copies of `out[0] + out[1] > 0` existed, in three files, and two of
+  // them were backwards for five weeks (S21, S21b). The rule is `outwardQuad`
+  // in `edges.js` now, and this is the guard that keeps a fifth copy from being
+  // written — a structural claim about where a decision lives, which is the one
+  // kind of source assertion this project keeps (ruling 026's shape).
+  const offenders = [];
+  for (const file of jsFilesIn("client")) {
+    if (file.path.endsWith("client/render/edges.js")) continue;   // where it lives
+    const code = stripButKeepInterpolations(file.source);
+    if (/out\s*\[\s*0\s*\]\s*\+\s*\w*\s*\.?\s*out\s*\[\s*1\s*\]|nx\s*\+\s*nz\s*>/.test(code)) {
+      offenders.push(file.path);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    "a winding chosen from the outward normal alone — call `outwardQuad` instead, which is the "
+    + "same rule on all four sides");
 });
