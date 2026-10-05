@@ -407,7 +407,7 @@ export function bakeLotFacades(baker, state, lots, from, stop, acc, palette, sty
 
 /** What a chunk's lots share once their facades are done: the props, the
  * trees, the lamps and the signs (R5: its own frame). */
-export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName = "plain", locale = "en") {
+export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName = "plain", locale = "en", trees = true) {
   // The works' yards (S16c): ground, so they follow the terrain and belong with
   // the extras rather than with the facade — an industrial lot has no lawn, and
   // without this a shed stands on the countryside's own grass.
@@ -439,11 +439,16 @@ export function bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleNa
   // Trees, at eye height (V8). The instanced cone is right at city zoom and is
   // a four-sided pyramid standing under it; `updateInstances` stops drawing
   // them inside a baked chunk, so what a walker sees is this.
-  for (const piece of buildTrees({
-    // With the model: the lots' trees too — street trees, orchards, a park's
-    // ring (S5) — from the same cached list the instanced pass reads.
-    trees: treesIn(state, box, cfg, model), heightAt: model.heightAt, palette, cfg,
-  })) baker.addPart(piece.part, piece.colour, piece.options);
+  // `trees: false` is the portrait lever (S20d): the instanced pass has honoured
+  // it since V8 and the BAKE did not, so a civic shot that asked for no
+  // countryside still came back as a wood with a building behind it.
+  if (trees) {
+    for (const piece of buildTrees({
+      // With the model: the lots' trees too — street trees, orchards, a park's
+      // ring (S5) — from the same cached list the instanced pass reads.
+      trees: treesIn(state, box, cfg, model), heightAt: model.heightAt, palette, cfg,
+    })) baker.addPart(piece.part, piece.colour, piece.options);
+  }
   // The airfield (T5b): asphalt, paint and the apron's lights, for any airport
   // whose footprint reaches this chunk. It rides along here rather than taking
   // a phase of its own — a phase costs a whole frame per chunk, and this is a

@@ -382,6 +382,9 @@ export function createRenderer(canvas, state, options = {}) {
   // copy of the list. Absent, `defaultName` turns `coalPlant` into "Coal plant".
   const streets = createStreetChunks(scene, {
     style: styleName, locale: options.locale, buildingName: options.buildingName,
+    // The portrait lever (S20d): a civic shot asks for no countryside, and the
+    // bake has to hear it too or it bakes the wood the instanced pass skipped.
+    trees: options.trees,
   });
 
   // The walker (slice E4). Both halves are pure and neither knows a camera

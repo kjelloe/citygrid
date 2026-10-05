@@ -83,7 +83,7 @@ for (const def of defs) {
   const pitch = d.tall === true ? 8 : 4;
   const r = await shoot({
     out: `reports/smoke-S1-${def}.png`, seed: SEED, years: 0, size: SIZE,
-    width: 1000, height: 640, tier: "high", streets: 40, frames: 40,
+    width: 1000, height: 640, tier: "high", streets: 40, frames: 40, trees: false,
     photo: `${(eye.x / tileM).toFixed(3)},${(eye.z / tileM).toFixed(3)},2.6,${yaw.toFixed(4)},${pitch}`,
     // Backdated past `BUILDING_TICKS` (B2): a building placed this tick is a
     // construction site, and the first run of this tool photographed twelve

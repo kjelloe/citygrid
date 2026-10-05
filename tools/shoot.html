@@ -402,6 +402,10 @@ const time = params.get("time") ?? "day";
 // `post=0` turns the style's post pass off without changing anything else,
 // which is how the ink is shown to be a finish rather than the style (P2).
 const view = createRenderer(canvas, state, { pixelRatio: 1, preserveDrawingBuffer: true, style, tier, life, mode, time, post: params.get("post") !== "0",
+  // `trees=0`: no countryside, for a portrait of a building (S20d). The BAKE
+  // needs it as well as the draw call, which is why it is a renderer option and
+  // not only a draw option.
+  trees: params.get("trees") !== "0",
   // `hour=` also decides the hour a FROZEN city settles at (B4): `life=0`
   // settles once, before any frame has said what time it is.
   phase: params.has("hour") ? Number(params.get("hour")) : undefined });
@@ -478,7 +482,11 @@ const drawOptions = {
   // is drawn and cannot be seen is a question a picture answers in one shot.
   crowdColour: params.get("crowd") === "magenta" ? 0xff00ff : undefined,
   streetChunks: streetChunks >= 0 ? streetChunks : undefined,
-  props: !reduced, trees: !reduced,
+  // `trees=0` takes the countryside out of a PORTRAIT (S20d). A civic shot
+  // stands thirty to sixty metres off a definition, and on a rolling 48 the
+  // wood between is the picture: the airport came back as five trunks and a
+  // grey smudge. The building is the subject; the forest is the noise.
+  props: !reduced, trees: !reduced && params.get("trees") !== "0",
   // `shadows=0` to tell a toon ramp's banding apart from a cast shadow.
   shadows: params.get("shadows") !== "0",
   budget: budgetParam > 0 ? budgetParam : undefined,

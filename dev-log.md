@@ -11954,3 +11954,11 @@ canopy on its legs, the clock box, the name board — and the city hall reads: p
 glazed entrance, the pediment, the cupola. What they want is detail rather than shape: a legible
 doorway on the station, frames on the civic windows, a face on the clock. A tree stands in front of
 the city hall, which no camera that does not know where the wood is can avoid.
+
+**And the lever had to reach the bake (S20d, part two).** `trees: false` has been a draw option
+since V8 and `instances.js` has honoured it — but the countryside in a street-level frame comes from
+the BAKED chunk, which ignored it. A civic portrait that asked for no trees still came back as a
+wood with a building behind it, which is `a fallback hides a typo` in its other form: an option that
+half the renderer obeys. `bakeLotExtras` takes it now, `createStreetChunks` passes it, and
+`?trees=0` in the shot harness means what it says. It is NOT in `chunkHash` — it is a boot option,
+constant for the life of a renderer — and that is written where the next person will look.

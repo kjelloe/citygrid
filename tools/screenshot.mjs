@@ -40,7 +40,7 @@ async function serve() {
 }
 
 export async function shoot({
-  out = "reports/city.png", seed = 1003, years = 20, width = 1280, height = 720,
+  out = "reports/city.png", seed = 1003, years = 20, width = 1280, height = 720, trees = true,
   style = "plain", span = 0, yaw = 0, fx = -1, fy = -1, reduced = false, budget = 0, size = 64, seats = 1,
   tier = "high", life = false, terrain = "rolling", overlay = "", pitch = 0, mode = "ortho",
   shadows = true, streets = -1, frames = 1, street = "", photo = "", wall = true, time = "day", post = true,
@@ -67,7 +67,7 @@ export async function shoot({
     });
 
     const url = `http://127.0.0.1:${port}/tools/shoot.html`
-      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}&terrain=${terrain}&overlay=${overlay}&pitch=${pitch}&mode=${mode}&shadows=${shadows ? 1 : 0}&streets=${streets}&frames=${frames}&street=${street}&photo=${photo}&wall=${wall ? 1 : 0}&time=${time}&post=${post ? 1 : 0}`
+      + `?seed=${seed}&years=${years}&style=${style}&span=${span}&yaw=${yaw}&fx=${fx}&fy=${fy}&reduced=${reduced ? 1 : 0}&budget=${budget}&size=${size}&seats=${seats}&tier=${tier}&life=${life ? 1 : 0}&terrain=${terrain}&overlay=${overlay}&pitch=${pitch}&mode=${mode}&shadows=${shadows ? 1 : 0}&streets=${streets}&frames=${frames}&street=${street}&photo=${photo}&wall=${wall ? 1 : 0}&time=${time}&post=${post ? 1 : 0}&trees=${trees ? 1 : 0}`
       + Object.entries(extra).filter(([k]) => !k.startsWith("__"))
         .map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("");
     // `commit`, not `load`. A module script's `load` waits for the whole of

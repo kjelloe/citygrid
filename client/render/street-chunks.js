@@ -158,7 +158,11 @@ export function createStreetChunks(scene, options = {}) {
     },
     (job, state, model) => {
       bakeLotExtras(job.baker, state, model, job.chunk.cx, job.chunk.cy, job.acc, palette, styleName,
-        options.locale ?? "en");
+        // `options.trees` is NOT in `chunkHash`: it is a boot option, constant
+        // for the life of a renderer (the game never turns the countryside off
+        // mid-session, and each shot is its own page). A runtime toggle would
+        // want it hashed, like `territory` and `furniture` are.
+        options.locale ?? "en", options.trees !== false);
       return true;
     },
     // What the fire left (B1b). Its own phase, so the bake check times it like
