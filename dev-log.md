@@ -11385,3 +11385,28 @@ of these is a capability with no control", and the answer was two.
   allocation rather than algorithm, and whether W6c is worth its risk is Kjell's call.
 
 Suite 1,777 green twice.
+
+## S15c — where the grey comes from, measured (2026-10-05)
+
+S15 left "the road is the largest colour on the ground" as an item with three candidate causes. Two
+measurements, and the item's own first guess was wrong twice.
+
+| | |
+| --- | --- |
+| road tiles on a played 64 | **1,561 of 4,096 — 38.1%** |
+| the drawn ribbon's area | **35.7% of the whole map**, water included (~44% of the land) |
+| zoned-but-unbuilt tiles | 471 — 11.5%, and **tinted rather than grey**: the sieve files them under `roof` |
+| narrowing the street to 10 m of a 20 m tile | road's share of the frame **20.9% → 20.2%** |
+
+So cause (3), Q73's zoned slab, is not a cause of the GREY at all — the tint is warm. And cause (1),
+`road.width`, is not the lever: a 23% narrower ribbon moved the picture by three percent relative,
+because at town zoom the grey is the street grid's **spacing**, not any street's width. The width
+change was made, measured and reverted rather than kept on the grounds that it pointed the right
+way; it would have re-baselined `walkthrough`, `passability`, `lanes_dump` and `budget_gate` for 0.7
+of a percentage point.
+
+What is left is the deputy: it lays a street on every block edge. That is **B14**, in the behaviour
+lane, with its own era and a null arm — not a renderer slice, which is what S15c was filed as.
+
+An hour of measurement, no code shipped, two levers eliminated. The alternative was a renderer
+change that re-baselines four gates and does not fix the thing it was aimed at.

@@ -425,6 +425,34 @@ corridor, every entity not on it is where it was. **Gate.** `lanes_dump` settles
 and reports how many cars moved; `play_smoke` builds a road and the car count on screen does not
 drop to zero.
 
+## B14 — The deputy paves 38% of the city (M, behaviour, its own era) — found in S15c, 2026-10-05
+
+**Goal.** A town that reads as fields with streets through it, which is what the references are and
+what S15 measured ours is not.
+
+**Analysis, measured.** On a played 64 the deputy puts a road on **1,561 of 4,096 tiles — 38.1%** —
+and the drawn ribbon covers **35.7% of the map's whole area**, water included. The references' road
+class is 4–13% of a frame; ours is 7–21% after S15's colour work. S15c tested the renderer's half
+of the question and ruled it out: narrowing the street from 13 m to 10 m of a 20 m tile moved the
+road's share of the frame by **0.7 percentage points**, because the grey at town zoom is the GRID's
+spacing rather than any street's width.
+
+So the cause is the paving rule: `buildBlockAlong` lays a street on every block edge, and a block is
+small. The reference town has streets two or three tiles apart.
+
+**Do.** One change, A/B'd on its own, the way B9's rules were: a minimum spacing between parallel
+streets, or a larger block, in `data/balance.json`'s deputy block. Then the 200-game sweep on its own
+era, because this moves **every number in the project** — population, treasury, traffic, pollution —
+and the null arm is the same seeds with the old spacing.
+
+**Watch for**: fewer streets is fewer frontages, so residential capacity may fall with it; that is
+the number to report beside the picture. B9's lesson applies — change WHERE the agent builds before
+adding rules about what it may not do, and measure one rule at a time.
+
+**Tests first.** `test/deputy.test.js`: two parallel streets are never adjacent; a block is at least
+N tiles across. **Gate.** `sim` on a new era with the null arm, and `palette_compare` for the share
+of the frame that is road — which is the number this item exists to move.
+
 ## B12 — The rest of the emergency services (S) — **BUILT 2026-10-05**
 
 The ambulance comes from a **clinic**, not the hospital the item named: a played 96 has ten clinics

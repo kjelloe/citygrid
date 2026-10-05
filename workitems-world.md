@@ -731,7 +731,28 @@ first is colour:
 3. **A zoned-but-unbuilt lot is a grey slab** (Q73), and neither the sieve nor the eye can tell it
    from asphalt. That one is a colour, and it is the cheapest of the three to try.
 
-**Do.** Start with (3), measure, then decide whether (1) is worth re-baselining two gates for.
+**Measured 2026-10-05, before building anything — and both of the item's own guesses were wrong.**
+
+| | |
+| --- | --- |
+| road tiles on a played 64 | **1,561 of 4,096 — 38.1%** |
+| the paved ribbon's area | **35.7% of the whole map** (water included; ~44% of the land) |
+| zoned-but-unbuilt tiles | 471 — 11.5%, and they are TINTED, not grey: the sieve puts them in `roof` |
+| narrowing the street 13 m → 10 m of a 20 m tile (`road.width` 8 → 6, `sidewalk` 2.5 → 2) | road's share of the frame **20.9% → 20.2%**, green 15.9% → 16.5% |
+
+So **(3) is not a cause** — a zoned lot's tint is warm, not asphalt — and **(1) is not the lever**: a
+23% narrower ribbon moved the picture by 3% relative, because at town zoom the grey is the street
+GRID's spacing rather than any street's width, and it would have re-baselined `walkthrough`,
+`passability`, `lanes_dump` and `budget_gate` for that. The width change was made, measured and
+reverted; nothing in this item ships without a number.
+
+**What is left is (2), and it is a behaviour item, not a renderer one.** The deputy lays a street on
+every block edge, so 38% of the city's tiles carry road. The reference town has streets two or three
+tiles apart with big blocks between them. That is `engine/deputy.js`'s paving rule, it moves every
+sweep number in the project, and it belongs in the behaviour lane with its own era — **B14**, below
+in `workitems-behaviour.md`, rather than here.
+
+**Do.** Nothing in this lane. The item stays as the measurement that says where the grey comes from.
 
 ## S15 — Tone and proportion, against the sheet (M) — the item as written
 
