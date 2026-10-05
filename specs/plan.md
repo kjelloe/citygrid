@@ -422,10 +422,11 @@ The seam is built, so this is checkable rather than aspirational. What exists an
   arrays nothing writes, and thirteen commands have a constant and no handler — listed with their
   slices in `test/omissions.test.js`.
 
-What is declared and **not read by anything** — thirteen options in `engine/options.js`, some of
-them also numbers in `data/balance.json`: `derelictYears`, `absenceYears`, `abandonYears`,
-`requestExpiryMonths`, `disasterAid`, `splitRule`, `lateJoin`, `chatEnabled`, `freeTextReasons`,
-`privacy`, `mutualAid`, `seasonYears` and `keepForDays`. That is the honest state of §3.3's regency
+What is declared and **not read by anything** — nine options in `engine/options.js`, some of
+them also numbers in `data/balance.json`: `absenceYears`, `abandonYears`, `disasterAid`,
+`splitRule`, `lateJoin`, `chatEnabled`, `privacy`, `mutualAid` and `seasonYears`. Four have been
+wired since the list was written: `keepForDays` (X1a's store), `requestExpiryMonths` and
+`freeTextReasons` (X3a's requests) and `derelictYears` (X3c's override). That is the honest state of §3.3's regency
 and abandonment rules: the knobs exist, the mechanics do not. (`mutualAid` the OPTION is unread;
 `CMD_MUTUAL_AID` the command is a different thing with the same name, which is why the test that
 pins this list strips strings as well as comments.)
@@ -529,9 +530,16 @@ Sixteen strangers need more than a demolition inbox, and every channel is a mode
   auto-approved on a neighbour's request, even if the owner is present and refusing. Otherwise
   "I own it and I will let it rot next to your park" is an unanswerable grief move. The threshold
   is a lobby option, and the derelict state is visible in the territory overlay.
+  *As built — X3c, 2026-10-05:* the reducer half. `state.derelicts` is the clock, `derelictYears`
+  the threshold, and the door is the REQUESTER approving their own demolition request once every
+  target tile is old enough (refused as `notDerelict` before that), rather than an automatic
+  approval — the request still exists, so the owner still sees what happened. The overlay's mark is
+  X3b's.
 - **Request lifecycle edge cases** are explicit: if the target is destroyed, upgraded past
   recognition, or already demolished before resolution, the request resolves to `moot`; if the
   owner changes, it transfers to the new owner with the clock reset.
+  *As built — X3a:* the `moot` half only. `request.to` is written at filing and **never moves**, so
+  a request whose land changes hands sits in the old owner's inbox — X3b's, noted in its item.
 
 ---
 

@@ -383,10 +383,11 @@ invisible to the player, which is correct until X3b builds the inbox and is now 
 `test/omissions.test.js`'s event census rather than merely true.
 
 What is NOT built, deliberately:
-`setRequestPolicy` (5.4, X4's regency) and §25.4's **derelict override** — a neighbour approving
-the demolition of a ruin against its owner's wishes needs a clock the building record does not
-have (`builtTick` is when it went up, not when it was abandoned), and inventing one is a hashed
-field in five places and a re-pin of every fixture. Written here rather than half-built.
+`setRequestPolicy` (5.4, X4's regency). §25.4's **derelict override** was not built here either —
+a neighbour approving the demolition of a ruin against its owner's wishes needs a clock the
+building record does not have (`builtTick` is when it went up, not when it was abandoned), and
+inventing one is a hashed field in five places and a re-pin of every fixture — and that is exactly
+what **X3c did on 2026-10-05**, including the five places and the three re-pins.
 
 **Goal.** A demolition request is state, a command and a hash.
 
@@ -427,6 +428,20 @@ and reasons sanitised; chat behind `chatEnabled` and `freeTextReasons`. `request
 read. Per-seat gates, ranks and city halls (T2, T5) shown as whose they are in the inspector.
 Undo in a room: yours, refused once somebody else owns the ground (A123) — the toast says why.
 
+**Found in X3c (two).** `specs/plan.md` promises that a request whose land changes hands
+"transfers to the new owner with the clock reset"; `request.to` is written at filing and never
+moves, so today it sits in the former owner's inbox and the new owner never sees it. Either move it
+when ownership moves or resolve it `moot` — and `request.to` is hashed state, so whichever it is
+costs a fixture re-pin.
+
+The inbox also has to be able to tell a demolition the owner **agreed** to from one
+cleared over their head on the derelict rule: both end as `requestResolved` with status `APPROVED`
+and the only difference in state is that `request.from === request.to`'s answerer was the requester.
+Either the event says so (`forced`, which re-pins every fixture that holds a resolution) or the
+inbox derives it from the record; decide it with the inbox's words in front of you, and also decide
+what the OWNER is told, because being outvoted silently is the grief move in the other direction.
+`derelictYears` is read now; `absenceYears` and `abandonYears` are X4's.
+
 **Tests first.** The permission matrix gains the multi-seat rows it has only had at the reducer;
 `test/requests.test.js`: a request whose target burns down resolves as moot. **Gate.** `room_smoke`
 multi-client acceptance: request → approve → the demolition executes and is paid for; the direct
@@ -442,7 +457,8 @@ path is refused with `NOT_OWNER`; the overlay shows two seats in two patterns at
 **Do.** Leave and rejoin by seat token inside a grace window; **regency** — the deputy runs an
 absent seat on the server under the doctrine the player set and answers demolition requests by
 their standing policy (`absenceYears`); the abandonment sweep (`abandonYears`) and the derelict
-rule (`derelictYears`); spectators (tokenless, no commands); a room where every seat is in regency
+rule (built in X3c — what is left here is the deputy ANSWERING a request by a standing policy, and
+the absent seat's own ruins ageing while nobody is watching); spectators (tokenless, no commands); a room where every seat is in regency
 ticks at 1× and an empty one hibernates to disk. `splitRule`, `mutualAid` and `disasterAid` are
 read where income, coverage and repair are shared (A19/A20's answers are the rules).
 
