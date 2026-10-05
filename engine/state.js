@@ -228,6 +228,7 @@ export function copyPlayers(players) {
       colour: p.colour,
       status: p.status,
       treasury: p.treasury,
+      debt: p.debt,
       requestPolicy: p.requestPolicy,
       joinedTick: p.joinedTick,
       lastSeenTick: p.lastSeenTick,
@@ -412,6 +413,7 @@ export function writeState(sink, state) {
     writeU8(sink, player.colour);
     writeU8(sink, player.status);
     writeI64(sink, player.treasury);
+    writeI64(sink, player.debt);
     writeString(sink, player.requestPolicy);
     writeI64(sink, player.joinedTick);
     writeI64(sink, player.lastSeenTick);

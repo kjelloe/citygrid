@@ -11260,3 +11260,52 @@ catalogue** — the alerts' `namedKey` renders `disaster.<name>`, so a player wo
 and `DISASTER_NAMES` never did; it does now, and the catalogues have *Downpour* and *Styrtregn*.
 
 Suite 1,767 green twice.
+
+## slice-L1 — borrowing (era 28) (2026-10-05)
+
+A130, Q153. `specs/gamedesign.md` §9.5 has described a loan since the first draft and
+`CMD_TAKE_LOAN` has had a constant and no handler since the first commit; era 21 (H8) is what made
+it matter, because a developed lot costs money to serve.
+
+**Two commands, not one.** `takeLoan` and `repayLoan` — a debt you cannot pay down is a trap, not a
+loan. Repaying more than is owed repays what is owed, because a player who types a big number means
+"all of it".
+
+**The ceiling is a ladder by rank** — 4,000 / 12,000 / 30,000 / 60,000 in `data/balance.json` — and
+the rank is the CITY's (A129), so every mayor in a region borrows against the same ladder and there
+is one number to explain rather than two. Asking past it is **`RESULT.AT_CEILING`**, its own code
+with its words in both catalogues: "not enough money" is the wrong sentence for a bank that is
+saying something about what you have already borrowed.
+
+**Interest is a bill, not compounding**: 6 per thousand per month, integer, billed with the
+utilities, and floored at 1 so a small debt is not interest-free — which is Q155's own trap
+(`idiv(1 × 90, 100)` is 0) avoided in a rule written the same week it was found. The debt does not
+grow, so a player who stops borrowing stops the problem getting worse, and a seat that cannot pay
+gets the existing `fundsLow`/`bankrupt` warning rather than a new failure mode.
+
+**The four places, every time.** `debt` on the player record: `copyPlayers`, `writeState`, a save
+migration with **`SAVE_VERSION` 3 → 4**, and both fixtures re-pinned (13 of 13 hashes in the
+two-player one — every hash that contains a seat moves). `HASHED_FIELDS` did not change, which is
+exactly what the CLAUDE.md rule written three days ago says to expect.
+
+**The control.** The budget drawer gains the debt, the ceiling and the month's interest as a line,
+and Borrow and Repay as two `<select>`s offering a quarter, half or all — three steps for the
+reason the funding rows give, rebuilt from what the reducer will actually accept so a step that
+would be refused is never offered. `ui_smoke` drives it and reads the city back: **debt 0 → 12,000,
+treasury +12,000, then back to 0.**
+
+**And the sweep is the claim.** Era 28 against era 27, all four arms:
+
+| configuration | era 27 | era 28 |
+| --- | --- | --- |
+| relaxed-64 | 1,688 / 5,514,982 | **identical** |
+| steady-64 | 1,602 / 3,925,393 | **identical** |
+| demanding-64 | 1,551 / 2,065,207 | **identical** |
+| steady-64-nodisasters | 1,565 / 3,954,755 | **identical** |
+
+Not "close": the same digits, because **the deputy never borrows** — it is the measurement
+instrument, and an instrument that can go into debt measures its own credit line.
+`test/deputy.test.js` asserts it over forty years.
+
+`takeLoan` has left `test/omissions.test.js`'s `NOT_BUILT` list. Suite 1,776 green twice; `quick`
+505 s of 540.

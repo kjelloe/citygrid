@@ -11,8 +11,9 @@ measured when somebody last looked, which is a different claim and the only one 
   later**, with every number on it measured against a game that no longer existed — so the docs
   test now fails past fifty commits of drift rather than printing a note nobody reads (M7).
 - **Date:** 2026-10-04
-- **Balance era:** era 27, re-measured 2026-10-05 over 200 games per configuration (B13 put an eighth
-  disaster in the roll, so era 26's numbers are void rather than roughly comparable)
+- **Balance era:** era 28, re-measured 2026-10-05 over 200 games per configuration. B13 put an eighth
+  disaster in the roll (era 26's numbers are void rather than roughly comparable); L1's borrowing is
+  era 28 and its sweep is **identical to era 27 in every arm**, because the deputy never borrows
   (`reports/balance-era26.md`). Numbers from an earlier era are void, not roughly comparable —
   and the frame numbers further down are renderer measurements, which belong to no balance era.
   This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the

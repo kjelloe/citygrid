@@ -6,15 +6,17 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createState, hashState } from "../engine/state.js";
+import { createState, copyState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
-import { budgetFor, economyPass } from "../engine/economy.js";
+import { budgetFor, economyPass, loanCeiling } from "../engine/economy.js";
 import { developmentPass } from "../engine/development.js";
-import { CMD_JOIN, CMD_SET_TAX, CMD_PLACE_ROAD, CMD_PLACE_BUILDING } from "../engine/commands.js";
+import {
+  CMD_JOIN, CMD_SET_TAX, CMD_PLACE_ROAD, CMD_PLACE_BUILDING, CMD_TAKE_LOAN, CMD_REPAY_LOAN,
+} from "../engine/commands.js";
 import { RESULT } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import { ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_NONE } from "../engine/constants.js";
@@ -28,6 +30,14 @@ function city(over) {
   apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "One" });
   apply(state, { type: CMD_JOIN, actor: 2, seat: 2, name: "Two" });
   return state;
+}
+
+/** The city's rank, which is a quest variable (`engine/unlock.js`): the loan
+ * ceiling is a ladder, and a test that cannot climb it tests one rung. */
+function setRank(state, value) {
+  state.quests.vars = state.quests.vars.filter((v) => v.name !== "rank");
+  state.quests.vars.push({ name: "rank", value });
+  state.quests.vars.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 function addLot(state, owner, zone, x, y, level = 2, occupancy = 20) {
@@ -273,3 +283,113 @@ test("the same city is richer on an easier difficulty", () => {
     `relaxed ${nets[0]}, steady ${nets[1]}, demanding ${nets[2]}`);
 });
 
+
+// --- borrowing (L1, A130) ----------------------------------------------------
+//
+// `specs/gamedesign.md` §9.5 has described a loan since the first draft and
+// `CMD_TAKE_LOAN` has had a constant and no handler since the first commit.
+// Era 21 (H8) is what made it matter: a developed lot costs money to serve, so
+// a city can be short of cash while being worth lending to.
+
+test("a loan raises the treasury and the debt by the same amount", () => {
+  const state = city();
+  setRank(state, 2);
+  const before = state.players[0].treasury;
+  const out = apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: 5000 });
+  assert.equal(out.result, RESULT.OK);
+  assert.equal(state.players[0].treasury, before + 5000);
+  assert.equal(state.players[0].debt, 5000);
+  // And it is the borrower's money, not the region's.
+  assert.equal(state.players[1].debt, 0);
+});
+
+test("the ceiling is the rank's, and asking past it is refused with a reason", () => {
+  const state = city();
+  setRank(state, 0);
+  const ceiling = loanCeiling(state);
+  assert.ok(ceiling > 0, "a town at rank 0 cannot borrow at all, which is not a ladder");
+
+  assert.equal(apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: ceiling + 1 }).result,
+    RESULT.AT_CEILING, "a loan past the ceiling was allowed");
+  assert.equal(state.players[0].debt, 0, "a refused loan still moved the books");
+
+  // At the ceiling exactly is allowed; one more after that is not.
+  assert.equal(apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: ceiling }).result, RESULT.OK);
+  assert.equal(apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: 1 }).result, RESULT.AT_CEILING);
+
+  // A higher rank lends more: the ladder is the point.
+  setRank(state, 3);
+  assert.ok(loanCeiling(state) > ceiling, "rank 3 lends no more than rank 0");
+});
+
+test("a loan of nothing, or of a fraction, is invalid", () => {
+  const state = city();
+  for (const amount of [0, -100, 12.5, undefined, "1000"]) {
+    assert.equal(apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount }).result, RESULT.INVALID,
+      `${amount} was accepted as a loan`);
+  }
+});
+
+test("a debt you cannot pay down is a trap, so there is a repayment", () => {
+  const state = city();
+  setRank(state, 2);
+  apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: 4000 });
+  const purse = state.players[0].treasury;
+
+  assert.equal(apply(state, { type: CMD_REPAY_LOAN, actor: 1, amount: 1500 }).result, RESULT.OK);
+  assert.equal(state.players[0].debt, 2500);
+  assert.equal(state.players[0].treasury, purse - 1500);
+
+  // Repaying more than is owed repays what is owed, and no more.
+  assert.equal(apply(state, { type: CMD_REPAY_LOAN, actor: 1, amount: 99999 }).result, RESULT.OK);
+  assert.equal(state.players[0].debt, 0);
+  assert.equal(state.players[0].treasury, purse - 4000);
+
+  // And money you do not have cannot be repaid.
+  apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: 2000 });
+  state.players[0].treasury = 10;
+  assert.equal(apply(state, { type: CMD_REPAY_LOAN, actor: 1, amount: 2000 }).result, RESULT.NO_FUNDS);
+  assert.equal(state.players[0].debt, 2000, "a refused repayment moved the debt");
+});
+
+test("interest is billed with the month, integer, and monotone in the debt", () => {
+  const small = city();
+  const large = city();
+  setRank(small, 3);
+  setRank(large, 3);
+  apply(small, { type: CMD_TAKE_LOAN, actor: 1, amount: 2000 });
+  apply(large, { type: CMD_TAKE_LOAN, actor: 1, amount: 20000 });
+  const before = { small: small.players[0].treasury, large: large.players[0].treasury };
+
+  const paidBy = (state) => {
+    economyPass(state);
+    return before[state === small ? "small" : "large"] - state.players[0].treasury;
+  };
+  const littleBill = paidBy(small);
+  const bigBill = paidBy(large);
+  assert.ok(Number.isInteger(littleBill) && Number.isInteger(bigBill), "interest is not an integer");
+  assert.ok(bigBill > littleBill, `${bigBill} on 20,000 is not more than ${littleBill} on 2,000`);
+  // The debt itself does not grow: interest is a bill, not compounding.
+  assert.equal(large.players[0].debt, 20000);
+});
+
+test("a seat that cannot pay its interest is warned, not failed in a new way", () => {
+  const state = city();
+  setRank(state, 3);
+  apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: 20000 });
+  state.players[0].treasury = 5;
+  const events = economyPass(state);
+  assert.ok(events.some((e) => e.kind === "fundsLow" || e.kind === "bankrupt"),
+    "a seat that cannot service its debt was told nothing");
+  assert.ok(state.players[0].treasury >= 0, "the treasury went negative rather than warning");
+});
+
+test("the debt survives a copy and reaches the hash", () => {
+  const state = city();
+  setRank(state, 2);
+  apply(state, { type: CMD_TAKE_LOAN, actor: 1, amount: 3000 });
+  assert.equal(hashState(copyState(state)), hashState(state));
+  const other = copyState(state);
+  other.players[0].debt += 1;
+  assert.notEqual(hashState(other), hashState(state), "the hash cannot see a debt");
+});

@@ -21,6 +21,8 @@ export var CMD_UNDO = "undo";
 export var CMD_SET_TAX = "setTax";
 export var CMD_SET_FUNDING = "setFunding";
 export var CMD_TAKE_LOAN = "takeLoan";
+/** L1: a debt you cannot pay down is a trap, not a loan (A130). */
+export var CMD_REPAY_LOAN = "repayLoan";
 export var CMD_TRANSFER_FUNDS = "transferFunds";
 export var CMD_REQUEST_DEMOLITION = "requestDemolition";
 export var CMD_RESOLVE_REQUEST = "resolveRequest";

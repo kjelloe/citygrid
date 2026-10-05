@@ -10,7 +10,7 @@
 // reducer owns what a tick means; a client that advanced anything itself would
 // desync the moment a second client existed.
 
-import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
+import { CMD_JOIN, CMD_TICK, CMD_TAKE_LOAN, CMD_REPAY_LOAN } from "../engine/commands.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
 // The seam (W1, W2). Nothing here calls the reducer, generates a world or
 // registers a subsystem any more: all of that is on the other side of it, which
@@ -246,6 +246,15 @@ export async function startGame(root, given = {}) {
     },
     onFunding(service, percent) {
       sim.apply({ type: CMD_SET_FUNDING, actor: SEAT, service, percent: clampFunding(percent) });
+    },
+    // §9.5's loan (L1). The amount comes from the drawer's three steps, which
+    // are built from what the reducer will actually accept — and the reducer
+    // checks anyway, because a check that exists only in the UI is a suggestion.
+    onLoan(action, amount) {
+      sim.apply({
+        type: action === "borrow" ? CMD_TAKE_LOAN : CMD_REPAY_LOAN,
+        actor: SEAT, amount,
+      }).then(() => hud.refresh());
     },
     onSave: save,
     onLoad: load,

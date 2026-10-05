@@ -147,6 +147,8 @@ register(CMD_JOIN, function join(state, command) {
     colour: isIntInRange(command.colour, 0, SEAT_MAX) ? command.colour : command.seat,
     status: PLAYER_ACTIVE,
     treasury: state.options.startingTreasury,
+    // What this seat owes the bank (L1). Hashed, like the purse it sits beside.
+    debt: 0,
     requestPolicy: "manual",
     joinedTick: state.tick,
     lastSeenTick: state.tick,

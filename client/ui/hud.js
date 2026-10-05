@@ -21,7 +21,7 @@ import { createAlerts, pushAlerts, expireAlerts, visibleAlerts, SEVERITY } from 
 import { inspect } from "./inspector-model.js";
 import { OVERLAY_NAMES, OVERLAYS, legendFor, BAND } from "./overlays.js";
 import { buildMenu, isOrientable } from "./build-model.js";
-import { budgetPanel, fundingRows, fundingSteps } from "./budget-model.js";
+import { budgetPanel, fundingRows, fundingSteps, loanSteps, repaySteps } from "./budget-model.js";
 import { TOOLS } from "../input/tools.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { rankOf } from "../../engine/unlock.js";
@@ -71,7 +71,7 @@ function el(tag, className, text) {
 export function createHud(root, {
   state, seat, controller, onOverlay, onSpeed, onUndo,
   onSave, onLoad, onExport, onImport, slots,
-  onQuestChoice, quests, onTax, onFunding, onNewCity, onSettings, onStatistics, onHelp, minimap,
+  onQuestChoice, quests, onTax, onFunding, onLoan, onNewCity, onSettings, onStatistics, onHelp, minimap,
   onStreet, onLeaveStreet, onPhoto, onLeavePhoto, onSavePhoto,
   showControlsCard = false, onDismissControlsCard,
 }) {
@@ -392,6 +392,32 @@ export function createHud(root, {
     }
   }
 
+  // §9.5's loan (L1). Two `<select>`s and nothing else: the debt, the ceiling
+  // and the month's interest are a line of text, and the decision is "how
+  // much" in three steps — the same argument the funding rows make about a
+  // slider, and the same keyboard target.
+  const debtLine = el("span", "budget-debt");
+  const loanSelects = new Map();
+  if (onLoan) {
+    budgetBar.append(debtLine);
+    for (const [action, labelKey] of [["borrow", "budget.borrow"], ["repay", "budget.repay"]]) {
+      const wrap = el("label", "budget-loan");
+      wrap.append(el("span", undefined, t(labelKey)));
+      const select = document.createElement("select");
+      select.id = `loan-${action}`;
+      select.dataset.loan = action;
+      select.addEventListener("change", () => {
+        const amount = Number(select.value);
+        if (amount > 0) onLoan(action, amount);
+        select.value = "";
+        refresh();
+      });
+      loanSelects.set(action, select);
+      wrap.append(select);
+      budgetBar.append(wrap);
+    }
+  }
+
   // --- saving ---------------------------------------------------------------
   //
   // Three manual slots and the autosave, each a button that saves on click and
@@ -675,6 +701,32 @@ export function createHud(root, {
       expenses: formatMoney(budget.expenses),
       net: formatMoney(budget.net),
     });
+    if (onLoan) {
+      debtLine.textContent = t("budget.debt", {
+        debt: formatMoney(budget.debt),
+        ceiling: formatMoney(budget.ceiling),
+        interest: formatMoney(budget.interest),
+      });
+      // Rebuilt from what the city can actually do right now: a step that would
+      // be refused is a control that lies, and "borrow all of it" at the
+      // ceiling is no step at all.
+      for (const [action, select] of loanSelects) {
+        const steps = action === "borrow" ? loanSteps(state, seat) : repaySteps(state, seat);
+        select.replaceChildren();
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = t(action === "borrow" ? "budget.borrow" : "budget.repay");
+        select.append(blank);
+        for (const step of steps) {
+          const option = document.createElement("option");
+          option.value = String(step.amount);
+          option.textContent = t(step.labelKey, { amount: formatMoney(step.amount) });
+          select.append(option);
+        }
+        select.disabled = steps.length === 0;
+        select.value = "";
+      }
+    }
     books.dataset.sign = budget.net > 0 ? "positive" : budget.net < 0 ? "negative" : "flat";
     // Read back from state, like the tax rate: if the reducer refused, the
     // control must not keep showing a level the city is not funding.

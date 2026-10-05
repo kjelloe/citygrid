@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "J4 (A106): the service cost doubles to 6/12/22/35 now that demanding's squeeze can absorb it, so every treasury is lower again from the first month a lot stands — one hash, no event drift",
+ "why": "L1 (A130): a player record carries a debt, so every hash that contains a seat moves. No behaviour in these fixtures changed — nothing in them borrows — and the two-player fixture's steps are the same steps",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Mayor"
    },
    "result": "ok",
-   "hash": "594243088700aee7",
+   "hash": "4de74293a2e6f8e7",
    "events": [
     "seatJoined"
    ]
@@ -49,7 +49,7 @@
     ]
    },
    "result": "ok",
-   "hash": "57f2df0fb25cb6e8",
+   "hash": "1e4bef86edd09248",
    "events": [
     "built"
    ]
@@ -64,7 +64,7 @@
     ]
    },
    "result": "ok",
-   "hash": "5b6a3c480af2fadd",
+   "hash": "36dbc594f8f0dc9d",
    "events": [
     "built"
    ]
@@ -84,7 +84,7 @@
     ]
    },
    "result": "ok",
-   "hash": "cc88edb0118e5cb2",
+   "hash": "2bf869d89923c612",
    "events": [
     "zoned"
    ]
@@ -104,7 +104,7 @@
     ]
    },
    "result": "ok",
-   "hash": "be23ece2223cef5f",
+   "hash": "314006235af0335f",
    "events": [
     "zoned"
    ]
@@ -122,7 +122,7 @@
     ]
    },
    "result": "ok",
-   "hash": "a601c472e5f1581d",
+   "hash": "45eeaa4ee29959dd",
    "events": [
     "zoned"
    ]
@@ -136,7 +136,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "b27be3ed36abb827",
+   "hash": "68f9c41641e749c7",
    "events": [
     "placed"
    ]
@@ -150,7 +150,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "8cec750e1a9a2f77",
+   "hash": "12a5477f2d5d9a97",
    "events": [
     "placed"
    ]
@@ -187,7 +187,7 @@
     ]
    },
    "result": "ok",
-   "hash": "79a6d0d44c5cc611",
+   "hash": "41ee2441c9f8a491",
    "events": [
     "built"
    ]
@@ -224,7 +224,7 @@
     ]
    },
    "result": "ok",
-   "hash": "b112a867a3499466",
+   "hash": "bb7ec2d948fa78c6",
    "events": [
     "built"
    ]
@@ -236,7 +236,7 @@
     "rate": 9
    },
    "result": "ok",
-   "hash": "53b4f834145155b0",
+   "hash": "737889304dcf9fd0",
    "events": [
     "taxSet"
    ]
@@ -247,7 +247,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "364e82ecde58eba9",
+   "hash": "7706c97a620d2a69",
    "events": [
     "budget",
     "highCrime",
@@ -260,7 +260,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "472712a0c9d19023",
+   "hash": "4b2dadee27a81ca3",
    "events": [
     "budget",
     "developed",
@@ -275,7 +275,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "fea3aaedfbe52112",
+   "hash": "2d445ccd1809c972",
    "events": [
     "abandoned",
     "budget",
@@ -289,7 +289,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "eca8b837d2d37fd1",
+   "hash": "d35742c760b33cd1",
    "events": [
     "abandoned",
     "budget",
@@ -302,6 +302,6 @@
    ]
   }
  ],
- "era": 23,
- "repinnedAt": "2026-10-03"
+ "era": 27,
+ "repinnedAt": "2026-10-05"
 }

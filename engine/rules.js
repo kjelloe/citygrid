@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 27,
+  era: 28,
   build: {
     _bridge: "S13 (A84, A111): how many tiles of water one crossing may span. The engine has always allowed a road over water and charged roadOverWater for it - A84 believed otherwise because no 64x64 deputy city had ever paved one, and H7's played 96 has ten such tiles - so the rule S13 adds is a SPAN and an end on dry land, not permission. Six tiles is 120 m, which is a river rather than a lake: the renderer gives the run a deck at a fixed height with a ramp either end inside road.maxGrade, and a ramp that long at 15% is already 18 m of climb.",
     bridgeSpan: 6,
@@ -66,6 +66,11 @@ var RULES = {
   service: {
     maxRoadEffect: 32, maxPoliceEffect: 1000, maxFireEffect: 1000,
     fundingMinPercent: 50, fundingMaxPercent: 150,
+  },
+  loan: {
+    _note: "L1 (A130): the ceiling is a ladder by RANK, so a town that has earned nothing can still borrow a little and a city that has earned its rank can borrow enough to matter. Interest is per thousand per MONTH, integer: 6 per 1000 is 7.2% a year, which is dear enough that a loan is a decision and cheap enough that it is a way out. The deputy never borrows (it is the measurement instrument), so these numbers do not move the sweep - which is the claim era 28 is for.",
+    ceilingByRank: [4000, 12000, 30000, 60000],
+    interestPerThousand: 6,
   },
   multiplayer: { derelictYears: 5, absenceYears: 5, abandonYears: 5, requestExpiryMonths: 12, seasonYears: 25 },
   development: {

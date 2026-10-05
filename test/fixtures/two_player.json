@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "X3a: the fixture carries the request and its approval it was always described as pinning — the refused bulldoze is now followed by seat 2 asking and seat 1 approving, and a request record is new hashed state (kind, from, to, runs, title, reason, offer, two ticks, status)",
+ "why": "L1 (A130): a player record carries a debt, so every hash that contains a seat moves. No behaviour in these fixtures changed — nothing in them borrows — and the two-player fixture's steps are the same steps",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Ada"
    },
    "result": "ok",
-   "hash": "91baa32bfae01cff",
+   "hash": "e14159bbdcb2629f",
    "events": [
     "seatJoined"
    ]
@@ -47,7 +47,7 @@
     "name": "Bo"
    },
    "result": "ok",
-   "hash": "37106ebfca7727af",
+   "hash": "fc51a7dcb33f3ccf",
    "events": [
     "seatJoined"
    ]
@@ -62,7 +62,7 @@
     ]
    },
    "result": "ok",
-   "hash": "139603142f971898",
+   "hash": "482d95e62d79e938",
    "events": [
     "built"
    ]
@@ -77,7 +77,7 @@
     ]
    },
    "result": "ok",
-   "hash": "91279e13eea5c3db",
+   "hash": "651a82484d72465b",
    "events": [
     "built"
    ]
@@ -93,7 +93,7 @@
     ]
    },
    "result": "ok",
-   "hash": "784feedf2d6e9ebb",
+   "hash": "8683b4c5b06af03b",
    "events": [
     "zoned"
    ]
@@ -109,7 +109,7 @@
     ]
    },
    "result": "ok",
-   "hash": "fa57781ed7f8efef",
+   "hash": "f8b0e8b46d11bfef",
    "events": [
     "zoned"
    ]
@@ -124,7 +124,7 @@
     ]
    },
    "result": "ok",
-   "hash": "4be9cec2b8384b5c",
+   "hash": "12cb227d276c62bc",
    "events": [
     "built"
    ]
@@ -139,7 +139,7 @@
     ]
    },
    "result": "notOwner",
-   "hash": "4be9cec2b8384b5c",
+   "hash": "12cb227d276c62bc",
    "events": []
   },
   {
@@ -155,7 +155,7 @@
     "offer": 250
    },
    "result": "ok",
-   "hash": "26f0d01e7ca762bc",
+   "hash": "3988c334b921db9c",
    "events": [
     "requestFiled"
    ]
@@ -168,7 +168,7 @@
     "approve": true
    },
    "result": "ok",
-   "hash": "a55ed667def67917",
+   "hash": "a67e64bf49e88c17",
    "events": [
     "built",
     "requestResolved"
@@ -181,7 +181,7 @@
     "rate": 8
    },
    "result": "ok",
-   "hash": "9499d8e6f603c116",
+   "hash": "32f5a48788233516",
    "events": [
     "taxSet"
    ]
@@ -192,7 +192,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "92a9bbff73fb5062",
+   "hash": "5c181f3d4808a122",
    "events": [
     "budget"
    ]
@@ -203,12 +203,12 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "1bef711567ed464c",
+   "hash": "4f276edc6c56388c",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 26,
- "repinnedAt": "2026-10-04"
+ "era": 27,
+ "repinnedAt": "2026-10-05"
 }

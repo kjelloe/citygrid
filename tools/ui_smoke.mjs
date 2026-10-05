@@ -533,6 +533,49 @@ try {
   // moves the renderer. A settings row that stores a preference nothing reads
   // is the exact failure ruling 026 exists for, and the reducedEffects string
   // it replaces sat in the catalogue for four slices doing precisely that.
+  // --- the loan, driven through its own control (L1) -------------------------
+  //
+  // `CMD_TAKE_LOAN` had a constant and no handler since the first commit, and
+  // the lesson of N11 is that a command nobody can send is a feature nobody
+  // has: this drives the drawer's own `<select>` and reads the city back.
+  {
+    await page.click("#rail-budget");
+    const borrowed = await page.evaluate(async () => {
+      const seat = 1;
+      const purse = () => globalThis.CITY.state.players.find((p) => p.seat === seat);
+      const select = document.getElementById("loan-borrow");
+      if (!select) return { reason: "no borrow control" };
+      const options = [...select.options].filter((o) => o.value !== "");
+      if (options.length === 0) return { reason: "the borrow control offers nothing" };
+      const before = { treasury: purse().treasury, debt: purse().debt ?? 0 };
+      select.value = options[options.length - 1].value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      while (globalThis.CITY.pending > 0) await new Promise((r) => setTimeout(r, 4));
+      const after = { treasury: purse().treasury, debt: purse().debt ?? 0 };
+
+      // And back: a debt you cannot pay down is a trap, so the drawer has the
+      // other half of it.
+      const repay = document.getElementById("loan-repay");
+      const repayOptions = [...repay.options].filter((o) => o.value !== "");
+      let repaid;
+      if (repayOptions.length > 0) {
+        repay.value = repayOptions[repayOptions.length - 1].value;
+        repay.dispatchEvent(new Event("change", { bubbles: true }));
+        while (globalThis.CITY.pending > 0) await new Promise((r) => setTimeout(r, 4));
+        repaid = { treasury: purse().treasury, debt: purse().debt ?? 0 };
+      }
+      return { before, after, repaid, asked: Number(options[options.length - 1].value) };
+    });
+    check("the budget drawer can borrow, and the city is told",
+      borrowed.after && borrowed.after.debt === borrowed.asked
+        && borrowed.after.treasury === borrowed.before.treasury + borrowed.asked,
+      borrowed.reason ?? `debt ${borrowed.before.debt} → ${borrowed.after.debt}, `
+        + `treasury ${borrowed.before.treasury} → ${borrowed.after.treasury}`);
+    check("and it can pay the loan back",
+      borrowed.repaid !== undefined && borrowed.repaid.debt === 0,
+      borrowed.repaid ? `debt ${borrowed.after?.debt} → ${borrowed.repaid.debt}` : "no repay step offered");
+  }
+
   await page.click("#settings");
   await page.waitForSelector("dialog.settings[open]");
   // The hour (slice E6). A setting that stores a value and never reaches the

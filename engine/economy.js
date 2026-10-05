@@ -8,13 +8,15 @@
 import { registerMonthly, register, ok, fail } from "./reducer.js";
 import { gateFare } from "./gates.js";
 import { RESULT } from "../shared/protocol.js";
-import { CMD_SET_TAX, CMD_SET_FUNDING } from "./commands.js";
+import { CMD_SET_TAX, CMD_SET_FUNDING, CMD_TAKE_LOAN, CMD_REPAY_LOAN } from "./commands.js";
 import { rules, difficultyOf } from "./rules.js";
 import { definition } from "./catalogue.js";
+import { rankOf } from "./unlock.js";
 import { idiv, clamp } from "../shared/idiv.js";
+import { canAct, playerAt } from "./permissions.js";
 import { tileAt } from "../shared/grid.js";
 import { hasNet } from "./network.js";
-import { isIntInRange } from "./validate.js";
+import { isInt, isIntInRange } from "./validate.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
   TREASURY_SHARED, TREASURY_SPLIT, FUNDING_SERVICES,
@@ -198,6 +200,19 @@ export function economyPass(state) {
     }
   }
 
+  // The interest, billed with the month (L1). A bill, not compounding: the debt
+  // itself does not grow, so a player who stops borrowing stops the problem
+  // getting worse — and a seat that cannot pay it is warned by the existing
+  // bankruptcy rule rather than by a new failure mode.
+  for (i = 0; i < state.players.length; i += 1) {
+    var owing = state.players[i];
+    var bill = interestOn(debtOf(owing));
+    if (bill === 0) continue;
+    owing.treasury -= bill;
+    if (owing.treasury < 0) owing.treasury = 0;
+    events.push({ kind: "interest", seat: owing.seat, amount: bill, debt: debtOf(owing) });
+  }
+
   // Warn before the wheels come off, rather than announcing bankruptcy after.
   for (i = 0; i < state.players.length; i += 1) {
     var player = state.players[i];
@@ -209,5 +224,63 @@ export function economyPass(state) {
   }
   return events;
 }
+
+/**
+ * How much this city may owe at its rank (L1, A130).
+ *
+ * The rank is the CITY's, not the seat's (A129), so every mayor in a region
+ * borrows against the same ladder — which is the same answer the build menu
+ * gives, and one number to explain rather than two.
+ */
+export function loanCeiling(state) {
+  var table = rules().loan.ceilingByRank;
+  var rank = rankOf(state);
+  if (rank < 0) rank = 0;
+  if (rank >= table.length) rank = table.length - 1;
+  return table[rank];
+}
+
+/** What a seat owes, as a number rather than an undefined on an old save. */
+function debtOf(player) {
+  return player.debt === undefined ? 0 : player.debt;
+}
+
+/** This month's interest on a debt: per thousand, integer, and never free for
+ * a debt that exists — `idiv` would make a small loan interest-free, which is
+ * the "a price of one rounds to zero" trap (Q155) in a rule written today. */
+export function interestOn(debt) {
+  if (debt <= 0) return 0;
+  var rate = rules().loan.interestPerThousand;
+  var bill = idiv(debt * rate, 1000);
+  return bill < 1 ? 1 : bill;
+}
+
+register(CMD_TAKE_LOAN, function takeLoan(state, command) {
+  var acting = canAct(state, command.actor);
+  if (acting !== RESULT.OK) return fail(acting);
+  if (!isInt(command.amount) || command.amount <= 0) return fail(RESULT.INVALID);
+  var player = playerAt(state, command.actor);
+  var owed = debtOf(player);
+  if (owed + command.amount > loanCeiling(state)) return fail(RESULT.AT_CEILING);
+  player.debt = owed + command.amount;
+  player.treasury += command.amount;
+  return ok([{ kind: "borrowed", seat: player.seat, amount: command.amount, debt: player.debt }]);
+});
+
+register(CMD_REPAY_LOAN, function repayLoan(state, command) {
+  var acting = canAct(state, command.actor);
+  if (acting !== RESULT.OK) return fail(acting);
+  if (!isInt(command.amount) || command.amount <= 0) return fail(RESULT.INVALID);
+  var player = playerAt(state, command.actor);
+  var owed = debtOf(player);
+  if (owed === 0) return fail(RESULT.INVALID);
+  // Repaying more than is owed repays what is owed: a player who types a big
+  // number means "all of it", and taking the difference would be a trap.
+  var paying = command.amount > owed ? owed : command.amount;
+  if (player.treasury < paying) return fail(RESULT.NO_FUNDS);
+  player.treasury -= paying;
+  player.debt = owed - paying;
+  return ok([{ kind: "repaid", seat: player.seat, amount: paying, debt: player.debt }]);
+});
 
 registerMonthly("economy", economyPass, 40);

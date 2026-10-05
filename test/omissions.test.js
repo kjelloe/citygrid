@@ -37,7 +37,6 @@ import "../engine/requests.js";
  * Wave 4 does not need — none of them is an oversight, which is the claim this
  * list exists to keep honest. */
 const NOT_BUILT = {
-  takeLoan: "gamedesign.md §10 — borrowing",
   // X3a built five of these: `requestDemolition`, `resolveRequest`,
   // `withdrawRequest`, `reportNuisance` and `ping` left this list in the commit
   // that gave them handlers, which is the rule below working in the direction
@@ -194,6 +193,13 @@ test("every event the engine can emit is either an alert or deliberately silent"
     seatLeft: "the roster (X2)",
     seatReclaimed: "the roster (X2)",
     seatStatus: "the roster (X2)",
+    // L1's two. The budget drawer shows the debt and the ceiling as numbers,
+    // which is the feedback; an alert every month saying "you still owe money"
+    // is furniture, and the one that matters — cannot pay the interest — is
+    // already `fundsLow` and `bankrupt`.
+    borrowed: "the budget drawer's own readout",
+    repaid: "the budget drawer's own readout",
+    interest: "billed with the month; `fundsLow` is the alert when it bites",
     // X3a's three, and the camera gesture. The inbox that shows them is X3b.
     requestFiled: "the request inbox (X3b)",
     requestResolved: "the request inbox (X3b)",

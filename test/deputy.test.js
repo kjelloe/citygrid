@@ -537,3 +537,14 @@ test("the deputy goes looking for a crossing, and only where the far bank is wor
   assert.ok(none.population > 0, "the city failed to grow at all, so this measures something else");
 });
 ;
+
+test("the deputy never borrows (L1)", () => {
+  // It is the measurement instrument: an instrument that can go into debt
+  // measures its own credit line. Forty years of a deputy city, and the books
+  // say nothing was borrowed — which is also why L1's era bump does not move
+  // the sweep.
+  const { state } = play(5, 48, 40);
+  for (const player of state.players) {
+    assert.equal(player.debt ?? 0, 0, `seat ${player.seat} borrowed ${player.debt}`);
+  }
+});

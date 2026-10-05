@@ -16,7 +16,7 @@ export const PROTOCOL_VERSION = 2;
  * only ever compare two identical strings. `shared/build-hash.js` holds it. */
 export { buildHash, setBuildHash } from "./build-hash.js";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** Client → server. */
 export const C2S = Object.freeze({
@@ -81,6 +81,11 @@ export const RESULT = Object.freeze({
   // own code for the same reason as the two above — "that cannot go there" about
   // a hillside teaches nothing, and the player is standing on the reason.
   TOO_STEEP: "tooSteep",
+  // L1: the loan ceiling is a rank's, and "not enough money" is the wrong
+  // sentence for it — the bank's answer is about what you have borrowed, not
+  // about what you have. Its own code, with its words in both catalogues
+  // (ruling 027).
+  AT_CEILING: "atCeiling",
 });
 
 /** Server-side caps. Deliberately here rather than in the server, so the

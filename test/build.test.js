@@ -426,6 +426,24 @@ test("permission matrix: the request commands, against every relation (X3a)", ()
   assert.equal(hashState(state), before, "a ping wrote to the city");
 });
 
+test("permission matrix: a loan is a seat's own books (L1)", () => {
+  // Not tile-scoped, so the relations above do not apply — but "whose money is
+  // it" very much does: a seat borrows against its own debt and repays its own,
+  // and a seat that does not exist cannot do either.
+  const state = world();
+  state.quests.vars.push({ name: "rank", value: 2 });
+  assert.equal(apply(state, { type: "takeLoan", actor: 1, amount: 2000 }).result, RESULT.OK);
+  assert.equal(state.players[0].debt, 2000);
+  assert.equal(state.players[1].debt, 0, "one seat's loan reached another seat's books");
+
+  // Seat two repays its own nothing, not seat one's debt.
+  assert.equal(apply(state, { type: "repayLoan", actor: 2, amount: 2000 }).result, RESULT.INVALID);
+  assert.equal(state.players[0].debt, 2000);
+
+  // And a seat nobody holds cannot borrow at all.
+  assert.equal(apply(state, { type: "takeLoan", actor: 9, amount: 1000 }).result, RESULT.INVALID);
+});
+
 test("permission matrix: every registered command is covered by a row", () => {
   // The check that keeps the matrix honest as the command set grows.
   const asserted = new Set([
@@ -447,6 +465,10 @@ test("permission matrix: every registered command is covered by a row", () => {
     "questChoice",
     // X3a's five, asserted in the row above and in test/requests.test.js.
     "requestDemolition", "resolveRequest", "withdrawRequest", "reportNuisance", "ping",
+    // L1's two: a loan is a seat's own books, not a tile, so ownership does not
+    // apply — the row below asserts what DOES, which is that a seat can only
+    // borrow against its own debt.
+    "takeLoan", "repayLoan",
   ]);
   const uncovered = knownCommands().filter((name) => !asserted.has(name));
   assert.deepEqual(uncovered, [], `commands with no permission assertion: ${uncovered}`);

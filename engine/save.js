@@ -155,6 +155,33 @@ registerMigration(2, function requestKind(data) {
   return out;
 });
 
+/**
+ * 3 → 4: L1 gave a player a `debt`.
+ *
+ * A save from version 3 was written before anybody could borrow, so every seat
+ * owes nothing — and the checksum goes, as it does in every migration here,
+ * because the digest was taken over a field list without `debt` in it.
+ */
+registerMigration(3, function playerDebt(data) {
+  var out = {};
+  for (var key in data) {
+    if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
+  }
+  var players = [];
+  var old = data.players ? data.players : [];
+  for (var i = 0; i < old.length; i += 1) {
+    var player = {};
+    for (var field in old[i]) {
+      if (Object.hasOwn(old[i], field)) player[field] = old[i][field];
+    }
+    if (player.debt === undefined) player.debt = 0;
+    players.push(player);
+  }
+  out.players = players;
+  out.v = 4;
+  return out;
+});
+
 export function migrate(data) {
   var working = data;
   var guard = 0;

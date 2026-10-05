@@ -561,7 +561,16 @@ clearing now shows up in the month's spend.
 **Done when** clearing ground costs something at every difficulty, the sweep has measured what that
 did to the deputy's city, and the era says so.
 
-## L1 — Borrowing (S, engine + one control) — A130 (Q153)
+## L1 — Borrowing (S, engine + one control) — A130 (Q153) — **BUILT 2026-10-05 as era 28**
+
+Two commands (a debt you cannot pay down is a trap), a ceiling by rank, interest billed monthly and
+floored at 1 so a small debt is not free (Q155's trap, avoided), `RESULT.AT_CEILING` with words in
+both catalogues, `debt` on the player record through all four places with `SAVE_VERSION` 3 → 4 and
+both fixtures re-pinned, and the drawer's three-step Borrow and Repay driven by `ui_smoke`. The
+sweep is **identical to era 27 in all four arms** — the deputy never borrows, which is what makes
+the instrument an instrument.
+
+## L1 — Borrowing (S, engine + one control) — A130 (Q153) — the item as written
 
 **Goal.** A city in trouble has a way out that costs something. `specs/gamedesign.md` §9.5 has
 described it since the first draft and `CMD_TAKE_LOAN` has had a constant and no handler since the

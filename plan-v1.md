@@ -64,13 +64,13 @@ true at that commit and carries the measured numbers; this file stays the plan.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
-was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 27**
-(`reports/balance-era27.md`; each era between is one measured rule change, named in `dev-log.md`).
+was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 28**
+(`reports/balance-era28.md`; each era between is one measured rule change, named in `dev-log.md`).
 
-**Where the work stands (2026-10-05, era 27).** Everything P70, P93, P97, P99 and P100 ordered is
+**Where the work stands (2026-10-05, era 28).** Everything P70, P93, P97, P99 and P100 ordered is
 built: the world lane through S13, behaviour through B10, the whole transport lane (T1–T7, eras
 5–11), the rules lanes (G1–G5, H1–H8, J1–J4, eras 12–26), the film lane's F1 and F2, and the worker
-lane's W1–W5. The balance report is `reports/balance-era27.md` (B13's eighth disaster moved the roll).
+lane's W1–W5. The balance report is `reports/balance-era28.md` (B13's eighth disaster moved the roll; L1's borrowing moved nothing, because the deputy never borrows).
 
 **Two open questions**, and nothing waits on either: Q154 asks whether a faced shoulder at a storey
 is the right ladder (S18's pictures are taken and the answer is two minutes with them), and Q155
