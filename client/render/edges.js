@@ -20,3 +20,22 @@ export function originOf(spec, side) {
   if (side === 2) return [spec.x1, spec.z1];
   return [spec.x0, spec.z1];
 }
+
+/**
+ * A quad on a wall face, wound to face OUT of it (S21).
+ *
+ * `corners` are the four points in the canonical order this file's readers all
+ * build: (u0,y0), (u1,y0), (u1,y1), (u0,y1) — along the wall, then up it. The
+ * outward winding is the top edge first, and it is the SAME on all four sides,
+ * because `EDGES` is one handedness: `along` turns with `out`, so this order's
+ * normal is `along × up`, which is the outward normal everywhere.
+ *
+ * It exists because three places built this quad and each chose between two
+ * windings with `out[0] + out[1] > 0` — a test on the normal alone, right on
+ * north and west and backwards on east and south. Every pane of glass, curtain,
+ * blind, shop back, brick course, shutter and number plate on half of every
+ * building in every city was wound inward, where the renderer culls it.
+ */
+export function outwardQuad(sink, corners) {
+  sink.quad(corners[3], corners[2], corners[1], corners[0]);
+}

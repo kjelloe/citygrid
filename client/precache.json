@@ -1,5 +1,5 @@
 {
- "version": "3b740239b2b0",
+ "version": "224f031b785d",
  "build": "7006947afd33",
  "generated": "2026-10-05",
  "files": [
@@ -78,6 +78,7 @@
   "./client/render/styles.js",
   "./client/render/terrain.js",
   "./client/render/time-of-day.js",
+  "./client/render/trade-parts.js",
   "./client/render/trees-l3.js",
   "./client/render/water.js",
   "./client/session-local.js",
@@ -140,6 +141,7 @@
   "./client/world/raymarch.js",
   "./client/world/retaining.js",
   "./client/world/rush.js",
+  "./client/world/shop-spec.js",
   "./client/world/signals.js",
   "./client/world/street-furniture.js",
   "./client/world/sublots.js",

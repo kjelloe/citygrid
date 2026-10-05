@@ -10,7 +10,7 @@
 // the reason a chimney costs 12 triangles rather than an atlas.
 
 import { sink } from "./solid.js";
-import { EDGES, originOf } from "./edges.js";
+import { EDGES, originOf, outwardQuad } from "./edges.js";
 import { coursesOf, ridgeRise, MAX_SHUTTERED_BAYS } from "../world/house-spec.js";
 
 /** A point on a wall face, `d` metres out from it. */
@@ -38,20 +38,30 @@ function upright(s, cx, cz, y, w, d, h) {
  * see — the facade's own window reveals provide all the depth a wall reads —
  * so they are quads, 1 cm proud of the wall, at a sixth of the cost.
  *
- * `u0..u1` along the wall, `y0..y1` up it, `d` out from it.
+ * `u0..u1` along the wall, `y0..y1` up it, `proud` the distance it stands OUT
+ * from the wall face.
+ *
+ * It stood IN by that distance until 2026-10-05: `atEdge`'s `d` counts inward
+ * (every other caller here passes a negative), and this one was written with a
+ * positive default. So every course of brick, every shutter, the fanlight, the
+ * number plate, the garage door, the dormer's glass and the bay's glazing has
+ * been two centimetres behind the wall that hides them since S9 shipped in
+ * September. A terrace photographed from the pavement was a flat expanse of
+ * render with a chimney on it, which is the slice's own before picture.
  */
-function panel(s, spec, side, u0, u1, y0, y1, d = 0.02) {
+function panel(s, spec, side, u0, u1, y0, y1, proud = 0.02) {
   const geom = EDGES[side];
   const [ox, oz] = originOf(spec, side);
   const at = (u, y) => [
-    ox + geom.along[0] * u - geom.out[0] * d,
+    ox + geom.along[0] * u + geom.out[0] * proud,
     y,
-    oz + geom.along[1] * u - geom.out[1] * d,
+    oz + geom.along[1] * u + geom.out[1] * proud,
   ];
-  const a = at(u0, y0); const b = at(u1, y0); const c = at(u1, y1); const e = at(u0, y1);
-  // Wound so the face points out of the building, the way `panels()` does it.
-  if (geom.out[0] + geom.out[1] > 0) s.quad(a, b, c, e);
-  else s.quad(b, a, e, c);
+  // One winding, every side — `outwardQuad` owns that rule now (S21), because
+  // this was the third copy of it and the only one still backwards: every
+  // course of brick, shutter, fanlight and number plate on the EAST and SOUTH
+  // faces of every house was wound inward and culled.
+  outwardQuad(s, [at(u0, y0), at(u1, y0), at(u1, y1), at(u0, y1)]);
 }
 
 /**
@@ -194,15 +204,11 @@ export function buildHouseParts(spec, { groundTop, wallTop, trim, glass }) {
       const pz = part.corner < 2 ? spec.z0 - 0.12 : spec.z1 + 0.12;
       upright(dark, px, pz, spec.seat, 0.12, 0.12, wallTop - spec.seat);
     }
-    if (part.kind === "bin") {
-      const [bx, bz] = atEdge(spec, part.side, part.u, 0.45);
-      upright(dark, bx, bz, spec.seat, 0.55, 0.5, 0.9);
-    }
   }
 
-  out.push({ part: masonry.done(), colour: spec.wall });
-  out.push({ part: woodwork.done(), colour: trim });
-  out.push({ part: dark.done(), colour: spec.roof?.colour ?? trim });
-  out.push({ part: panes.done(), colour: glass });
+  out.push({ part: masonry.done(), colour: spec.wall, name: "houseMasonry" });
+  out.push({ part: woodwork.done(), colour: trim, name: "houseWoodwork" });
+  out.push({ part: dark.done(), colour: spec.roof?.colour ?? trim, name: "houseDark" });
+  out.push({ part: panes.done(), colour: glass, name: "housePanes" });
   return out.filter((piece) => piece.part.triangles > 0);
 }

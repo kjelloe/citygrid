@@ -20,6 +20,7 @@
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
 import { houseParts } from "./house-spec.js";
+import { shopParts } from "./shop-spec.js";
 import { civicShape, civicSpin, turnMass, civicSignFace, civicPointOnLot, civicHeightM } from "./civic-spec.js";
 /**
  * The names over the shops — a mirror of `data/names.json`, one list per locale.
@@ -235,6 +236,9 @@ export function facadeSpec(lot, params, locale = "en", furniture = true, style =
   }
 
   spec.extras = extrasOf(kind, params.variant, spec, id);
+  // What makes one shop that shop (S16b). The interior comes whatever the
+  // distance; the rest is furniture, like a house's.
+  if (kind === "commercial") spec.extras = spec.extras.concat(shopParts(spec, { furniture }));
   // What makes one house that house (S9). Appended rather than merged into
   // `extrasOf`, because these are residential furniture and that function is
   // the four categories' shared list — and a renderer that does not know a

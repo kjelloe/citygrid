@@ -11631,3 +11631,48 @@ deleted flag frees a bit the next slice would quietly reuse.
 **`tools/shoot.html` is a reader.** A scan of `.js` files alone called `client/debug/tour.js` dead;
 it is driven from the shot harness's HTML. The test reads the `.html` files too, which is the
 difference between "nothing imports this" and "nothing uses this".
+
+## S16b — a shop has furniture, and two things on walls were never visible (2026-10-05)
+
+S16a divided the lots; this gives a shop what S9 gave a house. The probe that opened it: on the
+widest commercial lot in a played city the facade spec's `extras` came back **empty**, for every
+unit at every level.
+
+**`client/world/shop-spec.js`** (pure, in the house-spec shape) and `client/render/trade-parts.js`:
+
+- **The interior**, one quad across the WHOLE frontage behind the glass. S7's shop back was a card
+  the width of its own opening, so at an angle a shopper saw past it, through the pier and out the
+  far wall. This part is **not** furniture-gated: a shop with no back is see-through at any distance.
+- **The awning** — `storefronts[].awning` has been set by the grammar since it was written and read
+  by **nothing**, found in this slice's own omissions sweep. A sloped strip 1.1 m over the shop
+  window (S16's words: not a canopy over the pavement), both windings, because a canopy at 4 m is
+  seen from underneath by the only person who matters here.
+- Roof plant (a vent, a condenser, a skylight by hash), a delivery door and a bin store on the
+  opposite side to the shop window.
+
+**Two defects on the way, both of the same family as S21.**
+
+1. `outwardQuad` in `edges.js` owns the wall winding now. `house-parts.js` had the **third** copy of
+   the `out[0] + out[1] > 0` test, still backwards: every course of brick, shutter, fanlight, number
+   plate and garage door on the east and south faces of every house was wound inward and culled.
+2. And the ones that were not culled were **buried**. `atEdge`'s depth counts INWARD — every other
+   caller in `house-parts.js` passes a negative — and `panel()` was written with a positive default,
+   so S9's flat furniture sat **2 cm behind the wall that hides it**, on all four sides, since
+   September. The before picture is a terrace from the pavement: a flat expanse of render with a
+   chimney on it, no plinth, no courses, no shutters, no number on the door.
+
+`test/window-facing.test.js` now holds three claims a node test can hold: the winding rule itself
+(four sides, one cross product), what is behind the glass faces the street, and **what is drawn on a
+wall stands proud of it**. The last one is red at 8.0 cm inside with the old sign restored.
+
+The first cut of the interior hung a black wall a metre out over the pavement across the whole
+shopfront, because it passed a negative depth into a parameter that counts inward. Looked at, not
+measured — which is the only way that one shows up.
+
+**Gate: `trade_shots`, green.** Both arms still 1 → 3 buildings on the shop lot and 1 → 2 on the
+works lot; the triangle rows came back marked *not comparable* this run (6 → 7 baked chunks on one
+pair, 6 → 5 on the other), which is the guard S16a put in doing its job rather than a number to
+quote. The shop frame is the measurement anybody will actually use: nine named fascias, glazed
+shopfronts with their interiors behind, three awnings.
+
+Suite 1,810 green twice.

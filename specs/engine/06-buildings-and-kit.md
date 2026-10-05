@@ -284,6 +284,15 @@ narrow units carry less wall than one 40 m frontage), 100,488 → 111,120 from t
 boxes where there was one). `budget_gate` cannot see any of it: its saturated city paints each zone
 one tile wide, so no lot in it is wide enough to divide.
 
+## 6.1c-iii What is drawn ON a wall (S9, corrected S16b 2026-10-05)
+
+A course of brick, a shutter, a fanlight, a number plate, a garage door: quads a couple of
+centimetres **proud of** the wall, which is what makes them affordable (a box is six times the
+triangles for depth nobody can see). `atEdge`'s distance counts INWARD, and `panel()` was written
+with a positive default — so all of it sat 2 cm BEHIND the wall that hides it, from S9 in September
+until this was found. The parameter is named `proud` now and `test/window-facing.test.js` asserts
+the sign per side: it is red at 8 cm inside with the old one restored.
+
 ## 6.1d Civic materials, and the chunk under the camera (S1b, 2026-09-12)
 
 Every civic mass names a **material** — brick, concrete, steel, white, red, glass, tank, dark, lawn
@@ -553,6 +562,11 @@ occupancy (B2).
 Two triangles a window, one bucket a tone so the baker merges them: **+2,177 triangles a chunk**
 (23,930 → 26,107), measured by stashing the change and re-shooting — per CHUNK, because the ladder
 bakes a different number of chunks each run and the frame totals said the opposite.
+
+**A shop's interior is one quad across the frontage (S16b, 2026-10-05)**, not a card per opening:
+with a card the width of its own hole, a shopper standing at an angle sees through the pier and out
+the far wall of the building. The awning the grammar has asked for since it was written is drawn
+too, 1.1 m over the shop window, in both windings — a canopy at 4 m is seen from underneath.
 
 **And for six weeks, half of it was invisible (S21, 2026-10-05).** Everything above is drawn through
 one opening from OUTSIDE, so it has to face outward. `facade.js` chose the winding from

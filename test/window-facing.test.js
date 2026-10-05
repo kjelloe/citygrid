@@ -25,7 +25,7 @@ import { facadeSpec } from "../client/world/facade-spec.js";
 import { buildingParams } from "../client/world/params.js";
 import { buildFacade } from "../client/render/facade.js";
 import { PALETTES } from "../client/render/palettes.js";
-import { EDGES } from "../client/render/edges.js";
+import { EDGES, outwardQuad } from "../client/render/edges.js";
 import { tileAt, adjacencyMask } from "../shared/grid.js";
 import { NET_PRESENT } from "../client/constants-mirror.js";
 
@@ -90,7 +90,30 @@ function onStreetFace(lot, frontage, at) {
   return Math.abs(at[0] - lot.x0) < 1;
 }
 
-const BEHIND_GLASS = ["glazing", "lit", "curtain", "blind", "shopBack", "shopShelf"];
+const BEHIND_GLASS = ["glazing", "lit", "curtain", "blind", "shopShelf", "interior"];
+
+test("one winding faces out of a wall, on all four sides", () => {
+  // The rule itself, where it lives (`outwardQuad`), rather than through a
+  // building: four sides, one cross product each, no renderer. This is the test
+  // that would have cost ten minutes in September.
+  for (const geom of EDGES) {
+    const [ax, az] = geom.along;
+    const [nx, nz] = geom.out;
+    const depth = 0.25;
+    const at = (u, y) => [ax * u - nx * depth, y, az * u - nz * depth];
+    const corners = [at(1, 2), at(3, 2), at(3, 4), at(1, 4)];
+    const got = [];
+    outwardQuad({ quad: (a, b, c, d) => got.push(a, b, c, d) }, corners);
+    const [a, b, c] = got;
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const len = Math.hypot(...n) || 1;
+    assert.ok(Math.round(n[0] / len) === nx && Math.round(n[2] / len) === nz,
+      `side ${geom.side}: the quad faces (${Math.round(n[0] / len)},${Math.round(n[2] / len)}), `
+      + `the wall faces (${nx},${nz})`);
+  }
+});
 
 test("what is behind a window faces the street, on every side of the building", () => {
   for (const frontage of [0, 1, 2, 3]) {
@@ -120,13 +143,44 @@ test("a shop has a ground floor: its storefront is glazed and backed", () => {
   for (const frontage of [0, 1, 2, 3]) {
     const { spec, pieces } = townhouse(frontage, 2);
     assert.ok(spec.storefronts.length > 0, `frontage ${frontage}: a shop with no storefront`);
-    const back = pieces.find((p) => p.name === "shopBack");
+    // `interior` since S16b: one quad across the whole frontage, where S7 had
+    // a card per opening that a shopper at an angle saw past.
+    const back = pieces.find((p) => p.name === "interior");
     assert.ok(back && back.part.triangles > 0, `frontage ${frontage}: the shop has no back wall`);
     const out = EDGES[frontage].out;
     for (let t = 0; t < back.part.triangles; t += 1) {
       const i = t * 9;
       const dot = back.part.normal[i] * out[0] + back.part.normal[i + 2] * out[1];
       assert.ok(dot > 0.5, `frontage ${frontage}: the shop's back wall faces away from the street`);
+    }
+  }
+});
+
+test("what is drawn ON a wall stands proud of it, not behind it", () => {
+  // S9's flat panels — a course of brick, a shutter, a fanlight, a number
+  // plate, a garage door — are quads 2 cm off the wall, which is what makes
+  // them affordable. `atEdge`'s depth counts INWARD (every other caller in that
+  // file passes a negative), and `panel` was written with a positive default,
+  // so all of them sat two centimetres behind the wall that hides them, from
+  // S9 in September to 2026-10-05. A terrace from the pavement was a flat
+  // expanse of render with a chimney on it.
+  //
+  // The claim, in node: no piece of house furniture on the street face is
+  // further INTO the building than the wall it is drawn on.
+  for (const frontage of [0, 1, 2, 3]) {
+    const { lot, pieces } = townhouse(frontage, 1);
+    const out = EDGES[frontage].out;
+    const wall = frontage === 0 ? lot.z0 : frontage === 1 ? lot.x1 : frontage === 2 ? lot.z1 : lot.x0;
+    const axis = frontage % 2 === 0 ? 2 : 0;
+    const furniture = trianglesOf(pieces, ["houseMasonry", "houseWoodwork", "houseDark", "housePanes"]);
+    assert.ok(furniture.length > 0, `frontage ${frontage}: a house with no furniture at all`);
+    const flat = furniture.filter((t) => Math.abs(t.normal[1]) < 0.5
+      && Math.abs(t.at[axis] - wall) < 0.3);
+    assert.ok(flat.length > 0, `frontage ${frontage}: nothing is drawn on the street wall`);
+    for (const t of flat) {
+      const proud = (t.at[axis] - wall) * (axis === 2 ? out[1] : out[0]);
+      assert.ok(proud >= -0.001,
+        `frontage ${frontage}: a panel ${(-proud * 100).toFixed(1)} cm INSIDE the wall it is drawn on`);
     }
   }
 });

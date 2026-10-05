@@ -798,6 +798,23 @@ ask for the glazing rather than guess a colour.
 past it into the empty interior and out the far side — the bright slivers between the bays. One
 quad per unit spanning the frontage, behind the glass, is S16b's.
 
+## S16b — A shop has furniture (M) — **BUILT 2026-10-05** as `slice-S16b`
+
+`client/world/shop-spec.js` and `client/render/trade-parts.js`: the interior behind the glass (one
+quad across the whole frontage — S7's card was the width of one opening and a shopper at an angle
+saw past it), the **awning** (`storefronts[].awning` was set by the grammar and read by nothing),
+roof plant by hash, a delivery door and a bin store on the far side from the shop window. The
+interior is not furniture-gated: a shop with no back is see-through at any distance.
+
+Two defects found on the way, both of S21's family and both fixed here: `house-parts.js` held a
+third copy of the winding test (east and south faces culled), and `panel()`'s depth counted the
+wrong way, so **every flat piece of S9's house furniture had been 2 cm behind its own wall since
+September** — no plinth, no courses, no shutters, no number on the door, in any shot this project
+has taken. `edges.js` owns the winding (`outwardQuad`) and the depth parameter is named `proud`.
+
+**Left for S16c (industry):** the loading dock and roller door, a tank, pallets, the name board,
+the fence and gate — and the yard, which is drawn as LAWN today.
+
 ## S16a — The trade ladder (M) — **BUILT 2026-10-05** as `slice-S16a`
 
 The half of S16 that is S10's, measured first. **The premise, in node before any code:** in a

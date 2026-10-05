@@ -14,9 +14,10 @@
 // `streets-l3.js` turns the pieces into geometry and hands them to the baker.
 
 import { sink } from "./solid.js";
-import { EDGES, originOf } from "./edges.js";
+import { EDGES, originOf, outwardQuad } from "./edges.js";
 import { roof } from "./roof-kit.js";
 import { buildHouseParts } from "./house-parts.js";
+import { buildShopParts } from "./trade-parts.js";
 import { buildCivic, buildAge } from "./civic-parts.js";
 import { windowTreatment, windowLit, CURTAIN_TONES, INSET } from "../world/windows.js";
 // Re-exported so `signs.js` and anything else that draws on a wall keeps one
@@ -116,16 +117,10 @@ function dressing(s, edge, origin, hole, depth, share = 1) {
   const at = (u, y) => [ox + ax * u - nx * depth, y, oz + az * u - nz * depth];
   const { u0, u1, y1 } = hole;
   const y0 = y1 - (y1 - hole.y0) * Math.max(0, Math.min(1, share));
-  // Wound to face out of the opening, the way the backing panel is — top edge
-  // first, on EVERY side. `EDGES` is one handedness: `along` turns with `out`,
-  // so this winding's normal is `along × up`, which is the outward normal for
-  // all four (S21). The first version picked between two windings on
-  // `out[0] + out[1] > 0`, a test on the normal that ignores `along`, and got
-  // the east and south faces of every building in the city backwards — where
-  // the renderer culls them, so a shop had no ground floor and a house's
-  // windows were holes with the countryside behind them.
-  s.quad(at(u0, y1), at(u1, y1), at(u1, y0), at(u0, y0));
+  outwardQuad(s, [at(u0, y0), at(u1, y0), at(u1, y1), at(u0, y1)]);
 }
+
+
 
 /** Where the windows go on one edge: one per bay, per storey. */
 function openings(spec, edge, groundTop, wallTop) {
@@ -222,7 +217,6 @@ export function buildFacade(spec) {
   const curtains = [];
   for (let i = 0; i < CURTAIN_TONES; i += 1) curtains.push(sink());
   const blinds = sink();
-  const shopBack = sink();
   const shopShelf = sink();
 
   for (const edge of spec.edges) {
@@ -256,9 +250,8 @@ export function buildFacade(spec) {
       // agree: a lit window with a curtain across it is a glow, not a pane.
       const alight = windowLit(spec.id, hole, share);
       const target = hole.door ? glazing : alight ? lit : glazing;
-      // One face, pointing out through the opening — the same winding on every
-      // side, for the reason `dressing` states (S21).
-      target.quad(back[3], back[2], back[1], back[0]);
+      // One face, pointing out through the opening (S21: `outwardQuad`).
+      outwardQuad(target, back);
 
       // And what stands in front of it (S7): a curtain, a blind pulled part of
       // the way down, a shop's back wall and its shelf. Two triangles each, in
@@ -270,9 +263,10 @@ export function buildFacade(spec) {
       } else if (dress.kind === "blind") {
         dressing(blinds, face, origin, hole, DEPTH - INSET, dress.drop);
       } else if (dress.kind === "shop") {
-        // A room, not a pane: the back wall set further in than the glass, with
-        // a shelf across the bottom third of it.
-        dressing(shopBack, face, origin, hole, DEPTH - INSET);
+        // A shelf across the bottom third, and nothing else: the back WALL is
+        // one quad across the whole frontage now (S16b's `interior`), because a
+        // card the width of its own opening leaves a gap at every pier that a
+        // shopper standing at an angle sees through and out the far side.
         dressing(shopShelf, face, origin,
           { ...hole, y1: hole.y0 + (hole.y1 - hole.y0) * 0.38 }, DEPTH - INSET - 0.02);
       }
@@ -288,7 +282,6 @@ export function buildFacade(spec) {
     out.push({ part: curtains[i].done(), colour: curtainTone(spec.wall, i), name: "curtain" });
   }
   out.push({ part: blinds.done(), colour: 0xcfc8ba, name: "blind" });
-  out.push({ part: shopBack.done(), colour: 0x4a4038, name: "shopBack" });
   out.push({ part: shopShelf.done(), colour: 0x8d7f6d, name: "shopShelf" });
   // `emissive` puts these in their own bucket with their own material, whose
   // intensity is zero until the night rig turns it up (E6).
@@ -361,6 +354,10 @@ export function buildFacade(spec) {
   // and `groundTop` this function worked out — passing them rather than
   // recomputing is what keeps a chimney on the roof rather than above it.
   out.push(...buildHouseParts(spec, { groundTop, wallTop, trim, glass }));
+  // And what makes one shop that shop (S16b): the interior behind the glass,
+  // the awning the grammar has asked for since it was written, the roof plant,
+  // the delivery door and the bins.
+  out.push(...buildShopParts(spec, { groundTop, wallTop, trim, glass }));
   // What age and neglect add (B2): a scaffold while it is going up, boards over
   // the windows when its condition has gone. Nothing at all for a building in
   // good repair, which is most of them.
