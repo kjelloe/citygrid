@@ -208,6 +208,29 @@ balance eras: the page names `782e759` from 2026-09-08 and says every commit sin
 
 **Done when** `main` is `dev_night`, the page names its own commit, and Kjell has pushed.
 
+## M8 — The renderer's numbers are a mirror with no loader (S) — found in S15, 2026-10-05
+
+**Goal.** Editing `data/cityviewer.json` changes the game.
+
+**Analysis.** It does not. `client/content.js` loads `balance.json` and `buildings.json` — P90's
+slice, which found exactly this for the engine's rules — and **nothing loads `cityviewer.json**.
+The renderer runs on `client/world/config.js`'s `DEFAULTS`, and `test/world.test.js` keeps the two
+identical, which is what makes the situation survivable and what hides it: S15's first two attempts
+edited the file, changed nothing on screen, and would have turned the suite red for drift rather
+than for being ignored. CLAUDE.md's own rule — "numbers live in `data/*.json`, never in engine
+code" — is false for every renderer number today.
+
+**Do.** `loadRuleset` gains a third file and calls `setConfig(loaded)`, exactly as it calls
+`setRules` and `setCatalogue`; the mirror stays as the FALLBACK and the drift test stays as the
+thing that keeps it honest. The worker needs nothing (it does not render), but `client/content.js`'s
+`contentForWorker` and the shot tools' `setConfig(DEFAULTS)` should be checked: a tool that sets the
+mirror by hand would then be running different numbers from the page, which is the drift this fixes
+pointed the other way.
+
+**Tests first.** `test/content.test.js`: a loaded cityviewer config reaches `getConfig()`; a failed
+fetch leaves the mirror in place and says so. **Gate.** `client_smoke` and one `budget_gate` row,
+because a config that arrives after the first frame would move what the first frame measured.
+
 ## Order
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after

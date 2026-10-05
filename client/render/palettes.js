@@ -11,11 +11,15 @@ export const PALETTES = {
     // Vivid, cheerful, high-contrast — the reference's grass is almost
     // luminous and its water is cyan rather than navy. A cosy toy world does
     // not use realistic colours.
-    terrain: [0x98f040, 0xc0a274, 0x3f9b34, 0x39c5e8, 0xa8ecfa, 0xa8a49e, 0xf0dfae, 0x74a05c],
+    terrain: [0xaaf84e, 0xc8ab7c, 0x4aad3c, 0x39c5e8, 0xa8ecfa, 0xb0aca6, 0xf0dfae, 0x82ad64],
     tree: 0x2f8f3a,
     trunk: 0x6b5340,
     zone: [0x000000, 0xefc9a4, 0x8fd0f0, 0xd9a45c],
-    road: 0x6f7278,
+    // Lighter and cooler than it was (S15): the sieve read our lit asphalt at
+    // #5a5f66 against the references' #6e7165–#747f75, and a street that is
+    // darker than everything around it reads as a hole in the town rather than
+    // as a line in it.
+    road: 0x7d8189,
     roadMark: 0xf2f2f2,
     wire: 0x8a8377,
     // Warm and dark — ballast and sleepers. The first cut was a shade of the
@@ -29,16 +33,23 @@ export const PALETTES = {
     // everything else gets the flat grey-black of felt and gravel, which is
     // also what separates a terrace from an office block at a glance.
     roof: {
+      // **Lightened in S15**, measured rather than picked: the sieve
+      // (`tools/palette_compare.mjs`) read our lit roofs at #59523f–#5c5544
+      // against the references' #ba684b–#c6a77b — sixty to seventy of
+      // luminance — and the four near-blacks were most of it. D4's finding 3,
+      // landed at last: terracotta, orange, cream and light slate in, the
+      // blue-blacks out, the dark reds raised. Fourteen entries and the three
+      // hue bands `test/kit.test.js` holds the floor at.
       house: [
-        0xd4623a, 0xe07a45, 0xb8422c, 0x94302a, 0x5d6d80, 0x404a5c, 0x334152, 0x3b7358,
-        // Slice V6 widened the range from eight to fourteen. Eight roofs over
-        // a saturated district is a visible period: you can see the repeat
-        // walking down one street. The additions are the ones a real terrace
-        // has and this palette did not — a pale sand, a warm brown, a grey
-        // slate, a blue-black, a moss and a faded rose.
-        0xc9a97a, 0x8a6046, 0x7d8590, 0x2b3340, 0x5d7a52, 0xb07b74,
+        0xee8456, 0xf79a60, 0xe26446, 0xd1604a, 0x93a6bb, 0x8090a6, 0x6b7c92, 0x5d9a78,
+        // V6's six, which ended the visible period, kept and raised with the
+        // rest: a pale sand, a warm brown, a grey slate, a deep slate, a moss
+        // and a faded rose.
+        0xeed5ab, 0xb88a6c, 0xa9b2bc, 0x55607a, 0x8cae7c, 0xd5a299,
       ],
-      flat: [0x4e535b, 0x424750, 0x5c6169, 0x6b6459, 0x7a736a, 0x3a3f47],
+      // Light grey and buff, which is what a flat commercial roof is: felt and
+      // gravel in the sun, not the near-black these were.
+      flat: [0x9aa0a8, 0x868c96, 0xa9afb7, 0xaaa188, 0xb9b29b, 0x7a8089],
     },
     roofFactor: 1.0,
     bandFactor: 1.0,

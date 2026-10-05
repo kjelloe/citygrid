@@ -11103,3 +11103,60 @@ green twice.
 is — none hard-codes a camera — but none of them prints its stand-off, and all of them have been
 taking photo-mode frames with an eight-metre near plane. Re-running the three picture sets and
 looking at the output is the next item, and it is the gate for this one.
+
+## slice-S15 — tone against the sheet, measured for the first time (2026-10-05)
+
+S8's verdict was "the rows do not read as one family" and D4's finding 3 — the roofs — had never
+landed. The item asked for the method S2 used for grass: **histogram both halves of each row with
+one rule**. `tools/palette_compare.mjs` is that rule — sky, greenery, water, road and roof by hue
+and brightness, held over our capture and over Kjell's reference, reporting each class's median
+luminance and its SHARE of the frame. The share answers the item's proportion question for free.
+
+**What it found, before anything moved** (lakeside / town / terrace, luminance of ours vs the
+reference):
+
+| | ours | reference | |
+| --- | --- | --- | --- |
+| green | 130–136 | 174–206 | **40–71 darker** |
+| road | 95–96 | 98–111 | 14–15 darker |
+| roof | 73–95 | 143–155 | **60–70 darker** |
+| road's share of the frame | 22–34% | 4–13% | **the largest colour on the ground, in two rows of three** |
+
+**What moved, and what it cost.** The day grade's `gain` 1.02 → 1.12; the asphalt
+`0x6f7278 → 0x7d8189`; the fourteen house roofs lightened and warmed, the four near-blacks gone
+(terracotta, orange, cream and light slate in, which is D4's finding 3); the six flat roofs from
+near-black greys to light grey and buff; and the terrain's greens, sand, rock and scrub raised a
+step. After: **the asphalt is matched** (109 against 110, 108 against 98), the roofs are 36–49
+short rather than 60–70, and the road's share is 7–21% rather than 22–34% — on the lakeside row the
+largest colour on the ground is **green**, as it is in the reference.
+
+**Two light levers tried and reverted, with their numbers**, because a change with no measurement
+behind it is a preference:
+
+- `hemiGround` 0x93aa78 → 0xb8cf9a moved **nothing**. That is the physics: a hemisphere light's
+  ground colour lights surfaces facing DOWN, and a field faces up.
+- `hemi` 1.0 → 1.3 lifted the grass by nine and pushed the asphalt **nine past** the reference it
+  had just been matched to. A global lever cannot close a gap that is not global.
+
+**So the grass is still 57–65 short and the palette is not the lever**: raising the albedo by eight
+moved the lit grass by five. S2 wrote that the green channel stops near 0xb8 however light the
+material gets; S15 measures the same compression on every material — a sixty-point palette move on
+the roofs bought twenty-five. What is left is the lit response itself (the key, the grade's curve,
+the baker's face shading), which is **S15b** rather than another guess at a hex.
+
+**And the eye, which the item asks for.** The references are green fields with roads drawn through
+them; ours is a grey sheet with green in the gaps. The colours are much closer now — the town row
+has terracotta and slate roofs in it where it had a grey mass — but the **proportion** is the
+difference a player would name first, and the sieve cannot tell a zoned-but-unbuilt lot from
+asphalt, which is exactly Q73's complaint. The lever is `road.width` per kind and the deputy's grid
+density, which re-baselines `walkthrough` and `passability`, so it is its own item.
+
+**The omission underneath it.** The first two attempts at this edited `data/cityviewer.json` and
+changed nothing, because **nothing loads that file**: `client/content.js` loads `balance.json` and
+`buildings.json` and the renderer runs on `client/world/config.js`'s mirror. A drift test keeps the
+two identical, which is what makes it survivable — and what hid it, exactly as the drift test hid
+`setRules` until P90. Written up as its own item.
+
+Gates: suite 1,751 green twice; `a11y_smoke` green with the overlay bands **122 apart by day** and
+93/56 on a shaded hillside (the lighter asphalt has not cost them their separation);
+`reports/compare-transport-worlds.png` regenerated for the eye.

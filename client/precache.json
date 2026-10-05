@@ -1,7 +1,7 @@
 {
- "version": "ab38ba763d63",
- "build": "b63052c39328",
- "generated": "2026-10-04",
+ "version": "95f4aed32912",
+ "build": "ad9662740c8c",
+ "generated": "2026-10-05",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",

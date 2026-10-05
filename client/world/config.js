@@ -190,6 +190,13 @@ export const DEFAULTS = Object.freeze({
   // what the lit windows and the lamps are dialled by.
   presets: {
     day: {
+      // **Unchanged, and that is a measurement** (S15). Two lifts were tried
+      // and both are recorded in the dev-log: `hemiGround` moved nothing, which
+      // is the physics — a hemisphere light's ground colour lights surfaces
+      // facing DOWN and a field faces up — and `hemi: 1.3` lifted the grass by
+      // nine while pushing the asphalt nine PAST the reference it had just been
+      // matched to. What was left after the day grade's gain is material, not
+      // light.
       key: 1, keyColour: 0xfffaf0, hemi: 1, hemiSky: 0xdcecff, hemiGround: 0x93aa78,
       sky: 0xbfe0f0, fogNear: 1.4, fogFar: 5, night: 0, sunHeight: 1,
     },
@@ -233,7 +240,10 @@ export const DEFAULTS = Object.freeze({
   grades: {
     day: {
       shadowTint: 0xb9c6e0, highlightTint: 0xfff2d8,
-      lift: 0.015, gain: 1.02, saturation: 1.05, ink: 1, inkColour: 0x2a2f3a,
+      // `gain` 1.02 → 1.12 in S15: every class the sieve measures was darker
+      // than the reference, and a tenth of exposure is what the whole frame was
+      // short before the per-material moves.
+      lift: 0.015, gain: 1.12, saturation: 1.05, ink: 1, inkColour: 0x2a2f3a,
     },
     sunset: {
       shadowTint: 0x8f8ec0, highlightTint: 0xffd2a0,

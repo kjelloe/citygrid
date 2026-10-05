@@ -1,299 +1,299 @@
 {
-  "note": "cityviewer's frame and street dimensions, in metres (rulings 035, 038), and the quality tiers (ruling 040). Mirrored in client/world/config.js; test/world.test.js refuses drift. A tile is TILE_M metres; the engine never sees any of this. carCap 0 means uncapped.",
-  "tileM": 20,
-  "reliefM": 0.5,
-  "chunkTiles": 16,
-  "road": {
-    "width": 8,
-    "sidewalk": 2.5,
-    "blend": 4,
-    "wallMinDrop": 3,
-    "wallOut": 4,
-    "wallMaxDrop": 24,
-    "coping": 0.4,
-    "lanes": 1,
-    "stopLine": 2,
-    "maxGrade": 0.15,
-    "junctionDrift": 6,
-    "deckClearance": 5,
-    "deckDepth": 1,
-    "speed": 11,
-    "maxDensity": 12,
-    "dip": 0.16,
-    "minVerge": 1,
-    "kerb": 0.15,
-    "camber": 0.035,
-    "lift": 0.02,
-    "avenue": {
-      "width": 14,
-      "lanes": 2,
-      "median": 2
-    }
-  },
-  "rail": {
-    "maxGrade": 0.04,
-    "width": 4,
-    "gauge": 1.5,
-    "railHalf": 0.08,
-    "sleeperEvery": 1.6,
-    "sleeperHalf": 0.14,
-    "lift": 0.1,
-    "speed": 22,
-    "carriages": 3,
-    "carriageLen": 17,
-    "carriageW": 2.9,
-    "carriageH": 3.4,
-    "dwell": 14
-  },
-  "boat": {
-    "length": 7,
-    "perBody": 3,
-    "openTilesPerBoat": 12,
-    "mooredCap": 24,
-    "hullW": 2.2,
-    "hullH": 1.6,
-    "ferryW": 5,
-    "ferryH": 3.4,
-    "sailSpeed": 4,
-    "ferrySpeed": 9,
-    "cargoSpeed": 6,
-    "dwell": 10,
-    "wake": 8,
-    "hullColour": 15790320,
-    "sailColour": 16316664,
-    "ferryColour": 3372748,
-    "cargoColour": 9145227,
-    "wakeColour": 14806244
-  },
-  "airport": {
-    "runwayHalf": 9,
-    "taxiwayHalf": 4.5,
-    "paintW": 0.9,
-    "dashM": 14,
-    "gapM": 12,
-    "thresholdBars": 6,
-    "thresholdM": 9,
-    "lightSpacingM": 22,
-    "lift": 0.05,
-    "approachM": 420,
-    "cruiseSpeed": 62,
-    "taxiSpeed": 9,
-    "turnaround": 16,
-    "climbGrade": 0.11,
-    "wingspan": 24,
-    "fuselage": 32,
-    "planeColour": 15921906,
-    "radarSpan": 4
-  },
-  "ground": {
-    "blend": 1,
-    "mottle": 0.06,
-    "urbanReach": 40,
-    "farTone": 0.12,
-    "tone": 0.55
-  },
-  "lot": {
-    "setback": {
-      "none": 2,
-      "residential": 1.5,
-      "commercial": 0,
-      "industrial": 2
-    },
-    "bayW": {
-      "none": 6,
-      "residential": 6,
-      "commercial": 5,
-      "industrial": 8
-    },
-    "floorH": {
-      "none": 4,
-      "residential": 3,
-      "commercial": 3.6,
-      "industrial": 5
-    },
-    "groundH": {
-      "none": 4.5,
-      "residential": 3,
-      "commercial": 4.5,
-      "industrial": 6
-    }
-  },
-  "tiers": {
-    "low": {
-      "budget": 40000,
-      "pixelRatio": 1,
-      "antialias": false,
-      "shadowMap": 0,
-      "shadows": false,
-      "streetChunks": 0,
-      "carCap": 60,
-      "pedCap": 0,
-      "pedCapCity": 0,
-      "post": [],
-      "frameMs": 40,
-      "lamps": 0
-    },
-    "medium": {
-      "budget": 140000,
-      "pixelRatio": 1.5,
-      "antialias": true,
-      "shadowMap": 2048,
-      "shadows": true,
-      "streetChunks": 4,
-      "carCap": 200,
-      "pedCap": 40,
-      "pedCapCity": 200,
-      "post": [
-        "pixel"
-      ],
-      "frameMs": 40,
-      "lamps": 5
-    },
-    "high": {
-      "budget": 400000,
-      "pixelRatio": 2,
-      "antialias": true,
-      "shadowMap": 4096,
-      "shadows": true,
-      "streetChunks": 9,
-      "carCap": 0,
-      "pedCap": 120,
-      "pedCapCity": 600,
-      "post": [
-        "pixel",
-        "ink"
-      ],
-      "frameMs": 20,
-      "lamps": 8
-    }
-  },
-  "wire": {
-    "poleSpacing": 60,
-    "poleHeight": 7,
-    "sag": 1.2,
-    "armWidth": 1.4
-  },
-  "water": {
-    "depth": 1.4,
-    "lift": 0.06,
-    "wade": 0.4,
-    "opacity": 0.7,
-    "shelf": 1,
-    "bank": 3
-  },
-  "fog": {
-    "streetNear": 25,
-    "streetFar": 520,
-    "domeShare": 0.85
-  },
-  "props": {
-    "lampSpacing": 24,
-    "lampInset": 0.5,
-    "lampH": 4.5,
-    "hedgeH": 0.9,
-    "treeH": 9,
-    "treeR": 3.2,
-    "pathW": 1.2,
-    "binEvery": 60
-  },
-  "ped": {
-    "pace": 1.35,
-    "paceVary": 0.35,
-    "perOccupant": 0.15,
-    "perShop": 3,
-    "perWorks": 1,
-    "clearance": 1.2,
-    "bob": 0.055,
-    "stride": 0.85,
-    "spacing": 1.6,
-    "crossWait": 1
-  },
-  "presets": {
-    "day": {
-      "key": 1.0,
-      "keyColour": 16775920,
-      "hemi": 1.0,
-      "hemiSky": 14478591,
-      "hemiGround": 9677432,
-      "sky": 12574960,
-      "fogNear": 1.4,
-      "fogFar": 5.0,
-      "night": 0.0,
-      "sunHeight": 1.0
-    },
-    "sunset": {
-      "key": 0.9,
-      "keyColour": 16756838,
-      "hemi": 0.8,
-      "hemiSky": 16763296,
-      "hemiGround": 7167846,
-      "sky": 15907210,
-      "fogNear": 1.0,
-      "fogFar": 3.6,
-      "night": 0.4,
-      "sunHeight": 0.22
-    },
-    "night": {
-      "key": 0.16,
-      "keyColour": 9414872,
-      "hemi": 0.34,
-      "hemiSky": 2832988,
-      "hemiGround": 1777968,
-      "sky": 1186348,
-      "fogNear": 0.7,
-      "fogFar": 2.6,
-      "night": 1.0,
-      "sunHeight": 0.5
-    },
-    "rain": {
-      "key": 0.42,
-      "keyColour": 13225942,
-      "hemi": 0.62,
-      "hemiSky": 10135218,
-      "hemiGround": 7305842,
-      "sky": 10463668,
-      "fogNear": 0.6,
-      "fogFar": 2.4,
-      "night": 0.25,
-      "sunHeight": 0.75
-    }
-  },
-  "grades": {
-    "day": {
-      "shadowTint": 12175072,
-      "highlightTint": 16773848,
-      "lift": 0.015,
-      "gain": 1.02,
-      "saturation": 1.05,
-      "ink": 1.0,
-      "inkColour": 2764602
-    },
-    "sunset": {
-      "shadowTint": 9408192,
-      "highlightTint": 16765600,
-      "lift": 0.02,
-      "gain": 1.0,
-      "saturation": 1.1,
-      "ink": 0.9,
-      "inkColour": 3811886
-    },
-    "night": {
-      "shadowTint": 7308992,
-      "highlightTint": 16769200,
-      "lift": 0.03,
-      "gain": 0.98,
-      "saturation": 0.85,
-      "ink": 0.75,
-      "inkColour": 1053727
-    },
-    "rain": {
-      "shadowTint": 8950948,
-      "highlightTint": 14213866,
-      "lift": 0.025,
-      "gain": 0.98,
-      "saturation": 0.72,
-      "ink": 0.8,
-      "inkColour": 2240568
-    }
+ "note": "cityviewer's frame and street dimensions, in metres (rulings 035, 038), and the quality tiers (ruling 040). Mirrored in client/world/config.js; test/world.test.js refuses drift. A tile is TILE_M metres; the engine never sees any of this. carCap 0 means uncapped.",
+ "tileM": 20,
+ "reliefM": 0.5,
+ "chunkTiles": 16,
+ "road": {
+  "width": 8,
+  "sidewalk": 2.5,
+  "blend": 4,
+  "wallMinDrop": 3,
+  "wallOut": 4,
+  "wallMaxDrop": 24,
+  "coping": 0.4,
+  "lanes": 1,
+  "stopLine": 2,
+  "maxGrade": 0.15,
+  "junctionDrift": 6,
+  "deckClearance": 5,
+  "deckDepth": 1,
+  "speed": 11,
+  "maxDensity": 12,
+  "dip": 0.16,
+  "minVerge": 1,
+  "kerb": 0.15,
+  "camber": 0.035,
+  "lift": 0.02,
+  "avenue": {
+   "width": 14,
+   "lanes": 2,
+   "median": 2
   }
+ },
+ "rail": {
+  "maxGrade": 0.04,
+  "width": 4,
+  "gauge": 1.5,
+  "railHalf": 0.08,
+  "sleeperEvery": 1.6,
+  "sleeperHalf": 0.14,
+  "lift": 0.1,
+  "speed": 22,
+  "carriages": 3,
+  "carriageLen": 17,
+  "carriageW": 2.9,
+  "carriageH": 3.4,
+  "dwell": 14
+ },
+ "boat": {
+  "length": 7,
+  "perBody": 3,
+  "openTilesPerBoat": 12,
+  "mooredCap": 24,
+  "hullW": 2.2,
+  "hullH": 1.6,
+  "ferryW": 5,
+  "ferryH": 3.4,
+  "sailSpeed": 4,
+  "ferrySpeed": 9,
+  "cargoSpeed": 6,
+  "dwell": 10,
+  "wake": 8,
+  "hullColour": 15790320,
+  "sailColour": 16316664,
+  "ferryColour": 3372748,
+  "cargoColour": 9145227,
+  "wakeColour": 14806244
+ },
+ "airport": {
+  "runwayHalf": 9,
+  "taxiwayHalf": 4.5,
+  "paintW": 0.9,
+  "dashM": 14,
+  "gapM": 12,
+  "thresholdBars": 6,
+  "thresholdM": 9,
+  "lightSpacingM": 22,
+  "lift": 0.05,
+  "approachM": 420,
+  "cruiseSpeed": 62,
+  "taxiSpeed": 9,
+  "turnaround": 16,
+  "climbGrade": 0.11,
+  "wingspan": 24,
+  "fuselage": 32,
+  "planeColour": 15921906,
+  "radarSpan": 4
+ },
+ "ground": {
+  "blend": 1,
+  "mottle": 0.06,
+  "urbanReach": 40,
+  "farTone": 0.12,
+  "tone": 0.55
+ },
+ "lot": {
+  "setback": {
+   "none": 2,
+   "residential": 1.5,
+   "commercial": 0,
+   "industrial": 2
+  },
+  "bayW": {
+   "none": 6,
+   "residential": 6,
+   "commercial": 5,
+   "industrial": 8
+  },
+  "floorH": {
+   "none": 4,
+   "residential": 3,
+   "commercial": 3.6,
+   "industrial": 5
+  },
+  "groundH": {
+   "none": 4.5,
+   "residential": 3,
+   "commercial": 4.5,
+   "industrial": 6
+  }
+ },
+ "tiers": {
+  "low": {
+   "budget": 40000,
+   "pixelRatio": 1,
+   "antialias": false,
+   "shadowMap": 0,
+   "shadows": false,
+   "streetChunks": 0,
+   "carCap": 60,
+   "pedCap": 0,
+   "pedCapCity": 0,
+   "post": [],
+   "frameMs": 40,
+   "lamps": 0
+  },
+  "medium": {
+   "budget": 140000,
+   "pixelRatio": 1.5,
+   "antialias": true,
+   "shadowMap": 2048,
+   "shadows": true,
+   "streetChunks": 4,
+   "carCap": 200,
+   "pedCap": 40,
+   "pedCapCity": 200,
+   "post": [
+    "pixel"
+   ],
+   "frameMs": 40,
+   "lamps": 5
+  },
+  "high": {
+   "budget": 400000,
+   "pixelRatio": 2,
+   "antialias": true,
+   "shadowMap": 4096,
+   "shadows": true,
+   "streetChunks": 9,
+   "carCap": 0,
+   "pedCap": 120,
+   "pedCapCity": 600,
+   "post": [
+    "pixel",
+    "ink"
+   ],
+   "frameMs": 20,
+   "lamps": 8
+  }
+ },
+ "wire": {
+  "poleSpacing": 60,
+  "poleHeight": 7,
+  "sag": 1.2,
+  "armWidth": 1.4
+ },
+ "water": {
+  "depth": 1.4,
+  "lift": 0.06,
+  "wade": 0.4,
+  "opacity": 0.7,
+  "shelf": 1,
+  "bank": 3
+ },
+ "fog": {
+  "streetNear": 25,
+  "streetFar": 520,
+  "domeShare": 0.85
+ },
+ "props": {
+  "lampSpacing": 24,
+  "lampInset": 0.5,
+  "lampH": 4.5,
+  "hedgeH": 0.9,
+  "treeH": 9,
+  "treeR": 3.2,
+  "pathW": 1.2,
+  "binEvery": 60
+ },
+ "ped": {
+  "pace": 1.35,
+  "paceVary": 0.35,
+  "perOccupant": 0.15,
+  "perShop": 3,
+  "perWorks": 1,
+  "clearance": 1.2,
+  "bob": 0.055,
+  "stride": 0.85,
+  "spacing": 1.6,
+  "crossWait": 1
+ },
+ "presets": {
+  "day": {
+   "key": 1.0,
+   "keyColour": 16775920,
+   "hemi": 1.0,
+   "hemiSky": 14478591,
+   "hemiGround": 9677432,
+   "sky": 12574960,
+   "fogNear": 1.4,
+   "fogFar": 5.0,
+   "night": 0.0,
+   "sunHeight": 1.0
+  },
+  "sunset": {
+   "key": 0.9,
+   "keyColour": 16756838,
+   "hemi": 0.8,
+   "hemiSky": 16763296,
+   "hemiGround": 7167846,
+   "sky": 15907210,
+   "fogNear": 1.0,
+   "fogFar": 3.6,
+   "night": 0.4,
+   "sunHeight": 0.22
+  },
+  "night": {
+   "key": 0.16,
+   "keyColour": 9414872,
+   "hemi": 0.34,
+   "hemiSky": 2832988,
+   "hemiGround": 1777968,
+   "sky": 1186348,
+   "fogNear": 0.7,
+   "fogFar": 2.6,
+   "night": 1.0,
+   "sunHeight": 0.5
+  },
+  "rain": {
+   "key": 0.42,
+   "keyColour": 13225942,
+   "hemi": 0.62,
+   "hemiSky": 10135218,
+   "hemiGround": 7305842,
+   "sky": 10463668,
+   "fogNear": 0.6,
+   "fogFar": 2.4,
+   "night": 0.25,
+   "sunHeight": 0.75
+  }
+ },
+ "grades": {
+  "day": {
+   "shadowTint": 12175072,
+   "highlightTint": 16773848,
+   "lift": 0.015,
+   "gain": 1.12,
+   "saturation": 1.05,
+   "ink": 1.0,
+   "inkColour": 2764602
+  },
+  "sunset": {
+   "shadowTint": 9408192,
+   "highlightTint": 16765600,
+   "lift": 0.02,
+   "gain": 1.0,
+   "saturation": 1.1,
+   "ink": 0.9,
+   "inkColour": 3811886
+  },
+  "night": {
+   "shadowTint": 7308992,
+   "highlightTint": 16769200,
+   "lift": 0.03,
+   "gain": 0.98,
+   "saturation": 0.85,
+   "ink": 0.75,
+   "inkColour": 1053727
+  },
+  "rain": {
+   "shadowTint": 8950948,
+   "highlightTint": 14213866,
+   "lift": 0.025,
+   "gain": 0.98,
+   "saturation": 0.72,
+   "ink": 0.8,
+   "inkColour": 2240568
+  }
+ }
 }

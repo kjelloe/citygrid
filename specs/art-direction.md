@@ -130,18 +130,28 @@ section cannot quietly go stale.
 | Role | Hex |
 | --- | --- |
 | Sky | `0xbfe0f0` |
-| Grass | `0x98f040` |
-| Sand | `0xc0a274` |
-| Forest | `0x3f9b34` |
+| Grass | `0xaaf84e` |
+| Sand | `0xc8ab7c` |
+| Forest | `0x4aad3c` |
 | Water | `0x39c5e8` |
 | Shallow | `0xa8ecfa` |
-| Rock | `0xa8a49e` |
+| Rock | `0xb0aca6` |
 | Beach | `0xf0dfae` |
-| Scrub | `0x74a05c` |
+| Scrub | `0x82ad64` |
 | Garden plot | `0x6fce4c` |
 
 The greens are deliberately more saturated than life and the water is cyan
 rather than navy. A cosy toy world does not use realistic colours — §1.7.
+
+**S15 (2026-10-05) measured the whole ground against the references rather than the grass alone**
+(`tools/palette_compare.mjs`: one sieve, held over our frame and over the reference, medians and
+shares per class). The asphalt is matched now (ours #666c75 at 109, the references 98–110); the
+roofs came up from sixty-to-seventy of luminance short to thirty-six; the grass is still **65
+short** and the palette is not the lever — raising the albedo by eight moved the lit grass by five.
+Two light levers were tried and reverted with their numbers: `hemiGround` moved nothing (a
+hemisphere light's ground colour lights downward faces, and a field faces up), and `hemi: 1.3`
+lifted the grass by nine while pushing the asphalt nine PAST the reference it had just matched. What
+is left is the lit response itself, which is S15b.
 
 The grass moved from 0x62c144 in S2 (2026-09-12), measured rather than picked: lit and inked,
 the old value rendered as #48a038 at city zoom and #308028 in the street, against the reference's
@@ -159,8 +169,16 @@ grade, not the palette.
 | Commercial wall | `0x8fd0f0` |
 | Industrial wall | `0xd9a45c` |
 | Civic wall | `0xd8d2c6` |
-| House roofs | `0xd4623a` `0xe07a45` `0xb8422c` `0x94302a` `0x5d6d80` `0x404a5c` `0x334152` `0x3b7358` `0xc9a97a` `0x8a6046` `0x7d8590` `0x2b3340` `0x5d7a52` `0xb07b74` |
-| Flat roofs | `0x4e535b` `0x424750` `0x5c6169` `0x6b6459` `0x7a736a` `0x3a3f47` |
+| House roofs | `0xee8456` `0xf79a60` `0xe26446` `0xd1604a` `0x93a6bb` `0x8090a6` `0x6b7c92` `0x5d9a78` `0xeed5ab` `0xb88a6c` `0xa9b2bc` `0x55607a` `0x8cae7c` `0xd5a299` |
+| Flat roofs | `0x9aa0a8` `0x868c96` `0xa9afb7` `0xaaa188` `0xb9b29b` `0x7a8089` |
+
+**Raised in S15 (2026-10-05), measured.** `tools/palette_compare.mjs` holds one sieve over our frame
+and over the reference and reports the median of each class: our lit roofs were **#59523f–#5c5544**
+against the references' **#ba684b–#c6a77b**, sixty to seventy of luminance, and the four near-blacks
+were most of it. So the blue-blacks went, the dark reds came up to terracotta, and the flat roofs —
+all near-black greys before — became the light grey and buff of felt and gravel in the sun. D4's
+finding 3, landed at last. The hue bands are unchanged: warm clay, cool slate, moss, and the sand
+and rose V6 added.
 
 Fourteen house roofs and six flat ones since **V6**. Eight was a visible period: walking down one
 street of a saturated district, the repeat is legible. The six additions are the ones a real
@@ -180,7 +198,7 @@ colour is a material and materials vary less than paint does.
 
 | Role | Hex |
 | --- | --- |
-| Road | `0x6f7278` |
+| Road | `0x7d8189` |
 | Road marking | `0xf2f2f2` |
 | Power pole | `0x8a8377` |
 | Lamp | `0xb8bcc0` |

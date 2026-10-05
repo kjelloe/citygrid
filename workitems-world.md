@@ -683,7 +683,57 @@ posed instances) and fail at zero.
 **Done when** each `_shots` gate prints the thing it is pointed at and the distance it stands back,
 and somebody has looked at the frames it takes.
 
-## S15 — Tone and proportion, against the sheet (M) — S8's verdict
+## S15 — Tone and proportion, against the sheet (M) — **BUILT 2026-10-05**, measured
+
+`tools/palette_compare.mjs` is the instrument the item asked for: one sieve over both halves of each
+row, medians and shares per class. **Asphalt matched** (109 vs 110), **roofs 60–70 short → 36–49**
+(D4's finding 3 landed), road's share of the frame **22–34% → 7–21%**, and on the lakeside row the
+largest colour on the ground is green, as in the reference. Two light levers were tried and reverted
+with their numbers (`hemiGround` moved nothing — it lights downward faces; `hemi: 1.3` overshot the
+asphalt by nine). The grass is **57–65 short and the palette cannot answer it**: +8 of albedo bought
++5 of lit grass, which is the compression S2 saw on grass and S15 now measures on every material.
+
+**What is left is two items, not one guess:**
+
+## S15b — The lit response (M) — found by S15's measurement, 2026-10-05
+
+**Goal.** A material that is raised by sixty comes out raised by sixty, or the palette is a dial
+that does not turn.
+
+**Analysis.** Lit medians move about a third of what the palette moves: the roofs went up ~60 in
+source and ~25 on screen, the grass +8 and +5. Three candidates, none yet measured apart: the key
+light's intensity and colour (`presets.day.key`, `keyColour`), the grade's curve
+(`lift`/`gain`/`saturation` — `gain` is a multiply, so it cannot lift a dark material without
+blowing a light one), and **the baker's own face shading**, which multiplies every face by a factor
+for its normal (`darken(hex, factor)` in `client/world/params.js`, and the band factors in
+`palettes.js`). The third is the one nothing has looked at, and it is the only one that can
+compress a material while leaving the sky alone.
+
+**Do.** Measure each in isolation with `palette_compare` — one change, one reading, as S15 did for
+the two light levers — and move the one that closes the grass without moving the asphalt off its
+match. `a11y_smoke`'s band separation is the floor; `budget_gate` is unmoved (colour, not geometry).
+
+## S15c — The road is the largest colour (M) — found by S15's measurement, 2026-10-05
+
+**Goal.** A town that reads as fields with streets through it rather than as a sheet of asphalt.
+
+**Analysis.** Measured: the road class takes **7–21% of our frame against 4–13% of the
+references'**, and the compare sheet's eye verdict is blunter than the numbers — the references are
+green with roads drawn on them, ours is grey with green in the gaps. Three causes, and only the
+first is colour:
+
+1. `road.width` is 8 m per carriageway plus 2.5 m of pavement each side, on 20 m tiles: a street
+   takes two thirds of the tile it runs down. The lever is per kind in `data/cityviewer.json` (and
+   its mirror), and it **re-baselines `walkthrough` and `passability`**, which is why it is not part
+   of S15.
+2. The deputy paves a grid with a street on every block edge (B9's "a constraint concentrates the
+   agent"), so the share of paved ground is a BEHAVIOUR number, not a renderer one.
+3. **A zoned-but-unbuilt lot is a grey slab** (Q73), and neither the sieve nor the eye can tell it
+   from asphalt. That one is a colour, and it is the cheapest of the three to try.
+
+**Do.** Start with (3), measure, then decide whether (1) is worth re-baselining two gates for.
+
+## S15 — Tone and proportion, against the sheet (M) — the item as written
 
 **Goal.** The compare sheet's rows 2 and 3 read as one family. Measured, not eyeballed first.
 
