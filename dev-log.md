@@ -11160,3 +11160,23 @@ two identical, which is what makes it survivable — and what hid it, exactly as
 Gates: suite 1,751 green twice; `a11y_smoke` green with the overlay bands **122 apart by day** and
 93/56 on a shaded hillside (the lighter asphalt has not cost them their separation);
 `reports/compare-transport-worlds.png` regenerated for the eye.
+
+## slice-M8 — the renderer's numbers come from the file now (2026-10-05)
+
+P90 found that `setRules` and `setCatalogue` had no caller for the life of the project: the engine's
+numbers lived in `data/balance.json`, the mirror in `engine/rules.js` was what ran, and a drift test
+kept them identical — which is what made it survivable and what hid it. **The renderer had the same
+defect and kept it through P90**: nothing loaded `data/cityviewer.json`, so every tier, budget,
+light preset, grade and road width the game used came from `client/world/config.js`'s mirror.
+
+S15 found it the way these are always found: by editing the file twice and watching the screen not
+change.
+
+`loadRuleset` takes three files now. The mirror stays as the FALLBACK, the drift test stays as what
+keeps it honest, and `test/content.test.js` has the pair the other two files already had: a doctored
+`road.width` of 99 reaches `getConfig()`, and a `cityviewer.json` that will not load leaves the
+mirror standing and says "running on the mirror" out loud. Suite 1,753 green twice, `client_smoke`
+and `quick` green.
+
+CLAUDE.md's "numbers live in `data/*.json`, never in engine code" is true for all three files for
+the first time.

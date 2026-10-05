@@ -12,6 +12,7 @@
 import { setQuests, validateQuests } from "../engine/quests.js";
 import { setRules } from "../engine/rules.js";
 import { setCatalogue } from "../engine/catalogue.js";
+import { setConfig } from "./world/config.js";
 
 /**
  * The ruleset and the building catalogue, from `data/` into the engine.
@@ -30,7 +31,16 @@ import { setCatalogue } from "../engine/catalogue.js";
  */
 export async function loadRuleset(base = "./data/") {
   const problems = [];
-  for (const [file, apply, key] of [["balance.json", setRules, "rules"], ["buildings.json", setCatalogue, "catalogue"]]) {
+  // **Three files, not two** (M8). `cityviewer.json` was the renderer's half of
+  // the same defect P90 found in the engine's: the file is where CLAUDE.md says
+  // every number lives, `client/world/config.js` carries a mirror of it, a drift
+  // test keeps the two identical — and nothing ever read the file, so S15's
+  // first two colour moves edited it and changed nothing on screen.
+  for (const [file, apply, key] of [
+    ["balance.json", setRules, "rules"],
+    ["buildings.json", setCatalogue, "catalogue"],
+    ["cityviewer.json", setConfig, "cityviewer"],
+  ]) {
     try {
       const loaded = await (await fetch(`${base}${file}`)).json();
       delete loaded.note;

@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { loadRuleset } from "../client/content.js";
+import { getConfig, setConfig, DEFAULTS } from "../client/world/config.js";
 import { rules, setRules } from "../engine/rules.js";
 import { catalogue, setCatalogue, definitionIds } from "../engine/catalogue.js";
 
@@ -46,7 +47,9 @@ test("the loader puts the FILE into the engine, not the mirror", async () => {
   const extra = { ...buildings, pylon: { category: "power", w: 1, h: 1, cost: 1, upkeep: 0,
     power: 1, water: 0, pollution: 0, fireRisk: 0, unlock: 0 } };
 
-  globalThis.fetch = serving({ "balance.json": doctored, "buildings.json": extra });
+  globalThis.fetch = serving({
+    "balance.json": doctored, "buildings.json": extra, "cityviewer.json": read("cityviewer.json"),
+  });
   try {
     const { problems } = await loadRuleset("./data/");
     assert.deepEqual(problems, []);
@@ -69,7 +72,9 @@ test("a ruleset that will not load leaves the mirror standing", async () => {
   globalThis.fetch = serving({});
   try {
     const { problems } = await loadRuleset("./data/");
-    assert.equal(problems.length, 2, `${problems.length} problem(s): ${problems.join(", ")}`);
+    // Three files since M8: the ruleset, the catalogue and the renderer's
+    // config, each reported and each falling back to its mirror.
+    assert.equal(problems.length, 3, `${problems.length} problem(s): ${problems.join(", ")}`);
     assert.equal(rules().build.road, before, "a failed load changed the ruleset");
     assert.ok(definitionIds().includes("coalPlant"));
   } finally {
@@ -90,5 +95,51 @@ test("the real files load, and agree with the mirror they replace", async () => 
   } finally {
     restore();
     delete globalThis.fetch;
+  }
+});
+
+test("the renderer's numbers come from the FILE too (M8)", async () => {
+  // The same defect P90 found in the engine's rules, in the renderer's config:
+  // `data/cityviewer.json` is where CLAUDE.md says every number lives,
+  // `client/world/config.js` mirrors it, a drift test keeps them identical, and
+  // for the life of the project nothing loaded it. S15 found it by editing the
+  // file twice and watching the screen not change.
+  const cityviewer = read("cityviewer.json");
+  const doctored = { ...cityviewer, road: { ...cityviewer.road, width: 99 } };
+  globalThis.fetch = serving({
+    "balance.json": read("balance.json"),
+    "buildings.json": read("buildings.json"),
+    "cityviewer.json": doctored,
+  });
+  try {
+    const { problems } = await loadRuleset("./data/");
+    assert.deepEqual(problems, []);
+    assert.equal(getConfig().road.width, 99, "the renderer still reads the mirror");
+    // And the note is not a number: it is deleted on the way in, like the
+    // ruleset's.
+    assert.equal(getConfig().note, undefined);
+  } finally {
+    restore();
+    setConfig(DEFAULTS);
+  }
+});
+
+test("a cityviewer config that will not load leaves the mirror standing (M8)", async () => {
+  // The mirror IS the fallback (ruling: a city that boots offline runs on
+  // numbers it can prove). A failed fetch must say so and change nothing.
+  globalThis.fetch = serving({ "balance.json": read("balance.json"), "buildings.json": read("buildings.json") });
+  const said = [];
+  const wasError = console.error;
+  console.error = (...args) => said.push(args.join(" "));
+  try {
+    const { problems } = await loadRuleset("./data/");
+    assert.equal(problems.length, 1, `expected one problem, got ${problems.join("; ")}`);
+    assert.match(problems[0], /cityviewer\.json/);
+    assert.equal(getConfig().road.width, DEFAULTS.road.width, "a failed load moved the numbers");
+    assert.ok(said.some((line) => line.includes("running on the mirror")), "it failed silently");
+  } finally {
+    console.error = wasError;
+    restore();
+    setConfig(DEFAULTS);
   }
 });
