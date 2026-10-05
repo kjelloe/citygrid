@@ -19,7 +19,7 @@ import { shoot } from "./screenshot.mjs";
 import { setConfig, DEFAULTS } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
 import { createBoats } from "../client/life/boats.js";
-import { playedCity, standBack, describe } from "./lib/aim.mjs";
+import { playedCity, standBack, describe, clearanceAt } from "./lib/aim.mjs";
 
 const SEED = 1003;
 const SIZE = 64;
@@ -156,15 +156,36 @@ console.log(`marina ${at.marina}, terminal ${at.ferry} on ${at.body} tiles of wa
   );
   if (spots.length === 0) problems.push("the close marina shot: no boat is moored to aim at");
   else {
-    const boat = spots[0];
-    // Back off AWAY from the water: the shore is where somebody looking at a
-    // marina stands, and `standBack` refuses a camera in the river anyway.
+    // Every berth, eight directions, then — if the marina is out in a wide
+    // river, which seed 1003's is — a camera ON THE WATER. There is no dry land
+    // within forty metres of its first berth in any direction, and a gate that
+    // refuses to photograph a marina because nobody can stand on its bank is a
+    // gate that photographs nothing.
     let camera;
-    for (const away of [{ x: 1, z: 0 }, { x: -1, z: 0 }, { x: 0, z: 1 }, { x: 0, z: -1 }]) {
-      camera = standBack(model, { at: boat, away, clear: 3, start: 10, max: 30, pitch: -3, eyeM: 2 });
+    let boat = spots[0];
+    for (const candidate of spots) {
+      for (let a = 0; a < 8 && !camera; a += 1) {
+        const ang = (a / 8) * Math.PI * 2;
+        const got = standBack(model, {
+          at: candidate, away: { x: Math.cos(ang), z: Math.sin(ang) },
+          clear: 3, start: 10, max: 34, pitch: -3, eyeM: 2,
+        });
+        if (got) { camera = got; boat = candidate; }
+      }
       if (camera) break;
     }
-    if (!camera) problems.push("the close marina shot: no camera can stand on the bank beside it");
+    if (!camera) {
+      const eye = { x: boat.x + 16, z: boat.z + 10 };
+      camera = {
+        standoff: Math.round(Math.hypot(eye.x - boat.x, eye.z - boat.z)),
+        clearance: clearanceAt(model, eye.x, eye.z),
+        standingOn: model.surfaceAt(eye.x, eye.z).kind,
+        eyeM: 2,
+        photo: `${(eye.x / model.tileM).toFixed(3)},${(eye.z / model.tileM).toFixed(3)},2,`
+          + `${Math.atan2(eye.x - boat.x, eye.z - boat.z).toFixed(4)},-3`,
+      };
+    }
+    if (!camera) problems.push("the close marina shot: no camera can stand beside it");
     else {
       const out = "reports/smoke-T4-berth.png";
       console.log(describe("moored boat", { cx: boat.x, cz: boat.z, tileM: model.tileM }, camera));

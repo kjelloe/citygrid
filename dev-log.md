@@ -11819,6 +11819,12 @@ train had moved between the probe pass and the shot and the nearest carriage to 
 whichever one happens to be there. It stands a carriage length ALONG the line as well now — three
 quarters on, where a train is still a train whichever carriage is in front of you.
 
+**The berth shot had the same trouble from the other side: nobody can stand on that bank.** Seed
+1003's marina sits in a wide river — there is no dry land within forty metres of its first berth in
+any of eight directions. The gate tries every berth and every direction, and falls back to a camera
+ON the water, because a gate that refuses to photograph a marina for want of a bank photographs
+nothing. The frame it takes is two moored hulls with their masts, from nineteen metres.
+
 **And the instrument that was supposed to catch this could not see the tools at all.**
 `test/unused-imports.test.js`, written this morning, lists `tools` among the directories it scans —
 and `jsFilesIn` collected only `.js`, so every `.mjs` in the repo was invisible to it, to
