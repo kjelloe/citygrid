@@ -989,7 +989,23 @@ item: the deck as one profile, and the water as one surface.**
 **Gate.** `bridge_shots` and `water_shots` re-taken; `embankment_shots` after beside before;
 `walkthrough` and `passability` unmoved.
 
-## S19 — The terminal, the station and the hall, by eye (S)
+## S19b — A station faces its TRACK, not its street (S) — found in S19, 2026-10-06
+
+S19 mirrored `railStation` so its entrance faces the street, which `civicSpin` turns `+z` to — and
+that puts the drawn platform on the far side, where the track may or may not be. Neither
+orientation is right in general: a station's **platform belongs beside its line** and its entrance
+beside its road, and the two are independent.
+
+The engine does not care — `platformOn` projects the building's FOOTPRINT onto the corridor, so the
+train stops in the right place whichever way the masses point — but the picture does: a station
+whose line runs on the street side shows a canopy over grass and a platform with no track under it.
+
+**Do.** Give `civicSpin` the option of a second axis for a definition that has one (the airport
+already refuses to turn at all, `axis: true`), and turn a station by the nearest rail corridor
+instead of by its frontage. **Gate.** `rail_shots`' station frame, with the line visible under the
+canopy.
+
+## S19 — The terminal, the station and the hall, by eye (S) — **BUILT 2026-10-06** as `slice-S19`
 
 **Goal.** S1b's second pass for the transport lane's buildings: the airport terminal is a long
 dark slab, and the station, the ferry terminal, the port and the city hall have had one pass
