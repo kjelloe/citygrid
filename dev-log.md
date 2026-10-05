@@ -11220,3 +11220,43 @@ clinic's red cross behind it. `sim` and the suite below.
 `sim_sweep` 553 — and `reports/balance-era26.md` **byte-identical**, which is the claim that matters
 for a change to the traffic's following model: the yield fix moves what a car does in front of an
 emergency vehicle and nothing the deputy decides. Suite 1,760 green twice.
+
+## slice-B13 — weather that causes things (era 27) (2026-10-05)
+
+Kjell's ruling at P60 (A61): the overcast hour has been a picture since B6a; this makes it a cause.
+
+**Lightning.** A storm throws **one** strike, at the first thing inside its radius that can burn,
+through `igniteAt` — so the fire spreads, is fought by fire cover and burns out exactly as any other
+fire does (A62: a second fire mechanism would be a second set of rules to keep in step). One, not a
+sweep: a storm that lights its whole radius is a wildfire with a different name, and the test holds
+it to three tiles or fewer.
+
+**The downpour** is the eighth disaster. It floods the tiles that have a **pipe** under them, and
+only in a city whose water **demand is already over what its pumps make** — which is a question the
+engine had already answered in `supply.water`, so the rule reads the number that exists rather than
+inventing a second measure of the same thing. Standing water raises `healthRisk` the way a flood's
+does and takes the occasional pipe out; nothing it does is unbuildable afterwards.
+
+**It is its own era, and the null arm proves why.** `chooseKind` now draws from eight kinds, so
+every disaster after the first roll is a different disaster and era 26's numbers are void rather than
+roughly comparable:
+
+| configuration | era 26 population | era 27 | living cities |
+| --- | --- | --- | --- |
+| relaxed-64 | 1,749 | 1,688 | 200 of 200 |
+| steady-64 | 1,600 | 1,602 | 200 of 200 |
+| demanding-64 | 1,511 | 1,551 | 200 of 200 |
+| **steady-64-nodisasters** | **1,565** | **1,565** | **200 of 200** |
+
+The no-disaster arm is **identical to the digit**, which is what says the move belongs to the
+change: ±3% on the three arms that roll for disasters and nothing at all on the arm that does not.
+
+`disaster_soak` (200 games × 25 years): the downpour fires **52 times**, every type fires, no
+unrecoverable cities.
+
+**And a gap the suite could not see.** The eighth disaster shipped green with **no words in either
+catalogue** — the alerts' `namedKey` renders `disaster.<name>`, so a player would have read
+"disaster.downpour warning". `RESULT` and `REFUSAL` have had both-directions i18n tests for a while
+and `DISASTER_NAMES` never did; it does now, and the catalogues have *Downpour* and *Styrtregn*.
+
+Suite 1,767 green twice.

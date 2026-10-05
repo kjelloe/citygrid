@@ -11,6 +11,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { RESULT, REFUSAL } from "../shared/protocol.js";
+import { DISASTER_NAMES } from "../engine/disasters.js";
 
 const dir = join(repoRoot, "data", "i18n");
 const locales = Object.fromEntries(
@@ -217,4 +218,30 @@ test("the shop names are two different lists, not one copied twice", () => {
   const identical = names.shops.en.filter((name, i) => name === names.shops.no[i]);
   assert.ok(identical.length < names.shops.en.length / 3,
     `${identical.length} of ${names.shops.en.length} shop names are the same in both: ${identical.join(", ")}`);
+});
+
+test("every disaster the engine can name has words in every catalogue (B13)", () => {
+  // The alerts' `namedKey` renders `disaster.<name>`: "Flood warning" tells a
+  // player something and "disaster.downpour warning" does not. B13 added the
+  // eighth kind and the suite was green with no string for it in either
+  // locale — the RESULT and REFUSAL codes have had this test for a while and
+  // the disasters never did.
+  for (const name of DISASTER_NAMES) {
+    if (name === "none") continue;
+    for (const [locale, catalogue] of Object.entries(locales)) {
+      assert.ok(Object.hasOwn(catalogue, `disaster.${name}`),
+        `${locale} cannot name a ${name}`);
+    }
+  }
+});
+
+test("every disaster.* string is a disaster the engine can cause (B13)", () => {
+  const known = new Set(DISASTER_NAMES);
+  for (const [locale, catalogue] of Object.entries(locales)) {
+    const orphans = Object.keys(catalogue)
+      .filter((key) => key.startsWith("disaster."))
+      .map((key) => key.slice("disaster.".length))
+      .filter((name) => !known.has(name));
+    assert.deepEqual(orphans, [], `${locale} names disasters the engine cannot cause: ${orphans.join(", ")}`);
+  }
 });

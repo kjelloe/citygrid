@@ -38,17 +38,19 @@ export var DISASTER_STORM = 4;
 export var DISASTER_EXPLOSION = 5;
 export var DISASTER_BLACKOUT = 6;
 export var DISASTER_CONTAMINATION = 7;
+/** B13 (A61): rain that is a cause rather than a picture. */
+export var DISASTER_DOWNPOUR = 8;
 
 export var DISASTER_KINDS = [
   DISASTER_WILDFIRE, DISASTER_EARTHQUAKE, DISASTER_FLOOD, DISASTER_STORM,
-  DISASTER_EXPLOSION, DISASTER_BLACKOUT, DISASTER_CONTAMINATION,
+  DISASTER_EXPLOSION, DISASTER_BLACKOUT, DISASTER_CONTAMINATION, DISASTER_DOWNPOUR,
 ];
 
 /** Names for events and for the HUD. Kept here rather than in the client so a
  * disaster added to the engine cannot be one the interface has never heard of. */
 export var DISASTER_NAMES = [
   "none", "wildfire", "earthquake", "flood", "storm",
-  "explosion", "blackout", "contamination",
+  "explosion", "blackout", "contamination", "downpour",
 ];
 
 export var PHASE_NONE = 0;
@@ -215,6 +217,26 @@ function strike(state, disaster, events) {
       // A storm takes the wires down and leaves the roads.
       if (chanceIn(state.rng, 1, 2)) state.tiles.wire[index] = 0;
     });
+    // **Lightning** (B13, A61). ONE strike, at the middle of the storm, through
+    // the ordinary fire system — so it spreads, is fought by fire cover and
+    // burns out like any other fire. A storm that lit its whole radius would be
+    // a wildfire with a different name, and a second fire mechanism would be a
+    // second set of rules to keep in step (A62).
+    lightning(state, cx, cy, radius);
+  } else if (kind === DISASTER_DOWNPOUR) {
+    // **Rain as a cause** (B13). It floods where the network cannot take it:
+    // tiles with a pipe under them, in a city whose water demand is over what
+    // its pumps make. A downpour on a city with headroom is weather, and the
+    // renderer already draws that.
+    if (overCapacity(state)) {
+      forEachInRadius(state, cx, cy, radius, function (index) {
+        if (state.tiles.pipe[index] === 0) return;
+        // Standing water: a health problem long after it drains, the same way
+        // a flood's is, and a chance of taking the pipe itself out.
+        state.tiles.healthRisk[index] = clamp(state.tiles.healthRisk[index] + 40, 0, 255);
+        if (chanceIn(state.rng, 1, 6)) state.tiles.pipe[index] = 0;
+      });
+    }
   } else if (kind === DISASTER_EXPLOSION) {
     forEachInRadius(state, cx, cy, radius, function (index) {
       wrecked += wreck(state, index, events);
@@ -298,6 +320,32 @@ function spotFor(state, kind) {
   if (kind === DISASTER_EXPLOSION) return industrialSpot(state);
   if (kind === DISASTER_FLOOD || kind === DISASTER_CONTAMINATION) return waterSideSpot(state);
   return developedSpot(state);
+}
+
+/** Is the city drawing more water than it makes? (B13.)
+ *
+ * The engine already knows — `supply.water` is where the utilities pass leaves
+ * it — so a downpour asks the question that is already answered rather than
+ * inventing a second measure of the same thing. */
+function overCapacity(state) {
+  return state.supply.water.demand > state.supply.water.capacity;
+}
+
+/** One lightning strike inside a storm (B13). The middle of the radius when it
+ * will burn, and nothing at all when it will not: a strike on bare ground is a
+ * flash, which the renderer is welcome to draw and the engine need not record. */
+function lightning(state, cx, cy, radius) {
+  var W = state.width;
+  var best = -1;
+  forEachInRadius(state, cx, cy, radius, function (index) {
+    if (best >= 0) return;
+    if (state.tiles.buildingId[index] === 0 && state.tiles.terrain[index] !== TERRAIN_FOREST) return;
+    if ((state.tiles.flags[index] & FLAG_RUINED) !== 0) return;
+    best = index;
+  });
+  if (best < 0) return;
+  igniteAt(state, best);
+  return W;
 }
 
 export function disasterPass(state) {

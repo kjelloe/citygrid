@@ -445,7 +445,17 @@ planner call per dispatch, as B3 does.
 **Tests first.** `test/services.test.js`: an ambulance exists only while a qualifying tile and a
 hospital do; a car ahead of an engine stops at the kerb side and resumes. **Gate.** `service_shots`.
 
-## B13 — Weather causes disasters (M, engine) — A61
+## B13 — Weather causes disasters (M, engine) — A61 — **BUILT 2026-10-05 as era 27**
+
+A storm throws one lightning strike through the ordinary fire system; the **downpour** is the eighth
+disaster and floods the tiles with a pipe under them, in a city whose water demand is already over
+its capacity. Measured: `disaster_soak` 200×25 with the downpour firing 52 times and no unrecoverable
+cities, and a sweep whose **no-disaster arm is identical to the digit** while the three rolling arms
+move ±3% — which is what attributes the move to the change. The eighth disaster also shipped with no
+words until an i18n test was written for `DISASTER_NAMES`, which the RESULT and REFUSAL codes had and
+the disasters did not.
+
+## B13 — Weather causes disasters (M, engine) — A61 — the item as written
 
 **Goal.** Kjell's ruling at P60: lightning starts a fire and a downpour floods the sewer. The
 overcast hour is a picture today (B6a); this makes it a cause.

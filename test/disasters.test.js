@@ -9,14 +9,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   disasterPass, DISASTER_KINDS, DISASTER_NAMES, DISASTER_WILDFIRE, DISASTER_BLACKOUT,
-  DISASTER_EARTHQUAKE, DISASTER_EXPLOSION, DISASTER_CONTAMINATION,
+  DISASTER_EARTHQUAKE, DISASTER_EXPLOSION, DISASTER_CONTAMINATION, DISASTER_STORM, DISASTER_DOWNPOUR,
   PHASE_NONE, PHASE_WARNING, PHASE_ACTIVE, disasterName,
 } from "../engine/disasters.js";
 import { createState, hashState, copyState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
-import { FLAG_POWERED, FLAG_RUINED, TERRAIN_WATER } from "../engine/constants.js";
+import { FLAG_POWERED, FLAG_RUINED, FLAG_BURNING, TERRAIN_WATER, TERRAIN_ROCK } from "../engine/constants.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
@@ -71,11 +71,15 @@ test("every disaster kind has a name, and no two share one", () => {
   assert.equal(names.includes("none"), false, "a real disaster must not be named 'none'");
 });
 
-test("the design's seven major disasters all exist", () => {
+test("the design's seven major disasters all exist, and B13's eighth", () => {
   // gamedesign.md §12 lists wildfire, earthquake, flood, tornado/severe storm,
-  // industrial explosion, large-scale blackout, water contamination.
-  assert.equal(DISASTER_KINDS.length, 7, `${DISASTER_KINDS.length} kinds: ${DISASTER_KINDS.map(disasterName)}`);
-  for (const name of ["wildfire", "earthquake", "flood", "storm", "explosion", "blackout", "contamination"]) {
+  // industrial explosion, large-scale blackout, water contamination. B13 (A61)
+  // adds the **downpour**, which is the design's weather becoming a cause
+  // rather than a picture — counted here on purpose, so a ninth is a decision
+  // somebody makes rather than a list that grew.
+  assert.equal(DISASTER_KINDS.length, 8, `${DISASTER_KINDS.length} kinds: ${DISASTER_KINDS.map(disasterName)}`);
+  for (const name of ["wildfire", "earthquake", "flood", "storm", "explosion", "blackout",
+    "contamination", "downpour"]) {
     assert.ok(DISASTER_NAMES.includes(name), `no ${name}`);
   }
 });
@@ -273,4 +277,90 @@ test("the disaster record survives a copy", () => {
   assert.deepEqual(copy.disaster, state.disaster);
   copy.disaster.kind = DISASTER_BLACKOUT;
   assert.equal(state.disaster.kind, DISASTER_WILDFIRE, "the copy shares the original's record");
+});
+
+// --- weather that causes things (B13, A61) -----------------------------------
+
+test("a storm throws lightning, and the fire it starts is an ordinary fire", () => {
+  // Kjell's ruling at P60: the overcast hour is a picture (B6a); this makes it
+  // a cause. Through `igniteAt` so it spreads, is fought by fire cover and
+  // burns out the way every other fire does — a second fire mechanism would be
+  // a second set of rules to keep in step (A62).
+  const state = town();
+  // Something that can burn, under the storm.
+  for (let y = 10; y < 15; y += 1) {
+    for (let x = 10; x < 15; x += 1) {
+      state.buildings.push({
+        id: 1000 + y * 24 + x, def: "res", zone: 1, x, y, w: 1, h: 1,
+        level: 2, occupancy: 8, condition: 100, owner: 1,
+      });
+      state.tiles.buildingId[y * state.width + x] = 1000 + y * 24 + x;
+    }
+  }
+  arm(state, DISASTER_STORM);
+  disasterPass(state);
+
+  const burning = [...state.tiles.flags].filter((f) => (f & FLAG_BURNING) !== 0).length;
+  assert.ok(burning > 0, "a storm passed over a town and nothing caught");
+  // One strike, not a sweep: a storm that lights the whole radius is a
+  // wildfire with a different name.
+  assert.ok(burning <= 3, `${burning} tiles alight — that is a firestorm, not lightning`);
+});
+
+test("lightning cannot strike with disasters off", () => {
+  const state = town({ disasters: false });
+  arm(state, DISASTER_STORM);
+  disasterPass(state);
+  assert.equal([...state.tiles.flags].filter((f) => (f & FLAG_BURNING) !== 0).length, 0);
+});
+
+test("a downpour floods the pipes that are over capacity, and only those", () => {
+  // "Over capacity" is a thing the engine already knows: `state.supply.water`
+  // carries the city's demand against what its pumps make. A downpour on a city
+  // with headroom is weather; on a city whose network is already at its limit
+  // it is a flood that comes up through the pipes.
+  const state = town();
+  const W = state.width;
+  // A pipe network under the storm, and a city drawing more than it makes.
+  for (let x = 8; x < 16; x += 1) state.tiles.pipe[12 * W + x] = 1;
+  state.supply.water.capacity = 100;
+  state.supply.water.demand = 160;
+  arm(state, DISASTER_DOWNPOUR);
+  disasterPass(state);
+
+  let floodedOnPipes = 0;
+  let floodedOffPipes = 0;
+  for (let i = 0; i < state.tiles.healthRisk.length; i += 1) {
+    if (state.tiles.healthRisk[i] === 0) continue;
+    if (state.tiles.pipe[i] !== 0) floodedOnPipes += 1; else floodedOffPipes += 1;
+  }
+  assert.ok(floodedOnPipes > 0, "a downpour over a stretched network flooded nothing");
+  assert.equal(floodedOffPipes, 0, "it flooded ground with no pipe under it");
+});
+
+test("a downpour on a network with headroom is just rain", () => {
+  const state = town();
+  const W = state.width;
+  for (let x = 8; x < 16; x += 1) state.tiles.pipe[12 * W + x] = 1;
+  state.supply.water.capacity = 400;
+  state.supply.water.demand = 100;
+  arm(state, DISASTER_DOWNPOUR);
+  disasterPass(state);
+  assert.equal([...state.tiles.healthRisk].filter((v) => v > 0).length, 0,
+    "a city with water to spare was flooded anyway");
+});
+
+test("a downpour wrecks nothing a bulldozer cannot clear", () => {
+  // The invariant every disaster is held to: no tile is left permanently
+  // unbuildable (the test above this block makes the same claim for the seven).
+  const state = town();
+  const W = state.width;
+  for (let x = 8; x < 16; x += 1) state.tiles.pipe[12 * W + x] = 1;
+  state.supply.water.capacity = 50;
+  state.supply.water.demand = 200;
+  arm(state, DISASTER_DOWNPOUR);
+  for (let n = 0; n < 12; n += 1) disasterPass(state);
+  for (let i = 0; i < state.tiles.terrain.length; i += 1) {
+    assert.notEqual(state.tiles.terrain[i], TERRAIN_ROCK, "a downpour turned ground to rock");
+  }
 });

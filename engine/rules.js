@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 26,
+  era: 27,
   build: {
     _bridge: "S13 (A84, A111): how many tiles of water one crossing may span. The engine has always allowed a road over water and charged roadOverWater for it - A84 believed otherwise because no 64x64 deputy city had ever paved one, and H7's played 96 has ten such tiles - so the rule S13 adds is a SPAN and an end on dry land, not permission. Six tiles is 120 m, which is a river rather than a lake: the renderer gives the run a deck at a fixed height with a ramp either end inside road.maxGrade, and a ramp that long at 15% is already 18 m of climb.",
     bridgeSpan: 6,
