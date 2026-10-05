@@ -4,22 +4,24 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `8f1d80a` on `dev_night`, after the worker lane, the film's storyboard, the rules
-  lane and twenty-six balance eras — which is what the numbers below were measured at. **`main` is
-  the release and `dev_night` carries what has landed since**: `main` was pushed on 2026-09-08 at
-  `2f26532`. This page named that commit until 2026-10-04, **129 commits and twenty-five eras
-  later**, with every number on it measured against a game that no longer existed — so the docs
-  test now fails past fifty commits of drift rather than printing a note nobody reads (M7).
-- **Date:** 2026-10-04
-- **Balance era:** era 28, re-measured 2026-10-05 over 200 games per configuration. B13 put an eighth
-  disaster in the roll (era 26's numbers are void rather than roughly comparable); L1's borrowing is
-  era 28 and its sweep is **identical to era 27 in every arm**, because the deputy never borrows
-  (`reports/balance-era26.md`). Numbers from an earlier era are void, not roughly comparable —
-  and the frame numbers further down are renderer measurements, which belong to no balance era.
-  This line said "era 1" until P91, five eras after the data stopped agreeing with it, because the
-  doc test was pinning the words rather than reading `data/balance.json`.
-- **229 commits**, one per slice, no squash and no merge commits.
-- **1,671 tests**, green twice in a row on every slice (`./test.sh`), and nine gate sets.
+- **Commit:** `e618cb5` on `dev_night`, after the headless multiplayer room, the model's dirty set,
+  the request commands, borrowing and twenty-eight balance eras — which is what the numbers below
+  were measured at. **`main` is the release and `dev_night` carries what has landed since**: `main`
+  was pushed on 2026-09-08 at `2f26532`. This page named that commit until 2026-10-04, **129 commits
+  and twenty-five eras later**, with every number on it measured against a game that no longer
+  existed — so the docs test now fails past fifty commits of drift rather than printing a note
+  nobody reads (M7).
+- **Date:** 2026-10-05
+- **Balance era:** era 28 (`reports/balance-era28.md`), re-measured 2026-10-05 over 200 games per
+  configuration. B13 put an eighth disaster in the roll, so era 26's numbers are void rather than
+  roughly comparable; L1's borrowing is era 28 and its sweep is **identical to era 27 in every
+  arm**, because the deputy never borrows. Numbers from an earlier era are void — and the frame
+  numbers further down are renderer measurements, which belong to no balance era. This line said
+  "era 1" until P91, five eras after the data stopped agreeing with it, because the doc test was
+  pinning the words rather than reading `data/balance.json`.
+- **249 commits**, one per slice, no squash and no merge commits.
+- **1,776 tests**, green twice in a row on every slice (`./test.sh`), and **ten gate sets** —
+  `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `film` and `room`.
 
 ## Running it
 
@@ -53,13 +55,24 @@ vendored and pinned; `ws` is the server's only dependency.
   holds a mirror patched from the tile layers that changed; `tools/worker_smoke.mjs` plays the same
   46 commands and 200 ticks on both arms for the same hash, and `?worker=0` is the lever that
   forces the local one. Every change to the city is a command — undo included, since W4.
+- **A headless multiplayer room** (X0, X1a, X3a — nothing a player can see yet, by Kjell's ruling
+  A125). `server/` is one room, one reducer, a 10 Hz pump and a frame of accepted commands;
+  `tools/room_soak.mjs` plays **five city years with two real `ws` clients and ends on one hash**,
+  checked every sim-month, with a worst beat of 11.6 ms against a 20 ms budget. A demolition request
+  is state, a command and a hash; a room survives a restart.
+- **A build action costs 28.6 ms** of derivation instead of 98.3 (W6a, W6b), and the city no longer
+  blinks through it: every car, person, train, boat and aircraft keeps its place across a build
+  (B11), because a derived thing's identity is its geometry rather than its index in an array.
 - **And since `main` was pushed** (on `dev_night`, measured but not released): a road crosses water
   on a deck with clearance for a boat under it, the shore is a bank rather than a quay, a street's
   verges are green from the air, rain falls at street level, a railway cuts and embanks instead of
   following the ground, the deputy will seek a river crossing when its own bank runs out, a street
   that stands a storey above the water has a faced wall with a coping, there are people on the
   pavements outside shops and schools at last (every non-residential building asked for nobody until
-  B10), and the whole thing can be rendered as a sixty-second film from a shot list.
+  B10), the whole thing can be rendered as a sixty-second film from a shot list, an ambulance
+  answers a sick block and the traffic pulls over for it, a storm throws lightning and a downpour
+  floods a stretched water network, and a city in trouble can borrow against its rank and pay it
+  back.
 
 ## The numbers
 
@@ -81,20 +94,21 @@ which is what made the governor spend its whole ladder on a machine hitting 60 f
 
 **The gates**, all green, through the runner (`node tools/gates.mjs <set>`):
 
-Measured 2026-10-04 at this commit, on SwiftShader, **one set at a time** — a set measured beside
+Measured 2026-10-05 at this commit, on SwiftShader, **one set at a time** — a set measured beside
 another measures the machine. A gate time is only comparable within an era.
 
 | Set | Gates | Time | Budget | What it is |
 |---|---|---|---|---|
-| `quick` | 12 | **512 s** | 540 s | the eleven browser smokes and the §24 acceptance script |
-| `render` | 3 | **9 s** | 120 s | the two walks and `passability` |
-| `lanes` | 1 | **215 s** | 360 s | `lanes_dump` — its own set since S18, because it was 95% of `render` |
-| `budget` | 1 | **258 s** | 360 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
-| `shots` | 7 | **394 s** | 420 s | the world lane's picture gates, each counting what it photographed |
-| `transport` | 4 | **187 s** | 300 s | T1–T4's pictures (last measured at T4b) |
-| `kits` | 5 | **346 s** | 960 s | one picture per catalogue definition, per kit, per role, per street |
+| `quick` | 12 | **505 s** | 540 s | the eleven browser smokes and the §24 acceptance script |
+| `render` | 3 | **8 s** | 120 s | the two walks and `passability` |
+| `lanes` | 1 | **212 s** | 360 s | `lanes_dump` — its own set since S18, because it was 95% of `render` |
+| `budget` | 1 | **259 s** | 360 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
+| `shots` | 7 | **379 s** | 420 s | the world lane's picture gates, each counting what it photographed |
+| `transport` | 4 | **245 s** | 300 s | T1–T4's pictures |
+| `kits` | 5 | **319 s** | 960 s | one picture per catalogue definition, per kit, per role, per street |
 | `film` | 1 | **292 s** | 480 s | the sixty-second storyboard, every frame counted for triangles and for life |
-| `sim` | 3 | **556 s** | 900 s | `disaster_soak`, `traffic_gate`, `sim_sweep` |
+| `sim` | 3 | **832 s** | 900 s | `disaster_soak`, `traffic_gate`, `sim_sweep` |
+| `room` | 1 | **5 s** | 600 s | `room_soak` — two `ws` clients, five city years, one hash (X1a) |
 
 The slowest single gate is `budget_gate` at **258 s**, then `lanes_dump` at 215, `ui_smoke` at 203
 and `embankment_shots` at 103. Each run writes `reports/gates-<date>.json`.
@@ -138,18 +152,20 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**2 open questions** are on the list (`dev-questions.md`, bottom section). The nine that were there
-were all answered on 2026-10-03 (A113–A121) and are work in `plan-v1.md`'s order rather than
-decisions waiting on anybody; the two that are left were both found by instruments those answers
-built — Q145 (a street's embankment has no batter) by the hilly walk, and Q146 (a high street at
-eye height with nobody on it, while two counters say 122 people are posed there) by F2's
-storyboard — and Q146, which came out of the same storyboard, was answered by building B10 the same
-day: every shop, works and civic building asked for nobody on its pavement, because the field the
-crowd was reading holds residents. The other two came out of reviewing the multiplayer plan against
-the seam W1 and W2 actually built — and Q147 (undo changes the city and is not a command) was
-answered by building it in W4 the same day. Q148 (thirteen options the project declares and nothing reads) was
-answered the same day by pinning the list in a test and deleting the one registration slot that had
-no caller. What is left is Q145. What a reader should still know:
+**2 open questions** are on the list (`dev-questions.md`, bottom section), and both are Kjell's to
+answer rather than work anybody is blocked on:
+
+- **Q154** — a faced shoulder is drawn where a street stands more than a storey above the water.
+  Is three metres the right rung? The ladder is measured (1.2 m gives 916 faced shoulders on a
+  hilly 128, 2 m gives 264, 3 m gives 130; a rolling 96 has 51 and none), the pictures are taken,
+  and it is a picture decision rather than a measurement.
+- **Q155** — a bulldoze costs **nothing** at two of the three difficulties, because the price is 1
+  and `idiv(1 × 90, 100)` is 0. Found in X3a. Raising the price or rounding up both move several
+  numbers at once, so it is a balance round rather than a slice.
+
+Everything else on this list has been answered and built; the questions above replaced nine that
+were answered on 2026-10-03 (A113–A121) and four more on 2026-10-04 (A125–A130). What a reader
+should still know:
 
 - **One real device has been measured, and no phone has.** `?perf=1` runs a nine-step frame sweep
   on whatever device the page is open on and ends with a **Copy** button; every card in
@@ -169,12 +185,20 @@ no caller. What is left is Q145. What a reader should still know:
   without `Worker` gets. **What has NOT moved is the expensive half**: the model rebuild of
   53.3 ms on 96×96 — 184.7 ms on 256×256 — is cityviewer's, it is on the render thread still, and
   it dwarfs the 4 ms tick that moved (Q60, D6). That measurement is W3, and it is the item that
-  will say what the worker actually bought.
-- **Multiplayer is started, headless.** `workitems-multiplayer.md` lays Wave 5 out against the seam
-  that W1–W4 actually built, and A125 says what may be built before the playtest: the server's
-  ground, the room half of the relay and the request commands in the engine. **Nothing a player can
+  said what the worker actually bought. **Answered since**: W6a gave every derived thing an identity
+  made of geometry, W6b made the rebuild a dirty set — 1,401 corridors of 1,402 and 7,611 nav edges
+  of 7,678 reused — and a build action is **28.6 ms**, down from a warm 98.3. What is left is W6c:
+  the last 28 ms is allocation rather than algorithm, because both graphs still build 8,896 link
+  objects every time.
+- **Multiplayer is started, headless — and that half is now BUILT.** X0, X1a and X3a landed on
+  2026-10-04/05: `server/{room,pump,store,index}.js` is a room with a 10 Hz pump that owes ticks at
+  a speed, a frame of accepted commands, a hash every sim-month, a checkpoint it can resume from,
+  and the eight refusals the door can give in both catalogues. `room_soak` plays five city years
+  with two real `ws` clients and ends on one hash. The request commands are state, commands and a
+  hash, with the two-player fixture pinning a request and its approval. **Nothing a player can
   see** — no socket in the page, no lobby, no `?room=` — until Kjell has played the singleplayer
-  game and said it is fun.
+  game and said it is fun (A125). What is left of Wave 5 is X1's client half, the lobby (X2),
+  ownership on the screen (X3b) and drop-in (X4).
 - **Multiplayer is not played.** Ruling 003 holds Wave 5 behind the singleplayer MVP being
   *accepted*, and acceptance is a playtest, not a green suite. The seam is built in — commands
   cross the wire, not state — and nothing has crossed it yet. The territory overlay has no
