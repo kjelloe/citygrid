@@ -21,10 +21,30 @@ import { FLAG_BURNING } from "../constants-mirror.js";
 export const KINDS = Object.freeze({
   engine: { def: "fireStation", colour: 0xc03028, body: 2 },
   patrol: { def: "policeStation", colour: 0x2b4c8c, body: 1 },
+  // **From a CLINIC, not a hospital** (B12). The item said hospital; the city
+  // says otherwise — on a played 96 the deputy builds ten clinics and no
+  // hospitals at all, so an ambulance tied to hospitals would be correct,
+  // tested and invisible in every city this project measures. `defs` is a list
+  // because any health building answers.
+  ambulance: { def: "clinic", defs: ["clinic", "hospital"], colour: 0xe8edf2, body: 1 },
 });
 
-/** Metres a second. An engine is quicker than the traffic and a patrol is not. */
-export const SPEED = Object.freeze({ engine: 16, patrol: 9 });
+/** Metres a second. An engine is quicker than the traffic and a patrol is not;
+ * an ambulance is between them. */
+export const SPEED = Object.freeze({ engine: 16, patrol: 9, ambulance: 13 });
+
+/**
+ * How sick the ground has to be before an ambulance is sent.
+ *
+ * **Measured, not guessed** (B12). `healthRisk` on a played 96 after twenty
+ * years is **zero on 97% of tiles and peaks at 29** of a possible 255: a rule
+ * written at the number "a serious health risk" sounds like — sixty — would
+ * never have fired once, which is the `pollutionAverage > 24` lesson with a
+ * different layer. Eighteen is above the ninetieth percentile of the tiles that
+ * have any risk at all, so it fires on the worst few dozen tiles of a city and
+ * not on a quiet one.
+ */
+export const HEALTH_CALL = 18;
 
 const dist2 = (ax, az, bx, bz) => (ax - bx) * (ax - bx) + (az - bz) * (az - bz);
 
@@ -107,12 +127,56 @@ export function routeBetween(lanes, fromId, toId, limit = 20000) {
 
 /** Every station of a kind, as a point at its door. */
 export function stationsOf(state, def) {
+  const wanted = Array.isArray(def) ? def : [def];
   const out = [];
   for (const b of state.buildings) {
-    if (b.def !== def) continue;
+    if (!wanted.includes(b.def)) continue;
     out.push({ id: b.id, x: b.x + b.w / 2, y: b.y + b.h / 2 });
   }
   return out;
+}
+
+/**
+ * Where the ground is sick enough to send somebody (B12).
+ *
+ * The same shape as `firesIn`: neighbouring tiles over the threshold are ONE
+ * errand, not one each, so an outbreak across a block is one ambulance and not
+ * four. Exported for the same reason `firesIn` is — a test can ask the city
+ * what it would dispatch to without building a fleet.
+ */
+export function outbreaksIn(state, threshold = HEALTH_CALL) {
+  const w = state.width;
+  const seen = new Set();
+  const calls = [];
+  for (let i = 0; i < state.tiles.healthRisk.length; i += 1) {
+    if (state.tiles.healthRisk[i] < threshold || seen.has(i)) continue;
+    const tiles = [];
+    const queue = [i];
+    seen.add(i);
+    while (queue.length > 0) {
+      const at = queue.pop();
+      tiles.push(at);
+      const x = at % w;
+      const y = (at - x) / w;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= state.height) continue;
+        const j = ny * w + nx;
+        if (state.tiles.healthRisk[j] < threshold || seen.has(j)) continue;
+        seen.add(j);
+        queue.push(j);
+      }
+    }
+    let sx = 0;
+    let sy = 0;
+    for (const t of tiles) { sx += t % w; sy += (t - (t % w)) / w; }
+    calls.push({
+      id: Math.min(...tiles), tiles,
+      x: sx / tiles.length + 0.5, y: sy / tiles.length + 0.5,
+    });
+  }
+  return calls;
 }
 
 /** Every tile alight, grouped into fires — one errand a fire, not a tile.
@@ -189,6 +253,8 @@ export function createServices(state, model, options = {}) {
   const engines = new Map();
   /** station id → its patrol. */
   const patrols = new Map();
+  /** outbreak id → the ambulance answering it (B12). */
+  const ambulances = new Map();
   const out = { x: 0, y: 0, z: 0, tx: 1, tz: 0 };
   let clock = 0;
 
@@ -277,6 +343,22 @@ export function createServices(state, model, options = {}) {
     // A station that burned down takes its patrol with it.
     const standing = new Set(beats.map((s) => s.id));
     for (const id of [...patrols.keys()]) if (!standing.has(id)) patrols.delete(id);
+
+    // The ambulance (B12), on exactly the engine's rule: an errand exists while
+    // the ground that caused it does, the nearest health building answers, and
+    // a city with sick ground and nowhere to treat it sends nothing — silently,
+    // because a call nobody can answer is not a defect, it is a city that has
+    // not built a clinic yet.
+    const outbreaks = outbreaksIn(state);
+    const clinics = stationsOf(state, KINDS.ambulance.defs);
+    const health = dispatch(outbreaks, clinics);
+    const calling = new Set(health.map((c) => c.fire));
+    for (const id of [...ambulances.keys()]) if (!calling.has(id)) ambulances.delete(id);
+    for (const call of health) {
+      if (ambulances.has(call.fire)) continue;
+      const made = vehicle("ambulance", call.from, call.to);
+      if (made) ambulances.set(call.fire, { ...made, station: call.station });
+    }
   }
 
   /** One step along a route. Returns false when the vehicle has arrived. */
@@ -303,6 +385,9 @@ export function createServices(state, model, options = {}) {
       for (const v of engines.values()) {
         if (!drive(v, dt)) v.arrived = true;
       }
+      for (const v of ambulances.values()) {
+        if (!drive(v, dt)) v.arrived = true;
+      }
       for (const [id, v] of patrols) {
         if (drive(v, dt)) continue;
         // The beat: the next worst tile, from where the car is standing, which
@@ -325,13 +410,18 @@ export function createServices(state, model, options = {}) {
 
     /** Everything on an errand right now — never a function of the camera. */
     count() {
-      return engines.size + patrols.size;
+      return engines.size + patrols.size + ambulances.size;
     },
 
     stats() {
       let arrived = 0;
       for (const v of engines.values()) if (v.arrived) arrived += 1;
-      return { engines: engines.size, patrols: patrols.size, atTheFire: arrived };
+      let treating = 0;
+      for (const v of ambulances.values()) if (v.arrived) treating += 1;
+      return {
+        engines: engines.size, patrols: patrols.size, atTheFire: arrived,
+        ambulances: ambulances.size, atTheCall: treating,
+      };
     },
 
     /** For a test, and for `lanes_dump`: where each vehicle is, in tiles. */
@@ -339,11 +429,35 @@ export function createServices(state, model, options = {}) {
       const list = [];
       for (const [fire, v] of engines) list.push({ kind: "engine", fire, ...place(v) });
       for (const [station, v] of patrols) list.push({ kind: "patrol", station, ...place(v) });
+      for (const [call, v] of ambulances) {
+        list.push({ kind: "ambulance", call, station: v.station, ...place(v) });
+      }
       return list;
     },
 
+    /**
+     * Where a car has to give way: every vehicle with its lights on (B12).
+     *
+     * The mechanism is A45's, which `traffic.yieldTo` already has for people on
+     * crossings — this is the other set of points the design always named. A
+     * patrol on a routine beat is NOT one of them: it is driving, not
+     * answering, and a city where every police car parts the traffic reads as a
+     * state of emergency.
+     */
+    yields() {
+      const points = [];
+      for (const v of [...engines.values(), ...ambulances.values()]) {
+        if (v.arrived) continue;
+        const link = byId.get(v.route[v.at]);
+        if (!link) continue;
+        lanes.sample(link, Math.min(v.s, link.len ?? 0), out);
+        points.push({ x: out.x, z: out.z });
+      }
+      return points;
+    },
+
     pose(pools, push, bounds, near = false) {
-      for (const v of [...engines.values(), ...patrols.values()]) {
+      for (const v of [...engines.values(), ...patrols.values(), ...ambulances.values()]) {
         const link = byId.get(v.route[v.at]);
         if (!link) continue;
         if (bounds && !onScreen(link, bounds, tileM)) continue;

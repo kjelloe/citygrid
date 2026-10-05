@@ -502,10 +502,23 @@ export function createTraffic(state, model, options = {}) {
   function ahead(car, link, list, indexInList) {
     let gap = Infinity;
     let leadV = 0;
+    // **Somebody in the road is checked FIRST, not only when the road ahead is
+    // empty** (B12). This branch used to return the moment there was a car in
+    // front on the same link, so a car yielded to a person or to an ambulance
+    // only when it happened to be the leader — and the car behind one that had
+    // already passed the hazard drove straight through it. A45's rule is that a
+    // person in the carriageway is a wall; a wall does not stop applying
+    // because somebody else got past it.
+    const person = yieldAhead(link.id, car.s);
     const next = list[indexInList + 1];
     if (next) {
       gap = next.s - car.s - CAR_M;
       leadV = next.v;
+      // The nearest thing in front wins, which is the rule the junction box
+      // already uses for a car that has just entered.
+      if (Number.isFinite(person) && person - car.s - S0 < gap) {
+        return { gap: Math.max(0, person - car.s - S0), leadV: 0, hard: true };
+      }
       return { gap, leadV, hard: false };
     }
     // Inside the shared start of a turn, the turns off the same approach are
@@ -517,7 +530,6 @@ export function createTraffic(state, model, options = {}) {
     // Somebody in the road is a wall, and a harder one than a red light:
     // A45 gives a person right of way and a car that merely slows for one has
     // not yielded. Checked before the signal because it is nearer.
-    const person = yieldAhead(link.id, car.s);
     if (Number.isFinite(person)) {
       return { gap: Math.max(0, person - car.s - S0), leadV: 0, hard: true };
     }

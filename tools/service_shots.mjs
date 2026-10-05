@@ -7,6 +7,7 @@
 //
 //   reports/smoke-B3-engine.png   the engine, from the pavement by the fire
 //   reports/smoke-B3-patrol.png   the patrol, on its beat
+//   reports/smoke-B12-ambulance.png  the ambulance, on its way to a sick block
 //   reports/smoke-B3-trucks.png   an industrial street and its vans
 //
 //     node tools/service_shots.mjs
@@ -27,10 +28,15 @@ const ASK = `(state, view) => {
   return {
     ...stats,
     fleet: fleet.slice(0, 3),
+    // Where the AMBULANCE is, not where it is going: a shot aimed at the sick
+    // block had three ambulances in its count and none a reader could find
+    // (S20's lesson, in the gate that was written after it).
+    ambulanceAt: (fleet.find((v) => v.kind === "ambulance") ?? undefined),
     cars: cars.length,
     vans,
     fire: globalThis.SHOT_DAMAGE ? globalThis.SHOT_DAMAGE.fire : undefined,
     police: globalThis.SHOT_POLICE,
+    sick: globalThis.SHOT_SICK,
   };
 }`;
 
@@ -45,7 +51,7 @@ async function frame(out, opts, want, aim) {
     ...opts, extra: { __ask: ASK, ...(opts.extra ?? {}) } });
   const a = r.answer ?? {};
   console.log(`${out} ok=${r.ok} engines=${a.engines} atTheFire=${a.atTheFire} patrols=${a.patrols} `
-    + `cars=${a.cars} vans=${a.vans}`);
+    + `ambulances=${a.ambulances ?? 0} cars=${a.cars} vans=${a.vans}`);
   if (!r.ok) for (const p of r.problems.slice(0, 3)) console.log("   ", p);
   for (const [key, min] of Object.entries(want)) {
     if ((a[key] ?? 0) < min) problems.push(`${out}: ${key} is ${a[key] ?? 0}, wanted ${min} or more`);
@@ -62,6 +68,36 @@ await frame("reports/smoke-B3-patrol.png",
   { mode: "city", span: 9, pitch: 28, extra: { police: "1" } },
   { patrols: 1 },
   (a) => a.police);
+
+// The ambulance (B12). `sick=1` raises `healthRisk` beside a clinic the deputy
+// built, because a played city has the answerer and never the call.
+// **The photo camera, not the city camera** (S20, and the `shot-camera-limits`
+// lesson): a city span floors at eight tiles, so an ambulance photographed from
+// the orbit is four pixels of white in a street grid — the count said three and
+// the frame showed none. This stands twenty-five metres off at ten metres up
+// and looks down at the vehicle itself.
+{
+  const probe = await shoot({ out: "reports/.ambulance-probe.png", seed: SEED, years: YEARS, size: SIZE,
+    width: 320, height: 240, life: true, frames: 60, extra: { __ask: ASK, sick: "1" } });
+  const at = probe.answer?.ambulanceAt;
+  if (!at) {
+    problems.push("no ambulance turned out at all, so there is nothing to photograph");
+  } else {
+    // Back off along the diagonal, which is never along the street the vehicle
+    // is driving down — a camera on the carriageway sees the back of a van.
+    const back = 1.25;
+    const photo = `${(at.x + back).toFixed(3)},${(at.y + back).toFixed(3)},10,`
+      + `${Math.atan2(back, back).toFixed(4)},-28`;
+    const r = await shoot({ out: "reports/smoke-B12-ambulance.png", seed: SEED, years: YEARS, size: SIZE,
+      tier: "high", photo, width: 1600, height: 900, streets: 60, frames: 90, life: true,
+      extra: { __ask: ASK, sick: "1" } });
+    const a = r.answer ?? {};
+    console.log(`reports/smoke-B12-ambulance.png ok=${r.ok} ambulances=${a.ambulances ?? 0} `
+      + `at ${at.x.toFixed(1)},${at.y.toFixed(1)} — camera ${back} tiles back, 10 m up`);
+    if (!r.ok) for (const p of r.problems.slice(0, 3)) console.log("   ", p);
+    if ((a.ambulances ?? 0) < 1) problems.push("the ambulance shot has no ambulance in the city");
+  }
+}
 
 await frame("reports/smoke-B3-trucks.png",
   { mode: "city", span: 10, pitch: 26, extra: {} },

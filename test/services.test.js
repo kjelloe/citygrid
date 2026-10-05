@@ -20,7 +20,9 @@ import { DEFAULTS, setConfig } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
 import {
   nearestLink, routeBetween, stationsOf, firesIn, dispatch, createServices, KINDS, SPEED,
+  HEALTH_CALL, outbreaksIn,
 } from "../client/life/services.js";
+import { createTraffic } from "../client/life/traffic.js";
 
 setConfig(DEFAULTS);
 const T = DEFAULTS.tileM;
@@ -251,4 +253,141 @@ test("a beat the car cannot drive to is skipped for one it can", () => {
   assert.equal(services.stats().patrols, 1, "the patrol gave up because the worst crime was unreachable");
   const car = services.fleet().find((v) => v.kind === "patrol");
   assert.ok(car.y < 20, `the patrol is at ${car.y.toFixed(1)}, which is on the island`);
+});
+
+// --- the ambulance (B12) -----------------------------------------------------
+//
+// **From a CLINIC, not a hospital.** The item said hospital; the city says
+// otherwise. On a played 96 the deputy builds ten clinics and **no hospitals at
+// all**, so an ambulance tied to hospitals would be correct, tested and
+// invisible in every city this project measures — which is the sentence already
+// written in `engine/deputy.js` about B3b's patrols. Any health building
+// answers: `clinic`, `hospital` and whatever else carries `service: "health"`.
+//
+// And the threshold is measured, not guessed: `healthRisk` on that same city is
+// **zero on 97% of tiles and peaks at 29** of a possible 255, so a rule written
+// at 60 — which is what "a serious health risk" sounds like — would never fire
+// once (the `pollutionAverage > 24` lesson, again).
+
+const sicken = (state, x, y, value) => {
+  state.tiles.healthRisk[tileAt(state.width, x, y)] = value;
+};
+
+test("no sick ground, no ambulance", () => {
+  const state = town();
+  station(state, "clinic", 5, 7);
+  const fleet = createServices(state, createModel(state), { life: true });
+  fleet.update(1);
+  assert.equal(fleet.stats().ambulances, 0);
+});
+
+test("a tile over the threshold with a clinic gets exactly one ambulance", () => {
+  const state = town();
+  station(state, "clinic", 5, 7);
+  sicken(state, 12, 6, HEALTH_CALL);
+  const fleet = createServices(state, createModel(state), { life: true });
+  fleet.update(1);
+  assert.equal(fleet.stats().ambulances, 1, "nobody came");
+
+  // And a tile just under it is not a call: the threshold is a rule, not a hint.
+  const quiet = town();
+  station(quiet, "clinic", 5, 7);
+  sicken(quiet, 12, 6, HEALTH_CALL - 1);
+  const quietFleet = createServices(quiet, createModel(quiet), { life: true });
+  quietFleet.update(1);
+  assert.equal(quietFleet.stats().ambulances, 0);
+});
+
+test("a city with sick ground and no health building sends nothing", () => {
+  // The other half of "a threat needs an answerer": the call exists and nobody
+  // can answer it, which must be silent rather than a crash or a ghost.
+  const state = town();
+  station(state, "fireStation", 5, 7);
+  sicken(state, 12, 6, HEALTH_CALL + 20);
+  const none = createServices(state, createModel(state), { life: true });
+  none.update(1);
+  assert.equal(none.stats().ambulances, 0);
+});
+
+test("neighbouring sick tiles are one call, like a fire", () => {
+  const state = town();
+  station(state, "clinic", 5, 7);
+  for (const [x, y] of [[12, 6], [13, 6], [12, 7]]) sicken(state, x, y, HEALTH_CALL + 5);
+  const one = createServices(state, createModel(state), { life: true });
+  one.update(1);
+  assert.equal(one.stats().ambulances, 1);
+});
+
+test("two outbreaks answer from the nearest clinic each", () => {
+  const state = town();
+  const west = station(state, "clinic", 5, 7);
+  const east = station(state, "clinic", 16, 7);
+  sicken(state, 6, 6, HEALTH_CALL + 5);
+  sicken(state, 17, 16, HEALTH_CALL + 5);
+  const fleet = createServices(state, createModel(state), { life: true });
+  fleet.update(1);
+  assert.equal(fleet.stats().ambulances, 2);
+  const from = fleet.fleet().filter((v) => v.kind === "ambulance").map((v) => v.station).sort();
+  assert.deepEqual(from, [west, east].sort(), "an ambulance came from the wrong clinic");
+});
+
+test("an ambulance is quicker than a patrol and slower than an engine", () => {
+  assert.ok(SPEED.ambulance < SPEED.engine && SPEED.ambulance > SPEED.patrol,
+    `${SPEED.patrol} / ${SPEED.ambulance} / ${SPEED.engine}`);
+});
+
+test("cars stop for a vehicle with its lights on, and go again when it has passed (B12)", () => {
+  // A45 built the yield mechanism for people on crossings; B12 gives it its
+  // other points. The claim is the one a player sees: a car with an emergency
+  // vehicle ahead of it slows to a stop, and resumes when it is gone.
+  const size = 24;
+  const state = town(size);
+  const model = createModel(state);
+  const traffic = createTraffic(state, model, { cap: 60 });
+  for (let i = 0; i < state.tiles.road.length; i += 1) {
+    if (state.tiles.road[i] & NET_PRESENT) state.tiles.traffic[i] = 255;
+  }
+  const settled = createTraffic(state, model, { cap: 60 });
+  for (let t = 0; t < 30 * 30; t += 1) settled.update(1 / 30);
+  const cars = settled.cars();
+  assert.ok(cars.length > 4, `only ${cars.length} cars`);
+
+  // An emergency vehicle standing on the lane a car is driving down.
+  const victim = cars.find((c) => c.v > 1);
+  assert.ok(victim, "no car was moving, so this proves nothing");
+  const link = model.lanes.links[victim.link];
+  const at = { x: 0, y: 0, z: 0, tx: 0, tz: 0 };
+  // Far enough ahead that the car has room to brake: at eleven metres a second
+  // a stop takes more than twelve metres, and a test that asks a car to stop
+  // inside its own braking distance is a test about arithmetic, not about
+  // yielding.
+  // Thirty metres ahead, and long enough to get there: this street is busy, so
+  // the car approaches at three metres a second and an eight-second window had
+  // it still twenty metres short — a test that measured its own impatience.
+  const stopLine = Math.min(link.len, victim.s + 30);
+  model.lanes.sample(link, stopLine, at);
+  settled.yieldTo([{ x: at.x, z: at.z }]);
+  let slowest = Infinity;
+  let furthest = victim.s;
+  for (let t = 0; t < 30 * 25; t += 1) {
+    settled.update(1 / 30);
+    const now = settled.cars().find((c) => c.id === victim.id);
+    if (!now || now.link !== victim.link) break;
+    slowest = Math.min(slowest, now.v);
+    furthest = Math.max(furthest, now.s);
+  }
+  assert.ok(slowest < 1, `the car never came to a stop (slowest ${slowest.toFixed(2)} m/s)`);
+  assert.ok(furthest <= stopLine + 1,
+    `the car drove ${(furthest - stopLine).toFixed(1)} m past the vehicle it was yielding to`);
+
+  // Lights off, road clear: it goes again.
+  settled.yieldTo([]);
+  let fastest = 0;
+  for (let t = 0; t < 30 * 12; t += 1) {
+    settled.update(1 / 30);
+    const now = settled.cars().find((c) => c.id === victim.id);
+    if (now) fastest = Math.max(fastest, now.v);
+  }
+  assert.ok(fastest > 2, `the car never resumed (fastest ${fastest.toFixed(2)} m/s)`);
+  assert.ok(traffic.cars().length >= 0);
 });

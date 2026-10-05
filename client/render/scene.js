@@ -804,7 +804,11 @@ export function createRenderer(canvas, state, options = {}) {
     pedestrians.update(dt, lastBounds, eyeOf(view));
     // Everybody in a carriageway, from both crowds: a car does not drive
     // through a person because the person is being drawn from the air.
-    traffic.yieldTo([...pedestrians.yields(), ...crowd.yields()],
+    // People in the carriageway, and every emergency vehicle on its way to a
+    // call (B12): the same mechanism A45 built, with the other points the design
+    // always named. A patrol on its beat is not one of them — it is driving,
+    // not answering.
+    traffic.yieldTo([...pedestrians.yields(), ...crowd.yields(), ...services.yields()],
       view.mode === "street" ? walkerPoint() : undefined);
     // The hour reaches the road (B4). Handed in, never read from a clock here:
     // `client/life/` takes its time from the caller, which is what makes

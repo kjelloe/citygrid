@@ -11180,3 +11180,43 @@ and `quick` green.
 
 CLAUDE.md's "numbers live in `data/*.json`, never in engine code" is true for all three files for
 the first time.
+
+## slice-B12 — the ambulance, and the yield that only the leading car obeyed (2026-10-05)
+
+B3b's siblings, and the item's first line was wrong about the city: it says "an ambulance from a
+hospital", and a played 96 has **ten clinics and no hospitals**. An ambulance tied to hospitals
+would have been correct, tested and invisible — which is the sentence `engine/deputy.js` already
+carries about B3b's patrols. Any health building answers now (`clinic`, `hospital`).
+
+**The threshold is measured, not guessed.** `healthRisk` on that city is **zero on 97% of tiles and
+peaks at 29** of a possible 255, so the number "a serious health risk" sounds like — sixty — would
+never have fired once. `HEALTH_CALL` is **18**, above the ninetieth percentile of the tiles that
+have any risk at all. A played 64 at twenty-five years turns out **two ambulances** without the gate
+arranging anything, which is the test that the number is a rule rather than a hope.
+
+Neighbouring sick tiles are one errand, as a spread fire is one fire; the nearest clinic answers; a
+city with sick ground and no clinic sends nothing, silently.
+
+**And the defect underneath.** Wiring the fleet into `traffic.yieldTo` — the mechanism A45 built for
+people on crossings, with the points the design always named — found that `ahead()` **returned the
+moment there was a car in front on the same link**, before it ever asked whether somebody was
+standing in the road. So a car yielded only when it happened to be the leader, and **the car behind
+one that had already passed the hazard drove straight through it**. A45's rule is that a person in
+the carriageway is a wall; a wall does not stop applying because somebody else got past it. The
+nearest thing in front wins now, which is the rule the junction box has used since B8.
+
+Found by a test that put a stopped vehicle 30 m ahead of a car in a queue and watched it not slow
+down. Two false starts in that test, both recorded in it: an eight-second window on a street where
+the traffic moves at three metres a second (the car was still twenty metres short), and a stop line
+inside the car's own braking distance.
+
+**Gate.** `service_shots` gains `reports/smoke-B12-ambulance.png`, and the first version of it
+counted three ambulances in a frame a reader could not find one in — a city span floors at eight
+tiles, so the vehicle was four white pixels. It uses the photo camera now, 1.25 tiles back and ten
+metres up, aimed at the ambulance itself: the frame has the white vehicle on the street with the
+clinic's red cross behind it. `sim` and the suite below.
+
+**Gates, measured:** `sim` 832 s of 900, all three green — `disaster_soak` 132, `traffic_gate` 147,
+`sim_sweep` 553 — and `reports/balance-era26.md` **byte-identical**, which is the claim that matters
+for a change to the traffic's following model: the yield fix moves what a car does in front of an
+emergency vehicle and nothing the deputy decides. Suite 1,760 green twice.

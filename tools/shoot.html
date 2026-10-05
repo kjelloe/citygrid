@@ -250,6 +250,42 @@ if (params.get("police") === "1") {
   }
 }
 
+// `sick=1` raises `healthRisk` on a block beside the middle, so an ambulance
+// has somewhere to go (B12). The deputy DOES build clinics — ten on a played 96
+// — so unlike the police station this does not have to place the answerer; what
+// a played city never has is the call, because `healthRisk` peaks at 29 of 255
+// and the engine's own threshold for a call is 18.
+if (params.get("sick") === "1") {
+  const W = state.width;
+  const clinic = state.buildings.find((b) => b.def === "clinic" || b.def === "hospital");
+  if (clinic) {
+    // Near the clinic, so the ambulance's errand is short enough to be in one
+    // frame with it — and on ROAD tiles, because an errand aims at a place a
+    // vehicle can drive to.
+    let placed = 0;
+    for (let r = 3; r <= 10 && placed === 0; r += 1) {
+      for (let dy = -r; dy <= r && placed === 0; dy += 1) {
+        for (let dx = -r; dx <= r && placed === 0; dx += 1) {
+          const x = Math.round(clinic.x + dx);
+          const y = Math.round(clinic.y + dy);
+          if (x < 1 || y < 1 || x >= W - 1 || y >= state.height - 1) continue;
+          if ((state.tiles.road[y * W + x] & 16) === 0) continue;
+          for (let j = -1; j <= 1; j += 1) {
+            for (let i = -1; i <= 1; i += 1) {
+              const tx = x + i;
+              const ty = y + j;
+              if (tx < 0 || ty < 0 || tx >= W || ty >= state.height) continue;
+              state.tiles.healthRisk[ty * W + tx] = 40;
+            }
+          }
+          globalThis.SHOT_SICK = { x, y, clinic: clinic.id };
+          placed = 1;
+        }
+      }
+    }
+  }
+}
+
 const damage = params.get("damage") ?? "";
 if (damage) {
   const BURNING = 4;

@@ -425,7 +425,17 @@ corridor, every entity not on it is where it was. **Gate.** `lanes_dump` settles
 and reports how many cars moved; `play_smoke` builds a road and the car count on screen does not
 drop to zero.
 
-## B12 — The rest of the emergency services (S)
+## B12 — The rest of the emergency services (S) — **BUILT 2026-10-05**
+
+The ambulance comes from a **clinic**, not the hospital the item named: a played 96 has ten clinics
+and no hospitals, so the item as written was a feature no city could show. `HEALTH_CALL` is **18**,
+measured — `healthRisk` is zero on 97% of tiles and peaks at 29, so the obvious sixty would never
+have fired. And wiring the fleet into `yieldTo` found that a car only ever yielded when it was the
+LEADER: `ahead()` returned on the car in front before it asked whether somebody was standing in the
+road, so the car behind one that had passed a hazard drove through it. Fixed, with `sim` green and
+`reports/balance-era26.md` byte-identical.
+
+## B12 — The rest of the emergency services (S) — the item as written
 
 **Goal.** B3b's siblings: an ambulance from a hospital to a tile whose `healthRisk` crosses a
 threshold (the engine layer exists), and **cars pull over for a vehicle with its lights on** — the
