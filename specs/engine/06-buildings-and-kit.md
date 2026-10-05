@@ -578,6 +578,15 @@ with a card the width of its own hole, a shopper standing at an angle sees throu
 the far wall of the building. The awning the grammar has asked for since it was written is drawn
 too, 1.1 m over the shop window, in both windings — a canopy at 4 m is seen from underneath.
 
+**And the WALLS had it too (S21b, 2026-10-06).** `panels()` — the function that builds the wall
+faces themselves — chose between its two windings with the same test, so of a house's 180 wall
+triangles **84 faced inward**: the whole of the east and south walls, on every baked building in
+every city, since E5. What a player saw from those sides was the inside of the opposite wall, which
+for an untextured box is the same colour with the same flat shading. The giveaway is the furniture:
+once the wall is drawn, a south-facing house has its plinth, its window frames, its door and its
+porch, and before it had a bare surface. `outwardQuad` owns the rule; `test/window-facing.test.js`
+asserts the walls per face.
+
 **And for six weeks, half of it was invisible (S21, 2026-10-05).** Everything above is drawn through
 one opening from OUTSIDE, so it has to face outward. `facade.js` chose the winding from
 `out[0] + out[1] > 0` — a test on the outward normal alone, while the quad is built from `along` and

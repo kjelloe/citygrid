@@ -45,11 +45,14 @@ function panels(s, edge, origin, holes, y0, y1) {
   const yList = [...ys].sort((a, b) => a - b);
   const emit = (u0, u1, b0, b1) => {
     if (u1 - u0 < 1e-6 || b1 - b0 < 1e-6) return;
-    // Wound so the outward normal points out of the building.
-    const a = at(u0, b0); const b = at(u1, b0);
-    const c = at(u1, b1); const d = at(u0, b1);
-    if (nx + nz > 0) s.quad(a, b, c, d);
-    else s.quad(b, a, d, c);
+    // Wound so the normal points OUT of the building — `outwardQuad`, the one
+    // place that rule lives (S21). This was the fourth copy of
+    // `out[0] + out[1] > 0` and the one that mattered most: measured through
+    // the builder, 84 of a house's 180 wall triangles faced inward — the whole
+    // of the east and south walls, on every baked building in every city, since
+    // E5. What a player saw from those sides was the inside of the opposite
+    // wall, which for an untextured box is the same colour.
+    outwardQuad(s, [at(u0, b0), at(u1, b0), at(u1, b1), at(u0, b1)]);
   };
   // A band at a time, split sideways only by the holes THAT BAND has in it.
   // Splitting the whole face by every opening's coordinates in both axes was

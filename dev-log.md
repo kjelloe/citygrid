@@ -11883,3 +11883,32 @@ the count left the SECOND reader in the same file: the close shot's probe asks w
 are, from the same one pool, and refused to aim. A new pool is a new term for every reader — the LOD
 estimate asked for one automatically, and this file had to be told twice by hand. The frame it takes
 now is the engine itself: a cab at the near end, a stepped roofline, a bogie under it.
+
+## S21b — the east and south walls of every building (2026-10-06)
+
+S21 fixed the two sites that explained the missing shopfront glass — the backing panel and the
+dressing — and left the biggest reader of `out[0] + out[1] > 0` untouched: **`panels()`, which builds
+the walls themselves.** Measured through the builder, on a four-sided house:
+
+| face | triangles facing out | facing into the building |
+| --- | --- | --- |
+| north | 54 | 0 |
+| **east** | **0** | **42** |
+| **south** | **0** | **42** |
+| west | 42 | 0 |
+
+So every baked building in every city has been missing its east and south walls since E5 in
+September. What a player saw from those sides was the **inside of the opposite wall** — which for an
+untextured box is the same colour, with the same flat shading. That is the defect's own disguise,
+and it is why five weeks of screenshots looked right.
+
+The giveaway, once the wall is drawn: a south-facing house now has its plinth, its window frames and
+reveals, its door and its porch — the furniture that is drawn on the OUTSIDE face. Before, those
+faces showed a bare interior surface with nothing on it.
+
+`civic-parts.js` held the fourth copy of the test, in B2's boarded windows, with the buried-offset
+sign as well — boards 3 cm inside the glass they are nailed over. Both go through `outwardQuad` now,
+and `test/window-facing.test.js` asserts the walls themselves, per face, which is the claim nothing
+held before.
+
+Suite 1,825 green twice.

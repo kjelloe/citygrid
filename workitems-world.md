@@ -798,6 +798,16 @@ ask for the glazing rather than guess a colour.
 past it into the empty interior and out the far side — the bright slivers between the bays. One
 quad per unit spanning the frontage, behind the glass, is S16b's.
 
+## S21b — The east and south walls (S) — **BUILT 2026-10-06** as `slice-S21b`, found while re-reading S21
+
+S21 fixed the two sites that explained the missing shopfront glass and left the biggest reader of
+`out[0] + out[1] > 0` alone: `panels()`, which builds the walls. 84 of a house's 180 wall triangles
+faced INTO the building — the whole of the east and south walls, on every baked building in every
+city, since E5. Invisible because an untextured box's interior is the same colour as its exterior;
+the giveaway is the furniture that lives on the outside face. `civic-parts.js` held the fourth copy
+(B2's boarded windows), with the buried-offset sign as well. Both go through `outwardQuad`, and
+`test/window-facing.test.js` asserts the walls per face. Gate: `street_shots` green.
+
 ## S20c — The mover gates stand beside what they photograph (S) — **BUILT 2026-10-06** as `slice-S20c`
 
 `rail_shots` and `harbour_shots` photographed from the city camera, whose span floors at 8, so S17's

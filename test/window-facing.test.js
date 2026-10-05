@@ -184,3 +184,38 @@ test("what is drawn ON a wall stands proud of it, not behind it", () => {
     }
   }
 });
+
+test("every WALL faces out of the building it encloses", () => {
+  // S21 fixed the two sites that explained the missing glass — the backing
+  // panel and the dressing — and left the biggest reader of all: `panels()`,
+  // which builds the walls themselves, chose between its two windings with the
+  // same test on the normal alone. Measured through the real builder: of 180
+  // wall triangles on a four-sided house, **84 faced into the building** — the
+  // whole of the east and south walls, on every baked building in every city,
+  // since E5 in September.
+  //
+  // What a player saw from those sides was the INSIDE of the opposite wall,
+  // which for an untextured box is the same colour: the defect's own disguise.
+  for (const frontage of [0, 1, 2, 3]) {
+    const { lot, pieces } = townhouse(frontage, 1);
+    const walls = pieces.find((p) => p.name === "walls");
+    assert.ok(walls && walls.part.triangles > 0, `frontage ${frontage}: a building with no walls`);
+    const sides = [
+      { out: [0, -1], axis: 2, at: lot.z0 },
+      { out: [1, 0], axis: 0, at: lot.x1 },
+      { out: [0, 1], axis: 2, at: lot.z1 },
+      { out: [-1, 0], axis: 0, at: lot.x0 },
+    ];
+    let checked = 0;
+    for (const t of trianglesOf([walls], ["walls"])) {
+      if (Math.abs(t.normal[1]) > 0.5) continue;
+      const side = sides.find((s) => Math.abs(t.at[s.axis] - s.at) < 0.3);
+      if (!side) continue;
+      checked += 1;
+      const dot = t.normal[0] * side.out[0] + t.normal[2] * side.out[1];
+      assert.ok(dot > 0,
+        `frontage ${frontage}: a wall on the (${side.out}) face points into the building`);
+    }
+    assert.ok(checked > 20, `frontage ${frontage}: only ${checked} wall triangles were on a face`);
+  }
+});

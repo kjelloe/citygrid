@@ -11,7 +11,7 @@
 // The judgements are all in `client/world/age.js` — this only draws them.
 
 import { sink } from "./solid.js";
-import { EDGES, originOf } from "./edges.js";
+import { EDGES, originOf, outwardQuad } from "./edges.js";
 import { civicColour } from "./palettes.js";
 
 /** How many sides a round mass gets. Eight: a tank at street level reads as
@@ -193,16 +193,18 @@ export function buildAge(spec, { groundTop, wallTop, trim }) {
       // between frames, and between one player's city and another's.
       if (((spec.id * 13 + b * 7) % 100) / 100 >= state.boarded) continue;
       const u = (b + 0.5) * bay;
+      // PROUD of the wall, not inside it: the sign of this offset is the same
+      // one that buried S9's house furniture for a month (S16b), and boards
+      // over a window are the one thing that must be in front of the glass.
       const at = (uu, y) => [
-        ox + geom.along[0] * uu - geom.out[0] * 0.03,
+        ox + geom.along[0] * uu + geom.out[0] * 0.03,
         y,
-        oz + geom.along[1] * uu - geom.out[1] * 0.03,
+        oz + geom.along[1] * uu + geom.out[1] * 0.03,
       ];
       const y0 = groundTop + 0.9;
-      const a = at(u - 0.65, y0); const bb = at(u + 0.65, y0);
-      const c = at(u + 0.65, y0 + 1.5); const d = at(u - 0.65, y0 + 1.5);
-      if (geom.out[0] + geom.out[1] > 0) boards.quad(a, bb, c, d);
-      else boards.quad(bb, a, d, c);
+      outwardQuad(boards, [
+        at(u - 0.65, y0), at(u + 0.65, y0), at(u + 0.65, y0 + 1.5), at(u - 0.65, y0 + 1.5),
+      ]);
     }
   }
   out.push({ part: boards.done(), colour: 0x7a6a58 });
