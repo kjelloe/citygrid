@@ -260,3 +260,48 @@ test("a plant's stacks stand on its hall, and the hospital's entrance is one bay
   // A 3×3 hospital is 30 m to the unit: one bay is under six metres.
   assert.ok((entrance.x1 - entrance.x0) * 30 <= 6, `the entrance is ${((entrance.x1 - entrance.x0) * 30).toFixed(0)} m of glass`);
 });
+
+test("the transport buildings say what they are, close up (S19)", () => {
+  // S20d gave the gate a camera that frames a definition, and the frames showed
+  // the shapes are right and the DETAIL is missing: a station whose entrance is
+  // a dark slot behind its canopy, a clock that is a plain box, a city hall
+  // with columns a metre and a half thick.
+  //
+  // Each of these is a claim about what carries from the pavement, which is
+  // what `civic-spec.js` is for.
+  const station = civicShape("railStation");
+  // The entrance: a surround that is not the wall's own material, so a doorway
+  // reads as a doorway rather than as a darker patch of brick.
+  // The entrance is on the STREET face (+z, which `civicSpin` turns to the
+  // road) and it is glass with a surround. The first cut of this filter asked
+  // only for "not brick, near +z" and matched the PLATFORM — a test that passed
+  // while the station faced its canopy at the street and its door at the field.
+  const entrance = station.masses.filter((m) => m.z1 > 0.8 && m.mat === "glass");
+  assert.equal(entrance.length, 1, "the station's entrance is not one glazed door on the street face");
+  const surround = station.masses.filter((m) => m.z1 > 0.8 && m.mat === "white" && m.y1 < 0.6);
+  assert.ok(surround.length >= 3, "the station's doorway has no surround — it is a slot in a wall");
+  // And the platform is on the other side, where the track is.
+  const platform = station.masses.filter((m) => m.mat === "concrete");
+  assert.ok(platform.every((m) => m.z0 < -0.0), "the platform is between the hall and the street");
+  // The clock has a FACE: a lighter disc on the street side of its box.
+  const clockFace = station.masses.filter((m) => m.mat === "white" && m.y0 > 0.6);
+  assert.ok(clockFace.length >= 2, "the station's clock is a plain box");
+
+  const hall = civicShape("cityHall");
+  // `round`, not `tall`: a mass's fourth argument is whether it survives the
+  // silhouette pass, and the flag on the MASS is called `round` (the definition
+  // carries `tall`). The first cut of this test asked for `m.tall` and found
+  // nothing, which is a test that cannot fail in the useful direction.
+  const columns = hall.masses.filter((m) => m.round && m.y0 === 0 && m.z0 >= 0.7 && m.y1 < 0.75);
+  assert.ok(columns.length >= 4, "a portico with fewer than four columns");
+  for (const column of columns) {
+    const wide = column.x1 - column.x0;
+    assert.ok(wide <= 0.1, `a column ${(wide * 60).toFixed(1)} m thick on a 3-tile lot`);
+  }
+
+  // The ferry terminal has a RAMP down to the water, which is the part that
+  // says "ferry" rather than "hall with a canopy".
+  const ferry = civicShape("ferryTerminal");
+  const ramp = ferry.masses.filter((m) => m.mat === "concrete" && m.z0 > 0.5);
+  assert.ok(ramp.length >= 2, "the ferry terminal has a quay and no ramp onto it");
+});

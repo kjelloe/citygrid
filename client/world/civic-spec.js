@@ -208,18 +208,30 @@ export const CIVIC_SHAPES = Object.freeze({
     pull: 8,
     tall: false,
     masses: [
-      // The hall, along the street half of a 3×2 lot.
-      box(-0.92, 0, -0.85, 0.92, 0.55, -0.05, "brick"),
-      box(-0.96, 0.55, -0.9, 0.96, 0.63, -0.02, "dark"),
+      // The hall, along the street half of a 3×2 lot. MIRRORED in z at S19:
+      // the masses are authored with the entrance on +z (`civicSpin` turns that
+      // face to the street), and this definition had its entrance on -z and its
+      // platform on +z — so every station in the game showed the street its
+      // platform canopy and put its door round the back. The close frame is
+      // what found it.
+      box(-0.92, 0, 0.05, 0.92, 0.55, 0.85, "brick"),
+      box(-0.96, 0.55, 0.02, 0.96, 0.63, 0.9, "dark"),
       // The entrance, and the clock over it — the part that says "station"
-      // rather than "long shed".
-      box(-0.22, 0, -0.95, 0.22, 0.4, -0.82, "glass"),
-      box(-0.12, 0.66, -0.06, 0.12, 0.9, 0.06, "white", true),
+      // rather than "long shed". S19 gave both the detail the close frame
+      // showed missing: a surround round the doorway, so it is a door and not a
+      // darker patch of brick, and a FACE on the clock.
+      box(-0.22, 0, 0.82, 0.22, 0.4, 0.95, "glass"),
+      box(-0.28, 0, 0.84, -0.2, 0.46, 0.97, "white"),
+      box(0.2, 0, 0.84, 0.28, 0.46, 0.97, "white"),
+      box(-0.28, 0.42, 0.84, 0.28, 0.5, 0.97, "white"),
+      box(-0.12, 0.66, -0.06, 0.12, 0.9, 0.06, "dark", true),
+      box(-0.09, 0.7, 0.06, 0.09, 0.86, 0.09, "white", true),
+      box(-0.09, 0.7, -0.09, 0.09, 0.86, -0.06, "white", true),
       // The platform, and its canopy on four legs.
-      box(-0.92, 0, 0.05, 0.92, 0.07, 0.9, "concrete"),
-      box(-0.88, 0.52, 0.1, 0.88, 0.58, 0.88, "steel"),
-      box(-0.84, 0.07, 0.14, -0.76, 0.52, 0.22, "steel"),
-      box(0.76, 0.07, 0.14, 0.84, 0.52, 0.22, "steel"),
+      box(-0.92, 0, -0.9, 0.92, 0.07, -0.05, "concrete"),
+      box(-0.88, 0.52, -0.88, 0.88, 0.58, -0.1, "steel"),
+      box(-0.84, 0.07, -0.22, -0.76, 0.52, -0.14, "steel"),
+      box(0.76, 0.07, -0.22, 0.84, 0.52, -0.14, "steel"),
     ],
   },
   // The water (T4). None of these knows WHICH side its body is on — a shape is
@@ -255,6 +267,12 @@ export const CIVIC_SHAPES = Object.freeze({
       box(-0.82, 0.09, 0.7, -0.72, 0.55, 0.8, "steel"),
       box(0.72, 0.09, 0.7, 0.82, 0.55, 0.8, "steel"),
       box(-0.95, 0, 0.8, 0.95, 0.09, 0.95, "concrete"),
+      // The ramp down to the water (S19): the part that says "ferry" rather
+      // than "hall with a canopy". Two steps rather than a slope, because a
+      // mass is a box — and a box at the quay's edge reads as the ramp a car
+      // drives down.
+      box(-0.45, 0, 0.9, 0.45, 0.06, 0.98, "concrete"),
+      box(-0.3, 0, 0.95, 0.3, 0.03, 1, "concrete"),
     ],
   },
   freightPort: {
@@ -290,10 +308,13 @@ export const CIVIC_SHAPES = Object.freeze({
       box(-0.85, 0, -0.8, 0.85, 0.72, 0.72, "white"),
       box(-0.9, 0.72, -0.85, 0.9, 0.8, 0.76, "dark"),
       // The portico: four columns, a pediment over them and the steps up.
-      box(-0.62, 0, 0.72, -0.5, 0.68, 0.86, "white", true),
-      box(-0.3, 0, 0.72, -0.18, 0.68, 0.86, "white", true),
-      box(0.18, 0, 0.72, 0.3, 0.68, 0.86, "white", true),
-      box(0.5, 0, 0.72, 0.62, 0.68, 0.86, "white", true),
+      // The columns were 0.12 of the lot — 7 m thick on a 3-tile hall, which
+      // the close frame (S19) showed as piers rather than columns. 0.08 is
+      // 4.8 m: still stout, and a colonnade rather than a wall with gaps.
+      box(-0.6, 0, 0.72, -0.52, 0.68, 0.8, "white", true),
+      box(-0.28, 0, 0.72, -0.2, 0.68, 0.8, "white", true),
+      box(0.2, 0, 0.72, 0.28, 0.68, 0.8, "white", true),
+      box(0.52, 0, 0.72, 0.6, 0.68, 0.8, "white", true),
       box(-0.7, 0.68, 0.68, 0.7, 0.84, 0.9, "white"),
       box(-0.72, 0, 0.9, 0.72, 0.06, 1, "concrete"),
       // The doors, and the clock cupola over the middle of the hall.

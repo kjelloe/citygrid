@@ -11962,3 +11962,31 @@ wood with a building behind it, which is `a fallback hides a typo` in its other 
 half the renderer obeys. `bakeLotExtras` takes it now, `createStreetChunks` passes it, and
 `?trees=0` in the shot harness means what it says. It is NOT in `chunkHash` — it is a boot option,
 constant for the life of a renderer — and that is written where the next person will look.
+
+## S19 — the transport buildings, close up (2026-10-06)
+
+S20d's camera made this slice possible, and the first frame it took answered the first question:
+**every rail station in the game was facing the wrong way.** The masses are authored with the
+entrance on `+z` — `civicSpin` turns that face to the street — and `railStation` had its entrance on
+`-z` and its platform on `+z`. So a station showed the road its platform canopy and put its door
+round the back, in every city, since S1 drew the definition. Mirrored in z; the frame now opens with
+a glazed doorway under a lintel, with the name board on it.
+
+What else the close frames asked for, and got:
+
+- **A doorway surround** on the station: two jambs and a lintel in white against the brick, so an
+  entrance is a door rather than a darker patch of wall.
+- **A face on the clock**: it was a plain white box; it is a dark box with two pale faces now, one
+  each side, which is what reads from a pavement.
+- **Columns, not piers.** The city hall's portico columns were 0.12 of the lot — seven metres thick
+  on a three-tile hall. 0.08 is 4.8 m: a colonnade rather than a wall with gaps in it.
+- **A ramp** at the ferry terminal, down off the quay: the part that says "ferry" rather than "hall
+  with a canopy".
+
+**And the test I wrote for the entrance passed before the fix, for the wrong reason.** It asked for
+"a mass near `+z` that is not brick" and matched the PLATFORM — concrete and steel, on the face the
+station was wrongly showing the street. It names the material and the height now, and asserts the
+platform is on the far side. A filter that matches the defect is not a test.
+
+`m.round`, not `m.tall`: the first cut of the column assertion asked for a flag that masses do not
+carry, found nothing, and passed. Suite 1,827 green twice.
