@@ -166,10 +166,15 @@ if (at.crossing) {
 // same 340 frames, the second stands beside the line there with the photo
 // camera. Deterministic — the same seed, the same frames, the same pose.
 {
+  // BOTH pools, for the reason the count above gives: the head of a train is an
+  // engine in `pools.loco`, and when it is the only vehicle on the line a probe
+  // that reads `pools.train` finds nothing to aim at and says the train does
+  // not exist.
   const WHERE = `(state, view) => {
-    const pool = view.pools?.train;
     const out = [];
-    if (pool) {
+    for (const name of ["train", "loco"]) {
+      const pool = view.pools?.[name];
+      if (!pool) continue;
       const m = pool.instanceMatrix.array;
       for (let i = 0; i < pool.count; i += 1) out.push([m[i * 16 + 12], m[i * 16 + 14]]);
     }

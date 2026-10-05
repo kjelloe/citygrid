@@ -11876,8 +11876,10 @@ asked for and what the two unread predicates were for.
 | your own district | OK | OK |
 | Shared City | OK | OK |
 
-**And the engine's new pool broke a gate the same hour.** S17's locomotive got `pools.loco` in the
-omissions round, and `rail_shots` counts `view.pools.train.count` — so it reported "1 train exists
-and NONE of its carriages was posed" about a train on the line with its engine drawn. A new pool is
-a new term for every reader: the LOD estimate asked for one immediately, and the gate had to be told
-by hand.
+**And the engine's new pool broke a gate the same hour — twice.** S17's locomotive got `pools.loco`
+in the omissions round, and `rail_shots` counts `view.pools.train.count`, so it reported "1 train
+exists and NONE of its carriages was posed" about a train on the line with its engine drawn. Fixing
+the count left the SECOND reader in the same file: the close shot's probe asks where the carriages
+are, from the same one pool, and refused to aim. A new pool is a new term for every reader — the LOD
+estimate asked for one automatically, and this file had to be told twice by hand. The frame it takes
+now is the engine itself: a cab at the near end, a stepped roofline, a bogie under it.
