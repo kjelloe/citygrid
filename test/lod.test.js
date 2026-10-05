@@ -848,6 +848,9 @@ const UNPRICED_POOLS = {
   smoke: "inside `extrasOf` — `MOTION.smoke.puffs` a plume, for a stack",
   fireSmoke: "inside `extrasOf` — `MOTION.fire.puffs` for a building that is burning (A114)",
   train: "its own term, `counts.carriages` at `costs.carriage`",
+  // S17 again: the head of a train is an engine, and `counts.carriages` counts
+  // every vehicle on the line whichever pool it is posed into.
+  loco: "its own term, `counts.carriages` — the engine is the first carriage (S17)",
   boat: "its own term, `counts.hulls` at `costs.hull`",
   ferry: "its own term, `counts.hulls` — a ferry is a hull",
   // S17 split the hulls by SHAPE, not by number: `boats.js` counts every hull

@@ -11831,3 +11831,21 @@ and `jsFilesIn` collected only `.js`, so every `.mjs` in the repo was invisible 
 `test/dead-exports.test.js` and to `test/purity.test.js`'s parse check. It passed with an unused
 import in the very file this slice was editing. One line in the helper, and the scan found eight
 more across five tools (and `standBack`, left behind here).
+
+## The omissions round after S17 — the locomotive nobody could see (2026-10-06)
+
+The sweep on my own slice, which is where this project finds its best defects: `MOVER_KINDS`,
+`moverCost` and `MOVER_CEILING` are read only by their test — fine — and the **`locomotive` spec was
+read by nothing at all**. `instances.js` made one `train` pool from the carriage geometry, so the
+engine I had written, with its cab and windscreen, was six boxes nobody could ever see.
+
+`pools.loco` exists now and `client/life/train.js` poses the head carriage into it. The colour stays
+as it was, so a train still reads as one thing from the air; the shape differs, which is the point.
+`test/lod.test.js` asked for its term in the estimate immediately, as it did for `moored` and
+`cargo` — `counts.carriages` counts every vehicle on the line whichever pool it goes in.
+
+**And a new test came out of the same thought.** `boats.js` poses into `pools.moored ?? pools.boat`:
+the fallback is right, and it is exactly what would hide `pools.morred` — the moored boats would
+keep their full sail for ever with nothing red anywhere. `test/pools.test.js` reads the `make("…")`
+names out of `instances.js` (which node cannot load) and checks every `pools.X` a life module
+writes against them. Spelling the typo in turns it red; spelling it back turns it green.

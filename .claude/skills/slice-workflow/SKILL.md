@@ -53,6 +53,10 @@ the layers the test reads actually non-zero — as the FIRST check, so a broken
 fixture fails as a broken fixture instead of as a broken feature. Three
 separate N4 failures were fixture bugs wearing a feature's clothes.
 
+**A fallback needs a check that it is not silently the answer.** `pools.moored ?? pools.boat` keeps
+an old renderer drawing something — and would hide `pools.morred` for ever. When you add a default,
+add the list, counter or log that would go red if the default were being taken (S17 → S20c).
+
 **A test a construction guarantees is not an assertion.** `test/facade.test.js` checked that "every
 triangle is wound the way its normal points" — and `solid.js` computes each normal FROM its winding,
 so the check could never fail while half the city's window glass was culled (S21). Before writing an

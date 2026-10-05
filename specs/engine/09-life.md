@@ -440,3 +440,34 @@ time, so `?life=0` freezes every hull where it is (D7, ruling 037). The invarian
 that a boat never crosses a shore, asserted over ten simulated minutes on a bay with a headland —
 a vessel in a field is the most obvious defect this slice could ship, and a screenshot of a still
 boat cannot tell you whether the moving one ends up in one.
+
+## 9.7 The movers have shapes (S17, 2026-10-06)
+
+B3a gave the car three bodies, a glazed cabin and round wheels; T5b gave the aircraft a fuselage,
+swept wings and a fin. Everything else that moves was built from `slabGeometry`: a marina was a row
+of white bricks on the water and a train three grey bricks on the line.
+
+`client/world/mover-spec.js` is the pure half — parts in metres, per kind, with a triangle ceiling
+each — and `moverGeometry` in the kit turns a spec into one pool geometry:
+
+| | parts | ceiling |
+| --- | --- | --- |
+| sailing boat | hull, tapered bow, deck, cabin by hash, mast, sail | 84 |
+| moored boat | the same with its sail **furled** | 84 |
+| ferry | hull, bow, superstructure, bridge, funnel | 110 |
+| cargo ship | hull, bow, bridge aft, funnel, four or five rows of containers by hash | 160 |
+| carriage | body, roof, two bogies, a window band each side | 110 |
+| locomotive | short body, cab, windscreen, roof | 120 |
+
+**The sizes come from the config.** `boat.hullW` and `boat.hullH` are in `data/cityviewer.json`
+because what passes under S13's bridge has to fit under it; a kit that invents its own hull is a kit
+that can sail through a deck.
+
+**A pool per shape, not per colour.** A moored boat and a cargo ship were a sailing boat and a ferry
+with a different instance colour. `client/life/boats.js` poses into `pools.moored` and `pools.cargo`
+now, with `?? pools.boat` behind them — and `test/pools.test.js` checks those names against the
+pools `instances.js` makes, because a fallback is exactly what hides a typo.
+
+**And the estimate has to know.** `test/lod.test.js` refused both new pools the moment they existed:
+"a term missing from the estimate is a term the budget cannot trade away". They are hulls, and
+`counts.hulls` already covers every hull posed.

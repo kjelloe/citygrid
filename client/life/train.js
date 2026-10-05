@@ -226,6 +226,10 @@ export function createTrains(state, model, options = {}) {
     pose(pools, push, bounds) {
       const pool = pools.train;
       if (!pool) return 0;
+      // The head is an ENGINE since S17 — its own pool, because a cab and a
+      // windscreen are a different shape, not a different colour. The colour
+      // stays as it was so a train still reads as one thing from the air.
+      const head = pools.loco ?? pool;
       let posed = 0;
       for (const line of lines) {
         for (let k = 0; k < spec.carriages; k += 1) {
@@ -235,7 +239,7 @@ export function createTrains(state, model, options = {}) {
           const tx = OUT.x / tileM;
           const tz = OUT.z / tileM;
           if (bounds && (tx < bounds.x0 - 2 || tx > bounds.x1 + 2 || tz < bounds.z0 - 2 || tz > bounds.z1 + 2)) continue;
-          push(pool, tx, (OUT.y + spec.lift) / tileM, tz, 1, 1, 1,
+          push(k === 0 ? head : pool, tx, (OUT.y + spec.lift) / tileM, tz, 1, 1, 1,
             k === 0 ? 0xb03a30 : 0xd8d4cc, Math.atan2(-(line.dir * OUT.tz), line.dir * OUT.tx));
           posed += 1;
         }

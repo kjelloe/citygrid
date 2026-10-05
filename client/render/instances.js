@@ -166,8 +166,10 @@ export function createInstances(scene, styleName = "plain") {
   addMotion(pools.radar.material, "radar");
   const carriage = getConfig().rail;
   const tileM = getConfig().tileM;
-  // A body on two bogies with a window band down each side (S17).
+  // A body on two bogies with a window band down each side, and an ENGINE with
+  // a cab at the head of it (S17). Two pools, because a cab is a shape.
   make("train", moverGeometry(tileM, "carriage", 1, getConfig()), 0xffffff, 64);
+  make("loco", moverGeometry(tileM, "locomotive", 1, getConfig()), 0xffffff, 16);
   // Burnt GROUND: flat, like the lawn quad. It was a 0.14-tile slab — a solid
   // block 2.8 m tall covering most of the tile — which is why a ruin has always
   // read as a dark box, and which buried B1b's walls and rubble inside it.
