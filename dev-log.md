@@ -11309,3 +11309,39 @@ instrument, and an instrument that can go into debt measures its own credit line
 
 `takeLoan` has left `test/omissions.test.js`'s `NOT_BUILT` list. Suite 1,776 green twice; `quick`
 505 s of 540.
+
+## slice-M7 — `main` is the game again (2026-10-05)
+
+`main` was pushed on 2026-09-08 at `2f26532` and the release page named it until yesterday — 129
+commits and twenty-five balance eras later, with every number on it measured against a game that no
+longer existed. The page is true at `e618cb5` now: the headless room, the dirty set, the ambulance,
+the eighth disaster, borrowing, era 28, ten gate sets, 249 commits and 1,776 tests, with the two
+open questions stated as Kjell's rather than as work.
+
+**The merge.** `git merge --ff-only dev_night` on `main`: 151 commits, no merge commit, nothing to
+resolve. The suite is green twice on the merged tree and **`gates.mjs all` is green — all 38 gates**
+across the ten sets.
+
+**And the run found what M2's rule exists to find.** `all` came in at **3,082 s against a 3,000 s
+budget**. Every individual set is inside its own, so nothing grew past its share; what happened is
+that the set gained members the number was never measured with — `room` since X1a, and `sim` is 90 s
+longer because B13 put an eighth disaster in the roll. So the budget is **restated from the
+contents** (57 minutes, from the ten sets as they now measure) rather than raised to fit a gate that
+grew, which is the third time that rule has fired and the first time it has fired on a set gaining a
+member rather than on one member swelling.
+
+| set | measured today |
+| --- | --- |
+| quick | 505 s |
+| render | 8 s |
+| lanes | 211 s |
+| budget | 258 s |
+| shots | 379 s |
+| transport | 245 s |
+| kits | 319 s |
+| sim | 845 s |
+| film | 294 s |
+| room | 5 s |
+
+**The push is Kjell's.** `main` is 151 commits ahead of `origin/main` locally and has not been
+pushed.
