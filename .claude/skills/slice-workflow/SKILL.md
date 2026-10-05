@@ -53,6 +53,12 @@ the layers the test reads actually non-zero — as the FIRST check, so a broken
 fixture fails as a broken fixture instead of as a broken feature. Three
 separate N4 failures were fixture bugs wearing a feature's clothes.
 
+**And ask whether the subject is in the fixture at all.** S16a divided every wide trade lot in a
+played city — 45 of 61 buildings — and `budget_gate`'s two arms came back identical in all 24 rows,
+because that gate paints each zone ONE TILE wide and no lot in it is wide enough to divide. An
+unchanged number is the most convincing wrong answer a gate gives, since nobody re-reads a green
+one. Count the subject in the GATE's own city before believing its before and after.
+
 **Read `state.supply` before blaming reach or wiring.** It reports `components`,
 `served` and `starved` per network. `components: 2` means two disconnected
 networks, and a producer in one of them supplies nothing to the other.

@@ -15,6 +15,8 @@
 // The sizes are in METRES because the rules are: "9 to 11 m wide" is a house,
 // "half the lot" is whatever the lot happens to be.
 
+import { lotSpan, placeUnits } from "./sublots.js";
+
 /** A detached house, in metres. The reference is suburban: a frontage a car
  * could park across and a depth with a garden behind it.
  *
@@ -147,58 +149,17 @@ export function houseCount(widthM, depthM, level) {
 /**
  * The lot's houses as SUB-LOTS, in world metres.
  *
- * `u` runs along the frontage and `v` back from the street, so the same form
- * serves a lot fronting north and one fronting west — the mapping is here
- * rather than in the renderer for the reason `civicSpin` is in `civic-spec`:
- * two renderers must not each have their own idea of which way a house points.
+ * The mapping — `u` along the frontage, `v` back from the street, through the
+ * lot's `frontage` side — lives in `sublots.js` since S16a, because the trade
+ * ladder needs the identical arithmetic and two copies of it is two chances to
+ * put the front gardens at the back.
  *
  * A sub-lot is a lot: same `building`, same `frontage`, same `seat`, a smaller
  * box. Everything downstream — the facade grammar, S9's furniture, the props —
  * works on it unchanged, which is what makes this slice renderer-only.
  */
 export function houseLots(lot, level) {
-  const alongX = lot.frontage === 0 || lot.frontage === 2;
-  const widthM = alongX ? lot.x1 - lot.x0 : lot.z1 - lot.z0;
-  const depthM = alongX ? lot.z1 - lot.z0 : lot.x1 - lot.x0;
+  const { widthM, depthM } = lotSpan(lot);
   const { form, houses } = homeForm(widthM, depthM, level);
-  return {
-    form,
-    lots: houses.map((house) => {
-      // `v` measured FROM the street, which is whichever side the frontage is:
-      // on side 0 the street is at z0 and v runs +z, on side 2 it is at z1 and
-      // v runs -z. Getting this backwards puts the front gardens at the back.
-      const [u0, u1] = [house.u0, house.u1];
-      const [v0, v1] = [house.v0, house.v1];
-      const span = (a, b, lo, hi) => [lo + (hi - lo) * a, lo + (hi - lo) * b];
-      let x0; let x1; let z0; let z1;
-      if (lot.frontage === 0) {
-        [x0, x1] = span(u0, u1, lot.x0, lot.x1);
-        [z0, z1] = span(v0, v1, lot.z0, lot.z1);
-      } else if (lot.frontage === 2) {
-        [x0, x1] = span(1 - u1, 1 - u0, lot.x0, lot.x1);
-        [z0, z1] = span(1 - v1, 1 - v0, lot.z0, lot.z1);
-      } else if (lot.frontage === 1) {
-        [z0, z1] = span(u0, u1, lot.z0, lot.z1);
-        [x0, x1] = span(1 - v1, 1 - v0, lot.x0, lot.x1);
-      } else {
-        [z0, z1] = span(1 - u1, 1 - u0, lot.z0, lot.z1);
-        [x0, x1] = span(v0, v1, lot.x0, lot.x1);
-      }
-      return {
-        ...lot,
-        x0, z0, x1, z1,
-        cx: (x0 + x1) / 2,
-        cz: (z0 + z1) / 2,
-        frontageLen: alongX ? x1 - x0 : z1 - z0,
-        storeys: house.storeys,
-        roofKind: house.roof,
-        party: house.party,
-        // Which house on the lot this is. Everything downstream hashes on the
-        // spec's id, and every house on a lot shares the BUILDING's id — so a
-        // terrace came out four identical houses, same chimney, same shutters,
-        // same lit windows. The index salts it (S10).
-        houseIndex: houses.indexOf(house),
-      };
-    }),
-  };
+  return { form, lots: placeUnits(lot, houses) };
 }

@@ -30,7 +30,7 @@ import { setFaceContrast } from "./detail-kit.js";
 import { DIR4 } from "../../shared/grid.js";
 import { TIER, setCosts, inBounds, planForChunk, tilePixels, usesChunkPlans } from "./lod.js";
 import { civicSpin } from "../world/civic-spec.js";
-import { houseLots } from "../world/homes.js";
+import { unitsOf } from "../world/units.js";
 import { countrysideFor } from "../world/countryside.js";
 import { treesFor, backGardens } from "../world/foliage.js";
 import { streetProps } from "../world/street-furniture.js";
@@ -1097,15 +1097,15 @@ export function updateInstances(state, pools, options = {}) {
     const depth = (building.h - p.setback) * 0.98;
     const bz = cz - p.setback / 2;
 
-    // A residential lot is ONE BOX PER HOUSE below level 3 (S10): a level-1
-    // 2×1 lot is two detached houses, and a single box across the lot is the
-    // slab the whole slice is about. The sub-lots come from the same function
+    // One box per BUILDING on the lot, not one per lot: a level-1 residential
+    // 2×1 lot is two detached houses (S10) and a 40 m level-1 commercial lot is
+    // a parade of three shops (S16a). The sub-lots come from the same function
     // the baked facade uses, so the silhouette from the air is the street from
-    // the pavement (E5's rule).
-    const homes = p.kind === "residential" && lot
-      ? houseLots(lot, building.level ?? 0).lots
-      : undefined;
-    if (homes && homes.length > 0) {
+    // the pavement (E5's rule). `unitsOf` hands back the lot itself when the
+    // lot is one mass — a civic definition, a block, a works — and that is the
+    // path below, which knows about the setback.
+    const homes = lot ? unitsOf(lot, p.kind) : undefined;
+    if (homes && homes.length > 0 && homes[0] !== lot) {
       const m = getConfig().tileM;
       for (const home of homes) {
         const hx = (home.x0 + home.x1) / 2 / m;

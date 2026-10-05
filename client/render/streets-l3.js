@@ -20,6 +20,7 @@ import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
 import { houseLots } from "../world/homes.js";
+import { unitsOf } from "../world/units.js";
 import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
@@ -387,9 +388,10 @@ export function bakeLotFacades(baker, state, lots, from, stop, acc, palette, sty
     // level 1, a pair of semis at level 2, a block of flats at 3. Each sub-lot
     // is a lot, so the facade grammar, S9's furniture and the props all work on
     // it unchanged.
-    const parts = params.kind === "residential"
-      ? houseLots(lot, lot.building.level ?? 0).lots
-      : [lot];
+    // And a trade lot is a form too (S16a): a parade of shops at level 1, a
+    // row of sheds, one mass from level 3. 45 of 61 trade buildings in a played
+    // city are 20 m or more across and every one of them was a single facade.
+    const parts = unitsOf(lot, params.kind);
     for (const part of parts) {
       const spec = facadeSpec(part, params, locale, furniture, {
         palette, name: styleName, nameFor: buildingName ?? defaultName,

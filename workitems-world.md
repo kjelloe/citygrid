@@ -776,7 +776,52 @@ both halves of each row with one rule and move ours toward the reference, one ch
 with the histograms' medians in the caption. The dev-log says what the eye sees. `budget_gate`
 unmoved (colour, not geometry).
 
-## S16 — Shops and works with more on them (M)
+## S16a — The trade ladder (M) — **BUILT 2026-10-05** as `slice-S16a`
+
+The half of S16 that is S10's, measured first. **The premise, in node before any code:** in a
+25-year played city (seed 1003, 96²) **45 of 61 trade buildings are 20 m or more across**, the
+median commercial lot is **40 m wide at level 1**, and every one of them was a single box from the
+air and a single facade from the pavement — a corner shop drawn as a department store, an estate
+drawn as one shed the size of a block.
+
+`client/world/trade.js` is the ladder: shops → parade → block, shed → units → works, pure in
+`(widthM, depthM, level, zone)`. `client/world/sublots.js` is the lot-local → world-metres mapping
+S10 already had, moved out of `homes.js` so there is one copy of it. `client/world/units.js` is the
+one question — "what buildings are on this lot?" — that the L2 instanced pass and the L3 baker both
+ask, so the air and the street cannot disagree (E5).
+
+**Measured, `tools/trade_shots.mjs`, both arms from one harness (`?ladder=0`):** the widest
+commercial lot 1 → **3** buildings, the widest industrial lot 1 → **2**, and nine shop names on a
+frontage that carried four stretched ones. **The triangle ratio cannot be stabilised and the gate
+no longer pretends it can:** the street cache's chunk budget is a plan the quality ladder revises
+against the frame's own load, so the same arm came back 261,960 (five baked chunks) and 276,678
+(six) — and capturing 140 frames to settle it gave *zero* baked chunks in both arms of the works
+view. The gate keeps 60 frames, prints the baked-chunk count beside every number, reads the ratio
+only when both arms baked the same amount, and gates on the counts that cannot drift. With both
+arms on six chunks: **179,682 → 173,330 (0.96×)** commercial and **285,134 → 276,678 (0.97×)**
+industrial from the pavement, **1.11×** and **1.14×** from the air — cheaper in facades, dearer in
+boxes, which is what the change is.
+`budget_gate` could not see this slice at all — its saturated city paints zones one tile wide, so no
+lot in it is wide enough to divide, and both arms of it are byte-identical. A fixture is not the
+game.
+
+**Found in the shot, for S16b:** *the parade's ground floor is see-through.* `addShopfront` glazes
+the ground floor and there is nothing behind the glass, so a row of shops reads as a carport with
+signs over it. It is not new — the slab had it too — but at one shopfront per 40 m it was a stripe
+and at three it is the frame. S7 put something behind a HOUSE's windows; the commercial kit never
+got the same pass. Fix it with the furniture, not before: an interior card behind the glass is one
+quad per unit.
+
+**Also found in the air shot:** *a works yard is a lawn.* The shed is set back 16% of the lot and
+sits 62% deep, which is right — but what is left is the GARDEN quad, so an industrial estate from
+the air is sheds on grass. The yard wants hardstanding (the same flat quad, a gravel or concrete
+tone) and S16b's pallets and tanks standing on it.
+
+**Left for S16b:** the furniture — `shop-spec.js` and `works-spec.js` in the house-spec shape, the
+awning, the roof plant, the loading dock, the name board, the calmer building site. The item as
+written is below.
+
+## S16 — Shops and works with more on them (M) — the item as written
 
 **Goal.** A high street and an industrial estate get what S9 and S10 gave a terrace.
 

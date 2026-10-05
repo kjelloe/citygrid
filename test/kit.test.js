@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
 import { hasPorch, hasPorchAtL2 } from "../client/world/house-spec.js";
 import { homeForm, houseCount } from "../client/world/homes.js";
+import { unitsOf } from "../client/world/units.js";
 import { VARIANTS, variantFor, kindOf } from "../client/world/params.js";
 import { PALETTES } from "../client/render/palettes.js";
 
@@ -132,19 +133,38 @@ test("the bungalow and the semi build their own, and are not given a second", ()
 
 // --- the density ladder reaches the instanced pass (slice S10) ---------------
 
-test("a lot draws one box per house, at both fidelities", () => {
-  // E5's rule, and the whole point of S10: if the baked street is a pair of
-  // semis and the box from the air is one slab across the lot, the player is
-  // looking at two different cities depending on the zoom. Asserted through the
-  // shared function and against the source of the pass that cannot be imported,
-  // which is `instances.js` — it imports three.
+test("a lot draws one box per building, at both fidelities", () => {
+  // E5's rule, and the whole point of S10 and S16a: if the baked street is a
+  // pair of semis and the box from the air is one slab across the lot, the
+  // player is looking at two different cities depending on the zoom.
+  //
+  // Asserted through `unitsOf`, which is what BOTH passes call since S16a —
+  // `instances.js` for its boxes and `streets-l3.js` for its facades. The first
+  // version of this test matched the line `houseLots(lot, building.level` in
+  // the source of `instances.js`, because that file imports three and node
+  // cannot load it; the line moved in S16a and the test went red while the
+  // behaviour it was about got BETTER. A source-text assertion pins the defect
+  // it was written against and nothing else (memory: a test that transcribes a
+  // line). What node can hold is the shared function and the import.
   const instances = readFileSync(join(repoRoot, "client", "render", "instances.js"), "utf8");
-  assert.match(instances, /houseLots\(lot, building\.level/,
-    "the instanced pass still draws one box across the lot");
+  assert.match(instances, /unitsOf\(lot, p\.kind\)/,
+    "the instanced pass does not ask the ladder what is on the lot");
   for (const [w, d, level] of [[14, 14, 1], [34, 14, 1], [34, 34, 1], [14, 14, 2], [14, 14, 3]]) {
     assert.equal(houseCount(w, d, level), homeForm(w, d, level).houses.length);
   }
-  // And the two levels that matter most in a played city are NOT one box.
+  // And the cases that matter most in a played city are NOT one box.
+  const lotOf = (w, d, zone, level) => ({
+    id: 5, building: { id: 5, zone, level }, x0: 0, z0: 0, x1: w, z1: d,
+    cx: w / 2, cz: d / 2, frontage: 0, frontageLen: w, seat: 1,
+  });
   assert.ok(houseCount(34, 14, 1) > 1, "a two-tile level-1 lot is one building");
   assert.ok(houseCount(14, 14, 2) > 1, "a level-2 lot is one building");
+  assert.ok(unitsOf(lotOf(40, 20, 2, 1), "commercial").length > 1,
+    "the median commercial lot in a played city is still one box");
+  assert.ok(unitsOf(lotOf(36, 36, 3, 2), "industrial").length > 1,
+    "a level-2 industrial lot is still one shed across the block");
+  // A single mass hands back the lot itself, which is the path that knows about
+  // the setback — a civic definition, a block of flats, a works.
+  assert.deepEqual(unitsOf(lotOf(20, 20, 0, 1), "civic").length, 1);
+  assert.equal(unitsOf(lotOf(40, 20, 2, 4), "commercial").length, 1, "a level-4 block is a parade");
 });

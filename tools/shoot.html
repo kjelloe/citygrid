@@ -359,6 +359,14 @@ if (wallParam === "0") {
   setConfig({ ...cfg0, road: { ...cfg0.road, wallMinDrop: Infinity } });
 }
 
+// `ladder=0` draws every trade lot as the one mass it was before S16a, so a
+// parade of shops and the slab it replaced are the same city photographed twice.
+const ladderParam = params.get("ladder");
+if (ladderParam === "0") {
+  const cfg0 = getConfig();
+  setConfig({ ...cfg0, lot: { ...cfg0.lot, ladder: false } });
+}
+
 const gradeParam = params.get("grade");
 if (gradeParam !== null) {
   const cfg0 = getConfig();

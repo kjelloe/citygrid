@@ -1,6 +1,6 @@
 {
- "version": "fac5586f9b69",
- "build": "e438ed0a00a7",
+ "version": "8da382038f56",
+ "build": "8c450509143a",
  "generated": "2026-10-05",
  "files": [
   "./client/audio/audio-model.js",
@@ -142,6 +142,9 @@
   "./client/world/rush.js",
   "./client/world/signals.js",
   "./client/world/street-furniture.js",
+  "./client/world/sublots.js",
+  "./client/world/trade.js",
+  "./client/world/units.js",
   "./client/world/vehicle-spec.js",
   "./client/world/water.js",
   "./client/world/windows.js",

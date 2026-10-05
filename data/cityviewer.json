@@ -93,6 +93,7 @@
   "tone": 0.55
  },
  "lot": {
+  "ladder": true,
   "setback": {
    "none": 2,
    "residential": 1.5,

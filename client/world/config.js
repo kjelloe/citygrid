@@ -223,6 +223,12 @@ export const DEFAULTS = Object.freeze({
   // the coarse noise says so (S2) — 0 is one green.
   ground: { blend: 1, mottle: 0.06, urbanReach: 40, farTone: 0.12, tone: 0.55 },
   lot: {
+    // S16a's ladder, as a LEVER. `ladder=0` in the shot harness draws every
+    // trade lot as the one mass it was before, so the before and the after of a
+    // picture come from one harness rather than from two commits (the shape
+    // S18's `wall=0` has — a fallback nothing can turn off is a fallback no
+    // gate can photograph).
+    ladder: true,
     // `residential` halved to 1.5 at A113 (Q102): the setback is an inset on
     // all four sides of the tile, so it moves the GAPS between houses rather
     // than the house, and a 10 m house on a 14 m lot read as a street 1.3

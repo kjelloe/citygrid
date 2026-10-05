@@ -11467,3 +11467,79 @@ final population 1,594. Suite 1,788 green twice.
 Not built, and X3b's: the visible mark on a derelict building, and an inbox — the client has no
 reader for the request channel at all, so nothing on screen can yet ask for a demolition or answer
 one.
+
+## S16a — the trade ladder: 45 of 61 buildings were one slab (2026-10-05)
+
+S10 gave the residential lane a form per level in September. Trade kept the slab, and nothing in
+the project could see it, because the only renderer gate that counts triangles paints its zones one
+tile wide.
+
+**The premise, measured before any code.** A 25-year played city, seed 1003 on a 96²:
+
+| | commercial | industrial |
+| --- | --- | --- |
+| buildings | 20 | 41 |
+| median frontage at level 1 | **40 m** | 36 m |
+| at least 20 m across | **45 of 61 trade buildings**, both zones together | |
+
+Every one of them was a single box from the air and a single facade from the pavement. A corner
+shop was being drawn as a department store.
+
+**Built.** `client/world/trade.js` — shops → parade → block for commerce, shed → units → works for
+industry, pure in `(widthM, depthM, level, zone)`, with the unit's width in METRES (a form in
+fractions gives a 40 m lot a 40 m shop, which is the slab again — S10's first lesson, taken from
+its dev-log entry rather than re-learned). `client/world/sublots.js` holds the lot-local → world
+mapping that `homes.js` already had: one copy, two ladders, because the mapping is the part where
+getting `u` and `v` the wrong way round puts the delivery yard on the pavement.
+`client/world/units.js` is the single question "what buildings are on this lot?", asked by the
+instanced pass and the L3 baker, so the air and the street cannot answer it differently (E5).
+
+**Measured, `tools/trade_shots.mjs`, both arms from one harness.** `?ladder=0` draws every trade lot
+as the one mass it was, so the before and the after are the same city photographed twice (S18's
+`wall=0` shape — a fallback with no lever is a fallback no gate can photograph). The widest
+commercial lot goes **1 → 3 buildings**, the widest industrial one **1 → 2**, and the high street
+carries **nine shop names where it carried four stretched ones**, because each unit hashes its own
+from `building.id * 8 + houseIndex`.
+
+**The triangle number needed four runs before it meant anything, and the fourth taught the lesson.**
+The first said the ladder was 0.96× and 0.90× — cheaper, which was the comfortable answer. Then the
+SAME industrial arm came back 261,960 (five baked street chunks) in one run and 276,678 (six) in
+the next: a whole chunk of facades dwarfs what this slice moves. The obvious fix — capture more
+frames so the bake settles — made it worse in the most instructive way: at 140 frames the works
+view came back with **no baked street chunk at all, in both arms**, where 60 gives five or six.
+
+The street cache's chunk budget is **a plan the quality ladder revises against the frame's load** —
+so how much street is baked responds to the thing being measured. There is no frame count at which
+this comparison is clean. The gate keeps `street_shots`' 60, prints the baked-chunk count beside
+every number, and **reads the ratio only when both arms baked the same amount**; it never fails on
+triangles alone. What it does gate on is the count that cannot drift: one building on the lot with
+the ladder off, more than one with it on, and a baked street in the frame at all.
+
+**With both arms on six baked chunks, the final run:**
+
+| | buildings | triangles, from the pavement | from the air (city 12) |
+| --- | --- | --- | --- |
+| widest commercial lot (40 m) | 1 → **3** | 179,682 → 173,330 (**0.96×**) | 100,488 → 111,120 (1.11×) |
+| widest industrial lot (36 m) | 1 → **2** | 285,134 → 276,678 (**0.97×**) | 72,680 → 82,760 (1.14×) |
+
+Cheaper from the street and dearer from the air, which is exactly what the change is: three narrow
+units carry less wall and fewer window bays than one 40 m frontage, and three instanced boxes carry
+more than one. Both passes read the same function, so the silhouette and the street agree (E5).
+
+**`budget_gate` cannot see this slice.** Both arms of it are byte-identical, every row. Its
+saturated city paints each zone one tile wide, so no lot in it is 20 m across and no lot divides —
+the fixture is a monoculture, and the gate that measures the renderer's cost measured nothing here.
+That is why S16a has a gate of its own, on a **played** city, with the lever.
+
+**What the suite caught on the way.** `test/kit.test.js` asserted the literal text
+`houseLots(lot, building.level` in `instances.js`, which node cannot import — so the test went red
+while the behaviour it is about got better. It asserts the claim now: `unitsOf` is asked, and the
+cases that matter in a played city are more than one building. A source-text assertion pins the
+defect it was written against and nothing else.
+
+**Seen in the shot, and not fixed here:** the parade's ground floor is see-through. The glazed
+shopfront has nothing behind it, so a row of shops reads as a carport with signs over it — a
+pre-existing defect of the commercial kit that the ladder makes the most visible thing in the frame.
+Filed on S16b.
+
+Suite 1,798 green twice.

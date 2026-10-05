@@ -66,6 +66,7 @@ export const GATES = {
   motion_shots: { args: ["tools/motion_shots.mjs"], what: "the things that move at rest and in motion — rotor, flag, crane, smoke" },
   role_shots: { args: ["tools/role_shots.mjs"], what: "a building per role, told apart" },
   street_shots: { args: ["tools/street_shots.mjs"], what: "a street at eye height, with what S3 put on it counted" },
+  trade_shots: { args: ["tools/trade_shots.mjs"], what: "the widest shop lot and the widest works lot, ladder on and off from one harness (S16a)" },
   film: { args: ["tools/film.mjs"], what: "the sixty-second shot list, a frame a second, each one counted for triangles and for life" },
 
   walkthrough: { args: ["tools/walkthrough.mjs"], what: "the walker walks every corridor, and the steepest street" },
@@ -146,7 +147,7 @@ export const SETS = {
   // definition is twenty-eight shots and seven minutes, which no other set can
   // absorb — and it is a gate rather than a tool since T7 taught it to exit
   // non-zero when the reducer refused what it was photographing.
-  kits: ["civic_shots", "foliage_shots", "motion_shots", "role_shots", "street_shots"],
+  kits: ["civic_shots", "foliage_shots", "motion_shots", "role_shots", "street_shots", "trade_shots"],
   sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
   // The storyboard (F2). A set of its own for the same reason `kits` is one: it
   // is 61 frames of a played 96-tile city on SwiftShader and nothing else can
