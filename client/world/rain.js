@@ -12,7 +12,6 @@
 //
 // Everything here is in TILE units, which is what the instanced pools take.
 
-import { jitter } from "./hash.js";
 
 /** The column, in TILE units (Q112, A115).
  *

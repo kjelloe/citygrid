@@ -17,7 +17,7 @@
 
 import { DIR4 } from "../../shared/grid.js";
 import { getConfig } from "./config.js";
-import { laneWidth, laneOffset } from "./corridors.js";
+import { laneOffset } from "./corridors.js";
 import { jitter } from "./hash.js";
 import { isSignalled, givesWayAt } from "./signals.js";
 // The longest thing that drives (J2, A109): a link shorter than it cannot hold
@@ -25,7 +25,7 @@ import { isSignalled, givesWayAt } from "./signals.js";
 import { LONGEST_BODY } from "./vehicle-spec.js";
 // Shared with the nav graph pedestrians walk on (E7): one copy of "offset a
 // centre line" and "stop short of a junction", not two.
-import { rightOf, offsetPolyline, trim, lengthOf } from "./polyline.js";
+import { offsetPolyline, trim, lengthOf } from "./polyline.js";
 import { sameProfile } from "./grade.js";
 
 /** A quadratic through a junction: out of one lane's end, round the corner,

@@ -6,7 +6,7 @@
 // sibling project, applied to N players instead of two.
 
 import { makeRng, nextInt, streamSeed } from "../shared/prng.js";
-import { idiv, clamp } from "../shared/idiv.js";
+import { idiv } from "../shared/idiv.js";
 import { tileAt, xOf, yOf, DIR4, neighbour } from "../shared/grid.js";
 import { isBuildable, isWater } from "./terrain.js";
 import { TERRAIN_ROCK } from "./constants.js";

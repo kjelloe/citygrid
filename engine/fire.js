@@ -7,15 +7,13 @@
 
 import { registerFast, registerMonthly } from "./reducer.js";
 import { rules } from "./rules.js";
-import { definition } from "./catalogue.js";
-import { idiv, clamp } from "../shared/idiv.js";
+import { clamp } from "../shared/idiv.js";
 import { tileAt, xOf, yOf, DIR4, neighbour } from "../shared/grid.js";
-import { nextInt, chance, chanceIn } from "../shared/prng.js";
+import { nextInt, chanceIn } from "../shared/prng.js";
 import { isWater } from "./terrain.js";
 import { baseFireRisk } from "./civic.js";
 import {
-  FLAG_BURNING, FLAG_RUINED, TERRAIN_FOREST, TERRAIN_GRASS, ZONE_NONE,
-} from "./constants.js";
+  FLAG_BURNING, FLAG_RUINED, TERRAIN_FOREST, TERRAIN_GRASS, } from "./constants.js";
 import { markDerelict } from "./requests.js";
 
 export function isBurning(state, index) {

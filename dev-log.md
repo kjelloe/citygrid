@@ -11590,3 +11590,22 @@ themselves — `street_shots`, `trade_shots` and `embankment_shots` take their c
 and this one does not.
 
 Suite 1,800 green twice.
+
+## Omissions round — 41 names imported and never used (2026-10-05)
+
+S16a moved the question "what is on this lot?" from `houseLots` to `unitsOf` and left
+`import { houseLots }` at the top of `streets-l3.js`, where it said the renderer still asked the
+residential ladder. The suite was green and the page was right; the file was lying.
+
+So the whole repo, as a test: `test/unused-imports.test.js`, pinned at **zero**. It found 41 across
+`engine/`, `client/` and `shared/` — four in `civic.js`, seven in `instances.js`, two in `lanes.js`,
+`idiv` in two engine modules that do their own integer maths now. All removed; the layout of each
+import kept, so the diff is the names and nothing else.
+
+**The stripper had to be this test's own.** `stripCommentsAndStrings` removes a template literal
+WHOLE, and `${t("ready")}` is a use of `t` — with the shared helper the test accused `client/main.js`
+of importing the i18n function and never calling it. Comments and string bodies go; what is inside
+`${}` stays.
+
+Gate: `street_shots` (a renderer change, and nothing in `test/` can import `client/render/`) — green,
+and its shop frame now shows S21's glazed shopfronts with their interiors. Suite 1,801 green twice.

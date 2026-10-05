@@ -7,7 +7,7 @@
 import { mix32, makeRng, nextInt, nextRange, chance, streamSeed } from "../shared/prng.js";
 import { idiv, fdiv, clamp, FP, lerp } from "../shared/idiv.js";
 import { i32 } from "../shared/arrays.js";
-import { tileAt, xOf, yOf, inBounds, DIR4, DIR8, neighbour } from "../shared/grid.js";
+import { tileAt, inBounds, DIR4, DIR8, neighbour } from "../shared/grid.js";
 import {
   TERRAIN_GRASS, TERRAIN_DIRT, TERRAIN_FOREST, TERRAIN_WATER, TERRAIN_SHALLOW,
   TERRAIN_ROCK, TERRAIN_SAND, TERRAIN_MARSH, TERRAIN_STYLE_FLAT, TERRAIN_STYLE_ROLLING,

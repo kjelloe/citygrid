@@ -13,7 +13,6 @@ import { deriveLanes } from "./lanes.js";
 import { getConfig } from "./config.js";
 import { profilesFor, heightOnProfile } from "./grade.js";
 import { closestOnPolyline } from "./corridors.js";
-import { TERRAIN_WATER, TERRAIN_SHALLOW } from "../constants-mirror.js";
 
 /**
  * The city model, derived — or re-derived from the one before it (W6b).

@@ -10,9 +10,8 @@ import { registerMonthly } from "./reducer.js";
 import { rules } from "./rules.js";
 import { definition } from "./catalogue.js";
 import { idiv, clamp } from "../shared/idiv.js";
-import { tileAt, xOf, yOf, DIR8, neighbour, forEachInRadius, inBounds } from "../shared/grid.js";
+import { tileAt, DIR8, neighbour, forEachInRadius } from "../shared/grid.js";
 import { isWater } from "./terrain.js";
-import { hasNet } from "./network.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
   TERRAIN_FOREST, FLAG_POWERED, FLAG_WATERED, FLAG_RUINED,

@@ -15,8 +15,8 @@ import { canZone, canDemolish } from "./permissions.js";
 import { rules, buildCost, difficultyOf } from "./rules.js";
 import { isBuildable } from "./terrain.js";
 import { idiv, clamp } from "../shared/idiv.js";
-import { tileAt, xOf, yOf, DIR4, DIR8, neighbour, inBounds } from "../shared/grid.js";
-import { nextInt, chance } from "../shared/prng.js";
+import { tileAt, xOf, yOf, DIR8, neighbour, inBounds } from "../shared/grid.js";
+import { chance } from "../shared/prng.js";
 import { isIntArray, isIntInRange } from "./validate.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,

@@ -11,7 +11,6 @@
 // desync the moment a second client existed.
 
 import { CMD_JOIN, CMD_TICK, CMD_TAKE_LOAN, CMD_REPAY_LOAN } from "../engine/commands.js";
-import { TICKS_PER_YEAR } from "../engine/constants.js";
 // The seam (W1, W2). Nothing here calls the reducer, generates a world or
 // registers a subsystem any more: all of that is on the other side of it, which
 // is a worker thread unless the browser or `?worker=0` says otherwise.

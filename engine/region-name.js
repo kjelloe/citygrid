@@ -9,7 +9,7 @@
 import { idiv } from "../shared/idiv.js";
 import { isWater, isBuildable } from "./terrain.js";
 import { TERRAIN_FOREST, TERRAIN_ROCK, TERRAIN_SAND } from "./constants.js";
-import { tileAt, DIR4, neighbour } from "../shared/grid.js";
+import { DIR4, neighbour } from "../shared/grid.js";
 
 /** Counts separate landmasses, so "islands" is a fact rather than a hope. */
 export function countIslands(state) {

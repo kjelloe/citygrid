@@ -19,7 +19,6 @@ import { laneWidth, laneOffset } from "../world/corridors.js";
 import { OUTWARD, frontEdgeOf } from "../world/lots.js";
 import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
-import { houseLots } from "../world/homes.js";
 import { unitsOf } from "../world/units.js";
 import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";

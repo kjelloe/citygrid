@@ -268,6 +268,22 @@ Measured: street chunks 282,474 → 275,248 over 8 (smaller houses are less wall
 301,980 → 329,464 of the 400,000 High budget, because the instanced pass draws two to four boxes
 where it drew one.
 
+## 6.1c-ii The trade ladder (S16a, 2026-10-05)
+
+The same idea for commerce and industry, which S10 left behind: **45 of 61 trade buildings in a
+25-year played city are 20 m or more across**, the median commercial lot is **40 m wide at level 1**,
+and every one of them was one box and one facade — a corner shop drawn as a department store.
+`client/world/trade.js` answers the same question per zone: shops → parade → block, shed → units →
+works, in the shape `homes.js` returns. The lot-local → world mapping is `client/world/sublots.js`
+now, shared by both ladders, and `client/world/units.js` is the single question both renderers ask,
+so the silhouette from the air and the street from the pavement cannot disagree.
+
+Measured on a played city with `?ladder=0` as the other arm, both at six baked chunks: the widest
+commercial lot 1 → 3 buildings and 179,682 → 173,330 triangles from the pavement (0.96×, since three
+narrow units carry less wall than one 40 m frontage), 100,488 → 111,120 from the air (1.11×, three
+boxes where there was one). `budget_gate` cannot see any of it: its saturated city paints each zone
+one tile wide, so no lot in it is wide enough to divide.
+
 ## 6.1d Civic materials, and the chunk under the camera (S1b, 2026-09-12)
 
 Every civic mass names a **material** — brick, concrete, steel, white, red, glass, tank, dark, lawn
@@ -537,4 +553,15 @@ occupancy (B2).
 Two triangles a window, one bucket a tone so the baker merges them: **+2,177 triangles a chunk**
 (23,930 → 26,107), measured by stashing the change and re-shooting — per CHUNK, because the ladder
 bakes a different number of chunks each run and the frame totals said the opposite.
+
+**And for six weeks, half of it was invisible (S21, 2026-10-05).** Everything above is drawn through
+one opening from OUTSIDE, so it has to face outward. `facade.js` chose the winding from
+`out[0] + out[1] > 0` — a test on the outward normal alone, while the quad is built from `along` and
+`out`, which turn together in `EDGES`. On the **east and south** faces of every building the glass,
+the curtains, the blinds and the shop's back wall faced into the room and were culled: a shop with
+no ground floor, a house whose windows showed the countryside. `EDGES` is one handedness, so
+`along × up` is the outward normal on all four sides and one winding serves them all.
+`test/window-facing.test.js` asserts it per face, from the geometry the builder returns — and note
+what did NOT catch it: "every triangle is wound the way its normal points" cannot fail, because
+`solid.js` derives each normal from its winding.
 

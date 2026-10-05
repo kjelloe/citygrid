@@ -13,7 +13,7 @@
 // that is what makes the setting a preference rather than a different game.
 
 import * as THREE from "three";
-import { eyeOf, verticalSpan, eyeDistance, PITCH, ORTHO_DISTANCE } from "../world/orbit.js";
+import { eyeOf, verticalSpan, eyeDistance, PITCH } from "../world/orbit.js";
 import { planesFor } from "../world/photo.js";
 
 export const YAW_STEPS = 4;

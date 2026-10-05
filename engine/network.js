@@ -6,10 +6,10 @@
 
 import { RESULT } from "../shared/protocol.js";
 import { tileAt, xOf, yOf, DIR4, neighbour, decodeRuns, inBounds } from "../shared/grid.js";
-import { isWater, isBuildable } from "./terrain.js";
-import { canBuildOn, canDemolish, canConnectAcross } from "./permissions.js";
+import { isWater } from "./terrain.js";
+import { canDemolish, canConnectAcross } from "./permissions.js";
 import { buildCost, rules } from "./rules.js";
-import { stage, charge, reject, peek, failed } from "./transaction.js";
+import { stage, charge, reject, peek } from "./transaction.js";
 import { TERRAIN_FOREST, TERRAIN_ROCK, OWNER_NATURE } from "./constants.js";
 
 /** Present bit, above the four adjacency bits. A tile is "there" even when it

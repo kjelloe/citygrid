@@ -20,7 +20,7 @@
 
 import { registerMonthly } from "./reducer.js";
 import { rules, difficultyOf } from "./rules.js";
-import { idiv, clamp } from "../shared/idiv.js";
+import { clamp } from "../shared/idiv.js";
 import { tileAt, xOf, yOf } from "../shared/grid.js";
 import { nextInt, nextRange, chanceIn } from "../shared/prng.js";
 import { isWater } from "./terrain.js";

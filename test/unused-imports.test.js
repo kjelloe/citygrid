@@ -1,0 +1,99 @@
+// A name imported and never used (the omissions round, 2026-10-05).
+//
+// `streets-l3.js` kept `import { houseLots }` after S16a moved the question to
+// `unitsOf`, and nothing noticed: the suite was green, the page was right, and
+// the file said it still asked the residential ladder what was on a lot. That
+// is the shape this project keeps finding from the other end — a module
+// imported and never called is a claim the code no longer makes.
+//
+// So the whole repo, pinned at zero. It is cheap to keep and it says something
+// true: every import is a dependency somebody can follow.
+//
+// The stripper is this file's own, because `stripCommentsAndStrings` removes a
+// template literal WHOLE — and `${t("ready")}` is a use of `t`. Strings and
+// comments go; what is inside `${}` stays.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { jsFilesIn } from "./helpers/sources.js";
+
+/** Comments and string bodies out, `${…}` kept. */
+export function stripButKeepInterpolations(source) {
+  let out = "";
+  let i = 0;
+  const n = source.length;
+  while (i < n) {
+    const two = source.slice(i, i + 2);
+    if (two === "//") {
+      while (i < n && source[i] !== "\n") i += 1;
+    } else if (two === "/*") {
+      i += 2;
+      while (i < n && source.slice(i, i + 2) !== "*/") i += 1;
+      i += 2;
+    } else if (source[i] === '"' || source[i] === "'") {
+      const quote = source[i];
+      i += 1;
+      while (i < n && source[i] !== quote) {
+        if (source[i] === "\\") i += 1;
+        i += 1;
+      }
+      i += 1;
+      out += '""';
+    } else if (source[i] === "`") {
+      i += 1;
+      let depth = 0;
+      while (i < n && (depth > 0 || source[i] !== "`")) {
+        if (source[i] === "\\") { i += 2; continue; }
+        if (depth === 0 && source.slice(i, i + 2) === "${") { depth = 1; i += 2; out += " "; continue; }
+        if (depth > 0) {
+          if (source[i] === "{") depth += 1;
+          if (source[i] === "}") { depth -= 1; i += 1; out += " "; continue; }
+          out += source[i];
+        }
+        i += 1;
+      }
+      i += 1;
+      out += '""';
+    } else {
+      out += source[i];
+      i += 1;
+    }
+  }
+  return out;
+}
+
+/** The local names an import statement binds. */
+function boundNames(clause) {
+  const names = [];
+  const braced = clause.match(/\{([^}]*)\}/);
+  if (braced) {
+    for (const part of braced[1].split(",")) {
+      const bit = part.trim();
+      if (bit) names.push((bit.split(/\s+as\s+/).pop() ?? bit).trim());
+    }
+  }
+  for (const part of clause.replace(/\{[^}]*\}/, "").replace(/\*\s+as\s+(\w+)/, "$1").split(",")) {
+    const bit = part.trim();
+    if (bit) names.push(bit);
+  }
+  return names.filter((name) => /^[A-Za-z_$][\w$]*$/.test(name));
+}
+
+test("no module imports a name it never uses", () => {
+  const unused = [];
+  for (const dir of ["engine", "client", "shared", "worker", "server", "tools"]) {
+    for (const file of jsFilesIn(dir)) {
+      const code = stripButKeepInterpolations(file.source);
+      const re = /import\s+([^"';]+?)\s+from\s*["'][^"']*["']/g;
+      let m;
+      while ((m = re.exec(code)) !== null) {
+        const rest = code.slice(0, m.index) + code.slice(m.index + m[0].length);
+        for (const name of boundNames(m[1])) {
+          if (!new RegExp(`\\b${name}\\b`).test(rest)) unused.push(`${file.path}: ${name}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(unused, [],
+    `${unused.length} name(s) imported and never used — delete the import, or call it`);
+});

@@ -15,7 +15,7 @@
 // to the road network, and moving it is T4's or its own.
 
 import * as THREE from "three";
-import { ribbon, skirt, dashes, clip, trim } from "./ribbon.js";
+import { ribbon, skirt, dashes, clip } from "./ribbon.js";
 import { getConfig } from "../world/config.js";
 import { NET_PRESENT, NET_AVENUE } from "../constants-mirror.js";
 import { heightOnProfile } from "../world/grade.js";

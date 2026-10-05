@@ -53,6 +53,11 @@ the layers the test reads actually non-zero — as the FIRST check, so a broken
 fixture fails as a broken fixture instead of as a broken feature. Three
 separate N4 failures were fixture bugs wearing a feature's clothes.
 
+**A test a construction guarantees is not an assertion.** `test/facade.test.js` checked that "every
+triangle is wound the way its normal points" — and `solid.js` computes each normal FROM its winding,
+so the check could never fail while half the city's window glass was culled (S21). Before writing an
+assertion, ask what would have to be true for it to go red.
+
 **And ask whether the subject is in the fixture at all.** S16a divided every wide trade lot in a
 played city — 45 of 61 buildings — and `budget_gate`'s two arms came back identical in all 24 rows,
 because that gate paints each zone ONE TILE wide and no lot in it is wide enough to divide. An

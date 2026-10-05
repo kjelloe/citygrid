@@ -12,8 +12,8 @@
 import { registerMonthly, register, ok, fail } from "./reducer.js";
 import { RESULT } from "../shared/protocol.js";
 import { CMD_PLACE_BUILDING } from "./commands.js";
-import { tileAt, xOf, yOf, DIR4, neighbour, forEachInRadius, inBounds } from "../shared/grid.js";
-import { idiv, clamp } from "../shared/idiv.js";
+import { tileAt, xOf, yOf, DIR4, neighbour, inBounds } from "../shared/grid.js";
+import { idiv } from "../shared/idiv.js";
 import { hasNet } from "./network.js";
 import { touchesRail } from "./gates.js";
 import { waterBodies, bodyAt } from "./terrain.js";
@@ -26,7 +26,7 @@ import { difficultyOf, rules } from "./rules.js";
 import { isInt } from "./validate.js";
 import {
   FLAG_POWERED, FLAG_WATERED, OWNER_NATURE, ZONE_NONE,
-  ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
+  ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
 } from "./constants.js";
 
 /** How much a developed lot draws, by zone and level. Small numbers: a city

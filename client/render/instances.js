@@ -7,7 +7,7 @@
 // mesh however many of them stand in the city.
 
 import * as THREE from "three";
-import { buildingColour, familyColour, PLAYER_COLOURS } from "./palette.js";
+import { familyColour } from "./palette.js";
 import { PALETTES, makeMaterial, slabGeometry, flatGeometry, faceContrastFor } from "./style-assets.js";
 import { isBurning, ruinPlots, ruinWalls, rubbleOf, emberTint, charTint } from "../world/damage.js";
 // CHUNK from the DATA, not a fourth copy of 16 (E2 put it in
@@ -21,7 +21,7 @@ import {
   rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, rainGeometry, radarGeometry, planeGeometry,
   FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
   carLampGeometry,
-  TREE_VARIANTS, CAR_VARIANTS, TUFT_VARIANTS,
+  CAR_VARIANTS, TUFT_VARIANTS,
   benchGeometry, pondGeometry, shedGeometry,
 } from "./building-kit.js";
 import { buildingParams } from "../world/params.js";
@@ -56,9 +56,9 @@ const REED = 0x8f9f58;
 import { getConfig } from "../world/config.js";
 import { streaksAround, rainsAt, RAIN } from "../world/rain.js";
 import {
-  ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
+  ZONE_NONE,
   TERRAIN_FOREST, TERRAIN_GRASS, TERRAIN_MARSH, TERRAIN_ROCK, TERRAIN_DIRT, TERRAIN_WATER, TERRAIN_SHALLOW,
-  FLAG_RUINED, FLAG_BURNING, NET_PRESENT, NET_AVENUE,
+  FLAG_RUINED, NET_PRESENT, NET_AVENUE,
 } from "../constants-mirror.js";
 
 /** Parked cars and flowers carry the only strong accent colours in the scene,

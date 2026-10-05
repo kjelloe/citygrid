@@ -12,7 +12,7 @@ import { CMD_SET_TAX, CMD_SET_FUNDING, CMD_TAKE_LOAN, CMD_REPAY_LOAN } from "./c
 import { rules, difficultyOf } from "./rules.js";
 import { definition } from "./catalogue.js";
 import { rankOf } from "./unlock.js";
-import { idiv, clamp } from "../shared/idiv.js";
+import { idiv } from "../shared/idiv.js";
 import { canAct, playerAt } from "./permissions.js";
 import { tileAt } from "../shared/grid.js";
 import { hasNet } from "./network.js";

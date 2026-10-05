@@ -9,7 +9,7 @@
 
 import { SAVE_VERSION } from "../shared/protocol.js";
 import { createState, TILE_LAYERS, hashState, copyState } from "./state.js";
-import { copyOptions, defaultOptions, OPTION_FIELDS } from "./options.js";
+import { defaultOptions } from "./options.js";
 import { HISTORY_FIELDS, FUNDING_SERVICES, FLAG_RUINED } from "./constants.js";
 
 /** [value, count, value, count, ...] */

@@ -28,7 +28,7 @@ import { createSky, SKY_RADIUS } from "./sky.js";
 import { fogFor, skyRadiusFor } from "./atmosphere.js";
 import { createStreetChunks } from "./street-chunks.js";
 import { createCollision } from "../world/collision.js";
-import { createTimeOfDay, phaseOf } from "./time-of-day.js";
+import { createTimeOfDay } from "./time-of-day.js";
 import { nearestLamps, lampsOf } from "./night-lights.js";
 import { lensColour } from "../world/signals.js";
 import { CHUNK } from "../world/chunks.js";
