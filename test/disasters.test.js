@@ -15,7 +15,8 @@ import {
 import { createState, hashState, copyState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
-import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
+import { CMD_JOIN, CMD_TICK, CMD_BULLDOZE } from "../engine/commands.js";
+import { encodeRuns } from "../shared/grid.js";
 import { FLAG_POWERED, FLAG_RUINED, FLAG_BURNING, TERRAIN_WATER, TERRAIN_ROCK } from "../engine/constants.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -363,4 +364,42 @@ test("a downpour wrecks nothing a bulldozer cannot clear", () => {
   for (let i = 0; i < state.tiles.terrain.length; i += 1) {
     assert.notEqual(state.tiles.terrain[i], TERRAIN_ROCK, "a downpour turned ground to rock");
   }
+});
+
+test("the list of ruins is exactly the ruined tiles, derived both ways", () => {
+  // X3c's whole rule rests on this pairing: `markDerelict` beside every
+  // `|= FLAG_RUINED`, `forgetClearedRuins` after every bulldoze. The deputy
+  // stopped scanning the map in the same slice, so a flag with no entry is a
+  // ruin nothing in the game can see, and an entry with no flag is a tile a
+  // neighbour could demolish twice. Derive both ways and compare (W6a).
+  //
+  // Every kind, one city, because the two writers are `fire.js` and
+  // `disasters.js` and a slice that adds a third will not be about either.
+  const state = town();
+  for (const kind of DISASTER_KINDS) {
+    for (let seed = 0; seed < 8; seed += 1) {
+      state.rng.s = (state.rng.s + 1) | 0;
+      arm(state, kind, { x: 12, y: 12, radius: 3 });
+      disasterPass(state);
+      for (let i = 0; i < 12; i += 1) apply(state, { type: CMD_TICK });
+    }
+  }
+  const flagged = [];
+  for (let i = 0; i < state.tiles.flags.length; i += 1) {
+    if ((state.tiles.flags[i] & FLAG_RUINED) !== 0) flagged.push(i);
+  }
+  assert.ok(flagged.length > 0, "nothing was wrecked, so this proves nothing");
+  assert.deepEqual(state.derelicts.map((d) => d.tile), flagged,
+    "the list and the flags disagree about which tiles are ruins");
+  for (const entry of state.derelicts) {
+    assert.ok(entry.sinceTick >= 0 && entry.sinceTick <= state.tick,
+      `a ruin's clock says ${entry.sinceTick} in a city at tick ${state.tick}`);
+  }
+
+  // And the bulldozer takes the clock with it.
+  state.players[0].treasury = 1000000;
+  apply(state, { type: CMD_BULLDOZE, actor: 1, runs: encodeRuns([flagged[0]]) });
+  assert.equal(state.tiles.flags[flagged[0]] & FLAG_RUINED, 0, "the ruin survived the bulldozer");
+  assert.deepEqual(state.derelicts.map((d) => d.tile), flagged.slice(1),
+    "a cleared ruin kept its entry, so its tile is still derelict to the rule");
 });

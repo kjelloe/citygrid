@@ -16,7 +16,7 @@ export const PROTOCOL_VERSION = 2;
  * only ever compare two identical strings. `shared/build-hash.js` holds it. */
 export { buildHash, setBuildHash } from "./build-hash.js";
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 /** Client → server. */
 export const C2S = Object.freeze({
@@ -86,6 +86,10 @@ export const RESULT = Object.freeze({
   // about what you have. Its own code, with its words in both catalogues
   // (ruling 027).
   AT_CEILING: "atCeiling",
+  // X3c: §25.4's derelict override. "That belongs to somebody else" is the
+  // wrong sentence when the ground IS somebody else's and the answer is about
+  // the clock — the ruin has not stood long enough yet.
+  NOT_DERELICT: "notDerelict",
 });
 
 /** Server-side caps. Deliberately here rather than in the server, so the

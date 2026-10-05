@@ -16,6 +16,7 @@ import { baseFireRisk } from "./civic.js";
 import {
   FLAG_BURNING, FLAG_RUINED, TERRAIN_FOREST, TERRAIN_GRASS, ZONE_NONE,
 } from "./constants.js";
+import { markDerelict } from "./requests.js";
 
 export function isBurning(state, index) {
   return (state.tiles.flags[index] & FLAG_BURNING) !== 0;
@@ -66,6 +67,8 @@ function destroy(state, index, events) {
         state.tiles.buildingId[tile] = 0;
         state.tiles.flags[tile] |= FLAG_RUINED;
         state.tiles.flags[tile] &= ~FLAG_BURNING;
+        // The flag and its clock are one fact (X3c).
+        markDerelict(state, tile);
       }
     }
     for (var i = 0; i < state.buildings.length; i += 1) {

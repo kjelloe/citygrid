@@ -257,6 +257,18 @@ is the half that can be done now and the half that is cheapest to forget once a 
 
 ## X3c — The derelict override (M) — gamedesign §25.4, found in X3a
 
+**BUILT (slice-X3c, 2026-10-05).** `state.derelicts` is the clock the analysis below said did not
+exist: five places plus a save migration (4 → 5) that starts an old save's ruins at the tick it
+loads, because nobody can prove how long they have stood. `RESULT.NOT_DERELICT` with words in both
+catalogues. The deputy reads the list instead of sweeping 4,096 tiles, and the swap was **proved
+free rather than assumed free**: six 25-year deputy cities with disasters on, byte-identical state
+hashes and identical `cleared` counts in both arms, so no sweep was voided and era 28 stands.
+`test/disasters.test.js` derives the ruins both ways and compares, which is the invariant the
+deputy's new reader rests on — and `test/deputy.test.js` had to pair its own two writes, because a
+fixture that sets `FLAG_RUINED` by hand was making state the engine never makes. Gate:
+`disaster_soak` 200 × 25, all eight kinds fired, 0 cities ended empty. Still open: X3b's half, the
+visible mark and an inbox — the client cannot reach the request channel at all yet.
+
 **Goal.** A ruin left to rot against a neighbour's park can be removed on the neighbour's request,
 against the owner's wishes, after `derelictYears`.
 

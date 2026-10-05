@@ -32,7 +32,7 @@ import {
   CMD_REQUEST_DEMOLITION, CMD_RESOLVE_REQUEST, CMD_WITHDRAW_REQUEST,
   CMD_REPORT_NUISANCE, CMD_PING,
 } from "./commands.js";
-import { TICKS_PER_MONTH } from "./constants.js";
+import { TICKS_PER_MONTH, TICKS_PER_YEAR, FLAG_RUINED } from "./constants.js";
 import { canAct, isSeat, playerAt, buildingAt } from "./permissions.js";
 import { bulldozeInto } from "./build-commands.js";
 import { begin, commit, failed, affordable } from "./transaction.js";
@@ -49,6 +49,54 @@ export var WITHDRAWN = "withdrawn";
 export var EXPIRED = "expired";
 export var MOOT = "moot";
 export var ACKNOWLEDGED = "acknowledged";
+
+/**
+ * A tile became a ruin (X3c). Called where `FLAG_RUINED` is SET — by fire and
+ * by a disaster — because the flag and the clock are one fact and two writers
+ * of one fact drift.
+ *
+ * Kept sorted by tile: canonical serialisation never depends on the order
+ * things happened (CLAUDE.md).
+ */
+export function markDerelict(state, tile) {
+  for (var i = 0; i < state.derelicts.length; i += 1) {
+    if (state.derelicts[i].tile === tile) return;
+  }
+  state.derelicts.push({ tile: tile, sinceTick: state.tick });
+  state.derelicts.sort(function byTile(a, b) { return a.tile - b.tile; });
+}
+
+/**
+ * The ruins among these tiles that are no longer ruins, after an edit (X3c).
+ *
+ * One function, two callers — `runArea`'s bulldoze and this file's own approved
+ * demolition — because the first version cleared the clock in only one of them
+ * and a ruin removed by a neighbour's request kept its entry for ever. Read
+ * from the COMMITTED flags rather than staged during the edit: a transaction
+ * that is rejected after staging must leave the list as it found it.
+ */
+export function forgetClearedRuins(state, indices) {
+  for (var i = 0; i < indices.length; i += 1) {
+    if ((state.tiles.flags[indices[i]] & FLAG_RUINED) === 0) clearDerelict(state, indices[i]);
+  }
+}
+
+/** And stopped being one: bulldozed, or built on again. */
+export function clearDerelict(state, tile) {
+  for (var i = 0; i < state.derelicts.length; i += 1) {
+    if (state.derelicts[i].tile !== tile) continue;
+    state.derelicts.splice(i, 1);
+    return;
+  }
+}
+
+/** How long this tile has been a ruin, or -1 if it is not one. */
+export function derelictSince(state, tile) {
+  for (var i = 0; i < state.derelicts.length; i += 1) {
+    if (state.derelicts[i].tile === tile) return state.derelicts[i].sinceTick;
+  }
+  return -1;
+}
 
 export function requestById(state, id) {
   for (var i = 0; i < state.requests.length; i += 1) {
@@ -171,10 +219,44 @@ register(CMD_WITHDRAW_REQUEST, function withdrawRequest(state, command) {
  * knows one purse. The owner is therefore never out of pocket for agreeing, and
  * never has to be able to afford what they are agreeing to.
  */
+/**
+ * May the REQUESTER clear this themselves? (X3c, gamedesign §25.4.)
+ *
+ * "A building abandoned for longer than a set number of years may have its
+ * demolition approved on a neighbour's request even against the owner's
+ * wishes." The one grief move ownership would otherwise make unanswerable is
+ * leaving a ruin to rot against a neighbour's park for ever.
+ *
+ * Every target tile has to qualify, and the YOUNGEST answers: a request that
+ * mixes a five-year ruin with yesterday's is a request about yesterday's.
+ */
+function derelictEnough(state, request) {
+  var indices = cellsFromRuns(state, request.runs, LIMITS.CELLS_PER_COMMAND);
+  if (!indices || indices.length === 0) return false;
+  var needed = state.options.derelictYears * TICKS_PER_YEAR;
+  for (var i = 0; i < indices.length; i += 1) {
+    var since = derelictSince(state, indices[i]);
+    if (since < 0) return false;
+    if (state.tick - since < needed) return false;
+  }
+  return true;
+}
+
 register(CMD_RESOLVE_REQUEST, function resolveRequest(state, command) {
   var request = requestById(state, command.id);
   if (!request || request.status !== PENDING) return fail(RESULT.INVALID);
-  if (request.to !== command.actor) return fail(RESULT.NOT_OWNER);
+  // The derelict override: the one case where somebody other than the owner may
+  // answer. Checked before the ownership refusal, and refused with the CLOCK's
+  // reason rather than the ground's when the ruin is too young — "that belongs
+  // to somebody else" tells a player to give up on ground they are entitled to.
+  if (request.to !== command.actor) {
+    if (request.from !== command.actor || request.kind !== REQUEST_DEMOLITION) {
+      return fail(RESULT.NOT_OWNER);
+    }
+    if (!derelictEnough(state, request)) {
+      return fail(anyDerelict(state, request) ? RESULT.NOT_DERELICT : RESULT.NOT_OWNER);
+    }
+  }
 
   // A nuisance report has no second answer: acknowledging it is all the channel
   // can do, which is the design's point — a civil outlet, not a lever (§25.4).
@@ -202,6 +284,7 @@ register(CMD_RESOLVE_REQUEST, function resolveRequest(state, command) {
   var done = commit(tx);
   if (done.result !== RESULT.OK) return fail(done.result);
 
+  forgetClearedRuins(state, indices);
   playerAt(state, request.from).treasury -= bill;
   playerAt(state, request.to).treasury += request.offer;
   request.status = APPROVED;
@@ -210,6 +293,18 @@ register(CMD_RESOLVE_REQUEST, function resolveRequest(state, command) {
     { kind: "built", actor: request.to, tiles: done.tiles, cost: bill },
   ]);
 });
+
+/** Is any of this request's ground a ruin at all? The difference between "not
+ * yet" and "that is not yours", which is the difference between waiting and
+ * giving up. */
+function anyDerelict(state, request) {
+  var indices = cellsFromRuns(state, request.runs, LIMITS.CELLS_PER_COMMAND);
+  if (!indices) return false;
+  for (var i = 0; i < indices.length; i += 1) {
+    if (derelictSince(state, indices[i]) >= 0) return true;
+  }
+  return false;
+}
 
 /** A camera gesture, not a change. It is a command so that it crosses the wire
  * in the same order as everything else — "look at this" arriving before the

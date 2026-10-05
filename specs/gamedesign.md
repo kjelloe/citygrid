@@ -1716,9 +1716,18 @@ A **nuisance report** uses the same channel for pollution, noise and congestion 
 
 *As built — X3a, 2026-10-04.* One record with two kinds: a nuisance report shares the inbox, the
 per-pair cap and the clock with a demolition request, and differs in exactly one way — it cannot be
-approved, only acknowledged. The **derelict override** below is NOT built: a ruin is a tile flag
-whose building is already gone, so nothing in the engine records when it became one, and the clock
-§25.4 asks for is new hashed state (X3c in `workitems-multiplayer.md`).
+approved, only acknowledged.
+
+*As built — X3c, 2026-10-05.* The **derelict override** is built in the reducer. A ruin is a tile
+flag whose building is already gone, so nothing recorded when it became one; `state.derelicts`
+(`[{ tile, sinceTick }]`, sorted by tile) is that clock, written beside every `FLAG_RUINED` and
+cleared by the bulldozer. The requester may approve their own demolition request once **every**
+target tile has stood derelict for `derelictYears` — the youngest tile answers — and the refusal in
+between is its own code, `notDerelict`, because the ground is not the reason, the clock is. The
+owner keeps every answer they had before: this is an extra door, not a replacement. The deputy
+reads the list instead of scanning the map for ruins (six cities, byte-identical hashes in both
+arms, so era 28 stands). "Derelict buildings are visibly marked" is the renderer's half and is
+**not** built — it is X3b, with the inbox, which the client does not have at all yet.
 
 A **derelict property rule** prevents the one grief move that ownership would otherwise make unanswerable — leaving a ruin to rot against a neighbour's park forever. A building abandoned for longer than a set number of years may have its demolition approved on a neighbour's request even against the owner's wishes. Derelict buildings are visibly marked.
 

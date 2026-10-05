@@ -229,6 +229,8 @@ test("the options the project declares and nothing reads are exactly these (Q148
   // Ten options are declared in `engine/options.js` — most of them Wave 5's
   // contract, §3.3's regency and abandonment rules, the season length, the
   // lobby's chat and privacy switches — and **no code anywhere reads them**.
+  // Nine since X3c, which is this test going red in the good direction:
+  // `derelictYears` is the override's clock and `engine/requests.js` reads it.
   // Declaring ahead of the mechanics is reasonable; leaving it unwritten is how
   // `setRules` sat with no caller for the life of the project, because a number
   // nothing reads is indistinguishable from a number that STOPPED being read.
@@ -250,7 +252,7 @@ test("the options the project declares and nothing reads are exactly these (Q148
     .map((f) => stripCommentsAndStrings(f.source));
   const unread = OPTION_FIELDS.filter((name) => !files.some((src) => new RegExp(`\\b${name}\\b`).test(src)));
   assert.deepEqual(unread.sort(), [
-    "abandonYears", "absenceYears", "chatEnabled", "derelictYears", "disasterAid",
+    "abandonYears", "absenceYears", "chatEnabled", "disasterAid",
     "lateJoin", "mutualAid", "privacy", "seasonYears", "splitRule",
   ], "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
 });

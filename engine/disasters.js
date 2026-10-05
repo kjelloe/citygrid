@@ -29,6 +29,7 @@ import {
   FLAG_POWERED, FLAG_WATERED, FLAG_RUINED,
   TERRAIN_FOREST, ZONE_NONE, ZONE_INDUSTRIAL,
 } from "./constants.js";
+import { markDerelict } from "./requests.js";
 
 export var DISASTER_NONE = 0;
 export var DISASTER_WILDFIRE = 1;
@@ -168,6 +169,7 @@ function wreck(state, index, events) {
         var t = tileAt(state.width, b.x + dx, b.y + dy);
         state.tiles.buildingId[t] = 0;
         state.tiles.flags[t] |= FLAG_RUINED;
+        markDerelict(state, t);
       }
     }
     state.buildings.splice(i, 1);

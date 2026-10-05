@@ -82,6 +82,11 @@ Obey the non-negotiables in `CLAUDE.md`. The ones most often forgotten:
   misses, so an untranslated string ships as a literal `alert.congestion`.
 - **New nested state touches five places**: `copyState` deep copy, both hash functions, the save
   migration, the snapshot projection, the lobby options record.
+- **New state that SHADOWS a flag or a tile layer** (X3c's ruin clock) needs more than the five:
+  grep every `|=` and `&= ~` of that bit, give the clearing side exactly ONE function and call it
+  from every commit path — `resolveRequest` runs its own transaction and does not pass through
+  `runArea` — and pin "the shadow is exactly the flag" as a test derived both ways. Tests that set
+  the flag by hand are now writing state the engine never makes, and go red first.
 - Numbers go in `data/*.json`, never in engine code.
 - Drag input coalesces into one run-length-encoded command.
 

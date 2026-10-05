@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "L1 (A130): a player record carries a debt, so every hash that contains a seat moves. No behaviour in these fixtures changed — nothing in them borrows — and the two-player fixture's steps are the same steps",
+ "why": "X3c: state.derelicts is new hashed state — every fixture hash is taken over a longer field list",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Mayor"
    },
    "result": "ok",
-   "hash": "4de74293a2e6f8e7",
+   "hash": "045f711434ec7667",
    "events": [
     "seatJoined"
    ]
@@ -49,7 +49,7 @@
     ]
    },
    "result": "ok",
-   "hash": "1e4bef86edd09248",
+   "hash": "c4750a2f1514a238",
    "events": [
     "built"
    ]
@@ -64,7 +64,7 @@
     ]
    },
    "result": "ok",
-   "hash": "36dbc594f8f0dc9d",
+   "hash": "33be35f58c7b9dbd",
    "events": [
     "built"
    ]
@@ -84,7 +84,7 @@
     ]
    },
    "result": "ok",
-   "hash": "2bf869d89923c612",
+   "hash": "b5bbcaafc38ff082",
    "events": [
     "zoned"
    ]
@@ -104,7 +104,7 @@
     ]
    },
    "result": "ok",
-   "hash": "314006235af0335f",
+   "hash": "cd6b6eeceb464fdf",
    "events": [
     "zoned"
    ]
@@ -122,7 +122,7 @@
     ]
    },
    "result": "ok",
-   "hash": "45eeaa4ee29959dd",
+   "hash": "3d007d54bdfc127d",
    "events": [
     "zoned"
    ]
@@ -136,7 +136,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "68f9c41641e749c7",
+   "hash": "c30ce7396e3342e7",
    "events": [
     "placed"
    ]
@@ -150,7 +150,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "12a5477f2d5d9a97",
+   "hash": "7396fb6872798b27",
    "events": [
     "placed"
    ]
@@ -187,7 +187,7 @@
     ]
    },
    "result": "ok",
-   "hash": "41ee2441c9f8a491",
+   "hash": "b1c8602e6a18af11",
    "events": [
     "built"
    ]
@@ -224,7 +224,7 @@
     ]
    },
    "result": "ok",
-   "hash": "bb7ec2d948fa78c6",
+   "hash": "af043092a5129e36",
    "events": [
     "built"
    ]
@@ -236,7 +236,7 @@
     "rate": 9
    },
    "result": "ok",
-   "hash": "737889304dcf9fd0",
+   "hash": "8b83c38edf1dfba0",
    "events": [
     "taxSet"
    ]
@@ -247,7 +247,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "7706c97a620d2a69",
+   "hash": "32457c642a7f7809",
    "events": [
     "budget",
     "highCrime",
@@ -260,7 +260,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "4b2dadee27a81ca3",
+   "hash": "ffc64f0e84c5f3d3",
    "events": [
     "budget",
     "developed",
@@ -275,7 +275,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "2d445ccd1809c972",
+   "hash": "f11f184a8ee29b02",
    "events": [
     "abandoned",
     "budget",
@@ -289,7 +289,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "d35742c760b33cd1",
+   "hash": "5f24ad5cce9a98c4",
    "events": [
     "abandoned",
     "budget",
@@ -302,6 +302,6 @@
    ]
   }
  ],
- "era": 27,
+ "era": 28,
  "repinnedAt": "2026-10-05"
 }

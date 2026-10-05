@@ -16,7 +16,8 @@ import { toSave, fromSave, encodeLayer, decodeLayer, saveSize, registerMigration
 import { SAVE_VERSION } from "../shared/protocol.js";
 import { CMD_JOIN, CMD_TICK, CMD_PLACE_ROAD, CMD_PAINT_ZONE, CMD_PLACE_WIRE, CMD_PLACE_PIPE, CMD_PLACE_BUILDING } from "../engine/commands.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
-import { ZONE_RESIDENTIAL } from "../engine/constants.js";
+import { ZONE_RESIDENTIAL, FLAG_RUINED } from "../engine/constants.js";
+import { markDerelict, derelictSince } from "../engine/requests.js";
 import { u8 } from "../shared/arrays.js";
 
 function livedInCity() {
@@ -189,5 +190,38 @@ test("a save from before the rail layer loads, and loses only its checksum", () 
   for (const value of loaded.state.tiles.rail) assert.equal(value, 0, "rail appeared from nowhere");
   // And the version it came back as is this build's, so it is saved with a
   // checksum from here on.
+  assert.equal(toSave(loaded.state).v, SAVE_VERSION);
+});
+
+test("the ruins and their clocks round-trip", () => {
+  // X3c put a list in state, so the save has a fifth shape to carry.
+  const state = livedInCity();
+  state.tiles.flags[tileAt(32, 6, 9)] |= FLAG_RUINED;
+  markDerelict(state, tileAt(32, 6, 9));
+  state.tiles.flags[tileAt(32, 7, 9)] |= FLAG_RUINED;
+  markDerelict(state, tileAt(32, 7, 9));
+
+  const loaded = fromSave(toSave(state));
+  assert.equal(loaded.ok, true, loaded.reason);
+  assert.deepEqual(loaded.state.derelicts, state.derelicts);
+  assert.equal(loaded.hash, hashState(state), "the clocks are not in the hash");
+});
+
+test("a save from before the derelict clock starts its ruins at the tick it loads", () => {
+  // The honest default (X3c): a version-4 save has ruins and no record of how
+  // long they have stood, so a neighbour waits the full `derelictYears` from
+  // here rather than inheriting a right nobody can prove.
+  const state = livedInCity();
+  const index = tileAt(32, 8, 9);
+  state.tiles.flags[index] |= FLAG_RUINED;
+  const save = toSave(state);
+  const old = { ...save, v: 4, hash: "a-digest-from-a-build-without-the-clock" };
+  delete old.derelicts;
+
+  const loaded = fromSave(old);
+  assert.equal(loaded.ok, true, loaded.reason);
+  assert.deepEqual(loaded.state.derelicts, [{ tile: index, sinceTick: loaded.state.tick }]);
+  assert.equal(derelictSince(loaded.state, index), loaded.state.tick,
+    "a migrated ruin has no clock, so it could never be cleared by a neighbour");
   assert.equal(toSave(loaded.state).v, SAVE_VERSION);
 });

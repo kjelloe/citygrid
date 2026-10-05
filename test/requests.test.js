@@ -19,7 +19,7 @@ import { createState, copyState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import {
-  TICKS_PER_MONTH, MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS,
+  TICKS_PER_MONTH, TICKS_PER_YEAR, MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS,
 } from "../engine/constants.js";
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
@@ -28,7 +28,7 @@ import {
   CMD_REQUEST_DEMOLITION, CMD_RESOLVE_REQUEST, CMD_WITHDRAW_REQUEST,
   CMD_REPORT_NUISANCE, CMD_PING,
 } from "../engine/commands.js";
-import { requestById, REQUEST_DEMOLITION, REQUEST_NUISANCE, PENDING, APPROVED, DECLINED, WITHDRAWN, EXPIRED, MOOT, ACKNOWLEDGED } from "../engine/requests.js";
+import { requestById, markDerelict, REQUEST_DEMOLITION, REQUEST_NUISANCE, PENDING, APPROVED, DECLINED, WITHDRAWN, EXPIRED, MOOT, ACKNOWLEDGED } from "../engine/requests.js";
 import { price } from "../engine/build-commands.js";
 import "../engine/build-commands.js";
 import "../engine/requests.js";
@@ -289,4 +289,119 @@ test("a request names a record that exists, or it is invalid", () => {
   assert.equal(apply(state, { type: CMD_RESOLVE_REQUEST, actor: 2, id: 99, approve: true }).result,
     RESULT.INVALID);
   assert.equal(apply(state, { type: CMD_WITHDRAW_REQUEST, actor: 1, id: 99 }).result, RESULT.INVALID);
+});
+
+// --- the derelict override (X3c, gamedesign §25.4) ---------------------------
+//
+// "A building abandoned for longer than a set number of years may have its
+// demolition approved on a neighbour's request even against the owner's
+// wishes." X3a could not build it: a ruin is a tile FLAG whose building is
+// already gone, so nothing in the engine recorded when it became one. The clock
+// is `state.derelicts` — the same shape `requests` and `contracts` have, sparse
+// because ruins are rare, and sorted by tile so canonical order never depends on
+// the order things burned down.
+
+const RUINED = 8;
+const years = (n) => n * TICKS_PER_YEAR;
+
+/** A ruin on somebody else's ground, as the engine makes one. */
+function ruin(state, index, seat = 2) {
+  state.tiles.owner[index] = seat;
+  state.tiles.flags[index] |= RUINED;
+  markDerelict(state, index);
+}
+
+test("a ruin starts a clock, and bulldozing it stops one", () => {
+  const { state } = world();
+  const index = at(6, 6);
+  ruin(state, index);
+  assert.equal(state.derelicts.length, 1);
+  assert.equal(state.derelicts[0].tile, index);
+  assert.equal(state.derelicts[0].sinceTick, state.tick);
+
+  // The owner clears their own ruin: the entry goes with it.
+  apply(state, { type: CMD_BULLDOZE, actor: 2, runs: encodeRuns([index]) });
+  assert.equal(state.derelicts.length, 0, "a cleared ruin kept its clock");
+});
+
+test("the list is sorted by tile, whatever order things burned in", () => {
+  // Canonical order never depends on the order things happened (CLAUDE.md).
+  const { state } = world();
+  for (const index of [at(9, 9), at(3, 3), at(6, 6)]) ruin(state, index);
+  assert.deepEqual(state.derelicts.map((d) => d.tile),
+    [at(3, 3), at(6, 6), at(9, 9)]);
+});
+
+test("a neighbour cannot force a demolition before the clock runs out", () => {
+  const { state } = world();
+  const index = at(6, 6);
+  ruin(state, index);
+  apply(state, asking(1, [index]));
+  const id = state.requests[0].id;
+
+  // Seat one asking seat one: the requester approving their own request, which
+  // only the derelict rule allows.
+  const early = apply(state, { type: CMD_RESOLVE_REQUEST, actor: 1, id, approve: true });
+  assert.equal(early.result, RESULT.NOT_DERELICT,
+    "a four-year-old ruin was cleared over its owner's head");
+  assert.equal(state.requests[0].status, PENDING);
+});
+
+test("and can once it has stood for derelictYears", () => {
+  const { state } = world();
+  const index = at(6, 6);
+  ruin(state, index);
+  apply(state, asking(1, [index]));
+  const id = state.requests[0].id;
+
+  state.tick += years(state.options.derelictYears);
+  const out = apply(state, { type: CMD_RESOLVE_REQUEST, actor: 1, id, approve: true });
+  assert.equal(out.result, RESULT.OK, "a five-year ruin could not be cleared by the neighbour");
+  assert.equal(state.requests[0].status, APPROVED);
+  assert.equal(state.tiles.flags[index] & RUINED, 0, "the ruin is still standing");
+  assert.equal(state.derelicts.length, 0, "the clock outlived the ruin");
+});
+
+test("the owner's own answer is unchanged by any of it", () => {
+  const { state } = world();
+  const index = at(6, 6);
+  ruin(state, index);
+  apply(state, asking(1, [index]));
+  const id = state.requests[0].id;
+  // No waiting: the owner may always decline, and always approve.
+  assert.equal(apply(state, { type: CMD_RESOLVE_REQUEST, actor: 2, id, approve: false }).result,
+    RESULT.OK);
+  assert.equal(state.requests[0].status, DECLINED);
+});
+
+test("one young ruin in the request is enough to refuse it", () => {
+  // Two tiles, one old and one new: the neighbour's override is about ground
+  // that has been dead long enough, so the youngest tile answers.
+  const { state } = world();
+  const old = at(6, 6);
+  const young = at(7, 6);
+  ruin(state, old);
+  state.tick += years(state.options.derelictYears);
+  ruin(state, young);
+  apply(state, asking(1, [old, young]));
+  const id = state.requests[0].id;
+  assert.equal(apply(state, { type: CMD_RESOLVE_REQUEST, actor: 1, id, approve: true }).result,
+    RESULT.NOT_DERELICT);
+});
+
+test("a request on ground that is not derelict at all is still the owner's", () => {
+  const { state, theirs } = world();
+  apply(state, asking(1, theirs));
+  const id = state.requests[0].id;
+  assert.equal(apply(state, { type: CMD_RESOLVE_REQUEST, actor: 1, id, approve: true }).result,
+    RESULT.NOT_OWNER, "a standing building was cleared by the neighbour who asked about it");
+});
+
+test("the derelict list survives a copy, a hash and a save", () => {
+  const { state } = world();
+  ruin(state, at(6, 6));
+  assert.equal(hashState(copyState(state)), hashState(state));
+  const other = copyState(state);
+  other.derelicts[0].sinceTick += 1;
+  assert.notEqual(hashState(other), hashState(state), "the hash cannot see the clock");
 });

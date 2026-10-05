@@ -91,6 +91,7 @@ const HASHED_FIELDS = [
   "population",
   "quests",
   "requests",
+  "derelicts",
   "rng",
   "scanCursor",
   "tax",

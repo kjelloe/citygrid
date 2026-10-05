@@ -11410,3 +11410,60 @@ lane, with its own era and a null arm — not a renderer slice, which is what S1
 
 An hour of measurement, no code shipped, two levers eliminated. The alternative was a renderer
 change that re-baselines four gates and does not fix the thing it was aimed at.
+
+## X3c — the derelict override: the clock that did not exist (2026-10-05)
+
+§25.4 has asked since the design was written that "a building abandoned for longer than a set
+number of years may have its demolition approved on a neighbour's request". X3a could not build it
+and said so: a ruin is a **tile flag whose building record is already gone**, so the engine knew a
+tile was a ruin and nothing anywhere knew when it became one. `derelictYears` had been declared in
+`engine/options.js` and read by nothing for the life of the project — it was on
+`test/omissions.test.js`'s pinned list of ten such options, and that list is nine now, which is this
+test going red in the good direction.
+
+**The clock.** `state.derelicts: [{ tile, sinceTick }]`, sorted by tile — the shape `requests` and
+`contracts` already have. A `since` tile layer was the obvious alternative and was rejected: 32 KB
+at 128² before compression, a new `TILE_LAYERS` entry in the RLE save and the patch, for a few dozen
+tiles. New nested state, so the five places (`createState`, `copyState`, `writeState`,
+`HASHED_FIELDS`, the save) and `SAVE_VERSION` 4 → 5.
+
+**One function, two callers.** The first cut cleared the clock in `runArea` after a successful
+bulldoze and the derelict-approved demolition kept its entry for ever, because `resolveRequest`
+runs its own transaction and never passes through `runArea`. `forgetClearedRuins(state, indices)`
+is now the one place that reads the committed flags and forgets what is no longer a ruin, and both
+paths call it. The test that caught it is the one that asserts the list is empty afterwards, not the
+one that asserts the ruin is gone.
+
+**The migration is a policy, not a copy.** A version-4 save has ruins and no record of their age.
+The honest default is the tick it loads at: a neighbour waits the full `derelictYears` from here
+rather than inheriting a right nobody can prove. The 4 → 5 migration leaves the list empty and
+`fromSave` fills it from the tile flags **after** the layers are decoded, so the rule lives in one
+place. `test/save.test.js` pins both halves.
+
+**Measured: the deputy's new reader is free.** B1a's `clearRuins` swept all 4,096 tiles for
+`FLAG_RUINED`; it reads `state.derelicts` now. A change to what the deputy decides voids every
+sweep number in the project (CLAUDE.md), so this one was proved rather than argued: six 25-year
+deputy cities, disasters on, seeds 1001–1006, with the list-reader and with the scan.
+
+| seed | 1001 | 1002 | 1003 | 1004 | 1005 | 1006 |
+| --- | --- | --- | --- | --- | --- | --- |
+| hash | identical | identical | identical | identical | identical | identical |
+| ruins cleared | 48 | 0 | 4 | 1 | 0 | 35 |
+
+Byte-identical in both arms, because the list is sorted by tile and the scan visited tiles in that
+same order. **Era 28 stands; no sweep was re-run and none was voided.** The invariant the swap rests
+on — the list is exactly the ruined tiles — is now its own test, derived both ways and compared,
+over all eight disaster kinds in one city.
+
+**What went red on the way.** `test/deputy.test.js`'s B1a test burned six lots by writing
+`FLAG_RUINED` directly and the deputy no longer saw any of them: a fixture making state the engine
+never makes. It pairs its two writes now, with a comment saying why. Three fixtures re-pinned
+through `/fixture-repin` (every hash moved — a longer hashed field list), `client/precache.json`
+regenerated.
+
+**Gate:** `disaster_soak` 200 × 25 — 421 strikes, all eight kinds, 0 cities ended empty, median
+final population 1,594. Suite 1,788 green twice.
+
+Not built, and X3b's: the visible mark on a derelict building, and an inbox — the client has no
+reader for the request channel at all, so nothing on screen can yet ask for a demolition or answer
+one.

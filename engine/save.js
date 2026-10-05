@@ -10,7 +10,7 @@
 import { SAVE_VERSION } from "../shared/protocol.js";
 import { createState, TILE_LAYERS, hashState, copyState } from "./state.js";
 import { copyOptions, defaultOptions, OPTION_FIELDS } from "./options.js";
-import { HISTORY_FIELDS, FUNDING_SERVICES } from "./constants.js";
+import { HISTORY_FIELDS, FUNDING_SERVICES, FLAG_RUINED } from "./constants.js";
 
 /** [value, count, value, count, ...] */
 export function encodeLayer(array) {
@@ -89,6 +89,7 @@ export function toSave(state) {
     buildings: copy.buildings,
     requests: copy.requests,
     contracts: copy.contracts,
+    derelicts: copy.derelicts,
     tiles: tiles,
     // The hash the save believed in when it was written. On load it is
     // recomputed and compared: a mismatch means the file was edited, or a
@@ -182,6 +183,26 @@ registerMigration(3, function playerDebt(data) {
   return out;
 });
 
+/**
+ * 4 → 5: X3c gave the city a list of its ruins and when each became one.
+ *
+ * A save from version 4 has ruins on its tiles and no record of their age, and
+ * the honest default is the tick the save is loaded at: nobody can prove how
+ * long they have stood, and starting their clock now means a neighbour waits
+ * the full `derelictYears` rather than inheriting a right they were never given.
+ * The list is left EMPTY here and filled by `fromSave` from the tile flags, so
+ * the rule lives in one place.
+ */
+registerMigration(4, function derelictClock(data) {
+  var out = {};
+  for (var key in data) {
+    if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
+  }
+  out.derelicts = [];
+  out.v = 5;
+  return out;
+});
+
 export function migrate(data) {
   var working = data;
   var guard = 0;
@@ -265,6 +286,7 @@ export function fromSave(data) {
   state.players = save.players;
   state.buildings = save.buildings;
   state.requests = save.requests;
+  state.derelicts = save.derelicts;
   state.contracts = save.contracts;
 
   for (var i = 0; i < TILE_LAYERS.length; i += 1) {
@@ -274,6 +296,18 @@ export function fromSave(data) {
     var filled = decodeLayer(runs, state.tiles[name]);
     if (filled !== state.tiles[name].length) {
       return { ok: false, reason: "layer " + name + " is the wrong size" };
+    }
+  }
+
+  // Every ruin the save did not account for starts its clock now (X3c). A
+  // version-5 save lists them, so this only ever fires for a migrated one —
+  // which is where the 4 -> 5 note says the rule lives, because the list has to
+  // be filled AFTER the tile layers are decoded.
+  if (state.derelicts.length === 0) {
+    for (var r = 0; r < state.tiles.flags.length; r += 1) {
+      if ((state.tiles.flags[r] & FLAG_RUINED) !== 0) {
+        state.derelicts.push({ tile: r, sinceTick: state.tick });
+      }
     }
   }
 

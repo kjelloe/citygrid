@@ -14,6 +14,7 @@ import { buildCost } from "./rules.js";
 import { isWater } from "./terrain.js";
 import { TERRAIN_FOREST, TERRAIN_GRASS, OWNER_NATURE, OWNER_COMMONS, FLAG_RUINED } from "./constants.js";
 import { isIntArray } from "./validate.js";
+import { forgetClearedRuins } from "./requests.js";
 
 /** Undo is one deep, per player, and only for their own last action. Deeper
  * undo would need the whole world's history, and in a shared region another
@@ -40,6 +41,10 @@ function runArea(state, command, body) {
   if (failed(tx)) return fail(tx.result);
   var outcome = commit(tx);
   if (outcome.result !== RESULT.OK) return fail(outcome.result);
+  // A cleared ruin loses its clock (X3c) — read from the committed tiles rather
+  // than staged during the edit, because a transaction that is rejected after
+  // staging must leave the list exactly as it found it.
+  forgetClearedRuins(state, indices);
   LAST[command.actor] = outcome.undo;
   return ok([{ kind: "built", actor: command.actor, tiles: outcome.tiles, cost: outcome.cost }]);
 }

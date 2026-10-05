@@ -107,6 +107,12 @@ export function createState(options) {
     buildings: [],
     requests: [],
     contracts: [],
+    // When each ruin became one (X3c, gamedesign §25.4). A ruin is a tile FLAG
+    // whose building is already gone, so nothing recorded its age and §25.4's
+    // derelict rule could not be written. Sparse — ruins are rare — and kept
+    // SORTED BY TILE, so canonical order never depends on the order things
+    // burned down.
+    derelicts: [],
     nextId: 1,
     scanCursor: 0,
     treasury: options.startingTreasury,
@@ -170,6 +176,7 @@ export function copyState(state) {
     buildings: copyBuildings(state.buildings),
     requests: copyRequests(state.requests),
     contracts: copyContracts(state.contracts),
+    derelicts: copyDerelicts(state.derelicts),
     nextId: state.nextId,
     scanCursor: state.scanCursor,
     treasury: state.treasury,
@@ -320,6 +327,14 @@ export function copyRequests(requests) {
   return out;
 }
 
+export function copyDerelicts(derelicts) {
+  var out = [];
+  for (var i = 0; i < derelicts.length; i += 1) {
+    out.push({ tile: derelicts[i].tile, sinceTick: derelicts[i].sinceTick });
+  }
+  return out;
+}
+
 export function copyContracts(contracts) {
   var out = [];
   for (var i = 0; i < contracts.length; i += 1) {
@@ -453,6 +468,12 @@ export function writeState(sink, state) {
     writeI64(sink, request.createdTick);
     writeI64(sink, request.expiresTick);
     writeString(sink, request.status);
+  }
+
+  writeI32(sink, state.derelicts.length);
+  for (var d = 0; d < state.derelicts.length; d += 1) {
+    writeI32(sink, state.derelicts[d].tile);
+    writeI64(sink, state.derelicts[d].sinceTick);
   }
 
   writeI32(sink, state.contracts.length);

@@ -13,6 +13,7 @@ import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { makeDeputy, deputyTurn, deputyRoll } from "../engine/deputy.js";
+import { markDerelict } from "../engine/requests.js";
 import { nextInt } from "../shared/prng.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR, TICKS_PER_MONTH, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED, TERRAIN_WATER, TERRAIN_SHALLOW } from "../engine/constants.js";
@@ -147,6 +148,10 @@ test("the deputy clears burnt ground inside its town, and zones it again", () =>
     if (state.tiles.owner[i] !== 1) continue;
     state.tiles.buildingId[i] = 0;
     state.tiles.flags[i] |= FLAG_RUINED;
+    // The flag alone is not a ruin since X3c: the deputy reads `state.derelicts`
+    // and a tile the engine never put there is a tile nobody can see. Fire and
+    // the disasters pair the two writes, so a fixture has to as well.
+    markDerelict(state, i);
     ruined.push(i);
     if (ruined.length === 6) break;
   }

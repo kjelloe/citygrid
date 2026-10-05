@@ -28,7 +28,7 @@ import { idiv, clamp } from "../shared/idiv.js";
 import { mix32 } from "../shared/prng.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, OWNER_NATURE,
-  FLAG_POWERED, FLAG_WATERED, FLAG_RUINED, TERRAIN_ROCK,
+  FLAG_POWERED, FLAG_WATERED, TERRAIN_ROCK,
 } from "./constants.js";
 
 export var DOCTRINE_EXPAND = "expand";
@@ -671,13 +671,19 @@ function keepTidy(state, deputy) {
  * clears the ZONE — it is one command for "give me back the bare ground" — so
  * the zoning goes back on in the same turn, or the deputy tidies its town into
  * a field.
+ *
+ * Reads `state.derelicts` since X3c rather than sweeping 16,384 tiles. The list
+ * is kept sorted by tile and holds exactly the ruins, which is why the swap
+ * cannot move a single deputy decision — the scan visited the same tiles in the
+ * same order. `test/disasters.test.js` derives both ways and compares, because
+ * a reuse nobody checks is a reuse that hides its mistakes (W6a).
  */
 function clearRuins(state, deputy, town) {
   var reach = reachOf(deputy);
   var ruined = [];
   var zones = [];
-  for (var i = 0; i < state.width * state.height; i += 1) {
-    if ((state.tiles.flags[i] & FLAG_RUINED) === 0) continue;
+  for (var d = 0; d < state.derelicts.length; d += 1) {
+    var i = state.derelicts[d].tile;
     var owner = state.tiles.owner[i];
     if (owner !== deputy.seat && owner !== OWNER_NATURE) continue;
     if (town.lots > 0 && (town.dist[i] < 0 || town.dist[i] > reach)) continue;

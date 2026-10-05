@@ -1,6 +1,6 @@
 {
  "name": "empty",
- "why": "L1 (A130): a player record carries a debt, so every hash that contains a seat moves. No behaviour in these fixtures changed — nothing in them borrows — and the two-player fixture's steps are the same steps",
+ "why": "X3c: state.derelicts is new hashed state — every fixture hash is taken over a longer field list",
  "generate": false,
  "options": {
   "seed": 1,
@@ -25,7 +25,7 @@
    },
    "repeat": 1,
    "result": "ok",
-   "hash": "5b9eb29497941951",
+   "hash": "99749e2d113ed2e1",
    "events": []
   },
   {
@@ -34,7 +34,7 @@
    },
    "repeat": 11,
    "result": "ok",
-   "hash": "c616df0b7e1a894e",
+   "hash": "a231d5e3fb52cd2e",
    "events": [
     "budget"
    ]
@@ -45,7 +45,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "5cf94e9e4bc2a1ba",
+   "hash": "0c38e69e4dcd525a",
    "events": [
     "budget"
    ]
@@ -56,12 +56,12 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "079e10d421fb6885",
+   "hash": "d49927799532bf55",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 27,
+ "era": 28,
  "repinnedAt": "2026-10-05"
 }

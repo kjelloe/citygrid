@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "L1 (A130): a player record carries a debt, so every hash that contains a seat moves. No behaviour in these fixtures changed — nothing in them borrows — and the two-player fixture's steps are the same steps",
+ "why": "X3c: state.derelicts is new hashed state — every fixture hash is taken over a longer field list",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Ada"
    },
    "result": "ok",
-   "hash": "e14159bbdcb2629f",
+   "hash": "b97535613cdae48f",
    "events": [
     "seatJoined"
    ]
@@ -47,7 +47,7 @@
     "name": "Bo"
    },
    "result": "ok",
-   "hash": "fc51a7dcb33f3ccf",
+   "hash": "3b77ee13350249ff",
    "events": [
     "seatJoined"
    ]
@@ -62,7 +62,7 @@
     ]
    },
    "result": "ok",
-   "hash": "482d95e62d79e938",
+   "hash": "9d50dddf1cbf9158",
    "events": [
     "built"
    ]
@@ -77,7 +77,7 @@
     ]
    },
    "result": "ok",
-   "hash": "651a82484d72465b",
+   "hash": "336bddc0e197e00b",
    "events": [
     "built"
    ]
@@ -93,7 +93,7 @@
     ]
    },
    "result": "ok",
-   "hash": "8683b4c5b06af03b",
+   "hash": "7248ecdbb2fbf22b",
    "events": [
     "zoned"
    ]
@@ -109,7 +109,7 @@
     ]
    },
    "result": "ok",
-   "hash": "f8b0e8b46d11bfef",
+   "hash": "a6b4428b9dfb339f",
    "events": [
     "zoned"
    ]
@@ -124,7 +124,7 @@
     ]
    },
    "result": "ok",
-   "hash": "12cb227d276c62bc",
+   "hash": "481069f2cbc2c71c",
    "events": [
     "built"
    ]
@@ -139,7 +139,7 @@
     ]
    },
    "result": "notOwner",
-   "hash": "12cb227d276c62bc",
+   "hash": "481069f2cbc2c71c",
    "events": []
   },
   {
@@ -155,7 +155,7 @@
     "offer": 250
    },
    "result": "ok",
-   "hash": "3988c334b921db9c",
+   "hash": "dc0cd3d0dd7c337c",
    "events": [
     "requestFiled"
    ]
@@ -168,7 +168,7 @@
     "approve": true
    },
    "result": "ok",
-   "hash": "a67e64bf49e88c17",
+   "hash": "c46cf5eb633f6a67",
    "events": [
     "built",
     "requestResolved"
@@ -181,7 +181,7 @@
     "rate": 8
    },
    "result": "ok",
-   "hash": "32f5a48788233516",
+   "hash": "01c4899640b26b96",
    "events": [
     "taxSet"
    ]
@@ -192,7 +192,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "5c181f3d4808a122",
+   "hash": "a12d67bc1e2cd012",
    "events": [
     "budget"
    ]
@@ -203,12 +203,12 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "4f276edc6c56388c",
+   "hash": "d55fa45786c1661c",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 27,
+ "era": 28,
  "repinnedAt": "2026-10-05"
 }
