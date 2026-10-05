@@ -9,7 +9,6 @@
 
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
-import { surveyTerrain } from "../engine/terrain.js";
 
 const WATERS = ["none", "lakes", "river", "coastal", "archipelago"];
 const STYLES = ["flat", "rolling", "hilly"];

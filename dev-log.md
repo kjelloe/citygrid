@@ -11791,3 +11791,37 @@ converted three other tools away from. Filed as S20c: stand it beside the line, 
 `street_shots` stands on a pavement.
 
 Suite 1,823 green twice.
+
+## S20c — the mover gates stand beside what they photograph (2026-10-06)
+
+S17 gave a carriage a body, two bogies and a window band, and a moored boat a mast and a furled
+sail. Neither gate could show any of it: `rail_shots` and `harbour_shots` photograph from the city
+camera, whose span floors at 8 — a seven-metre hull is then a few pixels, and the train frame proves
+`posed: 1` and nothing else.
+
+Both gates keep every frame they had and gain a close one, aimed the way S20 aims:
+
+- **`reports/smoke-T3-train-close.png`.** A moving thing has to be FOUND before it can be
+  photographed, so this is two passes: the first asks the page where the carriages ended up after
+  the same 340 frames, the second stands beside the line there with the photo camera. Deterministic
+  — same seed, same frames, same pose — and the direction to stand off in comes from the rail
+  corridor's own geometry in node.
+- **`reports/smoke-T4-berth.png`.** No probe pass needed: `client/life/boats.js` is a life module, so
+  node can create it and ask it to `pose()` into a recording stand-in for the pools. Where the
+  berths are is then a node fact, and the camera backs off onto the bank.
+
+Both tools build the same city in node that the page builds, which is what `street_shots`,
+`trade_shots` and `window_shots` already do.
+
+**The close train shot took three framings, and the third is a lesson rather than a tweak.** At 16 m
+a 17 m carriage overflows the frame; at 27 m square-on it came back as a 2.9 m END, because the
+train had moved between the probe pass and the shot and the nearest carriage to a square camera is
+whichever one happens to be there. It stands a carriage length ALONG the line as well now — three
+quarters on, where a train is still a train whichever carriage is in front of you.
+
+**And the instrument that was supposed to catch this could not see the tools at all.**
+`test/unused-imports.test.js`, written this morning, lists `tools` among the directories it scans —
+and `jsFilesIn` collected only `.js`, so every `.mjs` in the repo was invisible to it, to
+`test/dead-exports.test.js` and to `test/purity.test.js`'s parse check. It passed with an unused
+import in the very file this slice was editing. One line in the helper, and the scan found eight
+more across five tools (and `standBack`, left behind here).

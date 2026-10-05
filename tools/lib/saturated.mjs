@@ -33,7 +33,7 @@
 import { generateWorld } from "../../engine/worldgen.js";
 import { defaultOptions } from "../../engine/options.js";
 import { apply } from "../../engine/reducer.js";
-import { CMD_TICK, CMD_PLACE_ROAD, CMD_PLACE_RAIL, CMD_PLACE_BUILDING, CMD_BULLDOZE, CMD_PAINT_ZONE, CMD_JOIN } from "../../engine/commands.js";
+import { CMD_TICK, CMD_PLACE_ROAD, CMD_JOIN } from "../../engine/commands.js";
 // Imported for their side effects: `registerNetwork` runs at module load, and
 // without it the reducer has no handler for `placeRoad`.
 import "../../engine/build-commands.js";

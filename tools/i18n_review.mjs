@@ -18,7 +18,7 @@
 // silently drops a row it could not parse is worse than no tool — so `--apply`
 // refuses the whole file if any row is malformed, and says which.
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

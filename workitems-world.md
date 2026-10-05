@@ -798,6 +798,20 @@ ask for the glazing rather than guess a colour.
 past it into the empty interior and out the far side — the bright slivers between the bays. One
 quad per unit spanning the frontage, behind the glass, is S16b's.
 
+## S20c — The mover gates stand beside what they photograph (S) — **BUILT 2026-10-06** as `slice-S20c`
+
+`rail_shots` and `harbour_shots` photographed from the city camera, whose span floors at 8, so S17's
+carriage and its moored boats were a few pixels and the only thing the frames could prove was that
+something was posed. Both keep every frame they had and gain a close one:
+`smoke-T3-train-close.png` (two passes — ask the page where the carriages ended up after the same
+340 frames, then stand beside the line there) and `smoke-T4-berth.png` (no probe needed:
+`client/life/boats.js` runs in node, so posing it into a recording stand-in says where the berths
+are). Both tools build the same city in node that the page builds, like `street_shots` and
+`window_shots`.
+
+**Taken twice.** The first close frame stood 16 m from a 17 m carriage and filled the picture with
+livery; the standoff is `fitDistance` on the carriage's own length now.
+
 ## S17 — Movers you can tell apart (M) — **BUILT 2026-10-06** as `slice-S17`
 
 `client/world/mover-spec.js` (pure) and `moverGeometry` in the kit: a sailing boat (hull, tapered

@@ -16,6 +16,10 @@
 //     node tools/harbour_shots.mjs
 
 import { shoot } from "./screenshot.mjs";
+import { setConfig, DEFAULTS } from "../client/world/config.js";
+import { createModel } from "../client/world/model.js";
+import { createBoats } from "../client/life/boats.js";
+import { playedCity, standBack, describe } from "./lib/aim.mjs";
 
 const SEED = 1003;
 const SIZE = 64;
@@ -106,6 +110,12 @@ const COUNT = `(state, view) => ({
   placed: view === undefined ? "" : (globalThis.SHOT_PLACED ?? []).map((p) => p.def + ":" + p.result).join(" "),
 })`;
 
+setConfig(DEFAULTS);
+// The same city the page builds, in node, so a camera can be chosen from the
+// berths' own geometry (S20c).
+const state = playedCity({ seed: SEED, size: SIZE, years: YEARS });
+const model = createModel(state);
+
 const problems = [];
 const probe = await shoot({ out: "reports/.harbour-probe.png", seed: SEED, years: YEARS, size: SIZE,
   width: 320, height: 240, extra: { __ask: FIND } });
@@ -126,6 +136,46 @@ console.log(`marina ${at.marina}, terminal ${at.ferry} on ${at.body} tiles of wa
   if (!r.ok) problems.push(...r.problems.slice(0, 2));
   if (!(r.answer?.boats?.moored > 0)) problems.push(`${out}: the marina has no boat moored at it`);
   if (!(r.answer?.hulls > 0)) problems.push(`${out}: ${r.answer?.boats?.moored ?? 0} boats exist and NONE was posed`);
+}
+
+// A moored boat CLOSE (S20c). The marina frame above proves boats are posed; at
+// span 8 — the city camera's floor — a seven-metre hull is a few pixels, so S17
+// gave the boats a mast, a sail and a tapered bow that no gate could see.
+//
+// The berths come from `client/life/boats.js` in NODE: it is a life module, so
+// it takes its time from the caller and nothing in it needs a page. Posing it
+// into a recording stand-in for the pools is how a tool asks "where are they?"
+// without a probe pass.
+{
+  const boats = createBoats(state, model, { life: false });
+  const spots = [];
+  boats.pose(
+    { moored: "moored", boat: "boat", ferry: "ferry", cargo: "cargo", wake: "wake" },
+    (pool, x, unusedY, z) => { if (pool === "moored") spots.push({ x: x * model.tileM, z: z * model.tileM }); },
+    undefined,
+  );
+  if (spots.length === 0) problems.push("the close marina shot: no boat is moored to aim at");
+  else {
+    const boat = spots[0];
+    // Back off AWAY from the water: the shore is where somebody looking at a
+    // marina stands, and `standBack` refuses a camera in the river anyway.
+    let camera;
+    for (const away of [{ x: 1, z: 0 }, { x: -1, z: 0 }, { x: 0, z: 1 }, { x: 0, z: -1 }]) {
+      camera = standBack(model, { at: boat, away, clear: 3, start: 10, max: 30, pitch: -3, eyeM: 2 });
+      if (camera) break;
+    }
+    if (!camera) problems.push("the close marina shot: no camera can stand on the bank beside it");
+    else {
+      const out = "reports/smoke-T4-berth.png";
+      console.log(describe("moored boat", { cx: boat.x, cz: boat.z, tileM: model.tileM }, camera));
+      const r = await shoot({ out, seed: SEED, years: YEARS, size: SIZE, tier: "high", streets: 40,
+        frames: 150, life: true, photo: camera.photo, width: 1280, height: 720,
+        extra: { __ask: COUNT } });
+      console.log(`${out} ok=${r.ok} ${JSON.stringify(r.answer)}`);
+      if (!r.ok) problems.push(...r.problems.slice(0, 2));
+      if (!(r.answer?.hulls > 0)) problems.push(`${out}: no hull was posed in the frame`);
+    }
+  }
 }
 
 // The ferry, aimed at its terminal with the water in frame.

@@ -13,7 +13,9 @@
 //     node tools/rail_shots.mjs
 
 import { shoot } from "./screenshot.mjs";
-import { DEFAULTS } from "../client/world/config.js";
+import { DEFAULTS, setConfig } from "../client/world/config.js";
+import { createModel } from "../client/world/model.js";
+import { playedCity, describe, fitDistance, clearanceAt } from "./lib/aim.mjs";
 
 const SEED = 1003;
 const SIZE = 64;
@@ -81,6 +83,11 @@ const COUNT = `(state, view) => {
   };
 }`;
 
+setConfig(DEFAULTS);
+// The same city the page builds, in node, so a camera can be chosen from the
+// line's own geometry (S20c).
+const model = createModel(playedCity({ seed: SEED, size: SIZE, years: YEARS }));
+
 const problems = [];
 const probe = await shoot({ out: "reports/.rail-probe.png", seed: SEED, years: YEARS, size: SIZE,
   width: 320, height: 240, extra: { __ask: FIND } });
@@ -141,6 +148,98 @@ if (at.crossing) {
   console.log(`${out} ok=${r.ok} tri=${r.report?.triangles} ${JSON.stringify(r.answer)}`);
   if (!r.ok) problems.push(...r.problems.slice(0, 2));
   check(out, r.answer, { train: true });
+}
+
+// And the train CLOSE (S20c). The shot above proves a carriage is posed; it
+// cannot show what one looks like, because the city camera floors at span 8 and
+// a carriage is then a few pixels. S17 gave the carriage a body, two bogies and
+// a window band, and no gate could see any of it.
+//
+// Two passes, because a moving thing has to be found before it can be
+// photographed: the first asks the page where the carriages ended up after the
+// same 340 frames, the second stands beside the line there with the photo
+// camera. Deterministic — the same seed, the same frames, the same pose.
+{
+  const WHERE = `(state, view) => {
+    const pool = view.pools?.train;
+    const out = [];
+    if (pool) {
+      const m = pool.instanceMatrix.array;
+      for (let i = 0; i < pool.count; i += 1) out.push([m[i * 16 + 12], m[i * 16 + 14]]);
+    }
+    return { carriages: out, tileM: view.model.tileM };
+  }`;
+  const probeShot = await shoot({ out: "reports/.rail-where.png", seed: SEED, years: YEARS, size: SIZE,
+    tier: "high", streets: 40, frames: 340, life: true, mode: "city", span: 8, pitch: 22,
+    fx: at.first ? at.first[0] + 5 : at.station[0], fy: at.first ? at.first[1] : at.station[1],
+    width: 320, height: 240, extra: { __ask: WHERE } });
+  const found = probeShot.answer?.carriages ?? [];
+  if (found.length === 0) {
+    problems.push("the close train shot: no carriage was posed to aim at");
+  } else {
+    const tileM = probeShot.answer.tileM ?? 20;
+    const car = { x: found[0][0] * tileM, z: found[0][1] * tileM };
+    // Which way the line runs here, from the model in node — so the camera
+    // stands BESIDE the track rather than on it.
+    const corridor = model.rail?.corridors?.[0];
+    const points = corridor?.points ?? [];
+    let near = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      if (Math.hypot(points[i].x - car.x, points[i].z - car.z)
+        < Math.hypot(points[near].x - car.x, points[near].z - car.z)) near = i;
+    }
+    const other = points[near === 0 ? 1 : near - 1] ?? points[near];
+    const along = { x: points[near].x - other.x, z: points[near].z - other.z };
+    const len = Math.hypot(along.x, along.z) || 1;
+    // Perpendicular to the line, which is where somebody watching a train stands.
+    const away = { x: -along.z / len, z: along.x / len };
+    // Three quarters on, not square on. Far enough back that a 17 m carriage
+    // FITS (at sixteen metres it overflows the frame and the picture is a wall
+    // of livery), and a carriage length ALONG the track as well — a camera
+    // square to the line photographs whichever carriage happens to be nearest,
+    // and when the train has moved on between the probe pass and this one that
+    // is an end: a 2.9 m box, which is what the first two runs of this shot
+    // came back with.
+    const back = fitDistance(DEFAULTS.rail.carriageLen, { share: 0.7 });
+    const alongUnit = { x: along.x / len, z: along.z / len };
+    // BOTH sides of the line and a few offsets along it: a single candidate is
+    // a camera standing wherever the track happens to run past a warehouse, and
+    // the first version of this shot refused to take a picture at all for
+    // exactly that reason — which was the right refusal and a useless gate.
+    let camera;
+    for (const side of [1, -1]) {
+      for (const offset of [0.8, -0.8, 0.4, -0.4, 0]) {
+        const eye = {
+          x: car.x + away.x * back * side + alongUnit.x * DEFAULTS.rail.carriageLen * offset,
+          z: car.z + away.z * back * side + alongUnit.z * DEFAULTS.rail.carriageLen * offset,
+        };
+        if (clearanceAt(model, eye.x, eye.z) < 3) continue;
+        if (model.surfaceAt(eye.x, eye.z).kind === "water") continue;
+        camera = {
+          standoff: Math.round(Math.hypot(eye.x - car.x, eye.z - car.z)),
+          clearance: clearanceAt(model, eye.x, eye.z),
+          standingOn: model.surfaceAt(eye.x, eye.z).kind,
+          eyeM: 2.2,
+          photo: `${(eye.x / model.tileM).toFixed(3)},${(eye.z / model.tileM).toFixed(3)},2.2,`
+            + `${Math.atan2(eye.x - car.x, eye.z - car.z).toFixed(4)},-3`,
+        };
+        break;
+      }
+      if (camera) break;
+    }
+    if (!camera) {
+      problems.push("the close train shot: no camera can stand beside the line there");
+    } else {
+      const out = "reports/smoke-T3-train-close.png";
+      console.log(describe("carriage", { cx: car.x, cz: car.z, tileM }, camera));
+      const r = await shoot({ out, seed: SEED, years: YEARS, size: SIZE, tier: "high", streets: 40,
+        frames: 340, life: true, photo: camera.photo, width: 1280, height: 720,
+        extra: { __ask: COUNT } });
+      console.log(`${out} ok=${r.ok} tri=${r.report?.triangles} ${JSON.stringify(r.answer)}`);
+      if (!r.ok) problems.push(...r.problems.slice(0, 2));
+      check(out, r.answer, { train: true, live: true });
+    }
+  }
 }
 
 // The line on HILLY ground, which is where Q120 lives. A measurement rather

@@ -22,7 +22,10 @@ export function jsFilesIn(dir) {
     const full = join(abs, entry.name);
     if (entry.isDirectory()) {
       out.push(...jsFilesIn(relative(repoRoot, full)));
-    } else if (entry.name.endsWith(".js")) {
+    // `.mjs` too, or `tools/` contributes NOTHING to every scan that lists it —
+    // which is how `test/unused-imports.test.js` passed with an unused import in
+    // `tools/rail_shots.mjs` on the day it was written (2026-10-06).
+    } else if (entry.name.endsWith(".js") || entry.name.endsWith(".mjs")) {
       out.push({ path: relative(repoRoot, full), source: readFileSync(full, "utf8") });
     }
   }

@@ -15,7 +15,7 @@
 import { chromium } from "playwright";
 import { createServer } from "node:http";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
+import { join, extname, normalize } from "node:path";
 import { problemsIn } from "../client/world/film.js";
 import { PALETTES } from "../client/render/palettes.js";
 import { PRESET_NAMES } from "../client/render/time-of-day.js";
