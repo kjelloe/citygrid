@@ -1,81 +1,99 @@
-// The window shots (slice S7).
+// The window shots (slice S7; self-aiming since S20b).
 //
 // A facade at eye height, day and night, from the pavement outside a shop —
-// which is the only place the dressing behind the glass can be judged. The
-// spot is FOUND (a standing shop with a road in front of it), and the baked
-// chunk's triangles are reported, because the whole question S7 raises is what
-// two triangles a window costs when a chunk holds six hundred of them.
+// which is the only place the dressing behind the glass can be judged.
 //
 //   reports/smoke-S7-day.png     the shopfront and the windows above it
 //   reports/smoke-S7-night.png   the same, lit
 //
 //     node tools/window_shots.mjs
+//
+// **It aimed itself at a tile and photographed a lawn.** Until S20b this tool
+// asked the page for a shop's coordinates, stood the WALKER on the road tile in
+// front of it and turned by a quarter-turn yaw — so on seed 1003 its day frame
+// was a blank gable and a strip of grass with the shop out of shot, and it
+// passed, because its criteria were the baked-chunk count and the page's error
+// list. It was the natural instrument for S21's defect (what is behind a
+// window: half of every city's glass was culled) and could not have seen it.
+//
+// So: the subject comes from the model in NODE, the camera is chosen from the
+// subject's own geometry (`tools/lib/aim.mjs`), and the gate asserts that the
+// chunk the subject stands in is one of the ones the renderer actually baked —
+// "a baked chunk is in the frame" and "the building I aimed at is baked" are
+// different claims, and only the second one is about the picture.
 
 import { shoot } from "./screenshot.mjs";
+import { setConfig, DEFAULTS } from "../client/world/config.js";
+import { createModel } from "../client/world/model.js";
+import { chunkOfLot } from "../client/world/chunks.js";
+import { playedCity, standBack, frontageNormal, frontageMiddle, describe } from "./lib/aim.mjs";
 
 const SEED = 1003;
 const SIZE = 64;
 const YEARS = 20;
 
-// Two subjects: a shop (its storefront is the only place the interior card
-// shows) and a HOUSE, because a house's frontage is ten metres from the kerb
-// and a shop on a corner is forty across a junction — the first cut of this
-// tool photographed a street and called it a facade.
-// "Standing" is `level >= 1` and a few months old, not six years (T2). The
-// filter was `> 72` — half a development cycle short of nothing on a city
-// whose commercial buildings turn over every two or three years — and seed
-// 1003 regrown at era 6 had FORTY-THREE shops, every one of them 60 or 72
-// ticks old, so the probe found none and the gate failed about a renderer
-// that was fine. Twelve ticks is a year: long enough that the lot has
-// developed and been drawn, short enough to exist in a city that churns.
-const find = (zone, minLevel = 1) => `(state) => {
-  const W = state.width;
-  const road = (x, y) => x >= 0 && y >= 0 && x < W && y < state.height && (state.tiles.road[y * W + x] & 16) !== 0;
-  const want = state.buildings.filter((b) => b.zone === ${zone} && state.tick - b.builtTick > 12)
-    .sort((a, c) => Math.hypot(a.x - 32, a.y - 32) - Math.hypot(c.x - 32, c.y - 32));
-  for (const b of want) {
-    const sides = [[b.x, b.y - 1], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x - 1, b.y]];
-    const f = sides.findIndex(([x, y]) => road(x, y));
-    // A frontage with nothing across the road but more road is a junction, and
-    // a junction is where a facade is furthest away.
-    if (f >= 0 && b.level >= ${minLevel}) return { x: b.x + b.w / 2, y: b.y + b.h / 2, road: sides[f], frontage: f, level: b.level };
+setConfig(DEFAULTS);
+const state = playedCity({ seed: SEED, size: SIZE, years: YEARS });
+const model = createModel(state);
+const T = model.tileM;
+const middle = { x: (SIZE / 2) * T, z: (SIZE / 2) * T };
+
+/** The standing shop nearest the middle that a camera can stand back from, with
+ * its own frontage fitted to the frame. A shop, because a storefront is the
+ * only place the interior card shows. */
+function shopToShoot() {
+  const shops = model.lots
+    .filter((lot) => lot.building?.zone === 2 && (lot.building.flags & 8) === 0
+      && (lot.building.level ?? 0) >= 1 && state.tick - lot.building.builtTick > 12)
+    .sort((a, b) => Math.hypot(a.cx - middle.x, a.cz - middle.z)
+      - Math.hypot(b.cx - middle.x, b.cz - middle.z));
+  for (const lot of shops) {
+    // Close enough that a 1.2 m window is more than four pixels: the frontage
+    // filled to about three quarters of the frame, from the pavement opposite.
+    const camera = standBack(model, {
+      at: frontageMiddle(lot), away: frontageNormal(lot), clear: 3, max: 26, pitch: 0, eyeM: 1.7,
+      fitWidthM: lot.frontageLen ?? Math.max(lot.x1 - lot.x0, lot.z1 - lot.z0), fitShare: 1.15,
+    });
+    if (camera) return { lot, camera };
   }
   return undefined;
-}`;
+}
 
 const COUNT = `(state, view) => ({
   triangles: view.stats?.streets?.triangles ?? 0,
   live: view.stats?.streets?.live ?? 0,
+  keys: view.stats?.streets?.keys ?? "",
   frame: view.stats?.triangles ?? 0,
 })`;
 
-async function subject(zone, what, minLevel) {
-  const r = await shoot({ out: `reports/.window-probe-${what}.png`, seed: SEED, years: YEARS,
-    size: SIZE, width: 320, height: 240, extra: { __ask: find(zone, minLevel) } });
-  if (!r.answer) throw new Error(`no standing ${what} with a road in front of it`);
-  console.log(`${what} at ${r.answer.x},${r.answer.y} (level ${r.answer.level}), road ${r.answer.road}`);
-  return r.answer;
-}
-const shop = await subject(2, "shop", 1);
+const subject = shopToShoot();
+if (!subject) throw new Error("no standing shop a camera can stand back from — the city, not the tool");
+const chunk = chunkOfLot(subject.lot);
+// `cx,cy`, which is how the street cache names a live chunk in its stats —
+// `chunkKey` is the cache's own packed integer and comparing the two silently
+// fails every time (it did, first run).
+const wanted = `${chunk.cx},${chunk.cy}`;
+console.log(describe("shop", { cx: subject.lot.cx, cz: subject.lot.cz, tileM: T }, subject.camera));
+console.log(`its chunk is ${wanted}`);
 
 const problems = [];
-for (const [tag, time, at] of [["day", "day", shop], ["night", "night", shop]]) {
-  const out = `reports/smoke-S7-${tag}.png`;
-  // STREET mode, not a small span: the city camera floors at span 8, so the
-  // first cut of this tool photographed the town from the air and called it a
-  // pavement. The walker stands on the road tile in front of the shop.
+for (const time of ["day", "night"]) {
+  const out = `reports/smoke-S7-${time}.png`;
   const r = await shoot({ out, seed: SEED, years: YEARS, size: SIZE, tier: "high",
-    street: `${at.road[0]},${at.road[1]}`, yaw: (at.frontage + 2) % 4, pitch: -8, time,
-    // 1920 across: a window is 1.2 m wide and the facade across the street is
-    // twenty metres away, so at 1280 the dressing behind the glass is four
-    // pixels and the shot cannot answer the question it was taken for.
+    photo: subject.camera.photo, time,
+    // 1920 across: a window is 1.2 m wide and the facade is twenty metres away,
+    // so at 1280 the dressing behind the glass is four pixels and the shot
+    // cannot answer the question it was taken for.
     width: 1920, height: 1080, streets: 60, frames: 60,
     extra: { __ask: COUNT } });
   const a = r.answer ?? {};
-  console.log(`${out} ok=${r.ok} street triangles=${a.triangles} chunks=${a.live} frame=${a.frame}`);
+  console.log(`${out} ok=${r.ok} street triangles=${a.triangles} chunks=${a.live} [${a.keys}] frame=${a.frame}`);
   if (!r.ok) for (const p of r.problems.slice(0, 3)) console.log("   ", p);
-  // A shot of a city with no baked street in it says nothing about a facade.
   if (!(a.live > 0)) problems.push(`${out}: no baked street chunk in the frame`);
+  // The claim that matters: the SUBJECT is baked, not merely something.
+  if (!String(a.keys).split(" ").includes(wanted)) {
+    problems.push(`${out}: the shop's own chunk (${wanted}) is not baked — baked: ${a.keys || "none"}`);
+  }
   if (!(a.triangles > 10000)) problems.push(`${out}: ${a.triangles} street triangles is not a facade`);
 }
 

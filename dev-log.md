@@ -11724,3 +11724,24 @@ the sheds, and the green in front of them is the road's verge, not the lot. The 
 feature on this lot, and the air is where the defect was found.
 
 Suite 1,816 green twice.
+
+## S20b — the window gate photographs its subject at last (2026-10-06)
+
+`tools/window_shots.mjs` was the natural instrument for S21's defect — what is behind a window — and
+could not have seen it. It asked the page for a shop's tile, stood the WALKER on the road tile in
+front of it and turned by a quarter-turn yaw; on seed 1003 its day frame was a blank gable and a
+strip of grass with the shop out of shot, and it passed, because its criteria were the baked-chunk
+count and the page's error list.
+
+Converted to `tools/lib/aim.mjs` like `street_shots`, `trade_shots` and `embankment_shots`: the
+subject comes from the model in node, the camera from the subject's own geometry (18 m back, the
+frontage filled to about a frame and a sixth), and the photo camera rather than the walker.
+
+**The new criterion is the one that was missing:** the chunk the subject stands in has to be one the
+renderer actually baked. "A baked chunk is in the frame" and "the building I aimed at is baked" are
+different claims, and only the second is about the picture. It caught its own first version
+immediately — `chunkKey` is the cache's packed integer and the stats print `cx,cy`, so the
+comparison was false every time and said so.
+
+The frames now: four fascias with their shopfronts glazed and backed by day, and the same four lit
+at night with the awnings over them. Suite 1,816 green twice.
