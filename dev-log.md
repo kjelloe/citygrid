@@ -11745,3 +11745,49 @@ comparison was false every time and said so.
 
 The frames now: four fascias with their shopfronts glazed and backed by day, and the same four lit
 at night with the awnings over them. Suite 1,816 green twice.
+
+## S17 — a boat is a boat and a train is a train (2026-10-06)
+
+B3a gave the car three bodies, a glazed cabin and round wheels; T5b gave the aircraft a fuselage,
+swept wings and a fin. Everything else that moves was a **slab**: `instances.js` built the boat, the
+ferry and the carriage out of `slabGeometry`, so a marina was a row of white bricks on the water and
+a train three grey bricks on the line.
+
+`client/world/mover-spec.js` (pure, in the vehicle-spec shape) and `moverGeometry` in the kit:
+
+| | what it is now | ceiling |
+| --- | --- | --- |
+| sailing boat | hull, tapered bow, deck, cabin by hash, mast, sail | 84 |
+| moored boat | the same with its **sail furled** — its own pool | 84 |
+| ferry | hull, bow, superstructure, bridge, funnel | 110 |
+| cargo ship | hull, bow, bridge aft, funnel, **four or five rows of containers by hash** | 160 |
+| carriage | body, roof, two bogies, a window band each side | 110 |
+| locomotive | a shorter body, a cab at one end, its windscreen, a roof | 120 |
+
+**The sizes come from the config, never from a literal.** `boat.hullW` and `boat.hullH` are in
+`data/cityviewer.json` because what passes under S13's bridge has to fit under it, and
+`test/mover-spec.test.js` asserts the spec takes them — a kit that invents its own hull is a kit
+that can sail through a deck.
+
+**Two new pools, because one geometry cannot be two shapes.** A moored boat and a cargo ship were
+drawn as a sailing boat and a ferry with a different instance colour. `boats.js` already knew which
+was which; it poses them into `pools.moored` and `pools.cargo` now, falling back to the old pools so
+a renderer without them still draws something.
+
+**And `test/lod.test.js` caught both of them in the same breath**: "instanced pools with no term in
+the estimate and no entry in `UNPRICED_POOLS`: cargo, moored. A term missing from the estimate is a
+term the budget cannot trade away." They are hulls — `counts.hulls` already covers every hull
+`boats.js` poses, whichever pool it goes in — and that is now written down beside them.
+
+**Gates: `harbour_shots` and `rail_shots`, both green.** The marina frame shows four moored boats
+with their masts and furled sails along the shore; the ferry frame a blue vessel with a
+superstructure and a funnel mid-river; the port frame a dark ship with a bridge aft and container
+rows. All three were white or grey bricks before.
+
+**The carriage is not verified by eye, and the gate says why.** `rail_shots` photographs the station
+and the line from the AIR — its train frame counts `posed: 1` and the carriage is a few pixels
+across. Its criteria are right (a train must exist AND be posed) and its camera is the one S20
+converted three other tools away from. Filed as S20c: stand it beside the line, the way
+`street_shots` stands on a pavement.
+
+Suite 1,823 green twice.

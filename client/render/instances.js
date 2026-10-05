@@ -19,6 +19,7 @@ import {
   buildingVariants, treeVariants, carVariants, pedVariants, tuftVariants, lampGeometry, cityPersonGeometry,
   boulderVariants, BOULDER_VARIANTS, signGeometry,
   rotorGeometry, flagGeometry, craneGeometry, smokeGeometry, rainGeometry, radarGeometry, planeGeometry,
+  moverGeometry,
   FLAG_LEN, CRANE_SLEW, CIVIC_W, SMOKE_HALF,
   carLampGeometry,
   CAR_VARIANTS, TUFT_VARIANTS,
@@ -143,8 +144,17 @@ export function createInstances(scene, styleName = "plain") {
   // quads rather than a ribbon rebuilt every frame for three metres of foam.
   const boat = getConfig().boat;
   const boatM = getConfig().tileM;
-  make("boat", slabGeometry(styleName, boat.hullW / boatM, boat.hullH / boatM, boat.length / boatM), 0xffffff, 96);
-  make("ferry", slabGeometry(styleName, boat.ferryW / boatM, boat.ferryH / boatM, (boat.length * 2.4) / boatM), 0xffffff, 16);
+  // A hull, a bow, a deck, a mast and a sail (S17), not a slab. One geometry
+  // per pool, so a marina is a hundred boats of one shape rather than a hundred
+  // draw calls — the variety is in the colour the pose gives each instance and
+  // in the hash the kit built the shape from.
+  make("boat", moverGeometry(boatM, "sailBoat", 1, getConfig()), 0xffffff, 96);
+  // A boat at a berth has its sail FURLED, and a cargo ship is not a ferry with
+  // a different colour on it — two more pools, because one geometry cannot be
+  // two shapes and `boats.js` already knows which of its boats is which.
+  make("moored", moverGeometry(boatM, "moored", 1, getConfig()), 0xffffff, 32);
+  make("ferry", moverGeometry(boatM, "ferry", 1, getConfig()), 0xffffff, 16);
+  make("cargo", moverGeometry(boatM, "cargo", 1, getConfig()), 0xffffff, 16);
   make("wake", flatGeometry(styleName, 3.4 / boatM, 5 / boatM, 0), 0xffffff, 160);
   // The airport (T5b): one aircraft at a time and a radar head that turns.
   // Both are posed from modules node can load — `client/life/plane.js` and the
@@ -156,9 +166,8 @@ export function createInstances(scene, styleName = "plain") {
   addMotion(pools.radar.material, "radar");
   const carriage = getConfig().rail;
   const tileM = getConfig().tileM;
-  make("train", slabGeometry(styleName,
-    carriage.carriageW / tileM, carriage.carriageH / tileM, carriage.carriageLen / tileM),
-  0xffffff, 64);
+  // A body on two bogies with a window band down each side (S17).
+  make("train", moverGeometry(tileM, "carriage", 1, getConfig()), 0xffffff, 64);
   // Burnt GROUND: flat, like the lawn quad. It was a 0.14-tile slab — a solid
   // block 2.8 m tall covering most of the tile — which is why a ruin has always
   // read as a dark box, and which buried B1b's walls and rubble inside it.

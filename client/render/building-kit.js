@@ -22,6 +22,7 @@ import { variantFor, VARIANTS } from "../world/params.js";
 import { civicShape, civicHeight, shadeOf, CIVIC_DEFS } from "../world/civic-spec.js";
 import { hasPorchAtL2 } from "../world/house-spec.js";
 import { vehicleSpec, BODY_NAMES } from "../world/vehicle-spec.js";
+import { moverSpec } from "../world/mover-spec.js";
 import { cityFigure } from "../world/figure.js";
 import { TREE_KINDS } from "../world/foliage.js";
 
@@ -892,6 +893,27 @@ export function planeGeometry(tileM, spec) {
   // The tailplane and the fin.
   addBox(parts, -span * 0.17, body * 1.1, -len * 0.46, span * 0.17, body * 1.4, -len * 0.34, 0.88);
   addBox(parts, -body * 0.25, body * 1.4, -len * 0.48, body * 0.25, body * 3.4, -len * 0.3, 0.8);
+  return finish(parts);
+}
+
+/**
+ * A boat or a carriage, from `client/world/mover-spec.js` (S17).
+ *
+ * In TILE units, like the flag and the crane, because the pools pose these at
+ * scale 1 with a heading — the spec is in metres and this is the one place that
+ * divides. A slab is what they were: `slabGeometry` for the hull, the ferry and
+ * the carriage, so a marina was a row of white bricks and a train three grey
+ * ones.
+ */
+export function moverGeometry(tileM, kind, id, cfg) {
+  const spec = moverSpec(kind, id, cfg);
+  const parts = makeParts();
+  for (const part of spec.parts) {
+    addBox(parts,
+      part.x0 / tileM, part.y0 / tileM, part.z0 / tileM,
+      part.x1 / tileM, part.y1 / tileM, part.z1 / tileM,
+      part.shade);
+  }
   return finish(parts);
 }
 

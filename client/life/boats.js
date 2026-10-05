@@ -317,7 +317,7 @@ export function createBoats(state, model, options = {}) {
         posed += 1;
       };
       for (const m of moored) {
-        put(pools.boat, m.x, m.z, m.dir * (Math.PI / 4), spec.hullColour, 0);
+        put(pools.moored ?? pools.boat, m.x, m.z, m.dir * (Math.PI / 4), spec.hullColour, 0);
       }
       for (const b of sailing) {
         put(pools.boat, b.x, b.z, -b.dir * (Math.PI / 4), spec.sailColour, 0);
@@ -325,7 +325,8 @@ export function createBoats(state, model, options = {}) {
       for (const v of plying) {
         const p = along(v);
         const h = Math.atan2(-p.tz, p.tx);
-        put(pools.ferry, p.x, p.z, h, v.kind === "cargo" ? spec.cargoColour : spec.ferryColour, 0);
+        const hull = v.kind === "cargo" ? (pools.cargo ?? pools.ferry) : pools.ferry;
+        put(hull, p.x, p.z, h, v.kind === "cargo" ? spec.cargoColour : spec.ferryColour, 0);
         // The wake, oldest and faintest last. Flat quads on the surface, not
         // a ribbon: a ribbon is geometry rebuilt every frame for a thing that
         // is three metres of foam.

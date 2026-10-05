@@ -850,6 +850,11 @@ const UNPRICED_POOLS = {
   train: "its own term, `counts.carriages` at `costs.carriage`",
   boat: "its own term, `counts.hulls` at `costs.hull`",
   ferry: "its own term, `counts.hulls` — a ferry is a hull",
+  // S17 split the hulls by SHAPE, not by number: `boats.js` counts every hull
+  // it poses, whichever pool it puts it in, so `counts.hulls` still covers all
+  // four. A moored boat has a furled sail and a cargo ship has containers.
+  moored: "its own term, `counts.hulls` — a moored boat is a hull with its sail furled (S17)",
+  cargo: "its own term, `counts.hulls` — a cargo ship is a hull with containers on it (S17)",
   wake: "its own term, `counts.wakes` at `costs.wake`",
   wire: "the pole, its own term at `costs.pole`",
   ovlGood: "its own term, `counts.overlayMarks` at `costs.overlayMark`",

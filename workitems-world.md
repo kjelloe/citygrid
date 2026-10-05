@@ -798,6 +798,24 @@ ask for the glazing rather than guess a colour.
 past it into the empty interior and out the far side — the bright slivers between the bays. One
 quad per unit spanning the frontage, behind the glass, is S16b's.
 
+## S17 — Movers you can tell apart (M) — **BUILT 2026-10-06** as `slice-S17`
+
+`client/world/mover-spec.js` (pure) and `moverGeometry` in the kit: a sailing boat (hull, tapered
+bow, deck, cabin by hash, mast, sail), a moored boat with its sail furled, a ferry (superstructure,
+bridge, funnel), a cargo ship (bridge aft, four or five rows of containers by hash), a carriage
+(body, roof, two bogies, a window band each side) and a locomotive (cab, windscreen, short body).
+All six were `slabGeometry` before. The sizes come from the config, because `boat.hullW/hullH` are
+what S13's bridge clearance was measured against.
+
+Two new pools (`moored`, `cargo`), and `test/lod.test.js` caught both the moment they existed: a
+pool with no term in the estimate is a term the budget cannot trade away. They are hulls, and that
+is written beside them now.
+
+**Found and not fixed here — S20c:** `rail_shots` photographs the station and the line from the air,
+so its train frame proves a carriage is POSED and cannot show what it looks like. Stand it beside
+the line like `street_shots` stands on a pavement. The same is true of `harbour_shots`' marina frame,
+which is a town from 200 m.
+
 ## S16c — The works gets a yard (M) — **BUILT 2026-10-06** as `slice-S16c`
 
 `client/world/works-spec.js` and the rest of `trade-parts.js`: hardstanding over the whole lot, a
