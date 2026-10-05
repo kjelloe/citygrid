@@ -11609,3 +11609,25 @@ of importing the i18n function and never calling it. Comments and string bodies 
 
 Gate: `street_shots` (a renderer change, and nothing in `test/` can import `client/render/`) — green,
 and its shop frame now shows S21's glazed shopfronts with their interiors. Suite 1,801 green twice.
+
+## Omissions round, the other end — seven exports nothing reached (2026-10-05)
+
+`test/dead-exports.test.js` is the companion to the unused-import test: every export in `engine/`,
+`client/`, `shared/`, `worker/` and `server/` has a reader somewhere — the game, a test, a tool or
+one of the `.html` harnesses — or it is pinned as declared ahead.
+
+Deleted: **`bakeLots`** (`streets-l3.js`'s all-at-once baker, dead since the chunk baker went phased
+— and two assertions in `test/facade-spec.test.js` quoted its name while matching on the file, so
+they were describing code that never ran), `markDirty` (terrain), `clearAlerts` (alerts), `tileCentre`
+(picking), `snapshotOf` (`worker/patch.js` — it became dead when a resync started sending the SAVE
+rather than a patch, X1b), and `isString`/`isBool` from `engine/validate.js`.
+
+Pinned as declared ahead, with the slice that will read each: Wave 5's seven commands and
+`isSystemCommand`, and seven constants. **`FLAG_DERELICT` is on that list and is now X3b's**: X3c put
+the derelict clock in `state.derelicts`, and the flag is the renderer's half of §25.4 — "derelict
+buildings are visibly marked". The flags stay rather than go because they document the bit layout: a
+deleted flag frees a bit the next slice would quietly reuse.
+
+**`tools/shoot.html` is a reader.** A scan of `.js` files alone called `client/debug/tour.js` dead;
+it is driven from the shot harness's HTML. The test reads the `.html` files too, which is the
+difference between "nothing imports this" and "nothing uses this".

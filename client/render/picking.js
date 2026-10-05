@@ -78,9 +78,3 @@ export function pickTile(view, pixelX, pixelY, canvasWidth, canvasHeight, mapWid
   if (x < 0 || y < 0 || x >= mapWidth || y >= mapHeight) return undefined;
   return { x, y };
 }
-
-/** World position of a tile's centre — the inverse of the above, used to place
- * meshes and to aim the camera at something. */
-export function tileCentre(x, y) {
-  return { x: x + 0.5, z: y + 0.5 };
-}

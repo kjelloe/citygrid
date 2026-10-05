@@ -15,52 +15,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { jsFilesIn } from "./helpers/sources.js";
-
-/** Comments and string bodies out, `${…}` kept. */
-export function stripButKeepInterpolations(source) {
-  let out = "";
-  let i = 0;
-  const n = source.length;
-  while (i < n) {
-    const two = source.slice(i, i + 2);
-    if (two === "//") {
-      while (i < n && source[i] !== "\n") i += 1;
-    } else if (two === "/*") {
-      i += 2;
-      while (i < n && source.slice(i, i + 2) !== "*/") i += 1;
-      i += 2;
-    } else if (source[i] === '"' || source[i] === "'") {
-      const quote = source[i];
-      i += 1;
-      while (i < n && source[i] !== quote) {
-        if (source[i] === "\\") i += 1;
-        i += 1;
-      }
-      i += 1;
-      out += '""';
-    } else if (source[i] === "`") {
-      i += 1;
-      let depth = 0;
-      while (i < n && (depth > 0 || source[i] !== "`")) {
-        if (source[i] === "\\") { i += 2; continue; }
-        if (depth === 0 && source.slice(i, i + 2) === "${") { depth = 1; i += 2; out += " "; continue; }
-        if (depth > 0) {
-          if (source[i] === "{") depth += 1;
-          if (source[i] === "}") { depth -= 1; i += 1; out += " "; continue; }
-          out += source[i];
-        }
-        i += 1;
-      }
-      i += 1;
-      out += '""';
-    } else {
-      out += source[i];
-      i += 1;
-    }
-  }
-  return out;
-}
+import { jsFilesIn, stripButKeepInterpolations } from "./helpers/sources.js";
 
 /** The local names an import statement binds. */
 function boundNames(clause) {

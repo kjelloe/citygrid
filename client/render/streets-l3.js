@@ -475,14 +475,6 @@ function nameBoard(sign, heightAt, cfg) {
 
 
 
-/** Every lot of a chunk at once: the facades, then the extras. */
-export function bakeLots(baker, state, model, cx, cy, palette, styleName = "plain", locale = "en", showOwner = false, furniture = false, buildingName = undefined) {
-  const acc = { specs: [], fronts: [] };
-  bakeLotFacades(baker, state, lotsOfChunk(model, cx, cy), 0, () => false, acc,
-    palette, styleName, locale, showOwner, furniture, buildingName);
-  bakeLotExtras(baker, state, model, cx, cy, acc, palette, styleName, locale);
-}
-
 /**
  * Signal heads and crossings at every signalled junction in this chunk
  * (V8, spec §9.2).

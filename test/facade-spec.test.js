@@ -224,13 +224,14 @@ test("both levels take their colour from one function, not two copies of it", ()
 // --- what the two levels do under an overlay (slice V7, A44) -----------------
 
 test("the baked facades honour the territory overlay the instanced boxes do", () => {
-  // `bakeLots` passed `false` for `showOwner`, hard-coded, so with territory on
+  // `bakeLotFacades` (then `bakeLots`, which this round deleted as dead) passed
+  // `false` for `showOwner`, hard-coded, so with territory on
   // the far half of the city was in player colours and the near half — the
   // baked half — was not. Not visible to any test that does not import three,
   // hence a source assertion (R1's rule).
   const source = readFileSync(join(repoRoot, "client", "render", "streets-l3.js"), "utf8");
   assert.match(source, /familyColour\(lot\.building, palette, showOwner, ZONE_NONE\)/,
-    "bakeLots still hard-codes the family colour");
+    "the bake still hard-codes the family colour");
   assert.match(source, /buildingParams\([^)]*showOwner[^)]*\)/,
     "the params do not know about the overlay, so the roof stays a roof colour");
   // And the CLOCK, since B2: a building's age decides whether it is a shell

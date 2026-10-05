@@ -13,14 +13,6 @@ export function isIntInRange(value, low, high) {
   return isInt(value) && value >= low && value <= high;
 }
 
-export function isString(value) {
-  return typeof value === "string";
-}
-
-export function isBool(value) {
-  return value === true || value === false;
-}
-
 /** An array of integers, as run-length pairs or index lists arrive. */
 export function isIntArray(value, maxLength) {
   if (!Array.isArray(value)) return false;

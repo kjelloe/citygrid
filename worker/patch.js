@@ -44,8 +44,3 @@ export function patchOf(state, sent, everything = false) {
   delete rest.tiles;
   return { patch: { layers, rest }, transfer };
 }
-
-/** The whole city, for a join or a resync. */
-export function snapshotOf(state) {
-  return patchOf(state, new Map(), true);
-}

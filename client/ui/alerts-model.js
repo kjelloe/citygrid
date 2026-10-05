@@ -126,8 +126,3 @@ export function visibleAlerts(alerts) {
     .sort((a, b) => a.severity - b.severity || b.tick - a.tick)
     .slice(0, VISIBLE);
 }
-
-export function clearAlerts(alerts) {
-  alerts.items = [];
-  return alerts;
-}

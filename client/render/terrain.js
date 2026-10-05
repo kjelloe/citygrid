@@ -91,13 +91,6 @@ export function createTerrain(state, styleName = "plain") {
   };
 }
 
-export function markDirty(terrain, x, y) {
-  const cx = Math.floor(x / CHUNK);
-  const cy = Math.floor(y / CHUNK);
-  const chunk = terrain.chunks[cy * terrain.chunksX + cx];
-  if (chunk) chunk.dirty = true;
-}
-
 export function markAllDirty(terrain) {
   for (const chunk of terrain.chunks) chunk.dirty = true;
 }
