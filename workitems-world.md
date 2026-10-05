@@ -665,6 +665,13 @@ minutes it wants its census sampled or its own set — not a larger number.
 
 ## S20 — The shot tools aim themselves (S) — found while re-running them, 2026-10-04
 
+**Still to do, found at S21 (2026-10-05):** `tools/window_shots.mjs` is not converted. It picks a
+shop by tile coordinate and stands at a fixed offset, so its day frame is a blank gable and a lawn
+with the shop out of shot — and it passes, because its criteria are the baked-chunk count and the
+page's error list. It was the natural instrument for S21's defect (what is behind a window) and
+could not have seen it. Convert it to `tools/lib/aim.mjs` like `street_shots`, and make it count
+**lit panes and dressed openings in frame** rather than chunks.
+
 **Goal.** A picture gate points at its subject rather than at a tile somebody remembered.
 
 `street_shots`' "facing the shop across its bays" camera stands against a wall on seed 1003: its
@@ -775,6 +782,21 @@ both halves of each row with one rule and move ours toward the reference, one ch
 **Gate.** `tools/compare_sheet.mjs --before <sha>`: the three rows before and after in one image,
 with the histograms' medians in the caption. The dev-log says what the eye sees. `budget_gate`
 unmoved (colour, not geometry).
+
+## S21 — The glass that faced the wrong way (S) — **BUILT 2026-10-05** as `slice-S21`, found in S16a's gate
+
+A parade of shops photographed at eye height had no ground floor: signs, fascia, piers, and the
+countryside under them, day and night. `facade.js` chose the winding of every backing panel,
+curtain, blind, shop back and shelf from `out[0] + out[1] > 0` — a test on the outward normal
+alone, while the quad is built from `along` AND `out`, which turn together in `EDGES`. The **east
+and south faces of every building in the city** drew their glass facing inward, where the renderer
+culls it. Since S7. One winding on all four sides is the fix; `test/window-facing.test.js` is the
+claim, asserted per face from the geometry the builder returns. Pieces carry a `name` so a test can
+ask for the glazing rather than guess a colour.
+
+**Left over:** the shop's back wall is a card the width of its own opening, so at an angle you see
+past it into the empty interior and out the far side — the bright slivers between the bays. One
+quad per unit spanning the frontage, behind the glass, is S16b's.
 
 ## S16a — The trade ladder (M) — **BUILT 2026-10-05** as `slice-S16a`
 

@@ -11543,3 +11543,50 @@ pre-existing defect of the commercial kit that the ladder makes the most visible
 Filed on S16b.
 
 Suite 1,798 green twice.
+
+## S21 — the glass that faced the wrong way (2026-10-05)
+
+S16a's gate shot a parade of shops at eye height and the frame had **no ground floor in it**: the
+signs, the fascia, the piers between the bays — and under them, the countryside. The same at night,
+unlit. The slab before it had the same hole, one shopfront wide instead of nine, which is why
+nothing had ever asked about it.
+
+**Found by arithmetic, not by eye.** `facade.js` picked the winding of every backing panel, curtain,
+blind, shop back and shelf with `out[0] + out[1] > 0` — a test on the outward normal alone. The quad
+is built from `along` **and** `out`, and in `EDGES` those two turn together, so the test is only
+right half the time. Computing the normal the way `solid.js` does, per side:
+
+| side | outward | winding chosen | the quad's normal |
+| --- | --- | --- | --- |
+| 0 north | (0,−1) | B | (0,−1) — faces the street |
+| 1 east | (+1,0) | A | (−1,0) — **into the building** |
+| 2 south | (0,+1) | A | (0,−1) — **into the building** |
+| 3 west | (−1,0) | B | (−1,0) — faces the street |
+
+So **the east and south faces of every building in the city** drew their glass and everything behind
+it facing inward, where the renderer culls it. A shop on those sides had no ground floor; a house had
+window holes with the landscape visible through them. Two of four frontages, every city, since S7
+put something behind a window in September. The confirming picture was a shop whose frontage faces
+NORTH: glazed, dark interior, shelf — exactly as designed.
+
+**The fix is one winding on all four sides.** `EDGES` is a single handedness, so `along × up` is the
+outward normal everywhere; the conditional was pure harm.
+
+**The test that cannot see this, and the one that can.** `test/facade.test.js` has asserted since E5
+that "every triangle is wound the way its normal points" — which can never fail, because `solid.js`
+computes each normal **from** its winding. `test/window-facing.test.js` asserts the claim instead:
+for a building fronting each of the four sides, every triangle behind the glass **on that face**
+points out of it. Its first cut sorted triangles by normal alone and called the far side of the
+building wrong, which is the same mistake as the bug — a direction is not a side.
+
+The facade's pieces carry a `name` now, so a test can ask for the glazing or the shop's back wall
+rather than guess at a colour.
+
+**Gate: `window_shots`, green — and its day frame is a blank gable and a lawn.** It is aimed at a
+shop by tile coordinate rather than by `tools/lib/aim.mjs`, so it photographs whatever is at the
+camera; it counted its baked chunks and passed. The gate that was supposed to be the instrument for
+exactly this defect could not have seen it. Filed on S20, which is the item for shot tools that aim
+themselves — `street_shots`, `trade_shots` and `embankment_shots` take their cameras from the model
+and this one does not.
+
+Suite 1,800 green twice.

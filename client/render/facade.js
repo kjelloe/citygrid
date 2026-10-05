@@ -116,9 +116,15 @@ function dressing(s, edge, origin, hole, depth, share = 1) {
   const at = (u, y) => [ox + ax * u - nx * depth, y, oz + az * u - nz * depth];
   const { u0, u1, y1 } = hole;
   const y0 = y1 - (y1 - hole.y0) * Math.max(0, Math.min(1, share));
-  // Wound to face out of the opening, the way the backing panel is.
-  if (edge.out[0] + edge.out[1] > 0) s.quad(at(u0, y0), at(u1, y0), at(u1, y1), at(u0, y1));
-  else s.quad(at(u0, y1), at(u1, y1), at(u1, y0), at(u0, y0));
+  // Wound to face out of the opening, the way the backing panel is — top edge
+  // first, on EVERY side. `EDGES` is one handedness: `along` turns with `out`,
+  // so this winding's normal is `along × up`, which is the outward normal for
+  // all four (S21). The first version picked between two windings on
+  // `out[0] + out[1] > 0`, a test on the normal that ignores `along`, and got
+  // the east and south faces of every building in the city backwards — where
+  // the renderer culls them, so a shop had no ground floor and a house's
+  // windows were holes with the countryside behind them.
+  s.quad(at(u0, y1), at(u1, y1), at(u1, y0), at(u0, y0));
 }
 
 /** Where the windows go on one edge: one per bay, per storey. */
@@ -250,9 +256,9 @@ export function buildFacade(spec) {
       // agree: a lit window with a curtain across it is a glow, not a pane.
       const alight = windowLit(spec.id, hole, share);
       const target = hole.door ? glazing : alight ? lit : glazing;
-      // One face, pointing out through the opening.
-      if (geom.out[0] + geom.out[1] > 0) target.quad(back[0], back[1], back[2], back[3]);
-      else target.quad(back[3], back[2], back[1], back[0]);
+      // One face, pointing out through the opening — the same winding on every
+      // side, for the reason `dressing` states (S21).
+      target.quad(back[3], back[2], back[1], back[0]);
 
       // And what stands in front of it (S7): a curtain, a blind pulled part of
       // the way down, a shop's back wall and its shelf. Two triangles each, in
@@ -273,20 +279,20 @@ export function buildFacade(spec) {
     }
   }
 
-  out.push({ part: walls.done(), colour: spec.wall });
-  out.push({ part: reveals.done(), colour: trim });
-  out.push({ part: glazing.done(), colour: glass });
+  out.push({ part: walls.done(), colour: spec.wall, name: "walls" });
+  out.push({ part: reveals.done(), colour: trim, name: "reveals" });
+  out.push({ part: glazing.done(), colour: glass, name: "glazing" });
   // The dressing, behind the glass. Curtain tones are the wall's own colour
   // lifted toward a warm cream, so a street's curtains belong to their houses.
   for (let i = 0; i < CURTAIN_TONES; i += 1) {
-    out.push({ part: curtains[i].done(), colour: curtainTone(spec.wall, i) });
+    out.push({ part: curtains[i].done(), colour: curtainTone(spec.wall, i), name: "curtain" });
   }
-  out.push({ part: blinds.done(), colour: 0xcfc8ba });
-  out.push({ part: shopBack.done(), colour: 0x4a4038 });
-  out.push({ part: shopShelf.done(), colour: 0x8d7f6d });
+  out.push({ part: blinds.done(), colour: 0xcfc8ba, name: "blind" });
+  out.push({ part: shopBack.done(), colour: 0x4a4038, name: "shopBack" });
+  out.push({ part: shopShelf.done(), colour: 0x8d7f6d, name: "shopShelf" });
   // `emissive` puts these in their own bucket with their own material, whose
   // intensity is zero until the night rig turns it up (E6).
-  out.push({ part: lit.done(), colour: glass, options: { emissive: 0xffdca8 } });
+  out.push({ part: lit.done(), colour: glass, options: { emissive: 0xffdca8 }, name: "lit" });
 
   // A ground band and a cornice: the two horizontal lines that stop a wall
   // reading as one flat sheet from the pavement.
