@@ -11849,3 +11849,35 @@ the fallback is right, and it is exactly what would hide `pools.morred` — the 
 keep their full sail for ever with nothing red anywhere. `test/pools.test.js` reads the `make("…")`
 names out of `instances.js` (which node cannot load) and checks every `pools.X` a life module
 writes against them. Spelling the typo in turns it red; spelling it back turns it green.
+
+## X3d — one question about whose ground this is (2026-10-06)
+
+The review round found that `canBuildOn` carries the Districts rule and has exactly one caller,
+while roads, wires, pipes and rails go through `canConnectAcross`, which never looked at the
+district layer. In Districts a seat could **pave straight across a neighbour's district and not put
+a hut on it**. `test/build.test.js` had pinned both halves so the day one changed the test would say
+which.
+
+**The decision, which is the slice.** A network crosses a district the way it crosses a border: with
+CONSENT — `openBorders`, or that seat's `openTo` — because a region whose only route runs through a
+neighbour is a region nobody can play. A building never does: "unclaimed land inside somebody's
+district is theirs to develop" (§25), and consent to cross is a right of way, not a right to
+develop. That is the item's option (b), and it gives consent a meaning in Districts for the first
+time.
+
+`districtAllows(state, actor, index, consent)` is the one question both now ask, through
+`ownershipPartitions(mode)` rather than each carrying its own mode test — which is what the item
+asked for and what the two unread predicates were for.
+
+| in another seat's district | building | road |
+| --- | --- | --- |
+| Districts, borders shut | `outOfSector` | **`outOfSector`** (was OK) |
+| Districts, borders open | `outOfSector` | OK |
+| your own district | OK | OK |
+| Shared City | OK | OK |
+
+**And the engine's new pool broke a gate the same hour.** S17's locomotive got `pools.loco` in the
+omissions round, and `rail_shots` counts `view.pools.train.count` — so it reported "1 train exists
+and NONE of its carriages was posed" about a train on the line with its engine drawn. A new pool is
+a new term for every reader: the LOD estimate asked for one immediately, and the gate had to be told
+by hand.

@@ -74,7 +74,13 @@ const COUNT = `(state, view) => {
     trains: view.stats?.trains?.trains ?? 0,
     onLine: view.stats?.trains?.onLine ?? 0,
     platforms: view.stats?.trains?.platforms ?? 0,
-    posed: view.pools?.train?.count ?? -1,
+    // BOTH pools since S17's engine (X3d's round): the head of a train is a
+    // locomotive now, and a gate that counts one pool reported "1 train exists
+    // and NONE of its carriages was posed" about a train that was on the line
+    // with its engine drawn.
+    posed: view.pools?.train === undefined && view.pools?.loco === undefined
+      ? -1
+      : (view.pools?.train?.count ?? 0) + (view.pools?.loco?.count ?? 0),
     rails: (m?.rail?.corridors ?? []).length,
     live: view.stats?.streets?.live ?? 0,
     steepest: +(steepest * 100).toFixed(1),

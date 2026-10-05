@@ -25,19 +25,39 @@ export function playerAt(state, seat) {
 
 /** May `actor` build on this tile? Nature is claimable, the commons is shared,
  * another player's land is not. */
+/**
+ * Whose DISTRICT is this, and may `actor` act here? (X3d)
+ *
+ * One question, asked by everything that touches ground. It was two: the rule
+ * lived inside `canBuildOn` — which has exactly one caller, `placeBuilding` —
+ * and `canConnectAcross` did not know about districts at all, so in Districts a
+ * seat could pave, wire and pipe straight across a neighbour's district and
+ * could not put a hut on it.
+ *
+ * `consent` is what separates the two answers now. A NETWORK crosses a district
+ * the way it crosses a border: with the owner's consent (`openBorders`, or
+ * `openTo` for that seat), because a region whose only route runs through a
+ * neighbour is a region nobody can play. A BUILDING never does: "unclaimed land
+ * inside somebody's district is theirs to develop" (§25), and consent to cross
+ * is a right of way, not a right to develop.
+ */
+export function districtAllows(state, actor, index, consent) {
+  if (!ownershipPartitions(state.options.mode)) return RESULT.OK;
+  var district = state.tiles.district[index];
+  if (district === 0 || district === actor) return RESULT.OK;
+  if (consent && state.options.openBorders) return RESULT.OK;
+  if (consent) {
+    var holder = playerAt(state, district);
+    if (holder && holder.openTo && holder.openTo[actor]) return RESULT.OK;
+  }
+  return RESULT.OUT_OF_SECTOR;
+}
+
 export function canBuildOn(state, actor, index) {
   var owner = state.tiles.owner[index];
   if (owner === actor) return RESULT.OK;
   if (owner === OWNER_COMMONS) return RESULT.OK;
-  if (owner === OWNER_NATURE) {
-    if (state.options.mode === MODE_DISTRICTS) {
-      // In Districts, unclaimed land inside someone's district is theirs to
-      // develop; only your own district is open to you.
-      var district = state.tiles.district[index];
-      if (district !== 0 && district !== actor) return RESULT.OUT_OF_SECTOR;
-    }
-    return RESULT.OK;
-  }
+  if (owner === OWNER_NATURE) return districtAllows(state, actor, index, false);
   return RESULT.NOT_OWNER;
 }
 
@@ -72,7 +92,12 @@ export function buildingAt(state, index) {
  * thing that legitimately crosses a border, and only with consent. */
 export function canConnectAcross(state, actor, index) {
   var owner = state.tiles.owner[index];
-  if (owner === actor || owner === OWNER_NATURE || owner === OWNER_COMMONS) return RESULT.OK;
+  if (owner === actor) return RESULT.OK;
+  // Unowned ground still belongs to a DISTRICT in the modes that have them
+  // (X3d): crossing one takes the same consent crossing a border does.
+  if (owner === OWNER_NATURE || owner === OWNER_COMMONS) {
+    return districtAllows(state, actor, index, true);
+  }
   if (state.options.openBorders) return RESULT.OK;
   var owning = playerAt(state, owner);
   if (owning && owning.openTo && owning.openTo[actor]) return RESULT.OK;

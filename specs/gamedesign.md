@@ -1772,6 +1772,7 @@ One clock governs the room. Speed is chosen by majority vote, and the host may f
 |---|---|---|---|---|
 | **Shared City** | 1–16 | One city; build anywhere unclaimed. Ownership is recorded so that nobody can demolish your work | Shared treasury, or separate by option | Building one good city together |
 | **Districts** | 2–16 | The map is divided into one exclusive district per seat | Separate treasuries and tax rates | Your district, your rules — borders, utilities and commuters force negotiation |
+| | | *As built — X3d, 2026-10-06:* a BUILDING on another seat's district is refused (`outOfSector`) whatever the border policy; a ROAD, wire, pipe or rail crosses it with the same consent that crosses an owned border (`openBorders`, or that seat's `openTo`). A right of way is not a right to develop, and a region whose only route runs through a neighbour is a region nobody can play. | | |
 | **Region Rivals** | 2–12 | Separate city sites with neutral land between them | Separate | Competing for the same regional population, trading across neutral ground |
 | **Scenario Co-op** | 2–8 | Defined by the scenario | Defined by the scenario | A shared crisis: flood recovery, cleanup, a festival to prepare |
 

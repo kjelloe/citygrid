@@ -313,7 +313,16 @@ younger one's answer. `test/save.test.js`: the list round-trips and an old save 
 **Done when** a neighbour can clear a five-year ruin, a four-year one is refused with a reason that
 names the clock, and the sweep says what the deputy's new reader did to the city.
 
-## X3d — Districts refuses a building and not a road (S) — found in the review round, 2026-10-05
+## X3d — Districts refuses a building and not a road (S) — **BUILT 2026-10-06** as `slice-X3d`
+
+**Decided: option (b).** A network crosses a district with consent (`openBorders` or the holder's
+`openTo`); a building never may. `districtAllows(state, actor, index, consent)` in
+`engine/permissions.js` is the one question `canBuildOn` and `canConnectAcross` both ask, through
+`ownershipPartitions(mode)` — the predicate that had no caller is the rule now. The pinned rows in
+`test/build.test.js` flipped from "road: OK" to `outOfSector`, with two new rows for consent and for
+one's own district. The `room_soak` two-seat Districts gate still waits on X2.
+
+## X3d — the item as written, 2026-10-05
 
 **Goal.** One question about whose ground this is, asked by everything that touches ground.
 

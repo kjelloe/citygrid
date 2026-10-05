@@ -661,8 +661,10 @@ test("what Districts actually refuses, and what it does not (review round)", () 
   // Districts a seat may pave straight across another seat's district and may
   // not put a hut on it.
   //
-  // This pins what is true TODAY, in both directions, so the day X3b makes the
-  // territory overlay show districts, the test says which half was built.
+  // **Decided and built at X3d (2026-10-06).** A network crosses a district the
+  // way it crosses a border: with CONSENT, not for free. So the road is refused
+  // in Districts with `openBorders` off, allowed with it on, and a building is
+  // refused either way — a right of way is not a land grab.
   const cell = at(7, 3);
   // One state per question: the park the first half places occupies the tile
   // the second half wants, and `needsBulldoze` is not an answer about districts.
@@ -682,9 +684,34 @@ test("what Districts actually refuses, and what it does not (review round)", () 
   const districts = inSomebodyElses(MODE_DISTRICTS);
   assert.equal(districts.building, RESULT.OUT_OF_SECTOR,
     "Districts let a seat build inside another seat's district");
-  assert.equal(districts.road, RESULT.OK,
-    "a road into another district is refused now — the gap this test names is closed, "
-    + "so say so here and in workitems-multiplayer.md");
+  assert.equal(districts.road, RESULT.OUT_OF_SECTOR,
+    "a seat may still pave straight across another seat's district (X3d)");
+
+  // With the border open, the road goes through and the building still does
+  // not: consent is a right of way, not a right to develop.
+  const open = (mode) => {
+    const fresh = () => {
+      const state = world({ mode, openBorders: true });
+      state.tiles.owner[cell] = OWNER_NATURE;
+      state.tiles.district[cell] = 2;
+      return state;
+    };
+    return {
+      building: apply(fresh(), { type: CMD_PLACE_BUILDING, actor: 1, def: "park", x: 7, y: 3 }).result,
+      road: apply(fresh(), { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([cell]) }).result,
+    };
+  };
+  const consented = open(MODE_DISTRICTS);
+  assert.equal(consented.road, RESULT.OK, "an open border does not let a road through a district");
+  assert.equal(consented.building, RESULT.OUT_OF_SECTOR,
+    "an open border let a seat develop inside another seat's district");
+
+  // And one's OWN district is open, with the border shut.
+  const mine = world({ mode: MODE_DISTRICTS, openBorders: false });
+  mine.tiles.owner[cell] = OWNER_NATURE;
+  mine.tiles.district[cell] = 1;
+  assert.equal(apply(mine, { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([cell]) }).result,
+    RESULT.OK, "a seat cannot pave its own district");
 
   // Shared City is the cooperative one: neither refusal exists.
   const shared = inSomebodyElses(MODE_SHARED_CITY);
