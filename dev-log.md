@@ -11924,3 +11924,33 @@ Writing one in turns it red and names the file.
 `isCooperative` was its opposite and was read by one line of one test, which asserted only that the
 two were opposites. The test says which modes partition ownership now, by name, and the function is
 deleted — with its import, which `test/unused-imports.test.js` asked for in the same run.
+
+## S20d — the civic gate frames its subject (2026-10-06)
+
+S19 is a by-eye slice — "one shot per definition beside the previous one" — and it could not start,
+because `civic_shots` photographed from the WALKER standing in the street with a quarter-turn yaw.
+A 3×3 station is 60 m across and the road is a few metres from its front, so the frame was a brown
+band with a roof over it: enough to see that a building exists, not enough to tell a station from a
+shed.
+
+The camera comes from the definition's own size now: `fitDistance(w × tileM)` back from the FRONT
+FACE, a quarter of that along it for a three-quarter view, eye 2.6 m, a few degrees up (more for a
+`tall` definition, so a cupola or a tower is in frame).
+
+**Four framings, and each wrong answer taught the next.**
+
+- `share: 0.8` put the station 75 m away across a field, with a tree in the middle of the frame.
+- A sideways offset measured as a share of the FRONTAGE put the camera inside the city hall's
+  portico, looking along it. It is a share of the standoff now.
+- A height term — `civicHeight × the lot` — came to 42 m for a city hall, because the kit's `y` is
+  in lot units and not metres, and stood the camera 62 m back behind a wood. Taken out; the tilt
+  catches the tall parts.
+- **Standing on the road** looked right and is wrong here: `place=` puts a civic building several
+  rows out from the harness's street, so the road is 78 m from a city hall and the frame was a park
+  with a hall behind it.
+
+What the new frames show, which is S19's starting point: the station reads — brick hall, platform
+canopy on its legs, the clock box, the name board — and the city hall reads: portico columns, a
+glazed entrance, the pediment, the cupola. What they want is detail rather than shape: a legible
+doorway on the station, frames on the civic windows, a face on the clock. A tree stands in front of
+the city hall, which no camera that does not know where the wood is can avoid.
