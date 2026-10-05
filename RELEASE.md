@@ -152,13 +152,17 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**2 open questions** are on the list (`dev-questions.md`, bottom section), and both are Kjell's to
+**3 open questions** are on the list (`dev-questions.md`, bottom section), and both are Kjell's to
 answer rather than work anybody is blocked on:
 
 - **Q154** — a faced shoulder is drawn where a street stands more than a storey above the water.
   Is three metres the right rung? The ladder is measured (1.2 m gives 916 faced shoulders on a
   hilly 128, 2 m gives 264, 3 m gives 130; a rolling 96 has 51 and none), the pictures are taken,
   and it is a picture decision rather than a measurement.
+- **Q156** — a build action costs 28.6 ms of derivation and a frame is 16.7. The rest is
+  allocation rather than algorithm (GC is 5.1 ms of it), so closing it means an in-place graph —
+  the first change where the renderer, the traffic, the crowd and the gates must agree about one
+  structure's identity at once. Nothing is blocked on it.
 - **Q155** — a bulldoze costs **nothing** at two of the three difficulties, because the price is 1
   and `idiv(1 × 90, 100)` is 0. Found in X3a. Raising the price or rounding up both move several
   numbers at once, so it is a balance round rather than a slice.

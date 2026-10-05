@@ -369,13 +369,18 @@ Speeds map to sim work, not to pump rate: 1× = 2 fast ticks/s (one sim-month pe
 
 | Quantity | Target | Instrument | Measured |
 |---|---|---|---|
-| Pump CPU, 128×128 / 16 seats / 8× speed | ≤20 ms | `tools/profile_run.mjs` | not yet |
+| Pump CPU, 128×128 / 16 seats / 8× speed | ≤20 ms | `tools/profile_run.mjs` | **9.8–11.9 ms worst beat** on 48×48 / 2 seats / 1× (`tools/room_soak.mjs`, X1a, 2026-10-04) — not the stated configuration, so it is a floor rather than the answer |
 | Room CPU at 1× speed | ≤5% of a core | same | not yet |
 | Per connected player | ≤1 MB RSS, ≈0 CPU | real-server profile with N ws clients | not yet |
 | Room state in memory | ≤20 MB | heap profile | not yet |
 | Steady-state bandwidth per player | ≤2 KB/s | frame accounting | not yet |
 | Join snapshot | ≤70 KB compressed | frame accounting | **83 KB raw** at 128×128 (`test/save.test.js`), so comfortably inside once deflated |
-| Tick jitter | p99 <150 ms, late% <2 | `/health` `tickJitter` | not yet |
+| Tick jitter | p99 <150 ms, late% <2 | `/health` `tickJitter` | **p50 10 ms, p99 11, max 14, late 0%** over 480 beats at a 10 ms pump (`room_soak`, X1a) — Fireline's `jitterDigest`, which says nothing below ten samples |
+
+**Measured so far in a real room** (X1a, 2026-10-04): five city years, two `ws` clients, one hash on
+all three machines with the clock stopped, 124 commands accepted and none refused, 79 monthly hash
+checks. The two rows above carry what that run measured; the other five still say "not yet", and the
+configuration they ask for (16 seats on 128×128 at 8×) is M6's.
 
 **Measured so far** (2026-08-26, era 0): region generation with the fairness gate is 0.74 ms p50
 at 48×48 and 5.97 ms p50 at 128×128 (`tools/mapsweep.mjs`); a fresh 128×128 save is 83.2 KB of

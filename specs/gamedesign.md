@@ -686,6 +686,17 @@ Higher funding:
 
 Optional loans allow recovery from financial trouble, but introduce recurring repayments. The player should receive warnings before bankruptcy rather than losing without notice.
 
+*As built — L1 (A130), era 28, 2026-10-05.* Two commands, because a debt that cannot be paid down is
+a trap: `takeLoan` and `repayLoan`. The ceiling is a ladder by the city's **rank** (4,000 / 12,000 /
+30,000 / 60,000) and asking past it is its own refusal with its own words, because "not enough
+money" is the wrong sentence for a bank talking about what you have already borrowed. Interest is a
+**bill rather than compounding** — 6 per thousand a month, floored at 1 so a small debt is not free
+— so a player who stops borrowing stops the problem growing, and a seat that cannot pay gets the
+bankruptcy warning §9.5 asks for rather than a new failure mode. The budget drawer shows the debt,
+the ceiling and the month's interest, and offers a quarter, half or all of the headroom. **The
+deputy never borrows**: it is the measurement instrument, and era 28's sweep is identical to era
+27's in all four arms because of it.
+
 ### 10. Core Gameplay Loops
 
 #### 10.1 Immediate Building Loop
@@ -924,6 +935,11 @@ a building nobody can ever build, which `test/unlock.test.js` refuses.
 - Industrial explosion.
 - Large-scale blackout.
 - Water contamination crisis.
+- **Downpour** — *as built, B13 (A61), 2026-10-05.* The eighth: rain that is a cause rather than a
+  picture. It floods the tiles with a pipe under them, and only where the city's water demand is
+  already over what its pumps make, so a stretched network is what turns a wet day into an event.
+  A **storm** also throws one lightning strike through the ordinary fire system, which is the other
+  half of the same ruling.
 
 Disasters should be:
 
@@ -1697,6 +1713,12 @@ Each player sets a standing policy that applies when they are absent or simply p
 #### 25.4 Nuisance reports and derelict property
 
 A **nuisance report** uses the same channel for pollution, noise and congestion crossing a border. It cannot force a change; it makes a complaint visible and attributable, and gives the tension a civil outlet.
+
+*As built — X3a, 2026-10-04.* One record with two kinds: a nuisance report shares the inbox, the
+per-pair cap and the clock with a demolition request, and differs in exactly one way — it cannot be
+approved, only acknowledged. The **derelict override** below is NOT built: a ruin is a tile flag
+whose building is already gone, so nothing in the engine records when it became one, and the clock
+§25.4 asks for is new hashed state (X3c in `workitems-multiplayer.md`).
 
 A **derelict property rule** prevents the one grief move that ownership would otherwise make unanswerable — leaving a ruin to rot against a neighbour's park forever. A building abandoned for longer than a set number of years may have its demolition approved on a neighbour's request even against the owner's wishes. Derelict buildings are visibly marked.
 

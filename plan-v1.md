@@ -72,7 +72,7 @@ built: the world lane through S13, behaviour through B10, the whole transport la
 5–11), the rules lanes (G1–G5, H1–H8, J1–J4, eras 12–26), the film lane's F1 and F2, and the worker
 lane's W1–W5. The balance report is `reports/balance-era28.md` (B13's eighth disaster moved the roll; L1's borrowing moved nothing, because the deputy never borrows).
 
-**Two open questions**, and nothing waits on either: Q154 asks whether a faced shoulder at a storey
+**Three open questions**, and nothing waits on any of them: Q154 asks whether a faced shoulder at a storey
 is the right ladder (S18's pictures are taken and the answer is two minutes with them), and Q155
 reports that a bulldoze is free at two of the three difficulties — `idiv(1 × 90, 100)` is 0 — which
 is a balance era whenever it moves (found in X3a). P103 answered
@@ -421,6 +421,7 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
+| Q156 | a build action is 28.6 ms and a frame is 16.7 — is W6c's in-place graph worth its risk? | Kjell; nothing is blocked on it, and the profile says the rest is allocation rather than algorithm |
 | Q155 | a bulldoze costs 0 at relaxed and steady (`idiv(base × buildCostPercent, 100)` with `bulldoze: 1`) — raise the price or round up? | Kjell; either answer voids the era-26 sweep, so it waits for a balance round rather than a slice |
 | Q154 | a faced shoulder is a storey deep (3 m: 130 on a hilly 128, none on a rolling 96) — is that the right ladder? | Kjell, two minutes with `reports/smoke-S18-wall*-{before,after}.png`; nothing waits on it |
 | ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |

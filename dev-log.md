@@ -11345,3 +11345,43 @@ member rather than on one member swelling.
 
 **The push is Kjell's.** `main` is 151 commits ahead of `origin/main` locally and has not been
 pushed.
+
+## Review round after the ten-item run (2026-10-05)
+
+The checklist, worked through. Four things changed and one of them is a finding.
+
+**The omissions sweep's fourth direction — exports with no importer — found a real gap.**
+`ownershipPartitions(mode)` and `isCooperative(mode)` state, as functions, which modes partition
+ownership, and **nothing has ever called either**. (The X0 dev-log claimed the protocol test read
+them; it does not.) Writing their reader found what they would have prevented: **`canBuildOn` has
+exactly one caller**, `placeBuilding`. Roads, wires, pipes and rails ask `canConnectAcross`, which
+returns OK for unowned ground without looking at the district — so in **Districts mode a seat may
+pave straight across another seat's district and may not put a hut on it**. Two halves of one rule,
+each with its own copy of a mode test, disagreeing since the modes were written.
+
+Nothing played today can see it (Shared City has no districts, and Wave 5 is headless), so it is
+**X3d** with the decision stated rather than a patch: a road across a neighbour's district is either
+the same trespass a building is, or a network crossing a border with consent, or the building rule
+is the one that is wrong — §25 and plan §2.5 describe consent for borders and say nothing about
+districts. `test/build.test.js` pins both directions today, so the day it is fixed the test says
+which half changed.
+
+The rest of that sweep's output is same-file use (`roofColour`, `varyColour`, `copyPlayers`,
+`fireRiskPass` and eighteen others), which the skill says is fine — the question it asks is "which
+of these is a capability with no control", and the answer was two.
+
+**Docs the round found stale:**
+
+- `specs/gamedesign.md` §12 listed seven major disasters and the engine has eight — the **downpour**
+  is written in as built, with the storm's lightning beside it; §9.5's debt paragraph now says how
+  borrowing was actually built (two commands, a rank ladder, a bill rather than compounding, and
+  the deputy that never borrows); §25.4 says the nuisance report is built and the **derelict
+  override is not**, with the reason (a ruin has no clock) and the item that would give it one.
+- `specs/plan.md` §3.8 had seven predicted budgets and no measured ones. Two are measured now —
+  the pump's worst beat (**9.8–11.9 ms** against a ≤20 ms target) and the tick jitter (**p50 10,
+  p99 11, late 0%**) — each marked with the configuration it was measured on, which is **not** the
+  16-seat 128×128 one the row asks for. A floor, said as a floor.
+- **Q156** is new and open: a build action is 28.6 ms against a 16.7 ms frame, the rest is
+  allocation rather than algorithm, and whether W6c is worth its risk is Kjell's call.
+
+Suite 1,777 green twice.

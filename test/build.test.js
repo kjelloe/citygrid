@@ -27,7 +27,9 @@ import { RESULT, LIMITS } from "../shared/protocol.js";
 import { tileAt, encodeRuns } from "../shared/grid.js";
 import {
   OWNER_NATURE, OWNER_COMMONS, TERRAIN_WATER, TERRAIN_ROCK, TERRAIN_FOREST, TERRAIN_GRASS,
+  MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS,
 } from "../engine/constants.js";
+import { ownershipPartitions, isCooperative } from "../engine/permissions.js";
 
 const W = 16;
 function world(over) {
@@ -646,4 +648,52 @@ test("a span longer than `build.bridgeSpan` is refused", () => {
   for (let x = 2; x <= 4 + span; x += 1) fits.push(at(x, 10));
   assert.equal(apply(ok, road(1, fits)).result, RESULT.OK,
     `a span of exactly ${span} was refused`);
+});
+
+test("what Districts actually refuses, and what it does not (review round)", () => {
+  // `ownershipPartitions` and `isCooperative` state, as functions, what the
+  // permission rules do per mode — and the omissions sweep found that **nothing
+  // calls either of them**. Writing their reader found the gap they would have
+  // prevented: `canBuildOn` carries the Districts rule ("unclaimed land inside
+  // somebody's district is theirs to develop") and has exactly ONE caller,
+  // `placeBuilding`. Roads, wires, pipes and rails go through
+  // `canConnectAcross`, which lets anybody cross unowned ground — so in
+  // Districts a seat may pave straight across another seat's district and may
+  // not put a hut on it.
+  //
+  // This pins what is true TODAY, in both directions, so the day X3b makes the
+  // territory overlay show districts, the test says which half was built.
+  const cell = at(7, 3);
+  // One state per question: the park the first half places occupies the tile
+  // the second half wants, and `needsBulldoze` is not an answer about districts.
+  const inSomebodyElses = (mode) => {
+    const fresh = () => {
+      const state = world({ mode, openBorders: false });
+      state.tiles.owner[cell] = OWNER_NATURE;
+      state.tiles.district[cell] = 2;
+      return state;
+    };
+    return {
+      building: apply(fresh(), { type: CMD_PLACE_BUILDING, actor: 1, def: "park", x: 7, y: 3 }).result,
+      road: apply(fresh(), { type: CMD_PLACE_ROAD, actor: 1, runs: encodeRuns([cell]) }).result,
+    };
+  };
+
+  const districts = inSomebodyElses(MODE_DISTRICTS);
+  assert.equal(districts.building, RESULT.OUT_OF_SECTOR,
+    "Districts let a seat build inside another seat's district");
+  assert.equal(districts.road, RESULT.OK,
+    "a road into another district is refused now — the gap this test names is closed, "
+    + "so say so here and in workitems-multiplayer.md");
+
+  // Shared City is the cooperative one: neither refusal exists.
+  const shared = inSomebodyElses(MODE_SHARED_CITY);
+  assert.equal(shared.building, RESULT.OK);
+  assert.equal(shared.road, RESULT.OK);
+
+  // And the two predicates are opposites, which is the whole of what they say.
+  for (const mode of [MODE_SHARED_CITY, MODE_DISTRICTS, MODE_REGION_RIVALS]) {
+    assert.equal(isCooperative(mode), !ownershipPartitions(mode),
+      `${mode}: cooperative and partitioned have stopped being opposites`);
+  }
 });

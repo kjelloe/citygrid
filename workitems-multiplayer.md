@@ -301,6 +301,37 @@ younger one's answer. `test/save.test.js`: the list round-trips and an old save 
 **Done when** a neighbour can clear a five-year ruin, a four-year one is refused with a reason that
 names the clock, and the sweep says what the deputy's new reader did to the city.
 
+## X3d — Districts refuses a building and not a road (S) — found in the review round, 2026-10-05
+
+**Goal.** One question about whose ground this is, asked by everything that touches ground.
+
+**Analysis.** `canBuildOn` carries the Districts rule — "unclaimed land inside somebody's district
+is theirs to develop; only your own district is open to you" — and has **exactly one caller**,
+`placeBuilding` in `engine/utilities.js`. Roads, wires, pipes and rails go through
+`canConnectAcross`, which returns OK for `OWNER_NATURE` without looking at the district at all. So
+in Districts mode a seat **may pave, wire and pipe straight across another seat's district** and may
+not put a hut on it.
+
+Nothing played today can see it: Shared City is the default and has no districts, and Wave 5 is
+headless. It was found by writing a reader for `ownershipPartitions` and `isCooperative` — two
+exported predicates that state exactly this rule and that **nothing has ever called**, which is why
+the two halves could disagree for the life of the project. `test/build.test.js` pins both directions
+now, so the day this is fixed the test says which half changed.
+
+**Do.** Decide the rule first, because it is a design question rather than a bug to patch: a road
+across a neighbour's district is either (a) the same trespass a building is, (b) allowed because a
+network legitimately crosses a border with consent (`openBorders`, `openTo`) — in which case
+Districts needs its own consent for the district as well as for the owner — or (c) allowed and the
+building rule is the one that is wrong. §25 and `specs/plan.md` §2.5 describe (b) for borders and
+say nothing about districts.
+
+Then make it ONE question: `canConnectAcross` and `canBuildOn` both ask `ownershipPartitions(mode)`
+and the district layer, instead of each carrying its own copy of a mode test.
+
+**Tests first.** The rows in `test/build.test.js` flip from "road: OK" to whatever is decided, and
+the matrix gains a district dimension. **Gate.** `room_soak` with two seats in Districts, once X2
+can start one.
+
 ## X2 — The lobby (M) — slice 5.2
 
 **Goal.** Four people configure and start a room without a URL parameter.
