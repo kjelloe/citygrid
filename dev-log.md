@@ -12031,9 +12031,16 @@ its own assertion:
   puddle is a bollard.
 
 **Gate: `bridge_shots`, green** — deck 42.99 m, water 37.5, clearance 5.49, ground 37.1, unchanged.
-The parapets read from the air as the dark edging along the deck. The **piers are not verified by
-eye**: the frame called `smoke-S13-under.png` ("side on, from the water") is an aerial of the whole
-river, so the one camera that would show a pier is pointed at the county. That is the same finding
-S20 has now closed for four other tools, and it is filed rather than fixed here.
+The parapets read from the air as the dark edging along the deck.
+
+**And the frame that was supposed to show the piers was an aerial (S20e).** `smoke-S13-under.png` is
+named "side on, from the water" and was taken with the CITY camera, whose span floors at 8 — so it
+photographed the whole river from above. It takes the photo camera now, two metres over the water
+and forty off the deck line: the girder band, the parapet above it and the lamps on the deck, from a
+boat.
+
+**The eye in a `photo=` camera is metres above the SURFACE, not an absolute height.** The first cut
+passed the water's level plus two — 39.5 — and took an aerial from forty metres up, which is
+precisely the shot it was replacing. One number, and the gate was back where it started.
 
 Suite 1,832 green twice.

@@ -962,9 +962,12 @@ the water on each bank; piers every two tiles on the bed, and none at all in a o
 `test/bridge-spec.test.js` holds each rule. Gate: `bridge_shots` green, the clearance numbers
 unchanged, and the parapets read from the air.
 
-**Left:** the piers are unverified by eye — `smoke-S13-under.png` is named "side on, from the water"
-and is an aerial of the whole river. It wants `tools/lib/aim.mjs` like the four tools S20 converted.
-And the water as one surface, which is the rest of S18.
+**S20e, same day:** `smoke-S13-under.png` takes the photo camera now — two metres over the water,
+forty off the deck line, looking at the crossing. The girder, the parapet and the deck's lamps read
+from a boat. The pier is partly behind the bank's face from that angle; the frame is the check and
+the clearance numbers beside it are the proof.
+
+**Left:** the water as one surface, which is the rest of S18.
 
 ## S18 — The bridge, the wall and the water (M) — Q145 — **the camera and the wall done 2026-10-04**
 

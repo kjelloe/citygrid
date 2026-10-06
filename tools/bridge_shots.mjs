@@ -108,12 +108,30 @@ await frame("reports/smoke-S13-deck.png",
   { street: `${at.bankTile[0]},${at.bankTile[1]}`, yaw: at.horizontal ? 3 : 0, pitch: -4,
     width: 1280, height: 720 },
   "on the deck, looking along it");
-// Side on and low, which is the view in which a deck and a causeway differ —
-// and the view in which 4 m of clearance at 160 m is a few pixels, so the
-// MEASUREMENT beside each shot is the proof and the picture is the check.
-await frame("reports/smoke-S13-under.png",
-  { mode: "city", span: 8, pitch: 6, yaw: across, fx: at.x, fy: at.y, width: 1280, height: 720 },
-  "side on, from the water");
+// Side on and low, which is the view in which a deck and a causeway differ.
+// The CITY camera floors at span 8 and sits well above the water, so this was
+// an aerial of the whole river under the name "from the water": 4 m of
+// clearance at 160 m is a few pixels, and S18a's piers could not be seen at all
+// (S20e). The photo camera stands ON the river instead, forty metres off the
+// deck line and two metres over the surface, which is a boat's eye.
+{
+  const T = DEFAULTS.tileM;
+  // The eye is metres above the SURFACE — over water, the water — so this is 2,
+  // not the water's level plus 2. The first cut passed 39.5 and took an aerial
+  // of the river from forty metres up, which is the shot this one replaces.
+  const perp = at.horizontal ? { x: 0, z: 1 } : { x: 1, z: 0 };
+  const eye = {
+    x: (at.x + perp.x * 2) * T,
+    z: (at.y + perp.z * 2) * T,
+  };
+  const yaw = Math.atan2(eye.x - at.x * T, eye.z - at.y * T);
+  await frame("reports/smoke-S13-under.png",
+    {
+      photo: `${(eye.x / T).toFixed(3)},${(eye.z / T).toFixed(3)},2,${yaw.toFixed(4)},6`,
+      width: 1280, height: 720,
+    },
+    "side on, from the water");
+}
 
 if (problems.length > 0) {
   for (const p of problems) console.error("FAIL —", p);
