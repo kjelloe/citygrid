@@ -46,6 +46,16 @@ export const MOTION_GLSL = {
   float radarA = ${n(MOTION.radar.speed)} * uTime * (0.9 + 0.1 * cos(motionPhase));
   transformed.xz = vec2(cos(radarA) * transformed.x - sin(radarA) * transformed.z,
     sin(radarA) * transformed.x + cos(radarA) * transformed.z);`,
+  // The water's swell (S18b). No `PHASE`: this one is a FIELD, not a thing —
+  // every vertex of one mesh rides the same wave, so the phase comes from where
+  // the vertex is rather than from which instance it belongs to. In TILES,
+  // because the water mesh is built in tiles, with the metre numbers from
+  // `MOTION.ripple` divided by the caller's tile size.
+  ripple: (tileM) => `
+  float rippleK = 6.2831853 / ${n(MOTION.ripple.wave / tileM)};
+  float rippleShape = (sin(rippleK * position.x)
+    + sin(rippleK * (position.z * 0.8 + position.x * 0.3))) * 0.5;
+  transformed.y += ${n(MOTION.ripple.amp / tileM)} * rippleShape * sin(${n(MOTION.ripple.speed)} * uTime);`,
   crane: (slewFrom) => `${PHASE}
   if (position.y > ${n(slewFrom)}) {
     float craneA = ${n(MOTION.crane.amp)} * sin(${n(MOTION.crane.speed)} * uTime) * (0.7 + 0.3 * cos(motionPhase));

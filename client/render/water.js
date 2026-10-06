@@ -30,6 +30,7 @@
 // coming up through it and you have to be able to see it happen.
 
 import * as THREE from "three";
+import { addMotion } from "./motion-material.js";
 import { PALETTES } from "./palettes.js";
 import { getConfig } from "../world/config.js";
 
@@ -99,6 +100,11 @@ export function createWater(state, model, styleName = "plain") {
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geometry.computeVertexNormals();
     geometry.computeBoundingSphere();
+    // The swell (S18b): one uniform, one sine of where the vertex is, and the
+    // numbers from `MOTION.ripple` — the same ones `rippleAt` uses in node. It
+    // is flat at `uTime = 0`, so `?life=0` and every frozen screenshot keep the
+    // surface S4 gave them.
+    addMotion(material, "ripple", tileM);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = "water";
     mesh.renderOrder = 2;

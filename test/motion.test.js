@@ -4,7 +4,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MOTION, ANIMATED, motionTime, sway, rotorAngle, radarAngle, craneAngle, flagWave, puff } from "../client/world/motion.js";
+import { MOTION, ANIMATED, motionTime, sway, rotorAngle, radarAngle, craneAngle, flagWave, puff, rippleAt } from "../client/world/motion.js";
 import { addMotion, MOTION_GLSL, motionUniforms, setMotionTime } from "../client/render/motion-material.js";
 
 const PHASES = [0, 0.7, 2.1, 4.4, 9.9];
@@ -119,4 +119,45 @@ test("a fire is a denser column than a chimney, and the chimney is unchanged (Q1
   const b = puff(3, 0, MOTION.smoke);
   assert.equal(a.rise, b.rise, "the first puff of each rises differently");
   assert.notEqual(puff(3, 7, MOTION.fire).f, undefined, "a fire has a seventh puff");
+});
+
+// --- the water's ripple (S18b) ----------------------------------------------
+
+test("the ripple is a slow swell, bounded and still at rest", () => {
+  // S18 asks for "a slow normal ripple as a uniform" on the water surface. The
+  // numbers live beside the other motions so node can hold them and the GLSL
+  // can read them — one copy, the rule this file exists for.
+  assert.ok(MOTION.ripple, "no ripple in the motion table");
+  const { amp, speed, wave } = MOTION.ripple;
+  assert.ok(amp > 0 && amp <= 0.2, `a ripple ${amp} m high is a swell, not a surface`);
+  assert.ok(speed > 0 && speed < 1.5, `a ripple at ${speed} rad/s is chop`);
+  assert.ok(wave > 5, `a wavelength of ${wave} m is a cross-hatch at city zoom`);
+
+  // Still when the clock is: `?life=0` freezes the water like everything else.
+  for (const [x, z] of [[0, 0], [37, 12], [-120, 400]]) {
+    // `Math.abs`, because the answer at a trough is `-0` and `strictEqual`
+    // tells -0 from 0 (Object.is). The claim is "flat", not "positive zero".
+    assert.ok(Math.abs(rippleAt(x, z, 0)) < 1e-12, "the water is not flat at time zero");
+  }
+  // And bounded, everywhere, forever.
+  for (let t = 0; t < 40; t += 0.37) {
+    for (const [x, z] of [[0, 0], [11, 23], [310, -47]]) {
+      assert.ok(Math.abs(rippleAt(x, z, t)) <= amp + 1e-9,
+        `the ripple reached ${rippleAt(x, z, t)} m at t=${t}`);
+    }
+  }
+  // Alive, and smooth. Two crossed waves do not repeat on a single axis — the
+  // first version of this assertion asked them to and was wrong about the
+  // function rather than about the water — so what is checked is that the
+  // surface VARIES across a span, and that it never steps: a swell that jumps
+  // between neighbouring metres is a cross-hatch, which is the defect S4 spent
+  // a slice on.
+  const t = 3.3;
+  const heights = [];
+  for (let x = 0; x <= 100; x += 1) heights.push(rippleAt(x, 40, t));
+  assert.ok(Math.max(...heights) - Math.min(...heights) > amp * 0.5, "the water is flat while alive");
+  for (let i = 1; i < heights.length; i += 1) {
+    assert.ok(Math.abs(heights[i] - heights[i - 1]) < amp * 0.5,
+      `the surface steps ${(heights[i] - heights[i - 1]).toFixed(3)} m in a metre`);
+  }
 });

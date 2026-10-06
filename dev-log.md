@@ -12044,3 +12044,30 @@ passed the water's level plus two — 39.5 — and took an aerial from forty met
 precisely the shot it was replacing. One number, and the gate was back where it started.
 
 Suite 1,832 green twice.
+
+## S18b — the water moves (2026-10-06)
+
+S18's water bullet asked for three things. **Two were already built and the item did not know it:**
+the surface is one mesh for the whole map (E8) and its vertices take a level blended across each
+tile's corners (S4) — "shared vertices with a level blended across each tile's corners" is a
+description of what `client/render/water.js` has done since September. Reading the code before
+building is what this round was for.
+
+What was missing is the **swell**. `MOTION.ripple` sits with the other motions — 6 cm over a 26 m
+wave at 0.55 rad/s, which is the difference between a sheet of glass and water, and anything more is
+a sea in a town — and `rippleAt(x, z, t)` is the pure function node tests. The shader mirrors it
+through `MOTION_GLSL.ripple`, from the same constants: one rule, two readers, which is why the
+numbers live in `motion.js` at all.
+
+**It is flat at `uTime = 0`**, because the time factor multiplies the whole field rather than
+shifting its phase. `?life=0` therefore keeps the surface exactly as S4 left it, and every frozen
+screenshot this project has taken stays comparable. A swell frozen mid-wave would have re-baselined
+all of them for nothing.
+
+**Two assertions I had to correct while writing them**, both about the function rather than the
+water: `strictEqual(x, 0)` fails at a trough because the answer there is `-0` (`Object.is`), and
+"two points a wavelength apart ride together" is false for crossed waves — what matters is that the
+surface varies across a span and never steps, which is the cross-hatch S4 spent a slice on.
+
+Gate: `water_shots` green — trough 1.4 m, bank 4.25 m above it, 785 water tiles, unchanged.
+Suite 1,834 green twice.

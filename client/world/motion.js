@@ -35,6 +35,11 @@ export const MOTION = Object.freeze({
    * the shader, so a louder fire is a pool of its own rather than an argument —
    * which is also what keeps the chimney exactly as it was. */
   fire: Object.freeze({ puffs: 9, period: 7, rise: 1.4, drift: 0.55, grow: 1.6, opacity: 0.75 }),
+  /** The water's swell (S18b): metres of rise and fall, radians a second, and
+   * the wavelength in metres. A river seen from a bank moves slowly and barely
+   * at all — 6 cm over a 26 m wave is the difference between a sheet of glass
+   * and water, and anything more is a sea in a town. */
+  ripple: Object.freeze({ amp: 0.06, speed: 0.55, wave: 26 }),
 });
 
 /** The pools that move, and how. A pool not listed here does not move. */
@@ -97,4 +102,24 @@ export function puff(t, k, spec = MOTION.smoke) {
     size: 0.5 + f * grow,
     alpha: (1 - f) * Math.min(1, f * 6),
   };
+}
+
+/**
+ * The water's height at a point, in metres above its level (S18b).
+ *
+ * Two crossed waves rather than one, so a surface does not read as corrugated
+ * iron from the air, and both are in WORLD metres so the swell does not change
+ * size with the tile. `client/render/motion-material.js` mirrors this in GLSL —
+ * the numbers come from `MOTION.ripple` in both, which is what keeps them one
+ * rule rather than two.
+ */
+export function rippleAt(x, z, t) {
+  const { amp, speed, wave } = MOTION.ripple;
+  const k = (Math.PI * 2) / wave;
+  // The TIME factor multiplies the whole field, so at `t = 0` the water is flat
+  // — which is what `?life=0` has to mean here: every frozen screenshot this
+  // project has taken keeps the surface S4 gave it, and a swell that is frozen
+  // mid-wave would re-baseline all of them for nothing.
+  const shape = (Math.sin(k * x) + Math.sin(k * (z * 0.8 + x * 0.3))) / 2;
+  return amp * shape * Math.sin(speed * t);
 }

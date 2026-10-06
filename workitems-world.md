@@ -967,7 +967,10 @@ forty off the deck line, looking at the crossing. The girder, the parapet and th
 from a boat. The pier is partly behind the bank's face from that angle; the frame is the check and
 the clearance numbers beside it are the proof.
 
-**Left:** the water as one surface, which is the rest of S18.
+**S18b, same day:** the water's swell. Two thirds of that bullet were already built — one mesh (E8)
+with corner-blended levels (S4) — and what was missing was the motion: `MOTION.ripple`, `rippleAt`
+in node, the same constants in GLSL, flat at `uTime = 0` so `?life=0` and every frozen screenshot
+keep S4's surface. The pale line where the water meets the shore is still open.
 
 ## S18 — The bridge, the wall and the water (M) — Q145 — **the camera and the wall done 2026-10-04**
 
