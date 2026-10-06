@@ -305,3 +305,40 @@ test("the transport buildings say what they are, close up (S19)", () => {
   const ramp = ferry.masses.filter((m) => m.mat === "concrete" && m.z0 > 0.5);
   assert.ok(ramp.length >= 2, "the ferry terminal has a quay and no ramp onto it");
 });
+
+test("a civic building shows its face to the street", () => {
+  // S19 found `railStation` authored backwards — entrance on `-z`, platform on
+  // `+z`, and `civicSpin` turns `+z` to the road — so every station in the game
+  // showed the street its canopy and put its door round the back. The general
+  // claim is this one: if a definition has glazing at all, some of it is on the
+  // street face. A door nobody can see from the road is a door nobody uses.
+  //
+  // Two definitions are PINNED exceptions, not oversights: a marina and a ferry
+  // terminal are authored round the water, and their quay has to meet it. They
+  // want `civicSpin` to turn them by the shore rather than by the frontage,
+  // which is S19b in `workitems-world.md`.
+  const facesTheWater = new Set(["marina", "ferryTerminal"]);
+  const backwards = [];
+  for (const def of definitionIds()) {
+    const masses = civicShape(def).masses;
+    const glass = masses.filter((m) => m.mat === "glass");
+    if (glass.length === 0) continue;                        // a plant, a park, a yard
+    if (facesTheWater.has(def)) continue;
+    // Some glazing in the FRONT half of the building's own depth. Not "near the
+    // lot's front edge" — a school's entrance is in the middle of its lot
+    // because the yard takes the front half, and that is right. Not "on the
+    // front face of a wall" either: a police station's lantern sits on its roof
+    // and a solar plant's panels lie on the ground, and both are visible.
+    //
+    // What the old station failed is this: every pane it had was behind the
+    // middle of its own building, facing the field.
+    const solid = masses.filter((m) => m.mat !== "glass");
+    const back = Math.min(...solid.map((m) => m.z0));
+    const front = Math.max(...solid.map((m) => m.z1));
+    const middle = (back + front) / 2;
+    if (!glass.some((g) => g.z1 > middle)) backwards.push(def);
+  }
+  assert.deepEqual(backwards, [],
+    "a definition whose glazing is all on the back: `civicSpin` turns +z to the street, so this is "
+    + "a building that shows the road its blank side");
+});

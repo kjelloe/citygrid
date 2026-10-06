@@ -11990,3 +11990,24 @@ platform is on the far side. A filter that matches the defect is not a test.
 
 `m.round`, not `m.tall`: the first cut of the column assertion asked for a flag that masses do not
 carry, found nothing, and passed. Suite 1,827 green twice.
+
+## The round after S19 — the convention, tested (2026-10-06)
+
+S19 found `railStation` authored backwards. The general claim is now a test: **a civic building
+shows its face to the street** — some glazing in the front half of its own depth, for every
+definition that has glazing at all.
+
+Three stricter versions were written and thrown away first, which is the useful part:
+
+- *"glass near the lot's front edge"* fails a **school**, whose yard takes the front half and whose
+  entrance is correctly in the middle of its lot;
+- *"glass on the front face of a wall"* fails a **police station**, whose glazing is a rooftop
+  lantern, and a **solar plant**, whose panels lie flat on the ground;
+- and the loose version catches the old station exactly: every pane it had was behind the middle of
+  its own building.
+
+Restoring the pre-S19 masses turns it red and names `railStation`; putting them back turns it green.
+A **marina** and a **ferry terminal** are pinned exceptions with their reason — authored round the
+water, wanting `civicSpin` to turn them by the shore (S19b).
+
+Suite 1,828 green twice.

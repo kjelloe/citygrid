@@ -303,6 +303,19 @@ with a positive default — so all of it sat 2 cm BEHIND the wall that hides it,
 until this was found. The parameter is named `proud` now and `test/window-facing.test.js` asserts
 the sign per side: it is red at 8 cm inside with the old one restored.
 
+## 6.1e The authored convention, and the test it needed (S19, 2026-10-06)
+
+Every civic shape is authored **with its entrance on `+z`**, and `civicSpin` turns that face to the
+street. The convention lived in a comment, which means it was enforced by whoever was typing:
+`railStation` was authored the other way round, so every station in every city showed the road its
+platform canopy and put its door round the back, from S1 until the first close frame of one.
+
+`test/civic-spec.test.js` holds it now, loosely on purpose — *some* glazing in the front half of the
+building's own depth. Stricter versions are wrong: "near the lot's front edge" fails a school whose
+yard takes the front half, and "on the front face of a wall" fails a police station's rooftop
+lantern and a solar plant's ground panels. A marina and a ferry terminal are pinned exceptions: they
+are authored round the water and want turning by the shore (S19b).
+
 ## 6.1d Civic materials, and the chunk under the camera (S1b, 2026-09-12)
 
 Every civic mass names a **material** — brick, concrete, steel, white, red, glass, tank, dark, lawn

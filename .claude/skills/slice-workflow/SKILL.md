@@ -53,6 +53,11 @@ the layers the test reads actually non-zero — as the FIRST check, so a broken
 fixture fails as a broken fixture instead of as a broken feature. Three
 separate N4 failures were fixture bugs wearing a feature's clothes.
 
+**An authoring convention needs a test in the same commit.** `civic-spec.js` says its masses are
+authored with the entrance on `+z`, and `railStation` was authored the other way round — so every
+station showed the street its platform and its door the field, from S1 to S19. A rule enforced by
+whoever is typing is a rule that breaks silently.
+
 **A fallback needs a check that it is not silently the answer.** `pools.moored ?? pools.boat` keeps
 an old renderer drawing something — and would hide `pools.morred` for ever. When you add a default,
 add the list, counter or log that would go red if the default were being taken (S17 → S20c).
