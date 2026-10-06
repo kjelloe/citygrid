@@ -12011,3 +12011,29 @@ A **marina** and a **ferry terminal** are pinned exceptions with their reason �
 water, wanting `civicSpin` to turn them by the shore (S19b).
 
 Suite 1,828 green twice.
+
+## S18a — a crossing reads as a bridge (2026-10-06)
+
+S13 built the deck — the carriageway stands `deckClearance` over the water, a girder hangs under its
+kerb, the bed keeps its colour. What a crossing still had not got is the two things that say
+"bridge" from a bank: a **parapet** along each side and **piers** in the water. The item has asked
+for both since Q145.
+
+`client/world/bridge.js` decides where they go, from the water level and the bed, and returns
+nothing at all for a road on dry land — which is almost every road in a city. The rules, each with
+its own assertion:
+
+- the parapet runs one point past the water on each side, so it lands on the bank instead of ending
+  in mid-air at the abutment;
+- it stands on the DECK, not on the ground: a rail at the river's level is a fence in the water;
+- piers every **two tiles**, standing on the bed and reaching the deck — every tile is a wall across
+  the river, and a one-tile stream gets a parapet and **no pier at all**, because a column in a
+  puddle is a bollard.
+
+**Gate: `bridge_shots`, green** — deck 42.99 m, water 37.5, clearance 5.49, ground 37.1, unchanged.
+The parapets read from the air as the dark edging along the deck. The **piers are not verified by
+eye**: the frame called `smoke-S13-under.png` ("side on, from the water") is an aerial of the whole
+river, so the one camera that would show a pier is pointed at the county. That is the same finding
+S20 has now closed for four other tools, and it is filed rather than fixed here.
+
+Suite 1,832 green twice.

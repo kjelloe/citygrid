@@ -955,6 +955,17 @@ Each within a stated triangle ceiling, each with an L2 silhouette of a few boxes
 the lamps B4 poses still sit on a car's body. **Gate.** `harbour_shots`, `rail_shots`,
 `airport_shots`, `service_shots` re-taken and looked at; the car rows in `budget_gate`.
 
+## S18a — The parapet and the piers (S) — **BUILT 2026-10-06** as `slice-S18a`
+
+`client/world/bridge.js`: a parapet along each kerb, standing on the deck and landing one point past
+the water on each bank; piers every two tiles on the bed, and none at all in a one-tile stream.
+`test/bridge-spec.test.js` holds each rule. Gate: `bridge_shots` green, the clearance numbers
+unchanged, and the parapets read from the air.
+
+**Left:** the piers are unverified by eye — `smoke-S13-under.png` is named "side on, from the water"
+and is an aerial of the whole river. It wants `tools/lib/aim.mjs` like the four tools S20 converted.
+And the water as one surface, which is the rest of S18.
+
 ## S18 — The bridge, the wall and the water (M) — Q145 — **the camera and the wall done 2026-10-04**
 
 `photo=<x>,<z>,<eye>,<yaw>,<pitch>` in the shot harness (F1's free camera, eye above the SURFACE —

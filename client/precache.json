@@ -1,7 +1,7 @@
 {
- "version": "3ce55daf4f2c",
+ "version": "bb9418dbe54a",
  "build": "e57031832ff1",
- "generated": "2026-10-05",
+ "generated": "2026-10-06",
  "files": [
   "./client/audio/audio-model.js",
   "./client/audio/mixer.js",
@@ -110,6 +110,7 @@
   "./client/ui/statistics.js",
   "./client/world/age.js",
   "./client/world/airfield.js",
+  "./client/world/bridge.js",
   "./client/world/chunks.js",
   "./client/world/civic-spec.js",
   "./client/world/collision.js",

@@ -21,6 +21,7 @@ import { facadeSpec } from "../world/facade-spec.js";
 import { buildFacade } from "./facade.js";
 import { unitsOf } from "../world/units.js";
 import { buildWorksYards } from "./trade-parts.js";
+import { bridgeParts } from "../world/bridge.js";
 import { defaultName } from "../world/civic-spec.js";
 import { buildProps } from "./props-l3.js";
 import { buildTrees } from "./trees-l3.js";
@@ -226,6 +227,32 @@ export function bakeStreetCorridors(baker, state, model, corridors, from, stop, 
       addStrip(baker, skirt(walk, half, height, kerb + lift, {
         lift, heights: hs, drops: kerbDrops(walk, hs),
       }), kerbColour);
+      // What makes a crossing read as a bridge from the bank (S18a): a parapet
+      // along each kerb and piers standing on the bed. `bridgeParts` decides
+      // where they go from the water and the ground, and returns nothing at all
+      // for a road on dry land, which is most of them.
+      const levels = walk.map((p) => model.waterLevelAt(p.x, p.z));
+      if (levels.some((level) => level !== undefined)) {
+        const beds = walk.map((p) => model.heightAt(p.x, p.z));
+        for (const part of bridgeParts(walk, levels, beds, cfg, half)) {
+          if (part.kind === "parapet") {
+            const rail = sink();
+            for (let k = 1; k < part.points.length; k += 1) {
+              const a = part.points[k - 1];
+              const b = part.points[k];
+              rail.box(Math.min(a.x, b.x) - 0.18, a.y, Math.min(a.z, b.z) - 0.18,
+                Math.max(a.x, b.x) + 0.18, a.y + part.height, Math.max(a.z, b.z) + 0.18);
+            }
+            baker.addPart(rail.done(), concrete);
+          }
+          if (part.kind === "pier") {
+            const pier = sink();
+            pier.box(part.x - part.w / 2, part.y0, part.z - part.w / 2,
+              part.x + part.w / 2, part.y1, part.z + part.w / 2);
+            baker.addPart(pier.done(), wallColour);
+          }
+        }
+      }
       for (const sign of [-1, 1]) {
         addStrip(baker, ribbon(
           shift(walk, sign * (half + sidewalk / 2)), sidewalk / 2, height, { lift: lift + kerb },
