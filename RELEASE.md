@@ -12,10 +12,12 @@ measured when somebody last looked, which is a different claim and the only one 
   existed — so the docs test now fails past fifty commits of drift rather than printing a note
   nobody reads (M7).
 - **Date:** 2026-10-05
-- **Balance era:** era 28 (`reports/balance-era28.md`), re-measured 2026-10-05 over 200 games per
-  configuration. B13 put an eighth disaster in the roll, so era 26's numbers are void rather than
-  roughly comparable; L1's borrowing is era 28 and its sweep is **identical to era 27 in every
-  arm**, because the deputy never borrows. Numbers from an earlier era are void — and the frame
+- **Balance era:** era 29 (`reports/balance-era29.md`), re-measured 2026-10-06 over 200 games per
+  configuration. **B14 changed what the deputy builds** — it refuses a street where one already runs
+  within `deputy.blockTiles` of most of the run — so every number in the project moved and era 28's
+  are void rather than roughly comparable. Median population 1,710 and treasury 3.95M on
+  `steady-64`; the paved share of a played 64 falls from 31–40% to 19–34% and the side-by-side
+  street pairs roughly halve, which is what the item was about. Numbers from an earlier era are void — and the frame
   numbers further down are renderer measurements, which belong to no balance era. This line said
   "era 1" until P91, five eras after the data stopped agreeing with it, because the doc test was
   pinning the words rather than reading `data/balance.json`.

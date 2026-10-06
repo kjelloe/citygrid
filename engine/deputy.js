@@ -253,6 +253,38 @@ function buildBlock(state, deputy, town) {
   return buildBlockAlong(state, deputy, town, !horizontal);
 }
 
+/** Does most of this run already have a street beside it? (B14)
+ *
+ * "Most", not "any": a new street legitimately starts beside an old one and
+ * leaves it — a junction is two roads meeting — and refusing every run that
+ * touches one refuses the grid itself. Half the cells is the line between a
+ * street that joins the network and a street laid on top of it.
+ */
+export function tooCloseToParallel(state, cells, horizontal) {
+  var gap = rules().deputy.blockTiles;
+  if (!(gap > 0)) return false;
+  var crowded = 0;
+  for (var i = 0; i < cells.length; i += 1) {
+    var x = xOf(state.width, cells[i]);
+    var y = yOf(state.width, cells[i]);
+    var near = false;
+    // `d < gap`, not `<=`: `blockTiles: 3` means a block is three tiles across,
+    // so the next street along is three tiles away and is exactly what this
+    // rule is asking for. Scanning to `gap` inclusive refuses the spacing it
+    // was set to produce, which is what the test said first.
+    for (var d = 1; d < gap && !near; d += 1) {
+      for (var side = -1; side <= 1 && !near; side += 2) {
+        var nx = horizontal ? x : x + d * side;
+        var ny = horizontal ? y + d * side : y;
+        if (!inBounds(state.width, state.height, nx, ny)) continue;
+        if (hasNet(state.tiles.road[tileAt(state.width, nx, ny)])) near = true;
+      }
+    }
+    if (near) crowded += 1;
+  }
+  return crowded * 2 > cells.length;
+}
+
 function buildBlockAlong(state, deputy, town, horizontal) {
   var seat = deputy.seat;
   var reach = reachOf(deputy);
@@ -319,6 +351,18 @@ function buildBlockAlong(state, deputy, town, horizontal) {
     lands += 1;
   }
   if (roadCells.length < 3) return false;
+  // **A street a block from the last one** (B14, era 29). The deputy laid a run
+  // wherever its cursor stood, and the cursor hops −2..2 tiles across — so two
+  // streets could end up side by side, and a played 64 came out 34% road
+  // against the references' 4–13% of a frame. S15c ruled out the renderer's
+  // half by measuring it: narrowing the carriageway moved the share 0.7 points,
+  // because the grey at town zoom is the grid's SPACING.
+  //
+  // So the run is refused when most of it already has a parallel street within
+  // `blockTiles`. Refused rather than moved: a deputy that shuffles until it
+  // finds a gap paves the same amount more slowly, and the turn it spends here
+  // goes to the rest of its doctrine instead.
+  if (tooCloseToParallel(state, roadCells, horizontal)) return false;
 
   var placed = issue(state, deputy, { type: CMD_PLACE_ROAD, actor: seat, runs: encodeRuns(roadCells) });
   if (placed.result !== RESULT.OK) {

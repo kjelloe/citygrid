@@ -12071,3 +12071,46 @@ surface varies across a span and never steps, which is the cross-hatch S4 spent 
 
 Gate: `water_shots` green — trough 1.4 m, bank 4.25 m above it, 785 water tiles, unchanged.
 Suite 1,834 green twice.
+
+## B14 — the deputy paves a quarter of the city, not a third (era 29, 2026-10-06)
+
+S15c measured the premise and ruled out the renderer's half: a played 64 is **31–40% road**, the
+references' road class is 4–13% of a frame, and narrowing the carriageway from 13 m to 10 moved the
+share by **0.7 points**, because the grey at town zoom is the grid's SPACING rather than any street's
+width.
+
+The cause is where the deputy builds. It lays a run wherever its cursor stands, and the cursor hops
+−2..2 tiles across after each block — so **two streets can be laid side by side**.
+
+**One rule, A/B'd on its own.** `tooCloseToParallel` refuses a run where most of it already has a
+parallel street within `deputy.blockTiles` (3) tiles. Three decisions inside it, each with its own
+assertion:
+
+- **refused, not moved** — a deputy that shuffles until it finds a gap paves the same amount more
+  slowly, and the turn it loses goes to the rest of its doctrine;
+- **"most", not "any"** — a new street legitimately starts beside an old one and leaves it; a
+  crossing is two roads meeting, and refusing those refuses the grid itself;
+- **`d < gap`, not `<=`** — `blockTiles: 3` means a block is three tiles across, so the next street
+  along is three tiles away and is exactly what the rule asks for. Scanning inclusively refuses the
+  spacing it was set to produce, which is what the test said first.
+
+**Measured, three seeds, 25 years:** road share 31.2 / 39.5 / 34.4% → **18.9 / 33.8 / 22.5%**, and
+side-by-side pairs 1,805 / 2,256 / 1,979 → **791 / 1,480 / 969**.
+
+**The sweep, 200 games × 4 configurations, with the null arm (`blockTiles: 0`) on the same seeds:**
+
+| steady-64 | rule on (era 29) | rule off |
+| --- | --- | --- |
+| population median | **1,710** | 1,602 |
+| treasury median | 3,953,931 | 3,925,393 |
+| congested tiles | 15 | 12 |
+| **stranded homes** | **14** | 4 |
+| pollution over developed land | 1 | 2 |
+
+So the town grows **7% more people on the same money** with a quarter less road — and the cost is
+the one the item predicted: **stranded homes go 4 → 14**, because fewer streets is fewer frontages.
+Fourteen of about 250 buildings is the price of the picture, and it is recorded here rather than
+tuned away. 200 of 200 cities alive in every configuration.
+
+`reports/balance-era29.md` is the era's report; `RELEASE.md` carries the new era and these numbers.
+Suite 1,835 green twice.

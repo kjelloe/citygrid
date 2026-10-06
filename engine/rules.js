@@ -11,7 +11,7 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 28,
+  era: 29,
   build: {
     _bridge: "S13 (A84, A111): how many tiles of water one crossing may span. The engine has always allowed a road over water and charged roadOverWater for it - A84 believed otherwise because no 64x64 deputy city had ever paved one, and H7's played 96 has ten such tiles - so the rule S13 adds is a SPAN and an end on dry land, not permission. Six tiles is 120 m, which is a river rather than a lake: the renderer gives the run a deck at a fixed height with a ramp either end inside road.maxGrade, and a ramp that long at 15% is already 18 m of climb.",
     bridgeSpan: 6,
@@ -173,6 +173,8 @@ var RULES = {
     avenueAtPopulation: 800,
     // How far either way along the busiest street the upgrade runs.
     avenueTiles: 7,
+    blockTiles: 3,
+    _blockTiles: "B14 (era 29): a street is refused where most of its run already has a parallel street within this many tiles. The deputy laid a run wherever its cursor stood, and the cursor hops -2..2 tiles across, so two streets could be laid side by side: 31-40% of a played 64 was road against the references' 4-13% of a frame. Refused rather than moved - a deputy that shuffles until it finds a gap paves the same amount more slowly - and 'most', not 'any', because a new street legitimately starts beside an old one and leaves it.",
     _bridge: "A121 (Q143): the deputy goes looking for a crossing. S13 taught buildBlockAlong to span a river its block happens to meet and measured what that is worth - in a twenty-year played 96 the deputy meets water fifteen times and a building on the far bank refused all five attempts, so it built none. Everything else structural it owns is sought on purpose: a line past railAtPopulation, a harbour past harbourAtPopulation. bridgeAtPopulation is the same shape, bridgeCap is how many it may seek in one game, and bridgeNeedsRoom is what makes it worth doing - free unzoned tiles within bridgeRoomReach of where the bridge LANDS, because a crossing onto a rock is a crossing to nowhere and this rule exists to open land.",
     bridgeAtPopulation: 900,
     bridgeCap: 2,

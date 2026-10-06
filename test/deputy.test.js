@@ -10,14 +10,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateWorld } from "../engine/worldgen.js";
+import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
-import { makeDeputy, deputyTurn, deputyRoll } from "../engine/deputy.js";
+import { makeDeputy, deputyTurn, deputyRoll, tooCloseToParallel } from "../engine/deputy.js";
 import { markDerelict } from "../engine/requests.js";
 import { nextInt } from "../shared/prng.js";
 import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR, TICKS_PER_MONTH, ZONE_NONE, ZONE_RESIDENTIAL, FLAG_RUINED, TERRAIN_WATER, TERRAIN_SHALLOW } from "../engine/constants.js";
 import { rules, setRules } from "../engine/rules.js";
+import { tileAt } from "../shared/grid.js";
 import { gateStatus, gateTerms, railReach } from "../engine/gates.js";
 import { waterBodies, bodyAt } from "../engine/terrain.js";
 import { isAvenue, hasNet, NET_PRESENT } from "../engine/network.js";
@@ -552,4 +554,29 @@ test("the deputy never borrows (L1)", () => {
   for (const player of state.players) {
     assert.equal(player.debt ?? 0, 0, `seat ${player.seat} borrowed ${player.debt}`);
   }
+});
+
+test("a street is refused where one already runs beside it (B14)", () => {
+  // The deputy laid a run wherever its cursor stood, and the cursor hops −2..2
+  // tiles across — so two streets could be laid side by side. A played 64 came
+  // out 31–40% road against the references' 4–13% of a frame, and S15c had
+  // already ruled out the renderer's half by measuring it.
+  const state = createState(defaultOptions({ width: 24, height: 24, seed: 3 }));
+  const W = state.width;
+  const line = (y) => Array.from({ length: 12 }, (unused, i) => tileAt(W, 4 + i, y));
+  for (const i of line(10)) state.tiles.road[i] = NET_PRESENT;
+
+  // A run one tile from it is refused; three tiles away is a block and is not.
+  assert.equal(tooCloseToParallel(state, line(11), true), true, "a street beside a street was allowed");
+  assert.equal(tooCloseToParallel(state, line(13), true), false, "a street a block away was refused");
+  // `blockTiles: 0` is the lever the null arm of the sweep runs on.
+  const was = rules().deputy.blockTiles;
+  setRules({ ...rules(), deputy: { ...rules().deputy, blockTiles: 0 } });
+  assert.equal(tooCloseToParallel(state, line(11), true), false, "blockTiles 0 still refused something");
+  setRules({ ...rules(), deputy: { ...rules().deputy, blockTiles: was } });
+
+  // And "most", not "any": a run that CROSSES the old street is a junction, and
+  // refusing those refuses the grid itself.
+  const crossing = Array.from({ length: 12 }, (unused, i) => tileAt(W, 8, 4 + i));
+  assert.equal(tooCloseToParallel(state, crossing, false), false, "a crossing street was refused as a parallel one");
 });

@@ -425,7 +425,17 @@ corridor, every entity not on it is where it was. **Gate.** `lanes_dump` settles
 and reports how many cars moved; `play_smoke` builds a road and the car count on screen does not
 drop to zero.
 
-## B14 — The deputy paves 38% of the city (M, behaviour, its own era) — found in S15c, 2026-10-05
+## B14 — The deputy paves 38% of the city (M, behaviour, its own era) — **BUILT 2026-10-06 as era 29**
+
+`tooCloseToParallel` refuses a run where most of it already has a parallel street within
+`deputy.blockTiles` (3) tiles — refused rather than moved, "most" rather than "any", and `d < gap`
+so that the spacing the number names is the spacing it produces. Road share on three seeds
+31.2/39.5/34.4% → 18.9/33.8/22.5%, side-by-side pairs roughly halved. The sweep with its null arm
+(`blockTiles: 0`, the same seeds): steady-64 population 1,602 → **1,710**, treasury flat, and
+**stranded homes 4 → 14**, which is the cost the item predicted — fewer streets is fewer frontages.
+200 of 200 cities alive. `reports/balance-era29.md`.
+
+## B14 — the item as written, 2026-10-05
 
 **Goal.** A town that reads as fields with streets through it, which is what the references are and
 what S15 measured ours is not.
