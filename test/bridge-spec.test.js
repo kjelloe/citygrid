@@ -79,3 +79,33 @@ test("the decision is pure", () => {
   const once = JSON.stringify(bridgeParts(points, levels, beds, DEFAULTS, 20));
   assert.equal(JSON.stringify(bridgeParts(points, levels, beds, DEFAULTS, 20)), once);
 });
+
+test("a parapet follows a crossing that bends", () => {
+  // The rail's offset is perpendicular to the LINE, taken from the neighbouring
+  // points — not a fixed axis. A straight-run test cannot tell those apart, and
+  // a corridor that bends over its water is what the deputy lays on a river
+  // that is not square to the grid.
+  const points = [];
+  const levels = [];
+  const beds = [];
+  for (let i = 0; i < 9; i += 1) {
+    // A quarter turn through the crossing.
+    const t = i / 8;
+    points.push({ x: Math.cos(t * Math.PI / 2) * 120, z: Math.sin(t * Math.PI / 2) * 120 });
+    const wet = i >= 3 && i <= 6;
+    levels.push(wet ? 10 : undefined);
+    beds.push(wet ? 4 : 12);
+  }
+  const rails = bridgeParts(points, levels, beds, DEFAULTS, 6).filter((p) => p.kind === "parapet");
+  assert.equal(rails.length, 2);
+  // Every rail point is its half-width from the centre line it belongs to — on
+  // a bend that is only true if the offset turns with the line.
+  for (const rail of rails) {
+    for (let k = 0; k < rail.points.length; k += 1) {
+      const centre = points[k + Math.max(0, 3 - 1)];
+      if (!centre) continue;
+      const d = Math.hypot(rail.points[k].x - centre.x, rail.points[k].z - centre.z);
+      assert.ok(d > 3 && d < 12, `a rail point ${d.toFixed(1)} m from its centre line`);
+    }
+  }
+});
