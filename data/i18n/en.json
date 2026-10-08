@@ -98,6 +98,7 @@
  "refused.seatTaken": "Somebody is already in that seat — pick another",
  "refused.roomClosed": "That room has closed",
  "refused.badCode": "No room with that code",
+ "refused.malformed": "That did not look like a join — reload the page and try again",
  "refused.banned": "The host has removed you from that room",
  "refused.rateLimit": "Too many messages at once — slow down",
  "ping.help": "Help here",

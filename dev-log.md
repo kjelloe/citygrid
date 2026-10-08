@@ -12169,3 +12169,21 @@ health metric `soak` already reports. A conditional rule wants a firing count be
 it is filed as **B15** in `workitems-behaviour.md` rather than done unasked — a new field on the
 deputy record is four places and a `SAVE_VERSION` bump.
 
+## M8 and X1b were already built; X2a — the door asks which room (2026-10-06)
+
+**Two items the review round listed as open were done.** `M8` ships in `83a7c6a`
+(`slice-M8`, 2026-10-05): `loadRuleset` takes three files and `setConfig` is called beside
+`setRules` and `setCatalogue`, with the pair of tests the other two had — a doctored `road.width` of
+99 reaches `getConfig()`, and a file that will not load leaves the mirror standing and names itself.
+`X1b` ships in `90c116a`: eight `REFUSAL` codes, `SEAT_TAKEN` given where `server/room.js` means it,
+`refused.<code>` in both catalogues and three assertions in `test/i18n.test.js`.
+
+**Why the round got it wrong, which is the finding.** The claim came from
+`grep -rn "setConfig(" client/ | grep -v world/config.js`, and both halves of that command were
+wrong for this code: the call site passes the function by REFERENCE
+(`["cityviewer.json", setConfig, "cityviewer"]`, no parenthesis), and the import line that would
+have shown up instead was filtered out by the `grep -v`. The work items had never been ticked, so
+reading the docs confirmed the wrong answer. CLAUDE.md now names `client/world/config.js` beside the
+engine's two mirrors and says M8 is what gave it a loader; both items carry an "as built" note and
+say plainly that this round misreported them.
+

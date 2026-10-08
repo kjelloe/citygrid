@@ -248,7 +248,16 @@ in the dev-log as the first measured row of plan §3.8.
 
 **Must not change:** any fixture hash; `offline_smoke`; the worker's message shapes.
 
-## X1b — The door has words (S) — found 2026-10-04, ruling 027
+## X1b — The door has words (S) — **BUILT 2026-10-04** as `slice-X1b`
+
+*As built: eight `REFUSAL` codes including `SEAT_TAKEN`, which `server/room.js` gives when the seat
+is taken and keeps `ROOM_FULL` for when the room actually is (`room.js:90–92`, `test/room.test.js`
+drives both). `refused.<code>` in both catalogues — eight keys each — and `test/i18n.test.js` has
+the same pair of assertions it makes for `RESULT`, plus a third that the two mismatch strings say
+reload in both languages. The review round of 2026-10-06 listed this item as open: it read the
+header, which had never been ticked, rather than the code.*
+
+## X1b — the item as written, 2026-10-04
 
 **Goal.** Every way the door can say no is a sentence a player can read, in both catalogues, before
 anybody is standing at it.
@@ -375,6 +384,24 @@ the matrix gains a district dimension. **Gate.** `room_soak` with two seats in D
 can start one.
 
 ## X2 — The lobby (M) — slice 5.2
+*The headless half of slice 5.2, which is the half A125 allows. `shared/roomcode.js`: Crockford
+base32, six characters, `I`/`L`/`O`/`U` out and the first three read back as `1`/`1`/`0`; the
+caller owns the randomness, so the server passes `randomBytes(6)` and `shared/` stays generator-free.
+A typed code is untrusted input — capped at 32 characters before it is walked, separators removed,
+anything else `""` and never stripped. `createRoom({ code })` mints one when not told; `join`
+refuses `BAD_CODE` for another room's code AND for none at all, normalising at the door rather than
+only in the lobby; `WELCOME` names the room; the store keeps the code beside the save so a restart
+is the same room. `REFUSAL.MALFORMED` is the eighth code, because `BAD_CODE` was also what a
+message that is not a hello got — X1b's lying refusal one door along. `PROTOCOL_VERSION` 2 → 3: a
+required field is a wire change. Gate `room_soak` green with three new rows, worst beat 11.35 ms of
+20.*
+
+**Two tests earned their keep by being planted.** The bad-input list could not tell a stripping
+normaliser from a refusing one — every string in it had too few or too many alphabet characters —
+so the discriminating cases (`"<ABCDEF>"`, `"!ABCDEF!"`, `"ABCDEF;--"`) were added and the plant
+fires. And the alphabet's size is asserted by COUNTING: each of the 32 characters comes from
+exactly 8 of the 256 byte values, which 31 would break silently.
+
 
 **Goal.** Four people configure and start a room without a URL parameter.
 
@@ -391,6 +418,13 @@ so `a11y_smoke` and the sanitiser (`LIMITS.NAME_BYTES`) get it.
 every client (the hash of the generated state); a full room refuses; a code is case- and
 confusable-insensitive. **Gate.** `room_smoke` with four contexts: configure, ready, start, all on
 one hash; `reach_smoke` and `ui_smoke` cover the two new screens.
+**What X2a already did of that list (2026-10-06):** the code is case- and confusable-insensitive
+(`test/roomcode.test.js`), and a full room refuses — with `SEAT_TAKEN` and `ROOM_FULL` told apart
+since X1b (`test/room.test.js`). **What is left is the screen**, plus two things it implies and
+X2a deliberately did not build: the client socket transport (X1's client half) and a **multi-room
+registry** — one process still hosts one room, addressed by `roomId` for the store and by its code
+at the door, and a lobby that creates rooms needs both a registry and a create message on the wire.
+All of it is behind A125.
 
 ## X3a — Requests in the engine (L) — slice 5.3, the half the plan thought was built
 
@@ -511,3 +545,6 @@ there it stops until Kjell has played (A125).** X0, X1's room half and X3a are b
 what is left before the playtest is W6's second half, which is a renderer slice. X0 and X1's room half are built (2026-10-04). Then X1's client half → X2 → X3b → X4. W6 runs beside X1 because they touch
 different files and X3 cannot be played without it. Wave 6 (modes, seasons, scale to sixteen,
 operations) is not in this file and does not start until the release gate above is met.
+~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
+~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~.
+

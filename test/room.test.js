@@ -375,3 +375,47 @@ test("the seats a room holds are the ones it welcomed, with distinct tokens", ()
   room.leave(1);
   assert.deepEqual(room.seats().map((s) => s.seat), [2]);
 });
+test("a malformed hello is told it is malformed, not that the code is wrong", () => {
+  // X1b's finding, one door along: `ROOM_FULL` for a taken seat told the player
+  // to go away when the answer was "pick another seat". `BAD_CODE` for a
+  // message that is not a hello tells them to check a code they typed
+  // correctly, when what is wrong is the client.
+  const room = createRoom({ options: OPTIONS, code: "ABC123" });
+  for (const nonsense of [undefined, null, {}, { type: C2S.COMMAND }, { type: "hello " }]) {
+    const connection = wire("noise");
+    assert.equal(room.join(connection, nonsense), REFUSAL.MALFORMED,
+      `${JSON.stringify(nonsense)} was answered with the wrong refusal`);
+    assert.equal(connection.last(S2C.REFUSED)?.reason, REFUSAL.MALFORMED);
+  }
+});
+
+  // And a full room says so rather than claiming the seat is taken: the player
+  // has to be told to go away, not to pick another (X1b's distinction).
+  const late = wire("too late");
+  assert.equal(room.join(late, hello({})), REFUSAL.ROOM_FULL);
+  assert.equal(late.of(S2C.WELCOME).length, 0);
+
+  // A reconnecting seat still gets the seat it asks for, which is what the
+  // token is for — "any" must not renumber somebody who is coming back.
+  room.leave(2);
+  const back = wire("back again");
+  assert.equal(room.join(back, hello({ seat: 2 })), "");
+  assert.equal(back.last(S2C.WELCOME)?.seat, 2, "a returning seat was renumbered");
+});
+
+test("a seat nobody has left is still refused to a second client (X1b, unchanged)", () => {
+  // The hold must not blur the distinction X1b drew: somebody sitting there is
+  // `SEAT_TAKEN` and always was, and this test is here so that a change to the
+  // hold cannot quietly turn an occupied seat into a grace window.
+  const room = createRoom({ options: { ...OPTIONS, seats: 2 }, code: "ABC123" });
+  const hello = (over) => ({
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", ...over,
+  });
+  const sitting = wire("sitting");
+  assert.equal(room.join(sitting, hello({ seat: 1 })), "");
+  const token = sitting.last(S2C.WELCOME)?.token;
+  // Even WITH the right token: the seat is not empty, and two sockets on one
+  // seat is two clients applying one seat's commands.
+  assert.equal(room.join(wire("also one"), hello({ seat: 1, token })), REFUSAL.SEAT_TAKEN);
+});
+

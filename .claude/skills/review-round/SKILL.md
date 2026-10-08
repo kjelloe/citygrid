@@ -33,6 +33,15 @@ you changed — or state plainly that nothing needed changing, which is a valid 
 - Does `plan-v1.md` reflect which slices are actually done? **Check the gate, not the tick** — 0.4
   was marked done for months with `test/fixtures/empty.json` as its gate and an empty
   `test/fixtures/` directory. A slice's "done when" column is a claim, and claims are checkable.
+- **And the inverse, which happened three times in one day on 2026-10-07: an item that says "to do"
+  for work that SHIPPED.** M8 and X1b were both reported open to Kjell and both were in the history
+  with their tests; the three UI skins P108 asked for had been in the settings panel since N24. The
+  heading is written once and ticking it is a fourth step after the gate, the log and the commit, so
+  it is the one that gets skipped — and the lane files are what the next session reads to decide
+  what to do. **Before reporting an item open, read the code for the thing it names**, and grep for
+  the BARE name: a callback passed by reference (`["cityviewer.json", setConfig, …]`) never matches
+  `setConfig(`, and an exclusion added to quieten the output is how the one piece of evidence gets
+  dropped. Tick the item in the same breath as the dev-log entry.
 - Does a rule in `CLAUDE.md` describe something that is actually true? "Hashed fields are listed in
   two places" described one place for the life of the project.
 - Did any slice change behaviour that `specs/gamedesign.md` still describes the old way?
@@ -337,6 +346,7 @@ overlap, so the wrong answer is a plausible speed, and a car crosses an 8 m junc
 second so nothing about its position moves. Plant the bug before believing the test. When the
 honest instrument turns out to be a source assertion, say in the file why the behavioural one could
 not be made to discriminate.
+
 **And plant it on BOTH sides of any normaliser between the defect and the value the test reads.**
 The 2026-10-06 round wrote the assertion S18's deck bullet had never had — `heightAt` sampled every
 quarter tile across a crossing, bounded by `road.maxGrade` — and a 3 m staircase planted in

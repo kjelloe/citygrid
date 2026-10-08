@@ -124,10 +124,12 @@ Every change is a slice, named after its entry in `plan-v1.md`:
 - Small functions, clear names. Comments only where the *why* is non-obvious — a hidden
   constraint, a workaround, a subtle invariant. Never explain the *what*.
 - Modules soft-capped around 300 lines, one subsystem each, acyclic imports.
-- Numbers live in `data/*.json`, never in engine code. The mirrors in `engine/rules.js` and
-  `engine/catalogue.js` exist because `engine/` may not do I/O; `client/content.js` loads the real
-  files at boot and they are the FALLBACK. Until P90 nothing called `setRules` or `setCatalogue` and
-  the mirror was all there was — a drift test kept them identical, which is exactly why nobody
-  noticed the file was decoration.
+- Numbers live in `data/*.json`, never in engine code. The mirrors in `engine/rules.js`,
+  `engine/catalogue.js` and `client/world/config.js` exist because `engine/` may not do I/O and the
+  renderer must boot offline; `client/content.js` loads all three real files at boot and the mirrors
+  are the FALLBACK. Until P90 nothing called `setRules` or `setCatalogue`, and until **M8** nothing
+  called `setConfig` — the mirror was all there was, and a drift test kept them identical, which is
+  exactly why nobody noticed the files were decoration. The drift tests stay: they are what makes a
+  tool's `setConfig(DEFAULTS)` the same numbers as the page's.
 - No defensive handling for things that cannot happen. No unrequested abstractions.
 - Cite the ruling or prompt that created a rule: `// ruling 002`, `// P2`.

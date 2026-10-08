@@ -56,6 +56,12 @@ export const REFUSAL = Object.freeze({
   SEAT_TAKEN: "seatTaken",
   ROOM_CLOSED: "roomClosed",
   BAD_CODE: "badCode",
+  // X2a: `BAD_CODE` meant "no room with that code" and was also what the door
+  // gave a message that is not a hello at all — telling a player to check a
+  // code they typed correctly, when what is wrong is the client. The same shape
+  // as X1b's `ROOM_FULL` for a taken seat: a refusal that lies about what to do
+  // next.
+  MALFORMED: "malformed",
   BANNED: "banned",
   RATE_LIMIT: "rateLimit",
 });

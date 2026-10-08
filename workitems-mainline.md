@@ -209,6 +209,23 @@ balance eras: the page names `782e759` from 2026-09-08 and says every commit sin
 **Done when** `main` is `dev_night`, the page names its own commit, and Kjell has pushed.
 
 ## M8 — The renderer's numbers are a mirror with no loader (S) — found in S15, 2026-10-05
+## M8 — The renderer's numbers are a mirror with no loader (S) — **BUILT 2026-10-05** as `slice-M8`
+
+*As built: `loadRuleset` takes three files, and `["cityviewer.json", setConfig, "cityviewer"]` sits
+beside the other two. `test/content.test.js` has the pair the other two already had — a doctored
+`road.width` of 99 reaches `getConfig()`, and a file that will not load leaves the mirror standing
+and says which file it was. The item's last worry — a shot tool calling `setConfig(DEFAULTS)` by
+hand would run different numbers from the page — is closed by `test/world.test.js`'s drift
+assertion, which is a strict `deepEqual` between `DEFAULTS` and the file, so the mirror IS the
+file's numbers or the suite is red.*
+
+**The review round of 2026-10-06 reported this item as open and was wrong**: the grep behind the
+claim looked for `setConfig(` and the call site passes the function by reference
+(`["cityviewer.json", setConfig, …]`), while the import line was filtered out by the same command's
+`grep -v world/config.js`. The item itself had never been ticked, which is what made the wrong
+answer survive a reading. Checking the tick against the code is the point of the ritual's step 2.
+
+## M8 — the item as written, 2026-10-05
 
 **Goal.** Editing `data/cityviewer.json` changes the game.
 
@@ -232,6 +249,13 @@ fetch leaves the mirror in place and says so. **Gate.** `client_smoke` and one `
 because a config that arrives after the first frame would move what the first frame measured.
 
 ## Order
+
+**Where this lane stands, 2026-10-08.** M1–M6 and M8 are built; `main` is the game and was pushed
+on 2026-09-08. What is open: **M7** (the release again, and a merge — `main` is well behind, and
+the push is Kjell's), **M9** (the `quick` gate set takes 986 s against a 540 s budget and starves
+its own gates; two of its named failures are fixed, the budget itself is not), **M10** (the three
+interface skins exist and nobody has looked at them — **Q159**), and **M11** ("1 tiles": the
+catalogue has no plural machinery at all).
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.
