@@ -11,6 +11,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { readDoc, docExists, repoRoot } from "./helpers/sources.js";
+import { SETS } from "../tools/gates.mjs";
 import { PALETTES } from "../client/render/palettes.js";
 import { PLAYER_COLOURS } from "../client/render/palette.js";
 
@@ -377,6 +378,40 @@ test("the release page says how far behind HEAD it is, and is not a hundred comm
   }
   assert.ok(behind <= STALE_AT,
     `RELEASE.md describes ${sha}, ${behind} commits behind HEAD — re-measure it and name this commit`);
+});
+
+test("every lane file on disk is one this list knows about", () => {
+  // The direction that rots. `REQUIRED_DOCS` proves the documents it names
+  // exist; nothing proved it NAMES the documents that exist, and the list has
+  // been three lanes short twice — P59 added three and M7 found them missing
+  // five slices later. A lane file nothing points at is a plan that quietly
+  // stops being true, which is the whole reason the list is a test.
+  const lanes = readdirSync(repoRoot).filter((name) => /^workitems-.*\.md$/.test(name)).sort();
+  assert.ok(lanes.length > 8, `only ${lanes.length} lane files — this is scanning nothing`);
+  const unlisted = lanes.filter((name) => !REQUIRED_DOCS.includes(name));
+  assert.deepEqual(unlisted, [],
+    `these lanes exist and REQUIRED_DOCS does not name them: ${unlisted.join(", ")}`);
+});
+
+test("the documents count the gate sets the runner actually has", () => {
+  // Prose that carries a NUMBER about the code is prose that goes stale in
+  // silence: `RELEASE.md` and `README.md` both said "ten gate sets" an hour
+  // after M9 split `sim` into `sim` and `sweep`, and nothing could see it. The
+  // count comes from `SETS` rather than from a literal here, so this says so
+  // the next time a set is added as well.
+  const sets = Object.keys(SETS).filter((name) => name !== "all");
+  const words = ["one", "two", "three", "four", "five", "six", "seven", "eight",
+    "nine", "ten", "eleven", "twelve", "thirteen", "fourteen"];
+  const spelled = words[sets.length - 1];
+  assert.ok(spelled, `${sets.length} sets, and nobody wrote a word for that many`);
+  for (const doc of ["RELEASE.md", "README.md"]) {
+    const text = readDoc(doc);
+    const claimed = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen)\s+(?:gate\s+)?sets\b/i
+      .exec(text);
+    assert.ok(claimed, `${doc} does not say how many gate sets there are`);
+    assert.equal(claimed[1].toLowerCase(), spelled,
+      `${doc} says "${claimed[1]} sets" and the runner has ${sets.length}: ${sets.join(", ")}`);
+  }
 });
 
 test("a balance report's two halves agree with each other", () => {

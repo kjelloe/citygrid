@@ -4,13 +4,14 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `7d3dbde` on `dev_night`, after **a multiplayer room a player can host, join and
-  play in** (X0 through X4e), the model's dirty set, the request commands, borrowing and
-  twenty-nine balance eras — which is what the numbers below were measured at. **`main` is the release and `dev_night` carries what has landed since**: `main`
-  was pushed on 2026-09-08 at `2f26532`. This page named that commit until 2026-10-04, **129 commits
-  and twenty-five eras later**, with every number on it measured against a game that no longer
-  existed — so the docs test now fails past fifty commits of drift rather than printing a note
-  nobody reads (M7).
+- **Commit:** `3d86c6e` on `dev_night`, after **a multiplayer room a player can host, join and
+  play in** (X0 through X4e), **a sun that crosses the sky** (S22), the price of clearing ground and
+  the quests the tools had never loaded (era 30), the model's dirty set, the request commands and
+  borrowing — which is what the numbers below were measured at. **`main` is the release and
+  `dev_night` carries what has landed since.** `main` was last pushed on 2026-10-05 at `6b89a6f`;
+  this page named a commit **129 behind** until 2026-10-04, with every number on it measured against
+  a game that no longer existed, so `test/docs.test.js` fails past fifty commits of drift rather
+  than printing a note nobody reads (M7).
 - **Date:** 2026-10-08
 - **Balance era:** era 30 (`reports/balance-era30.md`), measured 2026-10-08 over 200 games per
   configuration, with **two arms beside it** (`balance-era30-arm-{bulldoze,quests}`) because two
@@ -28,11 +29,13 @@ measured when somebody last looked, which is a different claim and the only one 
   numbers further down are renderer measurements, which belong to no balance era. This line said
   "era 1" until P91, five eras after the data stopped agreeing with it, because the doc test was
   pinning the words rather than reading `data/balance.json`.
-- **303 commits**, one per slice, no squash and no merge commits. The twenty-two most recent were
+- **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **1,956 tests**, green twice in a row on every slice (`./test.sh`), and **ten gate sets** —
-  `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `film` and `room`.
+- **1,978 tests**, green twice in a row on every slice (`./test.sh`), and **eleven gate sets** —
+  `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `film` and
+  `room` — every one of their budgets re-measured on a quiet machine at era 30 (M9), most of them
+  downwards.
 
 ## Running it
 
@@ -62,6 +65,13 @@ vendored and pinned; `ws` is the server's only dependency.
 - **The renderer**, rebuilt over twenty slices as *cityviewer*: three styles, two projections, a
   street camera you can walk in, baked street chunks at eye level with facades, shopfronts,
   props, pedestrians, traffic, signals, water and a time of day.
+- **And the sun crosses the sky** (S22). It did not until 2026-10-08: the key light's x and z were
+  constants, so every shadow in every city at every hour fell the same way and only their length
+  changed. The azimuth now rides the same wall clock the four composed presets do, over a quarter of
+  the sky, in steps small enough that the shadow texel grid holds still between them — and a moon
+  takes the night on its own arc, half a turn away, so a night shade falls the other way.
+  `tools/sun_shots.mjs` reads the light's position out of the page at three hours rather than
+  judging by pixels: 125.7°, 146.3°, 166.9°.
 - **The simulation is off the render thread.** `worker/sim-worker.js` owns the state and the page
   holds a mirror patched from the tile layers that changed; `tools/worker_smoke.mjs` plays the same
   46 commands and 200 ticks on both arms for the same hash, and `?worker=0` is the lever that
@@ -112,24 +122,31 @@ which is what made the governor spend its whole ladder on a machine hitting 60 f
 
 **The gates**, all green, through the runner (`node tools/gates.mjs <set>`):
 
-Measured 2026-10-05 at this commit, on SwiftShader, **one set at a time** — a set measured beside
-another measures the machine. A gate time is only comparable within an era.
+Measured 2026-10-08 at this commit, on SwiftShader, **one set at a time with nothing else
+running** — a set measured beside another measures the machine, and three reds in one day were
+exactly that, so the runner prints `NOT ALONE` when another node process is alive (M9). A gate time
+is only comparable within an era.
 
 | Set | Gates | Time | Budget | What it is |
 |---|---|---|---|---|
-| `quick` | 12 | **505 s** | 540 s | the eleven browser smokes and the §24 acceptance script |
-| `render` | 3 | **8 s** | 120 s | the two walks and `passability` |
-| `lanes` | 1 | **212 s** | 360 s | `lanes_dump` — its own set since S18, because it was 95% of `render` |
-| `budget` | 1 | **259 s** | 360 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
-| `shots` | 7 | **379 s** | 420 s | the world lane's picture gates, each counting what it photographed |
-| `transport` | 4 | **245 s** | 300 s | T1–T4's pictures |
-| `kits` | 5 | **319 s** | 960 s | one picture per catalogue definition, per kit, per role, per street |
-| `film` | 1 | **292 s** | 480 s | the sixty-second storyboard, every frame counted for triangles and for life |
-| `sim` | 3 | **832 s** | 900 s | `disaster_soak`, `traffic_gate`, `sim_sweep` |
-| `room` | 1 | **5 s** | 600 s | `room_soak` — two `ws` clients, five city years, one hash (X1a) |
+| `quick` | 12 | **522 s** | 600 s | the eleven browser smokes and the §24 acceptance script |
+| `render` | 3 | **6 s** | 60 s | the two walks and `passability` |
+| `lanes` | 1 | **39 s** | 240 s | `lanes_dump` — 211 s at era 28; B14 shrank the hilly city under it |
+| `budget` | 1 | **277 s** | 330 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
+| `shots` | 9 | **303 s** | 390 s | the world lane's picture gates, each counting what it photographed |
+| `transport` | 4 | **268 s** | 330 s | T1–T4's pictures |
+| `kits` | 6 | **395 s** | 480 s | one picture per catalogue definition, per kit, per role, per street |
+| `film` | 1 | **116 s** | 180 s | the sixty-second storyboard, every frame counted for triangles and for life |
+| `sim` | 2 | **354 s** | 450 s | `disaster_soak` and `traffic_gate` |
+| `sweep` | 1 | **628 s** | 780 s | the 200-game balance sweep, which is the only gate that writes a report |
+| `room` | 3 | **187 s** | 600→300 s | five browsers in one room, and two `ws` clients on one hash |
 
-The slowest single gate is `budget_gate` at **258 s**, then `lanes_dump` at 215, `ui_smoke` at 203
-and `embankment_shots` at 103. Each run writes `reports/gates-<date>.json`.
+Every budget on that table was re-measured at era 30 and **most of them came down** — `kits` by
+half, `film` to a third, `room` to a half. `sim` was split from `sweep` because one gate was two
+thirds of the set, which is M2's rule for the fifth time. The slowest single gate is `sim_sweep` at
+**628 s** (439 when it was first measured, and the growth is thirty balance eras of a bigger city,
+not the code: timed with the quests off and on it is 587 s and 586 s). Then `budget_gate` 277,
+`ui_smoke` 179 and `traffic_gate` 175. Each run writes `reports/gates-<date>.json`.
 
 `quick` was 375 s when M2 measured it and set the budget as "the measurement plus room". By
 2026-09-10 it had reached **477 s of 480** — three seconds of headroom — because the measurement
