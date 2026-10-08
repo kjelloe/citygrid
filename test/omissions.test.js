@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { OPTION_FIELDS } from "../engine/options.js";
 import { repoRoot, jsFilesIn, stripCommentsAndStrings } from "./helpers/sources.js";
 import { knownCommands } from "../engine/reducer.js";
+import { C2S, S2C } from "../shared/protocol.js";
 import * as COMMANDS from "../engine/commands.js";
 import { alertKinds } from "../client/ui/alerts-model.js";
 import "../engine/build-commands.js";

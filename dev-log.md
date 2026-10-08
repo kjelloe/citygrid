@@ -12694,6 +12694,35 @@ build menu dressed in each. Two things to say plainly: the camera is wherever th
 the town the tool builds is in the minimap and not in frame, and the HUD's numbers are zeros because
 nothing grew. Both are written into the item as what is left.
 
+## Review round after X2b/X2c/X3b/X4a (2026-10-07)
+
+Suite **1,892 green twice**. Every export in the day's six new modules has a reader;
+`data/cityviewer.json` has no unread key.
+
+**The census that should have existed all along.** `test/omissions.test.js` has asked since N11
+whether every command a SINGLEPLAYER needs can be reached from the client, and nothing had ever
+asked the question of the others. So `requestDemolition`, `resolveRequest`, `withdrawRequest`,
+`reportNuisance` and `ping` have sat with reducer handlers, tests, words in both catalogues and **no
+way for a player to issue them** — a reducer that answers and an interface that cannot ask look
+exactly like a feature nobody has got to, from both ends. Each is now listed with the slice that
+gives it a control, and the test goes red when one is built or another appears.
+
+**It found two on its first run** that were in nobody's head: `leave` (saying "I am going", which is
+the half that releases the seat X4a now holds) and `setStatus` (away and spectating). Both X4's.
+
+**And four items today said "to do" for work that had shipped** — M8, X1b, the three UI skins, and
+X3b's "undo in a room, refused once somebody else owns the ground", which `engine/build-commands.js`
+has enforced for a long time with `test/build.test.js:213` pinning it. The heading is written once
+and ticking it is a fourth step after the gate, the log and the commit, so it is the one that gets
+skipped — and the lane files are what the next session reads to decide what to do. The
+`review-round` skill now says to read the code for the thing an item names before reporting it open,
+and the memory is `an-item-outlives-its-implementation`.
+
+**Memories:** `a-token-handed-out-and-never-checked` (the seat token), `an-item-outlives-its-
+implementation`, and an addition to `look-before-writing-reads-as` — *a gate that proves a thing
+CHANGED is not a gate that proves it is RIGHT*, which is what `a11y_smoke`'s skin check is and is
+not.
+
 ## X3b — who answered (2026-10-07)
 
 X3c left this for X3b to decide "**with the inbox's words in front of you**", and the words settle

@@ -25,7 +25,6 @@ const DECLARED_AHEAD = [
   // Wave 5's commands: a constant and no handler, listed with their slices in
   // `test/omissions.test.js` as well.
   "engine/commands.js: CMD_TRANSFER_FUNDS",
-  "engine/commands.js: CMD_SET_REQUEST_POLICY",
   "engine/commands.js: CMD_CLAIM_SECTOR",
   "engine/commands.js: CMD_OPEN_BORDER",
   "engine/commands.js: CMD_MUTUAL_AID",
@@ -42,7 +41,9 @@ const DECLARED_AHEAD = [
   "engine/constants.js: NET_NONE",
   "engine/constants.js: MODE_SCENARIO_COOP",
   "engine/constants.js: TREASURY_SEPARATE",
-  "engine/constants.js: PLAYER_REGENT",
+  // `PLAYER_REGENT` LEFT this list on 2026-10-08: the roster reads it to say
+  // "run by the deputy", which is one of the four statuses a seat can be in.
+  // The thing that SETS it is regency, still X4's.
 ];
 
 const DIRS = ["engine", "client", "shared", "worker", "server"];
