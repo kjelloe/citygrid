@@ -13584,3 +13584,99 @@ That is **Q162**, and nothing is blocked on it: the wall is built and looks righ
 Suite **1,961 tests, 1,958 pass, 0 fail, 3 skipped, green twice.** Gates: `render` **6 s of 120**
 (both walks and `passability`), `shots` **305 s of 420** — down from 394 s when S18 measured it,
 and 57 s of that is `embankment_shots` photographing two pairs fewer.
+
+## L2 and D8b — era 30: clearing ground costs something, and the sweep finally has quests in it (2026-10-08)
+
+Two rules in one era, because A133 and A136 asked for them together, and **three arms** so a moved
+number can still be attributed to one of them — which is what A82 bought and what combining eras
+gives straight back.
+
+**L2: `build.bulldoze` 1 → 5** (`data/balance.json` and the mirror in `engine/rules.js`).
+`buildCost` is `idiv(base × buildCostPercent, 100)`, so at a base of 1 clearing ground cost
+**nothing** at relaxed (70%) and steady (90%) — the default — from slice 1.3 until X3a asked an
+approved request to charge "the demolition and the compensation" and the demolition came to zero.
+Kjell chose the price over a floor under the arithmetic: **relaxed 3, steady 4, demanding 6**, and no
+other price in the table moves. Two tests, both red before the change: a bulldoze is charged at
+every difficulty — asserted as *more than nothing* rather than as a literal, because the base is
+balance data a later era may move — and what the tool quotes is what the player is charged, which is
+J1's one-code-path rule asked on the difficulty where the quote used to agree with a free
+demolition.
+
+**D8b: the tools load `data/`.** `tools/lib/content.mjs` is one re-export of the server's adapter and
+a reason: there is one such adapter in node and a third copy would be the `VARIANTS` shape with
+files instead of numbers. `sim_sweep`, `soak`, `disaster_soak`, `traffic_gate` and the fixture runner
+call it. The quests are the point — `engine/rules.js` and `engine/catalogue.js` have mirrors kept
+honest by a drift test and `engine/quests.js` has **none**, so `CATALOGUE = []` and every number this
+project has ever measured came from a city in which no quest could fire, while a browser has
+twenty-one. Quests pay money and set `rank`, so this is a rule change. `QUESTS=0` is the lever, and
+it is how the arm below was measured — a fallback nothing can force is one no gate measures.
+
+**The arms, 200 games × 25 years per configuration.**
+
+| configuration | population median: null → price → quests | treasury median: null → price → quests |
+|---|---|---|
+| relaxed-64 | 1811 → 1811 → 1811 | 5,620,958 → 5,620,833 → **5,638,558** |
+| steady-64 | 1710 → 1710 → 1710 | 3,953,931 → 3,953,835 → **3,967,631** |
+| demanding-64 | 1545 → **1539** → 1543 | 2,121,013 → 2,124,200 → 2,125,523 |
+| steady-64-nodisasters | 1572 → 1572 → 1572 | 3,952,649 → **3,952,649** → 3,968,341 |
+
+200 of 200 cities alive in every arm and every configuration; peak population unmoved except on
+demanding (2763 → 2774 → 2755). **Era 30 itself**, both changes together, is what the two arms
+predict almost exactly: population 1811 / 1710 / **1543** / 1572 and treasury 5,638,433 / 3,967,535
+/ 2,125,385 / 3,968,341 — the quests' money less the price, and two residents of a demanding 1,545.
+
+**Both changes are economically invisible to the deputy's city, and the null row says why.** With
+disasters off the price arm's treasury is **byte-identical** to the null — the deputy only ever
+bulldozes to clear a RUIN (B1a), so with nothing to ruin it never pays the price at all. With
+disasters on it pays about a hundred on four million. The quests pay **13,700 to 17,600** into the
+same four to five million, which is 0.3% — they fire, they are hashed, and they do not change what
+the city becomes. On demanding, where there is no slack, the price costs six residents of 1,545 and
+the quests cost two.
+
+That is a null result and it is worth having twice over: the price is safe to ship at the feel Kjell
+asked for, and **every balance number measured before era 30 was not badly wrong** for having been
+measured without quests — which is the thing Q158 could not know either way.
+
+**The one re-pin, and it attributes itself.** `empty.json` moved **3 of 4** hashes and gained
+`questOffered` on its eleventh tick — D8b's change, in the only fixture that has quests switched on.
+`two_player.json` moved **4 of 13**, at `resolveRequest` and everything after it — L2's price,
+arriving exactly where X3a found the defect, because an approved request charges "the demolition and
+the compensation" and the demolition is no longer zero. `founding.json` moved **0 of 15**. One
+re-pin, `--events-changed`, with a reason naming both changes.
+
+**And the reason `founding` did not move is a gap worth naming.** It and `two_player` carry
+`"quests": false` in their options, which is the fixture rule working as written — *a fixture that
+does not name `disasters` must not have disasters running through it, or a change to disaster tuning
+moves a fixture that is about roads* — so the founding sequence stays about the founding sequence.
+The consequence is that **the project's tripwire still cannot see a quest in a city that grows**:
+the only fixture quests can fire in is an empty 16×16 region being ticked. That wants a fourth
+fixture whose subject IS the quest ladder, which is its own slice and is filed in
+`workitems-measurement.md` rather than bolted onto an era about the economy.
+
+**The gate, clean: `sim` is 982 s of a 900 s budget.** `disaster_soak` 150 s, `traffic_gate` 204 s,
+`sim_sweep` **628 s** against the 439 s M2 measured — on a quiet machine this time, which is what
+the contended 604 s reading from this morning's `all` run could not claim. So the set really is over
+budget, and it has two candidate causes that this entry does not separate: era 29's cities are
+bigger (B14 bought 7% more people), and era 30 adds a monthly pass to every one of the 200 × 25-year
+games. Attributing it is **M9**, whose job is a table per set taken quiet; what this slice owes is
+the clean number, and that is it.
+
+Suite **1,966 tests, 1,963 pass, 0 fail, 3 skipped, green twice.** The fixtures, the seam, the
+worker, the transport and the room all replay the re-pinned hashes.
+
+**A census so a tool cannot quietly measure the mirrors again.** `test/tools.test.js`: every tool
+that imports `deputyTurn` — a tool that plays a city nobody is playing and reports numbers about
+it — must import `tools/lib/content.mjs`, or be named in `QUEST_FREE` with what it would cost to
+move. Ten are named, each with its reason, and the picture tools are the bulk of them: loading
+quests into `tools/lib/aim.mjs`'s `playedCity` moves every photograph in the project. The fix when
+that list shortens is to delete an entry, never to widen it. Planted by removing
+`embankment_shots`: red.
+
+**And the adapter itself has a test at last.** `server/content.js` was written in X1c for the room
+and had none; D8b made it the thing four measurement tools and the fixture runner load their content
+with, so `test/content.test.js` now drives it: all three files reach the engine, the ruleset is
+compared against the FILE rather than the mirror (comparing with the mirror passes whether or not
+anything was read — the M8 lesson), the quest catalogue arrives non-empty and validates, and a
+second test states the claim the whole item rests on: there is no mirror behind `engine/quests.js`,
+so *"nobody called the loader"* and *"the city has no quests"* are the same sentence. Planted by
+deleting the `setQuests` call: red.

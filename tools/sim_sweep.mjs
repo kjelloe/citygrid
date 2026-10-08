@@ -36,7 +36,22 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+// **The quests, loaded** (D8b, Q158 → A136, era 30). The pass is registered by
+// importing the module and the CATALOGUE comes from `data/quests/` — there is
+// no mirror for it, so every number this project measured before era 30 came
+// from a city in which no quest could fire, while a browser has twenty-one.
+// Quests pay money and set `rank`, so this changes what the deputy can afford
+// and what it may build: it is a balance era, not a tidy-up.
+import "../engine/quests.js";
+import { loadContent } from "./lib/content.mjs";
 import "../engine/requests.js";
+
+// Before anything builds a city, and fatal if it fails: a tool that quietly
+// fell back to the mirrors would measure the city this era exists to stop
+// measuring. `QUESTS=0` is the lever (`fallback-needs-a-lever`) — the arm the
+// era report calls "quests off", and the only way to reproduce era 29's
+// numbers on this commit.
+if (process.env.QUESTS !== "0") await loadContent();
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const GAMES = Number(process.argv[2] ?? 200);

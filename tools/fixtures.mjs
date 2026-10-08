@@ -33,6 +33,7 @@ import { createState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { rules } from "../engine/rules.js";
+import { loadContent } from "./lib/content.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const FIXTURE_DIR = join(here, "..", "test", "fixtures");
@@ -66,6 +67,13 @@ const SYSTEMS = {
  * fixture cannot currently pin behaviour with a system switched off. */
 export async function loadSystems() {
   for (const load of Object.values(SYSTEMS)) await load();
+  // **And the content the systems need** (D8b, Q158 → A136, era 30). The
+  // `quests` system above registers the pass; the CATALOGUE it reads comes from
+  // `data/quests/` and has no mirror, so until era 30 every fixture and every
+  // tool in this repo replayed a city in which no quest could fire. Quests pay
+  // money and set `rank`, so the fixtures move once and are re-pinned with a
+  // reason naming it. `QUESTS=0` reproduces the city as it was.
+  if (process.env.QUESTS !== "0") await loadContent();
 }
 
 export function fixtureState(fixture) {

@@ -553,7 +553,9 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 
 ## Order
 
-**Where this lane stands, 2026-10-08.** B1–B14 are built; era 29 is B14's. What is open:
+**Where this lane stands, 2026-10-08.** B1–B14 are built; era 29 is B14's and **era 30 is the rules
+lane's** (L2's price for clearing ground with D8b's quests folded in — both economically invisible to
+a deputy city, which is in `reports/balance-era30.md` with an arm for each). What is open:
 **B15** (count B14's refusal — a conditional rule with its effect measured and its firing count
 measured nowhere) and **B6's rain** (the streaks, the wet road and the puddles; the overcast hour
 shipped as B6a).

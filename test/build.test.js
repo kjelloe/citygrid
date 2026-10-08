@@ -730,3 +730,40 @@ test("what Districts actually refuses, and what it does not (review round)", () 
   assert.equal(ownershipPartitions(MODE_DISTRICTS), true);
   assert.equal(ownershipPartitions(MODE_REGION_RIVALS), true);
 });
+
+// --- clearing ground costs something, at every difficulty (L2, A133) --------
+
+test("a bulldoze is charged at every difficulty", () => {
+  // **Q155: it was free at two of the three.** `buildCost` is
+  // `idiv(base × buildCostPercent, 100)` and `bulldoze` was **1**, so relaxed
+  // (70%) and steady (90%) both floored to zero — the smallest price in the
+  // table annihilated by integer division, on the default difficulty, since
+  // slice 1.3. A133 raised the base to 5 rather than putting a floor under the
+  // arithmetic, so the price survives the scaling at every rung.
+  //
+  // The assertion is "more than nothing", not "exactly four": the base is
+  // balance data and a later era may move it, while a price that rounds away is
+  // the defect whatever the number is.
+  for (const difficulty of ["relaxed", "steady", "demanding"]) {
+    const state = world({ difficulty });
+    assert.ok(buildCost(state, "bulldoze") > 0,
+      `a bulldoze costs ${buildCost(state, "bulldoze")} at ${difficulty}`);
+  }
+});
+
+test("what the tool quotes for a bulldoze is what the player is charged", () => {
+  // One code path (J1): `price()` runs the same staging the command does and
+  // throws the transaction away, so a quote that disagreed with the charge
+  // would mean two implementations of the rule. Asked on the default
+  // difficulty, where the price was zero and the quote agreed with it.
+  const state = world();
+  const cells = [at(3, 3), at(4, 3)];
+  apply(state, road(1, cells));
+  const quote = price(state, { type: CMD_BULLDOZE, actor: 1, runs: encodeRuns(cells) }, "bulldoze");
+  assert.equal(quote.result, RESULT.OK, `the quote refused: ${quote.result}`);
+  assert.ok(quote.cost > 0, `the quote is ${quote.cost}`);
+  const before = state.players[0].treasury;
+  assert.equal(apply(state, { type: CMD_BULLDOZE, actor: 1, runs: encodeRuns(cells) }).result, RESULT.OK);
+  assert.equal(before - state.players[0].treasury, quote.cost,
+    `quoted ${quote.cost} and charged ${before - state.players[0].treasury}`);
+});

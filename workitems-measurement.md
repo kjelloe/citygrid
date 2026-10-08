@@ -447,10 +447,27 @@ first, since a probe that cannot see a quest fire would report zeros either way.
 
 **Where this lane stands, 2026-10-08.** D1, D4, D6, D7 and D8 are built, with the desktop halves of
 D2 and D5. **Everything still open in this lane needs a phone** — D3 and the rest of D5 — except
-**D8b**, which was **Q158** and is now **A136**: nothing in `tools/` ever loads the quest catalogue,
-so every era number in `reports/` is a city where no quest can fire while a player's has 21. It is
-answered and scheduled — it folds into L2's balance era with the bulldoze price (A133), three arms
-and one fixture re-pin naming both.
+~~**D8b**~~ (Q158 → A136), **built 2026-10-08 as part of era 30**: nothing in `tools/` had ever
+loaded the quest catalogue, so every era number in `reports/` was a city where no quest could fire
+while a player's has 21. `tools/lib/content.mjs` re-exports the server's adapter and the four
+measurement tools and the fixture runner call it; `QUESTS=0` is the lever, and the era report has an
+arm measured with it. Quests pay money and set `rank`, so it is a rule change and not a tidy-up —
+which is why it rode in a balance era with the bulldoze price rather than landing as a fix.
+
+**What is left of it, in two pieces, both named in tests rather than in prose alone.**
+
+- **The picture tools still build quest-free cities** (`tools/lib/aim.mjs`'s `playedCity` and every
+  `_shots` gate through it). Loading quests there moves every photograph in the project, so it is
+  its own slice with its own re-shoot. `test/tools.test.js`'s `QUEST_FREE` names all ten, each with
+  what it would cost to move, and the fix when the list shortens is to delete an entry.
+- **D8c — no fixture pins a quest in a city that grows.** `founding.json` and `two_player.json`
+  carry `"quests": false`, which is the fixture rule working as intended — a fixture that does not
+  name a system must not have it running, or a change to quest tuning would move a fixture that is
+  about roads. So the only fixture a quest can fire in is `empty.json`, a 16x16 region being ticked,
+  where era 30 duly produced a `questOffered` on the eleventh tick. **A fourth fixture whose subject
+  IS the quest ladder** would pin what a player actually meets: the offer, the condition coming
+  true, the reward paid, the rank set, and a choice taken. Small, and it is the piece of the
+  tripwire that D8b proved was missing — the sweep was blind to quests and so, still, is the replay.
 
 **One discipline this lane owns, broken by the person who wrote it (2026-10-08).** "A set measured
 beside another measures the machine" is on `RELEASE.md`'s gate table in those words. During a

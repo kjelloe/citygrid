@@ -60,16 +60,19 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 
 **`main` is the game, and it is pushed — and it is now 54 commits behind.** `dev_night`
 fast-forwarded into it on 2026-09-08 at `2f26532` and Kjell published it: one commit per slice, no
-squash and no merge commits. `main` is era 26's release and the game is at era 29. `RELEASE.md` says
+squash and no merge commits. `main` is era 26's release and the game is at era 30. `RELEASE.md` says
 what is true at the commit it names — re-measured 2026-10-08 at `7d3dbde` — and carries the measured
 numbers; this file stays the plan. The merge is **M7**, and it is Kjell's push.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
-was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 29**
-(`reports/balance-era29.md`; each era between is one measured rule change, named in `dev-log.md`).
+was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 30**
+(`reports/balance-era30.md`; each era between is one measured rule change, named in `dev-log.md`).
+Era 30 is L2's price for clearing ground with D8b's quests folded in, and it is the first era whose
+report has **arms beside it** — `balance-era30-arm-{bulldoze,quests}` — because two rules moved at
+once and A82's ability to attribute a move to a rule is worth keeping.
 
-**Where the work stands (2026-10-08, era 29).** A125 was lifted on 2026-10-07 (A131) and **the
+**Where the work stands (2026-10-08, era 30).** A125 was lifted on 2026-10-07 (A131) and **the
 multiplayer lane is built but for four items.** A player can host a room from the new-game screen,
 send somebody the address bar, and have them join by code or watch without taking a seat; ask a
 neighbour to clear ground or report a nuisance; answer from an inbox or set a standing answer and
@@ -121,7 +124,7 @@ P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall 
 | **World** | **S22** (a sun that moves — A138: a quarter arc, the rate in data) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
 | **Behaviour** | B15 · B6's rain |
 | **Mainline** | M7 (release + merge, Kjell's push) · M9 (the `quick` set's budget) · M11 · ~~M10~~ (closed, A137) |
-| **Rules / worker / measurement** | L2 (bulldoze 5, A133) **with D8b folded in** (quests into the tools, A136) — one era · W6c **held** until the room is played (A134) |
+| **Rules / worker / measurement** | ~~L2~~ **with ~~D8b~~ folded in** — built as **era 30** · W6c **held** until the room is played (A134) · W6d (Q161) · what is left of D8b: the picture tools still build quest-free cities, which is its own re-shoot |
 | **Waiting on hardware** | F3, D3, the rest of D5 — all need a phone |
 
 *The older ordering, kept because it says why the world lane is arranged as it is:*

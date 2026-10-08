@@ -19,6 +19,7 @@ import { loadRuleset } from "../client/content.js";
 import { getConfig, setConfig, DEFAULTS } from "../client/world/config.js";
 import { rules, setRules } from "../engine/rules.js";
 import { catalogue, setCatalogue, definitionIds } from "../engine/catalogue.js";
+import * as questsModule from "../engine/quests.js";
 
 const read = (name) => JSON.parse(readFileSync(join(repoRoot, "data", name), "utf8"));
 
@@ -141,5 +142,54 @@ test("a cityviewer config that will not load leaves the mirror standing (M8)", a
     console.error = wasError;
     restore();
     setConfig(DEFAULTS);
+  }
+});
+
+// --- the node adapter, which the server and every measurement tool share ----
+//
+// `server/content.js` reads `data/` from disk and hands it to the engine. It had
+// no test: it was written in X1c for the room, and D8b (era 30) made it the
+// thing four measurement tools and the fixture runner load their content with
+// (`tools/lib/content.mjs` is one re-export of it). An adapter that silently
+// loaded two of the three files is exactly the defect it exists to prevent —
+// `engine/quests.js` has no mirror, so a quest catalogue that failed to load
+// leaves an EMPTY one and a city in which nothing can fire, which is what every
+// number in `reports/` was measured in until era 30.
+
+test("the node adapter loads all three files, the quests included (D8b)", async () => {
+  const { loadServerContent } = await import("../server/content.js");
+  const { questCatalogue, setQuests, validateQuests } = await import("../engine/quests.js");
+  const quietly = questCatalogue();
+  try {
+    const loaded = await loadServerContent();
+    // The ruleset and the catalogue, against the files rather than the mirror:
+    // the two are kept identical by a drift test, so comparing with the mirror
+    // would pass whether or not anything was read (the M8 lesson).
+    assert.equal(loaded.rules.era, read("balance.json").era);
+    assert.equal(rules().build.bulldoze, read("balance.json").build.bulldoze);
+    assert.ok(definitionIds().length > 20, `${definitionIds().length} definitions`);
+    // And the half with no mirror to fall back on.
+    assert.ok(questCatalogue().length > 10, `${questCatalogue().length} quests reached the engine`);
+    assert.deepEqual(validateQuests(questCatalogue()), [],
+      "the quests on disk do not validate, so no tool is measuring what a player plays");
+    assert.equal(loaded.quests.length, questCatalogue().length);
+  } finally {
+    restore();
+    setQuests(quietly);
+  }
+});
+
+test("the quest catalogue is empty until something loads it", () => {
+  // The claim D8b rests on, stated where somebody will read it: there is no
+  // mirror behind `engine/quests.js`, so "nobody called the loader" and "the
+  // city has no quests" are the same sentence. `QUESTS=0` in the tools is this
+  // state on purpose, and it is how era 30's arms were measured.
+  const { setQuests, questCatalogue } = questsModule;
+  const held = questCatalogue();
+  try {
+    setQuests([]);
+    assert.deepEqual(questCatalogue(), [], "an unloaded engine has no quests, not a fallback");
+  } finally {
+    setQuests(held);
   }
 });

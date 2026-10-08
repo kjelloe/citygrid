@@ -12,8 +12,15 @@ measured when somebody last looked, which is a different claim and the only one 
   existed — so the docs test now fails past fifty commits of drift rather than printing a note
   nobody reads (M7).
 - **Date:** 2026-10-08
-- **Balance era:** era 29 (`reports/balance-era29.md`), re-measured 2026-10-06 over 200 games per
-  configuration. **B14 changed what the deputy builds** — it refuses a street where one already runs
+- **Balance era:** era 30 (`reports/balance-era30.md`), measured 2026-10-08 over 200 games per
+  configuration, with **two arms beside it** (`balance-era30-arm-{bulldoze,quests}`) because two
+  rules moved at once. Era 30 is L2's price for clearing ground — a bulldoze costs 5 before
+  difficulty scaling, so **relaxed 3, steady 4, demanding 6**, where it was 0, 0 and 1 — and D8b's
+  quests, which the tools had never loaded. Both are **economically invisible to the deputy's city**:
+  population 1811 / 1710 / 1543 / 1572 against era 29's 1811 / 1710 / 1545 / 1572, and a treasury
+  13,600 to 17,500 higher on four to five million, which is the quests' reward money. With disasters
+  off the price changes **nothing at all** — the deputy only bulldozes to clear a ruin.
+  **Before it, B14 changed what the deputy builds** — it refuses a street where one already runs
   within `deputy.blockTiles` of most of the run — so every number in the project moved and era 28's
   are void rather than roughly comparable. Median population 1,710 and treasury 3.95M on
   `steady-64`; the paved share of a played 64 falls from 31–40% to 19–34% and the side-by-side

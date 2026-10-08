@@ -256,7 +256,15 @@ Not "the gate passed". Report:
 - For multiplayer sweeps: per-seat land share and score spread, because regional demand
   (ruling 001) makes snowballing the named risk.
 
-Then write it into `dev-log.md`, and into `reports/` if it pins a new era.
+Then write it into `dev-log.md`, and into `reports/` if it pins a new era. Four things must agree
+before the era is finished, and three of them are tested:
+
+- `data/balance.json`'s `era` and its `note`, which must name the era and `sim_sweep`
+  (`test/rules.test.js`);
+- `reports/balance-era<N>.md` and `.json` — **the same run**, which they were not for era 29
+  (`test/docs.test.js`);
+- the mirror in `engine/rules.js` (the drift test);
+- `RELEASE.md`'s era line, and whichever lane file carries the item.
 
 ## The deputy's randomness (A82, era 8)
 
@@ -293,6 +301,32 @@ Two things to keep straight when doing it:
   the worktree**. That is correct and it must not be copied into `reports/` — the era's report is
   the one the era shipped. Quote the arm's numbers in the dev-log and say they came from an arm.
 - Run the two sweeps in parallel. They are single-threaded and there are twenty cores.
+
+## Two rules in one era: an arm each, and keep them (era 30)
+
+L2 raised the price of clearing ground and D8b put the quests into the tools, and A133/A136 asked for
+them together. One sweep would have said "the treasury moved by fifteen thousand" and been unable to
+say which rule did it — which is the attribution A82 bought and that combining eras gives straight
+back.
+
+So: **one arm per rule, and the arms are kept beside the report**, as
+`reports/balance-era30-arm-{bulldoze,quests}.{md,json}`. Each arm is the era's tree with one of the
+two changes turned off, measured at the same 200 games and 25 years. Era 29's report is the null.
+
+Two mechanics make it cheap:
+
+- **A lever for each change**, so an arm is an environment variable rather than a worktree where
+  possible — `QUESTS=0` is D8b's, and it is also the only way to reproduce an older era's numbers on
+  this commit. A change nothing can switch off needs the data put back for one run; do it in a
+  script with an assertion on what it expects to find, and restore it in a `finally`.
+- **`sim_sweep` writes `balance-era<N>.{md,json}` from `rules().era`**, so an arm overwrites the
+  canonical report. Run the arms FIRST and move each pair aside as it lands; run the era itself
+  LAST, so the file left standing is the one the era shipped.
+
+The payoff here was a clean null: the price arm's treasury is byte-identical to the null with
+disasters off — the deputy only bulldozes to clear a ruin — and the quests pay 13,600 to 17,500 into
+four to five million without moving a single population median outside demanding. A null result
+measured three ways is worth more than a combined number nobody can take apart.
 
 ## A short sweep run overwrites the era's report
 

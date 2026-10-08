@@ -11,12 +11,19 @@
 import { idiv } from "../shared/idiv.js";
 
 var RULES = {
-  era: 29,
+  era: 30,
   build: {
     _bridge: "S13 (A84, A111): how many tiles of water one crossing may span. The engine has always allowed a road over water and charged roadOverWater for it - A84 believed otherwise because no 64x64 deputy city had ever paved one, and H7's played 96 has ten such tiles - so the rule S13 adds is a SPAN and an end on dry land, not permission. Six tiles is 120 m, which is a river rather than a lake: the renderer gives the run a deck at a fixed height with a ramp either end inside road.maxGrade, and a ramp that long at 15% is already 18 m of climb.",
     bridgeSpan: 6,
     road: 10, roadOverWater: 50, avenue: 26, avenueOverWater: 110, wire: 5, wireOverWater: 25, pipe: 8,
-    pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 1, bulldozeWater: 5,
+    // `bulldoze` is **5** since era 30 (L2, Q155 → A133). It was 1, and
+    // `buildCost` is `idiv(base × buildCostPercent, 100)` — so clearing ground
+    // cost **nothing** at relaxed (70%) and steady (90%), the default, from
+    // slice 1.3 until X3a asked an approved request to charge "the demolition
+    // and the compensation" and the demolition came to zero. Kjell chose the
+    // price over a floor under the arithmetic (A133): relaxed 3, steady 4,
+    // demanding 6, and no other price in this table moves.
+    pipeOverWater: 30, rail: 20, railOverWater: 100, zone: 12, dezone: 2, bulldoze: 5, bulldozeWater: 5,
     clearForest: 3,
   },
   upkeep: { road: 1, wire: 0, pipe: 0, rail: 2, policeStation: 100, fireStation: 100, hospital: 120 },

@@ -334,7 +334,13 @@ M2's rule is split rather than raise. That takes the set's measured 578 s to abo
 the budget moving. `test/gates.test.js`'s `NOT_IN_QUICK` keeps the exception honest: a smoke excused
 from `quick` must say what it costs and must be in some other set.
 
-**And `sim` may be the set over budget — on a number that must not be used.** In the same `all`
+**`sim` IS over budget, measured quiet: 982 s of 900** (2026-10-08, era 30). `sim_sweep` 628 s,
+`traffic_gate` 204 s, `disaster_soak` 150 s. Two candidate causes and this is the item that has to
+separate them: era 29's cities are bigger (B14 bought 7% more people) and era 30 added a monthly
+pass — the quests — to every one of the 200 × 25-year games. The arms for era 30 were measured with
+`QUESTS=0` and without, so the comparison is a re-run of two files that already exist.
+
+**The earlier reading of the same number, and why it could not be used.** In the same `all`
 run `sim_sweep` read **604 s** against the 439 s M2 measured, which would put `sim` at about 905 s
 of an 845 s budget. **That reading is contended**: a 1,956-test node suite was running beside it,
 and a browser gate later in the same run went red for the same reason and was identical when run

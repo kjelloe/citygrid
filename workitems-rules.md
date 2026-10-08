@@ -517,7 +517,35 @@ RATE, not a single step, and plant the old behaviour to see it fire.
 more standing buildings, which means more demand satisfied and more population. If it moves more
 than the others, that is the finding, not a problem.
 
-## L2 — The price of clearing ground (S, balance era) — Q155, found in X3a
+## L2 — The price of clearing ground (S, balance era) — Q155 → A133 — **BUILT 2026-10-08 as era 30**, with D8b folded in
+
+*As built: `build.bulldoze` 1 → **5** in `data/balance.json` and the mirror in `engine/rules.js`,
+which prices a bulldoze at **relaxed 3, steady 4, demanding 6** — the first time clearing ground has
+cost anything at the default difficulty since slice 1.3. No other price in the table moves. Two
+tests in `test/build.test.js`, both red before the change: a bulldoze is charged at every
+difficulty (asserted as "more than nothing", not as a literal, because the base is balance data),
+and what the tool quotes is what the player is charged, which is J1's one-code-path rule asked on
+the difficulty where the quote used to agree with a free demolition.*
+
+*And **D8b** (Q158 → A136) in the same era: `tools/lib/content.mjs` re-exports the server's adapter,
+so `sim_sweep`, `soak`, `disaster_soak`, `traffic_gate` and the fixture runner load `data/` the way
+the page and the server do — the quests above all, because `engine/quests.js` has no mirror and
+every number this project ever measured came from a city in which no quest could fire. Quests pay
+money and set `rank`, so this is a rule change too. `QUESTS=0` is the lever, and it is how the arms
+below were measured.*
+
+**The three arms, and the one re-pin.** The era report is `reports/balance-era30.md`, and the arms
+are beside it as `balance-era30-arm-bulldoze` (the price alone) and `balance-era30-arm-quests` (the
+quests alone), with era 29 as the null. A fixture re-pin names both changes at once, because
+`questOffered` appears in `empty.json`'s eleventh tick the moment the catalogue is loaded — event
+drift that is the feature, which is why the re-pin tool has to be told.
+
+**What is NOT in this era, and is filed rather than forgotten:** the picture tools
+(`tools/lib/aim.mjs`'s `playedCity`, and every `_shots` gate through it) still build quest-free
+cities. Loading quests there moves every photograph in the project, which is its own slice with its
+own re-shoot, and the item that asked for this one asked for the sweep.
+
+## L2 — The price of clearing ground (S, balance era) — Q155, found in X3a — the item as written
 
 **Goal.** A cost the rules declare is a cost somebody pays.
 
@@ -609,7 +637,10 @@ B13.
 
 ## Order
 
-**This lane is finished bar one era, 2026-10-08.** G1–G5, H1–H8, J1–J4 and L1 are built, eras
+**This lane is FINISHED, 2026-10-08.** L2 landed as era 30 with D8b folded into it; what follows is
+the history.
+
+**Where it stood an hour earlier.** G1–G5, H1–H8, J1–J4 and L1 are built, eras
 12–28. The one thing left is **L2**, the price of clearing ground: `idiv(1 × 90, 100)` is 0, so a
 bulldoze is free at two of the three difficulties.
 
