@@ -235,6 +235,51 @@ of several screens. (a) is the smaller change and the one X3b has already half-b
 `.one` form in both catalogues, or is listed with a reason. That is the shape this project uses for
 every other catalogue rule, and it is what stops the next counted string shipping without one.
 
+## M10 — The three skins, and whether the classic one is the right classic (S) — P108, 2026-10-07 — **closed 2026-10-08 (A137): `retro` stays as built**
+
+**Goal.** Kjell looks at the three and says which is wrong.
+
+**What already exists, checked rather than assumed.** P29 ordered three skins and N24 built them:
+`clean` ("Modern clean"), `retro` and `dark`, in `client/ui/skins.js`, offered in the settings panel
+under **Interface style**, applied as `data-skin` on `<html>`, and defined entirely as CSS custom
+properties in `client/style.css` — chrome only, because P29's own answer was that the world keeps
+`plain` and ruling 022 stands. `a11y_smoke` proves each one **repaints**: it samples computed
+colours off the bottom bar and a tool button and refuses two skins that come out identical. So
+P108's A, B and C map onto `retro`, `clean` and `dark` as built.
+
+**What P108 changes.** The reference for the classic one. P29 said *"Retro like simcity 1"* and the
+stylesheet's comment says so too — *"SimCity 1 had no rounded corners and no soft shadows; it had
+bevels"*. P108 says **SimCity 2000, greyish**, which is a different machine's look: heavier grey
+panels, chunkier bevels, and a chrome that frames the map rather than floating over it. The current
+`retro` is `--bg: #b8bcc4` with 2 px outset borders and square corners — the right family, and
+nobody has ever checked it against the thing it is now named after.
+
+**What was missing, and is the finding.** **Nobody has looked at any of them.**
+`specs/art-direction.md` shows `clean` and does not mention the other two; there was no screenshot
+of `retro` or `dark` anywhere in `reports/`; and a computed-colour check is exactly the "measuring
+the part instead of the whole" the a11y gate's own comment warns about — three skins can all repaint
+and two of them still be ugly. A green suite says nothing about what the game looks like
+(ruling 030), and the only instrument is a picture somebody opens.
+
+**Built 2026-10-07:** `tools/skin_shots.mjs`, in the `shots` set. One played city, one camera, one
+hour, three files — the only thing that differs between the frames is the attribute on `<html>`,
+because three shots of three cities would compare the cities. It checks its own instrument first
+(three different paints, `clean` sets no attribute at all) and prints what is behind the chrome, and
+its last line says the quiet part: *now open them.* `reports/skin-{clean,retro,dark}.png`.
+
+**Two things its own first runs found, both written into the file:** it shot a bare field, because
+nothing builds itself in singleplayer and six hundred ticks of an empty map is chrome over grass;
+and the streets it then laid were followed by six `invalid`s, because it had invented a
+`zoneResidential` command — the real one is `paintZone` with a `zone` number. The zoned land still
+does not GROW, which needs power and water, so that number is printed rather than gated: what this
+gate photographs is the chrome.
+
+**Still to do.** (1) Kjell opens the three and says whether `retro` is the SimCity 2000 grey he
+means — **Q159**. (2) The camera is wherever the page left it, so the town the tool builds is in the
+minimap and not in frame; aim it (the `aim.mjs` pattern) if the pictures are to show chrome over a
+CITY. (3) `specs/art-direction.md` gains a skins section whatever the answer is: three looks that
+exist and are not in the art document are three looks nothing re-derives.
+
 ## M8 — The renderer's numbers are a mirror with no loader (S) — **BUILT 2026-10-05** as `slice-M8`
 
 *As built: `loadRuleset` takes three files, and `["cityviewer.json", setConfig, "cityviewer"]` sits

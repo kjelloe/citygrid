@@ -12656,6 +12656,44 @@ numbers are the right way round by a factor of two and ought to stay that way.
 
 Suite **1,891 green twice**; `room_soak` and `room_smoke` green (30 checks, five browsers).
 
+## M10 — the three skins, and the one nobody had looked at (2026-10-07)
+
+P108 asked for a note of three UI skins: a greyish SimCity 2000 classic, a light modern and a dark
+modern. **All three already exist.** P29 ordered them and N24 built them — `clean`, `retro`, `dark`
+in `client/ui/skins.js`, offered in the settings panel under "Interface style", applied as
+`data-skin` on `<html>`, defined entirely as CSS custom properties, and chrome only because P29's
+own answer was that the world keeps `plain` and ruling 022 stands. Checked before saying so, which
+is the lesson from twice this week.
+
+**What P108 changes is the reference.** P29 said "Retro like simcity 1" and the stylesheet says the
+same in a comment; P108 says SimCity 2000, which is a different machine's look. The current `retro`
+is `#b8bcc4` with 2 px outset borders and square corners — the right family, never checked against
+the thing it is now named after. **Q159**, and it is two minutes with the pictures open.
+
+**The real finding: nobody has ever looked at any of them.** `a11y_smoke` proves each skin
+*repaints* — computed colours off the bottom bar and a tool button, refusing two that come out
+identical — and that is the whole of what has ever been checked. Three skins can all repaint and
+two of them still be ugly. `specs/art-direction.md` shows `clean` and does not mention the other
+two, and there was no screenshot of `retro` or `dark` anywhere in `reports/`. Measuring the part
+instead of the whole, which is what that gate's own comment warns about.
+
+**`tools/skin_shots.mjs`** (the `shots` set): one city, one camera, one hour, three files, and the
+only difference between the frames is the attribute on `<html>` — three shots of three cities would
+compare the cities. It checks its instrument before its subject (three different paints; `clean`
+sets no attribute at all) and its last line is *now open them*.
+
+**Its own first two runs are in the file.** It shot a bare field: nothing builds itself in
+singleplayer, so six hundred ticks of an empty map is chrome over grass. Then the streets it laid
+came back with six `invalid`s beside them, because it had **invented a `zoneResidential` command** —
+the real one is `paintZone` with a `zone` number, and the only reason that was visible is that the
+tool reads the result of its own commands. The zoning still does not GROW, which needs power and
+water, so that number is printed rather than gated: what this gate photographs is the chrome.
+
+I opened `retro` and `dark`. Both read as themselves — grey and square, dark with a cyan accent, the
+build menu dressed in each. Two things to say plainly: the camera is wherever the page left it, so
+the town the tool builds is in the minimap and not in frame, and the HUD's numbers are zeros because
+nothing grew. Both are written into the item as what is left.
+
 ## X3b — who answered (2026-10-07)
 
 X3c left this for X3b to decide "**with the inbox's words in front of you**", and the words settle
