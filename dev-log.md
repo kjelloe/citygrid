@@ -12341,3 +12341,54 @@ city with no quest ever firing, while a player's city has twenty-one. Filed as *
 `workitems-measurement.md` and as **Q158**, because loading them would move every sweep and is a
 balance era in itself.
 
+## X1d — a room runs at the game's speed (2026-10-07)
+
+Found by `room_smoke`, the gate X1c wrote: it reported tick 364 at 18.259 s of room time, which is
+**19.9 ticks a second**. Singleplayer's play speed is one tick every 400 ms — **2.5 a second** — so
+a city in a room aged **eight times faster** than the same city on one machine, for the whole life
+of the room half.
+
+**Three sources, and two of them said both things.** `server/room.js` had `SPEEDS = [0, 2, 6, 16]`
+applied once per 100 ms beat. `specs/plan.md` §3.6 said "1× = 2 fast ticks/s (one sim-month per
+6 s)" — which is 12 ticks in 6 s, self-consistent — and then, in the next sentence, "so a pump does
+at most ~2 fast ticks", which is the arithmetic of the defect. And `test/room.test.js` had the rule
+in a comment above the defect in an assertion: *"Speed 1 is two fast ticks a second"* over
+`assert.equal(room.tick(), 24)` after twelve 100 ms beats. Nothing compares a comment with the
+number below it. Singleplayer was the tie-breaker: a room is the same game.
+
+**Fixed as ticks per SECOND**, with the remainder carried in integer thousandths so a slow beat does
+not lose the time it took — a room under load must run slower than the clock says only once,
+not compound. The table's numbers are unchanged; only their unit is.
+
+**What that cost, and what it fixed in the instruments.**
+
+- `test/room.test.js`'s rate test now asserts the **rate**: 2 ticks in 1.2 s, 4 in 2.4 s (so the
+  carried remainder is checked rather than dropped), and 19 at the fast speed. A count is only a
+  rate if you also say over how long.
+- Two tests needed re-aiming rather than re-numbering. The monthly-resync test wanted a MONTH, which
+  at the play speed is sixty beats and not twelve — and it must land *exactly* on the boundary,
+  because the monthly hash is the city at the frame that carried it, so a run that stops after the
+  boundary compares two different moments. Hosting-from-a-save read `tick > 0` on a room that had
+  never been given a millisecond; `beat(500)` is one tick.
+- `room_soak` plays the five city years it claims again: 720 ticks at the fast speed's sixteen a
+  second is **45 s of wall clock, not four**, so the loop's length is computed from the rate and its
+  command intervals are derived from the length — `n % 7` in a loop ten times longer would have
+  filed ten times the commands and measured a different game. It still files ~63 builds a seat and
+  9 requests.
+
+**And the ten-times-longer run moved a gate number for a good reason.** The worst warm beat went
+13.85 → 22.25 ms with nothing about the work having changed: a maximum over 4,615 samples is simply
+larger than one over 471. So the pump reports a **digest** of what the beat itself costs, warm —
+`costDigest`, the same shape as the jitter one — and the budget is checked against the p99 with the
+maximum printed beside it and its sample count. Measured: **p50 0.10 ms, p99 1.78 ms, worst warm
+15.89 ms over 3,000 beats, worst cold 44.26 ms**, against plan §3.8's 20 ms. The expensive beat is
+the monthly one, the cold one is its first run, and the honest reading is that a beat is nearly free.
+
+`specs/plan.md` §3.6 carries the correction and §3.8 the measured numbers beside the prediction.
+
+**Gates:** `room_soak` green (742 of 720 ticks, 4,538 frames each side, 61 monthly checks, no
+divergence, the resync found and healed, both seats 63 ok / 0 refused, 9 requests asked and
+answered, one hash with the clock stopped). `room_smoke` green (one hash `7bc5e1aa049b703b`, both
+clients at tick 35 — which is what 17.8 s at two ticks a second now looks like, where it was 364).
+Suite **1,862 green twice**.
+

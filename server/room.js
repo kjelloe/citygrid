@@ -40,13 +40,24 @@ import "../engine/history.js";
 import "../engine/quests.js";
 import "../engine/requests.js";
 
-/** Ticks a pump owes at each speed (plan.md §3.6): 1× is two fast ticks a
- * second, which is one sim-month every six seconds. Speed 0 is a room whose
- * clock a test drives by hand. */
-const SPEEDS = [0, 2, 6, 16];
+/** Ticks a room owes **per SECOND** at each speed (plan.md §3.6): 1× is two
+ * fast ticks a second, which is one sim-month every six seconds. Speed 0 is a
+ * room whose clock a test drives by hand.
+ *
+ * **These were applied per BEAT until X1d**, and a beat is 100 ms — so a room
+ * ran at 20 ticks a second where singleplayer's play speed is 2.5 (one tick
+ * every 400 ms), and a city in a room aged **eight times faster** than the same
+ * city on one machine. `room_smoke` measured it as soon as a browser could join
+ * one: tick 364 at 18.259 s of room time, 19.9 ticks a second. The spec says
+ * both things in one paragraph — "1× = 2 fast ticks/s (one sim-month per 6 s)"
+ * and then "a pump does at most ~2 fast ticks" — and so did the test, whose
+ * comment read "two fast ticks a second" above an assertion of 24 ticks in
+ * 1.2 seconds. Singleplayer is the tie-breaker: a room is the same game. */
+const TICKS_PER_SECOND = [0, 2, 6, 16];
 
 let tokens = 0;
 const nextToken = () => `seat-${(tokens += 1)}-${Math.floor(Date.now() % 1e6)}`;
+
 
 /**
  * A room over one city.

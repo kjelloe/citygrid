@@ -182,6 +182,29 @@ of them each descends from.
 5. **The two walks and `passability` are a nine-second set now** (S18's split): a room slice can run
    `render` as cheaply as the suite, and `lanes` only when the model changes.
 
+## X1d — A room runs at the game's speed (S) — **BUILT 2026-10-07**, found by `room_smoke`
+
+*`SPEEDS = [0, 2, 6, 16]` was applied once per 100 ms beat, so a room ran at 20 ticks a second
+where singleplayer's play speed is 2.5 — a city in a room aged **eight times faster** than the same
+city on one machine, for the whole life of the room half. `room_smoke` measured 19.9 ticks a second
+the moment a browser could join. Now `TICKS_PER_SECOND`, with the remainder carried in integer
+thousandths so a slow beat does not lose the time it took.*
+
+**Three sources, two of which said both things.** `specs/plan.md` §3.6: "1× = 2 fast ticks/s (one
+sim-month per 6 s)" — self-consistent — and then "so a pump does at most ~2 fast ticks", which is
+the arithmetic of the defect. `test/room.test.js`: the rule in a comment ("two fast ticks a second")
+above the defect in an assertion (24 ticks in 1.2 s). Nothing compares a comment with the number
+below it, and singleplayer was the tie-breaker.
+
+**The instruments moved with it.** The rate test asserts a RATE now, including that the carried
+remainder is not dropped. The monthly-resync test needed sixty beats rather than twelve, landing
+exactly on the boundary — the monthly hash is the city AT the frame that carried it. `room_soak`
+plays the five city years it claims again: 45 s of wall clock rather than four, with its command
+intervals derived from the length so it still files ~63 builds a seat. And its ten-times-longer run
+took the worst warm beat from 13.85 to 22.25 ms with nothing about the work having changed, so the
+pump reports a `costDigest` of what the beat costs and the budget is checked at the p99:
+**p50 0.10 ms, p99 1.78, worst warm 15.89 over 3,000 beats, worst cold 44.26**, against §3.8's 20.
+
 ## X1c — The client half (L) — **BUILT 2026-10-07**, A131 lifted A125
 
 *`client/transport/socket.js`, the third transport: the contract's new `onMessage(handler)` (this

@@ -39,8 +39,38 @@ export function jitterDigest(gaps, tickMs) {
 /** Beats ignored before the warm numbers start counting (X1c). */
 const WARMUP_BEATS = 30;
 
+/** What the beat itself cost, as a digest over the warm beats (X1d).
+ *
+ * The MAXIMUM is not a measurement on its own: X1d made `room_soak` ten times
+ * longer — the room owes its ticks per second now, so five city years take
+ * forty-five seconds instead of four — and the worst warm beat went 13.85 →
+ * 22.25 ms with nothing about the work having changed. A maximum over 4,615
+ * samples is simply larger than one over 471. So the budget is checked against
+ * the p99 and the maximum is printed beside it with the count it is over.
+ *
+ * **`n` is part of the reading, not decoration.** This is nearest-rank, so a
+ * p99 over fewer than a hundred samples IS the maximum — the same arithmetic
+ * that made A78's p95 over eighteen chunks the eighteenth of them. A caller
+ * that gates on `p99Ms` has to gate on `n` as well, which `room_soak` does. */
+export function costDigest(costs) {
+  const c = costs.filter((x) => x >= 0).sort((a, b) => a - b);
+  if (c.length < 10) return undefined;
+  const pick = (q) => c[Math.min(c.length - 1, Math.floor(q * c.length))];
+  return {
+    n: c.length,
+    p50Ms: Math.round(pick(0.5) * 100) / 100,
+    p99Ms: Math.round(pick(0.99) * 100) / 100,
+    maxMs: Math.round(c[c.length - 1] * 100) / 100,
+  };
+}
+
 export function createPump(room, { tickMs = 100 } = {}) {
   const gaps = new Array(RING).fill(-1);
+  /** What each warm beat cost, as a ring of its own. Longer than the gap ring
+   * because the expensive beat is the monthly one, and a month is sixty beats
+   * at the play speed (X1d). */
+  const costs = new Array(RING * 10).fill(-1);
+  let costAt = 0;
   let at = 0;
   let last;
   let beats = 0;
@@ -93,6 +123,10 @@ export function createPump(room, { tickMs = 100 } = {}) {
      * run cannot be mistaken for a measurement (the p95-of-eighteen lesson). */
     warmBeats: () => Math.max(0, beats - WARMUP_BEATS),
     jitter: () => jitterDigest(gaps, tickMs),
+    /** What a warm beat costs: p50, p99 and the max, with the sample count. The
+     * p99 is what a budget is checked against; the max is a story about one
+     * beat (X1d). */
+    cost: () => costDigest(costs),
     /** The real clock, for `server/index.js`. Nothing in a test calls this. */
     start() {
       const timer = setInterval(() => step(Date.now()), tickMs);

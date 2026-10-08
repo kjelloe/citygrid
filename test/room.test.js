@@ -197,10 +197,18 @@ test("a refused command is in the frame and changes nobody", () => {
   assert.equal(ca.hash(), room.hash());
 });
 
-test("the clock is the room's: a pump advances the ticks the speed owes", () => {
-  // Speed 1 is two fast ticks a second (plan.md §3.6: one sim-month every six
-  // seconds); the speeds are a table, not a multiplier, which is why the frame
-  // carries the COUNT rather than the speed.
+test("the clock is the room's, and it runs at the GAME's speed (X1d)", () => {
+  // Speed 1 is two fast ticks **a second** (plan.md §3.6: one sim-month every
+  // six seconds); the speeds are a table, not a multiplier, which is why the
+  // frame carries the COUNT rather than the speed.
+  //
+  // **This test used to assert 24 ticks in 1.2 seconds** — 20 a second — above a
+  // comment saying two a second, because the table was applied per BEAT and a
+  // beat is 100 ms. Singleplayer's play speed is one tick every 400 ms, so a
+  // room aged a city eight times faster than one machine, and `room_smoke`
+  // measured it the moment a browser could join: 19.9 ticks a second. What is
+  // asserted now is the RATE, which is the thing that was wrong — a count is
+  // only a rate if you also say over how long.
   const room = createRoom({ options: OPTIONS, speed: 1 });
   const pump = createPump(room, { tickMs: 100 });
   const a = joined(room, "a", 1);
@@ -209,8 +217,14 @@ test("the clock is the room's: a pump advances the ticks the speed owes", () => 
   const frames = a.connection.of(S2C.FRAME);
   assert.equal(frames.length, 12);
   for (const frame of frames) ca.play(frame);
-  assert.equal(room.tick(), 24, `the room ran ${room.tick()} ticks`);
+  assert.equal(room.tick(), 2, `1.2 s at two ticks a second is 2, not ${room.tick()}`);
   assert.equal(ca.hash(), room.hash(), "the client's clock drifted from the room's");
+
+  // Twice the wall time is twice the ticks, and the remainder is CARRIED rather
+  // than dropped: 12 more beats take it to 4, not to 3 and a lost 0.4.
+  for (let n = 13; n <= 24; n += 1) pump.step(n * 100);
+  assert.equal(room.tick(), 4, `2.4 s is 4 ticks, not ${room.tick()} — the credit was dropped`);
+
 });
 
 test("a late joiner catches up to a client that was there from the start", () => {
@@ -242,12 +256,19 @@ test("a client that has diverged is found at the month and resynced", () => {
   // The loudest alarm in the project (CLAUDE.md), on the cadence plan §3.7.9
   // asks for: the room's hash rides a frame once a sim-month, the client
   // compares, and a mismatch is a snapshot rather than a silence.
+  //
+  // **Sixty beats, because the subject is a MONTH.** A sim-month is twelve ticks
+  // and speed 1 is two a second (X1d), so a whole month at the play speed is
+  // six seconds of beats and the sixtieth lands exactly on the boundary. That
+  // exactness matters: the monthly hash is the city AT the frame that carried
+  // it, so a run that stops after the boundary is comparing two different
+  // moments, which is how this read as a divergence on X1d's first run.
   const room = createRoom({ options: OPTIONS, speed: 1 });
   const pump = createPump(room, { tickMs: 100 });
   const a = joined(room, "a", 1);
   const ca = client(a.welcome);
 
-  for (let n = 1; n <= 12; n += 1) {
+  for (let n = 1; n <= 60; n += 1) {
     pump.step(n * 100);
     ca.play(a.connection.last(S2C.FRAME));
   }
@@ -267,7 +288,7 @@ test("a client that has diverged is found at the month and resynced", () => {
 
   // And stays back: the client's reducer is the thing that was wrong, so the
   // test is the month AFTER the snapshot, not the instant of it.
-  for (let n = 13; n <= 24; n += 1) {
+  for (let n = 61; n <= 120; n += 1) {
     pump.step(n * 100);
     ca.play(a.connection.last(S2C.FRAME));
   }
@@ -282,7 +303,7 @@ test("a seat that is taken is refused as TAKEN, and a full room as full (X1b)", 
   joined(room, "a", 1);
   const sameSeat = wire("b");
   assert.equal(room.join(sameSeat, {
-    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 1,
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 1, room: room.code(),
   }), REFUSAL.SEAT_TAKEN);
   assert.equal(sameSeat.last(S2C.REFUSED)?.reason, REFUSAL.SEAT_TAKEN);
 
@@ -290,7 +311,7 @@ test("a seat that is taken is refused as TAKEN, and a full room as full (X1b)", 
   joined(room, "b", 2);
   const third = wire("c");
   assert.equal(room.join(third, {
-    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 3,
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 3, room: room.code(),
   }), REFUSAL.ROOM_FULL);
   assert.equal(third.last(S2C.REFUSED)?.reason, REFUSAL.ROOM_FULL);
 });
@@ -347,8 +368,11 @@ test("a room can be hosted from a save, and that is how a restart resumes (X1)",
   const first = createRoom({ options: OPTIONS, speed: 1 });
   const a = joined(first, "a", 1);
   first.submit(1, road(first, 1, 6));
-  first.beat();
-  for (let n = 0; n < 12; n += 1) first.beat();
+  // `beat(100)` — a beat with the time it took. Since X1d the ticks are owed
+  // per second, so a beat told nothing about the clock owes nothing, and this
+  // read `tick > 0` on a room that had never been given a millisecond.
+  first.beat(100);
+  for (let n = 0; n < 60; n += 1) first.beat(100);
   const tick = first.tick();
   const hash = first.hash();
   assert.ok(tick > 0 && a.welcome !== undefined);
@@ -359,7 +383,9 @@ test("a room can be hosted from a save, and that is how a restart resumes (X1)",
   // And it plays on: a seat rejoins without being treated as a new player,
   // because `CMD_JOIN` reclaims a seat the save already holds.
   const back = joined(resumed, "a again", 1);
-  resumed.beat();
+  // 500 ms, which is exactly one tick at two a second (X1d) — a beat told
+  // nothing about the clock owes nothing, and this asserted the clock started.
+  resumed.beat(500);
   assert.equal(back.welcome.tick, tick);
   assert.ok(resumed.tick() > tick, "the resumed room's clock never started");
 });
@@ -380,6 +406,7 @@ test("the seats a room holds are the ones it welcomed, with distinct tokens", ()
   room.leave(1);
   assert.deepEqual(room.seats().map((s) => s.seat), [2]);
 });
+
 // --- the door asks which room (X2a, slice 5.2's headless half) --------------
 
 test("a room has a join code, and it is one a player could read out", () => {
@@ -479,6 +506,37 @@ test("the pump reports a warm maximum beside its cold one (X1c)", () => {
   // being checked against the wrong half of a run.
   assert.ok(pump.worstBeatMs() >= pump.worstWarmBeatMs(),
     `cold ${pump.worstBeatMs()} is under warm ${pump.worstWarmBeatMs()}`);
+});
+
+test("a p99 over fewer than a hundred samples IS the maximum (X1d)", () => {
+  // The trap this project has fallen into before: A78's bake check took a p95
+  // over eighteen chunks, and the nearest-rank p95 of eighteen is the
+  // eighteenth. `costDigest` has the same arithmetic, and the budget is now
+  // checked against its p99 — so the number of samples is part of the reading,
+  // which is why it is in the digest and why `room_soak` refuses to report on
+  // fewer than a hundred.
+  const ten = [1, 1, 1, 1, 1, 1, 1, 1, 1, 99];
+  const small = costDigest(ten);
+  assert.equal(small.n, 10);
+  assert.equal(small.p99Ms, 99, "a p99 of ten samples is not the maximum; the arithmetic changed");
+  assert.equal(small.maxMs, 99);
+
+  // Over two hundred, the outlier is where it belongs: one bad sample in two
+  // hundred does not move the p99, and the maximum still tells you it happened.
+  const many = new Array(199).fill(1).concat([99]);
+  const big = costDigest(many);
+  assert.equal(big.n, 200);
+  assert.equal(big.p99Ms, 1, `one in two hundred moved the p99 to ${big.p99Ms}`);
+  assert.equal(big.maxMs, 99, "the maximum stopped reporting the outlier");
+  assert.equal(big.p50Ms, 1);
+
+  // Below ten it says nothing rather than something wrong — four samples are an
+  // anecdote, which is `jitterDigest`'s own rule.
+  assert.equal(costDigest([1, 2, 3, 4]), undefined);
+  // And `-1` is the ring's empty slot, not a beat that took minus a millisecond.
+  assert.equal(costDigest(new Array(50).fill(-1)), undefined);
+  const partial = costDigest(new Array(40).fill(-1).concat(new Array(12).fill(5)));
+  assert.equal(partial.n, 12, "the empty slots were counted as beats");
 });
 
   // And a full room says so rather than claiming the seat is taken: the player

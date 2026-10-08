@@ -335,7 +335,15 @@ observation removes the dominant per-player cost measured in Fireline's profile.
 4. Record inter-pump gap into the jitter ring.
 
 Speeds map to sim work, not to pump rate: 1× = 2 fast ticks/s (one sim-month per 6 s), 3× = 6/s,
-8× = 16/s. So a pump does at most ~2 fast ticks and, twelve times per sim-month, one month tick.
+8× = 16/s. **Per second, not per beat** — a beat is 100 ms, so speed 1 owes a fifth of a tick per
+beat and the remainder is carried in integer thousandths. *As built, X1d (2026-10-07): the table was
+applied per BEAT for the life of the room, so a room ran at 20 ticks a second where singleplayer's
+play speed is 2.5 (one tick every 400 ms) and a city in a room aged **eight times faster** than the
+same city on one machine. The sentence that used to stand here — "a pump does at most ~2 fast
+ticks" — was the arithmetic of that defect and contradicted the clause before it;
+`test/room.test.js` said the same thing both ways, with a comment reading "two fast ticks a second"
+above an assertion of 24 ticks in 1.2 seconds. `room_smoke` measured 19.9 ticks a second the moment
+a browser could join a room.*
 
 ### 3.7 Load levers
 

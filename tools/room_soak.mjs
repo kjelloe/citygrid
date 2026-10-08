@@ -39,6 +39,11 @@ import { buildHash } from "../shared/build-hash.js";
 // and the run measure nothing at all.
 const YEARS = Number(process.argv.slice(2).find((arg) => !Number.isNaN(Number(arg))) ?? 5) || 5;
 const TICKS_PER_YEAR = 144;
+/** The loop's own period, and the room's fast speed in ticks a second — the
+ * third entry of `TICKS_PER_SECOND` in `server/room.js` (X1d). The pair is what
+ * the run's length is computed from, so the soak plays the years it claims. */
+const LOOP_MS = 12;
+const TICKS_PER_SECOND_FAST = 16;
 const SIZE = 48;
 const problems = [];
 const check = (name, ok, detail = "") => {
@@ -65,7 +70,7 @@ function refusalFor(url, hello) {
 }
 
 /** A client: a socket, a simulation of its own, and a mirror of it. */
-function connect(url, seat) {
+function connect(url, seat, code) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
     const client = {
@@ -104,6 +109,7 @@ function connect(url, seat) {
 
     socket.on("open", () => client.send({
       type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat, name: `Soak ${seat}`,
+      room: code,
     }));
     socket.on("error", reject);
     socket.on("message", (raw) => {
@@ -213,9 +219,28 @@ try {
   check("two clients joined one room", a.mirror !== undefined && b.mirror !== undefined);
 
   // Each on its own half of the map, a road at a time, while the room ticks.
-  const beats = Math.ceil((YEARS * TICKS_PER_YEAR) / 2);
+  //
+  // **The loop is as long as the city years take** (X1d). The room owes its
+  // ticks per SECOND now — it used to owe them per BEAT, which made it eight
+  // times faster than singleplayer — so five city years is 720 ticks, and at
+  // the fast speed's sixteen a second that is 45 seconds of wall clock rather
+  // than four. The speed is set here rather than left at the play speed for
+  // the same reason a soak has always been allowed to hurry.
+  //
+  // The command intervals are derived from the length rather than written as
+  // literals, so the run still files about fifty builds a seat and nine
+  // requests: a loop ten times longer with `n % 7` in it would file ten times
+  // the commands and measure a different game.
+  server.room.setSpeed(3);
+  const ticksPerIteration = (LOOP_MS * TICKS_PER_SECOND_FAST) / 1000;
+  const beats = Math.ceil((YEARS * TICKS_PER_YEAR) / ticksPerIteration);
+  const BUILD_EVERY = Math.max(1, Math.round(beats / 52));
+  const ASK_EVERY = Math.max(4, Math.round(beats / 10));
+  console.log(`${beats} iterations of ${LOOP_MS} ms at ${TICKS_PER_SECOND_FAST} ticks/s `
+    + `≈ ${(beats * LOOP_MS / 1000).toFixed(0)} s for ${YEARS * TICKS_PER_YEAR} ticks; `
+    + `a build every ${BUILD_EVERY}, a request every ${ASK_EVERY}`);
   for (let n = 0; n < beats; n += 1) {
-    if (n % 7 === 0) {
+    if (n % BUILD_EVERY === 0) {
       const mine = clearRun(a.mirror, 4, 6);
       const theirs = clearRun(b.mirror, (SIZE >> 1) + 2, 6);
       if (mine) a.build(mine);
@@ -230,12 +255,12 @@ try {
     // request in twelve with `invalid`, and it was right to: an approval two
     // beats earlier had cleared that road and the ground had gone back to
     // nature, so seat one was asking seat two about land nobody owned.
-    if (n % 40 === 13) {
+    if (n % ASK_EVERY === 1) {
       const theirRoad = ownedRoad(a.mirror, 2);
       if (theirRoad) a.ask(theirRoad);
     }
-    if (n % 40 === 27) b.answer();
-    await new Promise((resolve) => setTimeout(resolve, 12));
+    if (n % ASK_EVERY === 3) b.answer();
+    await new Promise((resolve) => setTimeout(resolve, LOOP_MS));
   }
   // Let the last frames land.
   await new Promise((resolve) => setTimeout(resolve, 300));
@@ -263,6 +288,7 @@ try {
   // silent divergence.
   const refusal = await refusalFor(url, {
     type: C2S.HELLO, version: PROTOCOL_VERSION, build: "notthisbuild", seat: 3, name: "Stale",
+    room: code,
   });
   check("a client on another build is refused at the door", refusal?.reason === "buildMismatch",
     `${refusal?.type ?? "nothing"} / ${refusal?.reason ?? "no reason"}`);
@@ -325,8 +351,9 @@ try {
     `${a.hash()} / ${b.hash()} / ${server.room.hash()}`);
 
   const jitter = server.pump.jitter();
-  console.log(`pump: ${server.pump.beats()} beats, worst beat ${server.pump.worstBeatMs().toFixed(2)} ms, `
-    + `jitter ${JSON.stringify(jitter)}`);
+  const cost = server.pump.cost();
+  console.log(`pump: ${server.pump.beats()} beats, cost ${JSON.stringify(cost)} warm, `
+    + `worst cold ${server.pump.worstBeatMs().toFixed(2)} ms, jitter ${JSON.stringify(jitter)}`);
   check("the pump kept its beat", jitter !== undefined && jitter.latePct < 25,
     `late ${jitter?.latePct}% of ${server.pump.beats()} beats`);
   // **The warm number against the budget, with the cold one beside it.** X1c
