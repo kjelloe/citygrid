@@ -182,6 +182,34 @@ of them each descends from.
 5. **The two walks and `passability` are a nine-second set now** (S18's split): a room slice can run
    `render` as cheaply as the suite, and `lanes` only when the model changes.
 
+## X1c — The client half (L) — **BUILT 2026-10-07**, A131 lifted A125
+
+*`client/transport/socket.js`, the third transport: the contract's new `onMessage(handler)` (this
+lane's review item 1), a sim host driven by frames, nothing applied at post time, FIFO matching of
+frames to pending posts **by command and not by seat** — a frame carries my own `CMD_JOIN`, which I
+never posted — and **by value, not by reference**, because the frame crossed a wire and a road's
+`runs` is a different array with the same numbers. `?join=<code>` opens the socket and skips the
+lobby; `?seat=` goes with it until X2 picks one. Every command in `game.js` takes the session's seat
+rather than the module constant 1, which seat two would have been spending seat one's money with.
+The room's hour is the room's PLAYED milliseconds, stamped on each frame, never hashed and held
+while paused — A63's own reading (derive it from the tick) is the one A41 rejected with a
+measurement.*
+
+**The gate found what the soak cannot.** `tools/room_smoke.mjs` — two browsers on the real server,
+in `quick` and in `room` — put the two clients and the room on **three different hashes at one
+tick with zero desyncs anywhere** on its first run: the server had no content adapter, so the room
+ran with no quests while every browser had 21, and quest progress is hashed state. `room_soak`
+could not see it because its scripted clients share the server's own process and mirrors. This
+lane's review filed it as item 2 on 2026-10-04. `server/content.js` fixes it, fatally rather than
+with a fallback. It then cost the pump its 20 ms budget honestly — 11.35 → 36.68 ms worst beat —
+and the attribution is 10 ms of monthly quest pass, of which the overrun is the FIRST run of it:
+**13.85 ms warm over 471 beats against 32.77 ms cold**, so the pump reports both and the gate
+checks the warm one.
+
+**Measured:** both browsers on one hash (`a3096376bd197a6c`) at tick 364, seat two saw seat one's
+road 6 of 6 tiles, one shared hour (18.259 s on both, unmoved after 500 ms of pause), no page or
+console errors, 41 s. Suite 1,862 green twice.
+
 ## X1 — Server and relay (L) — plan-v1 slice 5.1
 
 **Goal.** Two real clients play one city, hash for hash, through a real socket.
@@ -548,4 +576,19 @@ different files and X3 cannot be played without it. Wave 6 (modes, seasons, scal
 operations) is not in this file and does not start until the release gate above is met.
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
 ~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~.
+
+A125 held everything player-facing behind Kjell's singleplayer playtest and **A131 lifted it on
+2026-10-07**. Ruling 003 did not move: singleplayer still opens no socket and `offline_smoke` still
+asserts it.
+
+### What a reader can do with it today
+
+Host a room from the new-game screen, send somebody the address bar, have them join by typing the
+code or watch without taking a seat. Build, ask a neighbour to clear their ground or report a
+nuisance, answer from an inbox or set a standing answer and let the month do it, point at a tile
+with one of seven phrases, chat if the room has it on, see who is in the room and say you are away.
+Leave, and the city keeps going: the seat is yours for two minutes, then a deputy plays it, then
+after `abandonYears` the ground goes to the commons. A room nobody is in stops playing.
+
+### What is left
 

@@ -12244,3 +12244,9 @@ that has started — plus the client socket transport X1's client half owns and 
 registry a lobby implies (one process still hosts one room). A125 holds all of it behind Kjell's
 singleplayer playtest.
 
+## A131 — A125 is lifted (2026-10-07)
+
+Asked whether A125 still held the lobby, `?room=` and the page's socket behind the singleplayer
+playtest, Kjell answered **"Lift it — build the page half."** Recorded as A131 and P107. Ruling 003
+is NOT lifted: singleplayer opens no socket, and `offline_smoke` keeps asserting it.
+
