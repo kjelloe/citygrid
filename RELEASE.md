@@ -154,8 +154,8 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**3 open questions** are on the list (`dev-questions.md`, bottom section), and both are Kjell's to
-answer rather than work anybody is blocked on:
+**0 open questions** are on the list (`dev-questions.md`, bottom section), and every one is
+Kjell's to answer rather than work anybody is blocked on:
 
 - **Q154** — a faced shoulder is drawn where a street stands more than a storey above the water.
   Is three metres the right rung? The ladder is measured (1.2 m gives 916 faced shoulders on a

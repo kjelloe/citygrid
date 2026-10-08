@@ -288,7 +288,7 @@ beat) rather than to carry a stale route.
 what it read before. — **Half done.** Every gate reads what it read before; the frame does not, at
 28.6 ms, and W6c is what the remaining 12 would cost.
 
-## W6c — The graph that is not rebuilt (L) — found by W6b's profile, 2026-10-05
+## W6c — The graph that is not rebuilt (L) — found by W6b's profile, 2026-10-05 — **held (A134)**: scheduled only when the multiplayer release gate is played and the hitch is felt, or a client's frame p95 in `room_smoke` crosses 33 ms during a build burst
 
 **Goal.** A build action's derivation fits in a frame.
 
@@ -437,6 +437,11 @@ currently proven on a configuration the player does not get.
 statement after the click that changed it.
 
 ## Order
+
+**Where this lane stands, 2026-10-08.** W1–W5, W6a and W6b are built. A build action is **28.6 ms
+median / 20.3 best**, down from 98.3 warm, and B11 means the city no longer blinks through it.
+**W6c** — stable handles and in-place array patching, to get inside a 16.7 ms frame — is **Q156**
+and nothing is blocked on it.
 
 W1 → W2 → W3 → W4, with **W5** any time after W2 and **W6** when Kjell wants the stall gone (it is a gate repair, not a feature). W1 is safe
 and cheap and makes W2 a swap rather than a rewrite; W3 is a measurement with an optional second

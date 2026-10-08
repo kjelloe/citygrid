@@ -13,6 +13,7 @@ not a green suite. A125 (Kjell, 2026-10-04): the headless room is built now — 
 half — because it adds a directory and a dependency and changes nothing a singleplayer player
 touches. X1's client half, X2, X3 and X4 wait for the playtest.** W6's second half runs beside
 X1 and lands before X3 (A126).
+
 ## Review after X4e (2026-10-08) — P110
 
 *Read on `dev_night` with the committed tree at `1f13ee7` (B14, 2026-10-06) and the working tree

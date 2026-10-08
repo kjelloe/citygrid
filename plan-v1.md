@@ -64,25 +64,51 @@ true at that commit and carries the measured numbers; this file stays the plan.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
-was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 28**
-(`reports/balance-era28.md`; each era between is one measured rule change, named in `dev-log.md`).
+was pinned (`reports/balance-era1.md`, 200 games × 4 configurations); the balance is now **era 29**
+(`reports/balance-era29.md`; each era between is one measured rule change, named in `dev-log.md`).
 
-**Where the work stands (2026-10-05, era 28).** Everything P70, P93, P97, P99 and P100 ordered is
-built: the world lane through S13, behaviour through B10, the whole transport lane (T1–T7, eras
+**Where the work stands (2026-10-08, era 29).** A125 was lifted on 2026-10-07 (A131) and **the
+multiplayer lane is built but for four items.** A player can host a room from the new-game screen,
+send somebody the address bar, and have them join by code or watch without taking a seat; ask a
+neighbour to clear ground or report a nuisance; answer from an inbox or set a standing answer and
+let the month do it; point at a tile; chat; see who is in the room; and leave, after which the seat
+is theirs for two minutes, then a deputy plays it, then the ground goes to the commons. A room
+nobody is in stops playing. `tools/room_smoke.mjs` drives **five browsers** through it and
+`room_churn` takes a seat away and gives it back with no divergence.
+
+What is left in that lane: hibernating to DISK rather than to a standstill; `splitRule`,
+`mutualAid` and `disasterAid`, which are **a balance era** and want a sweep; a history that outlives
+the alert list; and the lobby's remaining rows (the QR, ready, host controls, hosting from a save).
+Ruling 003 is unmoved — singleplayer opens no socket and `offline_smoke` asserts it.
+
+**Before that (2026-10-06, era 29).** Everything P70, P93, P97, P99 and P100 ordered is
+built: the world lane through S18b, behaviour through B14, the whole transport lane (T1–T7, eras
 5–11), the rules lanes (G1–G5, H1–H8, J1–J4, eras 12–26), the film lane's F1 and F2, and the worker
-lane's W1–W5. The balance report is `reports/balance-era28.md` (B13's eighth disaster moved the roll; L1's borrowing moved nothing, because the deputy never borrows).
+lane's W1–W5. The balance report is `reports/balance-era29.md`: B14 refuses a deputy street that
+runs a block from another, which took the road share of a played 64 from about a third to about a
+fifth and is the first era whose cause is what the deputy DECIDES — so every number measured on a
+deputy city before it belongs to era 28 and is void rather than comparable.
 
-**Three open questions**, and nothing waits on any of them: Q154 asks whether a faced shoulder at a storey
-is the right ladder (S18's pictures are taken and the answer is two minutes with them), and Q155
-reports that a bulldoze is free at two of the three difficulties — `idiv(1 × 90, 100)` is 0 — which
-is a balance era whenever it moves (found in X3a). P103 answered
-four (A125–A128) and P104 the two the omissions pass raised:
-rank is the city's until rivals mode and each seat places its own rank buildings (A129), and
-borrowing is built as rules slice **L1** (A130).
+**No open questions.** P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall at 2 m, bulldoze priced at 5 in one era with quests loaded into the tools, the stall left at 28.6 ms with W6c held for the room, block spacing 3, the classic skin kept, and a sun that crosses a quarter of the sky at a rate in data.
 
-**What is unblocked and unbuilt**, in the order the review of 2026-10-04 set: **S18** (the camera
-that can see a retaining wall, then the wall; the bridge's deck and the water's surface), a re-run
-of every shot set on the played fixture, **S15** (tone and proportion against the compare sheet),
+**What is unblocked and unbuilt, 2026-10-08**, by lane and cheapest first:
+
+| Lane | Open |
+|---|---|
+| **Multiplayer** | hibernate to disk · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · a history that outlives the alert list · the lobby's remaining rows |
+| **World** | **S22** (a sun that moves — A138: a quarter arc, the rate in data) · S18c (the wall at 2 m, A132) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
+| **Behaviour** | B15 · B6's rain |
+| **Mainline** | M7 (release + merge, Kjell's push) · M9 (the `quick` set's budget) · M11 · ~~M10~~ (closed, A137) |
+| **Rules / worker / measurement** | L2 (bulldoze 5, A133) **with D8b folded in** (quests into the tools, A136) — one era · W6c **held** until the room is played (A134) |
+| **Waiting on hardware** | F3, D3, the rest of D5 — all need a phone |
+
+*The older ordering, kept because it says why the world lane is arranged as it is:*
+
+**What is unblocked and unbuilt**, in the order the review of 2026-10-04 set: ~~**S18**~~ (the
+camera, the wall, the deck's one profile, the parapet and the piers in S18a, and the water's swell
+in S18b — all built; **what is left of it is the pale line where the water meets the shore**), a
+re-run of every shot set on the played fixture, **S15** (tone and proportion against the compare
+sheet),
 **M7** (a true `RELEASE.md` and a merge — `main` is 122 commits behind), then **~~S16a, S16b, S16c~~ (the trade ladder, the shop's
 furniture and the works' yard, 2026-10-05/06), ~~S17~~ (movers), S19** and
 **B12, B13**. Beside them, on different files: **W6's second half with B11** (stable identity, a
@@ -422,9 +448,6 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q156 | a build action is 28.6 ms and a frame is 16.7 — is W6c's in-place graph worth its risk? | Kjell; nothing is blocked on it, and the profile says the rest is allocation rather than algorithm |
-| Q155 | a bulldoze costs 0 at relaxed and steady (`idiv(base × buildCostPercent, 100)` with `bulldoze: 1`) — raise the price or round up? | Kjell; either answer voids the era-26 sweep, so it waits for a balance round rather than a slice |
-| Q154 | a faced shoulder is a storey deep (3 m: 130 on a hilly 128, none on a rolling 96) — is that the right ladder? | Kjell, two minutes with `reports/smoke-S18-wall*-{before,after}.png`; nothing waits on it |
 | ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |
 | ~~Q107~~ | **Answered A114** — the fire reads as a fire (scale, opacity and puff count up for a FIRE only); the chimney is unchanged |

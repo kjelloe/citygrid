@@ -548,6 +548,13 @@ compensation", where the demolition came to zero.
 
 **Recommended: (1).** It is the only one whose blast radius is the defect.
 
+**Decided 2026-10-08 (A133): (3), `bulldoze: 5`.** Kjell chose the price over the floor — relaxed
+3, steady 4, demanding 6, rounding unchanged, no other price moves. **And this era carries D8b
+(A136): the tools load `data/quests/`** the way the page and the server do, so the sweep's two arms
+are measured on a city with quests in it, the fixtures are re-pinned once with a reason naming both
+changes, and the era report has a row for what the quests changed on their own (a third arm: quests
+on, bulldoze 1).
+
 **But it is still an era.** The deputy clears ruins (B1a) and dezones what it paves (H4), so a
 bulldoze that costs money changes what it can afford in a turn — **a change to what the deputy
 decides voids every sweep number** (CLAUDE.md). So: two arms of the 200-game sweep, the floor and
@@ -601,6 +608,10 @@ control.
 B13.
 
 ## Order
+
+**This lane is finished, 2026-10-08.** G1–G5, H1–H8, J1–J4 and L1 are built, eras 12–28. The one
+thing left is **L2**, the price of clearing ground, which is **Q155** and a balance era whenever it
+moves: `idiv(1 × 90, 100)` is 0, so a bulldoze is free at two of the three difficulties.
 
 **G4 → G2 → G1 → G3.** Decay first because it is the smallest change with the largest expected
 move, and a sweep that measures it alone is worth having. Then the supply fix, which is a

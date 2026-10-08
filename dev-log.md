@@ -12114,6 +12114,7 @@ tuned away. 200 of 200 cities alive in every configuration.
 
 `reports/balance-era29.md` is the era's report; `RELEASE.md` carries the new era and these numbers.
 Suite 1,835 green twice.
+
 ## Review round after S18b and B14 (2026-10-06)
 
 Suite **1,838 tests, 1,835 pass, 0 fail, 3 skipped, green twice**. `tools/make_precache.mjs` left
@@ -13209,3 +13210,32 @@ and the same decision, the only difference being whether you are playing.
 
 Suite **1,939 green twice**; `room_smoke`, `reach_smoke` and `lobby_smoke` green.
 
+## The work items, re-read for an architect (2026-10-08)
+
+Kjell asked for the `workitems-*` files to be brought up to date for somebody reading them to decide
+what to do next. The failure mode they had is the one this week keeps finding and now has a memory:
+**an item outlives its implementation** — the heading is written once and ticking it is a fourth
+step after the gate, the log and the commit, so a lane's Order section goes on describing a plan
+that finished weeks ago.
+
+Every lane now opens its Order with **where it stands today**, and the historical ordering is kept
+below it because it says why things were arranged as they were:
+
+- **multiplayer** — rewritten. Sixteen items struck through, a paragraph saying what a reader can
+  actually do with the game today, a table of the four that are left with the reason each is left,
+  and the release gate restated with what has been measured against it (five browsers, 5,586 frames
+  of churn) and what has not (eight clients, and one real evening — Kjell's, as the singleplayer
+  playtest was).
+- **rules** and **transport** — finished, and say so.
+- **world**, **behaviour**, **worker**, **measurement**, **film**, **mainline** — a status line each,
+  naming what is open and what it is waiting on.
+- `plan-v1.md` — the standing paragraph rewritten for 2026-10-08, and a new table of everything
+  unbuilt by lane, cheapest first, with the hardware-blocked items separated out so they stop
+  reading as work somebody is avoiding.
+
+**One thing deleted rather than documented.** `room.watchers()` was written an hour earlier with the
+spectators and had no reader: the roster is built from `state.players` and a watcher takes no seat,
+so there is nothing in the city to count. It is gone, and the wire census's `S2C.ROSTER` entry now
+says that the count is one of the two things that message is for — the accessor comes back with it.
+Shipping a dead export the same day as writing the census that forbids them would have been a poor
+joke.

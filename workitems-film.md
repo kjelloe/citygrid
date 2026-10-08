@@ -174,4 +174,7 @@ compare sheet be made against a photograph. Not scheduled.
 
 ## Order
 
+**Where this lane stands, 2026-10-08.** F1 and F2 are built. **F3** (encode and publish) waits on a
+phone card, and **F4** (photographs of a real place) is a note rather than an item.
+
 F1 → F2 → F3. F4 is a note.

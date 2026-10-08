@@ -280,6 +280,57 @@ minimap and not in frame; aim it (the `aim.mjs` pattern) if the pictures are to 
 CITY. (3) `specs/art-direction.md` gains a skins section whatever the answer is: three looks that
 exist and are not in the art document are three looks nothing re-derives.
 
+## M9 — The `quick` set starves its own gates (S, measurement) — found 2026-10-07
+
+**Goal.** A gate set that fails tells you about the code.
+
+**Measured, 2026-10-07:** `node tools/gates.mjs quick` took **986 s against its 540 s budget** and
+reported five failures. Run one at a time afterwards, `update_smoke` and `play_smoke` were **green**
+— they had failed on timing assumptions (`globalThis.CITY` not yet defined; "W flies the photo
+camera, moved 0.000 tiles in 0.4 s"; two arms a single tick apart at 202 vs 201) while thirteen
+gates and two browsers fought over twenty cores. `worker_smoke` is green alone too. The slowest
+three are `ui_smoke` 301 s, `play_smoke` 175 s, `lobby_smoke` 113 s; the budget was restated from
+the set's CONTENTS at P96 and has never been re-measured since the set grew.
+
+**This is the project's own instrument-shares-a-budget lesson, one level up.** A set that takes
+twice its budget starves the gates inside it, and a flake reported as a failure costs the next
+reader the hour it takes to prove it was the machine — which is the hour this finding cost.
+
+**Do.**
+- Re-measure the budget from a run, per gate, and write the per-gate numbers beside the total so
+  the next overrun names which gate grew.
+- Give the three slow ones a hard look: `ui_smoke` at 301 s is half the budget on its own and it
+  drives every overlay at every tier, which is a `render`-set shape rather than a `quick` one.
+- Make a timing assumption impossible to write: the gates that flaked both read a global without
+  waiting for it. `tools/lib/settle.mjs` exists; `room_smoke`'s `until(page, why, read)` prints the
+  last value it saw when it gives up, which is the shape worth sharing.
+- Consider splitting: the browser smokes that must stay cheap, and a `pages` set for the long ones.
+
+**Two of its named failures are FIXED (2026-10-07)** — both were instruments rather than defects,
+and both are now gates that cannot race: `lobby_smoke` waits for the label to change instead of
+reading on the next line, and `ui_smoke` waits for the fade to arrive instead of sampling it two
+frames in (the fade's SHAPE is proved in node, where the clock is an argument). What is left of this
+item is the budget itself. The history:
+
+**Two failures that are NOT load, measured against a `before` worktree at `1f13ee7`:**
+`ui_smoke`'s "the hour changes over a second, not in a frame (night is 1)" fails identically on the
+parent commit, so it is pre-existing. The check reads `renderer.night` two animation frames after
+choosing night and asks for a value strictly between 0 and 1, while `dt` is `frameMs / 1000` and
+uncapped — under SwiftShader two frames can be most of a second and the fade is simply over. The
+fade is right; the instrument samples it at a moment it does not control. Either cap the sampled
+`dt`, drive the fade a known number of milliseconds, or assert the fade's SHAPE over several frames
+rather than its value at one. `lobby_smoke`'s "the panel restates itself in the new language
+(Done → Done)" failed identically there as well, on both viewports — and then **passed** on a
+later run of the same code, so it is flaky rather than broken: the catalogues are right
+(`settings.close` is "Done" / "Ferdig") and the gate clicks the locale row and reads
+`.settings-close` on the next line with nothing in between. Both want the same fix as each other —
+wait for the effect, or assert it over a span you control — and `worker_smoke`'s one-tick arms
+(202 vs 201) are a third of the same kind.
+
+**Done when** `quick` fits its stated budget on this machine twice running, the budget is a
+measurement with a date and a per-gate table rather than a prediction, and neither of those two
+checks depends on when a frame happened to land.
+
 ## M8 — The renderer's numbers are a mirror with no loader (S) — **BUILT 2026-10-05** as `slice-M8`
 
 *As built: `loadRuleset` takes three files, and `["cityviewer.json", setConfig, "cityviewer"]` sits

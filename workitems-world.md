@@ -1083,7 +1083,12 @@ with corner-blended levels (S4) — and what was missing was the motion: `MOTION
 in node, the same constants in GLSL, flat at `uTime = 0` so `?life=0` and every frozen screenshot
 keep S4's surface. The pale line where the water meets the shore is still open.
 
-## S18 — The bridge, the wall and the water (M) — Q145 — **the camera and the wall done 2026-10-04**
+## S18c — The wall at two metres (XS) — A132 (Q154)
+
+`road.wallMinDrop` 3 → **2** in `data/cityviewer.json` and the mirror: 264 faced shoulders on the
+hilly 128 (130 at 3), none on a rolling 96. Re-shoot `embankment_shots` at 2, re-baseline
+`walkthrough`'s wall count, and put the 2 m pair beside the 3 m pair in the dev-log.
+
 ## S18 — The bridge, the wall and the water (M) — Q145 — **BUILT bar the shore line, 2026-10-06**
 
 `photo=<x>,<z>,<eye>,<yaw>,<pitch>` in the shot harness (F1's free camera, eye above the SURFACE —

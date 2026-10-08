@@ -459,6 +459,8 @@ pollution in range. **Gate.** `sim` set; `render` set; `reports/smoke-T7-<def>.p
 
 ## Order
 
+**This lane is finished, 2026-10-08.** T1–T7 are built, eras 5–11.
+
 **T7 → T1 + T2 (one re-pin) → T3 → T4 → T5 → T6.** The cheap rows first because they are a
 week's visible content for a day's work and exercise S1's kit pattern; the avenue and rail together
 because they share the re-pin; the water after rail because the ferry is the station again on a
