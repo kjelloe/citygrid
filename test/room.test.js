@@ -13,7 +13,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRoom } from "../server/room.js";
+import { createRoom, TICKS_PER_SECOND } from "../server/room.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 import { createPump, costDigest } from "../server/pump.js";
 import { createSimHost } from "../worker/sim-host.js";
 import { createMirror, applyPatch } from "../client/mirror.js";
@@ -831,4 +834,76 @@ test("a room full of watchers and nobody playing is still asleep (X4d)", () => {
   room.beat(1000, 1000);
   room.beat(1000, 2000);
   assert.equal(room.tick(), before, "a room with only watchers in it kept playing");
+});
+
+// --- the room's clock belongs to the host (X2d) ------------------------------
+
+test("the host is whoever got here first, not seat one", () => {
+  // Not the same claim. A room restored from a save can have seat 1 in its
+  // player list with nobody behind it, and X4a holds a seat for two minutes
+  // after its socket drops — so "seat 1" names a chair and "the host" names a
+  // person.
+  const room = createRoom({ options: OPTIONS });
+  assert.equal(room.host(), 0, "a room with nobody in it has a host");
+  const second = joined(room, "two", 2);
+  assert.equal(room.host(), 2, "the first to join is not the host");
+  assert.equal(second.welcome.host, 2, "the welcome does not say who the host is");
+  const first = joined(room, "one", 1);
+  assert.equal(room.host(), 2, "a later joiner took the room over");
+  assert.equal(first.welcome.host, 2);
+});
+
+test("only the host may turn the room's clock", () => {
+  // The check lives with the state it protects rather than at the door, so a
+  // later caller cannot route around it — the rule `submit` already follows.
+  const room = createRoom({ options: OPTIONS });
+  joined(room, "host", 1);
+  joined(room, "guest", 2);
+  assert.equal(room.speed(), 1, "a room does not start at 1x");
+  assert.equal(room.setSpeed(3, 2), 1, "a guest turned the host's clock");
+  assert.equal(room.speed(), 1);
+  assert.equal(room.setSpeed(3, 1), 3, "the host could not turn their own clock");
+  assert.equal(room.speed(), 3);
+  // Clamped to the table, because a speed off the end of it is a room that
+  // either stops or runs away, and the message comes off a wire.
+  assert.equal(room.setSpeed(99, 1), 3, "an impossible speed was accepted");
+  assert.equal(room.setSpeed(-5, 1), 0, "a negative speed was not clamped to paused");
+  // No `by` is the server's own hand — the pump and the hibernation path — and
+  // that is not a seat asking.
+  assert.equal(room.setSpeed(2), 2);
+});
+
+test("every frame carries the speed, so a guest's dial follows the host's", () => {
+  // The alternative is a message of its own, which would be a second source for
+  // one fact and a client that missed it showing a label about a room it is not
+  // in. The frame already carries the tick count and the played clock.
+  const room = createRoom({ options: OPTIONS });
+  joined(room, "host", 1);
+  const guest = joined(room, "guest", 2);
+  room.setSpeed(3, 1);
+  room.beat(1000, 1000);
+  const frame = guest.connection.last(S2C.FRAME);
+  assert.ok(frame, "no frame reached the guest");
+  assert.equal(frame.speed, 3, "the frame does not carry the room's speed");
+});
+
+test("the room has one speed more than a player has words for, and it is the gates'", () => {
+  // Two tables for one idea, and they do NOT agree — on purpose. `client/game.js`
+  // offers three speeds (paused, play, fast) and the room owes ticks at four
+  // rates, because `room_soak` and `room_smoke` drive a room at `3` to play
+  // five city years in under a minute. No control can ask for it: the speed
+  // button cycles the client's three and the server refuses anything else from
+  // a seat.
+  //
+  // What this pins is the ASYMMETRY, because the first run of X2d's gate
+  // crashed on it — a watcher joined a room at a speed its page had no entry
+  // for and `SPEEDS[speed].labelKey` threw inside the boot. The page leaves a
+  // speed it cannot name unlabelled now, and this says why there is one.
+  const labels = Object.keys(JSON.parse(readFileSync(join(repoRoot, "data", "i18n", "en.json"), "utf8")))
+    .filter((key) => /^speed\./.test(key));
+  assert.equal(labels.length, 3, `the player has ${labels.length} speed words: ${labels.join(", ")}`);
+  assert.equal(TICKS_PER_SECOND.length, labels.length + 1,
+    "the room's rates and the player's words moved apart by more than the gates' one");
+  assert.equal(TICKS_PER_SECOND[0], 0, "the first speed is not paused");
+  assert.ok(TICKS_PER_SECOND[3] > TICKS_PER_SECOND[2], "the gates' speed is not the fastest");
 });

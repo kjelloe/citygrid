@@ -13980,3 +13980,52 @@ distinction X1b drew at the door and this slice is about carrying to the screen.
 entries than the list had this morning and the first time any of them has moved since X1b wrote them.
 
 Suite **1,983 tests, 1,980 pass, 0 fail, 3 skipped, green twice.**
+
+## X2d — the room's clock belongs to the host (2026-10-09)
+
+**The speed button in a room was inert.** `session.setSpeed` returns early when the clock is the
+room's (X1c, and rightly — a client running its own interval would tick a city the room never
+ticked), `server/room.js` had `setSpeed` with **no caller anywhere**, and there was no message
+between them. So a player in a room pressed the button, watched the label change, and the city
+carried on at whatever speed the room was started at. That is `a-control-that-is-present-but-inert`,
+and the rule for one of those is to mark it or remove it — not to leave it looking like a control.
+
+**`C2S.SPEED`, and no version bump**: a message type only ever SENT by a newer client is additive,
+which is the reasoning X2c's `CREATE` used. The room gained a `host()` — **the first seat to join,
+not seat 1**, because a room restored from a save can have seat 1 in its player list with nobody
+behind it and X4a holds a seat for two minutes after its socket drops, so "seat 1" names a chair and
+"the host" names a person. `setSpeed(next, by)` refuses anybody else, and the check lives **with the
+state it protects** rather than at the door, which is the rule `submit` already follows.
+
+**The dial is on the frame.** Every frame carries `speed`, so a guest's label follows the host's
+without a message of its own and nothing to miss; the WELCOME carries the speed and the host's seat
+too, so a client knows before its first frame whether to offer the control at all — a button that
+appears a second after the city does is a button a player has already decided is not there. And the
+host's own label waits for the frame rather than moving on the click, which is what makes a refused
+change visible instead of silent.
+
+**The guest gets no button.** Not a disabled one: `reach_smoke` counts a hidden control as
+unreachable and `aria-disabled` stops a gate clicking it (ruling 029), so it is not appended at all —
+the same shape as X4e's watcher, who gets no toolbar rather than tools that say no.
+
+**Two defects found by the gate, and the second is the better one.**
+
+- The host's button read **"Paused"** after joining a room already running at 1×: the follower
+  returned early when the room's speed equalled the page's, and the label had never been written at
+  all. The first call forces it now.
+- A **watcher's page crashed on boot** — `SPEEDS[speed].labelKey` on `undefined`. The room's table
+  has **four** rates and the client's has **three**: `[0, 2, 6, 16]` against paused/play/fast,
+  because `room_soak` and `room_smoke` drive a room at `3` to play five city years in under a
+  minute, and no control can ask for it. Two tables for one idea that deliberately do not agree —
+  so the page leaves a speed it has no word for **unlabelled rather than renamed**, since guessing
+  would put a wrong number in front of a player, and `test/room.test.js` pins the asymmetry and says
+  whose the extra rate is.
+
+```
+ok  only the host has a speed button   ([{"speed":true,"label":"Play"},{"speed":false,"label":""}])
+ok  the host's press reaches the room, and the guest follows   (speed 2)
+ok  and the city kept running while it changed                 (6 then 11)
+```
+
+Suite **1,990 tests, 1,987 pass, 0 fail, 3 skipped, green twice**; `room` 190 s of 300, `quick`
+547 s of 600.

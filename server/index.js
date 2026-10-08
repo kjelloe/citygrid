@@ -199,6 +199,15 @@ export async function startServer({
         mine.submit(seat, message.command);
         return;
       }
+      // **The room's clock** (X2d). Only the host's, and `room.setSpeed` is what
+      // enforces that — the check lives with the state it protects, not at the
+      // door, so a later caller cannot route around it (the `submit` rule).
+      // A watcher has no seat and reaches none of this.
+      if (message.type === C2S.SPEED) {
+        if (watching) return;
+        mine.setSpeed(Number(message.speed), seat);
+        return;
+      }
       // **Chat** (X3b). Not a command: it never reaches the reducer, so a line
       // cannot desync a city and a client that misses one has not diverged. Its
       // own rate budget, because a player who talks a lot must not lose the

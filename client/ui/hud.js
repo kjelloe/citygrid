@@ -80,7 +80,7 @@ export function createHud(root, {
   onSave, onLoad, onExport, onImport, slots,
   onQuestChoice, quests, onTax, onFunding, onLoan, onNewCity, onSettings, onStatistics, onHelp, minimap,
   onResolveRequest, onWithdrawRequest, onFileRequest, onFocusTile, onPing, onSetPolicy,
-  onSetStatus, onLeaveRoom, onSay, watching = false,
+  onSetStatus, onLeaveRoom, onSay, watching = false, canSetSpeed = true,
   onStreet, onLeaveStreet, onPhoto, onLeavePhoto, onSavePhoto,
   showControlsCard = false, onDismissControlsCard,
 }) {
@@ -120,7 +120,15 @@ export function createHud(root, {
   // moved in from the top bar so the camera has one home"). Leaving a copy in
   // the top bar would be two controls for one thing — and on a phone the bar
   // was wrapping to three rows to hold them.
-  top.append(cityName, money, trend, pop, date, speedButton);
+  // **The speed button only where the clock is this player's** (X2d, ruling
+  // 029). In a room the clock belongs to the host, so a guest's button could
+  // only ever change its own label — which is what it did for the whole of X1
+  // through X4: a control that is present but inert, and the rule for one of
+  // those is to mark it or REMOVE it from the DOM. Hiding it will not do —
+  // `reach_smoke` counts a hidden control as unreachable and `aria-disabled`
+  // stops a gate clicking it (ruling 029).
+  top.append(cityName, money, trend, pop, date);
+  if (canSetSpeed) top.append(speedButton);
 
   /** The slim bar photo mode leaves behind.
    *

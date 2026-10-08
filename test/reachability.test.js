@@ -45,8 +45,14 @@ const NOT_YET = {
   "settings.volume.master": "no master fader: the mixer runs master at full and the two bus levels are the controls",
   "settings.volume.music": "there is no composed music, so a slider for it would control silence",
   "settings.advisor": "slice 4.2 personas, Q18",
-  "status.afk": "slice 5.4",
-  "tool.request": "slice 5.3",
+  // `status.afk` and `tool.request` are GONE from both catalogues (2026-10-09).
+  // Both were waiting for a slice that has since shipped and chosen other
+  // words: X4's roster says "I'm away" and "away" (`roster.away`,
+  // `roster.status.away`), and X3b made the REFUSAL the door rather than adding
+  // a Request tool to the rail — "no new tool, and the player is already
+  // looking at the ground in question". This list says a key here without a
+  // reason is one that should have been deleted, and a reason naming a slice
+  // that is done is no reason.
   // **The nine `refused.*` keys left this list on 2026-10-09 (X2d).** X1b wrote
   // the words the door needs before there was a door to read them from, and
   // they sat here through X1c, X2a, X2b and X2c while a refused join landed in

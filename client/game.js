@@ -247,6 +247,11 @@ export async function startGame(root, given = {}) {
   // the alert list, which is lost on a rebuild — a fair trade for a rare action,
   // and the alerts return on the next tick.
   const hudOptions = {
+    // **Who may turn the clock** (X2d): everybody in singleplayer, the host in
+    // a room, nobody else. `setRoomSpeed` is absent on every transport that has
+    // no room behind it, which is how this file tells the two situations apart
+    // without knowing what a socket is.
+    canSetSpeed: sim.setRoomSpeed === undefined || sim.isHost === true,
     state,
     seat,
     controller,
@@ -351,6 +356,17 @@ export async function startGame(root, given = {}) {
   listSaves().then((rows) => hud.setSlots(rows.map((r) => r.summary)));
 
   function setSpeed(next) {
+    // **In a room the clock is the room's** (X2d, plan.md §3.6). Asking is all
+    // this client does: the answer comes back as the `speed` on the next frame,
+    // so a host whose message is refused sees the dial stay where it was rather
+    // than snap back, and every other seat's label follows the same number
+    // instead of its own idea of one. Before this slice the button changed its
+    // own label and nothing else — `room.setSpeed` had no caller and there was
+    // no message between them.
+    if (sim.setRoomSpeed) {
+      sim.setRoomSpeed(next);
+      return;
+    }
     speed = next;
     const { labelKey, ms } = SPEEDS[speed];
     hud.setSpeedLabel(labelKey);
@@ -360,7 +376,35 @@ export async function startGame(root, given = {}) {
     // listener on the seam (W1), so nothing of the clock is left in this file.
     sim.setSpeed(ms);
   }
-  setSpeed(1);
+  // In a room the speed is already running at whatever the host set, so the
+  // label starts from the ROOM rather than from this page's idea of 1x.
+  if (sim.roomSpeed === undefined) setSpeed(1);
+  else followRoomSpeed(true);
+
+  /**
+   * The room's speed, on this page's label. Every frame carries it (X2d), so a
+   * guest's label follows the host's dial without a message of its own — and
+   * the host's own label waits for the answer rather than moving on the click,
+   * which is what makes a refused change visible instead of silent.
+   *
+   * `force` is the first call, where the label has never been written: the room
+   * starting at the same speed this page would have chosen is not a reason to
+   * leave the button saying "Paused", which is what it said for every host in
+   * the first run of this.
+   *
+   * **A speed this page has no word for is left unlabelled, not renamed.** The
+   * room's table has a fourth rate — 16 ticks a second — that `room_soak` and
+   * `room_smoke` drive a room at and no control can ask for; a page that meets
+   * one has nothing true to call it, and guessing would put a wrong number in
+   * front of a player.
+   */
+  function followRoomSpeed(force = false) {
+    if (sim.roomSpeed === undefined) return;
+    if (sim.roomSpeed === speed && !force) return;
+    speed = sim.roomSpeed;
+    const named = SPEEDS[speed];
+    if (named) hud.setSpeedLabel(named.labelKey);
+  }
 
   // A line from the room goes straight to the panel: it is not state, nothing
   // orders it against commands, and a client that misses one has not diverged.
@@ -373,6 +417,9 @@ export async function startGame(root, given = {}) {
     // asked for, so every event they produced was dropped on the floor. The
     // ping gate is what said so: the other seat never heard it.
     if (change.command.type !== CMD_TICK && change.pushed !== true) return;
+    // The room's dial, on this page's label (X2d). Every frame carries it, so
+    // the follower costs one comparison and no message.
+    followRoomSpeed();
     hud.tick(change.events);
     for (const cue of cuesFor(change.events)) audio.play(cue);
     // Where the WALKER is standing, when they are down there (V8): a busy
@@ -551,6 +598,11 @@ export async function startGame(root, given = {}) {
     get room() { return sim.room; },
     get seat() { return seat; },
     get roomSeconds() { return sim.roomSeconds; },
+    /** The room's dial and whose it is (X2d). Read by `room_smoke`, which is
+     * the only thing that can tell "the guest's label followed the host" from
+     * "the guest's label changed itself". */
+    get roomSpeed() { return sim.roomSpeed; },
+    get isHost() { return sim.isHost; },
     /** The seam itself, for the gates that build a city in the page. They used
      * to import the reducer and apply to `CITY.state` — which since W2 is a
      * MIRROR, so that would change a copy and leave the simulation playing a

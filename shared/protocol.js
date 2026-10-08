@@ -41,6 +41,15 @@ export const C2S = Object.freeze({
   // namespaces as disjoint.
   LATENCY: "latency",
   CHAT: "chat",
+  // **The room's clock, which only the host may turn** (X2d). The tick count
+  // rides the frame (plan.md §3.6), so speed is the ROOM's and never the
+  // state's — a seat that ran its own interval would tick a city the room never
+  // ticked, and the symptom would be a desync with no local cause. Before this
+  // the speed button in a room changed its own label and nothing else: the
+  // server had `room.setSpeed` with no caller and there was no message between
+  // them. **No version bump:** a type only ever SENT by a newer client is
+  // additive, which is the reasoning X2c's `CREATE` used.
+  SPEED: "speed",
 });
 
 /** Server → client. */

@@ -92,6 +92,13 @@ export async function openLocalSession(given) {
     /** No room clock either: the light cycle falls back to this page's own wall
      * clock, which is what A41 settled for singleplayer. */
     roomSeconds: undefined,
+    /** And no room speed, and nobody to be host of (X2d). The clock here is
+     * this page's own, which is what `setSpeed` turns; `setRoomSpeed` is the
+     * member whose ABSENCE a caller reads to know there is no room to ask, and
+     * it is declared rather than omitted for the reason below. */
+    roomSpeed: undefined,
+    isHost: false,
+    setRoomSpeed: undefined,
     /** No chat either: there is nobody to say it to. Present rather than
      * absent, because the drop-in claim is checked by comparing the two APIs
      * and a caller that has to ask which session it holds is a caller the swap

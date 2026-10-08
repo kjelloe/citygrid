@@ -53,7 +53,7 @@ import "../engine/requests.js";
  * and then "a pump does at most ~2 fast ticks" — and so did the test, whose
  * comment read "two fast ticks a second" above an assertion of 24 ticks in
  * 1.2 seconds. Singleplayer is the tie-breaker: a room is the same game. */
-const TICKS_PER_SECOND = [0, 2, 6, 16];
+export const TICKS_PER_SECOND = [0, 2, 6, 16];
 
 let tokens = 0;
 const nextToken = () => `seat-${(tokens += 1)}-${Math.floor(Date.now() % 1e6)}`;
@@ -139,6 +139,8 @@ export function createRoom(given = {}) {
    * time it took, or a room under load runs slower than the clock says. */
   let tickCredit = 0;
   let speed = given.speed === undefined ? 1 : given.speed;
+  /** Whoever got here first (X2d). See `host()` below for why it is not 1. */
+  let hostSeat = 0;
 
   const broadcast = (message) => {
     for (const { connection } of seats.values()) connection.send(message);
@@ -254,6 +256,8 @@ export function createRoom(given = {}) {
       connection.send({
         type: S2C.WELCOME,
         seat: 0,
+        host: hostSeat,
+        speed,
         protocol: PROTOCOL_VERSION,
         build: buildHash(),
         tick: state.tick,
@@ -298,12 +302,19 @@ export function createRoom(given = {}) {
       queue.push({ seat, command: { type: CMD_JOIN, actor: seat, seat, name: hello.name || `Mayor ${seat}` } });
     }
     const token = nextToken();
+    if (hostSeat === 0) hostSeat = seat;
     seats.set(seat, { connection, token, seat });
     connection.send({
       type: S2C.WELCOME,
       seat,
       token,
       room: code,
+      // Who may turn the clock, and where it is now (X2d). Both on the WELCOME
+      // so a client knows before its first frame whether to offer the control
+      // at all — a button that appears a second late is a button a player has
+      // already decided is not there.
+      host: hostSeat,
+      speed,
       protocol: PROTOCOL_VERSION,
       build: buildHash(),
       tick: state.tick,
@@ -373,7 +384,7 @@ export function createRoom(given = {}) {
     // to advance through it (X1c).
     if (rate > 0) playedMs += ran;
 
-    const frame = { type: S2C.FRAME, tick: state.tick, seq, cmds, ticks, at: playedMs };
+    const frame = { type: S2C.FRAME, tick: state.tick, seq, cmds, ticks, at: playedMs, speed };
     // The hash rides the frame once a sim-month (plan.md §3.7.9): often enough
     // that a drift cannot reach a save, rare enough that it is not the cost the
     // room is paying to avoid.
@@ -425,7 +436,23 @@ export function createRoom(given = {}) {
      * `toSave` aliases the live state (see `join`). */
     save: () => JSON.parse(JSON.stringify(toSave(state))),
     seats: () => [...seats.values()].map(({ seat, token }) => ({ seat, token })),
-    setSpeed(next) {
+    /** The host's seat, or 0 before anybody has joined (X2d).
+     *
+     * The FIRST seat to join, not seat 1: a room restored from a save can have
+     * seat 1 already in its player list and nobody behind it, and X4a holds a
+     * seat for two minutes after its socket drops — so "seat 1" and "the person
+     * who started this" are not the same claim. */
+    host: () => hostSeat,
+    speed: () => speed,
+    /**
+     * The room's clock. `by` is the seat asking, and only the host may turn it
+     * — a shared clock that anybody can change is four people fighting over one
+     * dial. A refusal is silent and returns the speed unchanged: there is no
+     * control to refuse on a client that is not the host, so a message from one
+     * is a bug in this repository rather than something to tell a player about.
+     */
+    setSpeed(next, by) {
+      if (by !== undefined && by !== hostSeat) return speed;
       speed = Math.max(0, Math.min(TICKS_PER_SECOND.length - 1, Math.floor(next)));
       return speed;
     },

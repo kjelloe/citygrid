@@ -121,6 +121,12 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
   /** The room's own played clock, off the last frame (X1c, A63). Seconds,
    * because that is what the light cycle counts in. */
   let roomSeconds = 0;
+  /** The room's clock and whose it is (X2d). Both come off the WELCOME, so a
+   * client knows before its first frame whether to offer a speed control; the
+   * speed is refreshed by every frame, because the host can turn it and nobody
+   * else is told twice. */
+  let roomSpeed = 1;
+  let hostSeat = 0;
   let listener;
   let chatListener;
   let closed = false;
@@ -190,6 +196,8 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
   function onWelcome(message) {
     seat = Number(message.seat) || seat;
     code = message.room ?? code;
+    if (typeof message.speed === "number") roomSpeed = message.speed;
+    if (typeof message.host === "number") hostSeat = message.host;
     // A fresh token every time, so a copied one is good for one return.
     if (message.token) tokens.set(code, message.token);
     const ready = host.handle({
@@ -207,6 +215,7 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
    * their posts; the rest are pushed. */
   function onFrame(frame) {
     if (typeof frame.at === "number") roomSeconds = frame.at / 1000;
+    if (typeof frame.speed === "number") roomSpeed = frame.speed;
     const answered = [];
     let next = 0;                     // how far down `waiting` the frame has got
     const events = [];
@@ -276,6 +285,19 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
     /** **The server owns the clock** (plan.md §3.6). The session reads this and
      * keeps no interval of its own; the ticks ride the frames. */
     roomClock: true,
+    /** What speed the ROOM is running at, and whether this client may change it
+     * (X2d). The HUD reads both: a seat that is not the host gets no speed
+     * control at all rather than one that does nothing — ruling 029's rule, and
+     * the defect this slice is about. */
+    get roomSpeed() { return roomSpeed; },
+    get isHost() { return seat > 0 && seat === hostSeat; },
+    /** Ask the room to change speed. Nothing happens locally: the answer comes
+     * back as the `speed` on the next frame, like every other fact about the
+     * room, so a host whose message is refused sees the dial stay where it was
+     * rather than snap back. */
+    setRoomSpeed(next) {
+      sendOrHold({ type: C2S.SPEED, speed: next });
+    },
     get closed() { return closed; },
     /** Commands posted and not yet answered by a frame. The number a gate waits
      * on rather than guessing at a delay. `held` is not added to it: a command

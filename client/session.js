@@ -202,6 +202,11 @@ export async function openMirrorSession(given = {}, transport) {
      * light cycle takes it so every seat is at one hour (A63) without the sun
      * racing the game's speed (A41). */
     get roomSeconds() { return transport.roomSeconds; },
+    /** The room's speed, and whether this client may change it (X2d).
+     * `undefined` outside a room, which is what the HUD reads to decide whether
+     * the speed control is this page's business at all. */
+    get roomSpeed() { return transport.roomSpeed; },
+    get isHost() { return transport.isHost; },
     /** Chat, passed straight through (X3b). It is NOT the city: it never
      * reaches the reducer or the mirror, so it is here only because `game.js`
      * holds one object, and it is absent on every transport that has no room
@@ -238,6 +243,11 @@ export async function openMirrorSession(given = {}, transport) {
       // host's, which is X2's control.
       if (ms > 0 && transport.roomClock !== true) clock = setInterval(() => tick(), ms);
     },
+    /** Ask the ROOM to change speed (X2d). Outside a room there is nothing to
+     * ask: the caller uses `setSpeed` and this is absent, which is how
+     * `game.js` tells the two situations apart without knowing what a socket
+     * is. */
+    setRoomSpeed: transport.setRoomSpeed ? (next) => transport.setRoomSpeed(next) : undefined,
     async load(saveData) {
       try {
         const reply = await post({ type: "init", save: saveData });

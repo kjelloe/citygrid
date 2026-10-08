@@ -437,3 +437,52 @@ test("a storage that throws does not stop a player joining (X4a)", async () => {
   assert.equal(reply.type, "ready", "a storage that throws stopped the join");
   transport.dispose();
 });
+
+// --- the room's clock, on the page (X2d) -------------------------------------
+
+test("the welcome says whose clock it is, and where it is set", async () => {
+  // Both on the WELCOME rather than waiting for a frame, because a speed button
+  // that appears a second after the city does is a button a player has already
+  // decided is not there.
+  const { room, socket, transport } = roomAndTransport();
+  const ready = transport.post({ type: "init" });
+  socket.open();
+  room.setSpeed(2);
+  socket.push(welcomeFrom(room));
+  await ready;
+  assert.equal(transport.isHost, true, "the first seat in is not the host");
+  assert.equal(transport.roomSpeed, 2, "the page does not know the room's speed");
+});
+
+test("a guest is not the host, and follows the dial off the frames", async () => {
+  const { room, socket, transport } = roomAndTransport({ seat: 2 });
+  // Somebody else got there first, so seat 2 is a guest.
+  welcomeFrom(room, 1);
+  const ready = transport.post({ type: "init" });
+  socket.open();
+  socket.push(welcomeFrom(room, 2));
+  await ready;
+  assert.equal(transport.isHost, false, "a guest thinks it is the host");
+  assert.equal(transport.roomSpeed, 1);
+  // The host turns it; the guest learns from the frame, with no message of its
+  // own and nothing to miss.
+  room.setSpeed(3, 1);
+  socket.push({ type: S2C.FRAME, tick: 1, seq: 1, cmds: [], ticks: 1, at: 0, speed: 3 });
+  assert.equal(transport.roomSpeed, 3, "the guest's dial did not follow the host's");
+});
+
+test("asking for a speed is a message and nothing else", async () => {
+  // Nothing happens locally: the answer comes back as the `speed` on the next
+  // frame, so a host whose message is refused sees the dial stay where it was
+  // rather than snap back.
+  const { room, socket, transport } = roomAndTransport();
+  const ready = transport.post({ type: "init" });
+  socket.open();
+  socket.push(welcomeFrom(room));
+  await ready;
+  transport.setRoomSpeed(3);
+  const asked = socket.last(C2S.SPEED);
+  assert.ok(asked, "no speed message was sent");
+  assert.equal(asked.speed, 3);
+  assert.equal(transport.roomSpeed, 1, "the page moved its own dial instead of asking");
+});

@@ -149,6 +149,29 @@ try {
   }, built.cells, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
   check("the other seat saw it", seen.ok === true, seen.why ?? `${seen.laid} of ${seen.of} tiles`);
 
+  // **The room's clock belongs to the host** (X2d). Until this slice the speed
+  // button in a room changed its own label and nothing else: `room.setSpeed`
+  // had no caller and there was no message between them, so a guest pressing it
+  // watched the city carry on at whatever speed the room was started at. Three
+  // claims, and they are different: the guest has no button at all (ruling 029
+  // — remove it, do not disable it), the host's press reaches the room, and the
+  // guest's LABEL follows without a message of its own.
+  const buttons = await Promise.all([a, b].map(({ page }) => page.evaluate(() =>
+    ({ speed: Boolean(document.querySelector("#speed")), label: document.querySelector("#speed")?.textContent ?? "" }))));
+  check("only the host has a speed button", buttons[0].speed === true
+    && buttons.slice(1).every((b) => b.speed === false), JSON.stringify(buttons));
+  const was = await b.page.evaluate(() => globalThis.CITY.state.tick);
+  await a.page.click("#speed");
+  const followed = await until(b.page, "the guest's clock never followed the host's", () => ({
+    ok: globalThis.CITY.roomSpeed !== 1,
+    speed: globalThis.CITY.roomSpeed,
+    tick: globalThis.CITY.state.tick,
+  }), undefined, 15_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the host's press reaches the room, and the guest follows",
+    followed.ok === true, followed.why ?? JSON.stringify(followed));
+  check("and the city kept running while it changed", followed.tick >= was,
+    `${was} then ${followed.tick}`);
+
   // **Stop the clock before comparing three hashes.** The pump never pauses, so
   // a hash read while frames are in flight compares a client to a room that has
   // moved on — and the first run of this gate duly reported three different
