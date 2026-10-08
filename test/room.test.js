@@ -225,6 +225,14 @@ test("the clock is the room's, and it runs at the GAME's speed (X1d)", () => {
   for (let n = 13; n <= 24; n += 1) pump.step(n * 100);
   assert.equal(room.tick(), 4, `2.4 s is 4 ticks, not ${room.tick()} — the credit was dropped`);
 
+  // And a faster room is faster by the ratio in the table, not by a beat count.
+  // Both rooms need somebody in them: since X4d a room nobody is in does not
+  // play, and two sleeping rooms would compare equal for the wrong reason.
+  const fast = createRoom({ options: OPTIONS, speed: 3 });
+  const fastPump = createPump(fast, { tickMs: 100 });
+  joined(fast, "f", 1);
+  for (let n = 1; n <= 12; n += 1) fastPump.step(n * 100);
+  assert.equal(fast.tick(), 19, `1.2 s at sixteen ticks a second is 19, not ${fast.tick()}`);
 });
 
 test("a late joiner catches up to a client that was there from the start", () => {
@@ -507,6 +515,19 @@ test("a frame carries the room's PLAYED time, which is the hour every seat share
   room.setSpeed(1);
   assert.equal(room.beat(100).at, 300, "the clock did not start again");
 
+  // And it is wall time, not ticks: the same beat at a higher speed costs the
+  // same number of milliseconds, which is what stops the sun racing.
+  // Somebody in each: since X4d a room nobody is in does not play, and two
+  // sleeping rooms would compare equal for entirely the wrong reason.
+  const slow = createRoom({ options: OPTIONS, speed: 1 });
+  const fast = createRoom({ options: OPTIONS, speed: 3 });
+  joined(slow, "slow", 1);
+  joined(fast, "fast", 1);
+  for (let n = 0; n < 5; n += 1) { slow.beat(100); fast.beat(100); }
+  assert.equal(slow.beat(100).at, fast.beat(100).at, "a faster room has a faster sun");
+  assert.ok(fast.tick() > slow.tick(), "the two rooms ran at the same speed; nothing was compared");
+});
+
 test("the pump reports a warm maximum beside its cold one (X1c)", () => {
   // A budget checked against a cold maximum is a budget checked against the
   // compiler. X1c gave the room the quest catalogue it should always have had
@@ -747,3 +768,16 @@ test("a regent seat is PLAYED, and what it does crosses the wire like anything e
     "a client replaying the deputy's commands reached a different city");
 });
 
+test("a room full of watchers and nobody playing is still asleep (X4d)", () => {
+  // Watching is not playing: a city nobody is steering should not run because
+  // somebody is looking at it, or an abandoned room with one idle tab open
+  // would tick for ever.
+  const room = createRoom({ options: { ...OPTIONS, seats: 2 }, code: "ABC123" });
+  assert.equal(room.join(wire("watcher"), {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", spectate: true,
+  }), "");
+  const before = room.tick();
+  room.beat(1000, 1000);
+  room.beat(1000, 2000);
+  assert.equal(room.tick(), before, "a room with only watchers in it kept playing");
+});

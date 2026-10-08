@@ -13161,3 +13161,24 @@ drifted if the pass touched anything. `room_soak` green in both modes. Suite **1
 `abandonYears` left the unread-options list: the sixth list in four days to go red in the direction
 that means somebody did the work.
 
+## X4d — a room nobody is in does not play
+
+X4 asks for "an empty one hibernates to disk". The first half is cheaper than the second and worth
+having on its own: the pump keeps beating — *degrade the game clock, never the pump* — and the CITY
+stands still. That is what hibernation is, and it is **reversible and free to undo**, which is why
+it can happen the instant the last socket closes where dropping the room has to wait five minutes
+for a reconnect.
+
+**A regency is somebody.** A seat handed to a deputy is being played, and its city must not freeze
+under it — so the room is awake when anybody is sitting in it *or* any seat is in regency.
+
+**Three tests went red, and all three were right to.** Two existing ones beat rooms with nobody in
+them — "two rooms are two cities" and the speed-ratio half of the X1d clock test — and two sleeping
+rooms compare equal for entirely the wrong reason. They have a seat each now, with the reason in the
+file. The third was my own new one, and it failed on **the clock-mixing mistake this project keeps
+making**: `leave(seat, 0)` stamps the regency window with 0 while the beat measures against
+`Date.now()`, so the seat was handed to a deputy on the first beat and the room never slept.
+`rooms.beat(code, elapsedMs, at)` forwards the clock now, and the test keeps one.
+
+Suite **1,936 green twice**; `room_soak` green in both modes (731 of 720 ticks), `room_smoke` green.
+

@@ -348,7 +348,20 @@ export function createRoom(given = {}) {
       const outcome = apply(state, { ...command, actor: command.actor ?? seat });
       cmds.push({ seq, seat, command: { ...command, actor: command.actor ?? seat }, result: outcome.result });
     }
-    const ticks = SPEEDS[speed] ?? 0;
+    // **A room nobody is in does not play** (X4d). The pump keeps beating —
+    // "degrade the game clock, never the pump" — and the CITY stands still,
+    // which is what hibernation is: reversible, free to undo, and so it can
+    // happen at once where dropping the room has to wait five minutes for a
+    // reconnect. A regency is somebody: a seat handed to a deputy is being
+    // played, and its city must not freeze under it.
+    // Watchers are deliberately not counted: watching is not playing, and an
+    // abandoned room with one idle tab open would otherwise tick for ever.
+    const awake = seats.size > 0 || regents.size > 0;
+    const rate = awake ? (TICKS_PER_SECOND[speed] ?? 0) : 0;
+    const ran = Math.max(0, elapsedMs);
+    tickCredit += ran * rate;
+    const ticks = Math.floor(tickCredit / 1000);
+    tickCredit -= ticks * 1000;
     for (let n = 0; n < ticks; n += 1) apply(state, { type: CMD_TICK });
     // The played clock follows the SPEED, not the tick count: a beat that owes
     // no whole tick yet is still time the room spent running, and the hour has
