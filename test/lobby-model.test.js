@@ -12,7 +12,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { joinReady, JOIN_FIELD_MAX, hostOptions } from "../client/lobby/join-model.js";
+import { joinReady, JOIN_FIELD_MAX, hostOptions, REFUSAL_LABELS, refusalKey } from "../client/lobby/join-model.js";
+import { REFUSAL } from "../shared/protocol.js";
 import { optionsFor, sanitiseChoices } from "../client/lobby/options-model.js";
 import { seatsForSize } from "../engine/options.js";
 import { ROOM_CODE_LENGTH, formatRoomCode } from "../shared/roomcode.js";
@@ -94,4 +95,35 @@ test("a hosted room has room for other people in it (X2c)", () => {
     if (key === "seats") continue;
     assert.deepEqual(mine[key], alone[key], `hosting changed ${key}`);
   }
+});
+
+// --- the door's refusal reaches the player (X2d) -----------------------------
+
+test("every way the door can say no has words, and they are spelled out", () => {
+  // X1b wrote the eight — nine now — refusals the door can give and put them in
+  // both catalogues. **Nothing showed any of them.** A refused join landed in
+  // `main.js`'s `failed()` and the player read "the city failed to start",
+  // whether the room was full, the code was mistyped or their copy of the game
+  // was two versions behind — and the two that say *reload the page* are the
+  // ones a player most needs to read.
+  //
+  // Keyed off `REFUSAL` so a tenth refusal fails here rather than falling
+  // through to the generic notice, and spelled as literals because
+  // `t(`refused.${reason}`)` is invisible to every reachability scan in the
+  // project (the `a-key-assembled-at-runtime-is-invisible` lesson).
+  const codes = Object.values(REFUSAL);
+  assert.equal(Object.keys(REFUSAL_LABELS).length, codes.length,
+    "the door has a refusal the lobby has no label for, or a label for one it cannot give");
+  for (const code of codes) {
+    assert.equal(refusalKey(code), `refused.${code}`, `${code} has no label`);
+  }
+});
+
+test("a refusal this build has no words for gets no words, not the wrong ones", () => {
+  // `undefined`, deliberately: showing a sentence about a DIFFERENT refusal is
+  // worse than the generic one, which is the lesson X1b drew when `ROOM_FULL`
+  // was answering for a taken seat — a refusal that lies about what to do next.
+  assert.equal(refusalKey("somethingFromTheFuture"), undefined);
+  assert.equal(refusalKey(undefined), undefined);
+  assert.equal(refusalKey(""), undefined);
 });

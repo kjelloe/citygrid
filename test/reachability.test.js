@@ -47,21 +47,16 @@ const NOT_YET = {
   "settings.advisor": "slice 4.2 personas, Q18",
   "status.afk": "slice 5.4",
   "tool.request": "slice 5.3",
-  // X1b wrote the words the door needs before there is a door to read them
-  // from: the toast is X1's client half and the join screen is X2's. They are
-  // here rather than unwritten because a refusal with no words is the one kind
-  // nobody notices until a player is standing in front of it (ruling 027), and
-  // `test/i18n.test.js` now keeps all eight honest in both locales.
-  "refused.versionMismatch": "X1 client half — the reload prompt",
-  "refused.buildMismatch": "X1 client half — the reload prompt",
-  "refused.roomFull": "slice 5.2 — the join screen",
-  "refused.seatTaken": "slice 5.2 — the seat picker",
-  "refused.roomClosed": "slice 5.2",
-  "refused.badCode": "slice 5.2 — the join-code field",
-  "refused.malformed": "X1 client half — the reload prompt; a hello the door could not read is a "
-    + "client fault, not a code the player mistyped (X2a)",
-  "refused.banned": "slice 5.4 — the host's kick",
-  "refused.rateLimit": "X1 client half — the toast, as `result.rateLimited` already is",
+  // **The nine `refused.*` keys left this list on 2026-10-09 (X2d).** X1b wrote
+  // the words the door needs before there was a door to read them from, and
+  // they sat here through X1c, X2a, X2b and X2c while a refused join landed in
+  // `main.js`'s generic "the city failed to start" — a full room, a mistyped
+  // code and a client two versions behind all reading the same, and the two
+  // that say RELOAD THE PAGE being the ones a player most needs. The lobby
+  // reopens with the door's own sentence now, and `REFUSAL_LABELS` in
+  // `client/lobby/join-model.js` spells every key as a literal so this scan can
+  // see them. A refusal with no words is the kind nobody notices until a player
+  // is standing in front of it (ruling 027).
 };
 
 const catalogues = Object.fromEntries(

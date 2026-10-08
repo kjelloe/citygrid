@@ -209,6 +209,34 @@ try {
   check("a bad code is refused on the lobby, in words", refused.shown && refused.words.length > 10
     && refused.onLobby, JSON.stringify(refused));
 
+  // **And the DOOR's refusal, which is a different thing** (X2d). The check
+  // above never leaves the page: `joinReady` rejects "nonsense" before a socket
+  // is opened. A code that is well formed and names no room goes all the way to
+  // the room registry, which answers `badCode` — and until X2d the page threw
+  // that away and showed "the city failed to start", the same sentence a full
+  // room, a taken seat and a client two versions behind all got.
+  const absent = code === "ZZZZZZ" ? "YYYYYY" : "ZZZZZZ";
+  await lobby.fill("#joinCode", absent);
+  await lobby.click("#join");
+  const fromDoor = await until(lobby, "the door's refusal never reached the lobby", () => {
+    const line = document.querySelector(".lobby-join-problem");
+    return {
+      ok: line !== null && !line.hidden && (line.textContent ?? "").length > 10,
+      words: line?.textContent ?? "",
+      onLobby: Boolean(document.querySelector("#joinCode")),
+      code: document.querySelector("#joinCode")?.value ?? "",
+    };
+  }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("a room that does not exist is refused in the door's own words",
+    fromDoor.ok === true && fromDoor.onLobby === true, fromDoor.why ?? JSON.stringify(fromDoor));
+  // The two refusals must not read the same: "check what you typed" and "there
+  // is no room with that code" ask for different next moves, which is the
+  // distinction X1b drew at the door and X2d is about carrying to the screen.
+  check("and it does not read like the one the field catches",
+    fromDoor.words !== refused.words, `${refused.words} / ${fromDoor.words}`);
+  // The code is still in the field, because that is the state the player was in.
+  check("the code the player typed is still there", fromDoor.code.length > 0, fromDoor.code);
+
   // Then the real code, typed the way it is READ OUT — grouped and lower case.
   await lobby.fill("#joinCode", formatRoomCode(code).toLowerCase());
   await lobby.click("#join");

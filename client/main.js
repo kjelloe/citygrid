@@ -14,6 +14,7 @@ import { openSettings, loadSettings, applyDisplaySettings } from "./ui/settings.
 import { mixerSettings } from "./ui/settings-model.js";
 import { hasWebGL2, preferredLocale, prefersReducedMotion } from "./capabilities.js";
 import { choicesFromParams, optionsFor, paramsForChoices } from "./lobby/options-model.js";
+import { refusalKey } from "./lobby/join-model.js";
 import { listSaves, getSave } from "./storage/db.js";
 import { fromSave } from "../engine/save.js";
 import { setBuildHash } from "../shared/build-hash.js";
@@ -178,6 +179,23 @@ async function boot() {
    * places, so a throw inside `startGame` became an unhandled rejection and a
    * blank page — which is how a temporal dead zone in `game.js` cost half an
    * hour in R2. */
+  /** A room that said no sends the player back to the lobby with the door's own
+   * sentence (X2d), not to the generic notice.
+   *
+   * It reopens the lobby rather than showing the message in place, because
+   * `play()` empties the app before the socket has even connected — so by the
+   * time a refusal arrives there is no join screen left to write on. Reopening
+   * puts the code back in the field, which is the state the player was in.
+   *
+   * Anything that is NOT a refusal is still a failure to start, and reads as
+   * one: a socket that never opened is not a room saying no. */
+  function refusedJoin(error, code) {
+    const key = refusalKey(error?.refusal);
+    if (!key) return failed(error);
+    console.warn(`the room refused this client: ${error.refusal}`);
+    return newGame({ key, code });
+  }
+
   function failed(error) {
     console.error("the city failed to start", error);
     show(notice("boot.failed.title", "boot.failed.body"));
@@ -256,7 +274,9 @@ async function boot() {
     return session;
   }
 
-  async function newGame() {
+  /** @param refused `{ key, code }` when the lobby is being reopened because a
+   * room said no (X2d). */
+  async function newGame(refused) {
     session = undefined;
     app.classList.remove("playing");
     app.classList.add("choosing");
@@ -267,6 +287,7 @@ async function boot() {
     const saved = await listSaves();
     const latest = saved.slice().sort((a, b) => (b.savedAt ?? 0) - (a.savedAt ?? 0))[0];
     createNewGame(app, {
+      refused,
       choices: choicesFromParams(params),
       onSettings: showSettings,
       onContinue: latest ? () => resume(latest.slot) : undefined,
@@ -280,7 +301,7 @@ async function boot() {
       // typed a code cannot know which are free.
       onHost: hostRoom,
       onJoin({ join, mayorName, spectate }) {
-        play({ join, mayorName, spectate }).catch(failed);
+        play({ join, mayorName, spectate }).catch((error) => refusedJoin(error, join));
       },
     });
   }
@@ -291,7 +312,11 @@ async function boot() {
   // a joiner is `Mayor <seat>`, which is what `server/room.js` already calls
   // one that sends no name.
   if (config.join) {
-    await play({ join: config.join, seat: config.seat, spectate: config.watch }).catch(failed);
+    // A refusal here opens the lobby with the message rather than the boot
+    // notice: `?join=` is a link somebody was SENT, and "that room has closed"
+    // is the one sentence that makes the next move obvious.
+    await play({ join: config.join, seat: config.seat, spectate: config.watch })
+      .catch((error) => refusedJoin(error, config.join));
     return;
   }
 

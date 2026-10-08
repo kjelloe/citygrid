@@ -13937,3 +13937,46 @@ moves every state's hash — a `SAVE_VERSION` bump and a fixture re-pin. It ride
 the next migration rather than being a slice of its own.
 
 Suite **1,981 tests, 1,978 pass, 0 fail, 3 skipped, green twice.**
+
+## X2d — the door's refusal reaches the player (2026-10-09)
+
+X1b wrote the words the door needs in both catalogues before there was a door to read them from.
+They sat unused through X1c, X2a, X2b and X2c: **a refused join landed in `main.js`'s `failed()` and
+the player read "the city failed to start"** — a full room, a mistyped code, a closed room and a
+client two versions behind all reading the same sentence, and the two that say *reload the page*
+being the ones a player most needs. `test/reachability.test.js` had all nine on its `NOT_YET` list,
+each naming the slice that would show them. This is that slice.
+
+**`REFUSAL_LABELS` in `client/lobby/join-model.js`**, every key spelled as a literal — because
+``t(`refused.${reason}`)`` is invisible to every "can the interface show this?" scan in the project,
+which is how three live inbox labels were reported dead in X3b. Keyed off `REFUSAL` itself, so a
+tenth refusal fails the test rather than falling through to the generic notice. A refusal this build
+has no words for returns **`undefined`**, not a fallback sentence: showing words about a DIFFERENT
+refusal is worse than the generic one, which is the lesson X1b drew when `ROOM_FULL` was answering
+for a taken seat.
+
+**The lobby reopens with the message and the code still in the field.** Not shown in place, because
+`play()` empties the app before the socket has connected — by the time a refusal arrives there is no
+join screen left to write on. Reopening puts the player back where they were. Anything that is NOT a
+refusal still reads as a failure to start: a socket that never opened is not a room saying no. The
+`?join=` path gets the same treatment, which is the one that matters most — that URL is a link
+somebody was SENT, and *"that room has closed"* is the sentence that makes the next move obvious.
+
+**Two refusals that must not read alike, and the gate drives both.** `room_smoke`:
+
+```
+ok  a bad code is refused on the lobby, in words
+      ("That is not a join code — six letters and numbers, like ABC-123")
+ok  a room that does not exist is refused in the door's own words  ("No room with that code")
+ok  and it does not read like the one the field catches
+ok  the code the player typed is still there  (ZZZZZZ)
+```
+
+The first never leaves the page — `joinReady` rejects it before a socket is opened. The second goes
+all the way to the room registry and comes back. They ask for different next moves, which is the
+distinction X1b drew at the door and this slice is about carrying to the screen.
+
+**The census went red in the right direction** and all nine keys left `NOT_YET`, which is five fewer
+entries than the list had this morning and the first time any of them has moved since X1b wrote them.
+
+Suite **1,983 tests, 1,980 pass, 0 fail, 3 skipped, green twice.**

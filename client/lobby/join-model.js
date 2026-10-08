@@ -12,9 +12,51 @@
 // has no way to get before joining, which is X3b's.
 
 import { normaliseRoomCode, ROOM_CODE_LENGTH } from "../../shared/roomcode.js";
+import { REFUSAL } from "../../shared/protocol.js";
 import { sanitiseText } from "../../engine/validate.js";
 import { seatsForSize } from "../../engine/options.js";
 import { NAME_MAX, optionsFor } from "./options-model.js";
+
+/**
+ * What the door's refusal is called, in words the player reads.
+ *
+ * **Every key spelled as a literal**, because `t(`refused.${reason}`)` is
+ * invisible to every "can the interface show this string?" scan in the project
+ * — which is how three live inbox labels came to be reported as dead (X3b), and
+ * how these eight came to be written in X1b and never shown at all. The door
+ * has refused in eight ways since X1b and the page has shown a generic *"the
+ * city failed to start"* for every one of them: a full room, a mistyped code
+ * and a client two versions behind all read the same, and the one that says
+ * **reload the page** is the one a player most needs.
+ *
+ * Keyed off `REFUSAL` rather than off the strings, so a ninth refusal is a
+ * compile-time-ish failure here (`test/lobby-model.test.js` asserts the two
+ * lists are the same length) rather than a silent fall-through to the default.
+ */
+export const REFUSAL_LABELS = Object.freeze({
+  [REFUSAL.VERSION_MISMATCH]: "refused.versionMismatch",
+  [REFUSAL.BUILD_MISMATCH]: "refused.buildMismatch",
+  [REFUSAL.ROOM_FULL]: "refused.roomFull",
+  [REFUSAL.SEAT_TAKEN]: "refused.seatTaken",
+  [REFUSAL.ROOM_CLOSED]: "refused.roomClosed",
+  [REFUSAL.BAD_CODE]: "refused.badCode",
+  [REFUSAL.MALFORMED]: "refused.malformed",
+  [REFUSAL.BANNED]: "refused.banned",
+  [REFUSAL.RATE_LIMIT]: "refused.rateLimit",
+});
+
+/**
+ * The key for a refusal the door sent, or `undefined` when it sent something
+ * this build has no words for.
+ *
+ * `undefined` rather than a fallback string: a refusal nobody wrote words for
+ * is a bug in this repository, and showing the player a sentence about a
+ * DIFFERENT refusal is worse than showing them the generic one — the lesson
+ * X1b drew when `ROOM_FULL` was answering for a taken seat.
+ */
+export function refusalKey(reason) {
+  return Object.hasOwn(REFUSAL_LABELS, reason) ? REFUSAL_LABELS[reason] : undefined;
+}
 
 /** How many characters the field accepts: the code plus the separator a player
  * is shown, and a little slack for a space — but not so much that it becomes a

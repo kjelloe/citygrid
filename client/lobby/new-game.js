@@ -42,7 +42,7 @@ function randomSeed() {
  *   generated region, so the game does not generate a second one.
  * @param onContinue optional; shown only when there is a save to continue.
  */
-export function createNewGame(root, { choices: initial, onStart, onContinue, onSettings, onJoin, onHost } = {}) {
+export function createNewGame(root, { choices: initial, onStart, onContinue, onSettings, onJoin, onHost, refused } = {}) {
   let choices = sanitiseChoices(initial ?? {});
   let world;
 
@@ -202,6 +202,16 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
 
     const joinProblem = el("p", "lobby-join-problem");
     joinProblem.hidden = true;
+    // **The door's own words, on the screen the player was last on** (X2d).
+    // `refused` is set when a join was tried and the room said no: the lobby is
+    // reopened with the code still in the field and the refusal under it,
+    // because "that room is full" and "check the code" ask for different next
+    // moves and a generic failure asks for none.
+    if (refused?.key) {
+      joinProblem.textContent = t(refused.key);
+      joinProblem.hidden = false;
+      if (refused.code) codeField.value = refused.code;
+    }
     // `role="status"`, so a reader hears the refusal rather than finding it
     // (ruling 028: a role that names a behaviour is a promise, and this one is
     // only a promise to announce).
