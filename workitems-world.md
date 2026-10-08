@@ -1083,11 +1083,33 @@ with corner-blended levels (S4) — and what was missing was the motion: `MOTION
 in node, the same constants in GLSL, flat at `uTime = 0` so `?life=0` and every frozen screenshot
 keep S4's surface. The pale line where the water meets the shore is still open.
 
-## S18c — The wall at two metres (XS) — A132 (Q154)
+## S18c — The wall at two metres (XS) — A132 (Q154) — **BUILT 2026-10-08** as `slice-S18c`
 
-`road.wallMinDrop` 3 → **2** in `data/cityviewer.json` and the mirror: 264 faced shoulders on the
-hilly 128 (130 at 3), none on a rolling 96. Re-shoot `embankment_shots` at 2, re-baseline
-`walkthrough`'s wall count, and put the 2 m pair beside the 3 m pair in the dev-log.
+*As built: `road.wallMinDrop` 3 → **2** in `data/cityviewer.json` and the mirror, two tests in
+`test/retaining.test.js` (the threshold is exclusive — "more than a storey" — and what lowering the
+rung buys, both parameterised so they describe the rule rather than the setting), and the pictures
+re-shot.*
+
+**And the ladder the decision was chosen from is void.** A132 chose between *264 faced shoulders at
+2 m and 130 at 3*. Measured today on era 29's city: **hilly 128 — 24 / 5 / 2** at 1.2 / 2 / 3 m;
+**rolling 96 — 17 / 4 / 3**. The era-28 numbers are reproducible and attributed: `walkthrough 128
+hilly` at `853da31` (B14's parent) reads 130, deepest 9.8 m, 37 at water; on HEAD it reads 5,
+deepest 3.9 m, none at water. **B14 is the cause** — a fifth of the city paved instead of a third,
+and no street a block from another, which is where a hillside's shoulders came from. On gentle
+ground it went the other way: a rolling 96 had none in era 28 and has three at the same rung now,
+all at water.
+
+The direction A132 chose still holds and is built. What is void is the magnitude, and with it the
+claim that this is a feature of the city rather than a detail — five faced shoulders on a played
+hilly 128. **Q162** asks whether 2 m is still the rung now that the ladder reads 24 / 5 / 2; 1.2 m
+is what would make it visible, and is the rung A128 rejected for facing grass banks (19 of those 24
+are under two metres, so the objection survives in miniature).
+
+Both instruments now print the **ladder** every run — `walkthrough` on whichever city it is given,
+`embankment_shots` on the played city it photographs — so the next balance era re-baselines itself
+instead of leaving a number in a document to go quietly void. `embankment_shots` also aims at
+shoulders the rule actually faces: its floor was the literal `1.2`, so two of its three pairs were
+of banks no threshold faces.
 
 ## S18 — The bridge, the wall and the water (M) — Q145 — **BUILT bar the shore line, 2026-10-06**
 
@@ -1097,7 +1119,9 @@ node, stands three metres off each and fails at zero baked chunks. 9.3 / 8.5 / 6
 7–8 chunks a frame, both arms from one harness (`wall=0`). Then the facing: `client/world/
 retaining.js` decides, `streets-l3.js` draws stone with a concrete coping, no height moved. The
 threshold is a storey — at 1.2 m a hilly 128 has 916 faced shoulders and 652 are under two metres;
-at 3 m it has 130 and a rolling 96 has none. `walkthrough` prints the count.
+at 3 m it has 130 and a rolling 96 has none. `walkthrough` prints the count. *(Those four numbers
+are **era 28's** and are void as of B14 — see S18c above, which re-measured them at 24 / 5 / 2 and
+17 / 4 / 3 and taught both instruments to print the ladder every run.)*
 
 **The other two bullets, closed 2026-10-06.** The deck is one profile and was already: every
 corridor goes through `gradeProfile`, and over water `pavableAt` answers
@@ -1229,11 +1253,13 @@ bullet. What is open, cheapest first: **S19b** (a station faces its track), **S1
 line**, **S20's second half** (the shot gates count their subject's features in frame, not chunks),
 **S15b** (the lit response — a material raised by 60 arrives raised by 25), **S15c** (road width and
 the grey unbuilt lot), **S14** (the batter, tried and reverted — it wants the picture layer), and
-**S22** (a sun that moves, analysed 2026-10-08) — and **S18c**, the wall at two metres.
+**S22** (a sun that moves, analysed 2026-10-08). ~~S18c~~ (the wall at two metres) is built.
 
-**Two of those are answered and are the next two slices in this lane.** **S18c** is Q154 → **A132**:
-`road.wallMinDrop` goes 3 → 2, which roughly doubles the faced shoulders on a hilly 128 (264 at 2 m
-against 130 at 3 m), with `embankment_shots` re-shot and the wall count re-baselined. **S22** is
+**S18c is built (2026-10-08)** and **S22 is next.** S18c took `road.wallMinDrop` from 3 to 2 as
+A132 decided — and found that the ladder the decision was chosen from belongs to era 28: today's
+counts are 24 / 5 / 2 on a hilly 128 and 17 / 4 / 3 on a rolling 96, not 916 / — / 130 and 51 / — /
+0. B14 is the cause, it is attributed to B14's parent commit, and **Q162** asks whether 2 m is still
+the rung. **S22** is
 Q160 → **A138**: the sun's azimuth rides the wall clock over a **quarter arc**, the moon gets an arc
 of its own, `sun.arcDegrees` and `sun.moonArcDegrees` go into `data/cityviewer.json` with the mirror,
 the presets are untouched, and the baked face tints give up to the real light — the lighting answer

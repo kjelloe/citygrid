@@ -26,6 +26,7 @@ import { CMD_JOIN, CMD_TICK } from "../engine/commands.js";
 import { TICKS_PER_YEAR } from "../engine/constants.js";
 import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { createModel } from "../client/world/model.js";
+import { wallRuns } from "../client/world/retaining.js";
 import { DEFAULTS, setConfig, getConfig } from "../client/world/config.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -102,7 +103,14 @@ function shoulders(model) {
         const top = model.heightAt(at.x, at.z);
         const foot = level === undefined ? model.heightAt(beyond.x, beyond.z) : level;
         const drop = top - foot;
-        if (drop < 1.2) continue;
+        // **Above the rule's own threshold**, not above a literal (S18c). This
+        // was `1.2` — the lowest rung the ladder ever considered — so two of the
+        // three pictures were of shoulders the rule does NOT face: at 3 m the
+        // set photographed a 1.8 m and a 1.6 m bank and called the pair
+        // before-and-after, and the only difference between the two frames was
+        // fifty-two triangles somewhere else in the city. A gate that
+        // photographs a wall has to stand at ground the wall is built on.
+        if (drop <= cfg.road.wallMinDrop) continue;
         found.push({
           drop,
           // Where the camera stands: out past the face, on the low side.
@@ -141,6 +149,30 @@ console.log(`${SIZE}×${SIZE} ${TERRAIN}, ${YEARS} years: ${places.length} shoul
 if (places.length === 0) {
   console.error("FAIL  no shoulder deep enough to photograph — the city or the rule changed");
   process.exit(1);
+}
+
+// **The ladder, on the city this gate photographs** (S18c). The rungs that
+// chose `wallMinDrop` were measured on a played hilly 128 — this city — by a
+// script that was thrown away, while `walkthrough` printed a count from the
+// SATURATED hilly city, which has two faced shoulders in it. Two numbers for
+// one question, on two different cities, and the one in the lane file came from
+// the instrument nobody kept. So it is printed here, where the pictures are
+// taken, every run: the live threshold's count and the rungs either side of it.
+{
+  const rungs = [...new Set([1.2, 2, 3, cfg.road.wallMinDrop])].sort((a, b) => a - b);
+  const rows = rungs.map((minDrop) => {
+    const walls = wallRuns(model, { ...cfg, road: { ...cfg.road, wallMinDrop: minDrop } });
+    const deepest = walls.length > 0 ? Math.max(...walls.map((w) => w.drop)) : 0;
+    return `${minDrop} m: ${walls.length}${walls.length > 0
+      ? ` (deepest ${deepest.toFixed(1)} m, ${walls.filter((w) => w.water).length} at water)` : ""}`;
+  });
+  console.log(`faced shoulders at each rung — ${rows.join("; ")}`);
+  console.log(`the city is running wallMinDrop ${cfg.road.wallMinDrop} m (data/cityviewer.json)`);
+  if (wallRuns(model, cfg).length === 0) {
+    console.error(`FAIL  no faced shoulder at all at ${cfg.road.wallMinDrop} m — `
+      + "this gate photographs walls and the city has none");
+    process.exit(1);
+  }
 }
 
 let baked = 0;

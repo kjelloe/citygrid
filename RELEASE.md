@@ -163,19 +163,26 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**1 open question** is on the list (`dev-questions.md`, bottom section) — **Q161**, filed the same
-day the list was emptied: a junction laid mid-street deletes the pavement somebody was standing on,
-and the geometric re-seat moves them up to 6.2 m. Keep their side of the street, walk them out, or
-leave it and write down that two people in four hundred moving once per build is below what anybody
-can see? It is one function (W6d) and nothing is blocked on it.
+**2 open questions** are on the list (`dev-questions.md`, bottom section), both filed the day the
+list was emptied and neither blocking anything. **Q161**: a junction laid mid-street deletes the
+pavement somebody was standing on, and the geometric re-seat moves them up to 6.2 m — keep their
+side of the street, walk them out, or leave it and write down that two people in four hundred moving
+once per build is below what anybody can see? (W6d, one function.) **Q162**: the wall's rung was
+chosen from a ladder of 264 faced shoulders against 130, and those are **era 28's** numbers — B14
+paves a fifth of the city instead of a third, so a hilly 128 now reads 24 / 5 / 2 at 1.2 / 2 / 3 m.
+Is two metres still the rung?
 
 The seven the week raised were answered on 2026-10-08 as **A132–A138** (P111), and what each one
 left behind is work rather than a question:
 
-- **Q154 → A132: the wall at two metres.** A faced shoulder is drawn where a street stands more
-  than a storey above the water, and three metres was the rung. Two is the answer, which roughly
-  doubles the number of faced shoulders on a hilly 128 (the ladder: 1.2 m gives 916, 2 m gives 264,
-  3 m gives 130). **S18c** is the change and a re-shoot of `embankment_shots`.
+- **Q154 → A132: the wall at two metres. Built 2026-10-08 as `slice-S18c`** — and the ladder it was
+  chosen from is **void**. A132 picked 2 m over 3 m on 264 faced shoulders against 130; those are
+  era 28's numbers, reproduced at B14's parent commit, and era 29's city reads **24 / 5 / 2** at
+  1.2 / 2 / 3 m on a hilly 128 and **17 / 4 / 3** on a rolling 96. B14 paves a fifth of the city
+  instead of a third, so the parallel streets on a hillside that made the shoulders are gone; on
+  gentle ground the few that are left run closer to the water, so a rolling 96 went from none to
+  three. The direction holds and 2 m is shipped; whether it is still the right rung is **Q162**.
+  Both instruments print the ladder every run now.
 - **Q155 → A133: clearing ground costs five.** A bulldoze cost **nothing** at two of the three
   difficulties, because the price was 1 and `idiv(1 × 90, 100)` is 0. Five, not the floor of one —
   so it is a balance era with a sweep and a report, and **D8b** (A136) folds into the same one:

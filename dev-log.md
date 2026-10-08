@@ -13522,3 +13522,65 @@ seconds up on the clean run — the first of them overlapped the tail of a sweep
 is the same mistake one paragraph smaller), `room` **187 s of 600** with `room_smoke` at **82 s**,
 down from 114: the check that asked for a hover preview had been spending its whole timeout waiting
 for something the game does not do.
+
+## S18c — the wall at two metres, and the ladder it was chosen from is void (2026-10-08)
+
+`road.wallMinDrop` 3 → **2** in `data/cityviewer.json` and the mirror in `client/world/config.js`,
+as A132 decided. The drift test is what makes that a two-file act: moving one and not the other goes
+red and names the field.
+
+**Tests first, and deliberately not about the number.** `test/retaining.test.js` gains two. The
+first pins which side of the rung the boundary falls on — the code is `drop > minDrop` and the
+decision's words are *"more than a storey"*, so a drop of **exactly** `minDrop` is bare — asked at
+both 2 and 3 so it says something about the rule rather than about the setting. The second measures
+what lowering the rung buys, as a function rather than as a city: one hillside stepping past both
+thresholds, faced at 2 and not at 3 in the middle band, and faced by **neither** in the 1.5 m band,
+because lowering the rung by a metre is not the same as facing every kerb in the city. A test that
+asserted `wallMinDrop === 2` would have protected the number instead of the behaviour, and the
+number is a picture decision that is allowed to move again.
+
+**Then the gate, and the gate says the evidence for the decision is void.**
+
+| city | 1.2 m | 2 m | 3 m |
+|---|---|---|---|
+| hilly 128, era 29 (today) | 24 | **5** | 2 |
+| rolling 96, era 29 (today) | 17 | **4** | 3 |
+| hilly 128, **era 28** (the ladder A128 and A132 were chosen from) | 916 | — | **130** |
+| rolling 96, **era 28** | 51 | — | **0** |
+
+The era-28 row is not a guess: `walkthrough 128 hilly` in a worktree at `853da31` — B14's parent —
+reads **130 faced shoulders, deepest 9.8 m, 37 at water**, which is the S18 entry's number to the
+digit. The same gate on HEAD reads **5, deepest 3.9 m, 0 at water**.
+
+**B14 did it.** The deputy paves a fifth of the city instead of a third and refuses a street that
+runs a block from another, so the parallel streets on a hillside — which is where shoulders come
+from — are gone, and with them the walls. On gentle ground it went the other way: a rolling 96 had
+**0** faced shoulders in era 28 and has **3** at the same 3 m rung now, all three at water, because
+the streets that are left run closer to the river.
+
+So A132 chose between *264 and 130* and the city it was choosing in has *5 and 2*. The direction
+holds — two metres faces more than three, on both terrains — and the decision is implemented as
+decided. What is void is the magnitude, and with it the sense that this is a feature of the city
+rather than a detail: **at the chosen rung a played hilly 128 has five faced shoulders.** The rung
+that would make it visible on era 29's city is 1.2 m (24 and 17), which is exactly the rung A128
+rejected on era-28 evidence for facing grass banks — and 19 of those 24 are still under two metres.
+That is **Q162**, and nothing is blocked on it: the wall is built and looks right where it stands.
+
+**Two instruments changed so this cannot happen again quietly.**
+
+- `walkthrough` prints the **ladder** beside the count, at 1.2, 2 and 3 metres, on whichever city it
+  was given: `wall ladder     1.2 m: 24   2 m: 5   3 m: 2   (live 2 m)` on the hilly 128, and
+  `1.2 m: 17   2 m: 4   3 m: 3` on the rolling 96. The rungs that chose the
+  constant were measured once by a script nobody kept, which is why nobody noticed them going void.
+- `tools/embankment_shots.mjs` prints the same ladder on the played city it photographs, fails if
+  there is no faced shoulder at the live threshold at all, and **aims at shoulders the rule actually
+  faces**. Its floor was the literal `1.2`, so two of its three pictures were of a 1.8 m and a 1.6 m
+  bank that no threshold in the ladder faces: at 3 m the set shipped a before-and-after pair whose
+  two frames differed by fifty-two triangles somewhere else in the city. The floor is
+  `cfg.road.wallMinDrop` now, and era 29's hilly 128 offers **one** place worth photographing —
+  `reports/smoke-S18-wall1-{before,after}.png`, a 4.0 m shoulder at tile 69,40, nine baked chunks.
+  The stale `wall2` and `wall3` files are deleted.
+
+Suite **1,961 tests, 1,958 pass, 0 fail, 3 skipped, green twice.** Gates: `render` **6 s of 120**
+(both walks and `passability`), `shots` **305 s of 420** — down from 394 s when S18 measured it,
+and 57 s of that is `embankment_shots` photographing two pairs fewer.

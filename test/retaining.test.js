@@ -93,3 +93,46 @@ test("a city's walls are found the same way the baker finds them", () => {
     assert.ok(Number.isFinite(wall.at.x) && Number.isFinite(wall.at.z));
   }
 });
+
+// --- the threshold is a storey, and which storey is data (S18c, A132) --------
+
+test("the threshold is exclusive: MORE than a storey, not a storey", () => {
+  // Which side of the rung the boundary falls on, pinned — because the item's
+  // words are "more than a storey" and the code is `drop > minDrop`, and a
+  // slice that quietly made it `>=` would face a band of shoulders nobody
+  // measured. Asked at a threshold of 2 (A132's value) and at 3 (the value
+  // before it), so this says something about the rule rather than the setting.
+  const pts = line(4);
+  for (const minDrop of [2, 3]) {
+    const exact = retainingRuns(pts, pts.map(() => 30), pts.map(() => 30 - minDrop), { minDrop });
+    assert.deepEqual(exact, [], `a drop of exactly ${minDrop} m was faced`);
+    const over = retainingRuns(pts, pts.map(() => 30), pts.map(() => 30 - minDrop - 0.01), { minDrop });
+    assert.equal(over.length, 1, `a drop a centimetre over ${minDrop} m was not faced`);
+    for (const drop of over[0].drops) assert.ok(Math.abs(drop - (minDrop + 0.01)) < 1e-9, `${drop} m`);
+  }
+});
+
+test("lowering the threshold by a metre faces the shoulders between them", () => {
+  // What A132 actually buys, as a function rather than as a city: the same
+  // ground, two thresholds. A test that asserted `wallMinDrop === 2` would
+  // protect the number instead of the behaviour — and the number is a picture
+  // decision in `data/cityviewer.json`, so it is allowed to move again.
+  const pts = line(10);
+  const tops = pts.map(() => 30);
+  // A hillside stepping down past both thresholds: 1.5 m, 2.4 m and 3.6 m.
+  const feet = pts.map((p) => (p.z < 12 ? 28.5 : p.z < 24 ? 27.6 : 26.4));
+  const atThree = retainingRuns(pts, tops, feet, { minDrop: 3 });
+  const atTwo = retainingRuns(pts, tops, feet, { minDrop: 2 });
+  const facedAt = (runs) => runs.flatMap((r) => r.points.map((p, i) => [p.z, r.drops[i]]))
+    .filter(([, drop]) => drop > 0).map(([z]) => z);
+  assert.ok(facedAt(atTwo).length > facedAt(atThree).length,
+    `two metres faced ${facedAt(atTwo).length} points and three faced ${facedAt(atThree).length}`);
+  // And the 1.5 m stretch is faced by NEITHER: lowering the rung by a metre is
+  // not the same as facing every kerb in the city, which is what the ladder in
+  // the item was measured to avoid.
+  for (const runs of [atThree, atTwo]) {
+    for (const run of runs) {
+      for (const point of run.points) assert.ok(point.z >= 12, `a 1.5 m shoulder at z=${point.z} was faced`);
+    }
+  }
+});

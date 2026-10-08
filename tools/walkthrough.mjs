@@ -375,6 +375,17 @@ const walls = wallRuns(model, DEFAULTS);
 console.log(`walls           ${walls.length} faced shoulders (S18)`
   + `${walls.length > 0 ? `, deepest ${Math.max(...walls.map((w) => w.drop)).toFixed(1)} m` : ""}`
   + `, ${walls.filter((w) => w.water).length} at water`);
+// **And the rungs either side of the live one** (S18c). The ladder that chose
+// `wallMinDrop` was measured once, by a script nobody kept, on a city two
+// balance eras old: at 3 m this walk read 130 faced shoulders on era 28's hilly
+// 128 and reads 2 on era 29's, because B14 paves a fifth of the city instead of
+// a third. A rung is a picture decision about a city, and the city is rebuilt by
+// every balance era — so the ladder is printed here, every run, beside the count
+// it is chosen from.
+console.log(`wall ladder     ${[1.2, 2, 3].map((minDrop) => {
+  const rung = wallRuns(model, { ...DEFAULTS, road: { ...DEFAULTS.road, wallMinDrop: minDrop } });
+  return `${minDrop} m: ${rung.length}`;
+}).join("   ")}   (live ${DEFAULTS.road.wallMinDrop} m)`);
 console.log(`shoulder cliffs ${shoulderCliffs}   (at the edge of an embankment the grading built, worst fill ${worstFill.toFixed(1)} m`
   + `${worstFillAt ? ` at ${worstFillAt.x.toFixed(0)}, ${worstFillAt.z.toFixed(0)} m — tile ${(worstFillAt.x / 20).toFixed(0)},${(worstFillAt.z / 20).toFixed(0)}` : ""} — Q145)`);
 for (const line of failures) console.log(line);

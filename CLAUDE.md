@@ -92,6 +92,12 @@ Every change is a slice, named after its entry in `plan-v1.md`:
   When one combination is red and another green, the pair names the cause.
 - **Every measured number belongs to an era.** Name the commit and the balance era. Numbers from a
   previous era are void, not "roughly comparable".
+- **A ladder a decision was made from belongs in a gate, not in a scratch script.** S18 offered
+  Kjell 916 / 130 / 0 faced shoulders at three rungs, he chose from it twice (A128, A132), and the
+  script was thrown away. B14 took the hilly 128 from 130 to 2 and nobody could see it: the gate
+  printed the count at the LIVE rung only, on a different city from the one the ladder was measured
+  on. `walkthrough` and `embankment_shots` print every rung beside the live one now. If a human
+  chose a constant from a table of numbers, the table is a gate's output from then on.
 - **Telemetry must record failure**, not only success. Verify the instrument before believing the
   reading — a probe filtering on a wrong field reports zeros in a world full of events.
 - **Warm the instrument before timing a phase.** W6's whole shape was argued from a gate that timed

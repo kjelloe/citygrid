@@ -7,7 +7,7 @@
   "width": 8,
   "sidewalk": 2.5,
   "blend": 4,
-  "wallMinDrop": 3,
+  "wallMinDrop": 2,
   "wallOut": 4,
   "wallMaxDrop": 24,
   "coping": 0.4,
