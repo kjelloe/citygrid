@@ -13038,6 +13038,19 @@ they are no longer contiguous, because one in the middle went to the demolition 
 span including a cleared tile and running one past the end. The reducer is happy to be asked about
 bare ground; it is the gate that cannot invent a run. Suite **1,925 green twice**; `room_soak` green.
 
+## The activity feed, decided — and X4b, regency (2026-10-08)
+
+**The activity feed already exists under another name.** X3b asked for one when the alert list
+could not show another seat's events at all: `sim.onChange` dropped everything that did not arrive
+on a tick, so every event any other player produced went nowhere — found and fixed two slices ago
+with the pings. With that fixed the alert list IS the feed: other seats' requests, resolutions,
+builds and pings, each with a severity, and a ping row is a button that takes the camera there.
+
+What a separate feed would add is **persistence** — alerts expire after two sim-years and are
+capped, so a player who was away misses what happened. That is a real thing to want and it is the
+same question as "what did the deputy do while I was gone", so it is filed with X4 rather than
+built here. Two histories that can disagree is worse than one that is short.
+
 ## X3b — chat, and X3b is done (2026-10-08)
 
 **Chat is deliberately not a command.** It never reaches the reducer, it is not hashed state, and a
