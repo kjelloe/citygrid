@@ -671,6 +671,8 @@ test("a seat nobody has left is still refused to a second client (X1b, unchanged
   assert.equal(room.join(wire("also one"), hello({ seat: 1, token })), REFUSAL.SEAT_TAKEN);
 });
 
+// --- regency (X4b) -----------------------------------------------------------
+
 test("a seat nobody has come back to is handed to the deputy, and taken back", () => {
   // X4's "a city nobody is watching is still there". The room already knows who
   // is connected and for how long (X4a's hold), so **the server decides** and

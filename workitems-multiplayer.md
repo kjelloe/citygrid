@@ -784,6 +784,28 @@ over 5,586 frames.
 monthly pass applies it (X3b), which covers a regent seat too — but the deputy does not yet CHOOSE
 one, so a seat handed over keeps whatever its player left.
 
+**Built 2026-10-08: the abandonment sweep.** A seat in regency for `abandonYears` city years is
+given up and its ground goes to the commons — the city stands, only the owner byte changes. It reads
+the REGENCY rather than `lastSeenTick` alone, because an active player's clock is old the moment
+they stop typing. Two clocks for two facts: a person's absence is wall time (X4b), a city standing
+unclaimed is city years. That pairing is also why `absenceYears` stays unread — superseded by a
+decision, not forgotten.
+
+**Built 2026-10-08: a room nobody is in does not play.** The pump beats and the city stands still —
+reversible and free to undo, which is why it happens at once where the reaper waits five minutes. A
+regency counts as somebody, so a seat handed to a deputy does not freeze under it. Three tests went
+red and all three were right to: two beat rooms with nobody in them, and the third mixed clocks
+(`leave(seat, 0)` against a `Date.now()` beat), so `rooms.beat` forwards `at` now.
+
+**Built 2026-10-08: spectators.** A watcher takes no seat (so a full room is watchable), gets no
+token (nothing to come back to), receives every frame, and **does not keep the room awake** —
+watching is not playing. Three guards in three places: the door welcomes a `spectate` hello before
+the seat arithmetic, `submit` refuses seat 0 so a later caller cannot route around the door, and
+`server/index.js` gates everything after the handshake on having a seat. The toolbar and build bar
+are **not built at all** for a watcher — absent rather than inert (ruling 029) — while everything
+that reads the city stays: the gate counts 15 overlays and 0 tool buttons. `?watch=1` beside
+`?join=`, and a **Just watch** button beside Join in the lobby.
+
 **Still to build in X4:**
 spectators, a room that ticks at 1× when every seat is in regency and hibernates when empty, and
 `splitRule`/`mutualAid`/`disasterAid` where income, coverage and repair are shared — and **a

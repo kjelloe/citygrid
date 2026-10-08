@@ -63,6 +63,14 @@ const nextToken = () => `seat-${(tokens += 1)}-${Math.floor(Date.now() % 1e6)}`;
  * into a tunnel losing a city to whoever typed the code next. */
 const HELD_FOR_MS = 2 * 60 * 1000;
 
+/** How long a seat is empty before the deputy takes it over (X4b).
+ *
+ * Longer than the hold, and deliberately a different clock: letting SOMEBODY
+ * ELSE take the seat and handing the city to a deputy are two different
+ * decisions, and a player whose train has gone into a tunnel is not absent yet.
+ * Fifteen minutes — long enough that a reconnect beats it, short enough that a
+ * city is not left standing still for an evening. */
+const REGENCY_AFTER_MS = 15 * 60 * 1000;
 
 /**
  * A room over one city.
@@ -137,6 +145,87 @@ export function createRoom(given = {}) {
     for (const connection of watchers) connection.send(message);
   };
 
+  /**
+   * What the empty seats did this beat (X4b).
+   *
+   * Two clocks, deliberately: `heldForMs` is how long a seat stays ITS OWN —
+   * the token is what opens it — and `regencyAfterMs` is how long before the
+   * city is handed to a deputy. A player whose train has gone into a tunnel is
+   * not absent yet, and letting somebody else sit down is a different decision
+   * from letting a deputy build.
+   *
+   * Everything here is applied through `apply` and returned as a command, so a
+   * client replaying the frame reaches the same city.
+   */
+  function regencyWork(at) {
+    const work = [];
+    for (let seat = 1; seat <= state.options.seats; seat += 1) {
+      const player = state.players.find((p) => p.seat === seat);
+      if (!player) continue;
+      const sitting = seats.has(seat);
+      if (sitting) {
+        emptySince.delete(seat);
+        // Back at the keys: the deputy stands down, and the status says so.
+        if (player.status === PLAYER_REGENT) {
+          regents.delete(seat);
+          work.push(setStatusFor(seat, PLAYER_ACTIVE));
+        }
+        continue;
+      }
+      // Normally stamped by `leave` — the seat became empty when they left, not
+      // when the next beat noticed — but a room restored from the disk has
+      // seats nobody has ever sat in, and those start their clock here.
+      if (!emptySince.has(seat)) emptySince.set(seat, at);
+      if (player.status === PLAYER_REGENT) {
+        const deputy = regents.get(seat);
+        if (deputy) {
+          // **Every command the turn issued, not the first.** One `deputyTurn`
+          // a beat is what keeps a regency from out-building a person; a turn
+          // itself may be several commands — a wire run and then the thing it
+          // powers — and the deputy has already APPLIED all of them to this
+          // state. Reporting one would leave every client short of the rest,
+          // which is what the replay assertion in `test/room.test.js` caught.
+          deputyTurn(state, deputy, (outcome, command) => {
+            if (command !== undefined) work.push({ seat, command, result: outcome.result });
+          });
+        }
+        continue;
+      }
+      if (at - emptySince.get(seat) < regencyAfterMs) continue;
+      regents.set(seat, makeDeputy(seat, state.options.doctrine));
+      work.push(setStatusFor(seat, PLAYER_REGENT));
+    }
+    return work;
+  }
+
+  /** Applied here and returned as a command, because the room is issuing it on
+   * a seat's behalf and every client has to apply the same one. */
+  function setStatusFor(seat, status) {
+    const command = { type: CMD_SET_STATUS, actor: seat, status };
+    const outcome = apply(state, command);
+    return { seat, command, result: outcome.result };
+  }
+
+  /** The lowest seat nobody is sitting in, or 0 when the room is full. Lowest
+   * rather than next, so a room whose middle seat has been left is filled
+   * before its last one. */
+  function firstFreeSeat(at) {
+    for (let seat = 1; seat <= state.options.seats; seat += 1) {
+      if (!seats.has(seat) && !isHeld(seat, at)) return seat;
+    }
+    return 0;
+  }
+
+  /** Is this seat still its last player's? The clock is an argument for the
+   * same reason the pump's is: a hold that read the clock itself could not be
+   * tested in a millisecond. */
+  function isHeld(seat, at = Date.now()) {
+    const hold = held.get(seat);
+    if (hold === undefined) return false;
+    if (at - hold.since < heldForMs) return true;
+    held.delete(seat);
+    return false;
+  }
 
   /**
    * A client at the door (plan.md §3.9). The handshake is the whole of it: a
@@ -242,6 +331,15 @@ export function createRoom(given = {}) {
   /** One beat: drain, sequence, validate, advance, broadcast. */
   function beat() {
     const cmds = [];
+    // **The regency, before anything else in the beat** (X4b). Deterministic
+    // for every client because what it produces are COMMANDS: they are
+    // sequenced into this frame like a player's and replayed in the same order
+    // everywhere. A deputy that mutated the server's state without telling
+    // anybody would be a desync at the next monthly hash.
+    for (const entry of regencyWork(at)) {
+      seq += 1;
+      cmds.push({ seq, seat: entry.seat, command: entry.command, result: entry.result });
+    }
     for (const { seat, command } of queue.splice(0)) {
       seq += 1;
       // Validated through the same reducer every client runs. A refusal rides

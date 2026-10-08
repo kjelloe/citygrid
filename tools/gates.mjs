@@ -102,6 +102,7 @@ export const GATES = {
   // hash compared every sim-month rather than at the end, because a divergence
   // at month two found at year five does not say which command caused it.
   room_soak: { args: ["tools/room_soak.mjs", "5"], what: "two clients, one room, five city years: one order, one hash, and the pump's jitter beside it" },
+  room_churn: { args: ["tools/room_soak.mjs", "5", "--churn"], what: "a seat left to the deputy and taken back, with nobody diverging (X4b)" },
 };
 
 /** What a slice runs. `quick` after any change, `render` for a renderer slice,
@@ -110,7 +111,7 @@ export const SETS = {
   quick: [
     "a11y_smoke", "client_smoke", "lobby_smoke", "offline_smoke", "play_smoke",
     "reach_smoke", "save_smoke", "serve_smoke", "ui_smoke", "update_smoke",
-    "worker_smoke", "mvp_acceptance",
+    "worker_smoke", "mvp_acceptance", "room_smoke",
   ],
   // `budget_gate` moved here from `quick` in K1 (Q79 → A64). It is a renderer
   // MEASUREMENT — three tiers, two projections, four spans, and since D8 a
@@ -143,7 +144,7 @@ export const SETS = {
   // pictures, `transport` is T1–T4's — so a slice runs the set its own lane
   // owns and the two halves stay honest about what they cost.
   shots: ["water_shots", "bridge_shots", "embankment_shots", "disaster_shot", "service_shots",
-    "window_shots", "rain_shots"],
+    "window_shots", "rain_shots", "skin_shots"],
   transport: ["avenue_shots", "rail_shots", "harbour_shots", "airport_shots"],
   // Its own set (M2's rule: split rather than raise). One picture per catalogue
   // definition is twenty-eight shots and seven minutes, which no other set can
@@ -162,10 +163,17 @@ export const SETS = {
   // it had a gate because a set that appears with its first gate is a set whose
   // budget was chosen to fit that gate — and because `gates.mjs --list` is
   // where somebody looks to find out what this project can check.
-  room: ["room_soak"],
+  // `room_smoke` is in `quick` as well, by M2's own rule — a smoke that drives
+  // the real page is the cheapest thing that can see a blank one, so none of
+  // them belongs only in a slow set. It is here too because `--list` is where
+  // somebody looks to find out what can be checked about a room, and `all`
+  // dedupes below.
+  room: ["room_soak", "room_churn", "room_smoke"],
 };
-SETS.all = [...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim, ...SETS.shots,
-  ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room];
+// Deduped: `room_smoke` is deliberately in two sets (see `room` above), and a
+// gate that ran twice in `all` would pay for itself twice and report two rows.
+SETS.all = [...new Set([...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim,
+  ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room])];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.

@@ -113,7 +113,12 @@ function rollChance(state, deputy, oneIn) {
  * what it actually did rather than inferring it from the world afterwards. */
 function issue(state, deputy, command) {
   var outcome = apply(state, command);
-  if (deputy.sink) deputy.sink(outcome);
+  // The COMMAND as well as the outcome (X4b). A deputy running a seat in a room
+  // has to hand the room what it did, not only how it went: commands cross the
+  // wire and every client replays them, and a sink that saw only the outcome
+  // could report that something happened without being able to say what.
+  // Every existing sink takes one argument and ignores the second.
+  if (deputy.sink) deputy.sink(outcome, command);
   return outcome;
 }
 

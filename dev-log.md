@@ -13051,6 +13051,46 @@ capped, so a player who was away misses what happened. That is a real thing to w
 same question as "what did the deputy do while I was gone", so it is filed with X4 rather than
 built here. Two histories that can disagree is worse than one that is short.
 
+## X4b — regency
+
+**The server decides, and says so as a command.** The room already knows who is connected and for
+how long (X4a's hold), so a seat nobody has come back to is handed to a deputy by the room issuing
+`CMD_SET_STATUS` — which means the status is hashed state every client applies in order, there is no
+second clock in the engine to keep in step, and **no fixture to re-pin**. The engine was not touched
+except for one argument (below).
+
+**Two clocks, deliberately different.** `heldForMs` is how long a seat stays its OWN — the token is
+what opens it — and `regencyAfterMs` is how long before the city is handed over. Letting somebody
+else sit down and letting a deputy build are two different decisions, and a player whose train has
+gone into a tunnel is not absent yet. Fifteen minutes by default; the gate passes seconds.
+
+**The deputy runs on the server and its commands ride the frame.** They are sequenced into the beat
+like a player's and replayed everywhere in `(tick, seq)` order. A deputy that mutated the server's
+state without telling anybody would be a desync at the next monthly hash — which is the whole reason
+this is commands and not a second simulation. The deputy record itself stays **out of state**: the
+cursor and the doctrine are the server's, the deputy draws from its own stream (era 8), and a client
+learns what it did by replaying, not by running one of its own.
+
+**Two defects my own tests caught.**
+
+- `deputy.sink` took the outcome and not the command, so the room could tell that something had
+  happened and not what. `issue` passes both now; every existing sink takes one argument and ignores
+  the second.
+- **Only the first command of a turn was being reported.** A turn is often several — a wire run and
+  then the thing it powers — and the deputy had already applied all of them to the server's state,
+  so every client was left short of the rest. The replay assertion is what said so: same tick,
+  different hash.
+
+**The gate the item named: `room_churn`** (`room_soak --churn`, now in the `room` set). A seat
+leaves, the deputy takes it over, the player comes back with their token and takes it back.
+Measured: **status 0 → 2 → 0**, 0 divergences over **5,586 frames**, and the client that never left
+agreed with the room throughout. Its first run measured nothing at all, because `YEARS` was
+`Number("--churn")` — NaN — and every check downstream read "of NaN"; the argument is now the first
+one that is a number.
+
+Suite **1,927 green twice**; `room_soak` green in both modes, warm p99 **1.16 ms** of a 20 ms beat
+budget with the regency pass in it.
+
 ## X3b — chat, and X3b is done (2026-10-08)
 
 **Chat is deliberately not a command.** It never reaches the reducer, it is not hashed state, and a

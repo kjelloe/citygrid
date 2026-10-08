@@ -352,8 +352,19 @@ test("the options the project declares and nothing reads are exactly these (Q148
     .filter((f) => !/(engine\/options|engine\/rules)\.js$/.test(f.path))
     .map((f) => stripCommentsAndStrings(f.source));
   const unread = OPTION_FIELDS.filter((name) => !files.some((src) => new RegExp(`\\b${name}\\b`).test(src)));
+  // `chatEnabled` LEFT this list on 2026-10-08, when `server/chat.js` started
+  // reading it — the rule going red in the direction that means somebody did
+  // the work. **`absenceYears` is a different case and worth saying plainly:**
+  // X4b built regency on a WALL clock (`regencyAfterMs`), because a person's
+  // absence is real time and not sim time — a paused room would never hand over
+  // and a fast one would hand over in seconds. So the option is not merely
+  // unread, it has been superseded by a decision, and the choice is to delete
+  // it or to keep it for something that really is measured in city years. The
+  // abandonment sweep is that something, and it has `abandonYears`.
+  // `abandonYears` left on 2026-10-08 with the abandonment sweep (X4c), which
+  // is the thing that genuinely IS measured in city years.
   assert.deepEqual(unread.sort(), [
-    "abandonYears", "absenceYears", "chatEnabled", "disasterAid",
+    "absenceYears", "disasterAid",
     "lateJoin", "mutualAid", "privacy", "seasonYears", "splitRule",
   ], "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
 });

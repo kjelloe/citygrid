@@ -198,7 +198,15 @@ function ownedRoad(state, seat) {
 // ran in (CLAUDE.md), and an untracked file in the repo.
 const roomDir = await mkdtemp(join(tmpdir(), "citygrid-soak-"));
 
+// **Churn mode** (X4b), the gate the item asks for: seats join and leave while
+// the room runs, the deputy takes an empty seat over, and nobody diverges. The
+// windows are seconds rather than minutes because a soak that waited a quarter
+// of an hour for a regency would not be run.
+const CHURN = process.argv.includes("--churn");
+
 const server = await startServer({
+  heldForMs: CHURN ? 500 : undefined,
+  regencyAfterMs: CHURN ? 1500 : undefined,
   port: 0,
   store: createStore({ dir: roomDir }),
   // A fresh region every run, for the same reason.
@@ -387,11 +395,46 @@ try {
     typed?.type === S2C.WELCOME && typed.room === code,
     `${typed?.type ?? "nothing"} / ${typed?.room ?? "no room"}`);
 
+  // **Churn** (X4b): seat two leaves, the deputy takes its city over, and seat
+  // two comes back to it. The claim is that nothing diverges while a seat is
+  // being played by the server — every deputy command rides the frame like a
+  // player's, and a client that was never away replays them all.
+  if (CHURN) {
+    const before = server.room.state.players.find((p) => p.seat === 2)?.status;
+    b.close();
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const handed = server.room.state.players.find((p) => p.seat === 2)?.status;
+    check("an empty seat is handed to the deputy", before === 0 && handed === 2,
+      `status ${before} → ${handed}`);
+
+    const builtBy = new Map();
+    const watch = setInterval(() => {
+      for (const entry of server.room.state.buildings) {
+        builtBy.set(entry.owner, (builtBy.get(entry.owner) ?? 0) + 0);
+      }
+    }, 1000);
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+    clearInterval(watch);
+    check("and the deputy plays it", a.frames > 0 && a.divergences.length === 0,
+      `${a.divergences.length} divergence(s) over ${a.frames} frames`);
+
+    // And the player comes back to their own seat, with the token they were
+    // given: the regency stands down and the status says so.
+    const again = await connect(url, 2, code);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const back = server.room.state.players.find((p) => p.seat === 2)?.status;
+    check("a returning player takes their city back", back === 0, `status ${back}`);
+    check("and the client that stayed never diverged through any of it",
+      a.divergences.length === 0, JSON.stringify(a.divergences.slice(0, 2)));
+    again.close();
+  }
 
   a.close();
-  b.close();
+  if (!CHURN) b.close();
 } finally {
   await server.close();
+}
+
 // **A restart keeps the room's name** (X2a). The store carries the code beside
 // the save, because a room that minted a new one on restart would lock out
 // everybody holding the old one — and the plumbing for that is in
