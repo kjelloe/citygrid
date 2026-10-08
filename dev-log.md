@@ -13910,3 +13910,30 @@ putting "ten" back: red.
 **`main` is fast-forwarded to `dev_night`.** No squash, no merge commit — 60 commits, one per slice.
 **The push is Kjell's**, as it was last time: this machine does not have his credentials and should
 not.
+
+## The round after M7 — a decision living in a test comment (2026-10-08)
+
+Censuses green: 85 tests across `omissions`, `reachability`, `dead-exports`, `unused-imports`,
+`tools`, `gates`, `docs` and `purity`. The config drift test covers S22's new `sun` block, which was
+checked by planting `arcDegrees: 60` in the data — it fires and names the field.
+
+**One test written, for the instrument that cried wolf.** `gates.mjs`'s `NOT ALONE` check had no
+test and its first cut was wrong in a way nobody would notice from the output — it matched the shell
+that launched it, so every run warned about itself. The counting is `otherPidsIn(stdout, self)` now,
+exported and tested: everything but me, with a trailing newline, with an empty string, and with the
+run-alone case that must come out as zero.
+
+**And one omission, found by reading the census rather than running it.** `test/omissions.test.js`
+pins seven declared-but-unread options. Three are X4g's (`splitRule`, `mutualAid`, `disasterAid`),
+two are X2d's (`privacy`, `lateJoin`), one is Wave 6's (`seasonYears`) — and the seventh,
+`absenceYears`, is **not unread but answered in the other direction**. X4b built regency on a WALL
+clock, because a person's absence is real time and not sim time: a paused room would never hand over
+and a fast one would hand over in seconds. The option has been superseded, and the only place that
+said so was a comment inside a test.
+
+A decision that lives in a test comment lives nowhere. It is **X4i** now, in the lane file, with the
+cost written down: `options` is a hashed field and `OPTION_FIELDS` is its field list, so removing one
+moves every state's hash — a `SAVE_VERSION` bump and a fixture re-pin. It rides with the next era or
+the next migration rather than being a slice of its own.
+
+Suite **1,981 tests, 1,978 pass, 0 fail, 3 skipped, green twice.**

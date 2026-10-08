@@ -58,11 +58,11 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 
 *Rewritten 2026-09-08 at `36aeefb`, the release commit (`RELEASE.md`).*
 
-**`main` is the game, and it is pushed — and it is now 54 commits behind.** `dev_night`
-fast-forwarded into it on 2026-09-08 at `2f26532` and Kjell published it: one commit per slice, no
-squash and no merge commits. `main` is era 26's release and the game is at era 30. `RELEASE.md` says
-what is true at the commit it names — re-measured 2026-10-08 at `7d3dbde` — and carries the measured
-numbers; this file stays the plan. The merge is **M7**, and it is Kjell's push.
+**`main` is the game, and it is the game again as of 2026-10-08.** `dev_night` fast-forwarded into
+it at `28b7800` — 60 commits, one per slice, no squash and no merge commit — with `gates.mjs all`
+green on the merged tree (43 gates, 2,931 s of 3,600) and `RELEASE.md` re-measured at `3d86c6e`.
+**The push is Kjell's** and is the only part of M7 left; `main` is 213 commits ahead of `origin`
+until he types it. This file stays the plan and `RELEASE.md` carries the measured numbers.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
@@ -92,13 +92,14 @@ now, one per slice in the order the entries were written. `gates.mjs` prints
 `UNCOMMITTED: n dev-log entries are in the tree and not in HEAD` from X5 onwards, which is the
 cheapest place to notice it — a slice already runs the gates.
 
-**`gates.mjs all`, 2026-10-08 on the committed tree: 42 gates, 3,005 s of a 3,420 s budget.** Four
-red, all four fixed in X5: two the X4 review predicted, one a threshold tuned to a gate two eras
-ago (`lanes_dump`, now derived from the road's own geometry), one a berth search that ranked
-candidates by water and never asked the reducer (`harbour_shots`). A fifth red — `motion_shots`,
-"two frozen shots differ" — was contention I caused by running other gates beside the run, and is
-identical when run alone. Which also means **`sim_sweep`'s 604 s from that run is not a budget**;
-re-measuring the sets on a quiet machine is M9.
+**`gates.mjs all` at the end of the day: 43 gates, 2,931 s of a 3,600 s budget, all green** — on
+the tree `main` was fast-forwarded to. The morning's run of the same command had **four red**, every
+one of them fixed in X5: two the X4 review predicted, one a threshold tuned to a gate two eras ago
+(`lanes_dump`, now derived from the road's own geometry), one a berth search that ranked candidates
+by water and never asked the reducer (`harbour_shots`). A fifth red — `motion_shots`, "two frozen
+shots differ" — was contention from running other gates beside the run, and is byte-identical alone.
+**M9 re-measured every set quiet** and most budgets came down; `gates.mjs` prints `NOT ALONE` now,
+because that was the third contended red in one day.
 
 **Before that (2026-10-06, era 29).** Everything P70, P93, P97, P99 and P100 ordered is
 built: the world lane through S18b, behaviour through B14, the whole transport lane (T1–T7, eras
@@ -123,10 +124,10 @@ P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall 
 
 | Lane | Open |
 |---|---|
-| **Multiplayer** | hibernate to disk · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · a history that outlives the alert list · the lobby's remaining rows |
+| **Multiplayer** | hibernate to disk · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · a history that outlives the alert list · the lobby's remaining rows (`privacy`, `lateJoin`) · **X4i**: `absenceYears`, which X4b answered in the other direction — delete it, with the `SAVE_VERSION` bump that a hashed field list needs |
 | **World** | ~~S22~~ (built: the sun crosses the sky — and Q163, Q164 came out of it) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
 | **Behaviour** | B15 · B6's rain |
-| **Mainline** | M7 (release + merge, Kjell's push) · M9 (the `quick` set's budget) · M11 · ~~M10~~ (closed, A137) |
+| **Mainline** | ~~M7~~ (merged; **the push is Kjell's**) · ~~M9~~ (every set re-measured quiet, `sim` split) · M11 ("1 tiles") · ~~M10~~ (closed, A137) |
 | **Rules / worker / measurement** | ~~L2~~ **with ~~D8b~~ folded in** — built as **era 30** · W6c **held** until the room is played (A134) · W6d (Q161) · what is left of D8b: the picture tools still build quest-free cities, which is its own re-shoot |
 | **Waiting on hardware** | F3, D3, the rest of D5 — all need a phone |
 

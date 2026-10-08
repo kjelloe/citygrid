@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
-import { SETS, GATES, BUDGET_MS, gatesIn, devLogEntriesIn } from "../tools/gates.mjs";
+import { SETS, GATES, BUDGET_MS, gatesIn, devLogEntriesIn, otherPidsIn } from "../tools/gates.mjs";
 
 /**
  * Tools that are NOT gates: they produce something for a person to read or look
@@ -219,4 +219,23 @@ test("the runner counts dev-log entries the tree has and HEAD does not", () => {
   ].join("\n");
   assert.equal(devLogEntriesIn(diff), 2);
   assert.equal(devLogEntriesIn(""), 0);
+});
+
+// --- a gate run is exclusive (M9, S22) ---------------------------------------
+
+test("the runner counts the node processes that are not itself", () => {
+  // Three reds in one day were contention and all three were green alone, so
+  // the runner says `NOT ALONE` before it starts. Its first cut used
+  // `pgrep -f "node tools/"`, which matches the whole COMMAND LINE and so
+  // matched the shell that had been asked to run `node tools/gates.mjs` — every
+  // run warned about itself, and an instrument that cries wolf is worse than
+  // none. It matches the process NAME now, and this is the arithmetic either
+  // way: everything but me.
+  assert.deepEqual(otherPidsIn("1234\n5678\n", 1234), [5678]);
+  assert.deepEqual(otherPidsIn("1234\n", 1234), [], "a run alone counted itself");
+  assert.deepEqual(otherPidsIn("", 1234), []);
+  // `pgrep` exits 1 with no output when nothing matches, and the caller turns
+  // that into zero — but a trailing newline is the normal case and must not
+  // become a NaN in the list.
+  assert.deepEqual(otherPidsIn("4321\n9999\n", 1234), [4321, 9999]);
 });

@@ -358,6 +358,10 @@ export function gatesIn(set) {
  * a timing or determinism red from a contended run is not a finding until it
  * has been seen alone.
  */
+export function otherPidsIn(stdout, self) {
+  return stdout.split("\n").filter(Boolean).map(Number).filter((pid) => pid !== self);
+}
+
 async function othersRunning() {
   try {
     // `-x node`, matching the process NAME, not `-f` against the whole command
@@ -367,8 +371,7 @@ async function othersRunning() {
     // that matches the command that launched you counts you twice
     // (`a-grep-that-counts-a-comment`, in process form).
     const { stdout } = await run("pgrep", ["-x", "node"]);
-    const pids = stdout.split("\n").filter(Boolean).map(Number).filter((pid) => pid !== process.pid);
-    return pids.length;
+    return otherPidsIn(stdout, process.pid).length;
   } catch {
     return 0;   // pgrep exits 1 when nothing matches
   }

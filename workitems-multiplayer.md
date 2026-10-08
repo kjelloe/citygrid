@@ -886,7 +886,8 @@ singleplayer playtest was.
 
 ## Order
 
-**Everything in this lane is built except four items.** As of 2026-10-08, in the order it happened:
+**Everything in this lane is built except five items**, and the fifth is a deletion. As of
+2026-10-08, in the order it happened:
 
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
 ~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~ →
@@ -917,7 +918,8 @@ after `abandonYears` the ground goes to the commons. A room nobody is in stops p
 | **X4f** | Hibernate to **disk**, not only to a standstill | X4d stopped the city; the second half is writing it out and dropping the pump, which wants the store's checkpoint path |
 | **X4g** | `splitRule`, `mutualAid`, `disasterAid` | **A balance era**: they change what a city earns, so they need a sweep and a report, not a slice |
 | **X4h** | A history that outlives the alert list | X3b's activity-feed item resolved into this one: what a returning player needs is a record of what happened while they were away, and "what did the deputy do" is the same question |
-| **X2d** | The lobby's remaining rows | The QR (Q5), ready, spectate as a lobby choice, host controls (kick, speed), hosting from a save, joining a room that has started |
+| **X2d** | The lobby's remaining rows | The QR (Q5), ready, spectate as a lobby choice, host controls (kick, speed), hosting from a save, joining a room that has started. Two of the seven unread options are its — `privacy` and `lateJoin` |
+| **X4i** | `absenceYears`, which X4b superseded | A decision living in a test comment, which is nowhere. X4b built regency on a WALL clock (`regencyAfterMs`) because a person's absence is real time, not sim time — a paused room would never hand over and a fast one would hand over in seconds. So `absenceYears` is not merely unread, it has been **answered in the other direction**. Delete it or find it a job. It is not free either way: `options` is a hashed field and `OPTION_FIELDS` is its field list, so removing one moves every state's hash — a `SAVE_VERSION` bump and a fixture re-pin. It should ride with the next era or the next migration rather than be a slice |
 
 Wave 6 (modes, seasons, scale to sixteen, operations) is not in this file and does not start until
 the release gate above is met. W6's second half runs beside all of it — different files.
