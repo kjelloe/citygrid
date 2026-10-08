@@ -118,9 +118,26 @@ export async function startServer({
     }
 
     let seat;
-    const connection = { send: (message) => socket.send(JSON.stringify(message)) };
+    /** Which room this socket belongs to, decided at the door by the code in
+     * its `HELLO` or made for it by a `CREATE`. Undefined until then, which is
+     * why nothing but those two messages is accepted first. */
+    let mine;
+    /** The seat the DOOR gave, read off the WELCOME on its way out. Since X2b a
+     * hello may name no seat and the room picks the lowest free one, so the
+     * server cannot know it from the message it received — and `room.seats()`
+     * deliberately does not hand out connections. */
+    let gave;
+    let watching = false;
+    const connection = {
+      send(message) {
+        if (message.type === S2C.WELCOME) gave = Number(message.seat) || undefined;
+        socket.send(JSON.stringify(message));
+      },
+    };
     let acted = 0;
     let second = Math.floor(Date.now() / 1000);
+    let said = 0;
+    let chatSecond = second;
 
     socket.on("message", (raw) => {
       let message;

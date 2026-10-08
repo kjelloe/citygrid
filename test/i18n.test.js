@@ -153,6 +153,10 @@ test("keys are namespaced, so the catalogue stays navigable as it grows", () => 
  */
 const SAME_IN_BOTH = {
   "app.title": "the game's name, a proper noun",
+  "alert.ping": "a template with no words in it — \"{name}: {message}\" — because both halves are "
+    + "themselves already translated (X3b)",
+  "lobby.join.code.hint": "an example join code, so it is the same six characters in every language "
+    + "— and it has to LOOK like what the host is reading out (X2b)",
   "lobby.size.standard": "Standard is the same word in Norwegian",
   "lobby.size.region": "Region is the same word in Norwegian",
   "lobby.seedIs": "Region again, and the rest of the line is a token",

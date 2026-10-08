@@ -454,6 +454,27 @@ so the discriminating cases (`"<ABCDEF>"`, `"!ABCDEF!"`, `"ABCDEF;--"`) were add
 fires. And the alphabet's size is asserted by COUNTING: each of the 32 characters comes from
 exactly 8 of the 256 byte values, which 31 would break silently.
 
+**Three findings from the tests and one from the gate.** The reaper mixed `Date.now()` with its
+injected clock (immortal or reaped at once); the reaper test's "busy" room had nobody in it because
+the test's hello was refused and nothing read the result; `server/index.js` could no longer learn
+the seat the door gave, since X2b lets a hello name none — it reads it off the `WELCOME`. And the
+gate found what none of them could: `optionsFor` defaults to **`seats: 1`**, so a hosted room had
+one seat and the first guest was refused `ROOM_FULL`. `hostOptions` takes `seatsForSize` — the
+engine's own cap per map size, 48 → 4 up to 128 → 16 — rather than a new constant.
+
+**Measured:** `room_smoke` runs five browsers now. The lobby hosts `CWWB8E` (not the server's own
+room), the host takes seat 1, a guest types `cww-b8e` and is given seat 2, and all three are on one
+hash with the clock stopped.
+
+## X2b — The join screen (M) — **BUILT 2026-10-07**
+
+*A code field, a name and a Join button on the new-game screen, below the options because every
+option there belongs to the city you START and none to one you JOIN. `client/lobby/join-model.js`
+holds the decisions: the normalisation, the cap, and two refusals told apart (`needCode` vs
+`badCode`). Strings in both catalogues, with the example code `ABC-123` in `SAME_IN_BOTH` because
+it has to look like what the host is reading out.*
+
+## X2 — The lobby (M) — slice 5.2 — **the join half is X2b; hosting is X2c**
 
 **Goal.** Four people configure and start a room without a URL parameter.
 
@@ -470,6 +491,7 @@ so `a11y_smoke` and the sanitiser (`LIMITS.NAME_BYTES`) get it.
 every client (the hash of the generated state); a full room refuses; a code is case- and
 confusable-insensitive. **Gate.** `room_smoke` with four contexts: configure, ready, start, all on
 one hash; `reach_smoke` and `ui_smoke` cover the two new screens.
+
 **What X2a already did of that list (2026-10-06):** the code is case- and confusable-insensitive
 (`test/roomcode.test.js`), and a full room refuses — with `SEAT_TAKEN` and `ROOM_FULL` told apart
 since X1b (`test/room.test.js`). **What is left is the screen**, plus two things it implies and
@@ -565,6 +587,42 @@ path is refused with `NOT_OWNER`; the overlay shows two seats in two patterns at
 (`a11y_smoke`'s contrast row).
 
 **Needs first:** W6's second half. See "what has changed", 1.
+
+*X4's first sentence, and a safety hole open since X1a: every WELCOME has carried a token and
+**nothing has ever checked one**, so `leave` freed the seat and a player whose connection dropped
+lost their city to whoever typed the code next. `leave` holds the seat with its token now; `join`
+lets it go only to a hello carrying that token, and after two minutes to anybody. Refused as
+`SEAT_TAKEN` rather than with a reason of its own — a refusal that said "held" would tell a stranger
+how long to wait. X2b's any-free-seat door skips a held seat, which is the same hole through the
+door the slice before it opened. A seat somebody is SITTING in is still `SEAT_TAKEN` even with the
+right token. The clock is an argument, as the pump's is.*
+
+**The page remembers**, per TAB — two tabs are two players — and offers the token only for the room
+it belongs to. Storage reads and writes are wrapped: a tab that cannot remember still plays, and the
+test plants a storage that throws from both methods.
+
+**Interaction:** a room is reaped after five minutes empty and a seat is held for two, so a held
+seat always outlives its hold before its room can go. The numbers are the right way round by a
+factor of two.
+
+**Built 2026-10-08: the roster, and the last two mute commands.** `CMD_LEAVE` and
+`CMD_SET_STATUS` had handlers since Wave 0 and no control; their events were declared invisible
+"pending the roster". A rail drawer lists every seat with its colour, name and one of four words —
+playing, away, run by the deputy, gone — built from `state.players` rather than from `S2C.ROSTER`,
+because seat, name and status are hashed state already on every client and a second source for one
+fact is two that can disagree. Live connection state is the only thing the panel cannot read off
+the city, and that belongs with regency; the wire census says so now instead of calling the message
+a gap. **`test/omissions.test.js`'s no-control list is empty.**
+
+**Built 2026-10-08: regency.** The room hands a seat nobody has come back to to a deputy by
+issuing `CMD_SET_STATUS` — the server decides and says so as a command, so the status is hashed
+state every client applies in order, no second clock lives in the engine and no fixture moved. Two
+clocks, deliberately different: `heldForMs` keeps a seat its owner's, `regencyAfterMs` hands the
+city over. The deputy runs on the server and **its commands ride the frame**, replayed everywhere in
+order; the deputy record stays out of state. `deputy.sink` carries the command as well as the
+outcome now, and every command of a turn is reported rather than the first — a turn is often several
+and the server had applied them all. Gate: **`room_churn`**, status 0 → 2 → 0 with 0 divergences
+over 5,586 frames.
 
 ## X4 — Drop-in and absence (L) — slice 5.4
 

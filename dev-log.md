@@ -12456,3 +12456,46 @@ both ways (ten samples: p99 is the max; two hundred: one outlier moves the max a
 pins that `-1` is the ring's empty slot and not a beat that took minus a millisecond, and the
 function now says in the file that `n` is part of the reading rather than decoration.
 
+## X2b — the join screen (2026-10-07)
+
+Slice 5.2's join half: a player types a code into the lobby and is in somebody's city. No new
+protocol — the room, the door and the page's socket were all already there.
+
+**The decision that removed the hardest part of the screen: the door picks the seat.** A player who
+types a join code cannot know which seats are taken, and the door is the only thing that does.
+`Number(hello.seat) || 1` meant every such client asked for seat 1, so the second person to join by
+code was refused `SEAT_TAKEN` and the screen would have had to make them guess — or carry a roster
+it has no way to get before joining, which is X3b's. Seat 0, or no seat at all, now means "any" and
+the room gives out the **lowest** free seat rather than the next one, so a room whose middle seat
+has been left is filled before its last. A seat asked for by number is still honoured, which is
+what lets somebody come back to their own.
+
+**`client/lobby/join-model.js` is the pure half**: what a typed code means, what the name becomes,
+and two different refusals — `needCode` for an empty field and `badCode` for nonsense, because
+"type something" and "check what you typed" ask the player to do two different things (X1b's
+distinction at the door, one screen up). `JOIN_FIELD_MAX` is the code plus the separator the player
+is SHOWN, with a test that says a field of six would cut `ABC-12` out of `ABC-123`.
+
+**The button is never disabled.** `aria-disabled` stops Playwright clicking and a hidden control
+fails `reach_smoke`, so the project's idiom is a control that is always pressable and says why
+nothing happened — which is also kinder than a dead button. The refusal line takes `role="status"`
+so a reader hears it rather than having to find it.
+
+**The gate caught the one thing that was still wrong.** `room_smoke` gained a third browser that
+joins through the lobby with no `?join=` in its URL, and it came back
+`the city failed to start Error: the room refused this client: seatTaken` — because the TRANSPORT
+was defaulting seat 0 to 1 before it sent the hello, undoing the door's new answer one layer up. It
+asks for 0 now and takes the seat from the WELCOME. Two tests and a server change had all passed;
+the end-to-end arm is what found it, which is the "a feature is not built until it is driven on the
+real page" rule doing its job.
+
+**Measured, `room_smoke`:** a bad code refused on the lobby in words ("That is not a join code — six
+letters and numbers, like ABC-123") with the screen still up; then `zx7-cwk` — the grouped,
+lower-case form, as it would be read out — joined room `ZX7CWK` and **the door gave it seat 3**,
+which it never asked for, with seats 1 and 2 taken. All three browsers on one hash
+(`768e0b3901e8b4b7`), one shared hour, no page or console errors anywhere. `lobby_smoke` green,
+`reach_smoke` green, suite **1,871 green twice**.
+
+**And `lobby_smoke`'s locale row passed this time**, having failed on both arms twice earlier —
+see the note above: it is a race, not a defect, and M9 carries it.
+

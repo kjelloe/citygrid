@@ -17,6 +17,7 @@ import { defaultOptions } from "../../engine/options.js";
 import { sizeAdvice } from "../capabilities.js";
 import { t } from "../i18n.js";
 import { GROUPS, rowsIn, optionsFor, sanitiseChoices, paramsForChoices, SEED_MAX, NAME_MAX } from "./options-model.js";
+import { joinReady, JOIN_FIELD_MAX, hostOptions } from "./join-model.js";
 import { createDiorama } from "./diorama.js";
 import { prefersReducedMotion } from "../capabilities.js";
 
@@ -41,7 +42,7 @@ function randomSeed() {
  *   generated region, so the game does not generate a second one.
  * @param onContinue optional; shown only when there is a save to continue.
  */
-export function createNewGame(root, { choices: initial, onStart, onContinue, onSettings } = {}) {
+export function createNewGame(root, { choices: initial, onStart, onContinue, onSettings, onJoin, onHost } = {}) {
   let choices = sanitiseChoices(initial ?? {});
   let world;
 
@@ -169,6 +170,35 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
   });
   preview.append(regionName, regionFacts, regionProblem, another);
   sheet.append(preview);
+
+  // --- joining somebody else's room (X2b, slice 5.2) ------------------------
+  //
+  // Below the options rather than above them, because every option on this
+  // screen belongs to the city you START and none of them to one you JOIN —
+  // the region, the size and the difficulty are whoever's room it is.
+  //
+  // The button is never disabled. `aria-disabled` stops Playwright clicking and
+  // a hidden control fails `reach_smoke`, so the project's idiom is a control
+  // that is always pressable and says why nothing happened — which is also
+  // kinder than a dead button (ruling 029, N13).
+  if (onJoin) {
+    const joining = el("section", "lobby-block");
+    joining.dataset.group = "join";
+    joining.append(el("h2", undefined, t("lobby.join")));
+    const row = el("div", "lobby-names");
+    const wrap = el("label", "lobby-name");
+    wrap.append(el("span", undefined, t("lobby.join.code")));
+    const codeField = document.createElement("input");
+    codeField.type = "text";
+    codeField.id = "joinCode";
+    codeField.maxLength = JOIN_FIELD_MAX;
+    codeField.autocomplete = "off";
+    codeField.autocapitalize = "characters";
+    codeField.spellcheck = false;
+    codeField.placeholder = t("lobby.join.code.hint");
+    wrap.append(codeField);
+    row.append(wrap);
+    joining.append(row);
 
   // --- start ----------------------------------------------------------------
   const actions = el("div", "lobby-actions");

@@ -250,7 +250,17 @@ async function boot() {
         rememberInUrl(choices);
         play({ world, options, mayorName });
       },
+      // **Joining somebody else's room** (X2b). Nothing about the region
+      // crosses: the city is the room's, so `play` is given the code and the
+      // name and nothing else. The seat is the door's answer — a player who
+      // typed a code cannot know which are free.
+      onHost: hostRoom,
+      onJoin({ join, mayorName, spectate }) {
+        play({ join, mayorName, spectate }).catch(failed);
+      },
     });
+  }
+
   // **A room skips the lobby** (X1c): the city, the seed and the region are
   // whoever's room this is, so there is nothing here to choose. The seat is the
   // room's answer at the door and the name is the lobby's job (X2); until then

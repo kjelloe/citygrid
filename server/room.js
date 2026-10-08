@@ -130,6 +130,32 @@ export function createRoom(given = {}) {
     const mismatch = compatible(hello.version, hello.build, buildHash());
     if (mismatch) return refuse(mismatch);
 
+    // **Watching, not playing** (X4e). Before the seat arithmetic, because a
+    // watcher takes no seat: a room refusing one because every seat is taken
+    // would be a rule about the wrong thing.
+    if (hello.spectate === true) {
+      watchers.add(connection);
+      connection.send({
+        type: S2C.WELCOME,
+        seat: 0,
+        protocol: PROTOCOL_VERSION,
+        build: buildHash(),
+        tick: state.tick,
+        hash: hashState(state),
+        room: code,
+        save: JSON.parse(JSON.stringify(toSave(state))),
+      });
+      return "";
+    }
+    // **No seat named means "any"** (X2b). A player who types a join code cannot
+    // know which seats are taken and the door is the only thing that does; this
+    // used to default to seat 1, so the second person to join by code was
+    // refused `SEAT_TAKEN` and had to guess. A seat asked for BY NUMBER is
+    // still honoured, which is what lets somebody come back to their own.
+    const asked = Number(hello.seat) || 0;
+    const at = Number.isFinite(hello.at) ? hello.at : Date.now();
+    const seat = asked > 0 ? asked : firstFreeSeat(at);
+    if (seat === 0) return refuse(REFUSAL.ROOM_FULL);
     // `SEAT_TAKEN`, not `ROOM_FULL` (X1b): the room may have three seats free.
     if (seats.has(seat)) return refuse(REFUSAL.SEAT_TAKEN);
     if (seats.size >= state.options.seats) return refuse(REFUSAL.ROOM_FULL);

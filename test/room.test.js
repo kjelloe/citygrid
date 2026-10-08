@@ -539,6 +539,32 @@ test("a p99 over fewer than a hundred samples IS the maximum (X1d)", () => {
   assert.equal(partial.n, 12, "the empty slots were counted as beats");
 });
 
+test("a joiner that names no seat is given the lowest free one (X2b)", () => {
+  // A player who types a join code cannot know which seats are taken, and the
+  // door is the only thing that does. Before X2b `Number(hello.seat) || 1` made
+  // every such client ask for seat 1 and be refused `SEAT_TAKEN` the moment
+  // anybody was in it — so the lobby would have had to make the player guess,
+  // or the screen would have needed a roster it has no way to get (that is
+  // X3b's). Seat 0, or no seat at all, means "any".
+  // `heldForMs: 0`: the last part of this test leaves a seat and takes it again
+  // by number, which X4a holds for its owner. The hold has its own tests.
+  const room = createRoom({ options: { ...OPTIONS, seats: 3 }, code: "ABC123", heldForMs: 0 });
+  const hello = (seat) => ({
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", ...seat,
+  });
+  const first = wire("any one");
+  assert.equal(room.join(first, hello({})), "");
+  assert.equal(first.last(S2C.WELCOME)?.seat, 1, "the first joiner was not given seat 1");
+
+  // Somebody takes seat 3 deliberately, so "lowest free" is not "next".
+  const third = wire("asks for three");
+  assert.equal(room.join(third, hello({ seat: 3 })), "");
+  assert.equal(third.last(S2C.WELCOME)?.seat, 3);
+
+  const second = wire("any two");
+  assert.equal(room.join(second, hello({ seat: 0 })), "");
+  assert.equal(second.last(S2C.WELCOME)?.seat, 2, "seat 0 did not take the lowest free seat");
+
   // And a full room says so rather than claiming the seat is taken: the player
   // has to be told to go away, not to pick another (X1b's distinction).
   const late = wire("too late");
@@ -551,6 +577,26 @@ test("a p99 over fewer than a hundred samples IS the maximum (X1d)", () => {
   const back = wire("back again");
   assert.equal(room.join(back, hello({ seat: 2 })), "");
   assert.equal(back.last(S2C.WELCOME)?.seat, 2, "a returning seat was renumbered");
+});
+
+  // The player's connection drops. The seat is HELD, not freed.
+  room.leave(1);
+  const stranger = wire("stranger");
+  assert.equal(room.join(stranger, hello({ seat: 1 })), REFUSAL.SEAT_TAKEN,
+    "a seat that was left was given away to whoever asked next");
+  assert.equal(stranger.of(S2C.WELCOME).length, 0);
+  // And "any free seat" must not hand it out either, which is the same hole
+  // through the door X2b opened.
+  const any = wire("any");
+  assert.equal(room.join(any, hello({})), "");
+  assert.equal(any.last(S2C.WELCOME)?.seat, 2, `the any-seat door gave seat ${any.last(S2C.WELCOME)?.seat}`);
+
+  // The player comes back with what they were given, and it is theirs again.
+  const back = wire("back");
+  assert.equal(room.join(back, hello({ seat: 1, token })), "", "the token did not open its own seat");
+  assert.equal(back.last(S2C.WELCOME)?.seat, 1);
+  // A fresh token each time, so a copied one is good for one return.
+  assert.notEqual(back.last(S2C.WELCOME)?.token, token, "the same token was handed out twice");
 });
 
 test("a seat nobody has left is still refused to a second client (X1b, unchanged)", () => {
