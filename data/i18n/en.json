@@ -92,6 +92,7 @@
  "result.tooSteep": "Too steep to build on",
  "result.atCeiling": "You have borrowed as much as your rank allows",
  "result.notDerelict": "That has not stood derelict long enough",
+ "owner.somebodyElse": "somebody else",
  "refused.versionMismatch": "This room is running a different version of the game — reload the page to join",
  "refused.buildMismatch": "Your copy of the game is out of date — reload the page to join",
  "refused.roomFull": "Every seat in that room is taken",

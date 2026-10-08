@@ -14,6 +14,7 @@
 
 import { shoot } from "./screenshot.mjs";
 import { DEFAULTS, setConfig } from "../client/world/config.js";
+import { moverSpec, moverCost } from "../client/world/mover-spec.js";
 import { createModel } from "../client/world/model.js";
 import { playedCity, describe, fitDistance, clearanceAt } from "./lib/aim.mjs";
 
@@ -81,6 +82,22 @@ const COUNT = `(state, view) => {
     posed: view.pools?.train === undefined && view.pools?.loco === undefined
       ? -1
       : (view.pools?.train?.count ?? 0) + (view.pools?.loco?.count ?? 0),
+    // **WHICH pool, and what geometry is in it** (X5 item 3). The X4 review read
+    // smoke-T3-train-close.png as "a box with a roof, and the car behind it is
+    // two slabs" and could not say whether the S17 kit was reached or the shot
+    // was of a slab — a question a screenshot cannot answer and a pool read-back
+    // can. A box is 12 triangles; mover-spec.js builds a carriage out of six
+    // (two bogies, a body, a roof and a window band a side) and a locomotive out
+    // of six (two bogies, a body, a cab, a window and a roof), so the kit is 72
+    // triangles and a slab is 12. No backticks in here: this whole ask is a
+    // template string that is evaluated in the page.
+    kit: ["train", "loco"].map((name) => {
+      const pool = view.pools?.[name];
+      if (!pool) return { pool: name, count: -1, tri: 0 };
+      const g = pool.geometry;
+      const tri = g?.index ? g.index.count / 3 : (g?.attributes?.position?.count ?? 0) / 3;
+      return { pool: name, count: pool.count, tri };
+    }),
     rails: (m?.rail?.corridors ?? []).length,
     live: view.stats?.streets?.live ?? 0,
     steepest: +(steepest * 100).toFixed(1),
@@ -249,6 +266,23 @@ if (at.crossing) {
       console.log(`${out} ok=${r.ok} tri=${r.report?.triangles} ${JSON.stringify(r.answer)}`);
       if (!r.ok) problems.push(...r.problems.slice(0, 2));
       check(out, r.answer, { train: true, live: true });
+      // **The shot says which kit it photographed** (X5 item 3). The expected
+      // number comes from `mover-spec.js` in node — the same module the
+      // renderer builds the geometry from — rather than from a literal here,
+      // because a gate with its own copy of a number will one day measure a
+      // different game (P91).
+      for (const posed of r.answer?.kit ?? []) {
+        if (posed.count <= 0) continue;
+        const kind = posed.pool === "loco" ? "locomotive" : "carriage";
+        const wanted = moverCost(moverSpec(kind, 1, DEFAULTS));
+        console.log(`                pools.${posed.pool}: ${posed.count} posed, `
+          + `${posed.tri} triangles each of ${wanted} the ${kind} kit is made of`);
+        if (posed.tri !== wanted) {
+          problems.push(`the close train shot photographed pools.${posed.pool} with `
+            + `${posed.tri} triangles, and the ${kind} kit is ${wanted} — either the shot is of `
+            + `a slab or the kit is not reached on that page`);
+        }
+      }
     }
   }
 }

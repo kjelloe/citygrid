@@ -609,9 +609,16 @@ B13.
 
 ## Order
 
-**This lane is finished, 2026-10-08.** G1–G5, H1–H8, J1–J4 and L1 are built, eras 12–28. The one
-thing left is **L2**, the price of clearing ground, which is **Q155** and a balance era whenever it
-moves: `idiv(1 × 90, 100)` is 0, so a bulldoze is free at two of the three difficulties.
+**This lane is finished bar one era, 2026-10-08.** G1–G5, H1–H8, J1–J4 and L1 are built, eras
+12–28. The one thing left is **L2**, the price of clearing ground: `idiv(1 × 90, 100)` is 0, so a
+bulldoze is free at two of the three difficulties.
+
+**It is answered and scheduled.** Q155 → **A133: five, not the floor of one.** And **D8b folds into
+the same era** (A136, `workitems-measurement.md`): `tools/` will load `data/quests/`, so the sweep
+stops measuring a city where no quest can fire while a player's has 21. One era, **three arms** —
+null, bulldoze 5, quests alone — so a moved number can be attributed to one of the two changes
+rather than to both, which is what A82 bought and what combining eras gives straight back. One
+fixture re-pin, naming both. The report is era 30.
 
 **G4 → G2 → G1 → G3.** Decay first because it is the smallest change with the largest expected
 move, and a sweep that measures it alone is worth having. Then the supply fix, which is a

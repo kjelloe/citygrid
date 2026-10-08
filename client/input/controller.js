@@ -100,7 +100,8 @@ export function createController(canvas, session, renderer, options = {}) {
       return;
     }
     const tool = TOOLS[ui.tool];
-    const runs = toRuns(tiles.map((t) => tileIndex(t.x, t.y, state.width)));
+    const indices = tiles.map((t) => tileIndex(t.x, t.y, state.width));
+    const runs = toRuns(indices);
     let quote;
     if (tool.priceKind) {
       // The zone goes with the command: `priceZone` validates it, and a quote
@@ -118,7 +119,11 @@ export function createController(canvas, session, renderer, options = {}) {
     let result = quote?.result;
     if (result === undefined && cost !== undefined && cost > treasury()) result = RESULT.NO_FUNDS;
     renderer.showGhostTiles(tiles, result === undefined || result === RESULT.OK);
-    onPreview({ tiles: runsLength(runs), cost, result });
+    // `at` is the stroke's tile indices, for a refusal that has to NAME
+    // somebody (X5 item 1): `tiles` is a count and the HUD cannot ask whose
+    // ground it is from a count. Already derived above, so this carries it
+    // rather than deriving it twice.
+    onPreview({ tiles: runsLength(runs), cost, result, at: indices });
   }
 
   function extendTo(pixelX, pixelY) {

@@ -379,6 +379,39 @@ test("the release page says how far behind HEAD it is, and is not a hundred comm
     `RELEASE.md describes ${sha}, ${behind} commits behind HEAD — re-measure it and name this commit`);
 });
 
+test("a balance report's two halves agree with each other", () => {
+  // **They did not, for era 29, and nothing checked.** `sim_sweep` writes
+  // `reports/balance-era<N>.md` and `.json` from one run, two `writeFile` calls
+  // apart — and `1f13ee7` committed an `.md` whose medians were the slice's
+  // after-arm beside a `.json` whose medians were the arm BEFORE it (steady-64
+  // 1,710 against 1,602, which is era 28's number). The prose half was the one
+  // every document quotes, so the project was right by luck for two days; a
+  // `gates.mjs all` run rewrote the `.json` and that is how it came out.
+  //
+  // The era in the filename is not enough to tell them apart, because the era is
+  // bumped before the measuring arm runs. So: the two files are one
+  // measurement, and this is the only thing that says so.
+  const files = readdirSync(join(repoRoot, "reports"))
+    .filter((name) => /^balance-era\d+\.json$/.test(name)).sort();
+  assert.ok(files.length > 10, `only ${files.length} balance reports — this is scanning nothing`);
+  const problems = [];
+  for (const name of files) {
+    const report = JSON.parse(readFileSync(join(repoRoot, "reports", name), "utf8"));
+    const prose = name.replace(/\.json$/, ".md");
+    const md = readFileSync(join(repoRoot, "reports", prose), "utf8");
+    for (const [config, entry] of Object.entries(report.configs ?? {})) {
+      const row = new RegExp(`## ${config}\\b[\\s\\S]*?\\| population \\| (\\d+) \\| (\\d+) \\| (\\d+) \\|`).exec(md);
+      if (!row) { problems.push(`${prose} has no population row for ${config}`); continue; }
+      const said = row.slice(1, 4).map(Number);
+      const held = entry.summary?.population ?? [];
+      if (said.join() !== held.join()) {
+        problems.push(`${name} ${config}: the table says ${said.join("/")} and the data says ${held.join("/")}`);
+      }
+    }
+  }
+  assert.deepEqual(problems, [], problems.join("; "));
+});
+
 test("the release page carries the numbers a reader would otherwise have to run", () => {
   const release = readDoc("RELEASE.md");
   // The ERA comes from the data, not from a literal here. This test carried

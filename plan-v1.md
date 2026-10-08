@@ -58,9 +58,11 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 
 *Rewritten 2026-09-08 at `36aeefb`, the release commit (`RELEASE.md`).*
 
-**`main` is the game, and it is pushed.** `dev_night` fast-forwarded into it on 2026-09-08 and
-Kjell published it: one commit per slice, no squash and no merge commits. `RELEASE.md` says what is
-true at that commit and carries the measured numbers; this file stays the plan.
+**`main` is the game, and it is pushed — and it is now 54 commits behind.** `dev_night`
+fast-forwarded into it on 2026-09-08 at `2f26532` and Kjell published it: one commit per slice, no
+squash and no merge commits. `main` is era 26's release and the game is at era 29. `RELEASE.md` says
+what is true at the commit it names — re-measured 2026-10-08 at `7d3dbde` — and carries the measured
+numbers; this file stays the plan. The merge is **M7**, and it is Kjell's push.
 
 **Waves 0–4 are complete**, and so is **cityviewer** — the renderer rebuilt over twenty slices
 (`workitems-cityviewer.md`, twenty of twenty done, three review rounds and four fix slices). Era 1
@@ -81,6 +83,20 @@ What is left in that lane: hibernating to DISK rather than to a standstill; `spl
 the alert list; and the lobby's remaining rows (the QR, ready, host controls, hosting from a save).
 Ruling 003 is unmoved — singleplayer opens no socket and `offline_smoke` asserts it.
 
+**And the lane is committed.** All of it was in the working tree and nowhere else on 2026-10-08:
+seventy-one files, two days, thirty dev-log entries past the last commit. It is twenty-two commits
+now, one per slice in the order the entries were written. `gates.mjs` prints
+`UNCOMMITTED: n dev-log entries are in the tree and not in HEAD` from X5 onwards, which is the
+cheapest place to notice it — a slice already runs the gates.
+
+**`gates.mjs all`, 2026-10-08 on the committed tree: 42 gates, 3,005 s of a 3,420 s budget.** Four
+red, all four fixed in X5: two the X4 review predicted, one a threshold tuned to a gate two eras
+ago (`lanes_dump`, now derived from the road's own geometry), one a berth search that ranked
+candidates by water and never asked the reducer (`harbour_shots`). A fifth red — `motion_shots`,
+"two frozen shots differ" — was contention I caused by running other gates beside the run, and is
+identical when run alone. Which also means **`sim_sweep`'s 604 s from that run is not a budget**;
+re-measuring the sets on a quiet machine is M9.
+
 **Before that (2026-10-06, era 29).** Everything P70, P93, P97, P99 and P100 ordered is
 built: the world lane through S18b, behaviour through B14, the whole transport lane (T1–T7, eras
 5–11), the rules lanes (G1–G5, H1–H8, J1–J4, eras 12–26), the film lane's F1 and F2, and the worker
@@ -89,7 +105,11 @@ runs a block from another, which took the road share of a played 64 from about a
 fifth and is the first era whose cause is what the deputy DECIDES — so every number measured on a
 deputy city before it belongs to era 28 and is void rather than comparable.
 
-**No open questions.** P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall at 2 m, bulldoze priced at 5 in one era with quests loaded into the tools, the stall left at 28.6 ms with W6c held for the room, block spacing 3, the classic skin kept, and a sun that crosses a quarter of the sky at a rate in data.
+**One open question**, filed the same day the list was emptied: **Q161**, whether a pedestrian
+re-seated when a junction appears should keep their side of the street, walk out, or stay as they
+are. It is W6d, it is one function, and nothing is blocked on it.
+
+P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall at 2 m, bulldoze priced at 5 in one era with quests loaded into the tools, the stall left at 28.6 ms with W6c held for the room, block spacing 3, the classic skin kept, and a sun that crosses a quarter of the sky at a rate in data.
 
 **What is unblocked and unbuilt, 2026-10-08**, by lane and cheapest first:
 
@@ -459,6 +479,7 @@ by number from the code they create.
 | ~~Q142~~ | **Answered A119** — relative criteria (cliffs per km, lots as a share), and the same is owed to `walkthrough` on rolling |
 | ~~Q143~~ | **Answered A121, built 2026-10-04 (era 26)** — the far bank is worth a quarter of a city where the town is hemmed in by water, and nothing where it is not |
 | ~~Q144~~ | **Answered A120** — `lot.maxPlinth` is a reducer rule in the shape of `maxZoneSlope`; the quay as a thing is a later content slice |
+| **Q161** | A junction laid mid-street deletes the pavement somebody was standing on, and the geometric re-seat moves them up to **6.2 m**. Keep their side of the street, walk them out, or leave it and write down that two in four hundred moving once per build is below what anybody can see? | **W6d**, one function in `client/life/pedestrians.js`. Nothing — the gate reads the number and is green |
 
 ## What would make us stop and re-plan
 

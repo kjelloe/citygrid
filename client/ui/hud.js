@@ -19,7 +19,7 @@ import { topBar, formatMoney } from "./hud-model.js";
 import { rciBars } from "./rci-model.js";
 import { createAlerts, pushAlerts, expireAlerts, visibleAlerts, SEVERITY } from "./alerts-model.js";
 import { inspect, ownerLine } from "./inspector-model.js";
-import { OVERLAY_NAMES, OVERLAYS, legendFor, BAND } from "./overlays.js";
+import { OVERLAY_CHOICES, OVERLAYS, legendFor, BAND } from "./overlays.js";
 import { buildMenu, isOrientable } from "./build-model.js";
 import { budgetPanel, fundingRows, fundingSteps, loanSteps, repaySteps } from "./budget-model.js";
 import { TOOLS } from "../input/tools.js";
@@ -33,7 +33,7 @@ import { AUTO, resolveOverlay, autoTarget } from "./auto-overlay.js";
 import { TERRITORY, territoryLegend } from "./territory-model.js";
 import { inboxFor, ACTIONS, ACTION_LABELS, policyChoices } from "./inbox-model.js";
 import { askTargetFor, defaultOffer } from "./ask-model.js";
-import { seatName } from "./seats.js";
+import { seatName, otherOwnerName } from "./seats.js";
 import { rosterFor, ROSTER_ACTIONS, ROSTER_LABELS } from "./roster-model.js";
 import { PLAYER_ACTIVE, PLAYER_AFK } from "../../engine/constants.js";
 import { PING_MESSAGES, PING_LABELS } from "./ping-model.js";
@@ -334,7 +334,7 @@ export function createHud(root, {
   // it has its own label and its own legend, and `OVERLAYS` has no entry for
   // it. It is in this rail rather than beside the camera because to a player it
   // is the same question as every other overlay: what is this showing me?
-  const overlayChoices = [AUTO, ...OVERLAY_NAMES, TERRITORY];
+  const overlayChoices = [AUTO, ...OVERLAY_CHOICES];
   for (const name of overlayChoices) {
     const button = el("button", "overlay",
       name === AUTO ? t("overlay.auto")
@@ -1244,7 +1244,7 @@ export function createHud(root, {
     const cost = preview.cost === undefined ? "" : ` · ${formatMoney(-preview.cost)}`;
     const refused = preview.result !== undefined && preview.result !== RESULT.OK;
     readout.textContent = refused
-      ? `${t(`result.${preview.result}`)}${cost}`
+      ? `${t(`result.${preview.result}`, valuesFor(preview.result, preview.at))}${cost}`
       : `${t("hud.tiles", { count: preview.tiles })}${cost}`;
     if (refused) readout.dataset.result = preview.result;
     else delete readout.dataset.result;
@@ -1253,9 +1253,25 @@ export function createHud(root, {
   /** The reducer's answer to a command that was actually issued. Kept until the
    * next stroke, rather than faded on a timer, so a refusal that happens while
    * the player is looking elsewhere is still there when they look back. */
-  function setResult(result) {
+  /** What a refusal needs filling in — nothing, for ten of the eleven.
+   *
+   * Here rather than at the call sites because every `result.*` string in the
+   * game is rendered through the two lines above and below this one, and a
+   * caller that had to know which codes take which values is a caller that
+   * will one day not know (X5 item 1). The owner is named from the stroke the
+   * refusal is about, and `otherOwnerName` is what knows the two ways ground
+   * can belong to somebody.
+   */
+  function valuesFor(result, tiles) {
+    if (result !== RESULT.NOT_OWNER) return undefined;
+    // The fallback is a WORD, not the token: `t()` leaves an unfilled `{player}`
+    // on screen, and that is the defect this whole item is about.
+    return { player: otherOwnerName(state, tiles, seat) ?? t("owner.somebodyElse") };
+  }
+
+  function setResult(result, tiles) {
     if (result === RESULT.OK) { closeAsk(); return; }
-    readout.textContent = t(`result.${result}`);
+    readout.textContent = t(`result.${result}`, valuesFor(result, tiles));
     readout.dataset.result = result;
   }
 

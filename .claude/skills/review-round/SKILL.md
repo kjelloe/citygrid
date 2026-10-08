@@ -702,6 +702,21 @@ own, because a feature that is absent throws no error and `t()` returns its own 
 When one of the two tests goes red, the fix is **build the thing or list it with its slice** —
 never widen the allowlist to make the red go away.
 
+**Commits**
+- **Is the work in the history?** Not a tidiness question: a bad `git checkout --`, a crash or a
+  reviewer's own worktree habit loses whatever is only in the tree, and `main` cannot be
+  fast-forwarded to a tree that is not in the history. The X4 review's most expensive finding was
+  not in the code — seventy-one files and fourteen dev-log entries, two days after the last commit.
+  `tools/gates.mjs` now prints `UNCOMMITTED: n dev-log entries are in the tree and not in HEAD`
+  whenever more than one is, so the cheapest version of this check runs on every gate run.
+- One commit per slice, in the order the dev-log entries were written, and the fixture re-pin in the
+  commit whose `why` names it. Reconstructing that later is possible — attribute each block of lines
+  to the slice its comments cite — but it is approximate, and entries that edit the same files
+  cannot be separated at all.
+- Is `RELEASE.md` within `STALE_AT` of HEAD? `test/docs.test.js` fails past fifty commits of drift,
+  which is a suite that goes red for a doc — deliberately, because a release page describing a
+  commit 129 behind is worse than no page.
+
 **Skills**
 - Did a workflow change? Update the skill in the same breath.
 - Is there a repeated manual sequence that should become one?
@@ -770,3 +785,13 @@ nearest buildings had been instanced boxes in every street-level shot the projec
 **And when a "3 live" style number cannot answer the question you are asking, make it answer.** The
 street cache reported how many chunks were live and not WHICH; the whole investigation was "is the
 building in front of me one of the three".
+
+**A review finding's premise is a claim, and claims are checkable.** The X4 review read
+`room_smoke` as being paid for twice in `gates.mjs all` because it is in two sets. `SETS.all` has
+deduped since the day it was written, and `--list` already printed each gate once — so one third of
+that item was work that did not exist, and acting on it without reading the code would have
+produced a change with a false reason attached to it. The budget half of the same finding was real
+(`quick` at 578 s of 540 with an 81 s smoke in it). **Read the code for every finding you did not
+measure yourself, including your own from last week, and say which half was wrong.** Same shape as
+[[an-item-outlives-its-implementation]] from the other direction: there, the docs were stale about
+the code; here, a review was.

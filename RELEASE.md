@@ -4,14 +4,14 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `e618cb5` on `dev_night`, after the headless multiplayer room, the model's dirty set,
-  the request commands, borrowing and twenty-eight balance eras — which is what the numbers below
-  were measured at. **`main` is the release and `dev_night` carries what has landed since**: `main`
+- **Commit:** `7d3dbde` on `dev_night`, after **a multiplayer room a player can host, join and
+  play in** (X0 through X4e), the model's dirty set, the request commands, borrowing and
+  twenty-nine balance eras — which is what the numbers below were measured at. **`main` is the release and `dev_night` carries what has landed since**: `main`
   was pushed on 2026-09-08 at `2f26532`. This page named that commit until 2026-10-04, **129 commits
   and twenty-five eras later**, with every number on it measured against a game that no longer
   existed — so the docs test now fails past fifty commits of drift rather than printing a note
   nobody reads (M7).
-- **Date:** 2026-10-05
+- **Date:** 2026-10-08
 - **Balance era:** era 29 (`reports/balance-era29.md`), re-measured 2026-10-06 over 200 games per
   configuration. **B14 changed what the deputy builds** — it refuses a street where one already runs
   within `deputy.blockTiles` of most of the run — so every number in the project moved and era 28's
@@ -21,8 +21,10 @@ measured when somebody last looked, which is a different claim and the only one 
   numbers further down are renderer measurements, which belong to no balance era. This line said
   "era 1" until P91, five eras after the data stopped agreeing with it, because the doc test was
   pinning the words rather than reading `data/balance.json`.
-- **249 commits**, one per slice, no squash and no merge commits.
-- **1,776 tests**, green twice in a row on every slice (`./test.sh`), and **ten gate sets** —
+- **303 commits**, one per slice, no squash and no merge commits. The twenty-two most recent were
+  reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
+  rather than hides: see `dev-log.md`, "The two days, committed".
+- **1,956 tests**, green twice in a row on every slice (`./test.sh`), and **ten gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `film` and `room`.
 
 ## Running it
@@ -57,11 +59,18 @@ vendored and pinned; `ws` is the server's only dependency.
   holds a mirror patched from the tile layers that changed; `tools/worker_smoke.mjs` plays the same
   46 commands and 200 ticks on both arms for the same hash, and `?worker=0` is the lever that
   forces the local one. Every change to the city is a command — undo included, since W4.
-- **A headless multiplayer room** (X0, X1a, X3a — nothing a player can see yet, by Kjell's ruling
-  A125). `server/` is one room, one reducer, a 10 Hz pump and a frame of accepted commands;
+- **A multiplayer room a player can play in** (X0 through X4e, 2026-10-06/08 — A125 was lifted on
+  2026-10-07 as A131). A player hosts from the new-game screen and sends somebody the address bar;
+  the guest joins by a six-character code or watches without taking a seat. On screen: whose ground
+  is whose, the territory overlay with a legend that names each seat, an inbox for the neighbour who
+  asks to clear your road, a standing answer so the month can answer for you, a ping, chat, a
+  roster, and a seat that is still yours for two minutes after you close the tab — then the deputy
+  plays it, then the ground goes to the commons. A room nobody is in stops playing.
+  `tools/room_smoke.mjs` drives **five browsers** through all of it on the real server;
   `tools/room_soak.mjs` plays **five city years with two real `ws` clients and ends on one hash**,
-  checked every sim-month, with a worst beat of 11.6 ms against a 20 ms budget. A demolition request
-  is state, a command and a hash; a room survives a restart.
+  checked every sim-month, and `room_churn` takes a seat away and gives it back over 5,586 frames
+  with nobody diverging. A demolition request is state, a command and a hash; a room survives a
+  restart.
 - **A build action costs 28.6 ms** of derivation instead of 98.3 (W6a, W6b), and the city no longer
   blinks through it: every car, person, train, boat and aircraft keeps its place across a build
   (B11), because a derived thing's identity is its geometry rather than its index in an array.
@@ -154,46 +163,49 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**0 open questions** are on the list (`dev-questions.md`, bottom section), and every one is
-Kjell's to answer rather than work anybody is blocked on:
+**1 open question** is on the list (`dev-questions.md`, bottom section) — **Q161**, filed the same
+day the list was emptied: a junction laid mid-street deletes the pavement somebody was standing on,
+and the geometric re-seat moves them up to 6.2 m. Keep their side of the street, walk them out, or
+leave it and write down that two people in four hundred moving once per build is below what anybody
+can see? It is one function (W6d) and nothing is blocked on it.
 
-- **Q154** — a faced shoulder is drawn where a street stands more than a storey above the water.
-  Is three metres the right rung? The ladder is measured (1.2 m gives 916 faced shoulders on a
-  hilly 128, 2 m gives 264, 3 m gives 130; a rolling 96 has 51 and none), the pictures are taken,
-  and it is a picture decision rather than a measurement.
-- **Q156** — a build action costs 28.6 ms of derivation and a frame is 16.7. The rest is
-  allocation rather than algorithm (GC is 5.1 ms of it), so closing it means an in-place graph —
-  the first change where the renderer, the traffic, the crowd and the gates must agree about one
-  structure's identity at once. Nothing is blocked on it.
-- **Q155** — a bulldoze costs **nothing** at two of the three difficulties, because the price is 1
-  and `idiv(1 × 90, 100)` is 0. Found in X3a. Raising the price or rounding up both move several
-  numbers at once, so it is a balance round rather than a slice.
-- **Q160** — the sun **never moves across the sky**. The key light's x and z are constants, so it
-  rises and falls on one azimuth and every shadow in every city falls the same way at every hour;
-  only their length and the light's colour change. Making the direction continuous is cheap —
-  nothing bakes a directional shade and the shadow map already re-renders every frame — but the
-  RATE is a picture decision, and a 240-second day makes a full daylight arc about 1.9°/s. S22 has
-  the analysis and the gates.
-- **Q159** — the interface has **three skins** and nobody has looked at them. `clean`, `retro` and
-  `dark` have been in the settings panel since N24 and `a11y_smoke` proves each one repaints, which
-  is not the same as any of them being right. P108 names the classic one after **SimCity 2000**
-  where P29 named it after SimCity 1. `tools/skin_shots.mjs` takes all three on one city;
-  `reports/skin-{clean,retro,dark}.png`. Chrome only either way, so moving it is CSS.
-- **Q158** — every measured number in this file is a city with **no quests in it**. The engine has
-  no quest mirror and nothing in `tools/` loads the catalogue, so `soak`, the balance sweep and the
-  fixtures run a city where no quest can fire while a browser has 21 of them. Found in X1c, when
-  two browsers and a room came out on three different hashes at one tick for the same reason on the
-  server's side. Whether that is the honest baseline — a deputy does not choose quests — or a
-  defect is Kjell's; either answer is a balance era (D8b).
-- **Q157** — era 29 bought **7% more people** (1,602 → 1,710 on the steady-64 sweep) with a
-  quarter less road, and the price is homes with no frontage: **4 a city → 14** of about 250. The
-  lever is `deputy.blockTiles` itself, 2 is a tighter grid and 4 a looser one, and moving it is
-  another balance era — so it wants deciding before the next measured rule change rather than
-  after. The cost is recorded in `reports/balance-era29.md` rather than tuned away.
+The seven the week raised were answered on 2026-10-08 as **A132–A138** (P111), and what each one
+left behind is work rather than a question:
 
-Everything else on this list has been answered and built; the questions above replaced nine that
-were answered on 2026-10-03 (A113–A121) and four more on 2026-10-04 (A125–A130). What a reader
-should still know:
+- **Q154 → A132: the wall at two metres.** A faced shoulder is drawn where a street stands more
+  than a storey above the water, and three metres was the rung. Two is the answer, which roughly
+  doubles the number of faced shoulders on a hilly 128 (the ladder: 1.2 m gives 916, 2 m gives 264,
+  3 m gives 130). **S18c** is the change and a re-shoot of `embankment_shots`.
+- **Q155 → A133: clearing ground costs five.** A bulldoze cost **nothing** at two of the three
+  difficulties, because the price was 1 and `idiv(1 × 90, 100)` is 0. Five, not the floor of one —
+  so it is a balance era with a sweep and a report, and **D8b** (A136) folds into the same one:
+  `tools/` will load `data/quests/`, with three arms (null, bulldoze 5, quests alone) and one
+  fixture re-pin naming both. **L2.**
+- **Q156 → A134: the stall stays, and W6c is held.** A build action costs 28.6 ms of derivation
+  against a 16.7 ms frame, and the rest is allocation rather than algorithm. Held until the room is
+  played and the hitch is felt, or a client's frame p95 in `room_smoke` crosses 33 ms during a build
+  burst — the first change where the renderer, the traffic, the crowd and the gates would have to
+  agree about one structure's identity at once.
+- **Q157 → A135: the deputy keeps three tiles between its streets.** Era 29 bought 7% more people
+  (1,602 → 1,710 on the steady-64 sweep) with a quarter less road, and the price is homes with no
+  frontage: 4 a city → 14 of about 250. `deputy.blockTiles` stays at 3, and the cost is recorded in
+  `reports/balance-era29.md` rather than tuned away.
+- **Q158 → A136: quests go into the tools, at the next era.** Every measured number in this file is
+  a city with **no quests in it** — nothing in `tools/` loads the catalogue, so `soak`, the balance
+  sweep and the fixtures run a city where no quest can fire while a browser has 21 of them. Found in
+  X1c, when two browsers and a room came out on three different hashes at one tick for the same
+  reason on the server's side. Folded into L2's era above.
+- **Q159 → A137: the classic skin stays as built.** `clean`, `retro` and `dark` have been in the
+  settings panel since N24, `a11y_smoke` proves each one repaints, and `tools/skin_shots.mjs` takes
+  all three on one city (`reports/skin-{clean,retro,dark}.png`). M10 is closed.
+- **Q160 → A138: the sun crosses a quarter of the sky, at a rate in the data.** The key light's x
+  and z are constants, so it rises and falls on one azimuth and every shadow in every city falls the
+  same way at every hour. `sun.arcDegrees` and `sun.moonArcDegrees` go into `data/cityviewer.json`
+  with the mirror, the moon gets an arc of its own, the presets are untouched, and the baked face
+  tints give up to the real light. **S22** has the analysis and the gates.
+
+Everything else on this list has been answered and built; the seven above replaced nine answered on
+2026-10-03 (A113–A121) and four more on 2026-10-04 (A125–A130). What a reader should still know:
 
 - **One real device has been measured, and no phone has.** `?perf=1` runs a nine-step frame sweep
   on whatever device the page is open on and ends with a **Copy** button; every card in
@@ -218,19 +230,14 @@ should still know:
   of 7,678 reused — and a build action is **28.6 ms**, down from a warm 98.3. What is left is W6c:
   the last 28 ms is allocation rather than algorithm, because both graphs still build 8,896 link
   objects every time.
-- **Multiplayer is started, headless — and that half is now BUILT.** X0, X1a and X3a landed on
-  2026-10-04/05: `server/{room,pump,store,index}.js` is a room with a 10 Hz pump that owes ticks at
-  a speed, a frame of accepted commands, a hash every sim-month, a checkpoint it can resume from,
-  and the eight refusals the door can give in both catalogues. `room_soak` plays five city years
-  with two real `ws` clients and ends on one hash. The request commands are state, commands and a
-  hash, with the two-player fixture pinning a request and its approval. **Nothing a player can
-  see** — no socket in the page, no lobby, no `?room=` — until Kjell has played the singleplayer
-  game and said it is fun (A125). What is left of Wave 5 is X1's client half, the lobby (X2),
-  ownership on the screen (X3b) and drop-in (X4).
-- **Multiplayer is not played.** Ruling 003 holds Wave 5 behind the singleplayer MVP being
-  *accepted*, and acceptance is a playtest, not a green suite. The seam is built in — commands
-  cross the wire, not state — and nothing has crossed it yet. The territory overlay has no
-  control because it is a multiplayer view (Q61).
+- **Multiplayer is built and has never been PLAYED.** Sixteen of Wave 5's twenty items are done
+  (X0 to X4e), and what is left is four: hibernating a room to disk rather than to a standstill;
+  `splitRule`, `mutualAid` and `disasterAid`, which change what a city earns and are therefore a
+  balance era; a history that outlives the alert list; and the lobby's remaining rows (the QR code,
+  ready, host controls, hosting from a save). The gap is not code — it is that **five browsers on
+  one machine driven by a gate is not eight people on an evening**, and the release gate for the
+  wave says eight clients for an hour with a desync count of zero. That evening is Kjell's.
+  Ruling 003 is unmoved either way: singleplayer opens no socket and `offline_smoke` asserts it.
 - **Norwegian is reviewed** (A21, closed 2026-09-08). Key parity is enforced by test and so is the
   harder question — no Norwegian string may be byte-identical to its English without a reason on a
   list — and the 414 strings have now been read by a Norwegian and passed with no corrections.

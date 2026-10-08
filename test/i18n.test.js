@@ -9,7 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot } from "./helpers/sources.js";
+import { repoRoot, jsFilesIn, stripComments } from "./helpers/sources.js";
 import { RESULT, REFUSAL } from "../shared/protocol.js";
 import { DISASTER_NAMES } from "../engine/disasters.js";
 
@@ -248,4 +248,124 @@ test("every disaster.* string is a disaster the engine can cause (B13)", () => {
       .filter((name) => !known.has(name));
     assert.deepEqual(orphans, [], `${locale} names disasters the engine cannot cause: ${orphans.join(", ")}`);
   }
+});
+
+// --- a template that reaches the screen with its brace in it (X5, ruling 027)
+
+/**
+ * Every templated key whose NAME is assembled where it is rendered or carried
+ * by a model, and the tokens whoever renders it fills.
+ *
+ * `t()` substitutes what it is given and leaves an unfilled token in the output
+ * by design, so a templated key rendered through `t(key)` with no values shows
+ * the player the template. `result.notOwner` reached a screenshot reading
+ * *"That belongs to {player}"* exactly that way: `hud.js` renders every answer
+ * the reducer gives through ``t(`result.${result}`)``, so the key is nowhere in
+ * the sources for a scan to find and nobody was reading the catalogue either.
+ *
+ * The scan below catches the easy half — a literal key with a token and no
+ * values beside it. A key assembled at runtime is invisible to that, so each
+ * one is declared here with the tokens its caller passes. The fix when this
+ * goes red is to pass the values or to write the string without the token;
+ * adding a line here for a token nobody fills is how this test stops being one.
+ */
+const FILLED_BY_ITS_RENDERER = {
+  // `client/ui/alerts-model.js` hands the alert list a `namedKey`.
+  "alert.disasterWarning.named": ["disaster"],
+  "alert.disasterStruck.named": ["disaster"],
+  "alert.disasterOver.named": ["disaster"],
+  "alert.ping": ["message", "name"],
+  // `client/ui/ask-model.js` → `whatKey`, filled by the HUD's ask panel (X3b).
+  "ask.what": ["name", "tiles"],
+  "ask.what.one": ["name"],
+  // `client/ui/inbox-model.js` → one `textKey` per row, filled by the drawer.
+  "inbox.waiting.demolition": ["name", "tiles"],
+  "inbox.waiting.demolition.one": ["name"],
+  "inbox.waiting.nuisance": ["name", "tiles"],
+  "inbox.sent.demolition": ["name", "tiles"],
+  "inbox.sent.demolition.one": ["name"],
+  "inbox.sent.nuisance": ["name"],
+  "inbox.settled.theyApproved": ["name"],
+  "inbox.settled.theyDeclined": ["name"],
+  "inbox.settled.theyWithdrew": ["name"],
+  "inbox.settled.theyNoted": ["name"],
+  "inbox.settled.wasCleared": ["name"],
+  "inbox.settled.youCleared": ["name"],
+  // `client/ui/budget-model.js` → `labelKey` on a funding step and a loan size.
+  "funding.lean": ["percent"],
+  "funding.normal": ["percent"],
+  "funding.generous": ["percent"],
+  "loan.quarter": ["amount"],
+  "loan.half": ["amount"],
+  "loan.all": ["amount"],
+  // `client/ui/statistics-model.js` → `verdictKey`, filled in `statistics.js`.
+  "stat.verdict.steady": ["months"],
+  "stat.verdict.rising": ["change", "months"],
+  "stat.verdict.falling": ["change", "months"],
+  "stat.verdict.better": ["change", "months"],
+  "stat.verdict.worse": ["change", "months"],
+  // The one the reviewer found. `hud.js` assembles `result.<code>` for every
+  // answer the reducer gives, and this is the only one of the eleven with a
+  // token in it — which is why it was the only one that could show a brace.
+  "result.notOwner": ["player"],
+};
+
+const tokensOf = (value) => [...value.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+const templatedKeys = () => Object.keys(locales.en).filter((key) => tokensOf(locales.en[key]).length > 0);
+
+test("a templated key called by its own name is called with values", () => {
+  // The easy half, and the half a scan can see: `t("hud.tiles")` with no second
+  // argument renders "{count} tiles" to the screen.
+  const sources = [...jsFilesIn("client"), ...jsFilesIn("tools")];
+  const bare = [];
+  for (const key of templatedKeys()) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const called = new RegExp(`\\bt\\(\\s*["'\`]${escaped}["'\`]\\s*\\)`);
+    for (const { path, source } of sources) {
+      if (called.test(stripComments(source))) bare.push(`${path}: t("${key}")`);
+    }
+  }
+  assert.deepEqual(bare, [],
+    `these render a template with nothing to fill it: ${bare.join(", ")}`);
+});
+
+/** Does anything call `t()` on this key by name, with values beside it? */
+function calledWithValues(key, sources) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const call = new RegExp(`\\bt\\(\\s*["'\`]${escaped}["'\`]\\s*,`);
+  return sources.some((source) => call.test(source));
+}
+
+test("a templated key is either filled where it is named or declared here", () => {
+  // A key that reaches `t()` through a variable — `textKey`, `labelKey`,
+  // `verdictKey`, or `result.<code>` assembled from the reducer's answer — is
+  // spelled as a literal somewhere (that is the rule a runtime-assembled key
+  // broke three times) but never beside its values, so no scan can say whether
+  // anybody fills it. Those are the ones that have to be declared.
+  const sources = jsFilesIn("client").map(({ source }) => stripComments(source));
+  const undeclared = templatedKeys()
+    .filter((key) => !Object.hasOwn(FILLED_BY_ITS_RENDERER, key))
+    .filter((key) => !calledWithValues(key, sources));
+  assert.deepEqual(undeclared, [],
+    "templated, and nothing fills them where they are named — say who does in "
+    + `FILLED_BY_ITS_RENDERER: ${undeclared.join(", ")}`);
+});
+
+test("what a renderer says it fills is what the string actually has", () => {
+  for (const [key, tokens] of Object.entries(FILLED_BY_ITS_RENDERER)) {
+    assert.ok(Object.hasOwn(locales.en, key), `FILLED_BY_ITS_RENDERER names ${key}, which is gone`);
+    assert.deepEqual([...tokensOf(locales.en[key])].sort(), [...tokens].sort(),
+      `${key} is declared as filling ${tokens.join(", ")} and its string wants `
+      + `${tokensOf(locales.en[key]).join(", ")}`);
+  }
+});
+
+test("a declared key is one no scan could have checked", () => {
+  // The direction that rots. A key that becomes a literal call with values is a
+  // key the scan above covers, and leaving it declared here means the next
+  // reader trusts a note instead of the code.
+  const sources = jsFilesIn("client").map(({ source }) => stripComments(source));
+  const covered = Object.keys(FILLED_BY_ITS_RENDERER).filter((key) => calledWithValues(key, sources));
+  assert.deepEqual(covered, [],
+    `filled at a named call site after all, so the declaration is stale: ${covered.join(", ")}`);
 });

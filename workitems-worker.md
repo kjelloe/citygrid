@@ -320,6 +320,43 @@ place must still compare link for link against a full derivation.
 blinks through it. Kjell decides whether a frame matters more than the next ten items in the world
 and behaviour lanes.
 
+## W6d — A pedestrian steps six metres when a junction appears (S) — found by `lanes_dump`, 2026-10-08 — **Q161**
+
+**What was measured.** `lanes_dump`'s second arm lays one tile that SPLITS a street and then asks
+how much of the city's life came across. On era 29's city, 2 of 400 people were standing on a
+pavement whose key the build destroyed, and the furthest of them was re-seated **6.2 m** from where
+it stood. Everybody else kept their position exactly; no car moved at all.
+
+**It is honest, and that is why it is an item rather than a bug.** `adopt()` in
+`client/life/pedestrians.js` matches by key first and falls back to `nav.nearestEdge(x, z)`, which
+is a true perpendicular search over a 3x3 tile neighbourhood — so 6.2 m means the nearest surviving
+pavement really was 6.2 m away: the junction replaced the pavement they were standing on, and the
+nearest one left is at the edge of its box. An 8 m road's junction has a 5.7 m half-diagonal, and
+the pavement sits 1.25 m beyond the kerb.
+
+**What it looked like first.** The gate's bound was the literal `6`, chosen on 2026-10-04 against a
+1.3 m reading when the split landed at tile 28,16. B14 moved what the deputy paves, the split moved
+to 31,7, and the gate went red for a city behaving as its own comment described — a constant tuned
+to a gate, with the next era arriving on schedule. The bound is now derived from the road
+(`hypot(width, width) / 2 + sidewalk / 2` = 6.9 m) and printed beside the measurement, so a second
+road width moves it with the road. **That closes the gate, not the question.**
+
+**The question.** Should somebody standing where a junction appears walk out of it, or be put at the
+nearest point of the pavement that still exists and take a step? Six metres is a visible jump, and
+the three ways to spend it: re-seat to the nearest point on the SAME side of the street (the opposite
+pavement is a road's width away and `nearestEdge` does not know which side it returned — the
+`nearest-lane-is-often-a-stub` shape); give the re-seated person a short walk rather than a
+teleport; or decide that two people in four hundred moving once per build is below the threshold
+anybody can see, and write that down.
+
+**Tests first.** A node test over `adopt()`: a person standing inside the footprint of a build that
+splits their street keeps the side of the road they were on. **Gate:** `lanes_dump`, whose reading
+already names the worst move and what it was judged against.
+
+**Why it is small.** One function, and the instrument exists. The choice between the three is
+**Q161**, and (c) — leave it, and write down that two people in four hundred moving once per build
+is below what anybody can see — is a legitimate answer that costs nothing.
+
 ## W6 — The model off the render thread (L) — the item as written
 
 **Goal.** The 38.5 ms (96), 43.6 ms (128 hilly) and 184.7 ms (256) that `createModel` blocks the
@@ -443,6 +480,6 @@ median / 20.3 best**, down from 98.3 warm, and B11 means the city no longer blin
 **W6c** — stable handles and in-place array patching, to get inside a 16.7 ms frame — is **Q156**
 and nothing is blocked on it.
 
-W1 → W2 → W3 → W4, with **W5** any time after W2 and **W6** when Kjell wants the stall gone (it is a gate repair, not a feature). W1 is safe
+W1 → W2 → W3 → W4, with **W5** any time after W2 and **W6** when Kjell wants the stall gone (it is a gate repair, not a feature). **W6d** is independent of all of it — one function in `pedestrians.js` — and its gate already reads the number. W1 is safe
 and cheap and makes W2 a swap rather than a rewrite; W3 is a measurement with an optional second
 half; W4 is the receipt for the whole plan.

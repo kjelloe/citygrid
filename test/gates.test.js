@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
-import { SETS, GATES, BUDGET_MS, gatesIn } from "../tools/gates.mjs";
+import { SETS, GATES, BUDGET_MS, gatesIn, devLogEntriesIn } from "../tools/gates.mjs";
 
 /**
  * Tools that are NOT gates: they produce something for a person to read or look
@@ -119,13 +119,42 @@ test("asking for a set that does not exist is refused, not silently empty", () =
   assert.throws(() => gatesIn("quik"), /unknown gate set/i);
 });
 
-test("the browser smokes are all in `quick`", () => {
+/**
+ * Browser smokes that are deliberately NOT in `quick`, with what makes each one
+ * too expensive for the set every slice runs.
+ *
+ * M2's rule is **split rather than raise**, and this is the other side of it: a
+ * smoke that costs as much as a soak makes `quick` a set nobody runs after a
+ * one-line change, which is worse than a set it is not in. The entry has to say
+ * what the cost IS, because "it felt slow" is how a budget stops meaning
+ * anything.
+ */
+const NOT_IN_QUICK = {
+  room_smoke: "five browsers against a real `ws` server and a room pumped for "
+    + "city years: 81 s of a 540 s budget, and `quick` measured 578 s with it in "
+    + "(X5 item 2, M9). It is in `room`, with the two soaks that need the same "
+    + "server.",
+};
+
+test("the browser smokes are all in `quick`, except the ones that cost a soak", () => {
   // M2's own definition. A smoke that drives the real page is the cheapest
-  // thing that can see a blank one (R2), so none of them belongs in a slow set.
+  // thing that can see a blank one (R2), so none of them belongs in a slow set
+  // — until one of them is not cheap.
   const smokes = gateFiles().filter((n) => n.endsWith("_smoke.mjs")).map((n) => n.replace(/\.mjs$/, ""));
   const quick = new Set(SETS.quick);
-  const late = smokes.filter((n) => !quick.has(n));
+  const late = smokes.filter((n) => !quick.has(n) && !Object.hasOwn(NOT_IN_QUICK, n));
   assert.deepEqual(late, [], `browser smokes outside "quick": ${late.join(", ")}`);
+});
+
+test("a smoke excused from `quick` is in some other set, and says why", () => {
+  // The two ways this list could lie: an excuse for a gate that is now in
+  // `quick` after all, and an excuse that took a gate out of every set — which
+  // is the thing "every gate file is in a set" exists to prevent.
+  for (const [name, why] of Object.entries(NOT_IN_QUICK)) {
+    assert.equal(SETS.quick.includes(name), false, `${name} is excused from "quick" and is in it`);
+    assert.ok(named().has(name), `${name} is excused from "quick" and no set runs it`);
+    assert.ok(why.length > 40, `${name} is excused without saying what it costs`);
+  }
 });
 
 test("README names the runner rather than a list that drifts", () => {
@@ -167,4 +196,27 @@ test("a tool that is not a gate is not expected to be in a set", () => {
         `${tool} can fail and no set runs it`);
     }
   }
+});
+
+// --- the commit discipline, as a check (X5 item 4) ---------------------------
+
+test("the runner counts dev-log entries the tree has and HEAD does not", () => {
+  // The reading itself cannot be checked by eye — nobody is going to count
+  // fourteen headings in a diff — so the counting is checked here instead. The
+  // three things it must not count are the file header, a heading the diff only
+  // carries as context, and a heading that was REMOVED.
+  const diff = [
+    "diff --git a/dev-log.md b/dev-log.md",
+    "--- a/dev-log.md",
+    "+++ b/dev-log.md",
+    "@@ -11,6 +11,20 @@",
+    " ## X4e — watching without playing (2026-10-08)",
+    "+## X5 — the review fixes after X4e (2026-10-08)",
+    "+",
+    "+Suite green twice.",
+    "+## S18c — the wall at two metres",
+    "-## a heading somebody deleted",
+  ].join("\n");
+  assert.equal(devLogEntriesIn(diff), 2);
+  assert.equal(devLogEntriesIn(""), 0);
 });

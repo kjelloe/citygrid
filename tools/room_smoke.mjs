@@ -254,13 +254,48 @@ try {
   });
   await b.page.mouse.move(spot.x, spot.y);
   await b.page.mouse.down();
+  // **While the hand is down, before the command is issued** (X5 item 1).
+  // `price()` runs `canDemolish` for the ghost, so the readout says `notOwner`
+  // while the stroke is still being painted — and that goes through
+  // `setPreview`, a SECOND call site for the same template. A fix that only
+  // filled the token after the release would have left the brace on the screen
+  // for as long as the player held the button.
+  //
+  // There is no HOVER preview to check: `tilesForStroke` returns nothing
+  // without `ui.start`, deliberately (a pointer that is only passing over the
+  // map must not paint a ghost), and this gate's first version asked for one
+  // and got an empty readout. The preview is the drag.
+  const painted = await until(b.page, "the stroke never previewed a refusal", () => {
+    const readout = document.querySelector("[data-result]");
+    return { ok: readout?.dataset.result === "notOwner", words: readout?.textContent ?? "" };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the ghost says whose ground it is while the hand is down, with no brace in it",
+    painted.ok === true && /Mayor 1\b/.test(painted.words ?? "")
+      && !/[{}]/.test(painted.words ?? ""), painted.why ?? painted.words);
   await b.page.mouse.up();
   const direct = await until(b.page, "the demolish was never refused", () => {
     const readout = document.querySelector("[data-result]");
-    return { ok: readout?.dataset.result === "notOwner", said: readout?.dataset.result ?? "nothing" };
+    return {
+      ok: readout?.dataset.result === "notOwner",
+      said: readout?.dataset.result ?? "nothing",
+      words: readout?.textContent ?? "",
+    };
   }, undefined, 15_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
   check("the direct path is refused — nothing you did not build is yours to destroy",
     direct.ok === true, direct.why ?? direct.said);
+  // **And the refusal says WHOSE** (X5 item 1). `result.notOwner` is the one
+  // `result.*` string with a token in it, `hud.js` renders every answer the
+  // reducer gives through `t(`result.${result}`)`, and `t()` leaves an unfilled
+  // token in the output by design — so `smoke-X3b-territory.png` showed the
+  // player *"That belongs to {player}"*. Two checks, because a name and the
+  // absence of a brace are different claims: a string could carry the owner's
+  // name and still trail an unfilled `{tiles}` from a later edit.
+  // Seat one joined without a name here, so the name it is called is the ROOM's
+  // fallback — which is the case worth driving: `seats.js` exists because a seat
+  // visible on the map must never be nameless in a panel that is about it.
+  check("the refusal names the owner rather than its own template",
+    /Mayor 1\b/.test(direct.words ?? ""), direct.words ?? "");
+  check("no brace reaches the screen", /[{}]/.test(direct.words ?? "") === false, direct.words ?? "");
 
   // **Filing goes through the HAND now** (X3b, 2026-10-08): the refusal above is
   // the door. Seat two's demolish was refused `notOwner`, so the game offered to

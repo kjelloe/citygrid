@@ -92,6 +92,7 @@
  "result.tooSteep": "For bratt å bygge på",
  "result.atCeiling": "Du har lånt så mye rangen din tillater",
  "result.notDerelict": "Det har ikke stått forfalt lenge nok",
+ "owner.somebodyElse": "noen andre",
  "refused.versionMismatch": "Dette rommet kjører en annen versjon av spillet — last inn siden på nytt for å bli med",
  "refused.buildMismatch": "Din utgave av spillet er utdatert — last inn siden på nytt for å bli med",
  "refused.roomFull": "Alle plassene i rommet er tatt",

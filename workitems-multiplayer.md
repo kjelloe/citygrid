@@ -55,6 +55,10 @@ M7's merge note updated — `main` is at era 26's release and the game is at era
   shape of this defect. → **X5** item 1.
 - **`room_smoke` is in two sets**, `quick` and `room`; a run of `all` pays its 41 s twice and M9's
   budget arithmetic counts it twice. One set, and `room` is the one.
+  *(Half wrong, read in the code 2026-10-08: `SETS.all` has deduped since the day it was written and
+  `gates.mjs --list` already prints each gate once with its sets joined, so `all` never paid twice.
+  The budget half is real — 81 s inside a 540 s `quick` that measured 578 — and that is why the move
+  happened. A review finding's premise is a claim too; the `review-round` skill now says so.)*
 - **The train is a box with a roof, and the car behind it is two slabs** (`smoke-T3-train-close.png`,
   re-taken after S17). S17's `vehicle-spec.js` has the cabin and the wheels; either the train shot
   is of the L2 pool or the kit is not reached on that page. Say which with the pool read-back the
@@ -65,7 +69,35 @@ blocked on anything but his eye and two minutes with the shots each names. S22's
 never moves across the sky — the key light's x and z are constants) is correct and complete; the
 reviewer adds one gate to it below.
 
-### X5 — Review fixes after X4e (S)
+### X5 — Review fixes after X4e (S) — **BUILT 2026-10-08** as `slice-X5`
+
+*As built, with what each item turned out to be. Three of the five had a cause other than the one
+the symptom named, and `gates.mjs all` found two more reds nobody had filed — `dev-log.md`, "X5 —
+the review fixes after X4e", has the whole account.*
+
+- **0.** The rail and the gate now read one list, `OVERLAY_CHOICES`, with `TERRITORY` defined beside
+  it in `overlays.js` and re-exported by `territory-model.js`; the gate asserts the **set
+  difference** and names the missing and extra members, because "14 buttons for 13 overlays" cannot
+  say which side is wrong. The territory overlay's −1 draw call was **not** the overlay: `settle()`
+  waits for posted commands and turning an overlay on posts none, so the read landed mid-rebake.
+  `drawn(page)` waits for two equal draw-call samples; all fourteen read 0 to 3, territory at 0.
+- **1.** `otherOwnerName` in `seats.js`, filled in one place in the HUD (`valuesFor`) because every
+  `result.*` string is rendered through two lines. On the commons it names the BUILDING's owner,
+  which is the second way `canDemolish` refuses. The **hover** is fixed too — `price()` runs
+  `canDemolish` for the ghost, so the preview was the earlier brace — and the preview now carries
+  the stroke's tile indices, since a count cannot answer whose ground this is. `test/i18n.test.js`
+  declares all 52 templated keys and who fills the 30 whose names are assembled; `room_smoke` checks
+  the name and the absence of a brace as two separate claims, before and after the press.
+- **2.** Done, and **the premise was a third wrong**: `all` never paid twice (`SETS.all` has always
+  deduped, `--list` has always printed each gate once). The budget half was real and
+  `test/gates.test.js`'s `NOT_IN_QUICK` now governs the exception.
+- **3.** The read-back reports posed count and triangles per pool against
+  `moverCost(moverSpec(kind, 1, DEFAULTS))` computed in node — **72** for both the carriage and the
+  locomotive, 12 for a slab.
+- **4.** `UNCOMMITTED: n dev-log entries are in the tree and not in HEAD`, with the counting in a
+  tested pure function because nobody checks a count of headings by eye.
+
+### X5 — Review fixes after X4e (S) — the item as written
 
 0. **The overlay button count** (above): one overlay model, one button each, the territory
    overlay drawn once; `ui_smoke` green on the committed tree before the slices after it land.
@@ -857,7 +889,13 @@ singleplayer playtest was.
 **Everything in this lane is built except four items.** As of 2026-10-08, in the order it happened:
 
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
-~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~.
+~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~ →
+~~X5~~ (the review fixes, and two reds `all` found that the review had not).
+
+**And it is all in the history now.** The whole lane was uncommitted on 2026-10-08 — seventy-one
+files, two days, thirty dev-log entries behind `1f13ee7`. Twenty-two commits, one per slice in the
+order the entries were written; `dev-log.md`, "The two days, committed", says how the lines were
+attributed and what a reconstructed history cannot claim.
 
 A125 held everything player-facing behind Kjell's singleplayer playtest and **A131 lifted it on
 2026-10-07**. Ruling 003 did not move: singleplayer still opens no socket and `offline_smoke` still
@@ -883,6 +921,15 @@ after `abandonYears` the ground goes to the commons. A room nobody is in stops p
 
 Wave 6 (modes, seasons, scale to sixteen, operations) is not in this file and does not start until
 the release gate above is met. W6's second half runs beside all of it — different files.
+
+### What the gates say about this lane, 2026-10-08
+
+`gates.mjs all` on the committed tree: **42 gates, 3,005 s of a 3,420 s budget.** Nothing in this
+lane was red. The four that were: two the X4 review had predicted (`ui_smoke`, both X3b's), one a
+constant tuned to a gate two eras ago (`lanes_dump`), one a berth search that ranked by water and
+never asked the reducer (`harbour_shots`) — and a fifth that was **my own contention**, three
+browser gates and a node suite running beside the gate run, which is M9's finding happening to the
+person who wrote it down.
 
 ### The release gate, measured so far
 

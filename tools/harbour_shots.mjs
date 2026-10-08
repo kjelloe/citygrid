@@ -20,6 +20,13 @@ import { setConfig, DEFAULTS } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
 import { createBoats } from "../client/life/boats.js";
 import { playedCity, standBack, describe, clearanceAt } from "./lib/aim.mjs";
+// The reducer, in node, to ASK whether a berth can take a port rather than to
+// guess from the ground (X5). `lib/aim.mjs` has already imported every
+// side-effect module the engine needs, which is what makes `apply` work here.
+import { apply } from "../engine/reducer.js";
+import { copyState } from "../engine/state.js";
+import { CMD_PLACE_BUILDING } from "../engine/commands.js";
+import { RESULT } from "../shared/protocol.js";
 
 const SEED = 1003;
 const SIZE = 64;
@@ -64,7 +71,7 @@ const FIND = `(state) => {
   }
 
   // A clear 3×2 on that body's shore, well away from the other two buildings.
-  let best;
+  const candidates = [];
   for (let y = 2; y < H - 3; y += 1) {
     for (let x = 2; x < W - 4; x += 1) {
       if (Math.abs(x - marina.x) + Math.abs(y - marina.y) < 6) continue;
@@ -94,11 +101,20 @@ const FIND = `(state) => {
       for (let dy = -1; dy <= 2; dy += 1) for (let dx = -1; dx <= 3; dx += 1) {
         if (body.has((y + dy) * W + x + dx)) beside += 1;
       }
-      if (beside >= 4 && (!best || beside > best.water)) best = { x, y, water: beside };
+      if (beside >= 4) candidates.push({ x, y, water: beside });
     }
   }
+  // **Several, ranked** (X5). This returned only the best-watered berth, and
+  // the caller built on it without asking whether it COULD: era 29's city moved
+  // the best one to 5,13 and the reducer answered \`tooSteep\` — a shore with a
+  // fine frontage on ground a port may not stand on. Water is a proxy for
+  // buildability and the reducer is the authority, so the choosing happens in
+  // node now, against the rule, and this hands over everything worth trying.
+  candidates.sort((a, b) => b.water - a.water);
+  const best = candidates[0];
   return { marina: [marina.x, marina.y], ferry: [ferry.x, ferry.y],
-           port: best ? [best.x, best.y] : undefined, berth: best ? best.water : 0, body: body.size };
+           port: best ? [best.x, best.y] : undefined, berth: best ? best.water : 0,
+           berths: candidates.slice(0, 12).map((c) => [c.x, c.y, c.water]), body: body.size };
 }`;
 
 const COUNT = `(state, view) => ({
@@ -122,7 +138,27 @@ const probe = await shoot({ out: "reports/.harbour-probe.png", seed: SEED, years
 const at = probe.answer;
 if (!at) throw new Error(`no marina and terminal in seed ${SEED} after ${YEARS} years`);
 console.log(`marina ${at.marina}, terminal ${at.ferry} on ${at.body} tiles of water, `
-  + `a berth for a port at ${at.port ?? "nowhere"} with ${at.berth} tiles of water round it`);
+  + `${(at.berths ?? []).length} candidate berths, the best-watered at ${at.port ?? "nowhere"} `
+  + `with ${at.berth} tiles of water round it`);
+
+// **Which of them the reducer will actually take.** Asked here, on a copy of
+// the same city the page builds, so the refusal is the authority's own answer
+// and the shot below cannot photograph an empty bank (X5; the same lesson as
+// ranking route candidates by routing rather than by distance). Every refusal
+// is printed: a search that silently settles for nothing is a gate that says
+// "no shore in this city" about a city with eleven shores.
+let port;
+const refused = [];
+for (const [x, y, water] of at.berths ?? []) {
+  const trial = copyState(state);
+  trial.players[0].treasury = 9000000;
+  const result = apply(trial, { type: CMD_PLACE_BUILDING, actor: 1, def: "freightPort", x, y }).result;
+  if (result === RESULT.OK) { port = [x, y]; console.log(`                a port stands at ${x},${y} `
+    + `with ${water} tiles of water round it${refused.length > 0 ? `, after ${refused.join(", ")}` : ""}`); break; }
+  refused.push(`${x},${y}:${result}`);
+}
+if (!port) console.log(`                no berth took a port: ${refused.join(", ") || "none offered"}`);
+at.port = port;
 
 // The moorings. `life` on and enough frames for the sailing boats to have
 // moved off their starting tiles, so the frame is of a harbour and not of a
@@ -233,7 +269,8 @@ if (at.port) {
     problems.push(`${out}: the port has no ship on a route`);
   }
 } else {
-  problems.push("no shore in this city could take a freight port, so its picture was never taken");
+  problems.push("no shore in this city could take a freight port, so its picture was never taken "
+    + `(${(at.berths ?? []).length} berths tried: ${refused.join(", ") || "none offered"})`);
 }
 
 if (problems.length > 0) {

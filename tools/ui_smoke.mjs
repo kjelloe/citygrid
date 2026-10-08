@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { settle } from "./lib/settle.mjs";
 import { createHash } from "node:crypto";
 import { SWEEP } from "../client/debug/perf-sweep.js";
-import { OVERLAY_NAMES } from "../client/ui/overlays.js";
+import { OVERLAY_CHOICES } from "../client/ui/overlays.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = {
@@ -150,6 +150,28 @@ const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
+/** Waits until the renderer is drawing the same number of things twice running.
+ *
+ * `settle()` waits for the SIMULATION — commands posted and unanswered — and
+ * turning an overlay on posts nothing. What it starts is a rebake: the chunk
+ * baker runs one phase a frame, `territory` changes every chunk's hash, and the
+ * chunks come back one at a time. A draw-call count read in the middle of that
+ * is a count of a city with a chunk missing, which is how the territory overlay
+ * came to report ONE FEWER draw call than the frame with no overlay at all.
+ *
+ * Not a sleep: it returns as soon as two consecutive samples agree, and throws
+ * if the renderer never stops moving — which would itself be the finding.
+ */
+async function drawn(page, timeout = 8000) {
+  await page.evaluate(() => { delete globalThis.__lastCalls; });
+  await page.waitForFunction(() => {
+    const now = globalThis.CITY?.renderer?.renderer?.info?.render?.calls ?? 0;
+    const was = globalThis.__lastCalls;
+    globalThis.__lastCalls = now;
+    return was !== undefined && was === now;
+  }, undefined, { timeout, polling: 120 });
+}
+
 await mkdir(join(root, "reports", "overlays"), { recursive: true });
 
 try {
@@ -462,11 +484,20 @@ try {
   await page.click("#rail-overlays");
   const overlayNames = await page.$$eval(".hud-overlays button", (nodes) =>
     nodes.map((n) => n.dataset.overlay).filter((n) => n !== "auto"));
-  // The COUNT comes from the model, not from a literal here: a gate with its
-  // own copy of a number will one day measure a different game, and this one
-  // went red the moment T6 added two overlays rather than catching anything.
-  check("every overlay the model offers has a button",
-    overlayNames.length === OVERLAY_NAMES.length, `${overlayNames.length} buttons for ${OVERLAY_NAMES.length} overlays`);
+  // The LIST comes from the model, not a literal here and not a count either: a
+  // gate with its own copy of a number will one day measure a different game,
+  // and a gate that compares two LENGTHS cannot say which of the two is wrong.
+  // X3b added `territory`, which is a choice the player has and deliberately
+  // not a row in `OVERLAYS` — it colours buildings by owner instead of banding
+  // every tile — so the count went 13 against 14 and the gate's message could
+  // only say so. `OVERLAY_CHOICES` is the one list both the rail and this read.
+  const missing = OVERLAY_CHOICES.filter((name) => !overlayNames.includes(name));
+  const extra = overlayNames.filter((name) => !OVERLAY_CHOICES.includes(name));
+  check("every overlay the model offers has a button, and no button offers more",
+    missing.length === 0 && extra.length === 0,
+    `${overlayNames.length} buttons for ${OVERLAY_CHOICES.length} choices`
+    + `${missing.length > 0 ? `; no button for ${missing.join(", ")}` : ""}`
+    + `${extra.length > 0 ? `; a button for ${extra.join(", ")}` : ""}`);
 
   // "Auto" is selected by default (P29), so the baseline has to switch it off —
   // otherwise the no-overlay frame is not a no-overlay frame.
@@ -481,6 +512,7 @@ try {
   for (const name of ["", ...overlayNames]) {
     if (name) await page.click(`.hud-overlays button[data-overlay="${name}"]`);
     await page.waitForTimeout(140);
+    await drawn(page);
     const stats = await page.evaluate(() => ({
       calls: globalThis.CITY.renderer.renderer.info.render.calls,
       triangles: globalThis.CITY.renderer.renderer.info.render.triangles,
@@ -496,9 +528,19 @@ try {
       // One pass: the overlay adds a bounded, constant number of draw calls —
       // the tint plus three mark pools — whichever overlay it is. A per-tile
       // or per-band mesh would show up here as a number that grows.
+      // One pass, as a MAGNITUDE. The claim is that an overlay costs a bounded,
+      // constant number of draw calls whichever one it is — a per-tile or
+      // per-band mesh would show up as a number that grows — and `>= 0` read
+      // that claim as a cost, which it never was: an overlay that turned a pass
+      // OFF would have satisfied the old bound by failing it.
+      //
+      // `territory` read −1 before `drawn()` was added above, and reads **0**
+      // with it: the −1 was a frame counted while the rebake was still one
+      // chunk behind, not a pass the overlay removes. Measured 2026-10-08,
+      // era 29, all fourteen between 0 and 3.
       const added = stats.calls - baselineCalls;
-      check(`the ${name} overlay renders in one pass`, added >= 0 && added <= 4,
-        `${added} extra draw calls`);
+      check(`the ${name} overlay renders in one pass`, Math.abs(added) <= 4,
+        `${added} draw calls against the no-overlay frame`);
       await writeFile(join(root, "reports", "overlays", `${name}.png`), shot);
       shots.set(name, digest);
       await page.click(`.hud-overlays button[data-overlay="${name}"]`);  // off

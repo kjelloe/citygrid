@@ -447,8 +447,20 @@ first, since a probe that cannot see a quest fire would report zeros either way.
 
 **Where this lane stands, 2026-10-08.** D1, D4, D6, D7 and D8 are built, with the desktop halves of
 D2 and D5. **Everything still open in this lane needs a phone** — D3 and the rest of D5 — except
-**D8b**, which is **Q158**: nothing in `tools/` ever loads the quest catalogue, so every era number
-in `reports/` is a city where no quest can fire while a player's has 21.
+**D8b**, which was **Q158** and is now **A136**: nothing in `tools/` ever loads the quest catalogue,
+so every era number in `reports/` is a city where no quest can fire while a player's has 21. It is
+answered and scheduled — it folds into L2's balance era with the bulldoze price (A133), three arms
+and one fixture re-pin naming both.
+
+**One discipline this lane owns, broken by the person who wrote it (2026-10-08).** "A set measured
+beside another measures the machine" is on `RELEASE.md`'s gate table in those words. During a
+`gates.mjs all` run I ran a worktree's `ui_smoke`, `client_smoke` and `reach_smoke`, a re-run of
+`harbour_shots` and a 1,956-test node suite beside it, to save wall clock. `motion_shots` reported
+**two frozen shots differ** — same stats, different pixels — and run alone afterwards it is
+byte-identical twice. The same contention makes `sim_sweep`'s 604 s from that run unusable as a
+budget. **A gate run is exclusive**: nothing else that renders or forks runs beside it, and a timing
+or determinism red from a contended run is not a finding until it has been seen alone. This is M9's
+own lesson one level up, and it is cheap to obey and expensive to forget.
 
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.

@@ -214,9 +214,10 @@ export async function startGame(root, given = {}) {
       // toast — it is the offer to ask. The toast still happens, because the
       // offer is declined by ignoring it and the player should know why the
       // ground did not go.
-      hud.setResult(result);
-      if (result === RESULT.NOT_OWNER && command?.type === CMD_BULLDOZE && command.runs) {
-        hud.offerAsk(decodeRuns(command.runs), command.runs);
+      const tiles = command?.runs ? decodeRuns(command.runs) : undefined;
+      hud.setResult(result, tiles);
+      if (result === RESULT.NOT_OWNER && command?.type === CMD_BULLDOZE && tiles) {
+        hud.offerAsk(tiles, command.runs);
       }
       audio.play(cueForResult(result));
     },

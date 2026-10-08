@@ -13239,3 +13239,243 @@ so there is nothing in the city to count. It is gone, and the wire census's `S2C
 says that the count is one of the two things that message is for — the accessor comes back with it.
 Shipping a dead export the same day as writing the census that forbids them would have been a poor
 joke.
+
+## The two days, committed (2026-10-08)
+
+The X4 review's most expensive finding was not in the code: **71 files, 5,238 inserted lines, three
+fixture re-pins, a `SAVE_VERSION` bump and a `PROTOCOL_VERSION` bump, all uncommitted**, with the
+last commit `1f13ee7` (B14) two days behind and the dev-log carrying thirty entries after it. §0's
+rule is one commit per slice, and the reason is not tidiness — a bad `git checkout --`, a crash or a
+reviewer's own worktree habit loses the lot, and `main` cannot be fast-forwarded to a tree that is
+not in the history.
+
+**Twenty-two commits, in the order the dev-log entries were written.** `tests:` and `docs:` and
+`gates:` for the rounds, `slice-<id>` for the slices: X2a, X1c, X1d, X2b, X2c, X3b, X4a, M10, X4b,
+X4c, X4d, X4e, and the architect pass last. X3b's fixture re-pin is in X3b's commit, where its `why`
+says it is.
+
+**How the lines were attributed.** The tree is one final state, so the split was reconstructed: each
+block of changed lines went to the slice its own comments CITE, which is what this project's comment
+style is for (`// X4b`, `// ruling 035`). An untagged block inherits the nearest tagged block above
+it, then the file's default; `data/i18n/*.json` has no comments, so its keys were mapped by prefix;
+`dev-log.md` was split by the line ranges of its own headings. The script printed the whole
+attribution for a read-through before anything was committed, and the result was verified the only
+way that matters: **a backup commit of the working tree, and `git diff` against it empty afterwards**
+with the worktree clean. 303 commits now, from 281.
+
+**One deviation, and it is a real limitation.** X3b's eight dev-log entries are ONE commit, not
+eight. They edit the same files — `hud.js`, `game.js`, `engine/requests.js`, the three fixtures —
+and separating them would have invented an order the tree cannot show. Reconstruction is
+approximate by nature: a block citing both X1c and X4e went to X1c, where the block was born, and
+some of X4e's later edits to it rode along. Every commit's message and dev-log entry describe their
+slice correctly, and no intermediate commit is claimed to have been green at the time, because none
+of them ever existed.
+
+The cheapest version of this check now runs on every gate run: `tools/gates.mjs` prints
+`UNCOMMITTED: n dev-log entries are in the tree and not in HEAD` when more than one is. One entry
+ahead is the slice in flight; two is a habit, and a habit nobody could see.
+
+## X5 — the review fixes after X4e, and four reds `all` found on its own (2026-10-08)
+
+`node tools/gates.mjs all` on the committed tree: **42 gates, 3,005 s of a 3,420 s budget, four
+red.** Two of them the X4 review had predicted; two it had not. Each one is below with what it
+actually was, because in three of the four cases the cause was not what the symptom said.
+
+**Item 0 — fourteen buttons for thirteen overlays.** `ui_smoke` compared the length of the overlay
+rail with the length of `OVERLAY_NAMES`, and X3b had put `territory` in the rail and deliberately
+not in `OVERLAYS` — it colours buildings by owner rather than banding every tile, so it has no
+`band()` to write. The gate could only report *"14 buttons for 13 overlays"*, which cannot say
+whether a button exists for an overlay the model does not list or a row was added twice; the review
+guessed the second. **`OVERLAY_CHOICES` is now the one list** the HUD builds buttons from and the
+gate asserts against, with `TERRITORY` defined beside it and re-exported by `territory-model.js` so
+there is still one spelling of the string — and the gate asserts the **set difference**, naming the
+missing and the extra members. `test/overlays.test.js` pins that territory is a choice and not a row.
+
+**Item 0, the other half — the territory overlay read MINUS ONE draw call.** The bound was
+`added >= 0 && added <= 4`, which reads a claim about boundedness as a claim about cost. But the
+negative number was not the overlay: `settle()` waits for `CITY.pending` — commands posted and
+unanswered — and **turning an overlay on posts no command**. What it starts is a rebake: territory
+changes every chunk's hash and the baker runs one phase a frame, so the read landed on a frame with
+a chunk missing. A `drawn(page)` that waits for two consecutive draw-call samples to agree, and all
+fourteen overlays now read **0 to 3**, territory among them at **0**. The comment that first went
+into the gate claimed a bucket merge instead; the measurement says otherwise and the comment was
+corrected rather than kept.
+
+**Item 1 — a refusal showed the player its own template.** `result.notOwner` is *"That belongs to
+{player}"*, `hud.js` renders every answer the reducer gives through ``t(`result.${result}`)`` with
+no values, and `t()` leaves an unfilled token in the output by design. `otherOwnerName(state, tiles,
+actor)` in `seats.js` names the first tile in the stroke that is not yours — **and on the commons
+names the BUILDING's owner**, because `canDemolish` refuses on both and a name taken from the tile
+alone would leave the brace on screen in exactly the case §25's civil channel exists for. The HUD
+fills it in one place (`valuesFor`), since every `result.*` string in the game is rendered through
+two lines and a caller that had to know which codes take which values is a caller that will one day
+not know.
+
+**And the hover, which is the moment a player sees first.** `price()` runs `canDemolish` for the
+ghost, so the readout says `notOwner` while the player is still deciding — a second call site for
+the same template. The preview now carries `at`, the stroke's tile indices, because `tiles` is a
+count and no count can answer whose ground this is. `room_smoke` checks both moments, and checks
+them as two claims: the line names *Mayor 1*, and no brace reaches the screen.
+
+**The census that would have caught it.** `test/i18n.test.js` now walks the **52 templated keys**
+and splits them: one scan for a key called by its own name with nothing to fill it (none, and it
+stays that way), and a declaration for the **30** whose name is assembled or carried by a model —
+`textKey`, `labelKey`, `verdictKey`, `result.<code>` — with the tokens their caller fills, plus the
+direction that rots (a declared key that becomes a named call is a stale declaration). Writing the
+line is what reveals there is no caller. Planted by deleting `result.notOwner`: red.
+
+**Item 2 — `room_smoke` in one set, and a third of the finding was wrong.** `SETS.all` has deduped
+since the day it was written and `--list` already printed each gate once with its sets joined, so
+`all` never paid for it twice; the dedupe comment now says so. The budget half was real — 81 s
+inside a `quick` that measured 578 s of 540 — and M2's rule is split rather than raise, so it is in
+`room` with the two soaks that need the same server. `test/gates.test.js` grew `NOT_IN_QUICK`: a
+browser smoke excused from `quick` must say what it costs and must be in some other set.
+
+**Item 3 — the train close-up names its pool.** The review read `smoke-T3-train-close.png` as "a box
+with a roof, and the car behind it is two slabs" and could not say whether S17's kit was reached.
+The read-back reports, per pool, how many instances were posed and how many triangles their geometry
+has, judged against `moverCost(moverSpec(kind, 1, DEFAULTS))` computed in node from the same module
+the renderer builds from: **72 for both the carriage and the locomotive** (two bogies, a body, a
+roof and a window band a side; the engine swaps a window band for a cab). A slab is 12. The question
+stops being about a screenshot.
+
+**Item 4 — the commit discipline, as a check.** `gates.mjs` prints `UNCOMMITTED: n dev-log entries
+are in the tree and not in HEAD` when more than one is. The counting is `devLogEntriesIn(diff)` and
+it is tested, because nobody verifies a count of headings by eye: a diff carrying a context heading,
+a `+++` header and a deleted heading counts **2**, not 5.
+
+**The red `all` found that nobody had filed: `lanes_dump`.** A one-tile build that splits a street
+re-seated a pedestrian **6.2 m** against a threshold of `6`. The threshold was chosen on 2026-10-04
+against a 1.3 m reading, when the split landed at tile 28,16; B14 moved what the deputy paves, the
+split moved to 31,7, and the gate went red for a city behaving exactly as the gate's own comment
+described — *a constant tuned to a gate*, with the next era arriving on schedule. The bound is now
+derived from the geometry it protects: a junction's half-diagonal plus half the pavement,
+`hypot(8, 8) / 2 + 2.5 / 2` = **6.9 m**, printed beside the reading (`6.2 m of 6.9 allowed`). A
+second road width moves it with the road. **That closes the gate and not the question** — whether
+somebody should step six metres when a junction appears is filed as **W6d**, with the three ways to
+spend it.
+
+**The second one nobody had filed: `harbour_shots`.** `freightPort:tooSteep`, and two failures from
+one cause — "the port was not built" and "the port has no ship on a route", the second of which is
+about the picture rather than the premise. The berth search tests the terrain, the buildings, the
+roads and the zoning, positively, with a comment about the marsh it forgot the first time — and it
+does not test the SLOPE, because `tooSteep` came later. It had ranked candidates by **water**, which
+is a proxy for buildability, and never asked the authority. It returns twelve ranked berths now and
+the choosing happens in node against the reducer itself — `copyState`, `apply`, keep the first `OK`,
+print every refusal on the way:
+
+```
+marina 16,36, terminal 14,36 on 785 tiles of water, 4 candidate berths, the best-watered at 5,13
+                a port stands at 40,30 with 5 tiles of water round it, after 5,13:tooSteep
+reports/smoke-T4-port.png ok=true {... "routes":["ferry","cargo"], "placed":"freightPort:ok"}
+```
+
+Four candidate berths in that whole city, which is worth knowing on its own.
+
+**The fourth red was mine.** `motion_shots` reported *"two frozen shots differ"* — same stats
+(rotor 1, flag 2, 90 px, full LOD), different pixels. Run alone afterwards it is
+`2ded28a536f0188a` twice, **identical**. I had been running a worktree's `ui_smoke`, `client_smoke`,
+`reach_smoke`, a re-run of `harbour_shots` and the node suite beside the gate run to save wall
+clock, which is M9's own finding — *thirteen gates and two browsers fought over twenty cores* — and
+this time I caused it. The same contention makes **`sim_sweep`'s 604 s unusable as a budget**: it
+ran beside a 1,956-test suite. The `sim` set's re-measurement belongs to M9, on a quiet machine, and
+M9's note now says so rather than carrying my number.
+
+**What was not changed.** The `6` in `lanes_dump` was not raised to 7; the territory draw-call bound
+was not loosened to admit a negative without finding out why it was negative; and `room_smoke` was
+not deleted from `quick` without a tested rule saying when that is allowed.
+
+**And item 3's answer is that the picture was right.** The read-back on the close shot:
+
+```
+pools.train: 2 posed, 72 triangles each of 72 the carriage kit is made of
+pools.loco:  1 posed, 72 triangles each of 72 the locomotive kit is made of
+```
+
+So S17's kit IS reached, and "a box with a roof, and the car behind it is two slabs" is what a
+72-triangle carriage looks like from where that camera stands: the body and the roof read as two
+slabs, the bogies are under it and the window band is a thin slab proud of the side. The shot stands
+where it is, and the question is closed by a number rather than by looking again.
+
+**One of my own checks was wrong about the game, and the gate said so.** The first version asked for
+the refusal on HOVER. There is no hover preview: `tilesForStroke()` returns nothing without
+`ui.start`, deliberately — a pointer only passing over the map must not paint a ghost — so the
+readout was empty and `room_smoke` reported *"the hover never previewed a refusal"*. The preview IS
+the drag, so the check moved inside the stroke, between the press and the release, which is the
+moment it was always about. It reads:
+
+```
+ok  the ghost says whose ground it is while the hand is down, with no brace in it
+      (That belongs to Mayor 1 · §0)
+ok  the refusal names the owner rather than its own template   (That belongs to Mayor 1)
+ok  no brace reaches the screen                                (That belongs to Mayor 1)
+```
+
+The `· §0` on the first line is A133 showing through: a bulldoze costs nothing at this difficulty,
+which is L2's whole item, visible on a gate's status line.
+
+**Measured after the fixes, one set at a time on a quiet machine:**
+
+| Set | Gates | Time | Budget | |
+|---|---|---|---|---|
+| `quick` | 12 | **502 s** | 540 s | inside it for the first time in three re-measurements, and the budget did not move — `room_smoke` left the set |
+| `room` | 3 | **220 s** | 600 s | `room_smoke` 114 s with its three new checks, `room_churn` 58 s, `room_soak` 48 s |
+| `transport` | 4 | **268 s** | 300 s | `rail_shots` 87 s with the pool read-back, `harbour_shots` 108 s choosing its berth through the reducer |
+| `lanes` | 1 | **39 s** | 360 s | and 212 s when it was last measured — this run had the machine to itself |
+
+Suite **1,956 tests, 1,953 pass, 0 fail, 3 skipped, green twice.** And the warning works: the second
+set onwards printed `UNCOMMITTED: 2 dev-log entries are in the tree and not in HEAD`, which is this
+entry and the one above it.
+
+## Era 29's report disagreed with itself (2026-10-08)
+
+`gates.mjs all` rewrote `reports/balance-era29.json` and **the numbers moved** — relaxed-64's
+population median from 1,688 to 1,811, and every one of the four configurations with it. A sweep is
+deterministic (fixed seeds, `500000 + game`, 200 games, 25 years), so a moved sweep means moved
+behaviour, and CLAUDE.md's rule is that **a change to what the deputy DECIDES voids every number in
+the project**. Three engine commits had landed since the report: X3b, X4b and X4c.
+
+**The engine had not changed.** `tools/soak.mjs` in a worktree at `1f13ee7` (B14, the report's own
+commit) and at `HEAD`: five cities, forty years each, **five identical hashes** —
+`a81ec728f2afaa94`, `185f3962ba6a8231`, `abaa9f6583294b6a`, `1843e3a311c7e48b`,
+`93441790c829d31e`. X4b's change to `engine/deputy.js` passes a second argument to a sink that every
+existing caller ignores; X4c's `abandonPass` only touches a seat whose status is `PLAYER_REGENT`,
+which no sweep city has; X3b's `resolvedBy` is a hashed field with no behaviour.
+
+**What had changed was the report, and only half of it.** `sim_sweep` writes the `.md` and the
+`.json` from one run, two `writeFile` calls apart. The fresh run's `.md` came out **byte-identical
+to the committed one** and the `.json` did not — so the committed pair had disagreed with each
+other, on every configuration, since `1f13ee7`:
+
+| config | the table said | the data said |
+|---|---|---|
+| relaxed-64 | 1514 / 1811 / 2245 | 1487 / 1688 / 2039 |
+| steady-64 | 1494 / **1710** / 2186 | 1487 / **1602** / 1981 |
+| demanding-64 | 1427 / 1545 / 1827 | 1394 / 1551 / 1702 |
+| steady-64-nodisasters | 1476 / 1572 / 1978 | 1487 / 1565 / 1979 |
+
+**And steady-64's two numbers are B14's two arms.** 1,602 is what the item's own analysis calls era
+28 and 1,710 is era 29 — the sentence *"era 29 bought 7% more people (1,602 → 1,710)"* is in A135.
+So the `.json` committed under era 29's name is the measurement from **before** the rule changed.
+The era is bumped before the measuring arm runs, so the filename cannot tell them apart, and the
+`.json` was written by the arm that ran first.
+
+**And the sweep re-run at B14 itself says the same thing.** 200 games × 25 years in a worktree at
+`1f13ee7`: relaxed-64 **1514 / 1811 / 2245**, the same triple the fresh run at HEAD produced and the
+same one the committed `.md` carries. The sweep is identical at both commits; only the committed
+`.json` was from somewhere else.
+
+**Nothing the project quotes was wrong.** `RELEASE.md`, A135, `workitems-behaviour.md` and
+`reports/balance-era29.md` all carry the prose half, which was the after-arm — right by luck for two
+days, since nothing said the two files are one measurement.
+
+**Now something does.** `test/docs.test.js`: for every `reports/balance-era<N>.json`, the population
+triple of every configuration must equal the row in the matching `.md`. All **29** pairs pass; era
+29 was the only one that ever disagreed. Planted by restoring the committed `.json`: it names all
+four configurations and both numbers for each.
+
+**What this is an instance of.** A measurement written in two places by one run, with nothing
+comparing them — the `VARIANTS` shape, and the same shape as hashed fields being listed in
+`writeState` and `HASHED_FIELDS` with a test that they agree. The lesson for the next report is to
+write one file and derive the other, or to check them against each other; this project has now paid
+for the second one.

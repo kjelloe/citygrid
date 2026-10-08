@@ -108,10 +108,16 @@ export const GATES = {
 /** What a slice runs. `quick` after any change, `render` for a renderer slice,
  * `sim` for a gameplay one — the slice-workflow skill's step 5 names these. */
 export const SETS = {
+  // **`room_smoke` is NOT here** (X5 item 2). It was, by M2's own rule that a
+  // smoke driving the real page is the cheapest thing that can see a blank one
+  // — and it is not cheap: five browsers, a real `ws` server and a room pumped
+  // for city years is 81 s, which took `quick` to 578 s of a 540 s budget. M2's
+  // rule is split rather than raise, and this is the split. It is in `room`,
+  // beside the two soaks that need the same server.
   quick: [
     "a11y_smoke", "client_smoke", "lobby_smoke", "offline_smoke", "play_smoke",
     "reach_smoke", "save_smoke", "serve_smoke", "ui_smoke", "update_smoke",
-    "worker_smoke", "mvp_acceptance", "room_smoke",
+    "worker_smoke", "mvp_acceptance",
   ],
   // `budget_gate` moved here from `quick` in K1 (Q79 → A64). It is a renderer
   // MEASUREMENT — three tiers, two projections, four spans, and since D8 a
@@ -163,15 +169,16 @@ export const SETS = {
   // it had a gate because a set that appears with its first gate is a set whose
   // budget was chosen to fit that gate — and because `gates.mjs --list` is
   // where somebody looks to find out what this project can check.
-  // `room_smoke` is in `quick` as well, by M2's own rule — a smoke that drives
-  // the real page is the cheapest thing that can see a blank one, so none of
-  // them belongs only in a slow set. It is here too because `--list` is where
-  // somebody looks to find out what can be checked about a room, and `all`
-  // dedupes below.
+  //
+  // `room_smoke` is here and nowhere else since X5: see `quick` above for why
+  // it left, and `test/gates.test.js`'s `NOT_IN_QUICK` for the rule that keeps
+  // the exception honest.
   room: ["room_soak", "room_churn", "room_smoke"],
 };
-// Deduped: `room_smoke` is deliberately in two sets (see `room` above), and a
-// gate that ran twice in `all` would pay for itself twice and report two rows.
+// Deduped because a gate in two sets would pay for itself twice in `all` and
+// report two rows. No gate is in two sets today — the X4 review read the code
+// as paying twice and it never did — but the set list is a thing people add to,
+// and this is one line.
 SETS.all = [...new Set([...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim,
   ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room])];
 
@@ -297,6 +304,38 @@ async function browsersAlive() {
   }
 }
 
+/** How many dev-log entries the working tree has that `HEAD` does not (X5
+ * item 4).
+ *
+ * The most expensive finding of the X4 review was not in the code: seventy-one
+ * files and fourteen dev-log entries were uncommitted, two days after the last
+ * commit, and `main` cannot be fast-forwarded to a tree that is not in the
+ * history. One entry ahead is the slice in flight; two is a habit, and a habit
+ * nobody could see — so the runner says so, every time, in the place a slice
+ * already looks.
+ *
+ * Not a failure. The gates answer questions about the game, and this is a
+ * question about the repository — but the gate run is where somebody is
+ * already reading output, which is the whole reason it is cheap enough to be
+ * worth having.
+ */
+export function devLogEntriesIn(diff) {
+  // A heading ADDED, which in a diff is a `+` and a `## `. `+++ b/dev-log.md`
+  // is not one, and neither is a heading the diff only quotes as context — the
+  // instrument has to be the thing that is checked here, because the reading it
+  // produces is one nobody can verify by eye.
+  return diff.split("\n").filter((line) => line.startsWith("+## ")).length;
+}
+
+async function devLogEntriesAhead() {
+  try {
+    const { stdout } = await run("git", ["diff", "HEAD", "--", "dev-log.md"]);
+    return devLogEntriesIn(stdout);
+  } catch {
+    return 0;   // not a git worktree, or no dev-log: not this tool's business
+  }
+}
+
 function runGate(name) {
   const gate = GATES[name];
   return new Promise((resolve) => {
@@ -333,7 +372,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   const names = gatesIn(set);
   const before = await browsersAlive();
-  console.log(`gates: ${set} — ${names.length} of them, budget ${(BUDGET_MS[set] / 60000).toFixed(0)} min\n`);
+  console.log(`gates: ${set} — ${names.length} of them, budget ${(BUDGET_MS[set] / 60000).toFixed(0)} min`);
+  const ahead = await devLogEntriesAhead();
+  if (ahead > 1) {
+    console.log(`UNCOMMITTED: ${ahead} dev-log entries are in the tree and not in HEAD — `
+      + `one commit per slice (CLAUDE.md §the slice ritual), or a bad checkout loses all of them`);
+  }
+  console.log("");
 
   const logs = join(root, "reports", "gates");
   await mkdir(logs, { recursive: true });

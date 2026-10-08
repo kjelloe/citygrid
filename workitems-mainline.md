@@ -327,9 +327,26 @@ later run of the same code, so it is flaky rather than broken: the catalogues ar
 wait for the effect, or assert it over a span you control — and `worker_smoke`'s one-tick arms
 (202 vs 201) are a third of the same kind.
 
-**Done when** `quick` fits its stated budget on this machine twice running, the budget is a
-measurement with a date and a per-gate table rather than a prediction, and neither of those two
-checks depends on when a frame happened to land.
+**One of the four is already paid for (X5 item 2, 2026-10-08).** `room_smoke` left `quick` for
+`room`: five browsers against a real `ws` server and a room pumped for city years is **81 s**, and
+M2's rule is split rather than raise. That takes the set's measured 578 s to about **497 s of 540**
+— which is the first time in three re-measurements that `quick` has been inside its budget without
+the budget moving. `test/gates.test.js`'s `NOT_IN_QUICK` keeps the exception honest: a smoke excused
+from `quick` must say what it costs and must be in some other set.
+
+**And `sim` may be the set over budget — on a number that must not be used.** In the same `all`
+run `sim_sweep` read **604 s** against the 439 s M2 measured, which would put `sim` at about 905 s
+of an 845 s budget. **That reading is contended**: a 1,956-test node suite was running beside it,
+and a browser gate later in the same run went red for the same reason and was identical when run
+alone. It is recorded here as a thing to MEASURE, not as a measurement — this item's own rule is
+one set at a time on a quiet machine. What is worth expecting is the direction: B14 (era 29) changed
+what the deputy paves, so the sweep's 200 games are bigger cities for 25 years, and a set's budget
+is a measurement of a city that every balance era rebuilds. The re-measurement M9 asks for is
+therefore a table per set, taken quiet, not a number for `quick`.
+
+**Done when** `quick` and `sim` each fit their stated budget on this machine twice running, the
+budgets are a measurement with a date and a per-gate table rather than a prediction, and neither of
+those two checks depends on when a frame happened to land.
 
 ## M8 — The renderer's numbers are a mirror with no loader (S) — **BUILT 2026-10-05** as `slice-M8`
 
@@ -376,8 +393,14 @@ because a config that arrives after the first frame would move what the first fr
 on 2026-09-08. What is open: **M7** (the release again, and a merge — `main` is well behind, and
 the push is Kjell's), **M9** (the `quick` gate set takes 986 s against a 540 s budget and starves
 its own gates; two of its named failures are fixed, the budget itself is not), **M10** (the three
-interface skins exist and nobody has looked at them — **Q159**), and **M11** ("1 tiles": the
-catalogue has no plural machinery at all).
+interface skins exist and nobody has looked at them — **Q159**, answered as **A137**: `retro` stays
+as built, so M10 is **closed**), and **M11** ("1 tiles": the catalogue has no plural machinery at
+all).
+
+**M7 is the one with a date on it now.** `main` is 54 commits behind as of 2026-10-08, and the whole
+multiplayer lane is on `dev_night`. `RELEASE.md` was re-measured at `7d3dbde` in the same round, so
+what M7 needs is the merge and the push — and the release gate for the multiplayer lane (eight
+clients, one real evening) is a different claim from the suite being green.
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.

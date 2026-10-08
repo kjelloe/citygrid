@@ -17,11 +17,14 @@
 import { PLAYER_COLOURS } from "../render/palette.js";
 import { seatName } from "./seats.js";
 
-/** The overlay's name, exported so the rail and `game.js` cannot disagree about
+/** The overlay's name, re-exported so the rail, `game.js` and this legend
+ * cannot disagree about it. It is DEFINED in `overlays.js`, which owns the list
+ * the rail offers — see `OVERLAY_CHOICES` there, and X5 item 0 for the gate
+ * that could only count.
  * it: one puts it in the toolbar and the other turns it into
  * `draw({ territory: true })`, and a typo in either is a button that does
  * nothing. */
-export const TERRITORY = "territory";
+export { TERRITORY } from "./overlays.js";
 
 /**
  * One row per seat in the city, in seat order — a legend that reordered itself

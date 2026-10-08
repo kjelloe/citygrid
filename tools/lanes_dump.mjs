@@ -379,6 +379,25 @@ if (orphans.length > 0) {
 // **Two builds, because they are not the same build.** A tile on the END of a
 // street extends one corridor; a tile beside the MIDDLE of one puts a junction
 // there and splits it into two, and a corridor IS its extent, so no key can
+/** How far a re-seat may legitimately move somebody, from the geometry it is
+ * about rather than from a number that fitted once.
+ *
+ * A junction replaces the pavement inside its own box, so somebody standing
+ * where one appears has to come out of it: the furthest they can be from the
+ * surviving pavement is the half-diagonal of the box plus the pavement's own
+ * half-width. On an 8 m road that is 5.7 + 1.25 = 6.9 m.
+ *
+ * It was the literal `6` until X5, and `6` was chosen on 2026-10-04 when the
+ * gate's city put the split at tile 28,16 and the worst move was 1.3 m. B14
+ * (era 29) changed what the deputy paves, the split moved to 31,7, a pedestrian
+ * came out of a junction 6.2 m away, and the gate went red for a city that was
+ * behaving exactly as the comment above describes — which is
+ * `a-constant-tuned-to-a-gate` with the next era arriving on schedule. The
+ * number now moves with the road, and a second road width would move it again.
+ */
+const RESEAT_ALLOWANCE = Math.hypot(DEFAULTS.road.width, DEFAULTS.road.width) / 2
+  + DEFAULTS.road.sidewalk / 2;
+
 // survive that — the people and cars on it are re-seated. One configuration
 // would have proved one configuration, and it would have been the easy one.
 {
@@ -486,7 +505,8 @@ if (orphans.length > 0) {
       + `${people.length - lostPeople} of ${people.length} people came across, `
       + `corridors ${before.corridors.length} → ${after.corridors.length}`);
     console.log(`                ${renamedCars.length} car(s) and ${renamedPeople.length} person(s) `
-      + `lost the key they were standing on and were re-seated by geometry; furthest move ${worstMove.toFixed(1)} m`);
+      + `lost the key they were standing on and were re-seated by geometry; furthest move `
+      + `${worstMove.toFixed(1)} m of ${RESEAT_ALLOWANCE.toFixed(1)} allowed`);
 
     if (cars.length < 20 || people.length < 20) {
       console.error(`FAIL — only ${cars.length} cars and ${people.length} people settled, so this proves nothing`);
@@ -496,8 +516,10 @@ if (orphans.length > 0) {
       console.error("FAIL — the split touched nobody, so it says nothing about carrying life across one");
       process.exit(1);
     }
-    if (worstMove > 6) {
-      console.error(`FAIL — something was re-seated ${worstMove.toFixed(1)} m from where it stood`);
+    if (worstMove > RESEAT_ALLOWANCE) {
+      console.error(`FAIL — something was re-seated ${worstMove.toFixed(1)} m from where it stood, `
+        + `and a junction of two ${DEFAULTS.road.width} m roads can only account for `
+        + `${RESEAT_ALLOWANCE.toFixed(1)} m`);
       process.exit(1);
     }
   }

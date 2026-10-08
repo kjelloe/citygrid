@@ -1229,7 +1229,15 @@ bullet. What is open, cheapest first: **S19b** (a station faces its track), **S1
 line**, **S20's second half** (the shot gates count their subject's features in frame, not chunks),
 **S15b** (the lit response — a material raised by 60 arrives raised by 25), **S15c** (road width and
 the grey unbuilt lot), **S14** (the batter, tried and reverted — it wants the picture layer), and
-**S22** (a sun that moves, analysed 2026-10-08, rate is Q160).
+**S22** (a sun that moves, analysed 2026-10-08) — and **S18c**, the wall at two metres.
+
+**Two of those are answered and are the next two slices in this lane.** **S18c** is Q154 → **A132**:
+`road.wallMinDrop` goes 3 → 2, which roughly doubles the faced shoulders on a hilly 128 (264 at 2 m
+against 130 at 3 m), with `embankment_shots` re-shot and the wall count re-baselined. **S22** is
+Q160 → **A138**: the sun's azimuth rides the wall clock over a **quarter arc**, the moon gets an arc
+of its own, `sun.arcDegrees` and `sun.moonArcDegrees` go into `data/cityviewer.json` with the mirror,
+the presets are untouched, and the baked face tints give up to the real light — the lighting answer
+lives in four layers and two of them are baked, which is why the analysis was worth the day.
 
 **After the review of 2026-10-04: re-run the shot sets and look → S18 (the slice in flight) → S15 → S16 → S17 → S19**, beside the multiplayer lane and W6.
 

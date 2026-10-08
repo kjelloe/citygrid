@@ -76,6 +76,41 @@ export function stripCommentsAndStrings(source) {
   return out;
 }
 
+// Strips comments and KEEPS the strings — for a scan that is looking for a
+// string literal rather than for prose. `stripCommentsAndStrings` above cannot
+// be used for that, and a scan over the raw source counts a key quoted in a
+// comment as a caller (`a-grep-that-counts-a-comment`, X5).
+export function stripComments(source) {
+  let out = "";
+  let i = 0;
+  const n = source.length;
+  while (i < n) {
+    const two = source.slice(i, i + 2);
+    if (two === "//") {
+      while (i < n && source[i] !== "\n") i += 1;
+    } else if (two === "/*") {
+      i += 2;
+      while (i < n && source.slice(i, i + 2) !== "*/") i += 1;
+      i += 2;
+    } else if (source[i] === '"' || source[i] === "'" || source[i] === "`") {
+      const quote = source[i];
+      out += source[i];
+      i += 1;
+      while (i < n && source[i] !== quote) {
+        if (source[i] === "\\") { out += source[i]; i += 1; }
+        out += source[i];
+        i += 1;
+      }
+      out += quote;
+      i += 1;
+    } else {
+      out += source[i];
+      i += 1;
+    }
+  }
+  return out;
+}
+
 export function findViolations(files, pattern) {
   const hits = [];
   for (const file of files) {

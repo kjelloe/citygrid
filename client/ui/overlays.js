@@ -269,6 +269,30 @@ export const OVERLAYS = {
 
 export const OVERLAY_NAMES = Object.keys(OVERLAYS);
 
+/** The territory overlay's name (X3b, Q61).
+ *
+ * It is a choice the player has and deliberately **not** a row in `OVERLAYS`:
+ * the table above gives every tile a band, and territory colours BUILDINGS by
+ * their owner, so it has no `band()` to write and its legend names seats rather
+ * than bands. The name lives here rather than beside that legend because this
+ * is the module that owns what the overlay rail offers, and `territory-model.js`
+ * re-exports it so there is still one spelling of the string.
+ */
+export const TERRITORY = "territory";
+
+/** Everything the overlay rail offers, in the order it offers it.
+ *
+ * One table, many readers (`citygrid-one-table-many-readers`): the HUD builds a
+ * button per entry and `ui_smoke` asserts there is a button per entry and no
+ * more. It was `OVERLAY_NAMES` on both sides until X3b added territory to the
+ * rail and not to the table, and the gate could then only say "14 buttons for
+ * 13 overlays" — a count, which cannot say which side is wrong.
+ *
+ * `AUTO` is not in it: it is not an overlay but the instruction to pick one
+ * (P29), and `auto-overlay.js` owns that.
+ */
+export const OVERLAY_CHOICES = [...OVERLAY_NAMES, TERRITORY];
+
 export function bandAt(state, name, index) {
   const overlay = OVERLAYS[name];
   if (!overlay) return BAND.NONE;

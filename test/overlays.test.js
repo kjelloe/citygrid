@@ -11,7 +11,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { OVERLAYS, OVERLAY_NAMES, BAND, bandAt, legendFor } from "../client/ui/overlays.js";
+import { OVERLAYS, OVERLAY_NAMES, OVERLAY_CHOICES, TERRITORY, BAND, bandAt, legendFor } from "../client/ui/overlays.js";
 import { createState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
 import {
@@ -35,6 +35,23 @@ test("the design's thirteen overlays all exist", () => {
     "crime", "fire", "health", "density", "desirability", "leisure", "education"]) {
     assert.ok(OVERLAYS[name], `no ${name} overlay`);
   }
+});
+
+test("the rail offers the thirteen and territory, and territory is not one of them", () => {
+  // **One list, two readers** (X5 item 0). `OVERLAY_CHOICES` is what the HUD
+  // builds buttons from and what `ui_smoke` asserts there is a button for; the
+  // two were `OVERLAY_NAMES` on one side and the DOM on the other until X3b put
+  // territory in the rail, and the gate could then only say "14 buttons for 13
+  // overlays" — a count, which cannot say which side is wrong.
+  //
+  // Territory is deliberately not a row in `OVERLAYS`: the table gives every
+  // tile a band and territory colours BUILDINGS by owner, so it has no `band()`
+  // to write and its legend names seats rather than bands.
+  assert.deepEqual(OVERLAY_CHOICES, [...OVERLAY_NAMES, TERRITORY]);
+  assert.equal(OVERLAYS[TERRITORY], undefined, "territory is a row in OVERLAYS after all");
+  assert.equal(OVERLAY_CHOICES.length, OVERLAY_NAMES.length + 1);
+  // One spelling of the name, wherever it is imported from.
+  assert.equal(TERRITORY, "territory");
 });
 
 test("every overlay declares a label and a legend", () => {
