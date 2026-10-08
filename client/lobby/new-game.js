@@ -222,6 +222,26 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     onStart?.({ world, options: optionsFor(choices), choices, cityName: named, mayorName: choices.mayorName });
   });
   actions.append(start);
+  // **Host a room** (X2c). The same options as `start`, played in a room
+  // instead of on this machine — so it sits beside Start rather than in the
+  // join block: what it starts is the city above it, and the only difference
+  // is who else can come.
+  if (onHost) {
+    const host = el("button", "lobby-host", t("lobby.host"));
+    host.type = "button";
+    host.id = "host";
+    host.addEventListener("click", () => {
+      if (!world?.ok) return;
+      const named = defaultOptions(optionsFor(choices)).cityName || t(world.nameKey);
+      // The ROOM generates the city from these options, so the preview's own
+      // world is let go rather than handed on — the seed in the record is what
+      // makes the room's region the one on screen.
+      diorama?.dispose();
+      diorama = undefined;
+      onHost({ options: { ...hostOptions(choices), cityName: named }, choices, mayorName: choices.mayorName });
+    });
+    actions.append(host);
+  }
   if (onContinue) {
     const resume = el("button", "lobby-continue", t("menu.continue"));
     resume.type = "button";

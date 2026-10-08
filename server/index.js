@@ -146,6 +146,25 @@ export async function startServer({
       // never reaches the room (§3.5).
       if (!Object.values(C2S).includes(message.type)) return;
 
+      // **Hosting** (X2c). The one message that arrives with no room: the
+      // server makes one from the options, registers it by its code, and then
+      // the same socket joins it — so the client's answer is the `WELCOME` of
+      // the room it just made and there is no second message to invent.
+      if (message.type === C2S.CREATE) {
+        if (seat !== undefined) return;
+        const made = rooms.add({ options: message.options });
+        if (!made.ok) {
+          connection.send({ type: S2C.REFUSED, reason: made.reason });
+          socket.close();
+          return;
+        }
+        rooms.start();
+        mine = made.room;
+        const refusal = mine.join(connection, { ...message, type: C2S.HELLO, room: mine.code() });
+        if (refusal) { socket.close(); return; }
+        seat = gave;
+        return;
+      }
       if (message.type === C2S.HELLO) {
         if (seat !== undefined) return;
         // **Which room?** The code is the door's business (X2a) and now the
@@ -191,9 +210,24 @@ export async function startServer({
 
   // A checkpoint every thirty beats — three seconds at 100 ms — started and not
   // awaited, because a write that the beat waits for is a late beat.
+  //
+  // **Every room, not just the one this process booted with** (X2c): a hosted
+  // room that cannot survive a restart is a room whose players lose their city
+  // to a deploy. The process's own room keeps its `roomId` key so `fresh` and
+  // the restore path are unchanged; a hosted one is keyed by its code, which is
+  // the only name anybody has for it.
   const checkpoint = setInterval(() => {
-    saves.put(roomId, { save: room.save(), tick: room.tick() });
+    for (const { room: each } of rooms.all()) {
+      const key = each === room ? roomId : each.code();
+      saves.put(key, { save: each.save(), tick: each.tick(), code: each.code() });
+    }
   }, tickMs * 30);
+
+  // **And rooms everybody has left** (X2c). A pump beating a city with no
+  // audience is a core spent on nothing; five minutes of emptiness is long
+  // enough for a reconnect. The process's own room is `keep` and never reaped.
+  const reaper = setInterval(() => { rooms.reapEmpty(); }, 60 * 1000);
+  reaper.unref?.();
 
   // **And the rooms nobody came back to.** `prune` had no caller when it was
   // written — `keepForDays` was read, the sweep existed, and nothing ever ran
@@ -206,14 +240,18 @@ export async function startServer({
 
   return {
     port: http.address().port,
+    /** The room this process booted with. Hosted rooms are reached through
+     * `rooms`, by the code their host was given. */
     room,
     pump,
+    rooms,
     /** Whether this room came off the disk, for a caller that wants to say so. */
     restored: kept?.save !== undefined,
     async close() {
       clearInterval(checkpoint);
       clearInterval(sweep);
-      stop();
+      clearInterval(reaper);
+      rooms.stop();
       for (const socket of sockets.clients) socket.terminate();
       sockets.close();
       await new Promise((resolve) => http.close(resolve));
@@ -226,4 +264,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.argv[2] ?? process.env.PORT ?? 8123);
   const server = await startServer({ port });
   console.log(`city grid: http://localhost:${server.port}/  (ws on /ws)`);
+  console.log(`room code: ${formatRoomCode(server.room.code())}`);
 }

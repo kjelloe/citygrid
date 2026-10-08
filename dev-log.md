@@ -12499,3 +12499,53 @@ which it never asked for, with seats 1 and 2 taken. All three browsers on one ha
 **And `lobby_smoke`'s locale row passed this time**, having failed on both arms twice earlier —
 see the note above: it is a race, not a defect, and M9 carries it.
 
+## X2c — hosting a room (2026-10-07)
+
+Slice 5.2's other half: a player picks a region on the new-game screen, clicks **Host a room**, and
+the server makes one. With X2b's join half that is the item's own sentence — "four people configure
+and start a room without a URL parameter" — minus the QR, ready, spectate and the host's controls.
+
+**`server/rooms.js`, a registry.** The process held exactly one room until now, and the moment it
+holds several, three questions that did not exist before need answers: **which room** a connection
+belongs to (the code in its `HELLO`, which is why X2a came first), **what stops somebody making ten
+thousand** (a cap of 64, refused as `RATE_LIMIT` — the player did nothing wrong and later is the
+right advice), and **what happens to a room everybody has left** (reaped, after five minutes, so a
+player whose train goes into a tunnel comes back to their city). One pump per room rather than one
+pump for all, because one city's stall must not become everybody's — which is what §3.7.6's
+"degrade the game clock, never the pump" means once there is more than one clock to degrade. The
+process's own room is `keep` and never reaped: it is nobody's host room, and a reaper that took it
+would make a restart lose the city it had just read back.
+
+**`C2S.CREATE` is the one message that arrives with no room.** The server makes one from the
+options, registers it, and then the same socket joins it — so the answer is the `WELCOME` of the
+room it just made, there is no second message to invent, and the client has one code path for
+hosting and joining. **No version bump:** a message type only a newer client ever sends is
+additive, unlike X2a's required field on an existing one.
+
+**Three things the tests found before any gate ran.**
+
+- The reaper stamped `emptySince` with `Date.now()` and was judged against an injected clock, so a
+  room was either immortal or reaped at once. The first sweep stamps it now — one clock, which is
+  the same rule the pump has had since X1.
+- The "busy" room in the reaper test had nobody in it: the test handed the door a hello with
+  `version: 0` and the door refused it as a build mismatch, so the reaper correctly took both rooms
+  while the test blamed the reaper. **Read the result of the join** — the scripted-city rule, one
+  layer up.
+- `server/index.js` could no longer learn which seat the door gave: since X2b a hello may name none,
+  and `room.seats()` deliberately does not hand out connections. The server reads it off the
+  `WELCOME` on its way out, which is the only place the answer exists.
+
+**And the gate found the one the tests could not.** A guest joining the hosted room came back
+"no CITY": `optionsFor(choices)` defaults to **`seats: 1`** — the singleplayer part, and the one
+thing slice 5.2 was always going to change — so a hosted room had one seat and the first guest was
+refused `ROOM_FULL`. `hostOptions` takes `seatsForSize`, the engine's own cap per map size, rather
+than a new constant: a bigger region hosts more players for the same reason it always could, and
+there is one table to change. 48 → 4 seats, 64 → 8, 96 → 12, 128 → 16.
+
+**Measured, `room_smoke` (now five browsers in one run):** the lobby hosts **`CWWB8E`**, a different
+room from the one the server booted with; the host takes seat 1 and its address bar becomes
+`?join=CWWB8E`, so the URL a host copies IS the invitation; a guest types `cww-b8e` and is given
+**seat 2**; host, guest and room all on one hash (`f18b2261e374fe35`) with the clock stopped; no
+page or console errors on any of the five contexts. Suite **1,880 green twice**; `room_soak` green
+(warm p99 2.88 ms of 20); `offline_smoke` green, so singleplayer still opens no socket.
+

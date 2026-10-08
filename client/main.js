@@ -232,6 +232,22 @@ async function boot() {
     await play({ save: record.save }).catch(failed);
   }
 
+  /** **Hosting** (X2c). The options are the ones chosen on the lobby, and the
+   * ROOM generates the city from them — so the preview's world is let go and
+   * the seed in the record is what makes the two the same region. */
+  async function hostRoom({ options, mayorName }) {
+    const session = await play({ host: options, mayorName }).catch(failed);
+    // The code in the address bar, so a host has something to send somebody:
+    // `?join=` is the parameter a guest arrives on, which makes the URL a host
+    // copies the invitation itself.
+    if (session?.room && globalThis.history?.replaceState) {
+      const at = new URL(globalThis.location.href);
+      at.search = `?join=${session.room}`;
+      globalThis.history.replaceState({}, "", at.toString());
+    }
+    return session;
+  }
+
   async function newGame() {
     session = undefined;
     app.classList.remove("playing");

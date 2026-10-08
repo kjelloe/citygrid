@@ -454,6 +454,16 @@ so the discriminating cases (`"<ABCDEF>"`, `"!ABCDEF!"`, `"ABCDEF;--"`) were add
 fires. And the alphabet's size is asserted by COUNTING: each of the 32 characters comes from
 exactly 8 of the 256 byte values, which 31 would break silently.
 
+## X2c — Hosting a room (M) — **BUILT 2026-10-07**
+
+*`server/rooms.js`: a registry of rooms by code, one pump each, a cap of 64 refused as
+`RATE_LIMIT`, and a five-minute reaper that leaves the process's own `keep` room alone. `C2S.CREATE`
+is the one message that arrives with no room — the server makes one and the same socket joins it, so
+the answer is that room's `WELCOME` and the client has one code path for hosting and joining. No
+version bump: a message only a newer client sends is additive. A **Host a room** button beside
+Start, and the host's address bar becomes `?join=<code>`, so the URL a host copies is the
+invitation.*
+
 **Three findings from the tests and one from the gate.** The reaper mixed `Date.now()` with its
 injected clock (immortal or reaped at once); the reaper test's "busy" room had nobody in it because
 the test's hello was refused and nothing read the result; `server/index.js` could no longer learn
@@ -473,6 +483,9 @@ option there belongs to the city you START and none to one you JOIN. `client/lob
 holds the decisions: the normalisation, the cap, and two refusals told apart (`needCode` vs
 `badCode`). Strings in both catalogues, with the example code `ABC-123` in `SAME_IN_BOTH` because
 it has to look like what the host is reading out.*
+
+**Not in it:** hosting (that is the registry and a create message — X2c), the QR, ready, spectate,
+and the host's controls.
 
 ## X2 — The lobby (M) — slice 5.2 — **the join half is X2b; hosting is X2c**
 
