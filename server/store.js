@@ -25,8 +25,10 @@ export function createStore({ dir = "rooms", keepForDays = 30 } = {}) {
   /** The city and the commands since it, written atomically. Returns the
    * promise for a caller that wants to wait (a test, a shutdown); the pump
    * never does. */
-  function put(id, { save, log = [], tick = 0 }) {
-    const body = JSON.stringify({ id, tick, savedAt: Date.now(), save, log });
+  function put(id, { save, log = [], tick = 0, code = "" }) {
+    // `code` rides the record (X2a): a restored room that minted a new one
+    // would be a different room to everybody holding the old code.
+    const body = JSON.stringify({ id, tick, savedAt: Date.now(), code, save, log });
     writing = writing.then(async () => {
       await mkdir(dir, { recursive: true });
       const temporary = `${path(id)}.tmp`;

@@ -198,10 +198,14 @@ const server = await startServer({
   roomId: "soak",
 });
 const url = `ws://127.0.0.1:${server.port}/ws`;
+// The room's own code (X2a): the door asks which room, so the gate has to name
+// it like any other client would. Hoisted, because the restart check below
+// compares the room that comes back off the disk against it.
+const code = server.room.code();
 
 try {
-  const a = await connect(url, 1);
-  const b = await connect(url, 2);
+  const a = await connect(url, 1, code);
+  const b = await connect(url, 2, code);
   check("two clients joined one room", a.mirror !== undefined && b.mirror !== undefined);
 
   // Each on its own half of the map, a road at a time, while the room ticks.
@@ -323,11 +327,51 @@ try {
     `late ${jitter?.latePct}% of ${server.pump.beats()} beats`);
   check("a beat fits in its budget (plan §3.8: 20 ms)", server.pump.worstBeatMs() < 20,
     `worst ${server.pump.worstBeatMs().toFixed(2)} ms`);
+  // **The door, with the wrong code.** `test/room.test.js` proves the refusal
+  // in process; the code is normalised at the door, so what this adds is that
+  // the refusal survives a socket and that a client naming another room is
+  // turned away rather than put in this one (X2a).
+  const wrongCode = await refusalFor(url, {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 3, name: "Lost",
+    room: code === "ZZZZZZ" ? "YYYYYY" : "ZZZZZZ",
+  });
+  check("a client naming another room is refused at the door", wrongCode?.reason === "badCode",
+    `${wrongCode?.type ?? "nothing"} / ${wrongCode?.reason ?? "no reason"}`);
+  // And the typed form reaches it: a player reads `ABC-123` and types `abc 123`.
+  const typed = await refusalFor(url, {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 4, name: "Typist",
+    room: formatRoomCode(code).toLowerCase(),
+  });
+  check("the grouped, lower-case code opens the same door",
+    typed?.type === S2C.WELCOME && typed.room === code,
+    `${typed?.type ?? "nothing"} / ${typed?.room ?? "no room"}`);
+
 
   a.close();
   b.close();
 } finally {
   await server.close();
+// **A restart keeps the room's name** (X2a). The store carries the code beside
+// the save, because a room that minted a new one on restart would lock out
+// everybody holding the old one — and the plumbing for that is in
+// `server/index.js` (`code ?? kept?.code`), which nothing in `test/` drives.
+// This is the one place that owns a real server and a real store directory.
+try {
+  const again = await startServer({
+    port: 0,
+    store: createStore({ dir: roomDir }),
+    fresh: false,
+    tickMs: 10,
+    roomId: "soak",
+  });
+  try {
+    check("a restarted room is the same room, by code and by city",
+      again.room.code() === code && again.restored,
+      `code ${again.room.code()} (was ${code}), restored ${again.restored}`);
+  } finally {
+    await again.close();
+  }
+} finally {
   await rm(roomDir, { recursive: true, force: true });
 }
 

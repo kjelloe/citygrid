@@ -72,10 +72,20 @@ export async function startServer({ port = 0, options, tickMs = 100, roomId = "r
   // half only. `fresh: true` is the lever a test or a new region takes to
   // ignore what is on disk.
   const kept = fresh ? undefined : await saves.get(roomId);
-  const room = kept?.save
-    ? createRoom({ save: kept.save })
-    : createRoom({ options: options ?? { seed: 1003, width: 64, height: 64, seats: LIMITS.SEATS_MAX } });
-  const pump = createPump(room, { tickMs });
+  // The join code the room keeps: the caller's, else the one it was restored
+  // with, else a fresh one. A restart that renamed the room would lock out
+  // everybody holding the code (X2a).
+  const wanted = code ?? kept?.code;
+  // **A registry, not a room** (X2c): hosting means a player makes one, so the
+  // process holds several. The one it boots with is `keep`, which is how the
+  // reaper tells the process's own room from an abandoned host's.
+  const rooms = createRooms({ tickMs, heldForMs, regencyAfterMs });
+  const booted = kept?.save
+    ? rooms.add({ save: kept.save, code: wanted, keep: true })
+    : rooms.add({ options: options ?? { seed: 1003, width: 64, height: 64, seats: LIMITS.SEATS_MAX }, code: wanted, keep: true });
+  if (!booted.ok) throw new Error(`the server could not start its room: ${booted.reason}`);
+  const room = booted.room;
+  const pump = booted.pump;
 
   const http = createServer(serveStatic);
   const sockets = new WebSocketServer({
@@ -112,7 +122,16 @@ export async function startServer({ port = 0, options, tickMs = 100, roomId = "r
 
       if (message.type === C2S.HELLO) {
         if (seat !== undefined) return;
-        const refusal = room.join(connection, message);
+        // **Which room?** The code is the door's business (X2a) and now the
+        // registry's too: a code nobody is hosting is `BAD_CODE`, and it must
+        // be answered before `join` is reached or there is no room to ask.
+        mine = rooms.get(message.room);
+        if (mine === undefined) {
+          connection.send({ type: S2C.REFUSED, reason: REFUSAL.BAD_CODE });
+          socket.close();
+          return;
+        }
+        const refusal = mine.join(connection, message);
         if (refusal) { socket.close(); return; }
         seat = Number(message.seat) || 1;
         return;

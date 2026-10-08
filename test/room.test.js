@@ -375,6 +375,41 @@ test("the seats a room holds are the ones it welcomed, with distinct tokens", ()
   room.leave(1);
   assert.deepEqual(room.seats().map((s) => s.seat), [2]);
 });
+// --- the door asks which room (X2a, slice 5.2's headless half) --------------
+
+test("a room has a join code, and it is one a player could read out", () => {
+  const room = createRoom({ options: OPTIONS });
+  const code = room.code();
+  assert.equal(code.length, ROOM_CODE_LENGTH);
+  for (const ch of code) assert.ok(ROOM_CODE_ALPHABET.includes(ch), `${ch} is not in the alphabet`);
+  // Two rooms in one process are two codes, or a code addresses nothing.
+  const codes = new Set();
+  for (let i = 0; i < 20; i += 1) codes.add(createRoom({ options: OPTIONS }).code());
+  assert.ok(codes.size >= 19, `20 rooms produced ${codes.size} codes`);
+  // A room told its code keeps it — the store's key and the lobby's field are
+  // the same string, so a restored room is still the room people have.
+  assert.equal(createRoom({ options: OPTIONS, code: "ABC123" }).code(), "ABC123");
+});
+
+test("a hello that names another room is refused BAD_CODE, and not welcomed", () => {
+  const room = createRoom({ options: OPTIONS, code: "ABC123" });
+  const connection = wire("wrong");
+  const refusal = room.join(connection, {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 1, room: "ZZZZZZ",
+  });
+  assert.equal(refusal, REFUSAL.BAD_CODE);
+  assert.equal(connection.last(S2C.REFUSED)?.reason, REFUSAL.BAD_CODE);
+  assert.equal(connection.of(S2C.WELCOME).length, 0, "a client with the wrong code was let in");
+  // **And a hello with no room at all.** Before X2a the door asked nothing, so
+  // anybody who found the socket was in the city; a client that cannot name the
+  // room it means is a client that has not been given one.
+  const silent = wire("silent");
+  assert.equal(room.join(silent, {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 1,
+  }), REFUSAL.BAD_CODE);
+  assert.equal(silent.of(S2C.WELCOME).length, 0, "a client that named no room was let in");
+});
+
 test("a malformed hello is told it is malformed, not that the code is wrong", () => {
   // X1b's finding, one door along: `ROOM_FULL` for a taken seat told the player
   // to go away when the answer was "pick another seat". `BAD_CODE` for a

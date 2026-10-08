@@ -65,6 +65,8 @@ const NOT_YET = {
   "refused.seatTaken": "slice 5.2 — the seat picker",
   "refused.roomClosed": "slice 5.2",
   "refused.badCode": "slice 5.2 — the join-code field",
+  "refused.malformed": "X1 client half — the reload prompt; a hello the door could not read is a "
+    + "client fault, not a code the player mistyped (X2a)",
   "refused.banned": "slice 5.4 — the host's kick",
   "refused.rateLimit": "X1 client half — the toast, as `result.rateLimited` already is",
 };

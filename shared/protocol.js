@@ -4,11 +4,13 @@
 // stale client meeting a new server. A mismatched reducer desyncs silently,
 // which is the worst way to find out. The handshake makes it loud instead.
 
-// **2 since X3a**, because `C2S.PING` became `C2S.LATENCY`: a message name is
-// the wire, so renaming one is a protocol change whether or not anybody is
-// speaking it yet. Nothing outside this repo is — X1 is headless and the client
-// half is unbuilt — which is exactly when a version bump is free.
-export const PROTOCOL_VERSION = 2;
+// **3 since X2a**, because `HELLO` must now name the room it means: a message
+// that gains a REQUIRED field is as much a wire change as a renamed one, and an
+// old client sending no `room` is refused rather than admitted to a room it did
+// not ask for. 2 was X3a, where `C2S.PING` became `C2S.LATENCY`. Nothing
+// outside this repo speaks either — X1 is headless and the client half is
+// unbuilt — which is exactly when a version bump is free.
+export const PROTOCOL_VERSION = 3;
 
 /** Which build's RULES these are — `engine/`, `shared/` and `data/`, hashed by
  * `tools/make_precache.mjs` into `client/precache.json` and handed in at boot
@@ -16,11 +18,17 @@ export const PROTOCOL_VERSION = 2;
  * only ever compare two identical strings. `shared/build-hash.js` holds it. */
 export { buildHash, setBuildHash } from "./build-hash.js";
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** Client → server. */
 export const C2S = Object.freeze({
   HELLO: "hello",
+  // X2c: hosting. A room has to exist before a `HELLO` can name it, so this is
+  // the one message that arrives with no room — the server makes one from the
+  // options, registers it by code, and answers with the `WELCOME` of the room
+  // it just made. **No version bump:** a message type that is only ever SENT by
+  // a newer client is additive, unlike X2a's required field on an existing one.
+  CREATE: "create",
   COMMAND: "cmd",
   RESYNC_REQUEST: "resync",
   // `"latency"`, not `"ping"` (X3a). The engine gained a `ping` COMMAND — a

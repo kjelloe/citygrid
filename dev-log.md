@@ -12187,3 +12187,60 @@ reading the docs confirmed the wrong answer. CLAUDE.md now names `client/world/c
 engine's two mirrors and says M8 is what gave it a loader; both items carry an "as built" note and
 say plainly that this round misreported them.
 
+## X2a — the door asks which room (2026-10-06)
+
+The headless half of slice 5.2, which is the half A125 allows: nothing a player sees.
+
+**`shared/roomcode.js`.** Crockford base32 — `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, six characters.
+`I`, `L`, `O` and `U` are not in it and the first three read back as `1`, `1` and `0`, which is the
+whole reason for choosing an alphabet somebody else has already argued about. Thirty-two is also
+the only nearby size that makes a byte unbiased, and the test COUNTS that: each of the 32
+characters comes from exactly 8 of the 256 byte values, which an alphabet of 31 would break
+silently. `shared/` holds no generator, so `makeRoomCode(bytes)` takes its randomness from the
+caller and the server passes `randomBytes(6)`.
+
+**A typed code is untrusted input**, like a request title. Capped at 32 characters before anything
+walks it, separators removed, and anything else comes back `""` — never stripped. **The first
+version of that test could not tell the difference**: a stripping normaliser was planted and stayed
+green, because every bad string in the list had either too few alphabet characters left or too
+many. What a stripper actually accepts is junk wrapped around exactly six good ones, so the list
+now has `"<ABCDEF>"`, `"!ABCDEF!"`, `"ABCDEF;--"` and seven more in it, and the plant fires. Second
+time in two rounds that the plant, not the test, was the instrument.
+
+**The door.** `createRoom({ code })` mints its own when not told one, `join` refuses `BAD_CODE` when
+the hello names another room **or names none**, and the code is normalised AT THE DOOR rather than
+only in the lobby — a player reads `ABC-123` and types `abc 123`, and if the lobby were the only
+thing that could normalise it then every other client would be a bug report. `WELCOME` carries the
+room.
+
+**And a refusal that lied.** `BAD_CODE` was also what the door gave a message that is not a hello
+at all, which tells a player to check a code they typed correctly when what is wrong is their
+client. That is X1b's `ROOM_FULL`-for-a-taken-seat one door along. `REFUSAL.MALFORMED` is the
+eighth code with words in both catalogues, and `test/i18n.test.js` and
+`test/reachability.test.js` both caught the omission on the way in — the second one insisting the
+new key be listed with the slice that will show it.
+
+**A required field is a wire change.** `PROTOCOL_VERSION` 2 → 3, because a `HELLO` that must name
+its room refuses an old client rather than admitting it to a room it did not ask for. Six hello
+constructions in the repo had to learn the field (`test/room.test.js`'s helper and four others,
+`tools/room_soak.mjs`'s two) — the "a new refusal breaks every scripted city" shape, and the gate
+is what sees it.
+
+**A restart keeps the room's name.** The store's record carries `code` beside the save and
+`server/index.js` prefers the caller's, then the restored one, then a fresh one. A room that minted
+a new code on restart would lock out everybody holding the old one. Nothing in `test/` drives
+`startServer`, so the check is in the gate, which owns a real server and a real store directory.
+
+**Gate — `node tools/room_soak.mjs`, all green.** Five city years, 467 frames, 104 commands, 78
+monthly hash checks, no divergence; the corrupted client found at the month and resynced; **worst
+beat 11.35 ms of a 20 ms budget**, jitter p50 10 / p99 11 / late 0% of 495 beats. Three new rows:
+a client naming another room is refused `badCode`; the grouped lower-case code
+(`formatRoomCode(code).toLowerCase()`) opens the same door and the welcome names the room; and a
+restarted room comes back as `2JC4CH` with `restored true`. Suite **1,848 green twice**.
+
+**Left of X2, and it is the screen:** hosting and joining from the new-game screen, the QR (Q5),
+seats and names, ready and spectate, the host's controls, hosting from a save, and joining a room
+that has started — plus the client socket transport X1's client half owns and the multi-room
+registry a lobby implies (one process still hosts one room). A125 holds all of it behind Kjell's
+singleplayer playtest.
+

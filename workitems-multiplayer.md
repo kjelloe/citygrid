@@ -383,7 +383,8 @@ and the district layer, instead of each carrying its own copy of a mode test.
 the matrix gains a district dimension. **Gate.** `room_soak` with two seats in Districts, once X2
 can start one.
 
-## X2 — The lobby (M) — slice 5.2
+## X2a — The door asks which room (S) — **BUILT 2026-10-06**
+
 *The headless half of slice 5.2, which is the half A125 allows. `shared/roomcode.js`: Crockford
 base32, six characters, `I`/`L`/`O`/`U` out and the first three read back as `1`/`1`/`0`; the
 caller owns the randomness, so the server passes `randomBytes(6)` and `shared/` stays generator-free.

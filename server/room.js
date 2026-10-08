@@ -50,7 +50,9 @@ const nextToken = () => `seat-${(tokens += 1)}-${Math.floor(Date.now() % 1e6)}`;
  *
  * `given` is `{ options }` to generate one or `{ save }` to host one that was
  * saved — hosting from a save is §3.3's "the world never pauses", seen from the
- * other end.
+ * other end. `given.code` is the join code; a room that is not told one mints
+ * its own, because a room with no code is one anybody who finds the socket is
+ * in (X2a).
  */
 export function createRoom(given = {}) {
   // A room is generated, or RESTORED. The first cut of this had the save branch
@@ -63,6 +65,10 @@ export function createRoom(given = {}) {
     : fromSave(given.save);
   if (!world.ok) throw new Error(`a room could not start: ${world.reason}`);
   const state = world.state;
+  // The room's own name, as six characters a player can read out
+  // (`shared/roomcode.js`). A room restored from the store is given the code it
+  // had, because the code is what the people who were in it still have.
+  const code = normaliseRoomCode(given.code) || makeRoomCode(randomBytes(6));
   const seats = new Map();
   const queue = [];
   let seq = 0;
@@ -83,10 +89,15 @@ export function createRoom(given = {}) {
       connection.send({ type: S2C.REFUSED, reason });
       return reason;
     };
-    if (!hello || hello.type !== C2S.HELLO) return refuse(REFUSAL.BAD_CODE);
+    if (!hello || hello.type !== C2S.HELLO) return refuse(REFUSAL.MALFORMED);
+    // **Which room?** (X2a.) Normalised HERE and not only in the lobby: the
+    // decision belongs where the door is, or the lobby is the only client that
+    // can ever open one. A hello that names no room is refused like one that
+    // names the wrong room — before X2a the door asked nothing at all.
+    if (normaliseRoomCode(hello.room) !== code) return refuse(REFUSAL.BAD_CODE);
     const mismatch = compatible(hello.version, hello.build, buildHash());
     if (mismatch) return refuse(mismatch);
-    const seat = Number(hello.seat) || 1;
+
     // `SEAT_TAKEN`, not `ROOM_FULL` (X1b): the room may have three seats free.
     if (seats.has(seat)) return refuse(REFUSAL.SEAT_TAKEN);
     if (seats.size >= state.options.seats) return refuse(REFUSAL.ROOM_FULL);
