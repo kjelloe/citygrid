@@ -41,8 +41,10 @@ const NOT_BUILT = {
   // `withdrawRequest`, `reportNuisance` and `ping` left this list in the commit
   // that gave them handlers, which is the rule below working in the direction
   // that means somebody did the work.
+  // `setRequestPolicy` LEFT this list on 2026-10-08: a standing answer is set
+  // from the inbox and applied by the monthly pass (X3b). The item named it as
+  // X3b's and this list said 5.4; the item was right.
   transferFunds: "slice 6.1 — multiplayer treasuries",
-  setRequestPolicy: "slice 5.4",
   claimSector: "slice 6.1",
   openBorder: "slice 6.1",
   mutualAid: "slice 6.1",
@@ -114,6 +116,60 @@ test("every command the singleplayer game needs has a way to reach it", () => {
     assert.ok(isBuilt(type), `${type} has no reducer handler`);
     const constant = Object.entries(COMMANDS).find(([, v]) => v === type)?.[0];
     assert.ok(text.includes(constant), `${type} (${constant}) is not reachable from the client`);
+  }
+});
+
+/** Commands the REDUCER answers and the client cannot send, with the slice that
+ * gives each a control. The multiplayer counterpart to the positive claim
+ * above, which covers singleplayer only — so these five sat with handlers,
+ * tests, words in both catalogues and no way for a player to issue them, and
+ * nothing said so in either direction. */
+const NO_CONTROL_YET = {
+  // `resolveRequest` and `withdrawRequest` LEFT this list on 2026-10-07, in the
+  // commit that gave them the inbox — which is this rule going red in the
+  // direction that means somebody did the work.
+  // **All five of X3b\'s are gone** as of 2026-10-08. `resolveRequest` and
+  // `withdrawRequest` went with the inbox; `requestDemolition` and
+  // `reportNuisance` when a demolish refused `notOwner` became an offer to ask
+  // or to report; `ping` with the inspector\'s seven canned phrases. Each left
+  // by this rule turning red in the direction that means somebody did the work,
+  // which is the only direction a list like this is useful in.
+  // Found by this census on its first run, which is the whole point of writing
+  // one: both are X4's and neither was in anybody's head.
+  // **The list is empty**, as of 2026-10-08, and that is the point of having
+  // kept it: every command the reducer answers now has a way for a player to
+  // issue it. `leave` and `setStatus` were the last two and went with the
+  // roster (X4); the five before them with the inbox, the ask panel and the
+  // inspector's pings. A loop over an empty list is a test that cannot fail, so
+  // what guards this now is the assertion itself — the day somebody registers a
+  // handler with no control, this goes red and names it.
+};
+
+test("a command with a handler and no control says which slice gives it one (X3b)", () => {
+  // The N11 question, asked of the commands the PLAYER cannot reach rather than
+  // the ones they must. The positive claim above is singleplayer's, so the
+  // multiplayer half was invisible from both ends: a reducer that answers and
+  // an interface that cannot ask look exactly like a feature nobody has got to.
+  const client = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.name.endsWith(".js")) client.push(readFileSync(path, "utf8"));
+    }
+  };
+  walk(join(repoRoot, "client"));
+  const text = stripCommentsAndStrings(client.join("\n"));
+  const mute = [];
+  for (const [constant, type] of Object.entries(COMMANDS)) {
+    if (!constant.startsWith("CMD_") || !isBuilt(type)) continue;
+    if (!text.includes(constant)) mute.push(type);
+  }
+  assert.deepEqual(mute.sort(), Object.keys(NO_CONTROL_YET).sort(),
+    "a command the reducer answers has no control and no slice named for one — build it, or list "
+    + "it in NO_CONTROL_YET with the slice that will");
+  for (const [type, why] of Object.entries(NO_CONTROL_YET)) {
+    assert.ok(why.length > 20, `${type}'s reason is too short to be one`);
   }
 });
 
@@ -240,9 +296,14 @@ test("every event the engine can emit is either an alert or deliberately silent"
     repaid: "the budget drawer's own readout",
     interest: "billed with the month; `fundsLow` is the alert when it bites",
     // X3a's three, and the camera gesture. The inbox that shows them is X3b.
-    requestFiled: "the request inbox (X3b)",
-    requestResolved: "the request inbox (X3b)",
-    requestWithdrawn: "the request inbox (X3b)",
+    // **Built 2026-10-07, and still silent on purpose.** The inbox shows every
+    // request as a row and the rail carries the count of what is waiting, so an
+    // alert as well would be two notifications for one fact — and the alert
+    // list is for things the player cannot otherwise see coming. The entry
+    // stays, with the reason it is now a decision rather than a gap.
+    requestFiled: "the request inbox, built X3b — shown as a row and counted on the rail",
+    requestResolved: "the request inbox, built X3b — shown as a row and counted on the rail",
+    requestWithdrawn: "the request inbox, built X3b — shown as a row and counted on the rail",
     ping: "a camera gesture: the other player's marker is X3b",
   };
 

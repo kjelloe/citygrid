@@ -30,6 +30,10 @@ const KINDS = {
   disasterWarning: { severity: SEVERITY.URGENT, textKey: "alert.disasterWarning", namedKey: "alert.disasterWarning.named" },
   disasterStruck: { severity: SEVERITY.URGENT, textKey: "alert.disasterStruck", namedKey: "alert.disasterStruck.named" },
   wrecked: { severity: SEVERITY.WARNING, textKey: "alert.wrecked" },
+  // **Somebody pointing at something** (X3b). Not a warning — nothing is wrong
+  // — and `collapse: false`, because the second ping is somewhere else and the
+  // place is the whole of what it says.
+  ping: { severity: SEVERITY.INFO, textKey: "alert.ping", collapse: false },
   disasterRelief: { severity: SEVERITY.INFO, textKey: "alert.disasterRelief" },
   disasterOver: { severity: SEVERITY.INFO, textKey: "alert.disasterOver", namedKey: "alert.disasterOver.named" },
 
@@ -86,7 +90,13 @@ export function pushAlerts(alerts, events, tick) {
   for (const event of events ?? []) {
     const spec = KINDS[event.kind];
     if (!spec) continue;
-    const existing = alerts.items.find((a) => a.kind === event.kind);
+    // **A ping does not collapse.** Every other kind does — "fifty-nine copies
+    // are not information" — and for a ping that rule is exactly wrong: the
+    // second one is somewhere ELSE, and merging them would leave the player a
+    // camera jump to a tile nobody pointed at. The place is the information.
+    const existing = spec.collapse === false
+      ? undefined
+      : alerts.items.find((a) => a.kind === event.kind);
     if (existing) {
       // Collapse. The count is the information; fifty-nine copies are not.
       existing.count += 1;
@@ -101,6 +111,15 @@ export function pushAlerts(alerts, events, tick) {
       // The view interpolates this, because naming the disaster means
       // translating it and the model does not read the catalogue.
       disasterKey: named ? `disaster.${event.disaster}` : undefined,
+      // Where it happened and who said it, for the kinds that have somewhere to
+      // go. `at` is what makes a row clickable — the camera jumps there — and
+      // `messageKey` is carried rather than resolved, because this model does
+      // not read the catalogue (the `disasterKey` rule, one row up).
+      at: typeof event.x === "number" && typeof event.z === "number"
+        ? { x: event.x, y: event.z }
+        : undefined,
+      by: event.actor,
+      messageKey: typeof event.message === "string" ? `ping.${event.message}` : undefined,
       severity: spec.severity,
       count: 1,
       tick,

@@ -203,6 +203,40 @@ registerMigration(4, function derelictClock(data) {
   return out;
 });
 
+/**
+ * 5 → 6: X3b gave a resolved request the seat that ANSWERED it.
+ *
+ * `status: APPROVED` is the same on two paths — the owner agreeing, and a
+ * neighbour clearing a ruin over their head under the derelict rule (X3c) —
+ * and an inbox has to say either "you approved this" or "your ruin was
+ * cleared". An old save cannot be asked which it was: the actor was never
+ * stored. So every request in one is given **0**, which is what the field
+ * means for a request the clock resolved — nobody — and the inbox will say
+ * nothing about an answerer rather than naming the wrong one.
+ *
+ * The stored checksum goes with it, as always: it was taken over a shorter
+ * field list and cannot match a state with another field in it.
+ */
+registerMigration(5, function requestAnswerer(data) {
+  var out = {};
+  for (var key in data) {
+    if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
+  }
+  var requests = [];
+  for (var i = 0; i < (data.requests ? data.requests.length : 0); i += 1) {
+    var old = data.requests[i];
+    var request = {};
+    for (var field in old) {
+      if (Object.hasOwn(old, field)) request[field] = old[field];
+    }
+    if (request.resolvedBy === undefined) request.resolvedBy = 0;
+    requests.push(request);
+  }
+  out.requests = requests;
+  out.v = 6;
+  return out;
+});
+
 export function migrate(data) {
   var working = data;
   var guard = 0;

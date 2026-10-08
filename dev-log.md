@@ -12568,3 +12568,355 @@ Both of M9's named failures were instruments, not defects, and both are now gate
 A race that loses sometimes is worse than one that always does, because it gets argued with instead
 of fixed. Both of these cost a reading each before the `before` arm settled them.
 
+## X3b, first two pieces (2026-10-07)
+
+**The request that outlives its owner — and the spec was wrong, not the code.** `specs/plan.md`
+§25.3 promised that a request whose land changes hands "transfers to the new owner with the clock
+reset", and X3c filed that as a defect. It is not one: the offer was made to somebody who no longer
+owns the ground, and transferring it asks a person who never agreed to be asked about land they have
+just acquired. `moot` is also what the code has always done — implicitly, through
+`anythingToRemove`'s owner check — so the fix is the sentence and a test that makes the behaviour a
+decision rather than a side effect. **No hashed field, no fixture re-pin**, which is the cheapest
+outcome available and only visible by checking the code before building what the item asked for.
+The test files a request, moves the ground to a third seat, ticks a month, and asserts the request
+is `moot`, that `request.to` did not move, and that **nothing pending sits in the new owner's
+inbox** — which is the whole of why moot is right.
+
+**The territory overlay has a control at last (Q61).** It has coloured buildings by owner since V7:
+`options.territory` is honoured by the instanced half, the baked half and the chunk hash, and
+**nothing in the interface could turn it on** — the oldest capability-with-no-control in the
+project. It is a row in the overlay rail now, last and deliberately not in `OVERLAYS`: it is not one
+of §16's band overlays, because it colours BUILDINGS by owner rather than giving every tile a band.
+`game.js` turns the name into `draw({ territory: true })` with the band overlay off, and the name is
+exported from one module so the rail and that line cannot disagree.
+
+**And §16's other half — never colour alone.** Sixteen seats cannot be told apart by hue by a
+player who cannot see hue, and territory has no band pattern to lean on. So the legend NAMES each
+seat beside its swatch, from `territoryLegend(state)`: one row per seat in seat order, the colour
+read from `PLAYER_COLOURS` so the key cannot show a colour the buildings are not, nature excluded
+(seat 0 is black and never drawn as an owner), and a nameless seat falling back to `Mayor <n>` —
+the name `server/room.js` already gives one — so a seat visible on the map is never missing from the
+key.
+
+**Gate.** `room_smoke` drives it as a player does: `#rail-overlays` first, because the rail is a
+drawer and its buttons sit in the DOM while it is shut — clicking one without opening it waits for
+ever on a control that is present and not visible. Green: the overlay comes on and its legend names
+**three** seats, which is what the room has by then. The count is read off the room's own player
+list rather than written as a literal — the first cut asked for two and failed about a legend that
+was right.
+
+**And the picture was looked at.** `reports/smoke-X3b-territory.png`: the first shot had the
+first-run controls card across the map, so the gate dismisses it now. What the shot shows is the
+control and the legend — Mayor 1 purple, Mayor 2 yellow, Mayor 3 cyan. What it does **not** show is
+two seats' buildings in two colours, because territory colours buildings and this room is three
+months old with none: a city with nothing to show makes a green picture of a right overlay, which is
+V7's wash exactly. That half of the item's gate line needs a played multi-seat city and is written
+into the gate and the item as still open.
+
+## X3b — who answered (2026-10-07)
+
+X3c left this for X3b to decide "**with the inbox's words in front of you**", and the words settle
+it: a row in the owner's inbox has to say either *you approved this* or *your ruin was cleared by
+your neighbour*, and those are different sentences about the same `status: APPROVED`. Nothing in the
+record told them apart — `from`, `to` and `status` are identical on both paths and the actor was
+never stored — so the inbox could not have been written honestly without this, and **being outvoted
+silently is the grief move in the other direction** (the item's own phrase).
+
+**`request.resolvedBy`**, a seat: the owner on an ordinary approval or decline, the requester on a
+derelict override, the requester on a withdrawal, and **0 when the clock did it** — expiry and moot
+are nobody's act, and a seat number there would be a sentence blaming a player for a deadline.
+
+**A new field on an existing nested record is four places** (CLAUDE.md), and all four were walked
+rather than remembered: `copyRequests` in `engine/state.js`, `writeState`, a save migration with
+**`SAVE_VERSION` 5 → 6** giving every old request `0` — an old save cannot be asked which path it
+took, and 0 means "nobody", so the inbox will say nothing about an answerer rather than name the
+wrong one — and a fixture re-pin. `HASHED_FIELDS` does NOT change: it lists the top-level
+`requests`, which was already there, so the two-file rule cannot see this one. The fifth place,
+the snapshot projection, is covered by construction: `worker/patch.js` sends `copyState` minus the
+tiles.
+
+**The re-pin is the tripwire working.** `empty.json` 0 of 4 hashes moved, `founding.json` 0 of 15 —
+neither holds a request — and `two_player.json` **5 of 13**, from the `requestDemolition` step
+onward, exactly where a request first exists. No event drift, so the tool did not have to be told
+anything about events. Reason string recorded in the fixture.
+
+**Measured:** suite **1,896 green twice**; `room_soak` green with 10 requests asked and answered over
+the wire and all three machines on one hash. No rule reads `resolvedBy`, so no decision changes and
+era 29 stands — the hashes moved and the city did not.
+
+The build hash moved too (`shared/protocol.js` changed), which is the handshake doing its job: a
+client one deploy behind is refused with the reload reason rather than admitted to diverge.
+
+## X3b — the request inbox (2026-10-07)
+
+The item's centre, and the end of the longest-standing capability-with-no-control in the project:
+`requestDemolition`, `resolveRequest`, `withdrawRequest`, `reportNuisance` and `ping` have had
+reducer handlers, tests and words in both catalogues since X3a with **no way for a player to issue
+them**. Two of the five leave that list today.
+
+**`client/ui/inbox-model.js` decides; `hud.js` draws.** Which rows a seat sees — waiting on them,
+waiting on somebody else, settled — what each row SAYS, and what may be done to it. The actions are
+the reducer's answer rather than a guess: permission checks live in the reducer (CLAUDE.md) and a
+button it refuses is a lie told by the interface, so the owner gets Agree and Say no, the requester
+gets Withdraw, and a resolved request offers nobody anything.
+
+**The sentence was the whole difficulty, and it is why `resolvedBy` came first.** `status: APPROVED`
+happens two ways, and the owner has to read either *you agreed, and the ground was cleared* or
+*your neighbour cleared your ruin under the derelict rule*. Twelve settled keys in both languages,
+each from the reading seat's point of view, and `forced` on the row so the panel can mark it.
+
+**Waiting is oldest first, because a deadline is a queue**; settled is newest first, because what
+just happened is what a player is looking for. Each pending row says how many months are left.
+
+**The drawer is absent in singleplayer**, not empty: there is nobody to exchange a request with, and
+a control that can never have anything in it teaches the player to ignore the rail. The rail button
+carries the waiting count, because a request nobody opens a drawer to see is a request nobody
+answers — and that count is also why the three `request*` events stay out of the alert list. They
+were declared invisible "pending X3b" in the event census; the entry now says they are shown as a
+row and counted on the rail, which is a decision rather than a gap. An alert as well would be two
+notifications for one fact.
+
+**Two tests went red in the direction that means somebody did the work:** the command census I wrote
+this morning (two commands left `NO_CONTROL_YET`), and `test/reachability.test.js`, which reported
+`inbox.approve`, `inbox.decline` and `inbox.withdraw` as strings nothing can show — because the
+buttons built their key as `` t(`inbox.${action}`) `` and a key assembled at runtime is invisible to
+a scan. `ACTION_LABELS` writes the three out. An i18n key nothing can find is one nobody can tell is
+dead.
+
+**Gate — the item's own line, in `room_smoke`:** the direct path refused **`notOwner`**; a request
+filed about the other seat's road; the owner's inbox drawing it in words — *"Mayor 2 asks you to
+clear 6 tiles"* with the title and the reason under it; **Agree clicked in the panel**, and the
+ground cleared **on the other client**; and the owner paid the offer, **19 938 → 19 978**. Filing
+still goes through the seam, because the hand that files one needs a tool that picks tiles and that
+is the half still unbuilt. Suite **1,902 green twice**; `reach_smoke` green.
+
+## X3b — the hand that files a request (2026-10-08)
+
+The loop the inbox half-built: until today a request could only be filed through the seam, which is
+why `room_smoke` had to do it that way. Three of the five mute commands are now reachable.
+
+**The door is the refusal itself.** A player drags Demolish across ground they do not own, the
+reducer answers `notOwner`, and instead of only a toast the game offers to ask — with the owner
+named and the tile count in the sentence. No new tool, and the player is already looking at the
+ground in question. The toast still happens, because the offer is declined by ignoring it.
+
+**`client/ui/ask-model.js` does not re-implement the rule.** Permission checks live in the reducer
+and `recipientOf` decides whether a request may be filed at all; what is decided here is only what
+the DIALOG has to say — who owns the ground and how much of it is theirs. Bare land in a drag is
+**not** a second owner (a drag is a rectangle and the world is not, and `recipientOf` ignores
+unowned tiles too), so a selection of their road plus some grass is a request about their road
+rather than a refusal.
+
+**Three things the run found, each written into the code.**
+
+- **A temporal dead zone, and a blank page.** `root.append(…, askPanel)` ran above the `const
+  askPanel` I had put next to `setResult`, so the page died at boot with
+  `Cannot access 'askPanel' before initialization` and `globalThis.CITY` never appeared. `node
+  --check` cannot see it; a twelve-line probe that loads the page and prints `pageerror` found it in
+  thirty seconds. Third time this project has paid for a TDZ in a module the suite cannot import.
+- **"1 tiles".** The catalogue has no plural machinery — `hud.residents` is `"{count} residents"`
+  and says "1 residents" too — and the ask panel put that in a sentence a player reads at a decision
+  point. Two keys rather than a plural system: a second rule for the rest of the game to disagree
+  with is worse than two strings. The inbox row had the same bug and now has the same fix. **The
+  general gap is filed as M11.**
+- **A panel nothing could open.** `reach_smoke` reported five controls with no opener: in
+  singleplayer `offerAsk` can never fire, so the panel was hidden DOM a player could not reach
+  (ruling 029). It is built only when there is somebody to ask, exactly as the inbox drawer is —
+  absent rather than empty.
+
+**And the gate had to be driven through the HAND, not the seam.** The first cut posted the
+demolish through `CITY.apply` and then waited for a panel nothing had opened: `onResult` is the
+*controller's* callback and a command posted through the seam never reaches it. The gate picks the
+tool and clicks a tile of the other seat's road now, through `tilePixel` — the helper `play_smoke`
+has, for the same reason.
+
+**Measured, `room_smoke` (37 checks, five browsers):** demolish refused `notOwner` through the hand
+→ *"That ground is Mayor 1's. Ask them to clear one tile?"* → the panel files it with the typed
+title, reason and a §40 offer → the owner's inbox draws *"Mayor 2 asks you to clear one tile"* →
+Agree → **the tile clears on the other client** and the owner is paid, 19 938 → 19 978. Suite
+**1,908 green twice**; `reach_smoke` and `a11y_smoke` green.
+
+## X3b — reports and pings; all five mute commands are reachable (2026-10-08)
+
+**The nuisance report is the same panel, one button along.** §25.4's two kinds share a record, a
+cap and a clock (X3a) and they arrive at the same moment — somebody looking at a neighbour's
+ground — so the ask panel files either. One extra button, one extra line of i18n saying what the
+difference is (*"Asking lets them clear it. Reporting only tells them."*), and **the offer is
+dropped for a report whatever was typed**: nobody pays somebody to be told about a noise, and a
+number the owner could never take would read as an offer in their inbox. The gate types 99 and
+checks the record says 0.
+
+**Pings are a closed vocabulary.** `CMD_PING` emitted `{kind, actor, x, z}` and carried no message
+at all, while seven `ping.*` keys have had words in both catalogues since X3a with no way to send
+one. The command now takes one of **seven** — `look` (the default, because pointing at something is
+what a ping IS), `help`, `building`, `remove`, `working`, `fire`, `thanks` — and refuses anything
+else rather than passing it through, for the same reason the quest condition language is closed: an
+open vocabulary in a message that reaches every client is a way to put somebody else's words through
+all of them. It touches no state, so no migration and no re-pin, and a client that misses one has
+not diverged.
+
+**The control is in the inspector**, which is already open on the tile the player is talking about —
+the same argument the ask panel makes from the other end. The receiving seat gets it as an alert
+that is a **button**, and pressing it jumps the camera there.
+
+**Three defects the gate found, each real.**
+
+- **Another seat's events were being dropped on the floor.** `sim.onChange` read
+  `if (change.command.type !== CMD_TICK) return;` — right in singleplayer, where every event arrives
+  on a tick, and wrong in a room, where another seat's commands arrive on a pushed frame. So every
+  event any other player ever produced went nowhere. The ping gate is what said so: the other seat
+  never heard it.
+- **A panel that rebuilds itself continuously cannot be used.** `refresh()` runs every tick and, in
+  a room, every pushed frame — two a second — and the inbox rebuilt its rows each time.
+  `room_smoke`: *"47 × locator resolved … element was detached from the DOM, retrying"*. A player's
+  cursor would have had the same experience. It renders only when a signature over the rows' ids
+  and statuses changes.
+- **The alert list had the same fragility and it had never mattered**, because every row was text.
+  X3b made one a button and it became unpressable — 46 attempts. Same guard, same reason, and the
+  comment says plainly that what changed is not the rebuild rate but that something in the list is
+  now worth clicking.
+
+**And the reachability census caught the ping labels** exactly as it caught `inbox.approve`
+yesterday: the buttons built `` t(`ping.${message}`) `` and all seven read as strings nothing can
+show. `client/ui/ping-model.js` spells them out, with a test that the engine's list and the label
+map agree — two lists in two layers, which is the `VARIANTS` shape.
+
+**One consolidation on the way past:** `seatName` was about to be written a third time (territory
+legend, inbox, now the alert list), so it is one module.
+
+**Measured, `room_smoke` (41 checks, five browsers):** a report filed and offering nothing; a
+demolition through the same door, agreed in the inbox, the tile cleared on the other client, the
+owner paid; a ping accepted, heard by the other seat as *"Mayor 1: Look at this"* at `12,14`, and
+**the camera moved 22 tiles** when it was pressed. Suite **1,914 green twice**; `reach_smoke` green.
+
+**All five of X3b's mute commands are now reachable**, and `test/omissions.test.js`'s list is down to
+`leave` and `setStatus`, both X4's.
+
+## X3b/X4 — the inspector says whose, and the roster says who (2026-10-08)
+
+**The inspector's owner row.** `inspect()` has carried `owner` since the inspector was written and
+**nothing ever showed it** — a field read into a report and dropped, the shape of every dead field
+this project keeps finding, and exactly what X3b asks for ("per-seat gates, ranks and city halls
+shown as whose they are"). It is the first row now, because in a room whose a thing is decides
+whether any of the rest is yours to change.
+
+**Absent in a city with one seat**, which is the decision worth stating: "whose is this?" is not a
+question with one possible answer, and a row reading the same name on every tile is noise — and
+noise in an inspector is what teaches a player to stop reading it. A building's owner wins over the
+ground's, because a seat may build on the commons and what the player asked about is the thing they
+clicked.
+
+**The roster, and the last two mute commands.** `CMD_LEAVE` and `CMD_SET_STATUS` have had reducer
+handlers since Wave 0 and no control, and their events — `seatLeft`, `seatStatus` — have been
+declared invisible "pending the roster" for as long. The roster is a rail drawer listing every seat
+with its colour, its name and one of **four** words: playing, away, run by the deputy, gone. A
+roster that called three of them "here" would answer the question wrongly in the two cases somebody
+is actually asking it.
+
+**It is built from `state.players`, not from a wire message** — and that is a decision, not an
+omission. Seat, name and status are hashed state and every client already has them, identically; a
+`S2C.ROSTER` carrying the same thing would be a second source for one fact and the two would
+disagree the day one was forgotten. What the state does **not** know is whether a socket is open:
+that is the server's, it is not deterministic, and it belongs with regency. The wire census says so
+now instead of calling the message a gap.
+
+**The actions are your own and only yours.** You can say you are away and you can leave; you cannot
+do either TO somebody else, because kicking is the host's and is X4's, and a button the reducer
+would refuse is a lie told by the interface. The one control says which way it goes — away becomes
+back — and a seat that has already gone is offered nothing.
+
+**`test/omissions.test.js`'s no-control list is now EMPTY**, which is the point of having kept it:
+every command the reducer answers has a way for a player to issue it. Seven commands left that list
+in three days, each by the rule turning red in the direction that means somebody did the work. A
+loop over an empty list cannot fail, so what guards it now is the assertion itself — the day a
+handler is registered with no control, it goes red and names it. `PLAYER_REGENT` left the
+dead-export list the same way: the roster reads it to say "run by the deputy". What SETS it is
+regency, still X4's.
+
+**Measured, `room_smoke`:** the roster lists seats 1, 2 and 3 and marks exactly one as you;
+pressing **I'm away** reaches the other client — because a status is hashed state — and the control
+becomes **I'm back**. Suite **1,919 green twice**; `reach_smoke` green.
+
+## X3b — standing answers (2026-10-08)
+
+**A dead field and a dead command, two halves of one missing feature.**
+`player.requestPolicy` has been born `"manual"`, copied and hashed since Wave 0 with nothing ever
+setting it or reading it, while `CMD_SET_REQUEST_POLICY` has had a constant and no handler for just
+as long. The item named it X3b's and `test/omissions.test.js` said slice 5.4; the item was right,
+because the policy is SET by a player and only USED by the deputy — and the using is X4's regency.
+
+**Three policies, closed:** `manual` (the default, and it means what it says — the request waits for
+a person), `approve`, `decline`. Closed for the same reason a ping's message is: a policy the
+monthly pass does not know how to apply would sit in hashed state doing nothing, which is exactly
+where this field started.
+
+**Answered at the MONTH, not at the moment.** A request is answered against the city as it stood
+when the month began — the pass's own rule — and that is what keeps an auto-answer in the same order
+on every machine.
+
+**One approval body, not two.** `approveRequest(state, request, by)` is now shared by the command
+and the pass: two copies of "bulldoze, bill, pay" would be two rules that can disagree about who
+paid for what. It answers `{result, events}` rather than refusing, because the pass calls it for a
+seat that is not looking and **a request it cannot honour has to be left exactly as it was** — a
+requester who cannot pay does not get the ground cleared for free, and a request nothing happened to
+must not be marked answered. "I tried" and "I did" are the same to the caller.
+
+**And a standing "approve" never turns a complaint into a demolition** (§25.4): a nuisance report is
+acknowledged, which is all that channel can do.
+
+**No era moved and no fixture re-pinned.** The deputy files no requests, every fixture's policy is
+`manual` throughout, and `resolvedBy` on an auto-answer is the owner's own seat — a policy is an
+agreement made in advance, which is exactly what the inbox's sentence should say.
+
+**Four lists went red in the direction that means somebody did the work:** the no-control census,
+the dead-export pin, the not-built list (where it had been filed under the wrong slice), and the
+permission matrix, which wanted a row saying what there IS to assert about a command that carries no
+seat — that it takes a policy from a closed list and that one seat's choice does not move another's.
+
+**Gate.** `room_smoke`: the control is pressed and `aria-pressed` follows; a second request is filed
+against it; **the month answers it with nobody pressing anything**, and the ground goes. The gate's
+own first cut built a run from the tiles that happened to be left — `[left[0], left.length]` — and
+they are no longer contiguous, because one in the middle went to the demolition above, so it named a
+span including a cleared tile and running one past the end. The reducer is happy to be asked about
+bare ground; it is the gate that cannot invent a run. Suite **1,925 green twice**; `room_soak` green.
+
+## X3b — chat, and X3b is done (2026-10-08)
+
+**Chat is deliberately not a command.** It never reaches the reducer, it is not hashed state, and a
+client that misses a line has not diverged — which is the whole design: a message that could desync
+a city would be a liability for the sake of saying hello. It rides its own `C2S.CHAT`/`S2C.CHAT`,
+both of which have been on the wire census with nothing on either end since X1a.
+
+**So the safety is all on the way in, and it is the server's.** `server/chat.js` uses the same
+`sanitiseText` the reducer uses for a request title — control ranges and line separators become
+spaces, whitespace collapses, and the cap is in BYTES, because a line of Norwegian is not the same
+number of characters as a line of English. Two rules for one idea would be two that can disagree.
+Nothing-to-say is not said: an empty line, a line of spaces and a line of control characters all
+sanitise to nothing, and a room that broadcast them would let a player scroll everybody's panel with
+an empty field.
+
+**Its own rate budget**, four lines a second against twenty commands: a player who talks a lot must
+not lose the ability to build, or the other way round, and a chat line costs every client a repaint.
+
+**`chatEnabled` is off by default** and has been an option since Wave 0 with nothing reading it —
+the right default for a room anybody can join with a code. The panel is **absent** when it is off,
+not empty, which is the rule the inbox drawer and the ask panel already follow.
+
+**And the other half of the promise is in the panel:** `textContent`, never markup. The gate says
+`<b>not bold</b>` and checks that what arrives is characters and that there is no `<b>` element in
+the row.
+
+**Gate — `room_smoke`:** the boot room has chat off and has **no chat panel at all**; a second room
+is made on the same server with it on, two browsers join it, and a line typed with ragged spacing
+arrives at the other seat as *"Hello there"*. Suite **1,932 green twice**.
+
+**`chatEnabled` left the unread-options list** and both CHAT messages left the wire census — two
+more lists going red in the direction that means somebody did the work. **X3b is finished.**
+
+**One thing said plainly while passing:** `absenceYears` is still on the unread list and is now
+there for a different reason from the others. X4b built regency on a WALL clock, because a person's
+absence is real time and not sim time — a paused room would never hand over and a fast one would
+hand over in seconds. The option has not been forgotten, it has been **superseded by a decision**,
+and the choice is to delete it or keep it for something genuinely measured in city years. The
+abandonment sweep is that something, and it has `abandonYears`.
+

@@ -208,7 +208,33 @@ balance eras: the page names `782e759` from 2026-09-08 and says every commit sin
 
 **Done when** `main` is `dev_night`, the page names its own commit, and Kjell has pushed.
 
-## M8 — The renderer's numbers are a mirror with no loader (S) — found in S15, 2026-10-05
+## M11 — "1 tiles" (S, i18n) — found in X3b, 2026-10-08
+
+**Goal.** A sentence with a number in it reads correctly at every number.
+
+**Analysis.** The catalogue has **no plural machinery**: `t(key, values)` does a
+`{token}` substitution and nothing else, so `"hud.residents": "{count} residents"` says *"1
+residents"* and has since slice 4.1. X3b put the same shape into a sentence a player reads **at a
+decision point** — *"Ask them to clear 1 tiles?"* — which is where it stops being a blemish and
+starts being sloppiness the player is asked to act on. Two keys fixed those two sentences
+(`ask.what.one`, `inbox.waiting.demolition.one`, and the sent form), chosen in the model so the rule
+is tested; that is deliberately **not** a plural system, because a second rule for the rest of the
+game to disagree with is worse than two strings.
+
+**Known instances**, from a grep for `{count}` and `{tiles}` in `data/i18n/en.json`: `hud.residents`
+and whatever else carries a bare count — the sweep is part of the item, because the two found in
+X3b were found by reading a screenshot rather than by looking.
+
+**The decision is which way to go**, and it is small either way: (a) a `plural(key, n)` helper that
+picks `key` or `key.one`, so a string with a count has at most two forms and Norwegian's rules
+(which match English's for 1 vs many) are satisfied; or (b) phrase every counted sentence so the
+number sits apart from the noun — *"Residents: 1"* — which needs no machinery and changes the tone
+of several screens. (a) is the smaller change and the one X3b has already half-built.
+
+**Tests first.** `test/i18n.test.js`: every key whose English contains `{count}` or `{tiles}` has a
+`.one` form in both catalogues, or is listed with a reason. That is the shape this project uses for
+every other catalogue rule, and it is what stops the next counted string shipping without one.
+
 ## M8 — The renderer's numbers are a mirror with no loader (S) — **BUILT 2026-10-05** as `slice-M8`
 
 *As built: `loadRuleset` takes three files, and `["cityviewer.json", setConfig, "cityviewer"]` sits

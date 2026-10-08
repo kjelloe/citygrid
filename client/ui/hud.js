@@ -18,7 +18,7 @@
 import { topBar, formatMoney } from "./hud-model.js";
 import { rciBars } from "./rci-model.js";
 import { createAlerts, pushAlerts, expireAlerts, visibleAlerts, SEVERITY } from "./alerts-model.js";
-import { inspect } from "./inspector-model.js";
+import { inspect, ownerLine } from "./inspector-model.js";
 import { OVERLAY_NAMES, OVERLAYS, legendFor, BAND } from "./overlays.js";
 import { buildMenu, isOrientable } from "./build-model.js";
 import { budgetPanel, fundingRows, fundingSteps, loanSteps, repaySteps } from "./budget-model.js";
@@ -30,6 +30,13 @@ import { makeRoving } from "./roving.js";
 import { createCameraCluster } from "./camera-cluster.js";
 import { createControlsCard } from "./controls-card.js";
 import { AUTO, resolveOverlay, autoTarget } from "./auto-overlay.js";
+import { TERRITORY, territoryLegend } from "./territory-model.js";
+import { inboxFor, ACTIONS, ACTION_LABELS, policyChoices } from "./inbox-model.js";
+import { askTargetFor, defaultOffer } from "./ask-model.js";
+import { seatName } from "./seats.js";
+import { rosterFor, ROSTER_ACTIONS, ROSTER_LABELS } from "./roster-model.js";
+import { PLAYER_ACTIVE, PLAYER_AFK } from "../../engine/constants.js";
+import { PING_MESSAGES, PING_LABELS } from "./ping-model.js";
 import { RESULT } from "../../shared/protocol.js";
 
 const BAND_CLASS = ["good", "fair", "severe", "none"];
@@ -72,6 +79,8 @@ export function createHud(root, {
   state, seat, controller, onOverlay, onSpeed, onUndo,
   onSave, onLoad, onExport, onImport, slots,
   onQuestChoice, quests, onTax, onFunding, onLoan, onNewCity, onSettings, onStatistics, onHelp, minimap,
+  onResolveRequest, onWithdrawRequest, onFileRequest, onFocusTile, onPing, onSetPolicy,
+  onSetStatus, onLeaveRoom, onSay, watching = false,
   onStreet, onLeaveStreet, onPhoto, onLeavePhoto, onSavePhoto,
   showControlsCard = false, onDismissControlsCard,
 }) {
@@ -320,10 +329,17 @@ export function createHud(root, {
   const overlayButtons = [];
   // Auto first, and it is the default: a player who has just picked the wire
   // tool wants to see what is supplied, and should not have to ask.
-  const overlayChoices = [AUTO, ...OVERLAY_NAMES];
+  // **Territory last** (X3b, Q61): it is not one of §16's band overlays — it
+  // colours buildings by their OWNER rather than giving every tile a band — so
+  // it has its own label and its own legend, and `OVERLAYS` has no entry for
+  // it. It is in this rail rather than beside the camera because to a player it
+  // is the same question as every other overlay: what is this showing me?
+  const overlayChoices = [AUTO, ...OVERLAY_NAMES, TERRITORY];
   for (const name of overlayChoices) {
     const button = el("button", "overlay",
-      name === AUTO ? t("overlay.auto") : t(OVERLAYS[name].labelKey));
+      name === AUTO ? t("overlay.auto")
+        : name === TERRITORY ? t("overlay.territory")
+          : t(OVERLAYS[name].labelKey));
     button.type = "button";
     button.dataset.overlay = name;
     if (name === AUTO) button.append(el("small", "overlay-auto-target", ""));
@@ -544,11 +560,112 @@ export function createHud(root, {
   drawerClose.addEventListener("click", () => openDrawer(undefined));
   drawer.append(drawerTitle, drawerBody, drawerClose);
 
+  // --- the request inbox (X3b) ----------------------------------------------
+  //
+  // Five commands have had handlers since X3a and no way for a player to issue
+  // them. This is the control for three of them. It is a drawer like the others
+  // rather than a dialog, because a player answers a request while looking at
+  // the ground it is about.
+  const inboxBar = el("div", "hud-inbox");
+
+  // --- chat (X3b) -----------------------------------------------------------
+  //
+  // Not the city: a line never reaches the reducer, so it is held here, in the
+  // panel, and a player who reloads starts with an empty one. That is the right
+  // trade for something that cannot desync anybody.
+  const chatBar = el("div", "hud-chat");
+  const chatLog = el("ol", "chat-log");
+  const chatForm = el("form", "chat-say");
+  const chatField = document.createElement("input");
+  chatField.type = "text";
+  chatField.id = "chat-text";
+  chatField.maxLength = 240;
+  chatField.autocomplete = "off";
+  const chatSend = el("button", "chat-send", t("chat.send"));
+  chatSend.type = "submit";
+  chatSend.id = "chat-send";
+  chatForm.append(chatField, chatSend);
+  chatBar.append(chatLog, chatForm);
+  chatForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = chatField.value;
+    chatField.value = "";
+    if (text.trim().length > 0) onSay?.(text);
+  });
+
+  /** A line somebody said. **`textContent`, never markup** — the server caps
+   * and sanitises on the way in and this is the other half of that promise
+   * (CLAUDE.md: render player text as plain text). Appended rather than
+   * redrawn, so nothing is detached under a cursor. */
+  function addChatLine({ seat: from, text }) {
+    const line = el("li", "chat-line");
+    line.append(el("span", "chat-who", seatName(state, from)), el("span", "chat-text", text));
+    chatLog.append(line);
+    while (chatLog.childElementCount > 60) chatLog.firstElementChild.remove();
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  // --- who is in the room (X4) ----------------------------------------------
+  //
+  // The last two commands with handlers and no control, and the home of the two
+  // events the census has been holding "pending the roster". Built from
+  // `state.players`, which every client already has identically.
+  const rosterBar = el("div", "hud-roster");
+  let rosterSignature;
+
+  function renderRoster() {
+    if (!onSetStatus) return;
+    const rows = rosterFor(state, seat);
+    // The same guard the inbox and the alert list have: `refresh()` runs twice
+    // a second in a room, and a row rebuilt under the cursor cannot be pressed.
+    const signature = rows.map((r) => `${r.seat}:${r.status}:${r.name}`).join("|");
+    if (signature === rosterSignature) return;
+    rosterSignature = signature;
+    rosterBar.innerHTML = "";
+    for (const row of rows) {
+      const item = el("div", `roster-row${row.you ? " you" : ""}`);
+      item.dataset.seat = String(row.seat);
+      const swatch = el("i", "swatch");
+      swatch.style.background = `#${row.colour.toString(16).padStart(6, "0")}`;
+      item.append(swatch, el("span", "roster-name", row.name),
+        el("span", "roster-status", t(row.statusKey)));
+      for (const action of row.actions) {
+        const button = el("button", `roster-${action}`, t(ROSTER_LABELS[action]));
+        button.type = "button";
+        button.dataset.action = action;
+        button.addEventListener("click", () => {
+          const done = action === ROSTER_ACTIONS.LEAVE
+            ? onLeaveRoom?.()
+            : onSetStatus?.(action === ROSTER_ACTIONS.AWAY ? PLAYER_AFK : PLAYER_ACTIVE);
+          Promise.resolve(done).then(() => refresh());
+        });
+        item.append(button);
+      }
+      rosterBar.append(item);
+    }
+  }
+
   const DRAWERS = [
     { key: "overlays", labelKey: "hud.overlays", body: overlayBar },
     { key: "budget", labelKey: "budget.tax", body: budgetBar },
     { key: "saves", labelKey: "hud.saves", body: saveBar },
   ];
+  // Only when there is somebody to exchange requests WITH. In singleplayer the
+  // inbox can never have a row in it, and a drawer that is always empty is a
+  // control that teaches the player to ignore the rail.
+  if (onResolveRequest) {
+    DRAWERS.push({ key: "inbox", labelKey: "hud.inbox", body: inboxBar });
+  }
+  if (onSetStatus) {
+    DRAWERS.push({ key: "roster", labelKey: "hud.roster", body: rosterBar });
+  }
+  // Only when the ROOM has chat on: `chatEnabled` is off by default, which is
+  // the right default for a room anybody can join with a code, and a panel that
+  // can never carry anything is a control that teaches the player to ignore the
+  // rail.
+  if (onSay) {
+    DRAWERS.push({ key: "chat", labelKey: "hud.chat", body: chatBar });
+  }
   let openKey;
   const railButtons = [];
   for (const entry of DRAWERS) {
@@ -621,7 +738,108 @@ export function createHud(root, {
   // underneath the overlay buttons.
   const aside = el("div", "hud-aside");
   aside.append(advisor, inspector);
+  // --- asking, when a demolish is refused (X3b) -----------------------------
+  //
+  // The door is the refusal itself: a player drags Demolish across ground they
+  // do not own, the reducer says `notOwner`, and instead of only a toast the
+  // game offers to ask. No new tool, and the player is already looking at the
+  // ground in question. Hidden until there is something to offer, and it is
+  // the only panel in the HUD that appears by itself — so it closes on its own
+  // button and on the next refusal that is not this one.
+  const askPanel = el("div", "hud-ask");
+  askPanel.hidden = true;
+  askPanel.id = "ask";
+  const askWhat = el("p", "ask-what");
+  const askFields = el("div", "ask-fields");
+  const askTitle = document.createElement("input");
+  const askReason = document.createElement("input");
+  const askOffer = document.createElement("input");
+  askTitle.type = "text";
+  askTitle.id = "ask-title";
+  askTitle.maxLength = 64;
+  askReason.type = "text";
+  askReason.id = "ask-reason";
+  askReason.maxLength = 240;
+  askOffer.type = "number";
+  askOffer.id = "ask-offer";
+  askOffer.min = "0";
+  askOffer.step = "10";
+  for (const [input, labelKey] of [[askTitle, "ask.title"], [askReason, "ask.reason"], [askOffer, "ask.offer"]]) {
+    const wrap = el("label", "ask-field");
+    wrap.append(el("span", undefined, t(labelKey)));
+    wrap.append(input);
+    askFields.append(wrap);
+  }
+  const askSend = el("button", "ask-send", t("ask.send"));
+  askSend.type = "button";
+  askSend.id = "ask-send";
+  // **The other thing a player might want** (§25.4): not everything somebody
+  // else built is in the way. A report tells them and asks for nothing, which
+  // is the civil outlet the design names — and the same panel files it, because
+  // it arrives at the same moment and already knows whose ground it is.
+  const askReport = el("button", "ask-report", t("ask.report"));
+  askReport.type = "button";
+  askReport.id = "ask-report";
+  const askCancel = el("button", "ask-cancel", t("ask.cancel"));
+  askCancel.type = "button";
+  askCancel.id = "ask-cancel";
+  const askDifference = el("p", "ask-difference", t("ask.difference"));
+  askPanel.append(askWhat, askFields, el("div", "ask-actions"), askDifference);
+  askPanel.querySelector(".ask-actions").append(askSend, askReport, askCancel);
+  let asking;
+
+  function closeAsk() {
+    asking = undefined;
+    askPanel.hidden = true;
+  }
+  askCancel.addEventListener("click", () => closeAsk());
+
+  function fileAsk(kind) {
+    if (!asking) return;
+    const sent = onFileRequest?.({
+      kind,
+      runs: asking.runs,
+      title: askTitle.value,
+      reason: askReason.value,
+      // The reducer caps and sanitises all three; this only carries what was
+      // typed (CLAUDE.md's multiplayer invariants).
+      //
+      // **A report offers nothing**, whatever is in the field: nobody is paying
+      // somebody to be told about a smell, and a number carried into a record
+      // that cannot spend it would show up in the owner's inbox as an offer
+      // they can never take.
+      offer: kind === "nuisance" ? 0 : Math.max(0, Math.floor(Number(askOffer.value) || 0)),
+    });
+    closeAsk();
+    Promise.resolve(sent).then(() => refresh());
+  }
+  askSend.addEventListener("click", () => fileAsk("demolition"));
+  askReport.addEventListener("click", () => fileAsk("nuisance"));
+
+  /** Offered after a refusal, with the tiles the command was about. Returns
+   * whether anything was offered, so the caller can leave the plain toast up
+   * when there was not. */
+  function offerAsk(tiles, runs) {
+    if (!onFileRequest) return false;
+    const target = askTargetFor(state, tiles, seat);
+    if (!target.ok) return false;
+    asking = { runs, to: target.to };
+    askWhat.textContent = t(target.whatKey, { name: target.toName, tiles: target.tiles });
+    askTitle.value = "";
+    askReason.value = "";
+    askOffer.value = String(defaultOffer());
+    askPanel.hidden = false;
+    askTitle.focus();
+    return true;
+  }
+
   root.append(top, side, aside, minimapBox, bottom);
+  // **Only in a room**, like the inbox drawer. In singleplayer there is nobody
+  // to ask, so `offerAsk` could never open it and the panel would be hidden DOM
+  // that no opener can reach — which `reach_smoke` duly reported as five
+  // controls with no way to them (ruling 029). A control that cannot be opened
+  // is not a control.
+  if (onFileRequest) root.append(askPanel);
   const panel = bottom;
 
   function renderAdvisor() {
@@ -670,6 +888,21 @@ export function createHud(root, {
     // layer rather than the menu selection.
     const showing = activeOverlay();
     if (!showing) return;
+    // **Whose city is which** (X3b). One row per seat, named: sixteen seats
+    // cannot be told apart by hue by a player who cannot see hue, and territory
+    // colours buildings rather than tiles so there is no band pattern to lean
+    // on. The label is what carries the non-colour half of §16's rule.
+    if (showing === TERRITORY) {
+      for (const seat of territoryLegend(state)) {
+        const item = el("span", "legend legend-seat");
+        const swatch = el("i", "swatch");
+        swatch.style.background = `#${seat.colour.toString(16).padStart(6, "0")}`;
+        item.append(swatch, el("span", undefined, seat.name));
+        legend.append(item);
+      }
+      if (legend.childElementCount === 0) legend.append(el("span", "legend", t("overlay.territory.alone")));
+      return;
+    }
     for (const entry of legendFor(showing)) {
       const item = el("span", `legend ${BAND_CLASS[entry.band]}`);
       // Colour AND a mark AND the word. Any one of the three is enough to read
@@ -679,13 +912,45 @@ export function createHud(root, {
     }
   }
 
+  let alertSignature;
+
   function renderAlerts() {
     expireAlerts(alerts, state.tick);
+    // **Only when the list has changed**, for the reason the inbox has the same
+    // guard: `refresh()` runs every tick and, in a room, every pushed frame, so
+    // rebuilding replaced a row under the player's cursor two or three times a
+    // second. It never mattered while every row was text; X3b made a ping row a
+    // BUTTON, and `room_smoke` could not press one — "46 × locator resolved…
+    // element was detached from the DOM". The list has always been rebuilt this
+    // often; what changed is that something in it is now worth clicking.
+    const showing = visibleAlerts(alerts);
+    const signature = showing
+      .map((a) => `${a.kind}:${a.count}:${a.tick}:${a.at ? `${a.at.x},${a.at.y}` : ""}`)
+      .join("|");
+    if (signature === alertSignature) return;
+    alertSignature = signature;
     alertList.innerHTML = "";
-    for (const alert of visibleAlerts(alerts)) {
+    for (const alert of showing) {
       const item = el("li", alert.severity === SEVERITY.URGENT ? "urgent" : alert.severity === SEVERITY.WARNING ? "warning" : "info");
-      const text = t(alert.textKey, alert.disasterKey ? { disaster: t(alert.disasterKey) } : undefined);
-      item.textContent = alert.count > 1 ? `${text} ×${alert.count}` : text;
+      const text = t(alert.textKey, alert.disasterKey
+        ? { disaster: t(alert.disasterKey) }
+        : alert.messageKey
+          ? { name: seatName(state, alert.by), message: t(alert.messageKey) }
+          : undefined);
+      const label = alert.count > 1 ? `${text} ×${alert.count}` : text;
+      // **An alert with somewhere to go is a button** (X3b): a ping names a
+      // tile, and the only useful thing to do with it is look. Everything else
+      // stays a plain row, because a control that does nothing when pressed is
+      // worse than text.
+      if (alert.at && onFocusTile) {
+        const go = el("button", "alert-go", label);
+        go.type = "button";
+        go.dataset.ping = `${alert.at.x},${alert.at.y}`;
+        go.addEventListener("click", () => onFocusTile(alert.at));
+        item.append(go);
+      } else {
+        item.textContent = label;
+      }
       alertList.append(item);
     }
   }
@@ -736,7 +1001,111 @@ export function createHud(root, {
     }
   }
 
+  /** The inbox, redrawn from the state every refresh. No local copy: a row that
+   * remembered its own status would be a second place for the answer to live,
+   * and the answer is the reducer's. */
+  let inboxSignature;
+
+  function renderInbox() {
+    if (!onResolveRequest) return;
+    const inbox = inboxFor(state, seat);
+    // **Only when it has changed.** `refresh()` runs on every tick and, in a
+    // room, on every frame another seat's commands arrive in — two a second —
+    // and rebuilding the list each time replaces the Agree button under the
+    // player's cursor. `room_smoke` could not click one: "47 × locator
+    // resolved… element was detached from the DOM, retrying". A panel that
+    // rebuilds itself continuously cannot be used, by a gate or by a hand.
+    //
+    // The signature is the thing the rows are DERIVED from, not the rows: id,
+    // status and the counts, which is everything that changes what is drawn.
+    const signature = [
+      inbox.waiting.length, inbox.sent.length, inbox.settled.length,
+      ...inbox.waiting.map((r) => `${r.id}:${r.status}`),
+      ...inbox.sent.map((r) => `${r.id}:${r.status}`),
+      ...inbox.settled.slice(0, 6).map((r) => `${r.id}:${r.status}`),
+    ].join("|");
+    const policies = policyChoices(state, seat);
+    const chosen = policies.find((c) => c.chosen)?.policy ?? "manual";
+    if (`${signature}#${chosen}` === inboxSignature) return;
+    inboxSignature = `${signature}#${chosen}`;
+    inboxBar.innerHTML = "";
+
+    // **The standing answer** (X3b), above the rows, because it is about every
+    // row that will ever appear here rather than about any of the ones that
+    // have. `aria-pressed` rather than a disabled button: the project's rule is
+    // that a control is pressable and says what happened (ruling 029).
+    if (onSetPolicy) {
+      const box = el("section", "inbox-policy");
+      box.append(el("h3", undefined, t("inbox.policy")));
+      for (const choice of policies) {
+        const button = el("button", "policy-choice", t(choice.labelKey));
+        button.type = "button";
+        button.dataset.policy = choice.policy;
+        button.setAttribute("aria-pressed", choice.chosen ? "true" : "false");
+        button.addEventListener("click", () => {
+          Promise.resolve(onSetPolicy(choice.policy)).then(() => refresh());
+        });
+        box.append(button);
+      }
+      inboxBar.append(box);
+    }
+    const sections = [
+      ["inbox.waiting", inbox.waiting],
+      ["inbox.sent", inbox.sent],
+      ["inbox.settled", inbox.settled.slice(0, 6)],
+    ];
+    let rows = 0;
+    for (const [labelKey, list] of sections) {
+      if (list.length === 0) continue;
+      const box = el("section", "inbox-group");
+      box.append(el("h3", undefined, t(labelKey)));
+      for (const row of list) {
+        rows += 1;
+        const item = el("article", `inbox-row${row.forced ? " forced" : ""}`);
+        item.dataset.request = String(row.id);
+        item.append(el("p", "inbox-what", t(row.textKey, {
+          name: row.otherName, tiles: row.tiles, offer: row.offer,
+        })));
+        if (row.title) item.append(el("p", "inbox-title", row.title));
+        if (row.reason) item.append(el("p", "inbox-reason", row.reason));
+        const facts = [];
+        if (row.offer > 0) facts.push(t("inbox.offer", { offer: row.offer }));
+        if (row.actions.length > 0) facts.push(t("inbox.expires", { months: row.expiresInMonths }));
+        if (facts.length > 0) item.append(el("p", "inbox-facts", facts.join(" · ")));
+        if (row.actions.length > 0) {
+          const buttons = el("div", "inbox-actions");
+          for (const action of row.actions) {
+            const button = el("button", `inbox-${action}`, t(ACTION_LABELS[action]));
+            button.type = "button";
+            button.dataset.action = action;
+            button.dataset.request = String(row.id);
+            button.addEventListener("click", () => {
+              const done = action === ACTIONS.WITHDRAW
+                ? onWithdrawRequest?.(row.id)
+                : onResolveRequest?.(row.id, action === ACTIONS.APPROVE);
+              Promise.resolve(done).then(() => refresh());
+            });
+            buttons.append(button);
+          }
+          item.append(buttons);
+        }
+        box.append(item);
+      }
+      inboxBar.append(box);
+    }
+    if (rows === 0) inboxBar.append(el("p", "inbox-empty", t("inbox.empty")));
+    const button = railButtons.find((b) => b.dataset.drawer === "inbox");
+    // The count on the rail, because a request nobody opens the drawer to see
+    // is a request nobody answers.
+    if (button) {
+      const waiting = inbox.waiting.length;
+      button.textContent = waiting > 0 ? `${t("hud.inbox")} (${waiting})` : t("hud.inbox");
+    }
+  }
+
   function refresh() {
+    renderInbox();
+    renderRoster();
     const bar = topBar(state, seat, previous);
     money.textContent = bar.money;
     trend.textContent = bar.trend > 0 ? "▲" : bar.trend < 0 ? "▼" : "—";
@@ -801,6 +1170,11 @@ export function createHud(root, {
     const list = el("dl");
     const add = (label, value) => { list.append(el("dt", undefined, label), el("dd", undefined, String(value))); };
     const yesNo = (value) => t(value ? "inspect.yes" : "inspect.no");
+    // **Whose** (X3b), first, because in a room it is the question that decides
+    // whether any of the rest is yours to change. Absent in a city with one
+    // seat: a row with one possible answer is noise.
+    const whose = ownerLine(state, report);
+    if (whose) add(t("inspect.owner"), whose.name);
     add(t("inspect.terrain"), t(report.terrainKey));
     if (report.zoneKey) add(t("inspect.zone"), t(report.zoneKey));
     add(t("inspect.road"), report.avenue ? t("inspect.avenue") : yesNo(report.road));
@@ -823,6 +1197,30 @@ export function createHud(root, {
       .map((b) => `${t(b.labelKey)}: ${t(b.wordKey)}`)
       .join(" · ");
     inspector.append(words);
+
+    // **Pointing at it** (X3b), and only in a room. The inspector is already
+    // open on the tile the player is talking about, which is the whole reason
+    // the control is here rather than in a tool of its own — the same argument
+    // the ask panel makes from the other end.
+    //
+    // Seven canned phrases from a CLOSED list (`engine/requests.js`): an open
+    // one in a message that reaches every client is a way to put somebody
+    // else's words through all of them, and these have had translations since
+    // X3a with no way to send one.
+    if (onPing) {
+      const pings = el("div", "inspect-pings");
+      pings.append(el("span", undefined, t("ping.label")));
+      for (const message of PING_MESSAGES) {
+        const say = el("button", "ping-say", t(PING_LABELS[message]));
+        say.type = "button";
+        say.dataset.ping = message;
+        say.addEventListener("click", () => {
+          Promise.resolve(onPing({ x: report.x, z: report.y, message })).then(() => refresh());
+        });
+        pings.append(say);
+      }
+      inspector.append(pings);
+    }
   }
 
   /** What the stroke would do, or why it will not.
@@ -849,7 +1247,7 @@ export function createHud(root, {
    * next stroke, rather than faded on a timer, so a refusal that happens while
    * the player is looking elsewhere is still there when they look back. */
   function setResult(result) {
-    if (result === RESULT.OK) return;
+    if (result === RESULT.OK) { closeAsk(); return; }
     readout.textContent = t(`result.${result}`);
     readout.dataset.result = result;
   }
@@ -903,7 +1301,9 @@ export function createHud(root, {
 
   refresh();
   return {
-    refresh, tick, showInspection, setPreview, setResult, setStatus, setSlots,
+    refresh, tick, showInspection, setPreview, setResult, setStatus, setSlots, offerAsk,
+    /** A line from the room, for `game.js` to hand on. */
+    addChatLine,
     dispose() {
       for (const r of roving) r.dispose();
       panelWatch?.disconnect();

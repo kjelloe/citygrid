@@ -194,6 +194,20 @@ export async function openMirrorSession(given = {}, transport) {
   return {
     get state() { return state; },
     local: false,
+    /** Which seat this client is, and which room — undefined in singleplayer.
+     * The HUD and the lobby read them; nothing below the seam knows either. */
+    get seat() { return transport.seat; },
+    get room() { return transport.room; },
+    /** The room's played clock in seconds, or undefined outside a room. The
+     * light cycle takes it so every seat is at one hour (A63) without the sun
+     * racing the game's speed (A41). */
+    get roomSeconds() { return transport.roomSeconds; },
+    /** Chat, passed straight through (X3b). It is NOT the city: it never
+     * reaches the reducer or the mirror, so it is here only because `game.js`
+     * holds one object, and it is absent on every transport that has no room
+     * behind it. */
+    say: transport.say ? (text) => transport.say(text) : undefined,
+    onChat: transport.onChat ? (handler) => transport.onChat(handler) : undefined,
     /** Commands posted and not yet answered. The city a player sees is this
      * many messages behind the simulation, which is what a gate waits on
      * instead of guessing at a delay. */
@@ -209,10 +223,20 @@ export async function openMirrorSession(given = {}, transport) {
     /** The clock belongs to the SESSION (plan.md §3.4). A remote one ticks when
      * a frame says to; this one and the local one keep an interval, and
      * `game.js` asks for a speed rather than owning one. */
+    /** Whether this session is driving a clock of its own. A getter rather than
+     * a boolean somebody sets, because the thing that must be true is that the
+     * interval is not running — and that is what a gate can read. */
+    get clocked() { return clock !== undefined; },
     setSpeed(ms) {
       clearInterval(clock);
       clock = undefined;
-      if (ms > 0) clock = setInterval(() => tick(), ms);
+      // **In a room the server owns the clock** (plan.md §3.6): the tick count
+      // rides the frame. A session that also kept an interval would tick a city
+      // the room never ticked, and the socket transport answers a `tick` post
+      // with a no-op — so the defect would be a desync with no local symptom at
+      // all. `game.js` still asks for a speed; in a room the answer is the
+      // host's, which is X2's control.
+      if (ms > 0 && transport.roomClock !== true) clock = setInterval(() => tick(), ms);
     },
     async load(saveData) {
       try {

@@ -16,6 +16,7 @@ import { OVERLAY_NAMES, labelKeyFor, bandAt, BAND } from "./overlays.js";
 // the budget panel and the statistics do the same. Ruling 037 keeps `world/`,
 // `render/` and `life/` out of engine/, not the interface.
 import { gateStatus } from "../../engine/gates.js";
+import { seatName } from "./seats.js";
 
 const TERRAIN_KEYS = {
   [TERRAIN_GRASS]: "terrain.grass",
@@ -125,4 +126,27 @@ export function inspect(state, x, y) {
       wordKey: BAND_WORD_KEYS[bandAt(state, name, index)] ?? BAND_WORD_KEYS[BAND.NONE],
     })),
   };
+}
+
+/** Whose ground is this, for the inspector's one extra row (X3b)?
+ *
+ * `owner` has been in the report since the inspector was written and **nothing
+ * ever showed it** — a field read and dropped, the shape of every dead field
+ * this project keeps finding. The item asks for "per-seat gates, ranks and city
+ * halls shown as whose they are", and this is the whole of it.
+ *
+ * `undefined` when the question does not arise: a city with one seat has one
+ * answer, and a row reading the same name on every tile is noise — which is
+ * what teaches a player to stop reading an inspector. Nature and the commons
+ * are not seats either, and naming them would promise somebody to talk to.
+ *
+ * The BUILDING's owner wins over the ground's: a seat may build on the commons,
+ * and what the player is asking about is the thing they clicked.
+ */
+export function ownerLine(state, report) {
+  const seats = (state?.players ?? []).filter((p) => p.seat > 0);
+  if (seats.length < 2) return undefined;
+  const owner = report?.building?.owner ?? report?.owner;
+  if (!seats.some((p) => p.seat === owner)) return undefined;
+  return { seat: owner, name: seatName(state, owner) };
 }

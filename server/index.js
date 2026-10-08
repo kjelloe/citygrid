@@ -195,18 +195,33 @@ export async function startServer({
         room.submit(seat, message.command);
         return;
       }
-      if (message.type === C2S.RESYNC_REQUEST) room.resync(connection, seat);
+      // **Chat** (X3b). Not a command: it never reaches the reducer, so a line
+      // cannot desync a city and a client that misses one has not diverged. Its
+      // own rate budget, because a player who talks a lot must not lose the
+      // ability to build — or the other way round.
+      if (message.type === C2S.CHAT) {
+        const now = Math.floor(Date.now() / 1000);
+        if (now !== chatSecond) { chatSecond = now; said = 0; }
+        said += 1;
+        if (said > CHATS_PER_SECOND) return;
+        const line = chatFrom(mine.state, seat, message.text);
+        if (!line.ok) return;
+        mine.broadcast({ type: S2C.CHAT, seat: line.seat, text: line.text });
+        return;
+      }
+      if (message.type === C2S.RESYNC_REQUEST) mine.resync(connection, seat);
       if (message.type === C2S.LATENCY) connection.send({ type: S2C.PONG, at: message.at });
     });
 
     socket.on("close", () => {
       perIp.set(ip, Math.max(0, (perIp.get(ip) ?? 1) - 1));
-      if (seat !== undefined) room.leave(seat);
+      if (watching) mine?.stopWatching(connection);
+      else if (seat !== undefined) mine?.leave(seat);
     });
   });
 
   await new Promise((resolve) => http.listen(port, resolve));
-  const stop = pump.start();
+  rooms.start();
 
   // A checkpoint every thirty beats — three seconds at 100 ms — started and not
   // awaited, because a write that the beat waits for is a late beat.

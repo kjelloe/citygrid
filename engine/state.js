@@ -322,6 +322,15 @@ export function copyRequests(requests) {
       createdTick: r.createdTick,
       expiresTick: r.expiresTick,
       status: r.status,
+      // **Who answered** (X3b). `status: APPROVED` is the same on two paths —
+      // the owner agreeing, and a neighbour clearing a ruin over their head
+      // under the derelict rule (X3c) — and nothing in the record told them
+      // apart, because the actor was never stored. The inbox has to say either
+      // "you approved this" or "your ruin was cleared", and being outvoted
+      // silently is the grief move in the other direction. 0 is the clock:
+      // expiry and moot are nobody's act, and a seat number there would be a
+      // sentence blaming a player for a deadline.
+      resolvedBy: r.resolvedBy,
     });
   }
   return out;
@@ -468,6 +477,7 @@ export function writeState(sink, state) {
     writeI64(sink, request.createdTick);
     writeI64(sink, request.expiresTick);
     writeString(sink, request.status);
+    writeU8(sink, request.resolvedBy);
   }
 
   writeI32(sink, state.derelicts.length);

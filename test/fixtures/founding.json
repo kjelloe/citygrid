@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "X3c: state.derelicts is new hashed state — every fixture hash is taken over a longer field list",
+ "why": "X3b: a resolved request records the seat that answered it (resolvedBy), so an inbox can tell an owner's approval from a neighbour's derelict override; SAVE_VERSION 5 to 6 with a migration giving old records 0",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -302,6 +302,6 @@
    ]
   }
  ],
- "era": 28,
- "repinnedAt": "2026-10-05"
+ "era": 29,
+ "repinnedAt": "2026-10-07"
 }

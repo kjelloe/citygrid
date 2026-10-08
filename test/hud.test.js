@@ -16,6 +16,15 @@ import { join } from "node:path";
 import { topBar, formatMoney, cityDate } from "../client/ui/hud-model.js";
 import { rciBars } from "../client/ui/rci-model.js";
 import { pushAlerts, createAlerts, visibleAlerts, SEVERITY, alertKeys } from "../client/ui/alerts-model.js";
+import { ownerLine } from "../client/ui/inspector-model.js";
+
+/** A city with the named seats in it, for the ownership rows below. The state
+ * is a plain record rather than a generated city: `ownerLine` reads `players`
+ * and nothing else, and generating a region to ask whose a tile is would be
+ * testing worldgen. */
+function cityWith(names) {
+  return { state: { players: names.map((name, i) => ({ seat: i + 1, name })) } };
+}
 import { inspect, inspectorKeys } from "../client/ui/inspector-model.js";
 import { buildMenu, menuDefs, footprintAt, CATEGORY_ORDER } from "../client/ui/build-model.js";
 import { budgetPanel, clampRate, taxRange } from "../client/ui/budget-model.js";
@@ -348,4 +357,77 @@ test("no user-facing English is left hardcoded in the HUD", () => {
     .map((m) => m[1])
     .filter((text) => /[a-z]{3}/.test(text));
   assert.deepEqual(offenders, [], `hardcoded strings in hud.js: ${offenders.join(", ")}`);
+});
+
+// --- pings (X3b) -------------------------------------------------------------
+
+test("two pings in two places are two alerts, because a place is the information", () => {
+  // Every other kind COLLAPSES — "fifty-nine copies are not information" — and
+  // for a ping that rule is exactly wrong: the second one is somewhere else,
+  // and merging them would leave the player a camera jump to a tile nobody
+  // pointed at.
+  const alerts = createAlerts();
+  pushAlerts(alerts, [
+    { kind: "ping", actor: 1, x: 3, z: 4, message: "look" },
+    { kind: "ping", actor: 2, x: 30, z: 40, message: "help" },
+  ], 10);
+  const pings = alerts.items.filter((a) => a.kind === "ping");
+  assert.equal(pings.length, 2, `${pings.length} alerts for two pings`);
+  assert.deepEqual(pings.map((p) => p.at), [{ x: 3, y: 4 }, { x: 30, y: 40 }]);
+  assert.deepEqual(pings.map((p) => p.by), [1, 2]);
+  // The message is carried as a KEY: the model does not read the catalogue, the
+  // same rule `disasterKey` follows.
+  assert.deepEqual(pings.map((p) => p.messageKey), ["ping.look", "ping.help"]);
+  assert.ok(pings.every((p) => p.count === 1), "a ping was collapsed into another");
+});
+
+test("the same place pinged twice is still two, and an ordinary alert still collapses", () => {
+  // Deliberately not deduplicated by position either: pinging the same corner
+  // twice is somebody saying it twice, and the list expires on its own clock.
+  // The point of this test is the CONTRAST — the next assertion is what every
+  // other kind does.
+  const alerts = createAlerts();
+  pushAlerts(alerts, [
+    { kind: "ping", actor: 1, x: 3, z: 4, message: "look" },
+    { kind: "ping", actor: 1, x: 3, z: 4, message: "look" },
+  ], 10);
+  assert.equal(alerts.items.filter((a) => a.kind === "ping").length, 2);
+
+  const ordinary = createAlerts();
+  pushAlerts(ordinary, [{ kind: "wrecked" }, { kind: "wrecked" }, { kind: "wrecked" }], 10);
+  const wrecked = ordinary.items.filter((a) => a.kind === "wrecked");
+  assert.equal(wrecked.length, 1, "the collapsing rule changed for everything else too");
+  assert.equal(wrecked[0].count, 3);
+});
+
+// --- whose is this? (X3b) ----------------------------------------------------
+
+test("the inspector says whose ground it is, and only when that is a question", () => {
+  // `inspect()` has carried `owner` since the inspector was written and
+  // **nothing has ever shown it** — a field read into a report and dropped,
+  // which is the shape of every dead field this project keeps finding. X3b asks
+  // for "per-seat gates, ranks and city halls shown as whose they are".
+  //
+  // Only when there is more than one seat, because "whose is this?" is not a
+  // question in a city with one answer: a row reading "Ada" on every tile of a
+  // singleplayer game is noise, and noise in an inspector is what teaches a
+  // player to stop reading it.
+  const alone = cityWith(["Ada"]);
+  assert.equal(ownerLine(alone.state, { owner: 1 }), undefined,
+    "a single-seat city is told whose its own ground is");
+
+  const shared = cityWith(["Ada", "Grace"]);
+  assert.deepEqual(ownerLine(shared.state, { owner: 2 }), { seat: 2, name: "Grace" });
+  assert.deepEqual(ownerLine(shared.state, { owner: 1 }), { seat: 1, name: "Ada" });
+
+  // Nature and the commons are not seats, and naming them would promise a
+  // player somebody to talk to.
+  assert.equal(ownerLine(shared.state, { owner: 0 }), undefined, "nature was named as an owner");
+  assert.equal(ownerLine(shared.state, { owner: 255 }), undefined, "the commons was named as an owner");
+  assert.equal(ownerLine(shared.state, {}), undefined);
+
+  // A building's owner wins over the ground's: a seat may build on the
+  // commons, and what the player is asking about is the thing they clicked.
+  assert.deepEqual(ownerLine(shared.state, { owner: 255, building: { owner: 2 } }),
+    { seat: 2, name: "Grace" });
 });

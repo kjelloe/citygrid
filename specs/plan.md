@@ -551,10 +551,16 @@ Sixteen strangers need more than a demolition inbox, and every channel is a mode
   approval — the request still exists, so the owner still sees what happened. The overlay's mark is
   X3b's.
 - **Request lifecycle edge cases** are explicit: if the target is destroyed, upgraded past
-  recognition, or already demolished before resolution, the request resolves to `moot`; if the
-  owner changes, it transfers to the new owner with the clock reset.
-  *As built — X3a:* the `moot` half only. `request.to` is written at filing and **never moves**, so
-  a request whose land changes hands sits in the old owner's inbox — X3b's, noted in its item.
+  recognition, already demolished before resolution, **or has changed hands**, the request resolves
+  to `moot` and the requester refiles.
+  *Decided in X3b (2026-10-07), against this document's own earlier promise* that it "transfers to
+  the new owner with the clock reset". It does not and should not: the offer was made to a person
+  who no longer owns the ground, and transferring it asks somebody who never agreed to be asked
+  about land they have just acquired. `moot` is also what the code has always done — implicitly,
+  through `anythingToRemove`'s owner check — so the correction is to this sentence and to a test
+  that makes the behaviour a decision rather than a side effect ("a request whose ground changes
+  hands goes MOOT, not to the new owner", `test/requests.test.js`). `request.to` stays written at
+  filing, which is why this costs no hashed field and no fixture re-pin.
 
 ---
 

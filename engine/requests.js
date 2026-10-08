@@ -30,14 +30,55 @@ import { register, ok, fail, registerMonthly } from "./reducer.js";
 import { RESULT, LIMITS } from "../shared/protocol.js";
 import {
   CMD_REQUEST_DEMOLITION, CMD_RESOLVE_REQUEST, CMD_WITHDRAW_REQUEST,
-  CMD_REPORT_NUISANCE, CMD_PING,
+  CMD_REPORT_NUISANCE, CMD_PING, CMD_SET_REQUEST_POLICY,
 } from "./commands.js";
-import { TICKS_PER_MONTH, TICKS_PER_YEAR, FLAG_RUINED } from "./constants.js";
+import {
+  TICKS_PER_MONTH, TICKS_PER_YEAR, FLAG_RUINED,
+  PLAYER_REGENT, PLAYER_GONE, OWNER_COMMONS,
+} from "./constants.js";
 import { canAct, isSeat, playerAt, buildingAt } from "./permissions.js";
 import { bulldozeInto } from "./build-commands.js";
 import { begin, commit, failed, affordable } from "./transaction.js";
 import { cellsFromRuns, hasNet, NETWORKS } from "./network.js";
 import { isInt, isIntArray, sanitiseText } from "./validate.js";
+
+/** What a ping can say (X3b). A **closed** vocabulary, for the same reason the
+ * quest condition language is closed (`engine/quests.js`): an open one in a
+ * message that reaches every client is a way to put somebody else's words
+ * through all of them. Each has had words in both catalogues since X3a and no
+ * way to send one.
+ *
+ * `look` is the default, because pointing at something is what a ping IS and a
+ * player who just clicked a tile has not chosen a sentence. */
+export var PING_MESSAGES = ["look", "help", "building", "remove", "working", "fire", "thanks"];
+
+export function isPingMessage(value) {
+  for (var i = 0; i < PING_MESSAGES.length; i += 1) {
+    if (PING_MESSAGES[i] === value) return true;
+  }
+  return false;
+}
+
+/** What a seat can decide IN ADVANCE about requests addressed to it (X3b).
+ *
+ * `player.requestPolicy` has been born `"manual"`, copied and hashed since Wave
+ * 0 and **nothing has ever set it or read it**, while `CMD_SET_REQUEST_POLICY`
+ * has had a constant and no handler for just as long — a dead field and a dead
+ * command, two halves of one missing feature.
+ *
+ * Closed, for the same reason a ping's message is: a policy the monthly pass
+ * does not know how to apply would sit in hashed state doing nothing, which is
+ * exactly where this field started. `manual` is the default and means what it
+ * says — the request waits for a person.
+ */
+export var REQUEST_POLICIES = ["manual", "approve", "decline"];
+
+export function isRequestPolicy(value) {
+  for (var i = 0; i < REQUEST_POLICIES.length; i += 1) {
+    if (REQUEST_POLICIES[i] === value) return true;
+  }
+  return false;
+}
 
 export var REQUEST_DEMOLITION = "demolition";
 export var REQUEST_NUISANCE = "nuisance";
@@ -187,6 +228,10 @@ function file(state, command, kind) {
     createdTick: state.tick,
     expiresTick: state.tick + state.options.requestExpiryMonths * TICKS_PER_MONTH,
     status: PENDING,
+    // 0 until somebody answers (X3b): a pending request has no answerer, and
+    // the clock is nobody — an expiry recorded as a seat would be a sentence
+    // blaming a player for a deadline.
+    resolvedBy: 0,
   };
   state.nextId += 1;
   state.requests.push(request);
@@ -206,6 +251,7 @@ register(CMD_WITHDRAW_REQUEST, function withdrawRequest(state, command) {
   if (!request || request.status !== PENDING) return fail(RESULT.INVALID);
   if (request.from !== command.actor) return fail(RESULT.NOT_OWNER);
   request.status = WITHDRAWN;
+  request.resolvedBy = command.actor;
   return ok([{ kind: "requestWithdrawn", id: request.id }]);
 });
 
@@ -262,37 +308,60 @@ register(CMD_RESOLVE_REQUEST, function resolveRequest(state, command) {
   // can do, which is the design's point — a civil outlet, not a lever (§25.4).
   if (request.kind === REQUEST_NUISANCE) {
     request.status = ACKNOWLEDGED;
+    request.resolvedBy = command.actor;
     return ok([{ kind: "requestResolved", id: request.id, status: request.status }]);
   }
 
   if (!command.approve) {
     request.status = DECLINED;
+    request.resolvedBy = command.actor;
     return ok([{ kind: "requestResolved", id: request.id, status: request.status }]);
   }
 
+  var done = approveRequest(state, request, command.actor);
+  if (done.result !== RESULT.OK) return fail(done.result);
+  return ok(done.events);
+});
+
+/** Clear the ground and move the money, for an approval however it arrived.
+ *
+ * One body, because a standing policy approves exactly as a person does (X3b)
+ * and two copies of "bulldoze, bill, pay" would be two rules that can disagree
+ * about who paid for what. `by` is the ANSWERER — the owner on both ordinary
+ * paths and the requester on the derelict override (X3c).
+ *
+ * Answers `{ result, events }` rather than refusing: the monthly pass calls it
+ * for a seat that is not looking, and a request it cannot honour has to be left
+ * exactly as it was. "I tried" and "I did" are the same to the caller.
+ */
+function approveRequest(state, request, by) {
   var indices = cellsFromRuns(state, request.runs, LIMITS.CELLS_PER_COMMAND);
-  if (!indices) return fail(RESULT.INVALID);
+  if (!indices) return { result: RESULT.INVALID, events: [] };
   var tx = begin(state, request.to);
   bulldozeInto(tx, indices);
-  if (failed(tx)) return fail(tx.result);
+  if (failed(tx)) return { result: tx.result, events: [] };
 
   var bill = tx.cost + request.offer;
-  if (!affordable(state, request.from, bill)) return fail(RESULT.NO_FUNDS);
+  if (!affordable(state, request.from, bill)) return { result: RESULT.NO_FUNDS, events: [] };
   // The owner's transaction, with the price taken out of it: the ground is
   // cleared under the owner's permission and billed to the requester below.
   tx.cost = 0;
-  var done = commit(tx);
-  if (done.result !== RESULT.OK) return fail(done.result);
+  var committed = commit(tx);
+  if (committed.result !== RESULT.OK) return { result: committed.result, events: [] };
 
   forgetClearedRuins(state, indices);
   playerAt(state, request.from).treasury -= bill;
   playerAt(state, request.to).treasury += request.offer;
   request.status = APPROVED;
-  return ok([
-    { kind: "requestResolved", id: request.id, status: request.status },
-    { kind: "built", actor: request.to, tiles: done.tiles, cost: bill },
-  ]);
-});
+  request.resolvedBy = by;
+  return {
+    result: RESULT.OK,
+    events: [
+      { kind: "requestResolved", id: request.id, status: request.status },
+      { kind: "built", actor: request.to, tiles: committed.tiles, cost: bill },
+    ],
+  };
+}
 
 /** Is any of this request's ground a ruin at all? The difference between "not
  * yet" and "that is not yours", which is the difference between waiting and
@@ -310,11 +379,26 @@ function anyDerelict(state, request) {
  * in the same order as everything else — "look at this" arriving before the
  * thing it is about would be a different conversation — and it writes nothing
  * at all, which is why `test/requests.test.js` pins the hash across it. */
+register(CMD_SET_REQUEST_POLICY, function setRequestPolicy(state, command) {
+  var acting = canAct(state, command.actor);
+  if (acting !== RESULT.OK) return fail(acting);
+  if (!isRequestPolicy(command.policy)) return fail(RESULT.INVALID);
+  // One seat's own, always: nobody sets anybody else's standing answer, which
+  // is why there is no `seat` on this command to be wrong about.
+  playerAt(state, command.actor).requestPolicy = command.policy;
+  return ok([]);
+});
+
 register(CMD_PING, function ping(state, command) {
   var acting = canAct(state, command.actor);
   if (acting !== RESULT.OK) return fail(acting);
   if (!isInt(command.x) || !isInt(command.z)) return fail(RESULT.INVALID);
-  return ok([{ kind: "ping", actor: command.actor, x: command.x, z: command.z }]);
+  // One of the seven, or nothing at all. Refused rather than passed through: a
+  // message the catalogue has no words for reaches the other player as a raw
+  // key, which is what `t()` returning its own argument looks like on screen.
+  var message = command.message === undefined ? "look" : command.message;
+  if (!isPingMessage(message)) return fail(RESULT.INVALID);
+  return ok([{ kind: "ping", actor: command.actor, x: command.x, z: command.z, message: message }]);
 });
 
 /** The clock and the quiet endings. Pending requests lapse on the option's
@@ -326,6 +410,36 @@ function requestPass(state) {
   for (var i = 0; i < state.requests.length; i += 1) {
     var request = state.requests[i];
     if (request.status !== PENDING) continue;
+    // **A standing answer, given at the month** (X3b). A player who is not
+    // looking still answers, and the month is when: a request is answered
+    // against the city as it stood when it began, which is this pass's own rule
+    // and what keeps an auto-answer in the same order on every machine.
+    var owner = playerAt(state, request.to);
+    var policy = owner ? owner.requestPolicy : "manual";
+    if (policy === "decline") {
+      request.status = DECLINED;
+      request.resolvedBy = request.to;
+      events.push({ kind: "requestResolved", id: request.id, status: request.status });
+      continue;
+    }
+    if (policy === "approve") {
+      // §25.4: acknowledging a complaint is all the channel can do, so a
+      // standing "approve" must never turn one into a demolition.
+      if (request.kind === REQUEST_NUISANCE) {
+        request.status = ACKNOWLEDGED;
+        request.resolvedBy = request.to;
+        events.push({ kind: "requestResolved", id: request.id, status: request.status });
+        continue;
+      }
+      var answered = approveRequest(state, request, request.to);
+      if (answered.result === RESULT.OK) {
+        for (var e = 0; e < answered.events.length; e += 1) events.push(answered.events[e]);
+        continue;
+      }
+      // Anything else leaves it exactly as it was: a requester who cannot pay
+      // does not get the ground cleared for free, and a request nothing
+      // happened to must not be marked answered.
+    }
     if (request.kind === REQUEST_DEMOLITION && !anythingToRemove(state, request)) {
       request.status = MOOT;
       events.push({ kind: "requestResolved", id: request.id, status: request.status });

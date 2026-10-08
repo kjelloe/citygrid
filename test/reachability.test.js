@@ -45,13 +45,6 @@ const NOT_YET = {
   "settings.volume.master": "no master fader: the mixer runs master at full and the two bus levels are the controls",
   "settings.volume.music": "there is no composed music, so a slider for it would control silence",
   "settings.advisor": "slice 4.2 personas, Q18",
-  "ping.help": "slice 5.3",
-  "ping.building": "slice 5.3",
-  "ping.remove": "slice 5.3",
-  "ping.working": "slice 5.3",
-  "ping.fire": "slice 5.3",
-  "ping.look": "slice 5.3",
-  "ping.thanks": "slice 5.3",
   "status.afk": "slice 5.4",
   "tool.request": "slice 5.3",
   // X1b wrote the words the door needs before there is a door to read them

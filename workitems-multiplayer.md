@@ -24,6 +24,15 @@ room, X1c's three hashes from a server with no quests, X2c's one-seat room, each
 the item asked for. Looked at by the reviewer: the territory overlay with three seats, the three
 skins, the water as one sheet, the shops from the air, the train. They are what the items say.*
 
+**Measured by the reviewer on the working tree, 2026-10-08 11:20.** `quick` **578 s of 540 — over
+budget by 38 s** (ui_smoke 172, play_smoke 105, room_smoke 81; M9 is this), 11 of 12 green, and
+`ui_smoke` red on two checks that are the uncommitted X3b: *every overlay the model offers has a
+button* (**14 buttons for 13 overlays**) and *the territory overlay renders in one pass* (−1 draw
+calls). Either a button exists for an overlay the model does not list, or the territory row was
+added twice; the draw-call check moving by exactly one says the same thing from the other side.
+It is the slice in flight and not the committed tree — which cannot run this gate at all, because
+the room is not in it. → X5 item 0, before anything else is committed.
+
 **The one finding that matters is not in the code.** Every multiplayer slice from X1b to X4e —
 71 files, 5,152 lines, three fixture re-pins, `SAVE_VERSION` 5 → 6, a `PROTOCOL_VERSION` bump and
 the whole rewrite of the lane files for an architect — is **uncommitted**. The last commit is B14 on
@@ -33,6 +42,20 @@ two days, and `main` cannot be fast-forwarded to a tree that is not in the histo
 one `slice-<id>` per dev-log entry in the order the entries were written**, with the fixture re-pin
 in X3b's commit where its `why` says it is. Then `tools/gates.mjs all` on the committed tree, and
 M7's merge note updated — `main` is at era 26's release and the game is at era 29.
+
+**Small findings, from looking.**
+- **A refusal shows its template.** `smoke-X3b-territory.png`: the status line reads *"That belongs
+  to {player}"*. `result.notOwner` is the one `result.*` string with a token, `hud.js` renders every
+  result through `t(\`result.${result}\`)` with no values, and `t()` leaves an unfilled token in
+  the output by design. Pass the owner's name (the roster has it since X3b) — and `test/i18n.test.js`
+  gains the assertion that no string reaches the screen with a brace in it, which is the ruling 027
+  shape of this defect. → **X5** item 1.
+- **`room_smoke` is in two sets**, `quick` and `room`; a run of `all` pays its 41 s twice and M9's
+  budget arithmetic counts it twice. One set, and `room` is the one.
+- **The train is a box with a roof, and the car behind it is two slabs** (`smoke-T3-train-close.png`,
+  re-taken after S17). S17's `vehicle-spec.js` has the cabin and the wheels; either the train shot
+  is of the L2 pool or the kit is not reached on that page. Say which with the pool read-back the
+  rail gate already does (`rail_shots: the second reader of the train pools`). → X5 item 3.
 
 
 ## What is already there (plan.md §3.9b, checked 2026-10-04)
@@ -232,6 +255,10 @@ checks the warm one.
 **Measured:** both browsers on one hash (`a3096376bd197a6c`) at tick 364, seat two saw seat one's
 road 6 of 6 tiles, one shared hour (18.259 s on both, unmoved after 500 ms of pause), no page or
 console errors, 41 s. Suite 1,862 green twice.
+
+**Still X1's and not built:** a resync driven from the page (the transport handles `S2C.SNAPSHOT`
+and `test/socket-transport.test.js` drives it, but no browser gate has been made to diverge), and
+`C2S.LATENCY`, `S2C.ROSTER`, `S2C.PONG` and `S2C.CHAT`, which are the lobby's and X3b's.
 
 ## X1 — Server and relay (L) — plan-v1 slice 5.1
 
@@ -476,6 +503,10 @@ engine's own cap per map size, 48 → 4 up to 128 → 16 — rather than a new c
 room), the host takes seat 1, a guest types `cww-b8e` and is given seat 2, and all three are on one
 hash with the clock stopped.
 
+**Not in it:** the QR (Q5), ready, spectate, the host's controls (start, kick, speed as a `C2S`
+message), hosting from a save, and joining a room that has started. The code is shown in the
+address bar and nowhere else yet — the panel that should show it is X3b's roster.
+
 ## X2b — The join screen (M) — **BUILT 2026-10-07**
 
 *A code field, a name and a Join button on the new-game screen, below the options because every
@@ -483,6 +514,16 @@ option there belongs to the city you START and none to one you JOIN. `client/lob
 holds the decisions: the normalisation, the cap, and two refusals told apart (`needCode` vs
 `badCode`). Strings in both catalogues, with the example code `ABC-123` in `SAME_IN_BOTH` because
 it has to look like what the host is reading out.*
+
+**The door picks the seat.** A player who typed a code cannot know which are free, so seat 0 — or
+no seat — means "any" and the room gives out the lowest free one. That is what let the screen be a
+code and a name rather than a seat-picking exercise, and it kept the roster in X3b where it belongs.
+
+**`room_smoke` found the layer that undid it.** A third browser joining through the lobby came back
+`seatTaken`: the transport was defaulting seat 0 to 1 before sending the hello. Two tests and the
+server change had all passed; the end-to-end arm is what saw it. Now green — `zx7-cwk` typed into
+the field joins `ZX7CWK` and is given **seat 3**, with a bad code refused on the lobby in words and
+the screen still up.
 
 **Not in it:** hosting (that is the registry and a create message — X2c), the QR, ready, spectate,
 and the host's controls.
@@ -567,7 +608,102 @@ compare the three hashes **while the pump was still beating**, which read one cl
 and called it a divergence. It now reads the room's own result code for every command, and stops
 the clock before comparing.
 
-## X3b — Ownership in play, on the screen (L) — slice 5.3
+## X3b — Ownership in play, on the screen (L) — slice 5.3 — **two pieces built 2026-10-07**
+
+**Built: the territory overlay's control (Q61).** A row in the overlay rail, last and deliberately
+not in `OVERLAYS` — it is not a band overlay, it colours BUILDINGS by owner. `game.js` turns the
+name into `draw({ territory: true })` with the band overlay off, from one exported name so the two
+cannot disagree. `client/ui/territory-model.js` holds §16's other half: a legend that NAMES each
+seat beside its swatch, in seat order, with the colour read from `PLAYER_COLOURS`, nature excluded,
+and a nameless seat falling back to `Mayor <n>`. `room_smoke` drives it (open `#rail-overlays`
+first — the rail is a drawer and its buttons are in the DOM while it is shut) and checks the row
+count against the ROOM's own player list.
+
+*Still open in the overlay's gate line:* **a picture of two seats' buildings in two colours.**
+`reports/smoke-X3b-territory.png` shows the control and the legend; the room is three months old and
+has no buildings, so the map shows nothing coloured — a city with nothing to show makes a green
+picture of a right overlay (V7's wash). It needs a played multi-seat city.
+
+**Built: the request that outlives its owner.** This item inherited "either move it when ownership
+moves or resolve it `moot`" from X3c, with a fixture re-pin priced in. Neither was needed: `moot` is
+what the code has always done through `anythingToRemove`'s owner check, and it is the right answer —
+the offer was made to somebody who no longer owns the ground. `specs/plan.md` §25.3's promise that
+it "transfers to the new owner with the clock reset" is corrected, and `test/requests.test.js` makes
+the behaviour a decision rather than a side effect. No hashed field, no re-pin.
+
+**Built 2026-10-07: `resolvedBy`, and the inbox.** The agreed-vs-forced question was decided with
+the inbox's words in front of it, exactly as the item said: a resolved request now records the seat
+that ANSWERED it, which is the only thing that tells an owner's approval from a neighbour's derelict
+override. Four places and a `SAVE_VERSION` 5 → 6 migration; `two_player.json` re-pinned, 5 of 13
+hashes from the `requestDemolition` step onward, the other two fixtures untouched.
+`client/ui/inbox-model.js` decides the rows, the sentences and the actions, `hud.js` draws a drawer
+that is absent in singleplayer rather than empty, and the rail carries the waiting count — which is
+why the three `request*` events stay out of the alert list and the event census now says so as a
+decision. `room_smoke` runs the item's own gate line end to end: direct path `notOwner`, request
+filed, row drawn in words, **Agree clicked in the panel**, ground cleared on the other client, owner
+paid 19 938 → 19 978.
+
+**Also already built, found by reading rather than assumed:** undo refused once somebody else owns
+the ground (A123) — `engine/build-commands.js`'s `undoLast`, pinned at `test/build.test.js:213`.
+
+**Built 2026-10-08: the hand that files one.** The door is the refusal — a demolish on somebody
+else's ground is answered `notOwner` and the game offers to ask, with the owner named. No new tool.
+`client/ui/ask-model.js` says only what the dialog needs (who owns it, how much of it is theirs, and
+which of two sentences the tile count wants); the rule stays in the reducer. The panel is built only
+in a room, like the inbox drawer — `reach_smoke` reported its five controls as unreachable in
+singleplayer, which is ruling 029 working. `room_smoke` drives it through the HAND now, with
+`play_smoke`'s `tilePixel`: a command posted through the seam never reaches `onResult`, so the first
+cut waited for a panel nothing had opened.
+
+**Built 2026-10-08: reports and pings — all five mute commands are reachable.** A nuisance report
+is the ask panel's other button, with the offer dropped whatever was typed. A ping carries one of
+**seven** canned messages from a closed list (`PING_MESSAGES` in `engine/requests.js`), sent from
+the inspector — already open on the tile — and received as an alert that is a button the camera
+follows. `test/omissions.test.js`'s no-control list is down to `leave` and `setStatus`, both X4's.
+
+*Three defects the gate found:* another seat's events were **dropped on the floor**
+(`sim.onChange` returned on anything that was not a `CMD_TICK`, which is right in singleplayer and
+wrong in a room); the inbox **rebuilt its rows on every pushed frame**, so the Agree button was
+detached under the cursor 47 times and no hand could have pressed it either; and the alert list had
+the same fragility, which had never mattered while every row was text.
+
+**Built 2026-10-08: the inspector says whose.** `inspect()` has carried `owner` since it was
+written and nothing ever showed it. The row is first, and absent in a city with one seat — a row
+with one possible answer is noise. A building's owner wins over the ground's.
+
+**Built 2026-10-08: standing answers.** `player.requestPolicy` was a dead field in hashed state
+and `CMD_SET_REQUEST_POLICY` a constant with no handler — two halves of one missing feature. Three
+closed policies (`manual`, `approve`, `decline`), set from the inbox, applied by the monthly pass,
+with `approveRequest` shared by the command and the pass so there is one copy of "bulldoze, bill,
+pay". A policy that cannot be honoured leaves the request exactly as it was, and a standing
+"approve" acknowledges a nuisance rather than demolishing for it. No era moved and no fixture
+re-pinned. **This list had it filed as slice 5.4 and the item was right** — the policy is set by a
+player here and only USED by the deputy, which is X4's regency.
+
+**The activity feed, decided 2026-10-08 — it already exists, under another name.** The item asked
+for one when the alert list could not show another seat's events at all: `sim.onChange` dropped
+everything that did not arrive on a tick, so every event any other player produced went nowhere
+(found and fixed with the pings). With that fixed, the alert list IS the feed — it carries other
+seats' requests, resolutions, builds and pings, each with a severity, and a ping row is a button
+that takes the camera there.
+
+What a separate feed would add is **persistence**: alerts expire after `LIFETIME` (288 ticks, two
+sim-years) and are capped, so a player who was away misses what happened. That is a real thing to
+want and it is **X4's**, not this item's — it is the same question as "what did the deputy do while
+I was gone", and answering it in two places would be two histories that can disagree. Filed there
+rather than built here.
+
+**Built 2026-10-08: chat, and the item is finished.** Deliberately **not a command** — it never
+reaches the reducer, so a line cannot desync a city and a client that misses one has not diverged.
+`server/chat.js` sanitises with the same helper a request title goes through, caps in bytes, and has
+its own rate budget (four lines a second against twenty commands) so talking and building do not
+share a purse. `chatEnabled` is off by default and the panel is **absent** when it is, not empty.
+The panel renders `textContent` and never markup, which the gate checks by saying `<b>not bold</b>`
+and looking for the element. (Was: standing policies (`CMD_SET_REQUEST_POLICY`, which
+`test/omissions.test.js` lists as slice 5.4); nuisance reports and pings; the activity feed; chat; and
+per-seat attribution in the inspector — all but the first two of which are now built.)
+
+## X3b — the item as written, slice 5.3
 
 **Goal.** Nothing you did not build is yours to destroy, and the way to ask is on the screen.
 
@@ -637,6 +773,17 @@ outcome now, and every command of a turn is reported rather than the first — a
 and the server had applied them all. Gate: **`room_churn`**, status 0 → 2 → 0 with 0 divergences
 over 5,586 frames.
 
+*Still owed by regency:* answering requests by the standing policy. The policy is set and the
+monthly pass applies it (X3b), which covers a regent seat too — but the deputy does not yet CHOOSE
+one, so a seat handed over keeps whatever its player left.
+
+**Still to build in X4:**
+spectators, a room that ticks at 1× when every seat is in regency and hibernates when empty, and
+`splitRule`/`mutualAid`/`disasterAid` where income, coverage and repair are shared — and **a
+history that outlives the alert list**, which X3b's activity-feed item resolved into this one: what
+a player who was away needs is not a second feed but a record of what happened while they were, and
+"what did the deputy do" is the same question.
+
 ## X4 — Drop-in and absence (L) — slice 5.4
 
 **Goal.** Leaving is safe, coming back is easy, and a city nobody is watching is still there.
@@ -663,11 +810,8 @@ singleplayer playtest was.
 
 ## Order
 
-**~~X0~~ → ~~X1's room half~~ ∥ W6 second half ∥ ~~X3a~~ (engine, no player-visible change) — and
-there it stops until Kjell has played (A125).** X0, X1's room half and X3a are built (2026-10-04);
-what is left before the playtest is W6's second half, which is a renderer slice. X0 and X1's room half are built (2026-10-04). Then X1's client half → X2 → X3b → X4. W6 runs beside X1 because they touch
-different files and X3 cannot be played without it. Wave 6 (modes, seasons, scale to sixteen,
-operations) is not in this file and does not start until the release gate above is met.
+**Everything in this lane is built except four items.** As of 2026-10-08, in the order it happened:
+
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
 ~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~.
 
@@ -686,3 +830,20 @@ after `abandonYears` the ground goes to the commons. A room nobody is in stops p
 
 ### What is left
 
+| | What | Why it is left |
+|---|---|---|
+| **X4f** | Hibernate to **disk**, not only to a standstill | X4d stopped the city; the second half is writing it out and dropping the pump, which wants the store's checkpoint path |
+| **X4g** | `splitRule`, `mutualAid`, `disasterAid` | **A balance era**: they change what a city earns, so they need a sweep and a report, not a slice |
+| **X4h** | A history that outlives the alert list | X3b's activity-feed item resolved into this one: what a returning player needs is a record of what happened while they were away, and "what did the deputy do" is the same question |
+| **X2d** | The lobby's remaining rows | The QR (Q5), ready, spectate as a lobby choice, host controls (kick, speed), hosting from a save, joining a room that has started |
+
+Wave 6 (modes, seasons, scale to sixteen, operations) is not in this file and does not start until
+the release gate above is met. W6's second half runs beside all of it — different files.
+
+### The release gate, measured so far
+
+`room_soak` plays five city years with two clients on one hash; `room_churn` takes a seat away,
+gives it to a deputy and gives it back with **0 divergences over 5,586 frames**; `room_smoke` drives
+**five browsers** through hosting, joining, watching, the inbox, pings, chat and the roster. What
+the gate still asks for and nobody has done: **eight** clients, and one real evening with real
+people — the second is Kjell's, as the singleplayer playtest was.

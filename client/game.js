@@ -20,6 +20,7 @@ import { createRenderer } from "./render/scene.js";
 import { focusOn } from "./render/camera.js";
 import { createController } from "./input/controller.js";
 import { phaseOf } from "./render/time-of-day.js";
+import { TERRITORY } from "./ui/territory-model.js";
 import { phaseForPreset } from "./world/rush.js";
 import { TIME } from "./ui/settings-model.js";
 import { loadSettings, saveSettings } from "./ui/settings.js";
@@ -32,7 +33,13 @@ import { createMixer } from "./audio/mixer.js";
 import { cuesFor, cueForResult, streetAmbienceFor } from "./audio/audio-model.js";
 import { loadQuests } from "./content.js";
 import { questCatalogue, activeQuests } from "../engine/quests.js";
-import { CMD_QUEST_CHOICE, CMD_SET_TAX, CMD_SET_FUNDING } from "../engine/commands.js";
+import {
+  CMD_QUEST_CHOICE, CMD_SET_TAX, CMD_SET_FUNDING, CMD_RESOLVE_REQUEST, CMD_WITHDRAW_REQUEST,
+  CMD_BULLDOZE, CMD_REQUEST_DEMOLITION, CMD_REPORT_NUISANCE, CMD_PING,
+  CMD_SET_STATUS, CMD_LEAVE, CMD_SET_REQUEST_POLICY,
+} from "../engine/commands.js";
+import { RESULT } from "../shared/protocol.js";
+import { decodeRuns } from "../shared/grid.js";
 import { clampRate, clampFunding } from "./ui/budget-model.js";
 import { toSave } from "../engine/save.js";
 import { shouldAutosave, slotSummary, packExport, unpackImport, SLOTS } from "./storage/saves.js";
@@ -201,7 +208,18 @@ export async function startGame(root, given = {}) {
       minimap?.worldChanged();
     },
     onPreview: (preview) => hud.setPreview(preview),
-    onResult: (result) => { hud.setResult(result); audio.play(cueForResult(result)); },
+    onResult: (result, command) => {
+      // **A refusal that is also a door** (X3b): ground somebody else owns
+      // cannot be demolished, and in a room the answer to that is not only a
+      // toast — it is the offer to ask. The toast still happens, because the
+      // offer is declined by ignoring it and the player should know why the
+      // ground did not go.
+      hud.setResult(result);
+      if (result === RESULT.NOT_OWNER && command?.type === CMD_BULLDOZE && command.runs) {
+        hud.offerAsk(decodeRuns(command.runs), command.runs);
+      }
+      audio.play(cueForResult(result));
+    },
     // With no build tool selected, a tap inspects. That is the design's
     // "Inspect" tool without a mode of its own to get stuck in.
     onTap: (tile) => hud.showInspection(tile),
@@ -229,8 +247,46 @@ export async function startGame(root, given = {}) {
   // and the alerts return on the next tick.
   const hudOptions = {
     state,
-    seat: SEAT,
+    seat,
     controller,
+    // Watching rather than playing (X4e): the door welcomed this client with
+    // seat 0, which is nature, so there is nothing it could build even if the
+    // tools were there.
+    watching: sim.room !== undefined && !(sim.seat > 0),
+    // **The inbox's two actions** (X3b), and only in a ROOM: in singleplayer
+    // there is nobody to exchange a request with, and `hud.js` leaves the
+    // drawer out entirely rather than offering an empty one.
+    onResolveRequest: sim.room === undefined ? undefined
+      : (id, approve) => sim.apply({ type: CMD_RESOLVE_REQUEST, actor: seat, id, approve }),
+    onWithdrawRequest: sim.room === undefined ? undefined
+      : (id) => sim.apply({ type: CMD_WITHDRAW_REQUEST, actor: seat, id }),
+    // One panel, two commands (X3b): asking to clear and reporting a nuisance
+    // arrive at the same moment and are the same record with two kinds (X3a).
+    // Pointing at a tile, and jumping to one somebody else pointed at (X3b).
+    // **Saying you are away, and leaving on purpose** (X4): the last two
+    // commands with handlers and no control. Only in a room — in singleplayer
+    // there is nobody to tell, and `CMD_LEAVE` on the only seat would set a
+    // hashed field for an audience of none.
+    // **The standing answer** (X3b): what happens to requests about your ground
+    // while you are not looking. One seat's own, so no seat crosses.
+    // **Chat** (X3b), and only when the ROOM has it on: `sim.say` is absent on
+    // every transport with no room behind it, and absent again when the city's
+    // `chatEnabled` is false — which is the default.
+    onSay: sim.say && state.options.chatEnabled ? (text) => sim.say(text) : undefined,
+    onSetPolicy: sim.room === undefined ? undefined
+      : (policy) => sim.apply({ type: CMD_SET_REQUEST_POLICY, actor: seat, policy }),
+    onSetStatus: sim.room === undefined ? undefined
+      : (status) => sim.apply({ type: CMD_SET_STATUS, actor: seat, status }),
+    onLeaveRoom: sim.room === undefined ? undefined
+      : () => sim.apply({ type: CMD_LEAVE, actor: seat }),
+    onPing: sim.room === undefined ? undefined
+      : ({ x, z, message }) => sim.apply({ type: CMD_PING, actor: seat, x, z, message }),
+    onFocusTile: (tile) => { focusOn(renderer.view, tile.x, tile.y); },
+    onFileRequest: sim.room === undefined ? undefined
+      : ({ kind, ...given }) => sim.apply({
+        type: kind === "nuisance" ? CMD_REPORT_NUISANCE : CMD_REQUEST_DEMOLITION,
+        actor: seat, ...given,
+      }),
     onOverlay: (name) => { overlay = name; },
     onSpeed: () => setSpeed((speed + 1) % SPEEDS.length),
     onUndo: () => controller.undo(),
@@ -251,14 +307,14 @@ export async function startGame(root, given = {}) {
       // The seam answers when the simulation has actually done it (W2): the
       // HUD is refreshed from the city the choice produced, not from the one
       // that was on screen when it was clicked.
-      sim.apply({ type: CMD_QUEST_CHOICE, actor: SEAT, id, option }).then(() => hud.refresh());
+      sim.apply({ type: CMD_QUEST_CHOICE, actor: seat, id, option }).then(() => hud.refresh());
     },
     quests: { catalogue: questCatalogue, active: () => activeQuests(state) },
     onTax(rate) {
-      sim.apply({ type: CMD_SET_TAX, actor: SEAT, rate: clampRate(rate) });
+      sim.apply({ type: CMD_SET_TAX, actor: seat, rate: clampRate(rate) });
     },
     onFunding(service, percent) {
-      sim.apply({ type: CMD_SET_FUNDING, actor: SEAT, service, percent: clampFunding(percent) });
+      sim.apply({ type: CMD_SET_FUNDING, actor: seat, service, percent: clampFunding(percent) });
     },
     // §9.5's loan (L1). The amount comes from the drawer's three steps, which
     // are built from what the reducer will actually accept — and the reducer
@@ -266,7 +322,7 @@ export async function startGame(root, given = {}) {
     onLoan(action, amount) {
       sim.apply({
         type: action === "borrow" ? CMD_TAKE_LOAN : CMD_REPAY_LOAN,
-        actor: SEAT, amount,
+        actor: seat, amount,
       }).then(() => hud.refresh());
     },
     onSave: save,
@@ -305,8 +361,17 @@ export async function startGame(root, given = {}) {
   }
   setSpeed(1);
 
+  // A line from the room goes straight to the panel: it is not state, nothing
+  // orders it against commands, and a client that misses one has not diverged.
+  sim.onChat?.((line) => hud.addChatLine(line));
+
   sim.onChange((change) => {
-    if (change.command.type !== CMD_TICK) return;
+    // Ticks, **and frames pushed by a room** (X3b). This read `!== CMD_TICK`
+    // and returned, which is right in singleplayer where every event arrives on
+    // a tick — and in a ROOM another seat's commands arrive on a frame nobody
+    // asked for, so every event they produced was dropped on the floor. The
+    // ping gate is what said so: the other seat never heard it.
+    if (change.command.type !== CMD_TICK && change.pushed !== true) return;
     hud.tick(change.events);
     for (const cue of cuesFor(change.events)) audio.play(cue);
     // Where the WALKER is standing, when they are down there (V8): a busy
@@ -439,7 +504,13 @@ export async function startGame(root, given = {}) {
     controller.stepCamera?.(frameMs / 1000);
     controller.stepEdge?.(frameMs / 1000);
     renderer.draw({
-      overlay: hud.overlay, frameMs, dt: frameMs / 1000, move: controller.move,
+      // **Territory is not a band overlay** (X3b, Q61): it colours buildings by
+      // their owner, so it goes to the renderer as its own flag and the band
+      // overlay is off while it is on. One name, from `territory-model.js`, so
+      // the rail and this line cannot disagree.
+      overlay: hud.overlay === TERRITORY ? undefined : hud.overlay,
+      territory: hud.overlay === TERRITORY,
+      frameMs, dt: frameMs / 1000, move: controller.move,
       // The clock chooses only when the player asked it to (plan.md §6).
       time: timeSetting === "auto" ? phaseOf(daySeconds, DAY_SECONDS) : timeSetting,
       // The same clock as a NUMBER, for the traffic's rush hour (B4). The light

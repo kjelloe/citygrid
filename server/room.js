@@ -260,6 +260,11 @@ export function createRoom(given = {}) {
 
   return {
     state,
+    code: () => code,
+    /** Say something to every seat in the room (X3b). Not a command and not a
+     * frame: chat never reaches the reducer, so it rides its own message and a
+     * client that misses one has not diverged. */
+    broadcast,
     join,
     submit,
     beat,
@@ -271,7 +276,7 @@ export function createRoom(given = {}) {
     save: () => JSON.parse(JSON.stringify(toSave(state))),
     seats: () => [...seats.values()].map(({ seat, token }) => ({ seat, token })),
     setSpeed(next) {
-      speed = Math.max(0, Math.min(SPEEDS.length - 1, Math.floor(next)));
+      speed = Math.max(0, Math.min(TICKS_PER_SECOND.length - 1, Math.floor(next)));
       return speed;
     },
     leave(seat) { seats.delete(seat); },

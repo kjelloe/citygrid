@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "X3c: state.derelicts is new hashed state — every fixture hash is taken over a longer field list",
+ "why": "X3b: a resolved request records the seat that answered it (resolvedBy), so an inbox can tell an owner's approval from a neighbour's derelict override; SAVE_VERSION 5 to 6 with a migration giving old records 0",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -155,7 +155,7 @@
     "offer": 250
    },
    "result": "ok",
-   "hash": "dc0cd3d0dd7c337c",
+   "hash": "ddec0f9859294200",
    "events": [
     "requestFiled"
    ]
@@ -168,7 +168,7 @@
     "approve": true
    },
    "result": "ok",
-   "hash": "c46cf5eb633f6a67",
+   "hash": "20a723506f395d66",
    "events": [
     "built",
     "requestResolved"
@@ -181,7 +181,7 @@
     "rate": 8
    },
    "result": "ok",
-   "hash": "01c4899640b26b96",
+   "hash": "8d63f23e29f9a8a1",
    "events": [
     "taxSet"
    ]
@@ -192,7 +192,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "a12d67bc1e2cd012",
+   "hash": "1b62288aba650e5f",
    "events": [
     "budget"
    ]
@@ -203,12 +203,12 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "d55fa45786c1661c",
+   "hash": "d37226ed6878ca8d",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 28,
- "repinnedAt": "2026-10-05"
+ "era": 29,
+ "repinnedAt": "2026-10-07"
 }

@@ -1360,3 +1360,39 @@ button, [role="button"] {
 .controls-card dd { margin: 0; }
 .controls-note { margin: 0 0 0.8rem; opacity: 0.75; font-size: 0.9em; }
 .controls-dismiss { min-height: 44px; width: 100%; }
+
+/* The ask panel (X3b): offered when a demolish is refused on somebody else's
+   ground. Centred and above the map, because it is a question the player has to
+   answer before anything else makes sense — and small, because it is three
+   fields and two buttons, not a screen. */
+.hud-ask {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 320px;
+  max-width: min(440px, 92vw);
+  padding: 14px 16px;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+.hud-ask .ask-what { margin: 0; font-weight: 600; }
+.hud-ask .ask-fields { display: flex; flex-direction: column; gap: 6px; }
+.hud-ask .ask-field { display: flex; flex-direction: column; gap: 2px; font-size: 0.85em; }
+.hud-ask .ask-field input {
+  min-height: var(--touch);
+  padding: 6px 8px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) / 2);
+}
+.hud-ask .ask-actions { display: flex; gap: 8px; }
+.hud-ask .ask-actions button { min-height: var(--touch); flex: 1; }

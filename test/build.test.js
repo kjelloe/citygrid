@@ -467,6 +467,11 @@ test("permission matrix: every registered command is covered by a row", () => {
     "questChoice",
     // X3a's five, asserted in the row above and in test/requests.test.js.
     "requestDemolition", "resolveRequest", "withdrawRequest", "reportNuisance", "ping",
+    // X3b's standing answer. Not tile-scoped: it is one seat's own setting and
+    // carries no seat to be wrong about, so what there is to assert is that it
+    // takes a policy from a closed list and that one seat's choice does not
+    // move another's — both in test/requests.test.js.
+    "setRequestPolicy",
     // L1's two: a loan is a seat's own books, not a tile, so ownership does not
     // apply — the row below asserts what DOES, which is that a seat can only
     // borrow against its own debt.
