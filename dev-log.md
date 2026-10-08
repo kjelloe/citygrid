@@ -12549,3 +12549,22 @@ room from the one the server booted with; the host takes seat 1 and its address 
 page or console errors on any of the five contexts. Suite **1,880 green twice**; `room_soak` green
 (warm p99 2.88 ms of 20); `offline_smoke` green, so singleplayer still opens no socket.
 
+## The two pre-existing gate races, fixed (2026-10-07)
+
+Both of M9's named failures were instruments, not defects, and both are now gates that cannot race.
+
+- **`lobby_smoke`** read `.settings-close` on the line after clicking the Norwegian locale row.
+  Re-localising is work the page does after the click, so the read caught it unchanged often enough
+  to fail three runs and pass the fourth. It waits for the label to CHANGE now, with the same
+  assertion behind it — a label that never changes still arrives as the old one. Green twice.
+- **`ui_smoke`** asked the page for `renderer.night` strictly between 0 and 1, two animation frames
+  after choosing night. Under SwiftShader two frames can be most of a second, so the fade was over
+  and the gate failed about a thing that was right. **The fade's shape is already proved in node**,
+  where the clock is an argument (`test/time-of-day.test.js` has four assertions about it), so what
+  the page is now asked is the thing only the page can answer: that the fade RUNS here — the
+  renderer has a clock, the frame loop feeds it, and the hour arrives. Waited for rather than
+  sampled. Green, 218 checks.
+
+A race that loses sometimes is worse than one that always does, because it gets argued with instead
+of fixed. Both of these cost a reading each before the `before` arm settled them.
+

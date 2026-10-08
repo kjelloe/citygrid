@@ -243,7 +243,19 @@ try {
     await page.waitForSelector("dialog.settings[open]", { timeout: 10000 });
     const wasLabelled = await page.textContent(".settings-close");
     await page.click('.settings-choice[data-field="locale"][data-value="no"]');
-    const nowLabelled = await page.textContent(".settings-close");
+    // **Wait for the effect, do not read on the next line.** Re-localising the
+    // panel is work the page does after the click, and reading the label
+    // straight away caught it unchanged often enough to fail three runs in one
+    // afternoon and pass the fourth — a race that loses sometimes is worse than
+    // one that always does, because it gets argued with instead of fixed (M9).
+    // The assertion is unchanged: the label still has to CHANGE, and a label
+    // that never does still arrives here as the old one.
+    const nowLabelled = await page.waitForFunction((was) => {
+      const label = document.querySelector(".settings-close");
+      return label && label.textContent !== was ? label.textContent : false;
+    }, wasLabelled, { timeout: 5000 })
+      .then((handle) => handle.jsonValue())
+      .catch(() => wasLabelled);
     check(`${label}: the panel restates itself in the new language`,
       wasLabelled !== nowLabelled && nowLabelled.length > 0, `${wasLabelled} → ${nowLabelled}`);
     const contrast = await page.evaluate(() => {

@@ -597,10 +597,24 @@ try {
     check(`choosing ${hour} reaches the renderer`, applied.time === hour && applied.stored === hour,
       JSON.stringify(applied));
     if (hour === "night") {
-      // And it is a fade, not a cut: two frames in, the sun is on its way down
-      // rather than already off.
-      check("the hour changes over a second, not in a frame",
-        applied.night > 0 && applied.night < 1, `night is ${applied.night}`);
+      // **The fade's SHAPE is proved in node**, where the clock is an argument:
+      // `test/time-of-day.test.js` has "setting a preset arrives at it, over
+      // about a second", that a second `set` does not restart it, that no time
+      // passing moves nothing, and that a new target continues from where it
+      // is. This check used to ask the PAGE for the same thing — `night`
+      // strictly between 0 and 1, two animation frames after the click — and
+      // under SwiftShader two frames can be most of a second, so the fade was
+      // simply over and the gate failed about a thing that was right. It failed
+      // identically on the parent commit, which is how that was settled (M9).
+      //
+      // What the page can say, and node cannot, is that the fade RUNS here at
+      // all: the renderer has a clock, the frame loop feeds it, and the hour
+      // arrives. So it is waited for rather than sampled.
+      const arrived = await page.waitForFunction(
+        () => globalThis.CITY.renderer.night >= 1, undefined, { timeout: 5000 },
+      ).then(() => true).catch(() => false);
+      check("the hour arrives, over a clock the page actually runs",
+        arrived, `night stopped at ${await page.evaluate(() => globalThis.CITY.renderer.night)}`);
     }
   }
 
