@@ -13,6 +13,27 @@ not a green suite. A125 (Kjell, 2026-10-04): the headless room is built now — 
 half — because it adds a directory and a dependency and changes nothing a singleplayer player
 touches. X1's client half, X2, X3 and X4 wait for the playtest.** W6's second half runs beside
 X1 and lands before X3 (A126).
+*Read on `dev_night` with the committed tree at `1f13ee7` (B14, 2026-10-06) and the working tree
+two days ahead of it. The node suite is green on the committed tree (1,662 at HEAD's own count) and
+green on the working tree (**1,939 of 1,942, 3 skipped, 0 failed**); the `quick` set was running
+while this was written and its result is below. Everything since the last review is **accepted**:
+the world lane through S21b, behaviour through B14, L1, M7 and M8, W6a and W6b, and the multiplayer
+lane from X0 to X4e — a room a player can host, join by code, build in, ask a neighbour in, leave
+and come back to. The quality of the finding-writing held through it: X1d's eight-times-too-fast
+room, X1c's three hashes from a server with no quests, X2c's one-seat room, each caught by the gate
+the item asked for. Looked at by the reviewer: the territory overlay with three seats, the three
+skins, the water as one sheet, the shops from the air, the train. They are what the items say.*
+
+**The one finding that matters is not in the code.** Every multiplayer slice from X1b to X4e —
+71 files, 5,152 lines, three fixture re-pins, `SAVE_VERSION` 5 → 6, a `PROTOCOL_VERSION` bump and
+the whole rewrite of the lane files for an architect — is **uncommitted**. The last commit is B14 on
+2026-10-06; the dev-log has fourteen entries after it. §0's rule is one commit per slice, and the
+reason is not tidiness: a crash, a bad `git checkout --`, or the reviewer's own worktree habit loses
+two days, and `main` cannot be fast-forwarded to a tree that is not in the history. **Commit now,
+one `slice-<id>` per dev-log entry in the order the entries were written**, with the fixture re-pin
+in X3b's commit where its `why` says it is. Then `tools/gates.mjs all` on the committed tree, and
+M7's merge note updated — `main` is at era 26's release and the game is at era 29.
+
 
 ## What is already there (plan.md §3.9b, checked 2026-10-04)
 

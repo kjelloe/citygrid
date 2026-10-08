@@ -207,6 +207,44 @@ test("a road over water is a DECK above the surface, not a causeway in it", () =
   assert.ok(m.heightAt(7.5 * T, 5.5 * T) < level - 0.5, "the whole lake came up with the road");
 });
 
+test("the deck is ONE profile: it does not step at the tile joints (S18)", () => {
+  // S18's first bullet — "a single graded line from abutment to abutment, so
+  // the slabs do not step". The clearance test above says the deck is high
+  // enough; nothing said it was SMOOTH, and the joints are where a staircase
+  // would show, so they are where it is sampled.
+  //
+  // What this discriminates, checked by planting both: it FIRES when `heightAt`
+  // stops reading the corridor profile and answers from the tile under the
+  // point instead — the pre-S13 shape, and what ruling 038's "one height
+  // function" rules out. It does NOT fire on a stepped `pavableAt`, because
+  // `gradeProfile` smooths whatever it is given to inside `road.maxGrade`;
+  // that is the profile doing its job rather than this test looking away.
+  const state = blank(20);
+  pond(state, 4, 6, 15, 13, 30);
+  crossing(state, 9);
+  const m = createModel(state);
+  const heights = [];
+  for (let x = 2 * T; x <= 18 * T; x += T / 4) heights.push([x, m.heightAt(x, 9.5 * T)]);
+  let worst = 0;
+  let where = 0;
+  for (let i = 1; i < heights.length; i += 1) {
+    const step = Math.abs(heights[i][1] - heights[i - 1][1]);
+    if (step > worst) { worst = step; where = heights[i][0]; }
+  }
+  // A quarter tile of the steepest street the rules allow, with room for the
+  // ramp on and off the deck; a slab joint would be a discontinuity far above
+  // it. The bound comes from `road.maxGrade`, not from a number that happened
+  // to go green (the `maxRoadSlope` lesson).
+  const allowed = DEFAULTS.road.maxGrade * (T / 4) * 1.5;
+  assert.ok(worst <= allowed,
+    `the deck steps ${worst.toFixed(3)} m in a quarter tile at x=${(where / T).toFixed(2)} tiles, `
+    + `which is more than ${allowed.toFixed(3)} m of ${DEFAULTS.road.maxGrade} grade`);
+  // And the gate has to have crossed water at all: a dry row would make every
+  // number above true and meaningless (the walkthrough-crossing lesson).
+  const wet = heights.filter(([x]) => m.surfaceAt(x, 7.5 * T).kind === "water").length;
+  assert.ok(wet > 20, `only ${wet} of ${heights.length} samples were over the channel`);
+});
+
 test("the water under a bridge is still water, and the ground under it still the bed", () => {
   // The deck is the ROAD's height. The terrain mesh, the overlay quads and the
   // camera's orbit read `cornerHeightAt`, and if that followed the deck the

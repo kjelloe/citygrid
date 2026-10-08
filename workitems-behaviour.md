@@ -425,7 +425,35 @@ corridor, every entity not on it is where it was. **Gate.** `lanes_dump` settles
 and reports how many cars moved; `play_smoke` builds a road and the car count on screen does not
 drop to zero.
 
-## B14 — The deputy paves 38% of the city (M, behaviour, its own era) — **BUILT 2026-10-06 as era 29**
+## B15 — Count B14's refusal (S, behaviour + four places) — the review round of 2026-10-06
+
+**Goal.** Know how often the block rule fires, not only what it is worth.
+
+**Why it is an item and not a line of code.** The measurement discipline asks a conditional rule to
+record how often it fired — era 26's bridge rule read FLAT over 200 games and, per seed, fires in
+two cities of twelve and gives those two a quarter of a city each. B14 has its effect measured
+against a null arm and its firing count measured nowhere. `deputy.refusals` is not the place: it
+means "the reducer refused the command I issued", `soak` reports it as a health metric, and a
+self-refusal counted into it would corrupt a signal that is already read.
+
+**Do.** A counter of its own on the deputy record — `crowded`, beside `refusals` — incremented
+where `tooCloseToParallel` returns true. That is a new field on an existing nested record, so it is
+the four places: `copyDeputy` in `engine/state.js`, `writeState`, a save migration with a
+`SAVE_VERSION` bump (the old records get the field and the stored checksum is dropped, because it
+was taken over a shorter field list), and a fixture re-pin if any fixture holds a deputy.
+`HASHED_FIELDS` does NOT change. `tools/soak.mjs` prints it beside `refusals`; the sweep's rows
+carry it, so the next era can say in which cities the rule spoke.
+
+**Tests first.** `test/deputy.test.js`: a town with a street beside every candidate run raises
+`crowded` and leaves `refusals` alone; `blockTiles: 0` leaves both at zero. `test/state.test.js`:
+the deep copy carries it. `test/save.test.js`: a save written at the old version loads with the
+field at 0.
+
+**Gate.** `soak` on three seeds: the count is non-zero on all three, and `refusals` is within noise
+of era 29's run — if the rule's refusals had been landing in `refusals` all along, that row moves
+and the two were never separable.
+
+## B14 — The deputy paves 38% of the city (M, behaviour, its own era) — **`blockTiles: 3` confirmed 2026-10-08 (A135)** — **BUILT 2026-10-06 as era 29**
 
 `tooCloseToParallel` refuses a run where most of it already has a parallel street within
 `deputy.blockTiles` (3) tiles — refused rather than moved, "most" rather than "any", and `d < gap`
@@ -524,6 +552,11 @@ capacity. The renderer half — ribbon width, lane count, markings — is about 
 - **One-way streets and turn restrictions**: lane-graph flags that the engine would have to own.
 
 ## Order
+
+**Where this lane stands, 2026-10-08.** B1–B14 are built; era 29 is B14's. What is open:
+**B15** (count B14's refusal — a conditional rule with its effect measured and its firing count
+measured nowhere) and **B6's rain** (the streaks, the wet road and the puddles; the overcast hour
+shipped as B6a).
 
 **After the review of 2026-10-04: B11 (with W6) → B12 → B13.** Everything above B11 is built.
 

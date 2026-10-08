@@ -973,6 +973,7 @@ in node, the same constants in GLSL, flat at `uTime = 0` so `?life=0` and every 
 keep S4's surface. The pale line where the water meets the shore is still open.
 
 ## S18 — The bridge, the wall and the water (M) — Q145 — **the camera and the wall done 2026-10-04**
+## S18 — The bridge, the wall and the water (M) — Q145 — **BUILT bar the shore line, 2026-10-06**
 
 `photo=<x>,<z>,<eye>,<yaw>,<pitch>` in the shot harness (F1's free camera, eye above the SURFACE —
 over water that is the water); `tools/embankment_shots.mjs` finds the three deepest shoulders in
@@ -980,8 +981,18 @@ node, stands three metres off each and fails at zero baked chunks. 9.3 / 8.5 / 6
 7–8 chunks a frame, both arms from one harness (`wall=0`). Then the facing: `client/world/
 retaining.js` decides, `streets-l3.js` draws stone with a concrete coping, no height moved. The
 threshold is a storey — at 1.2 m a hilly 128 has 916 faced shoulders and 652 are under two metres;
-at 3 m it has 130 and a rolling 96 has none. `walkthrough` prints the count. **Still open in this
-item: the deck as one profile, and the water as one surface.**
+at 3 m it has 130 and a rolling 96 has none. `walkthrough` prints the count.
+
+**The other two bullets, closed 2026-10-06.** The deck is one profile and was already: every
+corridor goes through `gradeProfile`, and over water `pavableAt` answers
+`level + road.deckClearance`, so the deck is part of the same graded line as its approaches and
+`heightAt` inside the corridor returns it (ruling 038, S13). The review round of 2026-10-06 wrote
+the assertion that had been missing — `test/water.test.js`, "the deck is ONE profile" — and the
+test says in the file what it discriminates: it fires when `heightAt` answers from the tile under
+the point instead of from the profile, and it cannot fire on a stepped `pavableAt`, because
+`gradeProfile` smooths that inside `road.maxGrade`. The water is one surface (E8) with
+corner-blended levels (S4) and, since S18b, a swell. **Still open in this item: the pale line
+where the water meets the shore.**
 
 ## S18 — The bridge, the wall and the water (M) — Q145 — the item as written
 
@@ -1096,6 +1107,13 @@ chimney, a plinth and nothing else. A house that draws no SHAPE (porch, dormer o
 porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
+
+**Where this lane stands, 2026-10-08.** S1–S14 and S16–S18 are built, with S18 closed bar one
+bullet. What is open, cheapest first: **S19b** (a station faces its track), **S18's pale shore
+line**, **S20's second half** (the shot gates count their subject's features in frame, not chunks),
+**S15b** (the lit response — a material raised by 60 arrives raised by 25), **S15c** (road width and
+the grey unbuilt lot), **S14** (the batter, tried and reverted — it wants the picture layer), and
+**S22** (a sun that moves, analysed 2026-10-08, rate is Q160).
 
 **After the review of 2026-10-04: re-run the shot sets and look → S18 (the slice in flight) → S15 → S16 → S17 → S19**, beside the multiplayer lane and W6.
 

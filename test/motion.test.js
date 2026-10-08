@@ -6,6 +6,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { MOTION, ANIMATED, motionTime, sway, rotorAngle, radarAngle, craneAngle, flagWave, puff, rippleAt } from "../client/world/motion.js";
 import { addMotion, MOTION_GLSL, motionUniforms, setMotionTime } from "../client/render/motion-material.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 
 const PHASES = [0, 0.7, 2.1, 4.4, 9.9];
 
@@ -159,5 +162,69 @@ test("the ripple is a slow swell, bounded and still at rest", () => {
   for (let i = 1; i < heights.length; i += 1) {
     assert.ok(Math.abs(heights[i] - heights[i - 1]) < amp * 0.5,
       `the surface steps ${(heights[i] - heights[i - 1]).toFixed(3)} m in a metre`);
+  }
+});
+
+// --- the table against the calls (the omissions round, 2026-10-06) ----------
+
+/** Every `addMotion(…, "kind")` in the renderer, as [pool-or-null, kind]. */
+function motionCalls() {
+  const calls = [];
+  for (const file of ["instances.js", "water.js"]) {
+    const source = readFileSync(join(repoRoot, "client", "render", file), "utf8");
+    for (const m of source.matchAll(/addMotion\(\s*(?:pools[.[]`?([A-Za-z0-9_]*)|([A-Za-z0-9_]+))[^,]*,\s*"([a-z]+)"/g)) {
+      calls.push([m[1] ?? null, m[3]]);
+    }
+  }
+  return calls;
+}
+
+test("ANIMATED is the renderer's own list, not a second copy of it", () => {
+  // `ANIMATED` says "a pool not listed here does not move", and for the life of
+  // the project nothing in `client/` has read it — `instances.js` names the pool
+  // and the kind in each of its own `addMotion` calls. The two agreed, which is
+  // the state a table is in right up to the slice that changes one of them
+  // (the `VARIANTS` lesson). So the claim is checked against the calls.
+  const calls = motionCalls();
+  assert.ok(calls.length >= 8, `only ${calls.length} addMotion calls found — the scan, not the renderer`);
+
+  // Water is a MESH, not a pool: one surface for the whole map (E8), so the
+  // ripple is driven from `water.js` and is deliberately not in `ANIMATED`.
+  const meshKinds = calls.filter(([pool]) => pool === null).map(([, kind]) => kind);
+  assert.deepEqual([...new Set(meshKinds)].sort(), ["ripple"]);
+  assert.ok(!Object.values(ANIMATED).includes("ripple"), "the water is listed as a pool");
+
+  const posed = calls.filter(([pool]) => pool !== null);
+  assert.deepEqual([...new Set(posed.map(([, kind]) => kind))].sort(), Object.values(ANIMATED).sort(),
+    "a pool moves by a kind ANIMATED does not list, or ANIMATED lists one no pool uses");
+  for (const [pool, kind] of posed) {
+    const listed = ANIMATED[pool] ?? ANIMATED[Object.keys(ANIMATED).find((k) => pool.startsWith(k)) ?? ""];
+    assert.equal(listed, kind, `the renderer moves ${pool} by "${kind}"; ANIMATED says "${listed}"`);
+  }
+
+  // And every motion in the table has a shader body, both ways.
+  assert.deepEqual(Object.keys(MOTION).sort(), Object.keys(MOTION_GLSL).sort(),
+    "a motion has numbers and no shader, or a shader and no numbers");
+});
+
+test("the ripple's shader carries the metre numbers converted to tiles", () => {
+  // The water mesh is built in TILES and `MOTION.ripple` is in metres, so the
+  // shader divides by the caller's tile size. A copied constant brings its
+  // units with it (the E7 lesson): a 6 cm swell left in metres on a 20 m tile
+  // is a 1.2 m sea, and nothing in node or in a frozen shot would say so.
+  const { amp, speed, wave } = MOTION.ripple;
+  for (const tileM of [20, 8]) {
+    const glsl = MOTION_GLSL.ripple(tileM);
+    assert.ok(glsl.includes((amp / tileM).toFixed(4)), `the swell is not ${amp} m at ${tileM} m a tile`);
+    assert.ok(glsl.includes((wave / tileM).toFixed(4)), `the wavelength is not ${wave} m at ${tileM} m a tile`);
+    assert.ok(glsl.includes(speed.toFixed(4)), "the shader's speed is not motion.js's");
+    // Per second is per second: the one number that must NOT be divided.
+    assert.ok(!glsl.includes((speed / tileM).toFixed(4)), "the ripple's speed was converted to tiles");
+    assert.ok(!glsl.includes(`${amp.toFixed(4)} * rippleShape`), "the swell is in metres on a tile mesh");
+    // It is a field, not a thing: no per-instance phase, or every tile of the
+    // one water mesh would ride its own wave.
+    assert.ok(!glsl.includes("motionPhase"), "the water's swell is phased per instance");
+    assert.ok(glsl.includes("position.x") && glsl.includes("position.z"),
+      "the swell does not come from where the vertex is");
   }
 });

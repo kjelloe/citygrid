@@ -12114,3 +12114,58 @@ tuned away. 200 of 200 cities alive in every configuration.
 
 `reports/balance-era29.md` is the era's report; `RELEASE.md` carries the new era and these numbers.
 Suite 1,835 green twice.
+## Review round after S18b and B14 (2026-10-06)
+
+Suite **1,838 tests, 1,835 pass, 0 fail, 3 skipped, green twice**. `tools/make_precache.mjs` left
+`client/precache.json` unchanged. `omissions`, `reachability`, `dead-exports` and `unused-imports`
+all green (17 tests). The data-file direction turned up nine unread `balance.json` fields and all
+nine are already pinned in `test/rules.test.js` with a written reason — nothing new.
+
+**Two tests written, and each was planted before it was believed.**
+
+- **`ANIMATED` was a table nothing read.** `client/world/motion.js` says "the pools that move, and
+  how — a pool not listed here does not move", and for the life of the project no module in
+  `client/` has read it: `instances.js` names the pool and the kind in each of its own eight
+  `addMotion` calls. The two agreed, which is the state a second copy is in right up to the slice
+  that moves one of them (the `VARIANTS` lesson). `test/motion.test.js` now scans the calls in
+  `instances.js` and `water.js` and compares both ways, asserts `Object.keys(MOTION)` equals
+  `Object.keys(MOTION_GLSL)`, and states the one deliberate absence: the water is a MESH, not a
+  pool, so the ripple is driven from `water.js` and is rightly not in `ANIMATED`. Planted by
+  deleting `radar:` from the table — fires.
+- **The ripple's shader carries metres converted to tiles.** The water mesh is built in tiles and
+  `MOTION.ripple` is in metres, so the GLSL divides by the caller's tile size. A 6 cm swell left in
+  metres on a 20 m tile is a 1.2 m sea, and neither node nor a frozen screenshot would say so (the
+  E7 units lesson). The test checks the conversion at two tile sizes, checks that `speed` is the
+  one number NOT divided, and that the body takes no `motionPhase` — a field, not a thing. Planted
+  by passing `MOTION.ripple.amp` undivided — fires.
+
+**And one assertion S18 had claimed since it was written: the deck is ONE profile.** The clearance
+test said the deck is high enough; nothing said it was smooth. `test/water.test.js` samples
+`heightAt` every quarter tile across a crossing and bounds the step by `road.maxGrade`, with a
+subject count beside it (the walkthrough-crossing lesson) — which fired first, on 0 of 65 samples,
+because the "beside the bridge" probe row was outside its own pond.
+
+**The planting is the finding.** A 3 m staircase planted in `pavableAt` left the new test **green**:
+`gradeProfile` sits between the two and smooths whatever it is handed inside `maxGrade`. The plant
+was real — the walker's test in the same file went red — it just could not reach this assertion.
+Planting at the READER instead (`heightAt` answering from the tile rather than from the profile,
+the pre-S13 shape that ruling 038 rules out) fired it at **2.481 m in a quarter tile**. Both
+results are written into the test file, so the next reader knows what the green covers. New memory
+`plant-on-both-sides-of-a-smoother`, and the rule is in the `review-round` skill beside R1's.
+
+**Docs.** `plan-v1.md` said "the balance is now era 28" and dated its standing paragraph
+2026-10-05; both now read era 29, and the paragraph says what B14 means for older numbers — it is
+the first era whose cause is what the deputy DECIDES, so every number measured on a deputy city
+before it belongs to era 28 and is void rather than comparable. S18 is struck from the unbuilt list
+with the shore line named as what is left of it. `workitems-world.md`'s S18 header said "the camera
+and the wall done" and its body "still open: the deck as one profile, and the water as one surface"
+— both were done, the deck since S13 and the surface since E8/S4, so the item now closes those two
+bullets with the test that holds the first and names the shore line as the remainder.
+`citygrid-models-of-code-go-stale` has `ANIMATED` added to its list.
+
+**Filed, not built:** B14's refusal is not counted anywhere. `deputy.refusals` means "the reducer
+refused my command", which is a different thing, and lumping the two together would corrupt a
+health metric `soak` already reports. A conditional rule wants a firing count beside its effect, so
+it is filed as **B15** in `workitems-behaviour.md` rather than done unasked — a new field on the
+deputy record is four places and a `SAVE_VERSION` bump.
+

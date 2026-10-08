@@ -337,6 +337,16 @@ overlap, so the wrong answer is a plausible speed, and a car crosses an 8 m junc
 second so nothing about its position moves. Plant the bug before believing the test. When the
 honest instrument turns out to be a source assertion, say in the file why the behavioural one could
 not be made to discriminate.
+**And plant it on BOTH sides of any normaliser between the defect and the value the test reads.**
+The 2026-10-06 round wrote the assertion S18's deck bullet had never had — `heightAt` sampled every
+quarter tile across a crossing, bounded by `road.maxGrade` — and a 3 m staircase planted in
+`pavableAt` left it green, because `gradeProfile` sits between the two and smooths whatever it is
+handed. The same plant reddened the walker's test, so it was real; it simply could not reach this
+one. Planting at the READER instead (`heightAt` answering from the tile rather than from the
+profile, the pre-S13 shape) fired it at 2.481 m. Trace the path from the constant you corrupt to
+the value the assertion reads, plant at the last step before the read as well as at the source, and
+then write BOTH results into the test file — otherwise the next reader has to redo the experiment
+to learn what the green means.
 
 **Moving code invalidates the tests that read it.** Four source assertions went red when the eye
 arithmetic moved into `client/world/orbit.js` — they were right to. A source test is a model of the
