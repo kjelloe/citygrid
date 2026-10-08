@@ -12392,3 +12392,37 @@ answered, one hash with the clock stopped). `room_smoke` green (one hash `7bc5e1
 clients at tick 35 — which is what 17.8 s at two ticks a second now looks like, where it was 364).
 Suite **1,862 green twice**.
 
+## The `quick` set, 2026-10-07 — and what it says about itself
+
+`node tools/gates.mjs quick` reported **986 s against a 540 s budget** and five failures. Run one at
+a time: `update_smoke` green, `play_smoke` green — both were **flakes under load**, and the load is
+the set's own overrun (`ui_smoke` 301 s, `play_smoke` 175 s, `lobby_smoke` 113 s). That is this
+project's own lesson about an instrument sharing a budget with its subject, one level up: a gate set
+that takes twice its budget starves the gates inside it, and the failures it then reports are about
+the machine rather than the code. The overrun is a finding and the runner says so in its own output.
+
+Two failures survive being run alone, and the `before` arm — a worktree at `1f13ee7`, this round's
+parent — settles where they belong rather than leaving it to argument:
+
+- **`ui_smoke`: "the hour changes over a second, not in a frame (night is 1)" — fails identically at
+  `1f13ee7`.** Pre-existing, and not this round's. The check reads `renderer.night` after two
+  animation frames and asks for a value strictly between 0 and 1; `dt` is `frameMs / 1000` and
+  uncapped, so under SwiftShader two frames can be most of a second and the fade is simply over. It
+  is the `a-setter-that-only-a-clock-arrives-at` shape from the other end: the fade is right and the
+  instrument samples it at a moment it cannot control. Filed with **M9**.
+- **`lobby_smoke`: "the panel restates itself in the new language (Done → Done)" — failed
+  identically at `1f13ee7`, on both viewports, and then passed on a later run of the same code.**
+  So it is **flaky rather than broken**, which is the stronger version of the same diagnosis: the
+  catalogues are right (`settings.close` is "Done" / "Ferdig") and the gate clicks the Norwegian
+  locale row and reads `.settings-close` on the very next line, with nothing between the click and
+  the read. A race that loses sometimes. Recorded this way because "fails on both arms" was what
+  the first two runs said and it would have been the wrong conclusion to stop there.
+
+**So none of the five is this round's.** Two were load flakes, two are pre-existing timing
+assumptions, and `worker_smoke`'s one-tick difference (202 vs 201) is a third of the same kind. The
+arms are what say so — `git worktree add /tmp/.../before 1f13ee7` and the same gate run there — and
+without them the honest answer would have been "probably not mine", which is not an answer.
+
+Either way, the `quick` set's budget needs restating from a measurement rather than from P96's
+contents, which is **M9**.
+

@@ -40,6 +40,8 @@ export const GATES = {
   reach_smoke: { args: ["tools/reach_smoke.mjs"], what: "every control clickable, nothing eating the map" },
   save_smoke: { args: ["tools/save_smoke.mjs"], what: "a city survives a closed tab, hash for hash" },
   serve_smoke: { args: ["tools/serve_smoke.mjs"], what: "the REAL server, so a CSP that blocks the importmap goes red" },
+  room_smoke: { args: ["tools/room_smoke.mjs"], what: "two browsers in one room, on one hash and one hour" },
+  skin_shots: { args: ["tools/skin_shots.mjs"], what: "the three interface skins, one city, for somebody to open" },
   ui_smoke: { args: ["tools/ui_smoke.mjs"], what: "every button hit-tested, every overlay rendered" },
   update_smoke: { args: ["tools/update_smoke.mjs"], what: "a new build reaches a returning player" },
   worker_smoke: { args: ["tools/worker_smoke.mjs"], what: "the same city played on the worker and on this thread, hash for hash (W2)" },
@@ -240,8 +242,9 @@ export const BUDGET_MS = {
   // clients, two simulations of their own and a hash every sim-month. It is
   // wall-clock rather than work (the beat is a timer, so the gate cannot
   // outrun the years it plays), and the only reason it is seconds is that the
-  // soak's pump runs at 10 ms where a real room's is 100. The budget stands
-  // as written because `room_smoke` is still to come.
+  // soak's pump runs at 10 ms where a real room's is 100. `room_smoke` joined
+  // it at X1c and brings two browsers with it — measured at 41 s, so the
+  // budget is unchanged.
   room: 10 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
   // transport 187 — which is where 35 minutes came from, and `kits` (365 s) was
