@@ -13869,3 +13869,44 @@ three are green and stable alone, each took a re-run or a pair of arms to establ
 had been written into `workitems-measurement.md` after the first one. `gates.mjs` prints `NOT ALONE:
 n other node process(es) are running` before it starts — which is this item's own lesson, finally in
 code rather than in a sentence.
+
+## M7 — `main` is the game again (2026-10-08)
+
+`main` was last pushed on 2026-10-05 at `6b89a6f` and `dev_night` is **60 commits** ahead of it:
+the whole multiplayer lane a player can see (X0 through X4e and X5's review fixes), S18b's moving
+water and S18c's wall at two metres, B14's era 29 and L2/D8b's era 30, S22's sun, M9's re-measured
+budgets, and the twenty-two commits that reconstructed two days of uncommitted work.
+
+**`gates.mjs all` on the tree that is being merged: 43 gates, 2,931 s of a 3,600 s budget, all
+green.** One set at a time inside the run, nothing else on the machine, and it is the first clean
+full run of the day — this morning's had four reds and a contended clock behind three of them.
+
+```
+quick      a11y 46 · client 16 · lobby 39 · offline 12 · play 97 · reach 67 · save 10 · serve 3
+           ui 188 · update 8 · worker 9 · mvp 23
+render     walkthrough 2 · hilly 2 · passability 1          lanes  lanes_dump 36
+budget     budget_gate 267                                  sim    disaster 136 · traffic 176
+sweep      sim_sweep 583                                    film   112
+shots      water 22 · bridge 27 · embankment 29 · disaster 40 · service 80 · window 28 · rain 31
+           skin 7 · sun 25
+transport  avenue 30 · rail 77 · harbour 94 · airport 32
+kits       civic 86 · foliage 42 · motion 106 · role 13 · street 40 · trade 107
+room       room_soak 48 · room_churn 57 · room_smoke 81
+```
+
+Suite **1,980 tests, 1,977 pass, 0 fail, 3 skipped, green twice.**
+
+**`RELEASE.md` re-measured at `3d86c6e`**: 310 commits, era 30 and its two arms, eleven gate sets
+with the table above, and the sun added to "what works" — because it did not work until today. The
+page has named a commit 129 behind before now, which is why `test/docs.test.js` fails past fifty
+commits of drift rather than printing a note nobody reads.
+
+**And two directions that rot, closed with tests.** `REQUIRED_DOCS` proved the documents it names
+exist and nothing proved it NAMES the documents that exist — the list has been three lanes short
+twice, found five slices apart. And both `RELEASE.md` and `README.md` said "ten gate sets" an hour
+after M9 split one, so the count they SPELL is now checked against `Object.keys(SETS)`. Planted by
+putting "ten" back: red.
+
+**`main` is fast-forwarded to `dev_night`.** No squash, no merge commit — 60 commits, one per slice.
+**The push is Kjell's**, as it was last time: this machine does not have his credentials and should
+not.

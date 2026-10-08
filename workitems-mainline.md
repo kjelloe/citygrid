@@ -185,7 +185,20 @@ be able to see it — a control that exists and a function that does not, or nei
 **Gate.** `node --test test/omissions.test.js test/reachability.test.js`, and the export sweep in
 the review-round skill comes back without these three.
 
-## M7 — The release, again (S, needs Kjell for the push) — review of 2026-10-04
+## M7 — The release, again (S, needs Kjell for the push) — **DONE 2026-10-08** (the push is Kjell's)
+
+*Second time: `main` was at `6b89a6f` from 2026-10-05 and `dev_night` 60 commits ahead — the whole
+multiplayer lane a player can see, two balance eras, the sun, and M9's budgets. `RELEASE.md`
+re-measured at `3d86c6e`; `gates.mjs all` **43 gates, 2,931 s of 3,600, all green**; suite 1,980,
+green twice; `main` fast-forwarded, no squash and no merge commit. **The push is Kjell's** — this
+machine does not have his credentials and should not.*
+
+*The item's two test bullets were done in the first pass (the drift failure at fifty commits,
+`REQUIRED_DOCS` naming all eleven lanes). This pass closed the two directions those tests did not
+cover: every `workitems-*.md` on disk must be IN the list, and the set count the documents spell
+must equal the runner's.*
+
+## M7 — The release, again (S, needs Kjell for the push) — the item as written
 
 **Goal.** `main` is the game and `RELEASE.md` is true. Neither is, by 122 commits and twenty-five
 balance eras: the page names `782e759` from 2026-09-08 and says every commit since is a document.
@@ -441,18 +454,17 @@ because a config that arrives after the first frame would move what the first fr
 
 ## Order
 
-**Where this lane stands, 2026-10-08.** M1–M6 and M8 are built; `main` is the game and was pushed
-on 2026-09-08. What is open: **M7** (the release again, and a merge — `main` is well behind, and
-the push is Kjell's), ~~**M9**~~ (built 2026-10-08: every set re-measured quiet, most budgets DOWN, `sim` split from
+**Where this lane stands, 2026-10-08.** M1–M6, M8 and M9 are built, and **M7 is done bar Kjell's
+push** — `main` is fast-forwarded to `dev_night` with all 43 gates green on it. What is open: ~~**M9**~~ (built 2026-10-08: every set re-measured quiet, most budgets DOWN, `sim` split from
 `sweep`, and the sweep's growth attributed to the city rather than to the code), **M10** (the three
 interface skins exist and nobody has looked at them — **Q159**, answered as **A137**: `retro` stays
 as built, so M10 is **closed**), and **M11** ("1 tiles": the catalogue has no plural machinery at
 all).
 
-**M7 is the one with a date on it now.** `main` is 54 commits behind as of 2026-10-08, and the whole
-multiplayer lane is on `dev_night`. `RELEASE.md` was re-measured at `7d3dbde` in the same round, so
-what M7 needs is the merge and the push — and the release gate for the multiplayer lane (eight
-clients, one real evening) is a different claim from the suite being green.
+**M7 is done bar the push (2026-10-08).** `main` was 60 commits behind; it is fast-forwarded to
+`dev_night` with `RELEASE.md` re-measured and all 43 gates green on the merged tree. What is left is
+Kjell typing `git push`. The release gate for the multiplayer lane — eight clients, one real
+evening — is a different claim from the suite being green, and it is still open.
 
 R4 → T1 (both cityviewer §2f) → M2 → M1 → M3 → M4. The fix slice and the signal slice before anything merges; the runner first so the merge is gated by one command; the checklist after
 the merge because it names the SHA; the Norwegian pass whenever Kjell has an hour.
