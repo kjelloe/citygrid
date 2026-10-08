@@ -726,7 +726,14 @@ export function createHud(root, {
   }
 
   const bottom = el("div", "hud-bottom");
-  bottom.append(rci, alertList, readout, toolbar, buildBar, legend, status);
+  // **A watcher gets no tools** (X4e). Absent rather than inert: a watcher who
+  // clicked Road would be refused by the reducer — correctly, since seat 0 is
+  // nature — and a toolbar that only ever says no is the "present but inert"
+  // control ruling 029 is about. Everything that READS the city stays: the
+  // overlays, the minimap, the inspector, the alerts and the roster.
+  bottom.append(rci, alertList, readout);
+  if (!watching) bottom.append(toolbar, buildBar);
+  bottom.append(legend, status);
   // Rail and drawer side by side in one strip: the drawer used to be laid over
   // the same left edge, so opening one covered the buttons that open them.
   const side = el("div", "hud-side");

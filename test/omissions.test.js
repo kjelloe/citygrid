@@ -213,6 +213,28 @@ test("every module under server/ is reached from its entry point (X1)", () => {
     `server/ modules nothing imports: ${orphans.join(", ")} — wire them up or delete them`);
 });
 
+/** Wire messages with nothing on one end of them yet, and the slice that ends
+ * each. The same shape as `NOT_BUILT` above and as the i18n allow-lists: an
+ * entry has to say why, so adding another is a deliberate act. */
+const WIRE_NOT_BUILT = {
+  // `C2S.CHAT` and `S2C.CHAT` LEFT this list on 2026-10-08: chat is built, with
+  // its own rate budget and `chatEnabled` off by default. It is deliberately
+  // NOT a command — it never reaches the reducer, so a line cannot desync a
+  // city and a client that misses one has not diverged.
+  "S2C.ROSTER": "X4's second half — LIVE connection state: who is actually connected, and **how "
+    + "many are watching** (X4e), which is the one thing the panel cannot read off `state.players` "
+    + "because a watcher takes no seat and is therefore not in the city at all. An accessor for the "
+    + "count was written with the watchers and deleted the same day for having no reader; it comes "
+    + "back with this message. The rest is "
+    + "cannot read off `state.players`. The panel itself is built (2026-10-08) from hashed state, "
+    + "because seat, name and status are already on every client identically and a second source "
+    + "for one fact is two that can disagree. Whether a socket is open is the server's, is not "
+    + "deterministic, and belongs with regency.",
+  "C2S.LATENCY": "X2's screen — the lobby's connection reading. `server/index.js` ANSWERS it and no "
+    + "client has ever sent one, which is the half that would rot.",
+  "S2C.PONG": "X2's screen — the other half of `C2S.LATENCY`. The server sends it; nothing reads it.",
+};
+
 test("every wire message has a sender and a reader, or says which slice gives it one (X1c)", () => {
   // The N11 question asked of the PROTOCOL. A message in `shared/protocol.js`
   // with nothing on one end is the same shape as a command with no handler —

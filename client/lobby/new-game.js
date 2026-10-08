@@ -200,6 +200,55 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     row.append(wrap);
     joining.append(row);
 
+    const joinProblem = el("p", "lobby-join-problem");
+    joinProblem.hidden = true;
+    // `role="status"`, so a reader hears the refusal rather than finding it
+    // (ruling 028: a role that names a behaviour is a promise, and this one is
+    // only a promise to announce).
+    joinProblem.setAttribute("role", "status");
+    const go = el("button", "lobby-join-go", t("lobby.join.go"));
+    go.type = "button";
+    go.id = "join";
+    go.addEventListener("click", () => {
+      const ready = joinReady({ code: codeField.value, name: choices.mayorName });
+      if (!ready.ok) {
+        joinProblem.textContent = t(ready.reasonKey);
+        joinProblem.hidden = false;
+        codeField.focus();
+        return;
+      }
+      joinProblem.hidden = true;
+      // The diorama shares the preview world's tile arrays, exactly as `start`
+      // does: let go before the game takes them (R2).
+      diorama?.dispose();
+      diorama = undefined;
+      onJoin({ join: ready.join, mayorName: ready.mayorName });
+    });
+    // Typing clears a refusal that is no longer about what is in the field.
+    codeField.addEventListener("input", () => { joinProblem.hidden = true; });
+    // **Watching** (X4e): the same code, no seat. Beside Join rather than
+    // anywhere else, because it is the same field and the same decision — the
+    // only difference is whether you are playing.
+    const watch = el("button", "lobby-join-watch", t("lobby.join.watch"));
+    watch.type = "button";
+    watch.id = "watch";
+    watch.addEventListener("click", () => {
+      const ready = joinReady({ code: codeField.value, name: choices.mayorName });
+      if (!ready.ok) {
+        joinProblem.textContent = t(ready.reasonKey);
+        joinProblem.hidden = false;
+        codeField.focus();
+        return;
+      }
+      joinProblem.hidden = true;
+      diorama?.dispose();
+      diorama = undefined;
+      onJoin({ join: ready.join, mayorName: ready.mayorName, spectate: true });
+    });
+    joining.append(go, watch, joinProblem);
+    sheet.append(joining);
+  }
+
   // --- start ----------------------------------------------------------------
   const actions = el("div", "lobby-actions");
   const start = el("button", "lobby-start", t("lobby.start"));

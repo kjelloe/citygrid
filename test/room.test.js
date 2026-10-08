@@ -768,6 +768,57 @@ test("a regent seat is PLAYED, and what it does crosses the wire like anything e
     "a client replaying the deputy's commands reached a different city");
 });
 
+// --- spectators (X4e) --------------------------------------------------------
+
+test("somebody can watch without taking a seat, and a full room can still be watched", () => {
+  // X4: "spectators (tokenless, no commands)". A watcher is not a player: they
+  // take no seat, so a full room is still watchable, and they get no token
+  // because there is nothing to come back to.
+  const room = createRoom({ options: { ...OPTIONS, seats: 1 }, code: "ABC123" });
+  const hello = (over) => ({
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", ...over,
+  });
+  assert.equal(room.join(wire("player"), hello({ seat: 1 })), "");
+  // The room is full, and that is exactly the case worth checking: a watcher
+  // refused because every seat is taken would be a rule about the wrong thing.
+  assert.equal(room.join(wire("latecomer"), hello({})), REFUSAL.ROOM_FULL);
+
+  const watcher = wire("watcher");
+  assert.equal(room.join(watcher, hello({ spectate: true })), "", "a full room refused a watcher");
+  const welcome = watcher.last(S2C.WELCOME);
+  assert.ok(welcome?.save, "a watcher was welcomed with no city to draw");
+  assert.equal(welcome.seat, 0, "a watcher was given a seat");
+  assert.equal(welcome.token, undefined, "a watcher was given a token to come back with");
+  assert.equal(room.seats().length, 1, "a watcher took a seat after all");
+});
+
+test("a watcher sees the city change and cannot change it", () => {
+  // Frames reach them — watching a still picture is not watching — and nothing
+  // they send does anything. The refusal is the DOOR's job in `server/index.js`
+  // (a seatless connection never reaches `submit`), and the room's own guard is
+  // here so that a future caller cannot route around it.
+  const room = createRoom({ options: { ...OPTIONS, seats: 2 }, code: "ABC123" });
+  const a = joined(room, "a", 1);
+  const watcher = wire("watcher");
+  assert.equal(room.join(watcher, {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", spectate: true,
+  }), "");
+
+  room.submit(1, road(room, 1, 6));
+  const frame = room.beat(100);
+  assert.ok(frame.cmds.length > 0, "the beat carried nothing; the test proves nothing");
+  assert.equal(watcher.of(S2C.FRAME).length, 1, "a watcher saw no frame");
+  assert.deepEqual(watcher.last(S2C.FRAME), a.connection.last(S2C.FRAME),
+    "a watcher sees a different frame from a player");
+
+  // Nothing a watcher sends is accepted: `submit` takes a seat, and seat 0 is
+  // nature. The city is unmoved.
+  const before = room.hash();
+  assert.equal(room.submit(0, road(room, 1, 10)), false, "a watcher's command was queued");
+  room.beat(100);
+  assert.equal(room.hash(), before, "a watcher moved the city");
+});
+
 test("a room full of watchers and nobody playing is still asleep (X4d)", () => {
   // Watching is not playing: a city nobody is steering should not run because
   // somebody is looking at it, or an abandoned room with one idle tab open

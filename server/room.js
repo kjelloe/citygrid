@@ -323,13 +323,18 @@ export function createRoom(given = {}) {
    * order commands are applied in is the pump's, and it is the same order on
    * every machine (plan.md §3.2). */
   function submit(seat, command) {
+    // Seat 0 is nature, and a watcher's seat is 0 (X4e). The door in
+    // `server/index.js` never lets a seatless connection this far; this is the
+    // room's own guard, so a later caller cannot route around it.
+    if (!(seat > 0)) return false;
     if (queue.length >= LIMITS.CELLS_PER_COMMAND) return false;
     queue.push({ seat, command });
     return true;
   }
 
-  /** One beat: drain, sequence, validate, advance, broadcast. */
-  function beat() {
+  /** One beat: drain, sequence, validate, advance, broadcast. `elapsedMs` is
+   * the real gap the pump already measures for its jitter ring. */
+  function beat(elapsedMs = 0, at = Date.now()) {
     const cmds = [];
     // **The regency, before anything else in the beat** (X4b). Deterministic
     // for every client because what it produces are COMMANDS: they are

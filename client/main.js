@@ -23,6 +23,14 @@ export const config = Object.freeze({
   seed: params.get("seed") ?? "",
   size: Number(params.get("size") ?? 0) || 0,
   join: params.get("join") ?? "",
+  // Which seat to ask the door for. The LOBBY picks one (X2); until it exists,
+  // `?join=<code>&seat=2` is how a second client gets in, and it is what
+  // `room_smoke` drives. Zero means "whatever the room gives me", which the
+  // door reads as seat 1.
+  seat: Number(params.get("seat") ?? 0) || 0,
+  // `?watch=1` joins a room WITHOUT taking a seat (X4e): a watcher sees the
+  // city and gets no tools, so a full room is still watchable.
+  watch: params.get("watch") === "1",
   locale: params.get("lang") ?? "",
   debug: params.get("debug") === "1",
   // `?perf=1` — the performance card (D1). It replaces the boot: the sweep

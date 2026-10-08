@@ -178,10 +178,14 @@ export async function startServer({
         }
         const refusal = mine.join(connection, message);
         if (refusal) { socket.close(); return; }
-        seat = Number(message.seat) || 1;
+        // A watcher is welcomed with seat 0 (X4e) and `gave` is therefore
+        // undefined, which is exactly right: everything below this line is
+        // gated on having a seat, so a watcher reaches none of it.
+        watching = message.spectate === true;
+        seat = gave;
         return;
       }
-      if (seat === undefined) return;   // nothing before HELLO
+      if (seat === undefined || mine === undefined) return;   // nothing before the door
 
       if (message.type === C2S.COMMAND) {
         // Per-seat rate limit as a RESULT, never a disconnect (§3.7.3).
@@ -192,7 +196,7 @@ export async function startServer({
           connection.send({ type: S2C.REFUSED, reason: REFUSAL.RATE_LIMIT, soft: true });
           return;
         }
-        room.submit(seat, message.command);
+        mine.submit(seat, message.command);
         return;
       }
       // **Chat** (X3b). Not a command: it never reaches the reducer, so a line

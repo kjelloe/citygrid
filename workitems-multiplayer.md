@@ -13,6 +13,8 @@ not a green suite. A125 (Kjell, 2026-10-04): the headless room is built now — 
 half — because it adds a directory and a dependency and changes nothing a singleplayer player
 touches. X1's client half, X2, X3 and X4 wait for the playtest.** W6's second half runs beside
 X1 and lands before X3 (A126).
+## Review after X4e (2026-10-08) — P110
+
 *Read on `dev_night` with the committed tree at `1f13ee7` (B14, 2026-10-06) and the working tree
 two days ahead of it. The node suite is green on the committed tree (1,662 at HEAD's own count) and
 green on the working tree (**1,939 of 1,942, 3 skipped, 0 failed**); the `quick` set was running
@@ -62,6 +64,18 @@ blocked on anything but his eye and two minutes with the shots each names. S22's
 never moves across the sky — the key light's x and z are constants) is correct and complete; the
 reviewer adds one gate to it below.
 
+### X5 — Review fixes after X4e (S)
+
+0. **The overlay button count** (above): one overlay model, one button each, the territory
+   overlay drawn once; `ui_smoke` green on the committed tree before the slices after it land.
+1. **The owner's name in the refusal** (above). `test/i18n.test.js`: every rendered string is
+   brace-free; `ui_smoke`: the status line after a refused build on another seat's ground names
+   the seat.
+2. **`room_smoke` in one set** (`room`), and `tools/gates.mjs --list` shows each gate once.
+3. **The train close-up names its pool**: the rail gate's read-back says whether the L3 kit was
+   posed in `smoke-T3-train-close.png`, and if not, the shot stands where it is.
+4. **The commit discipline, as a check**: `tools/gates.mjs` prints a warning when the working tree
+   has more than one dev-log entry since `HEAD` — the cheapest instrument for the finding above.
 
 ## What is already there (plan.md §3.9b, checked 2026-10-04)
 

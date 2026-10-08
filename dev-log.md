@@ -13182,3 +13182,30 @@ making**: `leave(seat, 0)` stamps the regency window with 0 while the beat measu
 
 Suite **1,936 green twice**; `room_soak` green in both modes (731 of 720 ticks), `room_smoke` green.
 
+## X4e — watching without playing
+
+X4 asks for "spectators (tokenless, no commands)". A watcher is **not a player**: they take no
+seat, so a full room is still watchable; they get no token, because there is nothing to come back
+to; and they receive every frame, because watching a still picture is not watching.
+
+**Three guards, in three places, each for its own reason.** The door welcomes a `spectate` hello
+before the seat arithmetic — a room refusing a watcher because every seat is taken would be a rule
+about the wrong thing. `submit` refuses seat 0 outright, so a later caller cannot route around the
+door. And `server/index.js` gates everything after the handshake on having a seat, which a watcher
+never gets.
+
+**They do not keep the room awake.** Watching is not playing, and an abandoned room with one idle
+tab open would otherwise tick for ever — the hibernation rule counts seats and regencies, not
+watchers, and there is a test that says so.
+
+**And a watcher gets no tools, rather than tools that say no.** A toolbar that can only ever be
+refused is the "present but inert" control ruling 029 is about, so the toolbar and the build bar are
+not built at all — exactly as the inbox drawer, the chat panel and the ask panel are absent rather
+than empty. Everything that READS the city stays: the gate counts **15 overlays and 0 tool
+buttons**, because this is watching, not a crippled game.
+
+`?watch=1` beside `?join=`, and a **Just watch** button beside Join in the lobby — the same field
+and the same decision, the only difference being whether you are playing.
+
+Suite **1,939 green twice**; `room_smoke`, `reach_smoke` and `lobby_smoke` green.
+
