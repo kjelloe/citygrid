@@ -12426,3 +12426,33 @@ without them the honest answer would have been "probably not mine", which is not
 Either way, the `quick` set's budget needs restating from a measurement rather than from P96's
 contents, which is **M9**.
 
+## Review round after X1c and X1d (2026-10-07)
+
+Suite **1,866 green twice**. The omission sweeps green, and two findings came out of the fourth
+direction run on the slice just written.
+
+**A capability with no control, on the wire this time.** Sweeping `shared/protocol.js` for messages
+with nothing on one end found `C2S.RESYNC_REQUEST`: `server/index.js` has answered it since X1a and
+the socket transport has handled the `S2C.SNAPSHOT` that comes back since X1c — and **nothing in
+the page had ever sent one.** The session's desync detector printed `DESYNC` to the console and left
+the client wrong for ever. `tools/room_soak.mjs` was the only sender in the project, which is
+precisely why the wire looked finished. `check()` now calls `transport.resync?.()`, the socket
+transport sends the request, and a transport with no authority behind it — the worker, the echo stub
+— has no `resync` and nothing happens, which is right: a mirror that disagrees with the worker is a
+bug in the patch, not a divergence. Both halves planted, both fire.
+
+**And the census that found it is now a test**, because this is the N11 question asked of the
+protocol. `test/omissions.test.js` counts **both ends separately**: a `C2S` message needs a sender
+outside `server/` and a handler inside it, an `S2C` message the reverse. "Appears somewhere" is one
+end wearing the other's clothes — the first cut grepped the whole repo and called `C2S.LATENCY`
+used, when the truth is that the server answers it and no client has ever sent one. Five messages
+are half-wired and each is now listed with the slice that ends it: `S2C.ROSTER` (X3b),
+`C2S.CHAT`/`S2C.CHAT` (X4), `C2S.LATENCY`/`S2C.PONG` (X2's screen).
+
+**A digest with no test.** `costDigest` — written in X1d an hour earlier — was exported, used only
+by its own module and asserted nowhere. It is nearest-rank, so **a p99 over fewer than a hundred
+samples is the maximum**, which is A78's p95-of-eighteen with different numbers. The test pins it
+both ways (ten samples: p99 is the max; two hundred: one outlier moves the max and not the p99),
+pins that `-1` is the ring's empty slot and not a beat that took minus a millisecond, and the
+function now says in the file that `n` is part of the reading rather than decoration.
+

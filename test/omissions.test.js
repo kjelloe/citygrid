@@ -156,6 +156,45 @@ test("every module under server/ is reached from its entry point (X1)", () => {
     `server/ modules nothing imports: ${orphans.join(", ")} — wire them up or delete them`);
 });
 
+test("every wire message has a sender and a reader, or says which slice gives it one (X1c)", () => {
+  // The N11 question asked of the PROTOCOL. A message in `shared/protocol.js`
+  // with nothing on one end is the same shape as a command with no handler —
+  // and worse, because the half that exists looks like a finished wire.
+  //
+  // This found `C2S.RESYNC_REQUEST`: `server/index.js` had answered it since
+  // X1a, the socket transport handled the `S2C.SNAPSHOT` that comes back, and
+  // **nothing in the page had ever sent one** — the session's desync detector
+  // printed `DESYNC` and left the client wrong for ever. `tools/room_soak.mjs`
+  // was the only sender in the project, which is why the wire looked done.
+  const names = [];
+  for (const [side, table] of [["C2S", C2S], ["S2C", S2C]]) {
+    for (const key of Object.keys(table)) names.push(`${side}.${key}`);
+  }
+  // **Both ends, counted separately.** "Appears somewhere" is one end wearing
+  // the other's clothes: `C2S.LATENCY` is answered by `server/index.js` and has
+  // never been sent by anything, so a single grep over the whole repo would
+  // call it used. A `C2S` message needs a sender outside `server/` and a
+  // handler inside it; an `S2C` message needs the reverse. Tools count as
+  // clients — a gate driving the wire is a client of it — and `protocol.js`
+  // itself counts as neither, since declaring a name is not using it.
+  const side = (dirs) => dirs.flatMap((dir) => jsFilesIn(dir)
+    .filter((file) => !file.path.endsWith("shared/protocol.js"))
+    .map((file) => stripCommentsAndStrings(file.source))).join("\n");
+  const client = side(["client", "worker", "tools", "shared"]);
+  const server = side(["server"]);
+  const unused = names.filter((name) => {
+    const ends = name.startsWith("C2S.") ? [client, server] : [server, client];
+    return !(ends[0].includes(name) && ends[1].includes(name));
+  });
+  const declared = Object.keys(WIRE_NOT_BUILT).sort();
+  assert.deepEqual(unused.sort(), declared,
+    `wire messages with nothing on either end: ${unused.join(", ")} — use them, or list them in `
+    + "WIRE_NOT_BUILT with the slice that will");
+  for (const [name, why] of Object.entries(WIRE_NOT_BUILT)) {
+    assert.ok(why.length > 20, `${name}'s reason is too short to be one`);
+  }
+});
+
 test("every event the engine can emit is either an alert or deliberately silent", () => {
   // The N11 question, asked of EVENTS. An engine event the player cannot see is
   // the same defect as a command the player cannot send: `pushAlerts` looks its
@@ -190,9 +229,9 @@ test("every event the engine can emit is either an alert or deliberately silent"
     questReward: "the card and the treasury",
     // Seats. The lobby and the roster are X2's; nothing in singleplayer.
     seatJoined: "the lobby (X2)",
-    seatLeft: "the roster (X2)",
+    seatLeft: "the roster, built X4 2026-10-08 — every seat's status is a row in it",
     seatReclaimed: "the roster (X2)",
-    seatStatus: "the roster (X2)",
+    seatStatus: "the roster, built X4 2026-10-08 — every seat's status is a row in it",
     // L1's two. The budget drawer shows the debt and the ceiling as numbers,
     // which is the feedback; an alert every month saying "you still owe money"
     // is furniture, and the one that matters — cannot pay the interest — is
