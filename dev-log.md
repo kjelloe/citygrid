@@ -13131,3 +13131,33 @@ hand over in seconds. The option has not been forgotten, it has been **supersede
 and the choice is to delete it or keep it for something genuinely measured in city years. The
 abandonment sweep is that something, and it has `abandonYears`.
 
+## X4c — the abandonment sweep
+
+Regency says a PERSON is away, which is real minutes and the server's to measure (X4b). This says
+the CITY has stood unclaimed, which is **city years** — and `abandonYears` is the option that has
+been declared since Wave 0 with nothing reading it. At the end of it the seat is given up and its
+ground goes to the commons, so a neighbour may finally build there.
+
+**It reads the regency, not the clock alone.** A player who has been here for forty years has a very
+old `lastSeenTick` the moment they stop issuing commands, and sweeping on that would take a city off
+somebody sitting at the keyboard. `CMD_SET_STATUS` stamps the clock, so coming back resets it — a
+regency is not a forfeiture, and the test says so by taking the seat back halfway and then waiting
+out a whole `abandonYears` with nothing happening.
+
+**The city is not razed.** Abandonment is about who owns the ground, not about bulldozing something
+nobody asked to have demolished: the roads and the buildings stand, and what changes is the owner
+byte.
+
+**Two clocks for two different facts, and the pair is the point.** It is also why `absenceYears` is
+still unread: X4b chose wall time for regency deliberately, so that option is superseded by a
+decision rather than forgotten, and the choice left is to delete it or find it something genuinely
+measured in years. Said in the pin so the next reader is not told it is merely an oversight.
+
+**Measured:** the monthly pass runs a players-loop and touches the owner layer only for a seat
+actually in regency, so no singleplayer city can reach it. `soak` green — 5 cities, 40 years, hashes
+unmoved from era 29 — and the fixtures green, which is the stronger evidence, since they would have
+drifted if the pass touched anything. `room_soak` green in both modes. Suite **1,935 green twice**.
+
+`abandonYears` left the unread-options list: the sixth list in four days to go red in the direction
+that means somebody did the work.
+

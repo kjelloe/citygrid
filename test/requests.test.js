@@ -680,3 +680,64 @@ test("a nuisance report is acknowledged by a policy, never approved", () => {
   for (const tile of theirs) assert.notEqual(state.tiles.road[tile], 0, "a complaint cleared the ground");
 });
 
+// --- the abandonment sweep (X4c) ---------------------------------------------
+
+test("a seat left to the deputy for abandonYears is given up, and its ground to the commons", () => {
+  // X4's "a city nobody is watching is still there" has an end: at some point
+  // nobody is coming back, and a city held for a player who will never return
+  // is ground no neighbour may ever build on.
+  //
+  // **Sim time, not wall time, and that is the difference from regency.**
+  // Handing a seat to a deputy is about a PERSON being away, which is real
+  // minutes (X4b, `regencyAfterMs`). Giving the ground up is about the CITY
+  // standing unclaimed, which is city years — and `abandonYears` is the option
+  // that has been declared since Wave 0 with nothing reading it.
+  const { state, theirs } = world();
+  assert.equal(state.tiles.owner[theirs[0]], 2, "the fixture's road is not seat two's");
+  apply(state, { type: CMD_SET_STATUS, actor: 2, status: PLAYER_REGENT });
+  assert.equal(playerOf(state, 2).status, PLAYER_REGENT);
+
+  // Not before the clock runs out.
+  const nearly = state.options.abandonYears * TICKS_PER_YEAR - TICKS_PER_MONTH * 2;
+  for (let n = 0; n < nearly; n += 1) apply(state, { type: CMD_TICK });
+  assert.equal(playerOf(state, 2).status, PLAYER_REGENT, "the seat was given up early");
+  assert.equal(state.tiles.owner[theirs[0]], 2, "the ground went to the commons early");
+
+  for (let n = 0; n < TICKS_PER_YEAR; n += 1) apply(state, { type: CMD_TICK });
+  assert.equal(playerOf(state, 2).status, PLAYER_GONE, "nobody gave the seat up");
+  for (const tile of theirs) {
+    assert.equal(state.tiles.owner[tile], OWNER_COMMONS,
+      "the abandoned ground is still somebody's");
+  }
+  // The road itself is still there: abandonment is about who owns it, not
+  // about bulldozing a city nobody asked to have demolished.
+  for (const tile of theirs) assert.notEqual(state.tiles.road[tile], 0, "the city was razed");
+});
+
+test("a seat somebody is playing is never swept, however old the city", () => {
+  // The sweep reads the REGENCY, not the clock alone: a player who has been
+  // here for forty years has a very old `lastSeenTick` the moment they stop
+  // issuing commands, and sweeping on that would take a city off somebody
+  // sitting at the keyboard.
+  const { state, theirs } = world();
+  const years = state.options.abandonYears * 3;
+  for (let n = 0; n < years * TICKS_PER_YEAR; n += 1) apply(state, { type: CMD_TICK });
+  assert.equal(playerOf(state, 2).status, PLAYER_ACTIVE, "an active seat was swept");
+  assert.equal(state.tiles.owner[theirs[0]], 2, "an active seat's ground went to the commons");
+});
+
+test("coming back before the end keeps the city", () => {
+  // The whole point of the clock: a regency is not a forfeiture, and taking the
+  // seat back resets it. `CMD_SET_STATUS` stamps `lastSeenTick`, which is what
+  // the sweep measures from.
+  const { state, theirs } = world();
+  apply(state, { type: CMD_SET_STATUS, actor: 2, status: PLAYER_REGENT });
+  const half = Math.floor(state.options.abandonYears * TICKS_PER_YEAR / 2);
+  for (let n = 0; n < half; n += 1) apply(state, { type: CMD_TICK });
+  apply(state, { type: CMD_SET_STATUS, actor: 2, status: PLAYER_ACTIVE });
+  for (let n = 0; n < state.options.abandonYears * TICKS_PER_YEAR; n += 1) {
+    apply(state, { type: CMD_TICK });
+  }
+  assert.equal(playerOf(state, 2).status, PLAYER_ACTIVE, "a returning player lost their city");
+  assert.equal(state.tiles.owner[theirs[0]], 2);
+});

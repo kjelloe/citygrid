@@ -453,6 +453,45 @@ function requestPass(state) {
   return events;
 }
 
+/**
+ * A seat nobody came back to (X4c).
+ *
+ * Regency says a PERSON is away, which is real minutes and the server's to
+ * measure (X4b). This says the CITY has stood unclaimed, which is city years —
+ * and `abandonYears` is the option that has been declared since Wave 0 with
+ * nothing reading it. At the end of it the seat is given up and its ground goes
+ * to the commons, so a neighbour may finally build there.
+ *
+ * It reads the REGENCY, not the clock alone: a player who has been here for
+ * forty years has a very old `lastSeenTick` the moment they stop issuing
+ * commands, and sweeping on that would take a city off somebody sitting at the
+ * keyboard. `CMD_SET_STATUS` stamps the clock, so coming back resets it.
+ *
+ * The city is NOT razed. Abandonment is about who owns the ground, not about
+ * bulldozing something nobody asked to have demolished.
+ */
+function abandonPass(state) {
+  var events = [];
+  var after = state.options.abandonYears * TICKS_PER_YEAR;
+  for (var i = 0; i < state.players.length; i += 1) {
+    var player = state.players[i];
+    if (player.status !== PLAYER_REGENT) continue;
+    if (state.tick - player.lastSeenTick < after) continue;
+    player.status = PLAYER_GONE;
+    player.lastSeenTick = state.tick;
+    for (var t = 0; t < state.tiles.owner.length; t += 1) {
+      if (state.tiles.owner[t] === player.seat) state.tiles.owner[t] = OWNER_COMMONS;
+    }
+    events.push({ kind: "seatStatus", seat: player.seat, status: player.status });
+  }
+  return events;
+}
+
+// After the requests, because a seat given up this month should not also have
+// its inbox answered: the two passes are about the same player and the order
+// decides which sentence the city tells.
+registerMonthly("abandon", abandonPass, 26);
+
 // After `civic` and before `development`: a request is answered against the city
 // as it stood when the month began, not against lots built halfway through it.
 registerMonthly("requests", requestPass, 25);
