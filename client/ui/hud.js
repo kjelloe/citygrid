@@ -1250,9 +1250,6 @@ export function createHud(root, {
     else delete readout.dataset.result;
   }
 
-  /** The reducer's answer to a command that was actually issued. Kept until the
-   * next stroke, rather than faded on a timer, so a refusal that happens while
-   * the player is looking elsewhere is still there when they look back. */
   /** What a refusal needs filling in — nothing, for ten of the eleven.
    *
    * Here rather than at the call sites because every `result.*` string in the
@@ -1264,11 +1261,21 @@ export function createHud(root, {
    */
   function valuesFor(result, tiles) {
     if (result !== RESULT.NOT_OWNER) return undefined;
-    // The fallback is a WORD, not the token: `t()` leaves an unfilled `{player}`
-    // on screen, and that is the defect this whole item is about.
-    return { player: otherOwnerName(state, tiles, seat) ?? t("owner.somebodyElse") };
+    // **No fallback word.** The first version filled an unnamed owner with
+    // "somebody else", and that is a line nothing in the project can reach: the
+    // reducer answers `notOwner` only where a SEAT owns the ground or the
+    // building on it, and `test/seats.test.js` drives all three of those paths
+    // through the engine and asserts there is always somebody to name. A
+    // fallback nothing can force is a fallback no gate measures
+    // (`fallback-needs-a-lever`), and `String(undefined)` on a token would put
+    // the word "undefined" on the screen — worse than the brace it replaced.
+    const player = otherOwnerName(state, tiles, seat);
+    return player === undefined ? undefined : { player };
   }
 
+  /** The reducer's answer to a command that was actually issued. Kept until the
+   * next stroke, rather than faded on a timer, so a refusal that happens while
+   * the player is looking elsewhere is still there when they look back. */
   function setResult(result, tiles) {
     if (result === RESULT.OK) { closeAsk(); return; }
     readout.textContent = t(`result.${result}`, valuesFor(result, tiles));

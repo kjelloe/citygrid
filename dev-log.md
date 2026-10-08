@@ -13479,3 +13479,46 @@ comparing them — the `VARIANTS` shape, and the same shape as hashed fields bei
 `writeState` and `HASHED_FIELDS` with a test that they agree. The lesson for the next report is to
 write one file and derive the other, or to check them against each other; this project has now paid
 for the second one.
+
+## The omissions round after X5 — a fallback nobody could reach (2026-10-08)
+
+The census tests are green: 44 of them across `omissions`, `reachability`, `dead-exports`,
+`unused-imports` and `docs`. Everything X5 added has a reader — `OVERLAY_CHOICES` in the HUD and the
+gate, `otherOwnerName` in the HUD, `preview.at` in `setPreview`, `devLogEntriesIn` in a test and in
+the runner, `stripComments` in the brace census, `RESEAT_ALLOWANCE` in two places, the pool
+read-back in the rail gate's own check.
+
+**One thing had none, and it was mine, written an hour earlier.** `valuesFor` filled an unnamed
+owner with a catalogue word:
+
+    return { player: otherOwnerName(state, tiles, seat) ?? t("owner.somebodyElse") };
+
+Nothing in the project can reach that `??`. `engine/permissions.js` answers `notOwner` in exactly
+three places and all three are about a seat: the tile's owner (`canBuildOn`, `canConnectAcross`) or,
+on commons ground, the owner of the building standing on it (`canDemolish`). `setResult` is reached
+only from the controller's `onResult`, which only ever issues build strokes, and a build stroke
+always carries its tiles. So the word was a fallback no gate could force — which is the
+`fallback-needs-a-lever` shape — and worse than it looks: `t()` substitutes
+`String(values[token])`, so the day the invariant actually broke the player would read
+**"That belongs to undefined"** rather than the brace this item was about.
+
+**The word is gone and the claim is made instead.** `valuesFor` returns no values at all when there
+is nobody to name, and `test/seats.test.js` drives all three refusals through the real reducer: two
+seats, `openBorders: false`, seat one's road claiming the ground, and then `canDemolish`,
+`canBuildOn` and `canConnectAcross` asked about every tile seat one owns — each refusal must be
+nameable, and the test **fails if any of the three never refused at all**, which is the subject
+counted beside the failures. The commons path is built by hand (a building whose owner is seat one
+on an `OWNER_COMMONS` tile) because whether a generated region happens to contain one is worldgen's
+business.
+
+Two of my own premises were wrong on the way, and the test said so rather than passing quietly:
+joining a room owns no ground — a road is what claims it — and with `openBorders` at its default of
+true, `canConnectAcross` answers OK for a neighbour's ground, so the third path would have been a
+check whose subject never occurred.
+
+Suite **1,959 tests, 1,956 pass, 0 fail, 3 skipped, green twice**, and the two sets that render the
+HUD re-run after it: `quick` **522 s of 540** (`a11y_smoke` 48 s and `play_smoke` 107 s, both a few
+seconds up on the clean run — the first of them overlapped the tail of a sweep I had running, which
+is the same mistake one paragraph smaller), `room` **187 s of 600** with `room_smoke` at **82 s**,
+down from 114: the check that asked for a hover preview had been spending its whole timeout waiting
+for something the game does not do.
