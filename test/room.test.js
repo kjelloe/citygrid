@@ -442,6 +442,26 @@ test("a hello that names another room is refused BAD_CODE, and not welcomed", ()
   assert.equal(silent.of(S2C.WELCOME).length, 0, "a client that named no room was let in");
 });
 
+test("the code is normalised at the door, not only in the lobby", () => {
+  // A player reads `ABC-123` off a screen and types `abc 123`. The
+  // normalisation has to happen where the decision is made, or the lobby is the
+  // only thing that can ever open a door and every other client is a bug
+  // report. (`shared/`, because both ends need it — the ruling-003 shape.)
+  // `heldForMs: 0` — this test leaves and rejoins seat 1 five times and its
+  // subject is the CODE, not X4a's hold. Without it the second attempt is
+  // refused `SEAT_TAKEN` by a rule that is working correctly.
+  const room = createRoom({ options: OPTIONS, code: "ABC123", heldForMs: 0 });
+  for (const typed of ["ABC123", "abc123", formatRoomCode("ABC123"), "abc 123", "ABC-123"]) {
+    const connection = wire(`typed ${typed}`);
+    const refusal = room.join(connection, {
+      type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat: 1, room: typed,
+    });
+    assert.equal(refusal, "", `"${typed}" was refused: ${refusal}`);
+    assert.equal(connection.last(S2C.WELCOME)?.room, "ABC123", "the welcome does not name the room");
+    room.leave(1);
+  }
+});
+
 test("a malformed hello is told it is malformed, not that the code is wrong", () => {
   // X1b's finding, one door along: `ROOM_FULL` for a taken seat told the player
   // to go away when the answer was "pick another seat". `BAD_CODE` for a
@@ -579,6 +599,22 @@ test("a joiner that names no seat is given the lowest free one (X2b)", () => {
   assert.equal(back.last(S2C.WELCOME)?.seat, 2, "a returning seat was renumbered");
 });
 
+// --- a seat you left is yours for a while (X4a) ------------------------------
+
+test("the token the WELCOME hands out is what proves a seat is yours", () => {
+  // Every welcome has carried a token since X1a and **nothing has ever checked
+  // one**. So a player whose connection dropped lost their seat to whoever
+  // asked next — their treasury, their land and their city, to a stranger who
+  // typed the code. A capability with no control, and a safety one.
+  const room = createRoom({ options: { ...OPTIONS, seats: 3 }, code: "ABC123" });
+  const hello = (over) => ({
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", ...over,
+  });
+  const first = wire("one");
+  assert.equal(room.join(first, hello({ seat: 1 })), "");
+  const token = first.last(S2C.WELCOME)?.token;
+  assert.ok(token?.length > 0, "the welcome carried no token");
+
   // The player's connection drops. The seat is HELD, not freed.
   room.leave(1);
   const stranger = wire("stranger");
@@ -599,6 +635,26 @@ test("a joiner that names no seat is given the lowest free one (X2b)", () => {
   assert.notEqual(back.last(S2C.WELCOME)?.token, token, "the same token was handed out twice");
 });
 
+test("a held seat is let go when the grace runs out (X4a)", () => {
+  // Held for ever would be a room that fills up with ghosts; let go at once
+  // would be a player whose train went into a tunnel losing a city. The clock
+  // is an argument for the same reason the pump's is.
+  const room = createRoom({ options: { ...OPTIONS, seats: 2 }, code: "ABC123", heldForMs: 1000 });
+  const hello = (over) => ({
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", ...over,
+  });
+  assert.equal(room.join(wire("one"), hello({ seat: 1 })), "");
+  room.leave(1, 0);
+
+  const early = wire("early");
+  assert.equal(room.join(early, hello({ seat: 1, at: 500 })), REFUSAL.SEAT_TAKEN,
+    "the seat was let go before its grace ran out");
+  const late = wire("late");
+  assert.equal(room.join(late, hello({ seat: 1, at: 2000 })), "",
+    "the seat was never let go");
+  assert.equal(late.last(S2C.WELCOME)?.seat, 1);
+});
+
 test("a seat nobody has left is still refused to a second client (X1b, unchanged)", () => {
   // The hold must not blur the distinction X1b drew: somebody sitting there is
   // `SEAT_TAKEN` and always was, and this test is here so that a change to the
@@ -613,5 +669,79 @@ test("a seat nobody has left is still refused to a second client (X1b, unchanged
   // Even WITH the right token: the seat is not empty, and two sockets on one
   // seat is two clients applying one seat's commands.
   assert.equal(room.join(wire("also one"), hello({ seat: 1, token })), REFUSAL.SEAT_TAKEN);
+});
+
+test("a seat nobody has come back to is handed to the deputy, and taken back", () => {
+  // X4's "a city nobody is watching is still there". The room already knows who
+  // is connected and for how long (X4a's hold), so **the server decides** and
+  // issues `CMD_SET_STATUS` as a command — which means the status is hashed
+  // state every client applies in order, and there is no second clock in the
+  // engine to keep in step and no fixture to re-pin.
+  const room = createRoom({
+    options: { ...OPTIONS, seats: 2 }, code: "ABC123",
+    heldForMs: 1000, regencyAfterMs: 5000,
+  });
+  const hello = (over) => ({
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: "ABC123", ...over,
+  });
+  const one = wire("one");
+  assert.equal(room.join(one, hello({ seat: 1 })), "");
+  const token = one.last(S2C.WELCOME)?.token;
+  room.beat(100);
+  assert.equal(seatStatus(room, 1), PLAYER_ACTIVE, "a seat that is being played is not active");
+
+  room.leave(1, 0);
+  // Not the instant they drop, and not when the HOLD runs out either: letting
+  // somebody else take the seat and handing it to a deputy are two different
+  // clocks, and a player whose train went into a tunnel is not absent yet.
+  room.beat(100, 2000);
+  assert.equal(seatStatus(room, 1), PLAYER_ACTIVE, "the deputy took over during the grace");
+
+  room.beat(100, 6000);
+  assert.equal(seatStatus(room, 1), PLAYER_REGENT, "nobody took the city over");
+  // The change crossed as a COMMAND, so every client applies it in order.
+  const frame = room.beat(100, 6100);
+  assert.ok(room.state.players.find((p) => p.seat === 1).status === PLAYER_REGENT);
+
+  // And coming back takes it off them, at the door.
+  const back = wire("back");
+  assert.equal(room.join(back, hello({ seat: 1, token, at: 7000 })), "");
+  room.beat(100, 7100);
+  assert.equal(seatStatus(room, 1), PLAYER_ACTIVE, "a returning player is still a regency");
+});
+
+test("a regent seat is PLAYED, and what it does crosses the wire like anything else", () => {
+  // The deputy runs on the SERVER and its commands ride the frame: every client
+  // replays them in `(tick, seq)` order and reaches the same city. A deputy that
+  // mutated the server's state without telling anybody would be a desync at the
+  // next monthly hash — which is the whole reason this is commands and not a
+  // second simulation.
+  const room = createRoom({
+    options: { ...OPTIONS, seats: 2, startingTreasury: 60000 }, code: "ABC123",
+    heldForMs: 0, regencyAfterMs: 0,
+  });
+  const a = joined(room, "a", 1);
+  const seatClient = client(a.welcome);
+  // A beat first, so the ARRIVAL lands: a seat joining is a command and the
+  // regency pass runs before the queue is drained, so without this the seat it
+  // is looking for does not exist in `state.players` yet.
+  seatClient.play(room.beat(100, 500));
+  room.leave(1, 0);
+  seatClient.play(room.beat(100, 1000));
+  assert.equal(seatStatus(room, 1), PLAYER_REGENT);
+
+  // Enough beats for the deputy to do something. It acts once a beat at most,
+  // which is what keeps a regency from out-building a person.
+  let issued = 0;
+  for (let n = 2; n < 60; n += 1) {
+    const frame = room.beat(100, n * 1000);
+    for (const entry of frame.cmds) {
+      if (entry.seat === 1 && entry.command.type !== "setStatus") issued += 1;
+    }
+    seatClient.play(frame);
+  }
+  assert.ok(issued > 0, "the deputy did nothing at all in sixty beats");
+  assert.equal(seatClient.hash(), room.hash(),
+    "a client replaying the deputy's commands reached a different city");
 });
 

@@ -737,6 +737,8 @@ path is refused with `NOT_OWNER`; the overlay shows two seats in two patterns at
 
 **Needs first:** W6's second half. See "what has changed", 1.
 
+## X4a — A seat you left is yours for a while (S) — **BUILT 2026-10-07**
+
 *X4's first sentence, and a safety hole open since X1a: every WELCOME has carried a token and
 **nothing has ever checked one**, so `leave` freed the seat and a player whose connection dropped
 lost their city to whoever typed the code next. `leave` holds the seat with its token now; `join`

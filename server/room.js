@@ -58,6 +58,11 @@ const TICKS_PER_SECOND = [0, 2, 6, 16];
 let tokens = 0;
 const nextToken = () => `seat-${(tokens += 1)}-${Math.floor(Date.now() % 1e6)}`;
 
+/** How long a seat somebody has left stays theirs (X4a). Held for ever is a
+ * room that fills up with ghosts; let go at once is a player whose train went
+ * into a tunnel losing a city to whoever typed the code next. */
+const HELD_FOR_MS = 2 * 60 * 1000;
+
 
 /**
  * A room over one city.
@@ -84,6 +89,28 @@ export function createRoom(given = {}) {
   // had, because the code is what the people who were in it still have.
   const code = normaliseRoomCode(given.code) || makeRoomCode(randomBytes(6));
   const seats = new Map();
+  /** Connections watching without playing (X4e). They take no seat — so a full
+   * room is still watchable — get no token, because there is nothing to come
+   * back to, and receive every frame, because watching a still picture is not
+   * watching. They are **not** counted as somebody for the hibernation rule:
+   * a city nobody is steering should not run because a tab is open on it. */
+  const watchers = new Set();
+  /** Seats whose player has gone, by seat: `{ token, since }`. **The token has
+   * been handed out in every WELCOME since X1a and nothing has ever checked
+   * one** — so a player whose connection dropped lost their treasury, their
+   * land and their city to whoever asked next. It is checked here, and the
+   * seat is held rather than freed (X4a). */
+  const held = new Map();
+  const heldForMs = given.heldForMs ?? HELD_FOR_MS;
+  const regencyAfterMs = given.regencyAfterMs ?? REGENCY_AFTER_MS;
+  /** Deputies for the seats nobody is sitting in, by seat. **Not in state**:
+   * the cursor and the doctrine are the SERVER's, the deputy draws from its own
+   * stream (era 8), and every client learns what it did from the commands that
+   * ride the frame rather than by running one of its own. A second simulation
+   * is a second answer. */
+  const regents = new Map();
+  /** When each empty seat was last sat in, by the same clock the hold uses. */
+  const emptySince = new Map();
   const queue = [];
   let seq = 0;
   let lastHashedMonth = -1;
@@ -158,6 +185,12 @@ export function createRoom(given = {}) {
     if (seat === 0) return refuse(REFUSAL.ROOM_FULL);
     // `SEAT_TAKEN`, not `ROOM_FULL` (X1b): the room may have three seats free.
     if (seats.has(seat)) return refuse(REFUSAL.SEAT_TAKEN);
+    // **A seat somebody left is theirs for a while, and the token proves it**
+    // (X4a). Refused as `SEAT_TAKEN` rather than with a reason of its own: to
+    // everybody but its owner a held seat is simply occupied, and a refusal
+    // that said "held" would tell a stranger exactly how long to wait.
+    if (isHeld(seat, at) && held.get(seat).token !== hello.token) return refuse(REFUSAL.SEAT_TAKEN);
+    held.delete(seat);
     if (seats.size >= state.options.seats) return refuse(REFUSAL.ROOM_FULL);
 
     // **A seat joining is a COMMAND, not a side effect.** `CMD_JOIN` adds a
@@ -181,6 +214,7 @@ export function createRoom(given = {}) {
       type: S2C.WELCOME,
       seat,
       token,
+      room: code,
       protocol: PROTOCOL_VERSION,
       build: buildHash(),
       tick: state.tick,
@@ -279,6 +313,20 @@ export function createRoom(given = {}) {
       speed = Math.max(0, Math.min(TICKS_PER_SECOND.length - 1, Math.floor(next)));
       return speed;
     },
-    leave(seat) { seats.delete(seat); },
+    /** A player's connection has gone. The seat is HELD, not freed (X4a): their
+     * city is still theirs for `heldForMs`, and the token in their last WELCOME
+     * is what gets them back into it. */
+    /** A watcher's connection has gone. Separate from `leave`, because there is
+     * no seat to hold and nothing to come back to. */
+    stopWatching(connection) { watchers.delete(connection); },
+    leave(seat, at = Date.now()) {
+      const sitting = seats.get(seat);
+      seats.delete(seat);
+      if (sitting) held.set(seat, { token: sitting.token, since: at });
+      // The regency clock starts HERE, not at the next beat: the seat became
+      // empty when they left, and starting it a beat later would make the
+      // window depend on the pump's phase.
+      if (sitting) emptySince.set(seat, at);
+    },
   };
 }

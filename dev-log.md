@@ -12613,6 +12613,49 @@ months old with none: a city with nothing to show makes a green picture of a rig
 V7's wash exactly. That half of the item's gate line needs a played multi-seat city and is written
 into the gate and the item as still open.
 
+## X4a — a seat you left is yours for a while (2026-10-07)
+
+X4's first sentence — "leaving is safe, coming back is easy" — and a safety hole that had been open
+since X1a.
+
+**Every WELCOME has carried a token since the room was built, and nothing has ever checked one.**
+`room.leave(seat)` deleted the seat outright, so a player whose connection dropped lost their
+treasury, their land and their city to whoever typed the code next. A capability with no control,
+and the only one on the list that is a safety question rather than a missing feature.
+
+**The seat is held now, not freed.** `leave` keeps the seat with its token and the time it went;
+`join` lets it go only to a hello carrying that token, and after `heldForMs` (two minutes) to
+anybody. Three decisions, each with a test:
+
+- **Refused as `SEAT_TAKEN`**, not with a reason of its own. To everybody but its owner a held seat
+  is simply occupied, and a refusal that said "held for another ninety seconds" would tell a
+  stranger exactly how long to wait.
+- **"Any free seat" skips a held one.** X2b's door picks the lowest free seat for a player who
+  typed a code, and without this it would have handed out the seat the hold exists to protect —
+  the same hole through the door the slice before it had just opened.
+- **A seat somebody is SITTING in is still `SEAT_TAKEN` even with the right token.** Two sockets on
+  one seat is two clients applying one seat's commands. The test is there so a later change to the
+  hold cannot quietly turn an occupied seat into a grace window.
+
+**The clock is an argument**, as the pump's is: `leave(seat, at)` and a hello's optional `at`, so
+the grace window is tested in a millisecond rather than waited out.
+
+**And the page remembers.** The token is kept per TAB — two tabs are two players, and a shared
+token would be two clients claiming one seat — and offered in the next hello for that room, and only
+for that room. Every read and write is wrapped: a private window, blocked site data or a preview can
+throw, and a tab that cannot remember still has to play. The test for that plants a storage that
+throws from both methods and asserts the join still completes.
+
+**Two older tests had encoded the old rule** and were told about the new one rather than worked
+around: both leave a seat and take it again by number, and both now say `heldForMs: 0` with the
+reason that their subject is the code and the door, not the hold.
+
+**One interaction worth naming:** the registry reaps a room nobody is in after five minutes and a
+seat is held for two, so a held seat always outlives its hold before its room can be reaped. The
+numbers are the right way round by a factor of two and ought to stay that way.
+
+Suite **1,891 green twice**; `room_soak` and `room_smoke` green (30 checks, five browsers).
+
 ## X3b — who answered (2026-10-07)
 
 X3c left this for X3b to decide "**with the inbox's words in front of you**", and the words settle
