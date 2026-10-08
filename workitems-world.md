@@ -663,14 +663,125 @@ minutes it wants its census sampled or its own set — not a larger number.
   part, and life survives a build since B11). `workitems-multiplayer.md` says so and
   orders it before X3.
 
+## S22 — A sun that moves, and a moon that takes over (M, renderer) — P109, analysed 2026-10-08 — **decided 2026-10-08 (A138): build it**
+
+**Decided.** A **quarter arc** across the daylight band (about 0.5°/s on a 240-second day), the
+four composed colour presets untouched — only the DIRECTION becomes continuous — and the moon on
+its own arc through the night. **The arcs are data**: `sun.arcDegrees` (45) and
+`sun.moonArcDegrees` in `data/cityviewer.json`, mirrored in `client/world/config.js`, with
+`test/world.test.js` keeping the mirror honest, so Kjell can adjust the rate later without a slice.
+The pieces that bake a directional tint (`tintFaces` on `slabGeometry`, `detail-kit`'s face
+contrast) give it up and take the real light, so the feature is whole. Gates as analysed below, plus
+the reviewer's: the compare sheet's TERRACE row at the reference's hour beside two others.
+
+*Reviewer, 2026-10-08: the analysis is right and the constraint list is the real one. One gate to
+add: the compare sheet's TERRACE row at two hours of the moving sun beside the fixed one — the
+reference's shadows fall one way because it is one frozen hour, so "reads as the reference" has
+to be judged at the hour the reference shows, and the moving sun is judged at the others.*
+
+**Goal.** Shade that belongs to a time of day rather than to the map.
+
+### What is there now, read rather than assumed
+
+- **One `DirectionalLight`**, the key, at `(width × 0.6, sunHeight, height × 0.35)` aimed at the
+  map centre (`client/render/scene.js`). **Its x and z are constants.** `applyHour` rewrites the
+  position every time the hour changes and rewrites it to *the same x and z* — only `y` moves.
+- **The hour is four composed presets**, not a curve: `phaseOf` buckets a 240-second wall clock
+  into `day` (0–0.4), `rain` (0.4–0.5), `sunset` (0.5–0.62 and 0.9–1.0) and `night` (0.62–0.9),
+  and `setTime` walks to the new one over a **1-second** fade. `sunHeight` multipliers are
+  **day 1.0, rain 0.75, night 0.5, sunset 0.22** on a rig default of 120.
+- **Shadows** are off at Low, 2048 at Medium, 4096 at High; `PCFSoftShadowMap`, radius 5,
+  intensity 0.5. The shadow camera is an ortho box a **quarter of the map** (`reach = max(w,h) ×
+  0.28`), `far: 400`, following the camera's target and **snapped to a shadow texel** so edges do
+  not crawl as the view pans (spec §7.2).
+- **Some geometry DOES carry a baked directional shade, and it is the one real obstacle.**
+  `slabGeometry` ends in `tintFaces(box, { top: 1.0, north: 1 − 0.1 × c, east: 1 − 0.18 × c })`
+  with `c = faceContrastFor(style)` — **0.65 plain, 0.3 painted, 1.3 pixel** — so north and east
+  faces are darkened INTO the vertex colours, which is a fixed light direction frozen into the
+  mesh. `detail-kit`'s `setFaceContrast` pulls its shades the same way. That is `specs/art-
+  direction.md`'s "Face contrast 0.65 — baked shading, compressed towards flat", and it is real
+  (the first pass of this analysis said no such thing existed and was wrong: `tintFaces` is called
+  from one place and is easy to miss).
+- **What it covers is the small pieces, not the masses:** `slabGeometry` builds the bridge deck,
+  wires, ruin walls and rubble. The building masses and the baked facades take flat colours and let
+  three light them. So a moving sun fights a baked tint on a minority of the geometry — and the
+  answer is a decision rather than a rebake: either those pieces give up their bake and take the
+  real light (the honest option, and the one that makes the feature whole), or the tint stays and
+  reads as wrong for half the day on a deck. Either way it is a line to look at, not a cost.
+
+**So the finding is exact: the sun never moves across the sky.** It rises and falls on one fixed
+azimuth, which on a 64 map points from about `(+6.4, y, −9.6)` of the centre — so every shadow in
+every city at every hour of every game falls the same way, and the only thing the clock changes is
+their LENGTH and the light's colour. That is the flat reading P109 names: the shade is a fixture of
+the map, not a time of day.
+
+### What the feature is
+
+1. **An azimuth that advances with the same clock the preset blend already uses.** The presets stay
+   exactly as they are — they are a composition and the spec defends them ("a slider through them
+   passes through hours nobody composed") — and what becomes continuous is the DIRECTION. Colour
+   and intensity stay composed; the sun walks.
+2. **A moon that takes the night.** The night preset is already a dim, cool, *high* key —
+   `sunHeight: 0.5`, `key: 0.16` — which is a moon standing in for a sun without saying so. Naming
+   it lets it travel on its own arc rather than continuing the sun's.
+
+### The constraints this project already imposes on it
+
+- **The light is scenery on the WALL clock** (A41/R2: ticks were the wrong clock, at the play speed
+  48 of them was a nineteen-second day), and **in a room it is the ROOM's played clock** (X1c), so
+  every seat is at one hour. The azimuth takes `daySeconds` exactly as `phaseOf` does, never
+  `state.tick`.
+- **`?life=0` freezes it**, and two frozen screenshots must be the same bytes. The sun's position
+  must be a pure function of that one clock, like `MOTION`'s formulas (S6) — and like them, worth
+  holding in a module node can test.
+- **It never reaches state.** The renderer does not write to state and two seats must agree about
+  the city, not about the light.
+- **The shadow texel snap is the risk.** `followShadow` snaps the frustum to a texel so edges do not
+  crawl as the view PANS; a moving light rotates the texel grid itself, which reintroduces exactly
+  that crawl with nobody panning. The likely answer is to advance the azimuth in **discrete steps**
+  — the light is then static for a span of frames — which is the same shape as the hysteresis
+  B7's estimate needed. Measure before choosing a step count.
+- **The bake is otherwise safe:** the chunk cache's facades carry flat vertex colours, so a moving
+  sun does not invalidate a chunk — which is the single biggest thing that could have made this
+  expensive, and it is not the case.
+- **The cost is probably nil and must still be measured.** `shadowMap.autoUpdate` is three's default
+  and nothing turns it off, so the map is already re-rendered every frame; a moving sun adds nothing
+  per frame. What it *does* cost is a future optimisation — a static sun could render the map once —
+  and that is worth writing down before it is given away.
+
+### What has to be measured, and what is a picture decision
+
+- **The rate is the whole question** and it is Kjell's: a 240-second day spends 40% in daylight, so
+  a full 180° arc across the daylight band is about **1.9°/s**, which at street level is a shadow
+  visibly sliding while the player watches. Slower is restful and may never show; faster is a
+  novelty. Two or three rates, shot at street level and at city zoom, with the pictures open —
+  **Q160**.
+- `budget_gate` at High, sun moving against sun fixed, to confirm the frame cost is nil.
+- A shimmer check: the walker's own path at a fixed camera over a minute, counting changed pixels
+  along a cast edge — the instrument that would see the crawl the texel snap exists to prevent.
+- `film` is the gate that can see it at all: sixty-one frames of a played city is where a shadow
+  that slides between frames shows up, and no single-frame tool can have that finding.
+
+**Tests first.** A pure `sunAt(seconds)` in `client/world/` or beside `MOTION`: zero at t = 0, a
+monotone azimuth across the daylight band, the moon's arc disjoint from the sun's, and the same
+answer for the same second on two machines. `test/purity.test.js` keeps it importable by node.
+
+**Done when** a street-level shot at three times of day has shadows falling three different ways,
+and `?life=0` still gives two identical frames.
+
 ## S20 — The shot tools aim themselves (S) — found while re-running them, 2026-10-04
 
-**Still to do, found at S21 (2026-10-05):** `tools/window_shots.mjs` is not converted. It picks a
-shop by tile coordinate and stands at a fixed offset, so its day frame is a blank gable and a lawn
-with the shop out of shot — and it passes, because its criteria are the baked-chunk count and the
-page's error list. It was the natural instrument for S21's defect (what is behind a window) and
-could not have seen it. Convert it to `tools/lib/aim.mjs` like `street_shots`, and make it count
-**lit panes and dressed openings in frame** rather than chunks.
+**Converted 2026-10-06:** `window_shots`, `rail_shots`, `harbour_shots`, `civic_shots` and
+`bridge_shots` all take their camera from the subject's own geometry through `tools/lib/aim.mjs`
+(`trade_shots` was written that way), and `window_shots` asserts the SHOP'S OWN chunk is baked
+rather than that something is — the `cx,cy` form the cache prints, because comparing it against the
+cache's packed `chunkKey` fails silently every time, which it did on the first run.
+
+**Still to do:** the second half of that bullet. `window_shots`' criteria are still the baked chunk
+and a street-triangle floor; the item asks it to count **lit panes and dressed openings in frame**.
+A chunk being baked is why the question CAN be answered, not the answer — and S21's defect (what is
+behind a window) is exactly the kind a triangle floor cannot see. The same applies to the other
+four: each prints what it is pointed at, and none counts its subject's own features in frame.
 
 **Goal.** A picture gate points at its subject rather than at a tile somebody remembered.
 

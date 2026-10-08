@@ -217,3 +217,28 @@ test("the rain preset is a preset, and it is overcast rather than dark", () => {
     `a few lamps come on under it (night ${rain.night})`);
 });
 
+
+test("the hour says nothing about WHERE the sun is, only how high (S22)", () => {
+  // The finding P109 asked for, pinned as data rather than as prose. Every
+  // preset carries `sunHeight` and no preset carries an azimuth, and
+  // `client/render/scene.js` duly sets the key light's x and z from constants —
+  // so the sun rises and falls on one fixed line and every shadow in every city
+  // falls the same way at every hour.
+  //
+  // This goes red the day somebody gives a preset a direction, which is the
+  // direction that means S22 was built.
+  for (const name of PRESET_NAMES) {
+    const preset = presetFor(name);
+    assert.equal(typeof preset.sunHeight, "number", `${name} has no sun height`);
+    for (const key of Object.keys(preset)) {
+      assert.ok(!/azimuth|bearing|sunX|sunZ|compass/i.test(key),
+        `${name} has "${key}" — the sun can move now, so S22 has landed and this test is the `
+        + "thing to rewrite, not the code");
+    }
+  }
+  // And the heights themselves, because the analysis quotes them: the sun is
+  // LOWEST at sunset, which is the only hour that reads as a time of day today.
+  const heights = Object.fromEntries(PRESET_NAMES.map((n) => [n, presetFor(n).sunHeight]));
+  assert.ok(heights.sunset < heights.night && heights.night < heights.day,
+    `sunset ${heights.sunset}, night ${heights.night}, day ${heights.day}`);
+});

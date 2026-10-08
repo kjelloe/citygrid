@@ -57,6 +57,11 @@ M7's merge note updated — `main` is at era 26's release and the game is at era
   is of the L2 pool or the kit is not reached on that page. Say which with the pool read-back the
   rail gate already does (`rail_shots: the second reader of the train pools`). → X5 item 3.
 
+**Q154–Q160 are seven questions for Kjell**, and the reviewer's reading is that none of them is
+blocked on anything but his eye and two minutes with the shots each names. S22's analysis (the sun
+never moves across the sky — the key light's x and z are constants) is correct and complete; the
+reviewer adds one gate to it below.
+
 
 ## What is already there (plan.md §3.9b, checked 2026-10-04)
 

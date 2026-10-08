@@ -231,3 +231,22 @@ test("the rig's shadow fields are read by something", () => {
   assert.ok(lightingFor("painted").shadowIntensity < 1,
     "a low sun at full shadow strength swallows the fill that colours it");
 });
+
+test("the baked face tint is a fixed light direction, frozen into the mesh (S22)", () => {
+  // `slabGeometry` darkens north and east faces into the vertex colours by
+  // `faceContrastFor(style)`, which is a sun direction baked into geometry —
+  // `specs/art-direction.md`'s "Face contrast 0.65, baked shading". It is the
+  // one real obstacle to a sun that moves, and the first pass of S22's analysis
+  // missed it entirely, so the numbers are pinned here rather than left to be
+  // re-found.
+  assert.equal(faceContrastFor("plain"), 0.65, "the soft rig's baked contrast moved");
+  assert.equal(faceContrastFor("painted"), 0.3, "the toon ramp's baked contrast moved");
+  assert.equal(faceContrastFor("pixel"), 1.3, "the pixel style's baked contrast moved");
+  // The asymmetry itself — north darkened by 0.1 × c and east by 0.18 × c — is
+  // in `client/render/style-assets.js`, which imports three and node cannot
+  // load. It is NOT asserted here: a source-text assertion would pin the
+  // characters rather than the claim (the `life: stillness ? …` lesson), and
+  // what can be checked in node is the multiplier those two factors are scaled
+  // by, which is what the three assertions above do. The direction is a
+  // picture, and `film` is the gate that can see it.
+});

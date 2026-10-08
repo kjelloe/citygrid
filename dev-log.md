@@ -12800,6 +12800,54 @@ ground cleared **on the other client**; and the owner paid the offer, **19 938 �
 still goes through the seam, because the hand that files one needs a tool that picks tiles and that
 is the half still unbuilt. Suite **1,902 green twice**; `reach_smoke` green.
 
+## S22 — analysing a sun that moves (2026-10-08)
+
+P109: *"sun and moon light passing over the city at a fitting rate to give shade to the otherwise
+flat-lighted city."* The reading is right and the cause turned out to be exact and small.
+
+**The sun never moves across the sky.** `client/render/scene.js` builds one `DirectionalLight` at
+`(width × 0.6, sunHeight, height × 0.35)` aimed at the map centre, and `applyHour` rewrites its
+position every time the hour changes — **to the same x and z**. Only `y` moves. So the sun rises and
+falls on one fixed line, and every shadow in every city at every hour of every game falls the same
+way; what the clock changes is their LENGTH (`sunHeight` ×1.0 day, ×0.75 rain, ×0.5 night, ×0.22
+sunset, on a rig default of 120) and the light's colour. The hour itself is four composed presets
+off a 240-second wall clock with a one-second fade, not a curve.
+
+**The first pass of this analysis said nothing bakes a directional shade, and that was wrong.**
+`slabGeometry` ends in `tintFaces(box, { top: 1.0, north: 1 − 0.1 × c, east: 1 − 0.18 × c })` with
+`c = faceContrastFor(style)` — 0.65 plain, 0.3 painted, 1.3 pixel — which is **a sun direction
+frozen into the vertex colours**, and it is `specs/art-direction.md`'s "Face contrast 0.65, baked
+shading" row, which I had just about concluded was stale documentation. One call site, easy to miss,
+and it is the single real obstacle in the feature. What it covers is the small pieces — the bridge
+deck, wires, ruin walls, rubble, and `detail-kit`'s shades — not the building masses or the baked
+facades, which take flat colours and let three light them. So the chunk cache does **not** need
+invalidating when the sun moves, which is the thing that could have made this expensive.
+
+**Everything else is cheap.** `shadowMap.autoUpdate` is three's default and nothing turns it off, so
+the map already re-renders every frame; a moving sun adds nothing per frame. What it costs is a
+future optimisation nobody has taken yet — a static sun could render that map once — and that is
+worth writing down before giving it away.
+
+**The real risk is shimmer, and it is the opposite of what the code already guards.**
+`followShadow` snaps the shadow frustum to a texel so cast edges do not crawl as the view PANS; a
+moving light rotates that texel grid itself, which brings the crawl back with nobody panning. The
+likely answer is a discrete azimuth — the light static for a span of frames — which is B7's
+hysteresis in another costume, and it wants measuring rather than guessing.
+
+**What is Kjell's and not mine: the rate.** A 240-second day spends 40% in daylight, so a full 180°
+arc across it is about **1.9°/s** — a shadow visibly sliding while the player watches. **Q160**, with
+shots at two or three rates, street level and city zoom; and it is two questions, because it also
+asks whether the four composed presets keep the colour while only the DIRECTION becomes continuous
+(S22 proposes yes: the spec defends the composition) and whether the moon gets an arc of its own.
+The night preset is already a dim cool *high* key — `sunHeight: 0.5`, `key: 0.16` — which is a moon
+standing in for a sun without saying so.
+
+**Two findings pinned as tests rather than as prose**, both of which go red in the direction that
+means the feature landed: no preset carries an azimuth (`test/time-of-day.test.js`), and the three
+baked face-contrast values (`test/toon.test.js`). The second exists because the first pass of the
+analysis missed the bake entirely, and a number that was hard to find once will be hard to find
+again.
+
 ## X3b — the hand that files a request (2026-10-08)
 
 The loop the inbox half-built: until today a request could only be filed through the seam, which is
