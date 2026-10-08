@@ -188,6 +188,27 @@ export const DEFAULTS = Object.freeze({
     clearance: 1.2,
     bob: 0.055, stride: 0.85, spacing: 1.6, crossWait: 1,
   },
+  // Where the sun stands, and the moon after it (S22, P109 → A138). The
+  // presets below say what the light LOOKS like; these three say where it is.
+  //
+  // `arcDegrees` is **a quarter of the sky**, which is Kjell's answer and the
+  // only part of this that was a decision. It is swept across the whole time
+  // the sun is up — `phaseOf`'s day, rain and first sunset, 0 to 0.62 of the
+  // cycle — so on a 240-second day it advances about **0.30°/s**. The item's
+  // analysis said "about 0.5°/s" for a quarter arc; that was the 40% DAY band
+  // alone, and the sun is up for 62% of the cycle. The number is here rather
+  // than in the code so the rate can move without a slice, which is what A138
+  // asked for.
+  //
+  // `moonArcDegrees` is the moon's own arc through the night band, starting
+  // half a turn from the sun's base azimuth — which is what makes a night
+  // shadow fall the other way, and the whole point of naming the moon.
+  //
+  // `arcSteps` quantises both arcs, because `followShadow` snaps the shadow
+  // frustum to a shadow texel so edges do not crawl as the view PANS, and a
+  // light that rotates turns the texel grid itself. 0 is continuous. The number
+  // is a measurement: see the dev-log for the shimmer count at each.
+  sun: { arcDegrees: 45, moonArcDegrees: 45, arcSteps: 48 },
   // Time of day (E6, spec §7.3). Presets, not a slider: each one is a
   // composition. `key`, `hemi` and `sunHeight` are FACTORS on whatever the
   // style's rig already says, so a preset changes the hour without changing

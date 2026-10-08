@@ -16,6 +16,7 @@ import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { phaseForPreset } from "../world/rush.js";
+import { sunAt, lightPosition } from "../world/sun.js";
 import { countrysideFor } from "../world/countryside.js";
 import { treesFor } from "../world/foliage.js";
 import { streetProps } from "../world/street-furniture.js";
@@ -186,13 +187,31 @@ export function createRenderer(canvas, state, options = {}) {
   // The hour (E6, spec §7.3). Pure and delta-driven, so `life: false` freezes
   // the sun where it stood along with the traffic and the walker.
   const timeOfDay = createTimeOfDay(options.time ?? "day");
+  /** The sun's azimuth and the preset's height, kept apart because they come
+   * from two different places and are written at two different rates: the
+   * height changes when the HOUR changes (four composed presets, over a
+   * one-second fade) and the direction with the day clock. `placeKey` below is
+   * the only writer, so neither can leave the other behind — which is what the
+   * old code did in the other direction, rewriting x and z to the same two
+   * constants every time the hour moved (S22). */
+  let sunAzimuth = 0;
+  let sunHeightNow = 120;
   // The hour a frozen city settles its traffic at (B4). A live renderer is told
   // the phase every frame; a frozen one never draws a frame before it settles.
   const startPhase = options.phase ?? phaseForPreset(options.time ?? "day");
   if (lights.key > 0) {
     const key = new THREE.DirectionalLight(lights.keyColour, lights.key);
     const sun = lights.sunHeight ?? 120;
-    key.position.set(state.width * 0.6, sun, state.height * 0.35);
+    // **Where the sun stands is `client/world/sun.js`'s answer** (S22). It was
+    // `(width × 0.6, sun, height × 0.35)` here and the same two constants in
+    // `applyHour`, so the light rose and fell on ONE azimuth and every shadow
+    // in every city fell the same way at every hour. The height is still the
+    // preset's; only the direction moved out, into a module node can ask
+    // questions of.
+    sunAzimuth = sunAt(startPhase, getConfig(), 1).azimuth;
+    sunHeightNow = sun;
+    const stood = lightPosition(sunAzimuth, sun, state.width, state.height);
+    key.position.set(stood.x, stood.y, stood.z);
     key.target.position.set(state.width / 2, 0, state.height / 2);
     scene.add(key.target);
 
@@ -292,13 +311,41 @@ export function createRenderer(canvas, state, options = {}) {
     }
   }
 
+  /** The one place the key light's position is written (S22). */
+  function placeKey() {
+    const stood = lightPosition(sunAzimuth, sunHeightNow, state.width, state.height);
+    keyLight.position.set(stood.x, stood.y, stood.z);
+  }
+
+  /** The sun, advanced by the same day clock the presets run on.
+   *
+   * Called every frame and writes only when the azimuth has actually changed —
+   * which, with `sun.arcSteps` quantising the arc, is once every few seconds.
+   * That is not an optimisation: `followShadow` snaps the shadow frustum to a
+   * shadow TEXEL so edges do not crawl as the view pans, and a light that
+   * rotates turns the texel grid itself. A light that holds still between steps
+   * holds the grid still with it.
+   *
+   * `dayPhase` is `undefined` when the player has pinned an hour, and the sun
+   * then stands at that preset's own phase — a pinned hour is a held moment,
+   * and it is why `?life=0`'s two frozen screenshots are the same bytes.
+   */
+  function advanceSun(dayPhase) {
+    if (!keyLight) return;
+    const where = sunAt(dayPhase ?? startPhase, getConfig(), 1);
+    if (where.azimuth === sunAzimuth) return;
+    sunAzimuth = where.azimuth;
+    placeKey();
+  }
+
   /** Everything the hour touches, in one place. */
   function applyHour() {
     const hour = timeOfDay.applyTo(lights);
     if (keyLight) {
       keyLight.intensity = hour.key;
       keyLight.color.setHex(hour.keyColour);
-      keyLight.position.set(state.width * 0.6, hour.sunHeight, state.height * 0.35);
+      sunHeightNow = hour.sunHeight;
+      placeKey();
     }
     if (hemiLight) {
       hemiLight.intensity = hour.hemi;
@@ -837,6 +884,9 @@ export function createRenderer(canvas, state, options = {}) {
     if (drawOptions.time !== undefined) timeOfDay.set(drawOptions.time);   // spec §7.3
     timeOfDay.update(drawOptions.dt ?? (drawOptions.frameMs ?? 0) / 1000);
     applyHour();
+    // After `applyHour`, which owns the HEIGHT, and before `followShadow`,
+    // which snaps the frustum to a texel of a light that has now moved (S22).
+    advanceSun(drawOptions.dayPhase);
     water.applyHour(timeOfDay.current);
     followShadow();
     // The overlay is a byte plane on the terrain material (ruling 041): one
@@ -1216,6 +1266,9 @@ export function createRenderer(canvas, state, options = {}) {
   }
 
   return { renderer, scene, view, terrain, pools, style, setTier, setProjection, setTime,
+    /** The key light itself, for `tools/sun_shots.mjs`: the pixels can say the
+     * picture changed and only the light can say the SUN moved (S22). */
+    get keyLight() { return keyLight; },
     get night() { return timeOfDay.current.night; },
     enterStreet, leaveStreet, enterPhoto, leavePhoto, flyPhoto, lookPhoto, capture,
     get walker() { return walker; }, get collision() { return collision; }, get traffic() { return traffic; }, get services() { return services; }, get trains() { return trains; }, get boats() { return boats; }, get planes() { return planes; }, get pedestrians() { return pedestrians; }, get crowd() { return crowd; }, get nav() { return nav; }, get tier() { return tierName; }, governor, get model() { return model; }, draw, setBudget, resize, worldChanged, showGhost, showGhostTiles, hideGhost, stats, dispose };

@@ -209,6 +209,11 @@
   "spacing": 1.6,
   "crossWait": 1
  },
+ "sun": {
+  "arcDegrees": 45,
+  "moonArcDegrees": 45,
+  "arcSteps": 48
+ },
  "presets": {
   "day": {
    "key": 1.0,

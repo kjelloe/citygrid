@@ -663,7 +663,25 @@ minutes it wants its census sampled or its own set — not a larger number.
   part, and life survives a build since B11). `workitems-multiplayer.md` says so and
   orders it before X3.
 
-## S22 — A sun that moves, and a moon that takes over (M, renderer) — P109, analysed 2026-10-08 — **decided 2026-10-08 (A138): build it**
+## S22 — A sun that moves, and a moon that takes over (M, renderer) — A138 — **BUILT 2026-10-08 as `slice-S22`**
+
+*As built: `client/world/sun.js` is pure and node-testable (nine tests), the arcs are data
+(`sun.arcDegrees` 45, `sun.moonArcDegrees` 45, `sun.arcSteps` 48, mirrored), noon is the azimuth the
+project was always lit from so every old screenshot still stands, the moon takes the night half a
+turn away, and dawn holds still rather than teleporting. `tools/sun_shots.mjs` is in the `shots`
+set: three hours from one camera, the azimuth read out of the PAGE, a frozen hour still frozen, and
+the light unmoved inside one of its steps. Measured — dawn 125.7°, noon 146.3°, dusk 166.9°, 41.2°
+swept of a 45° arc; the moon 180° from noon.*
+
+**Two things it found and did not fix, both with numbers.** The analysis said the building masses
+"take flat colours and let three light them": they do not. `building-kit.js` and `detail-kit.js`
+each push **nine** faces with a compass shade, spanning 18.3% on `plain` and 40% on `pixel` against
+the 5.6% the slab carried — a frozen azimuth an order of magnitude larger than the one this item
+named, and a restyle rather than a slice, so it is **Q163** with a test that keeps the count honest.
+And the sun reads quietly at midday because the key light stands at **83.4°** of elevation — its
+radius is `max(w, h) × 0.18` while `sunHeight` is 120 — which is **Q164**.
+
+## S22 — A sun that moves, and a moon that takes over (M, renderer) — P109, analysed 2026-10-08 — the item as written
 
 **Decided.** A **quarter arc** across the daylight band (about 0.5°/s on a 240-second day), the
 four composed colour presets untouched — only the DIRECTION becomes continuous — and the moon on
@@ -1253,9 +1271,10 @@ bullet. What is open, cheapest first: **S19b** (a station faces its track), **S1
 line**, **S20's second half** (the shot gates count their subject's features in frame, not chunks),
 **S15b** (the lit response — a material raised by 60 arrives raised by 25), **S15c** (road width and
 the grey unbuilt lot), **S14** (the batter, tried and reverted — it wants the picture layer), and
-**S22** (a sun that moves, analysed 2026-10-08). ~~S18c~~ (the wall at two metres) is built.
+~~**S22**~~ (a sun that moves) and ~~S18c~~ (the wall at two metres) are both built, 2026-10-08.
 
-**S18c is built (2026-10-08)** and **S22 is next.** S18c took `road.wallMinDrop` from 3 to 2 as
+**S18c and S22 are both built (2026-10-08).** What is left in this lane is the list above minus
+those two, and the cheapest of them is S19b. S18c took `road.wallMinDrop` from 3 to 2 as
 A132 decided — and found that the ladder the decision was chosen from belongs to era 28: today's
 counts are 24 / 5 / 2 on a hilly 128 and 17 / 4 / 3 on a rolling 96, not 916 / — / 130 and 51 / — /
 0. B14 is the cause, it is attributed to B14's parent commit, and **Q162** asks whether 2 m is still

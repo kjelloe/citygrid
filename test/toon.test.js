@@ -15,7 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot } from "./helpers/sources.js";
+import { repoRoot, stripComments } from "./helpers/sources.js";
 import { RAMPS, rampBytes } from "../client/render/ramps.js";
 import { lightingFor, faceContrastFor } from "../client/render/style-light.js";
 import { PALETTES } from "../client/render/palettes.js";
@@ -232,21 +232,49 @@ test("the rig's shadow fields are read by something", () => {
     "a low sun at full shadow strength swallows the fill that colours it");
 });
 
-test("the baked face tint is a fixed light direction, frozen into the mesh (S22)", () => {
-  // `slabGeometry` darkens north and east faces into the vertex colours by
-  // `faceContrastFor(style)`, which is a sun direction baked into geometry —
-  // `specs/art-direction.md`'s "Face contrast 0.65, baked shading". It is the
-  // one real obstacle to a sun that moves, and the first pass of S22's analysis
-  // missed it entirely, so the numbers are pinned here rather than left to be
-  // re-found.
+test("the slab's bake has no direction left in it (S22)", () => {
+  // It had one. `slabGeometry` darkened north by `0.1 x c` and east by
+  // `0.18 x c`, which on `plain` is a 5.6% difference between two walls of the
+  // same bridge deck — a sun direction frozen into the mesh, and the one real
+  // obstacle to a sun that moves. S22 replaced the pair with their mean, so
+  // what is baked is TOP against SIDE: direction-free, because the sun is
+  // always above, and still enough form for the pixel style's unlit material.
+  //
+  // The contrast multipliers stay pinned — they are the art direction
+  // (`specs/art-direction.md` §3) and three styles depend on them. The call is
+  // read as source because `style-assets.js` imports three and node cannot load
+  // it; what is asserted is that the two side faces take ONE shade, which is
+  // the claim, rather than the characters the mean happens to be spelled with.
   assert.equal(faceContrastFor("plain"), 0.65, "the soft rig's baked contrast moved");
   assert.equal(faceContrastFor("painted"), 0.3, "the toon ramp's baked contrast moved");
   assert.equal(faceContrastFor("pixel"), 1.3, "the pixel style's baked contrast moved");
-  // The asymmetry itself — north darkened by 0.1 × c and east by 0.18 × c — is
-  // in `client/render/style-assets.js`, which imports three and node cannot
-  // load. It is NOT asserted here: a source-text assertion would pin the
-  // characters rather than the claim (the `life: stillness ? …` lesson), and
-  // what can be checked in node is the multiplier those two factors are scaled
-  // by, which is what the three assertions above do. The direction is a
-  // picture, and `film` is the gate that can see it.
+  const assets = readFileSync(join(repoRoot, "client", "render", "style-assets.js"), "utf8");
+  const call = /tintFaces\(box, \{([^}]*)\}\)/.exec(assets);
+  assert.ok(call, "slabGeometry no longer calls tintFaces at all");
+  assert.match(call[1], /north: side/, "the slab's north face is not the shared side shade");
+  assert.match(call[1], /east: side/, "the slab's east face is not the shared side shade");
+});
+
+test("the kit's compass shades are still a frozen azimuth, and it is counted (Q163)", () => {
+  // What S22 did NOT change, measured so the question has numbers rather than
+  // an impression. `building-kit.js` and `detail-kit.js` each push nine faces
+  // with one of four COMPASS shades — SOUTH 0.88, EAST 0.8, NORTH 0.7, WEST
+  // 0.62 — and `shade()` pulls them towards white by the style's contrast, so
+  // as rendered the sides of a roof span 18.3% on `plain` and 40% on `pixel`.
+  // S22's analysis said the masses "take flat colours and let three light
+  // them"; that was wrong, which is twice this feature has been wrong about
+  // where the bake is.
+  //
+  // This keeps the count honest, it does not forbid the shades: the pixel style
+  // is unlit, so for it the bake IS the light. Q163 is whether the lit styles
+  // give theirs up, and that is a restyle rather than a slice.
+  for (const file of ["building-kit.js", "detail-kit.js"]) {
+    const source = stripComments(readFileSync(join(repoRoot, "client", "render", file), "utf8"));
+    const pushes = source.match(/push(?:Quad|Tri)\s*\(/g) ?? [];
+    const compass = (source.match(/push(?:Quad|Tri)\s*\((?:[^()]|\([^()]*\))*\)/g) ?? [])
+      .filter((call) => /\b(NORTH|SOUTH|EAST|WEST)\b/.test(call));
+    assert.ok(pushes.length > 10, `${file} pushes ${pushes.length} faces — this scans nothing`);
+    assert.equal(compass.length, 9,
+      `${file} pushes ${compass.length} compass-shaded faces, and Q163's measurement says 9`);
+  }
 });

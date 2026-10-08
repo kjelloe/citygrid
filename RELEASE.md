@@ -170,14 +170,24 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**2 open questions** are on the list (`dev-questions.md`, bottom section), both filed the day the
-list was emptied and neither blocking anything. **Q161**: a junction laid mid-street deletes the
-pavement somebody was standing on, and the geometric re-seat moves them up to 6.2 m — keep their
-side of the street, walk them out, or leave it and write down that two people in four hundred moving
-once per build is below what anybody can see? (W6d, one function.) **Q162**: the wall's rung was
-chosen from a ladder of 264 faced shoulders against 130, and those are **era 28's** numbers — B14
-paves a fifth of the city instead of a third, so a hilly 128 now reads 24 / 5 / 2 at 1.2 / 2 / 3 m.
-Is two metres still the rung?
+**4 open questions** are on the list (`dev-questions.md`, bottom section), all filed the day the
+list was emptied and none blocking anything — each one is a picture or a rung that a slice measured
+and handed back rather than choosing for itself.
+
+- **Q161**: a junction laid mid-street deletes the pavement somebody was standing on, and the
+  geometric re-seat moves them up to 6.2 m. Keep their side of the street, walk them out, or leave
+  it and write down that two people in four hundred moving once per build is below what anybody can
+  see? (W6d, one function.)
+- **Q162**: the wall's rung was chosen from a ladder of 264 faced shoulders against 130, and those
+  are **era 28's** numbers — B14 paves a fifth of the city instead of a third, so a hilly 128 now
+  reads 24 / 5 / 2 at 1.2 / 2 / 3 m. Is two metres still the rung?
+- **Q163**: `building-kit.js` and `detail-kit.js` push nine faces each with a COMPASS shade, which
+  is a sun direction frozen into every roof and prop — 18.3% of spread on `plain`, 40% on `pixel`,
+  against the 5.6% S22 removed from the slab. Do the lit styles give theirs up? It is a restyle
+  rather than a slice, and the pixel style is unlit, so for it the bake IS the light.
+- **Q164**: the sun crosses the sky now and reads quietly at midday, because the key light stands
+  at **83.4°** of elevation at noon (62.4° at dusk, where it reads well). Stand it further out so
+  the shadows lengthen?
 
 The seven the week raised were answered on 2026-10-08 as **A132–A138** (P111), and what each one
 left behind is work rather than a question:

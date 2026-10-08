@@ -13680,3 +13680,116 @@ anything was read — the M8 lesson), the quest catalogue arrives non-empty and 
 second test states the claim the whole item rests on: there is no mirror behind `engine/quests.js`,
 so *"nobody called the loader"* and *"the city has no quests"* are the same sentence. Planted by
 deleting the `setQuests` call: red.
+
+## S22 — the sun crosses the sky (2026-10-08)
+
+The key light's x and z were **constants**. `applyHour` rewrote the light's position every time the
+hour changed and rewrote it to the same two numbers — only `y` moved — so every shadow in every city
+at every hour of every game fell the same way, and the only thing the clock changed was their length
+and the light's colour. Shade was a fixture of the map rather than a time of day.
+
+**The direction moved into a module node can ask questions of.** `client/world/sun.js`:
+`sunAt(seconds, cfg, period)` answers which body is up, where it is, and how far through its own arc
+it has travelled; `lightPosition(azimuth, y, w, h)` turns that into a place to stand. Pure, no
+three, no DOM, no clock of its own, so `?life=0` freezes the sun for the same reason it freezes the
+traffic. Nine tests, and they are the questions a frozen screenshot cannot answer: the bands are the
+ones `phaseOf` actually uses, the arc is as wide as the data declares, the azimuth only ever
+advances while a body is up, the moon takes the night half a turn away, dawn **holds still** rather
+than teleporting between the moon's last position and the sun's first, the same second always gives
+the same answer, and the steps are what hold the light still between them.
+
+**Noon is where the light always was.** The arc opens either side of `atan2(+0.1 w, −0.15 h)` —
+the azimuth the whole project was lit from — so every screenshot in `reports/` is still the picture
+it was at midday. A slice that moved the light at noon would have been a slice about the look.
+
+**The arcs are data** (A138): `sun.arcDegrees` 45, `sun.moonArcDegrees` 45 and `sun.arcSteps` 48 in
+`data/cityviewer.json` with the mirror, so the rate can move without a slice. A quarter of the sky
+is swept across the whole time the sun is up — `phaseOf`'s day, rain and first sunset, 0 to 0.62 of
+the cycle — which is about **0.30°/s** on a 240-second day. The item's analysis said "about 0.5°/s";
+that was the 40% DAY band alone, and the sun is up for 62% of the cycle.
+
+**The steps are not an optimisation.** `followShadow` snaps the shadow frustum to a shadow TEXEL so
+edges do not crawl as the view pans, and a light that rotates turns the texel grid under it — the
+crawl comes back with nobody panning. Quantising the arc holds the light still for a span of frames,
+which holds the grid still with it. The gate measures it: a fifth of a step later, the azimuth is
+unchanged.
+
+**What the gate measures.** `tools/sun_shots.mjs`, in the `shots` set — three hours from one camera,
+and the question asked of the PAGE rather than of the pixels, because the pixels can only say the
+picture changed and the light can say the sun moved:
+
+```
+dawn  hour=0.02  azimuth=125.7°  elevation=83.4°  digest=58b580560e87602c
+noon  hour=0.31  azimuth=146.3°  elevation=83.4°  digest=dcb2311797fd7008
+dusk  hour=0.60  azimuth=166.9°  elevation=62.4°  digest=c322c81cc77c0bfc
+the sun swept 41.2° between dawn and dusk, of a declared 45° arc (42.1° expected over this span)
+the same frozen hour twice: dcb2311797fd7008 — identical
+a fifth of a step later: azimuth unchanged
+the moon stands 180° from the sun's noon
+```
+
+**And it earned its keep twice before it passed.** The first run reported five frames, five
+identical digests and the light standing at `phaseForPreset("day")` in all of them: `shoot()` has a
+named parameter per flag and forwards everything else through `extra`, so a top-level `hour` was
+**silently dropped** — which is the defect `screenshot.mjs`'s own comment warns about (`?territory=1`,
+slice V7). The second run had every elevation at 83.4°, night included, because the shot pinned the
+`day` preset while only the azimuth moved: `game.js` passes `time: phaseOf(daySeconds, DAY_SECONDS)`
+and the gate was not. Both were found by printing a number beside the picture.
+
+**The slab gives up its azimuth; the kit does not, and that is measured rather than argued.**
+`slabGeometry` darkened north by `0.1 × c` and east by `0.18 × c` — 5.6% between two walls of the
+same bridge deck on `plain` — and that is now one shared side shade, their mean: top against side,
+which is direction-free because the sun is always above, and still enough form for the pixel style's
+unlit material.
+
+The item said the masses "take flat colours and let three light them". **They do not.**
+`building-kit.js` and `detail-kit.js` each push **nine** faces with one of four compass shades —
+SOUTH 0.88, EAST 0.8, NORTH 0.7, WEST 0.62 — and as rendered those sides span **18.3% on `plain`**
+and **40% on `pixel`**. That is the same defect an order of magnitude larger than the one the item
+named, it is the second time this feature's analysis has been wrong about where the bake is, and
+removing it changes every building in the game — so it is **Q163** with the numbers and a test that
+keeps the count honest, not a line slipped into a slice about the light.
+
+**What the pictures say, having looked at them.** Dawn is cool and green with a soft pool under the
+big tree; dusk is warm and orange with the shadow shifted and the sky dim. The swing reads clearly
+at dusk and quietly at midday — and the gate prints why: the key light stands at **83.4° of
+elevation at noon**, almost overhead, because its radius is `max(w, h) × 0.18` while `sunHeight` is
+120. A quarter arc of a nearly-overhead sun moves a short shadow a little. The arc is A138's
+decision; the elevation is a number nobody has ever chosen, and it is **Q164**.
+
+**The reviewer's extra gate, and why it is not a compare-sheet row.** The ask was the terrace row
+"at the reference's hour beside two others" — the reference is one frozen hour, so *reads as the
+reference* can only be judged where the reference stands, and the moving sun has to be judged
+elsewhere. Two extra rows were written and then taken out again: `test/compare.test.js` requires
+**one view per reference**, because a row of that sheet IS a comparison and a row with no reference
+to compare against is a picture in a table of comparisons. The first half of the ask is the terrace
+row exactly as it was; the second half is `sun_shots`, which is three hours from one camera with the
+azimuth printed under each. The test was right and the sheet keeps its shape.
+
+**Gates: `film` green (116 s of 480), `shots` with `sun_shots` in it, and `budget_gate` red — at
+me.** It failed "a cold build inside a frame" at **23 ms** against a 16 ms bound, where 2026-10-05
+read 6.2 and 10-04 read 9.6. The obvious suspect was S18c putting more retaining wall into a baked
+chunk, so it was measured rather than assumed: two arms of `budget_gate`, `wallMinDrop` at 2 and at
+3, **8.7 ms and 9.5 ms**, both green and both well inside the bound. The 23 ms was contention —
+I had been running `node --test` against the docs while a gate that times single frames was in
+flight. That is the third time in one day, after `motion_shots` and `sim_sweep`, and the rule had
+already been written into `workitems-measurement.md` after the first.
+
+So it is an instrument now instead of a sentence: `gates.mjs` prints
+`NOT ALONE: n other node process(es) are running` before it starts, with the reason — *a timing or
+determinism red from here is not a finding until it is seen alone.* It sits beside the `UNCOMMITTED`
+warning X5 added, and for the same reason: the cheapest place to notice something is the place
+somebody is already reading output.
+
+**And its first run was a false positive**, which is the instrument's own lesson arriving by return
+of post. `pgrep -f "node tools/"` matches the whole COMMAND LINE, so it matched the shell that had
+been asked to run `node tools/gates.mjs` — every run would have warned about itself, and an
+instrument that cries wolf is worse than none. It matches the process NAME now (`pgrep -x node`,
+minus this process). A process list is a text search like any other, and a pattern that matches the
+command that launched you counts you twice. The fix is visible in the run that found it: the `shots`
+set printed the warning and the two sets after it, loading the corrected file, did not.
+
+**Green, one set at a time, nothing else running:** `shots` **303 s of 420** with `sun_shots` at
+22.6 s, `budget` **277 s of 360 and `budget_gate` ok** — which is the 23 ms answered twice over —
+`render` 6 s of 120, `film` 116 s of 480. Suite **1,978 tests, 1,975 pass, 0 fail, 3 skipped, green
+twice.**

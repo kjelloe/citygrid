@@ -80,8 +80,22 @@ export function slabGeometry(styleName, w, h, d) {
   const palette = PALETTES[styleName] ?? PALETTES.plain;
   const box = new THREE.BoxGeometry(w, h, d);
   box.translate(0, h / 2, 0);
+  // **One side shade, not two** (S22). It was `north: 1 − 0.1 c` and
+  // `east: 1 − 0.18 c`, which is a 5.6% difference between two walls of the
+  // same slab on `plain` — an AZIMUTH frozen into the mesh, and since the sun
+  // moves now it would read as wrong for half the day on a bridge deck. The
+  // mean of the two is what is left: top against side, which is direction-free
+  // because the sun is always above, and which is what keeps the pixel style's
+  // unlit material reading as three-dimensional.
+  //
+  // The compass shades in `building-kit.js` and `detail-kit.js` are the same
+  // defect an order of magnitude larger — nine pushes each, spanning 18.3% on
+  // `plain` and 40% on `pixel` — and they are NOT touched here: the pixel style
+  // is unlit, so for it the bake IS the light, and removing it from the kit
+  // changes every building in the game. That is Q163, with the numbers.
   const c = faceContrastFor(styleName);
-  return tintFaces(box, { top: 1.0, north: 1 - 0.1 * c, east: 1 - 0.18 * c });
+  const side = 1 - 0.14 * c;
+  return tintFaces(box, { top: 1.0, north: side, east: side });
 }
 
 // --- materials --------------------------------------------------------------

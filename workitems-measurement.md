@@ -479,6 +479,13 @@ budget. **A gate run is exclusive**: nothing else that renders or forks runs bes
 or determinism red from a contended run is not a finding until it has been seen alone. This is M9's
 own lesson one level up, and it is cheap to obey and expensive to forget.
 
+**Written here, then broken twice more the same day**, which is what turned it into an instrument.
+`sim_sweep` read 604 s beside a suite and 628 s alone; `budget_gate` failed *"a cold build inside a
+frame"* at **23 ms** beside a `node --test`, and read **8.7 ms** alone — measured as two arms with
+`wallMinDrop` at 2 and 3, because the obvious suspect was S18c and the obvious suspect was wrong.
+`tools/gates.mjs` now prints `NOT ALONE: n other node process(es) are running` before it starts.
+A rule that has to be remembered three times in one day is a rule that wants a line of code.
+
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.
 

@@ -108,11 +108,14 @@ runs a block from another, which took the road share of a played 64 from about a
 fifth and is the first era whose cause is what the deputy DECIDES — so every number measured on a
 deputy city before it belongs to era 28 and is void rather than comparable.
 
-**Two open questions**, both filed the day the list was emptied and neither blocking anything.
+**Four open questions**, all filed the day the list was emptied and none blocking anything.
 **Q161**: whether a pedestrian re-seated when a junction appears should keep their side of the
 street, walk out, or stay as they are (W6d, one function). **Q162**: whether the wall's rung is
 still two metres, now that the ladder it was chosen from turns out to be era 28's — B14 took a
-hilly 128 from 130 faced shoulders to 2, and the chosen rung gives 5.
+hilly 128 from 130 faced shoulders to 2, and the chosen rung gives 5. **Q163**: whether the lit
+styles give up the compass shades baked into every roof and prop, which is the other half of S22
+being whole and a restyle rather than a slice. **Q164**: whether the sun should stand further out,
+now that it moves — at 83° of elevation at noon a quarter arc moves a short shadow a little.
 
 P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall at 2 m, bulldoze priced at 5 in one era with quests loaded into the tools, the stall left at 28.6 ms with W6c held for the room, block spacing 3, the classic skin kept, and a sun that crosses a quarter of the sky at a rate in data.
 
@@ -121,7 +124,7 @@ P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall 
 | Lane | Open |
 |---|---|
 | **Multiplayer** | hibernate to disk · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · a history that outlives the alert list · the lobby's remaining rows |
-| **World** | **S22** (a sun that moves — A138: a quarter arc, the rate in data) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
+| **World** | ~~S22~~ (built: the sun crosses the sky — and Q163, Q164 came out of it) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
 | **Behaviour** | B15 · B6's rain |
 | **Mainline** | M7 (release + merge, Kjell's push) · M9 (the `quick` set's budget) · M11 · ~~M10~~ (closed, A137) |
 | **Rules / worker / measurement** | ~~L2~~ **with ~~D8b~~ folded in** — built as **era 30** · W6c **held** until the room is played (A134) · W6d (Q161) · what is left of D8b: the picture tools still build quest-free cities, which is its own re-shoot |
@@ -484,6 +487,8 @@ by number from the code they create.
 | ~~Q142~~ | **Answered A119** — relative criteria (cliffs per km, lots as a share), and the same is owed to `walkthrough` on rolling |
 | ~~Q143~~ | **Answered A121, built 2026-10-04 (era 26)** — the far bank is worth a quarter of a city where the town is hemmed in by water, and nothing where it is not |
 | ~~Q144~~ | **Answered A120** — `lot.maxPlinth` is a reducer rule in the shape of `maxZoneSlope`; the quay as a thing is a later content slice |
+| **Q164** | The sun crosses the sky and reads quietly at midday: the key light stands at **83.4°** of elevation at noon, 62.4° at dusk. Stand it further out so the shadows lengthen? | Nothing — S22 is built; `reports/smoke-S22-*.png` are the pictures |
+| **Q163** | `building-kit.js` and `detail-kit.js` push nine faces each with a compass shade — a frozen sun direction spanning **18.3%** on `plain` and **40%** on `pixel`. Do the lit styles give theirs up? | Nothing, but it is the other half of S22 being whole. A restyle, not a slice |
 | **Q162** | A132 chose the wall at two metres from **era 28's** ladder (264 against 130). Era 29 reads **24 / 5 / 2** on a hilly 128 and **17 / 4 / 3** on a rolling 96, because B14 paves a fifth of the city instead of a third. Is 2 m still the rung, or 1.2 m? | Nothing — S18c is built at 2 m and the wall is right where it stands |
 | **Q161** | A junction laid mid-street deletes the pavement somebody was standing on, and the geometric re-seat moves them up to **6.2 m**. Keep their side of the street, walk them out, or leave it and write down that two in four hundred moving once per build is below what anybody can see? | **W6d**, one function in `client/life/pedestrians.js`. Nothing — the gate reads the number and is green |
 

@@ -101,6 +101,7 @@ export const GATES = {
   // the same `worker/sim-host.js` the game runs, for five city years — and the
   // hash compared every sim-month rather than at the end, because a divergence
   // at month two found at year five does not say which command caused it.
+  sun_shots: { args: ["tools/sun_shots.mjs"], what: "the sun crosses the sky: three hours from one camera, the light's azimuth read out of the page, and a frozen hour still frozen (S22)" },
   room_soak: { args: ["tools/room_soak.mjs", "5"], what: "two clients, one room, five city years: one order, one hash, and the pump's jitter beside it" },
   room_churn: { args: ["tools/room_soak.mjs", "5", "--churn"], what: "a seat left to the deputy and taken back, with nobody diverging (X4b)" },
 };
@@ -150,7 +151,7 @@ export const SETS = {
   // pictures, `transport` is T1–T4's — so a slice runs the set its own lane
   // owns and the two halves stay honest about what they cost.
   shots: ["water_shots", "bridge_shots", "embankment_shots", "disaster_shot", "service_shots",
-    "window_shots", "rain_shots", "skin_shots"],
+    "window_shots", "rain_shots", "skin_shots", "sun_shots"],
   transport: ["avenue_shots", "rail_shots", "harbour_shots", "airport_shots"],
   // Its own set (M2's rule: split rather than raise). One picture per catalogue
   // definition is twenty-eight shots and seven minutes, which no other set can
@@ -295,6 +296,35 @@ export function gatesIn(set) {
  * one and nobody knows which, and a number after every run is how that gets
  * narrowed down.
  */
+/** How many OTHER node processes are running, not counting this one and its
+ * children (S22, and the third time in one day).
+ *
+ * A gate run is exclusive. `motion_shots` reported "two frozen shots differ" and
+ * was byte-identical alone; `sim_sweep` read 604 s and 628 s on the same code;
+ * `budget_gate` failed "a cold build inside a frame" at **23 ms** and read
+ * **8.7** when nothing else was running — all three because something else of
+ * mine was running beside them, twice a node suite and once three browser
+ * gates. The rule was written into `workitems-measurement.md` after the first
+ * and broken twice more, so it is an instrument now rather than a sentence:
+ * a timing or determinism red from a contended run is not a finding until it
+ * has been seen alone.
+ */
+async function othersRunning() {
+  try {
+    // `-x node`, matching the process NAME, not `-f` against the whole command
+    // line: the first cut used `-f "node tools/"` and matched the SHELL that
+    // had been asked to run `node tools/gates.mjs`, so every run warned about
+    // itself. A process list is a text search like any other, and a pattern
+    // that matches the command that launched you counts you twice
+    // (`a-grep-that-counts-a-comment`, in process form).
+    const { stdout } = await run("pgrep", ["-x", "node"]);
+    const pids = stdout.split("\n").filter(Boolean).map(Number).filter((pid) => pid !== process.pid);
+    return pids.length;
+  } catch {
+    return 0;   // pgrep exits 1 when nothing matches
+  }
+}
+
 async function browsersAlive() {
   try {
     const { stdout } = await run("pgrep", ["-fc", "chrome-headless-shell|headless_shell"]);
@@ -373,6 +403,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const names = gatesIn(set);
   const before = await browsersAlive();
   console.log(`gates: ${set} — ${names.length} of them, budget ${(BUDGET_MS[set] / 60000).toFixed(0)} min`);
+  const others = await othersRunning();
+  if (others > 0) {
+    console.log(`NOT ALONE: ${others} other node process(es) are running — a gate run is exclusive, `
+      + "and a timing or determinism red from here is not a finding until it is seen alone");
+  }
   const ahead = await devLogEntriesAhead();
   if (ahead > 1) {
     console.log(`UNCOMMITTED: ${ahead} dev-log entries are in the tree and not in HEAD — `
