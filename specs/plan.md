@@ -354,6 +354,13 @@ Speeds map to sim work, not to pump rate: 1× = 2 fast ticks/s (one sim-month pe
    `permessage-deflate`, once per join. Snapshot builds are queued at one per pump so sixteen
    simultaneous reconnects after a network blip cannot stall the clock.
 6. **Degrade the game clock, never the pump.** The pump has a fixed CPU budget (target ≤20 ms).
+   *Measured, X1c/X1d (2026-10-07), `room_soak` on a 48×48 room over five city years: a warm beat is
+   **p50 0.10 ms, p99 1.78 ms, worst 15.89 ms over 3,000 samples**, and the worst COLD beat is
+   44.26 ms. The expensive beat is the monthly one and the cold one is its first run — JIT — which
+   is why the budget is checked against the p99 and the maximum is printed beside it with its sample
+   count. The monthly cost is the quest pass: measured per arm on a warmed pump, a beat is 1.59 ms
+   with the catalogue cleared and 11.34 ms with it loaded (X1c gave the server the content it had
+   never had).*
    If the sim cannot keep up, the room advances fewer ticks per pump — the world runs slower for
    everyone, identically, and nothing desyncs, because the tick count is data in the frame.
    Clients that fall behind catch up by replaying; they render an older tick, never a wrong one.

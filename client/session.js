@@ -39,7 +39,40 @@ import { loadedContent } from "./content.js";
 import { openLocalSession } from "./session-local.js";
 import { createWorkerTransport } from "./transport/worker.js";
 
+/** Where the room is: this origin's `/ws`, over `wss` when the page is served
+ * over `https`. One process serves the client and the sockets (X1's
+ * `server/index.js`), so there is no second address to configure. */
+function roomUrl() {
+  const at = new URL(globalThis.location?.href ?? "http://localhost/");
+  at.protocol = at.protocol === "https:" ? "wss:" : "ws:";
+  at.search = "";
+  at.hash = "";
+  at.pathname = "/ws";
+  return at.toString();
+}
+
 export async function openSession(given = {}) {
+  // **A room, if one was asked for** (X1c). `?join=<code>` is the only thing in
+  // the project that opens a socket — ruling 003 says singleplayer makes no
+  // network call and `offline_smoke` keeps asserting it, so this branch is
+  // reached by a URL parameter or by the lobby and never by a default.
+  //
+  // The work item called the parameter `?room=`; it is `?join=`, which is the
+  // name `client/main.js` has declared since X0 and which nothing read until
+  // now — a flag that is read and never used is off, and this one was.
+  if (given.join || given.host) {
+    const { createSocketTransport } = await import("./transport/socket.js");
+    return openMirrorSession(given, createSocketTransport(given.roomUrl ?? roomUrl(), {
+      // `host` is the options a new room is generated from (X2c); `join` is the
+      // code of one that exists. One or the other, never both: a player who
+      // hosts is not choosing somebody else's city.
+      create: given.host,
+      room: given.join, seat: given.seat, name: given.mayorName,
+      // Watching rather than playing (X4e): no seat is asked for and none is
+      // given, so a full room is still watchable.
+      spectate: given.spectate === true,
+    }));
+  }
   if (given.worker === false || typeof Worker === "undefined") return openLocalSession(given);
   try {
     const url = new URL("../worker/sim-worker.js", import.meta.url);
@@ -117,13 +150,34 @@ export async function openMirrorSession(given = {}, transport) {
     if (mirrored === reply.hash) return;
     desyncs += 1;
     console.error(`DESYNC at tick ${reply.tick}: the mirror is ${mirrored}, the simulation says ${reply.hash}`);
+    // **And ask to be put back.** Saying so is half of it: in a room the
+    // authority is somewhere else and has answered `C2S.RESYNC_REQUEST` since
+    // X1a, and until the omissions round after X1c nothing in the page had ever
+    // sent one. A transport with no authority behind it — the worker, the echo
+    // stub — has no `resync` and nothing happens, which is right: a mirror that
+    // disagrees with the worker is a bug in the patch, not a divergence.
+    transport.resync?.();
   }
 
-  function announce(command, reply) {
+  function announce(command, reply, pushed = false) {
     check(reply);
-    const change = { command, result: reply.result, events: reply.events, tick: reply.tick };
+    const change = { command, result: reply.result, events: reply.events, tick: reply.tick, pushed };
     for (const listener of [...listeners]) listener(change);
   }
+
+  /** **A reply nobody asked for** (X1c, the X1 review item 1). A room
+   * broadcasts a frame carrying another seat's command; there is no promise
+   * waiting for it, so the transport pushes it here. The mirror is patched and
+   * the change announced exactly as if this seat had made it — which is what
+   * makes the minimap, the advisor and the alerts notice another player at all.
+   * The worker and echo transports never call this. */
+  transport.onMessage?.((reply) => {
+    if (reply.patch) {
+      if (state === undefined) state = createMirror(reply.patch);
+      else applyPatch(state, reply.patch);
+    }
+    announce({ type: "frame" }, reply, true);
+  });
 
   async function apply(command) {
     const reply = await post({ type: "apply", command });

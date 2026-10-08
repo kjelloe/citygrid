@@ -168,6 +168,28 @@ answer rather than work anybody is blocked on:
 - **Q155** — a bulldoze costs **nothing** at two of the three difficulties, because the price is 1
   and `idiv(1 × 90, 100)` is 0. Found in X3a. Raising the price or rounding up both move several
   numbers at once, so it is a balance round rather than a slice.
+- **Q160** — the sun **never moves across the sky**. The key light's x and z are constants, so it
+  rises and falls on one azimuth and every shadow in every city falls the same way at every hour;
+  only their length and the light's colour change. Making the direction continuous is cheap —
+  nothing bakes a directional shade and the shadow map already re-renders every frame — but the
+  RATE is a picture decision, and a 240-second day makes a full daylight arc about 1.9°/s. S22 has
+  the analysis and the gates.
+- **Q159** — the interface has **three skins** and nobody has looked at them. `clean`, `retro` and
+  `dark` have been in the settings panel since N24 and `a11y_smoke` proves each one repaints, which
+  is not the same as any of them being right. P108 names the classic one after **SimCity 2000**
+  where P29 named it after SimCity 1. `tools/skin_shots.mjs` takes all three on one city;
+  `reports/skin-{clean,retro,dark}.png`. Chrome only either way, so moving it is CSS.
+- **Q158** — every measured number in this file is a city with **no quests in it**. The engine has
+  no quest mirror and nothing in `tools/` loads the catalogue, so `soak`, the balance sweep and the
+  fixtures run a city where no quest can fire while a browser has 21 of them. Found in X1c, when
+  two browsers and a room came out on three different hashes at one tick for the same reason on the
+  server's side. Whether that is the honest baseline — a deputy does not choose quests — or a
+  defect is Kjell's; either answer is a balance era (D8b).
+- **Q157** — era 29 bought **7% more people** (1,602 → 1,710 on the steady-64 sweep) with a
+  quarter less road, and the price is homes with no frontage: **4 a city → 14** of about 250. The
+  lever is `deputy.blockTiles` itself, 2 is a tighter grid and 4 a looser one, and moving it is
+  another balance era — so it wants deciding before the next measured rule change rather than
+  after. The cost is recorded in `reports/balance-era29.md` rather than tuned away.
 
 Everything else on this list has been answered and built; the questions above replaced nine that
 were answered on 2026-10-03 (A113–A121) and four more on 2026-10-04 (A125–A130). What a reader

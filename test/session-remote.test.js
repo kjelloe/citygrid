@@ -21,6 +21,7 @@ import { hashState } from "../engine/state.js";
 import { CMD_JOIN, CMD_PLACE_ROAD, CMD_UNDO, CMD_SET_TAX } from "../engine/commands.js";
 import { encodeRuns } from "../shared/grid.js";
 import { RESULT } from "../shared/protocol.js";
+import { TICKS_PER_MONTH } from "../engine/constants.js";
 import { loadSystems, readFixture, fixtureNames } from "../tools/fixtures.mjs";
 
 await loadSystems();
@@ -168,3 +169,112 @@ for (const name of names) {
     assert.deepEqual(problems, [], `\n  ${problems.join("\n  ")}`);
   });
 }
+
+// --- the pushed half (X1c) ---------------------------------------------------
+
+/** A transport that pushes, which is the half `createEchoTransport` cannot be:
+ * a room broadcasts a frame carrying another seat's command, and nothing above
+ * the seam has a promise waiting for it (the X1 review, item 1). */
+function pushingTransport() {
+  const echo = createEchoTransport();
+  let listener;
+  return {
+    ...echo,
+    get pending() { return echo.pending; },
+    post: (message, transfer) => echo.post(message, transfer),
+    onMessage(handler) { listener = handler; },
+    /** A reply nobody asked for, exactly as given — for driving the detector,
+     * which needs a hash that is wrong rather than a city that is different. */
+    pushRaw(reply) { listener?.(reply); },
+    /** The room speaking: whatever the simulation did, as a reply nobody asked
+     * for. Built by posting through the echo and relabelling the answer, so the
+     * patch is a real one. */
+    async push(command) {
+      const reply = await echo.post({ type: "apply", command });
+      listener?.({ ...reply, pushed: true });
+      return reply;
+    },
+    roomClock: true,
+  };
+}
+
+test("a pushed frame patches the mirror and is announced (X1c)", async () => {
+  const transport = pushingTransport();
+  const session = await openMirrorSession({ options: OPTIONS }, transport);
+  // A seat first: every other test in this file joins before it builds, because
+  // a command from a player the city does not have is `invalid` and an
+  // assertion about whether the mirror moved would then pass either way.
+  await session.apply({ type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" });
+  const changes = [];
+  session.onChange((change) => changes.push(change));
+  const before = hashState(session.state);
+  const result = await transport.push(road(1, 4, 4, 6));
+  assert.equal(result.result, RESULT.OK, "the pushed command was refused; the test proves nothing");
+
+  // The mirror moved, and the UI was told. A pushed frame that patched nothing
+  // is another seat's city nobody can see; one that patched silently is a
+  // minimap and an advisor that never notice (ruling 028's shape).
+  assert.notEqual(hashState(session.state), before, "another seat's command never reached the mirror");
+  assert.equal(changes.length, 1, `${changes.length} announcements for one pushed frame`);
+  assert.equal(changes[0].pushed, true, "a pushed change is indistinguishable from this seat's own");
+  session.dispose();
+});
+
+test("in a room the session keeps no clock of its own (X1c)", async () => {
+  // **The server owns the clock** (plan.md §3.6, CLAUDE.md). The tick count
+  // rides the frame, so a session that also kept an interval would tick a city
+  // the room never ticked — and because the socket transport answers a `tick`
+  // post with a no-op, the defect would be invisible: the right number of
+  // announcements, none of them a tick.
+  const transport = pushingTransport();
+  const session = await openMirrorSession({ options: OPTIONS }, transport);
+  // `finally`, because an interval that outlives a FAILED assertion keeps node
+  // alive: planting this defect made the file hang rather than go red, and a
+  // test that hangs is worse than one that fails.
+  try {
+    session.setSpeed(10);
+    assert.equal(session.clocked, false, "the session started an interval in a room");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    assert.equal(transport.frames.filter((f) => f.type === "tick").length, 0,
+      "the session ticked a city whose clock belongs to the room");
+  } finally {
+    session.dispose();
+  }
+});
+
+test("singleplayer still keeps its own clock (the other arm)", async () => {
+  // The same assertion from the other side, because "no clock in a room" is
+  // only a finding if the clock exists everywhere else.
+  const session = await openMirrorSession({ options: OPTIONS }, createEchoTransport());
+  try {
+    session.setSpeed(10);
+    assert.equal(session.clocked, true, "singleplayer lost its clock");
+  } finally {
+    session.dispose();
+  }
+  assert.equal(session.clocked, false, "a disposed session is still ticking");
+});
+
+test("a detected desync ASKS to be put back, rather than only saying so (X1c)", async () => {
+  // `check()` has printed `DESYNC` and done nothing else since W2. In
+  // singleplayer there is nothing to ask — the worker is the authority and a
+  // mirror that disagrees with it is a bug in the patch, not a divergence — but
+  // in a ROOM the authority is somewhere else and it has answered
+  // `C2S.RESYNC_REQUEST` since X1a. Nobody had ever sent one from a page.
+  const transport = pushingTransport();
+  const asks = [];
+  transport.resync = () => asks.push(Date.now());
+  const session = await openMirrorSession({ options: OPTIONS }, transport);
+  await session.apply({ type: CMD_JOIN, actor: 1, seat: 1, name: "Mayor" });
+
+  // A reply whose hash is not the mirror's, at a new month, which is the one
+  // moment the detector looks. The hash is deliberately wrong rather than the
+  // city deliberately different: what is under test is the DETECTOR's response.
+  const monthly = { type: "result", result: RESULT.OK, events: [],
+    tick: TICKS_PER_MONTH * 3, hash: "0000000000000000" };
+  session.onChange(() => {});
+  transport.pushRaw(monthly);
+  assert.equal(session.desyncs, 1, `the detector did not fire: ${session.desyncs} desync(s)`);
+  assert.equal(asks.length, 1, `the detector fired and asked ${asks.length} times`);
+  session.dispose();
+});

@@ -14,14 +14,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRoom } from "../server/room.js";
-import { createPump } from "../server/pump.js";
+import { createPump, costDigest } from "../server/pump.js";
 import { createSimHost } from "../worker/sim-host.js";
 import { createMirror, applyPatch } from "../client/mirror.js";
 import { hashState } from "../engine/state.js";
 import { CMD_PLACE_ROAD, CMD_SET_TAX } from "../engine/commands.js";
 import { encodeRuns } from "../shared/grid.js";
 import { RESULT, C2S, S2C, REFUSAL, PROTOCOL_VERSION } from "../shared/protocol.js";
+import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, formatRoomCode } from "../shared/roomcode.js";
 import { buildHash, setBuildHash } from "../shared/build-hash.js";
+import { PLAYER_ACTIVE, PLAYER_REGENT } from "../engine/constants.js";
+
+/** A seat's status in the room's own city. */
+const seatStatus = (room, seat) => room.state.players.find((p) => p.seat === seat)?.status;
 import { loadSystems, readFixture, fixtureNames } from "../tools/fixtures.mjs";
 
 await loadSystems();
@@ -98,7 +103,7 @@ function client(welcome) {
 function joined(room, name, seat) {
   const connection = wire(name);
   const refusal = room.join(connection, {
-    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat,
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat, room: room.code(),
   });
   assert.equal(refusal, "", `${name} was refused: ${refusal}`);
   return { connection, welcome: connection.last(S2C.WELCOME) };
@@ -126,7 +131,7 @@ test("a client on a different build is refused, with the reason", () => {
   const room = createRoom({ options: OPTIONS });
   const connection = wire("stale");
   const refusal = room.join(connection, {
-    type: C2S.HELLO, version: PROTOCOL_VERSION, build: "0123456789ab", seat: 1,
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: "0123456789ab", seat: 1, room: room.code(),
   });
   setBuildHash(was);
   assert.equal(refusal, REFUSAL.BUILD_MISMATCH);
@@ -422,6 +427,58 @@ test("a malformed hello is told it is malformed, not that the code is wrong", ()
       `${JSON.stringify(nonsense)} was answered with the wrong refusal`);
     assert.equal(connection.last(S2C.REFUSED)?.reason, REFUSAL.MALFORMED);
   }
+});
+
+// --- the room's hour (X1c, A63 against A41) ---------------------------------
+
+test("a frame carries the room's PLAYED time, which is the hour every seat shares", () => {
+  // A63 asked for "the room's hour", and the obvious reading — derive it from
+  // the tick — is the one **A41 already rejected with a measurement**: at the
+  // play speed a tick is 400 ms, so the sun raced whenever the game sped up,
+  // and the light is scenery rather than simulation (R2). The wall clock is
+  // right and each client's own wall clock is wrong, because a late joiner's
+  // noon would be somebody else's night.
+  //
+  // So the room counts the milliseconds it has PLAYED and stamps each frame
+  // with them: one wall clock, shared, and the same number on every seat.
+  // Not hashed, and it must never be — scenery is not state.
+  const room = createRoom({ options: OPTIONS });
+  joined(room, "a", 1);
+  const first = room.beat(100);
+  assert.equal(first.at, 100, "the frame does not carry the room's clock");
+  const second = room.beat(100);
+  assert.equal(second.at, 200);
+
+  // **A paused room holds its moment** (A41: "it stops when the game is
+  // paused, because a paused city is a held moment"). The PUMP never pauses —
+  // "degrade the game clock, never the pump" — so this is the one place the
+  // difference between the two clocks is visible.
+  room.setSpeed(0);
+  const held = room.beat(100);
+  assert.equal(held.at, 200, "the sun moved in a paused room");
+  assert.equal(held.ticks, 0, "a paused room ticked");
+  room.setSpeed(1);
+  assert.equal(room.beat(100).at, 300, "the clock did not start again");
+
+test("the pump reports a warm maximum beside its cold one (X1c)", () => {
+  // A budget checked against a cold maximum is a budget checked against the
+  // compiler. X1c gave the room the quest catalogue it should always have had
+  // and the first monthly pass is JIT: measured per arm, a 48×48 room's worst
+  // beat is 1.59 ms with the quests cleared, 11.34 ms warm with them loaded,
+  // and 26–33 ms on the run that includes the cold pass.
+  const room = createRoom({ options: OPTIONS });
+  joined(room, "a", 1);
+  const pump = createPump(room, { tickMs: 100 });
+  for (let n = 0; n < 20; n += 1) pump.step(n * 100);
+  assert.equal(pump.warmBeats(), 0, "a warm number appeared before the engine was warm");
+  assert.equal(pump.worstWarmBeatMs(), 0, "a warm maximum was taken from cold beats");
+  for (let n = 20; n < 90; n += 1) pump.step(n * 100);
+  assert.ok(pump.warmBeats() > 0, "the warm window never opened");
+  // The cold maximum cannot be smaller than the warm one: they are maxima over
+  // a set and its subset, and getting that backwards is how a budget ends up
+  // being checked against the wrong half of a run.
+  assert.ok(pump.worstBeatMs() >= pump.worstWarmBeatMs(),
+    `cold ${pump.worstBeatMs()} is under warm ${pump.worstWarmBeatMs()}`);
 });
 
   // And a full room says so rather than claiming the seat is taken: the player

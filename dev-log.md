@@ -12250,3 +12250,94 @@ Asked whether A125 still held the lobby, `?room=` and the page's socket behind t
 playtest, Kjell answered **"Lift it — build the page half."** Recorded as A131 and P107. Ruling 003
 is NOT lifted: singleplayer opens no socket, and `offline_smoke` keeps asserting it.
 
+## X1c — the client half of X1 (2026-10-07)
+
+`client/transport/socket.js` is the third transport. The first two answer their own caller; a room
+does not, so three things follow and each is a test: the reply to my command arrives in the same
+message as somebody else's, a frame carrying only their command has **no promise waiting for it**,
+and the tick count rides the frame because the server owns the clock. The contract gained
+`onMessage(handler)` (the X1 review's item 1, settled 2026-10-04 and built now), the session feeds
+a pushed frame to the mirror and announces it, and `setSpeed` keeps no interval when
+`transport.roomClock` is true.
+
+**Nothing is applied when it is posted.** A command goes to the room and is applied to this
+client's own simulation when the frame carrying it comes back, in `(tick, seq)` order, exactly as
+on every other seat. The optimistic half of a build is the ghost, which was never state.
+
+**Three plants, and two of them changed the code rather than the test.**
+
+- *A local apply at post time* — the optimistic client the file exists to forbid — **survived the
+  first version of the test**, because the WELCOME's save has no player 1 in it: a seat joining is a
+  COMMAND and arrives in the next frame, so the reducer answered `invalid` and the city did not move
+  whatever the transport did. `connected()` now settles both seats first and the plant fires on the
+  assertion whose name forbids it. Same shape as the deck test two days ago: the plant was absorbed
+  before it reached the thing being measured.
+- *Matching a frame to a pending post by seat alone* — **a frame carries commands for my seat that I
+  never posted**, starting with my own `CMD_JOIN`, and the first cut resolved a build with the result
+  of the join beside it. `isMine` compares the command now.
+- *Comparing those commands by reference* — the fake socket serialises, as a real one does, so a
+  drag-painted road's `runs` is a different array with the same numbers. Every road command hung for
+  ever and the test timed out rather than failing. By value since.
+
+**Two more defects the tests named:** `dispose()` emptied the pending queue instead of rejecting it
+(a promise that never settles is a game that stops responding without saying why), and `pending`
+counted a held command twice, so one click read as two.
+
+**`?join=<code>` is the lever, and it already existed.** `client/main.js` has declared a `join`
+param since X0 and **nothing read it** — a flag that is read and never used is off. It opens a
+socket, skips the lobby (the city is whoever's room it is) and is the only thing in the project that
+makes a network call. `?seat=` goes with it until the lobby picks one. The work item called it
+`?room=`; one name with a reader beats two.
+
+**Every command now takes the session's seat.** `game.js` issued all eight as `actor: SEAT`, a
+module constant of 1 — in a room seat two would have been spending seat one's money.
+
+**The room's hour (A63) against A41.** A63 asked for "`phaseOf` takes the room's tick in a room",
+and that is the reading **A41 already rejected with a measurement**: at the play speed a tick is
+400 ms, so the sun raced whenever the game sped up, and the light is scenery rather than simulation.
+Each client's own wall clock is wrong too — a late joiner's noon would be somebody else's night. The
+intersection of the two rulings is the ROOM's wall clock, so the room counts the milliseconds it has
+PLAYED and stamps each frame with them: never hashed, because scenery is not state, and held while
+the room is paused, which is the one place "degrade the game clock, never the pump" is visible.
+
+**The gate X1 named: `tools/room_smoke.mjs`.** Two browser contexts on the REAL server — there is no
+choice, the socket lives in `server/index.js`, and it also means a CSP that blocked the importmap
+would go red here. Console errors are listened for as well as `pageerror`. It is in `quick` by M2's
+own rule (a smoke that drives the real page is the cheapest thing that can see a blank one) and in
+`room` as well, so `SETS.all` is deduped.
+
+**It found what `room_soak` structurally cannot: the server had no content adapter.** First run,
+three different hashes at one tick with zero desyncs anywhere — each mirror agreed with its own
+simulation, and the three simulations were playing different games. `engine/quests.js` has no
+mirror at all (`CATALOGUE = []` until somebody calls `setQuests`), so the room ran with **no quests**
+while every browser had twenty-one, and quest progress is hashed state. The soak could not see it
+because its scripted clients live in the server's own process and share its mirrors. `server/content.js`
+loads `data/` at startup and failure there is **fatal**, unlike in the page: a browser that cannot
+fetch `data/` is a player offline with a city it can prove, while a server that cannot read its own
+files would hand every client a different game, and the build hash cannot see it — the hash is of
+the files, not of what was read. This is W2's defect in a second place, and the X1 review filed it
+as item 2 on 2026-10-04.
+
+**And that cost the pump its budget, honestly.** With the quests loaded, `room_soak`'s worst beat
+went 11.35 → 36.68 ms against plan §3.8's 20. Attributed per arm on a warmed pump, 440 measured
+beats each: **quests cleared 1.59 ms worst, quests loaded 11.34 ms** — so the monthly quest pass is
+about 10 ms of a 48×48 room's beat, and the 26–33 ms the soak reported was the FIRST run of that
+pass, which is JIT. The pump reports `worstWarmBeatMs` beside `worstBeatMs` now, with the beat count
+it is over, and the gate checks the warm number while printing the cold one: **13.85 ms warm over
+471 beats, 32.77 ms cold.** A player does pay the cold beat once, so it is said out loud rather than
+hidden; a budget checked against a cold maximum is a budget checked against the compiler.
+
+**Measured, `room_smoke`:** two browsers joined `Y7S-26A`, took seats 1 and 2, both on the room's
+48-tile city; both arrivals reached both clients; seat one's road accepted by the room and **seen by
+seat two**, 6 of 6 tiles; both clients caught up to the stopped room at tick 364 and **all three on
+one hash** (`a3096376bd197a6c`); one shared hour, 18.259 s on both, unmoved after 500 ms of pause;
+no desyncs over 25 and 12 monthly checks; no page or console errors. 41 s. Suite **1,862 green
+twice**; `room_soak` green.
+
+**Filed, not built:** `setQuests` has exactly four callers — `client/content.js`, `worker/sim-host.js`,
+`test/quests.test.js` and now `server/content.js` — so **every node-side tool runs with no quests**:
+`soak`, the balance sweep and the fixtures included. Every era number in `reports/` is therefore a
+city with no quest ever firing, while a player's city has twenty-one. Filed as **D8b** in
+`workitems-measurement.md` and as **Q158**, because loading them would move every sweep and is a
+balance era in itself.
+

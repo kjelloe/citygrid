@@ -39,6 +39,10 @@ import { shouldAutosave, slotSummary, packExport, unpackImport, SLOTS } from "./
 import { putSave, getSave, listSaves, available } from "./storage/db.js";
 import { t, locale as currentLocale } from "./i18n.js";
 
+/** The seat a single player is. In a ROOM the seat is the room's answer at the
+ * door, so everything below reads `seat` — which is `sim.seat ?? SEAT` — and
+ * not this. A second player issuing commands as actor 1 would be spending the
+ * first player's money (X1c). */
 const SEAT = 1;
 
 /** Real milliseconds per game tick at each speed. Slow enough to watch, fast
@@ -91,15 +95,25 @@ export async function startGame(root, given = {}) {
   // line can tell the difference (W2).
   const sim = await openSession({
     state: given.world?.state, save: given.save, options, worker: given.worker,
+    // A room, if one was named (X1c). The city then comes from the room's
+    // WELCOME rather than from `options`, and the seat is the room's answer.
+    join: given.join, host: given.host, seat: given.seat, mayorName: given.mayorName,
+    spectate: given.spectate,
   });
   const state = sim.state;
+  const seat = sim.seat ?? SEAT;
 
   // A restored city already has its seat, and CMD_JOIN on an existing seat
   // touches `lastSeenTick` — which is hashed, so re-joining a loaded save would
   // move it away from the checksum it was saved with.
-  if (!state.players.some((p) => p.seat === SEAT)) {
+  //
+  // **And in a room the arrival is the ROOM's command** (X1): the door queues
+  // `CMD_JOIN` and it reaches every client in the next frame, in the same order
+  // on every machine. A client that also applied it here would move a hashed
+  // field nobody else moved and desync at the next monthly check.
+  if (sim.room === undefined && seat > 0 && !state.players.some((p) => p.seat === seat)) {
     await sim.apply({
-      type: CMD_JOIN, actor: SEAT, seat: SEAT,
+      type: CMD_JOIN, actor: seat, seat,
       // The reducer caps and sanitises it; this only carries what was typed.
       name: given.mayorName || t("player.you"),
     });
@@ -178,7 +192,7 @@ export async function startGame(root, given = {}) {
   globalThis.addEventListener?.("keydown", unlockAudio);
 
   const controller = createController(canvas, sim, renderer, {
-    actor: SEAT,
+    actor: seat,
     onChange: () => {
       hud.refresh();
       // The compass follows a free orbit, so it is told on every view change
@@ -411,7 +425,12 @@ export async function startGame(root, given = {}) {
     lastFrameAt = now;
     // The light cycle's own clock. Held while paused, and unaffected by the
     // game speed — the sun is scenery (R2).
-    if (speed > 0) daySeconds += Math.min(frameMs, 250) / 1000;
+    // **The hour is the ROOM's in a room** (X1c, A63): one wall clock for every
+    // seat, held while the room is paused. Outside one it is this page's own
+    // clock, which is what A41 settled — the light is scenery and must not race
+    // the game's speed.
+    if (sim.roomSeconds !== undefined) daySeconds = sim.roomSeconds;
+    else if (speed > 0) daySeconds += Math.min(frameMs, 250) / 1000;
     // Read from the HUD rather than a local: with "Auto" the overlay follows
     // the tool in hand, and no event fires when a shortcut changes the tool.
     // Whatever the camera cluster or a held key is asking for, at its rate
@@ -454,6 +473,12 @@ export async function startGame(root, given = {}) {
      * can rot, so `worker_smoke` asserts it. */
     get desyncs() { return sim.desyncs; },
     get desyncChecks() { return sim.desyncChecks; },
+    /** The room, the seat and the room's played clock — all undefined in
+     * singleplayer (X1c). `room_smoke` reads them to prove two browsers are in
+     * one city at one hour, and the HUD will show the code once X2 exists. */
+    get room() { return sim.room; },
+    get seat() { return seat; },
+    get roomSeconds() { return sim.roomSeconds; },
     /** The seam itself, for the gates that build a city in the page. They used
      * to import the reducer and apply to `CITY.state` — which since W2 is a
      * MIRROR, so that would change a copy and leave the simulation playing a

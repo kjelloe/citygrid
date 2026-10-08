@@ -21,10 +21,13 @@ import { hashState } from "../engine/state.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { toSave, fromSave } from "../engine/save.js";
-import { CMD_TICK, CMD_JOIN } from "../engine/commands.js";
-import { TICKS_PER_MONTH } from "../engine/constants.js";
+import { CMD_TICK, CMD_JOIN, CMD_SET_STATUS } from "../engine/commands.js";
+import { TICKS_PER_MONTH, PLAYER_ACTIVE, PLAYER_REGENT } from "../engine/constants.js";
 import { C2S, S2C, REFUSAL, PROTOCOL_VERSION, compatible, LIMITS } from "../shared/protocol.js";
+import { makeRoomCode, normaliseRoomCode } from "../shared/roomcode.js";
+import { makeDeputy, deputyTurn } from "../engine/deputy.js";
 import { buildHash } from "../shared/build-hash.js";
+import { randomBytes } from "node:crypto";
 import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
@@ -73,11 +76,29 @@ export function createRoom(given = {}) {
   const queue = [];
   let seq = 0;
   let lastHashedMonth = -1;
+  /** Milliseconds this room has PLAYED — the hour every seat shares (X1c, A63).
+   *
+   * Not the tick, which A41 rejected with a measurement: at the play speed a
+   * tick is 400 ms, so the sun raced whenever the game sped up, and the light
+   * is scenery rather than simulation. Not each client's own wall clock either,
+   * because a late joiner's noon would be somebody else's night. The room's
+   * wall clock is the only one that is both slow and shared.
+   *
+   * It stops while the room is paused, because a paused city is a held moment
+   * (A41) — and the PUMP does not stop, which is CLAUDE.md's "degrade the game
+   * clock, never the pump". It is never hashed: scenery is not state. */
+  let playedMs = 0;
+  /** Thousandths of a tick owed and not yet taken. Integer, so no float enters
+   * the count, and carried rather than dropped — a slow beat must not lose the
+   * time it took, or a room under load runs slower than the clock says. */
+  let tickCredit = 0;
   let speed = given.speed === undefined ? 1 : given.speed;
 
   const broadcast = (message) => {
     for (const { connection } of seats.values()) connection.send(message);
+    for (const connection of watchers) connection.send(message);
   };
+
 
   /**
    * A client at the door (plan.md §3.9). The handshake is the whole of it: a
@@ -160,8 +181,12 @@ export function createRoom(given = {}) {
     }
     const ticks = SPEEDS[speed] ?? 0;
     for (let n = 0; n < ticks; n += 1) apply(state, { type: CMD_TICK });
+    // The played clock follows the SPEED, not the tick count: a beat that owes
+    // no whole tick yet is still time the room spent running, and the hour has
+    // to advance through it (X1c).
+    if (rate > 0) playedMs += ran;
 
-    const frame = { type: S2C.FRAME, tick: state.tick, seq, cmds, ticks };
+    const frame = { type: S2C.FRAME, tick: state.tick, seq, cmds, ticks, at: playedMs };
     // The hash rides the frame once a sim-month (plan.md §3.7.9): often enough
     // that a drift cannot reach a save, rare enough that it is not the cost the
     // room is paying to avoid.

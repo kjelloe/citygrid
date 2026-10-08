@@ -196,6 +196,16 @@ async function boot() {
       // asked for stillness got streaming traffic and a cycling sun.
       reducedMotion: document.documentElement.dataset.motion === "reduced",
       worker: config.worker,
+      // **The room, if one was named** (X1c). `?join=<code>` is the only thing
+      // that opens a socket; without it nothing here changes and
+      // `offline_smoke` keeps asserting that singleplayer makes no network
+      // call (ruling 003). The city then comes from the room's WELCOME, so
+      // whatever `given` carried about a region is the room's instead.
+      join: given.join ?? config.join,
+      host: given.host,
+      seat: given.seat ?? config.seat,
+      spectate: given.spectate ?? config.watch,
+      mayorName: given.mayorName,
       tier: preferences.quality,
       mode: preferences.camera,
       time: preferences.time,
@@ -241,6 +251,14 @@ async function boot() {
         play({ world, options, mayorName });
       },
     });
+  // **A room skips the lobby** (X1c): the city, the seed and the region are
+  // whoever's room this is, so there is nothing here to choose. The seat is the
+  // room's answer at the door and the name is the lobby's job (X2); until then
+  // a joiner is `Mayor <seat>`, which is what `server/room.js` already calls
+  // one that sends no name.
+  if (config.join) {
+    await play({ join: config.join, seat: config.seat, spectate: config.watch }).catch(failed);
+    return;
   }
 
   if (config.perf) {

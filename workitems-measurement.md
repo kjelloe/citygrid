@@ -409,7 +409,46 @@ Q77 names, as one assertion each.
 **Gate.** `budget_gate` green with the new rows; the `quick` set's time recorded (the big viewport
 on SwiftShader will be slow — if it adds more than a minute, the rows go to the `render` set).
 
+## D8b — Every number in `reports/` is a city with no quests in it (M, measurement + a balance era) — found in X1c, 2026-10-07 — **decided 2026-10-08 (A136): built inside L2's era**, see `workitems-rules.md`
+
+**Goal.** The city the sweep measures is the city a player plays.
+
+**Analysis, measured.** `engine/quests.js` has **no mirror** — `var CATALOGUE = []` until somebody
+calls `setQuests` — and `setQuests` has exactly four callers: `client/content.js` (the page),
+`worker/sim-host.js` (from the init message's content), `test/quests.test.js`, and
+`server/content.js` since X1c. **Nothing in `tools/` calls it.** `tools/fixtures.mjs`'s
+`loadSystems()` imports the engine's systems for their side effects and loads no data at all, so
+`soak`, the balance sweep, the event census and every pinned fixture run a city in which **no quest
+can ever fire**, while a browser has twenty-one of them. Quest progress is hashed state and quests
+pay rewards on their conditions, which a deputy city meets like any other.
+
+Found in X1c: `tools/room_smoke.mjs`'s first run put two browsers and a room on three different
+hashes at one tick with zero desyncs anywhere, because the server had no content adapter either.
+The server's half is fixed; the tools' half is this item, and it is bigger than a fix.
+
+**Why it is not a one-line change.** Loading the catalogue into the sweep would move **every number
+in the project** — it is a change to what the simulated city DOES, so it voids era 29 exactly as a
+deputy change does, and the pinned fixtures would drift because quest progress is hashed. That is a
+balance era with its own report, not a tidy-up. It is also possible the right answer is the other
+one: a deputy does not choose quests, so measuring without them may be the honest baseline — in
+which case what is missing is the sentence saying so, in `plan-v1.md` and in every era report.
+**Q158** asks which.
+
+**Do, once Q158 is answered.** If quests belong in the sweep: one loader in `tools/fixtures.mjs`
+beside `loadSystems`, `/fixture-repin` with the reason, a fresh era with its own report, and the
+two arms measured against each other on the same seeds so the cost of quests to a deputy city is a
+number rather than a guess. If they do not: the sentence, in both places, and a test that refuses a
+tool which loads them by accident.
+
+**Gate.** `soak` on three seeds with the quest count printed beside the population — the instrument
+first, since a probe that cannot see a quest fire would report zeros either way.
+
 ## Order
+
+**Where this lane stands, 2026-10-08.** D1, D4, D6, D7 and D8 are built, with the desktop halves of
+D2 and D5. **Everything still open in this lane needs a phone** — D3 and the rest of D5 — except
+**D8b**, which is **Q158**: nothing in `tools/` ever loads the quest catalogue, so every era number
+in `reports/` is a city where no quest can fire while a player's has 21.
 
 D1 → D2 → D4 (needs only D1's harness and the fixture) → D6 → D3 → D5. D2 and D3 wait on Kjell;
 D4 does not and is the quickest visible result; D6 is a morning with the harness D1 built.

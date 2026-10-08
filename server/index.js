@@ -21,8 +21,10 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
-import { createRoom } from "./room.js";
-import { createPump } from "./pump.js";
+import { createRooms } from "./rooms.js";
+import { loadServerContent } from "./content.js";
+import { chatFrom, CHATS_PER_SECOND } from "./chat.js";
+import { formatRoomCode } from "../shared/roomcode.js";
 import { createStore } from "./store.js";
 import { C2S, S2C, REFUSAL, LIMITS } from "../shared/protocol.js";
 import { setBuildHash } from "../shared/build-hash.js";
@@ -63,8 +65,15 @@ function serveStatic(req, res) {
   }).catch(() => res.writeHead(404).end("Not found"));
 }
 
-export async function startServer({ port = 0, options, tickMs = 100, roomId = "room", store, fresh = false } = {}) {
+export async function startServer({
+  port = 0, options, tickMs = 100, roomId = "room", store, fresh = false, code,
+  heldForMs, regencyAfterMs,
+} = {}) {
   await readBuildHash();
+  // **Before the room is generated** (X1c): `generateWorld` reads `rules()`,
+  // and a room built from the engine's mirror with no quests in it cannot agree
+  // with a browser that loaded `data/` — quest progress is hashed state.
+  await loadServerContent();
   const saves = store ?? createStore();
   // **A room survives a restart** (plan.md §3.5) — which it did not until this
   // read existed. The store wrote a checkpoint every thirty beats and nobody

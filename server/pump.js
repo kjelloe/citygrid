@@ -36,25 +36,47 @@ export function jitterDigest(gaps, tickMs) {
   };
 }
 
+/** Beats ignored before the warm numbers start counting (X1c). */
+const WARMUP_BEATS = 30;
+
 export function createPump(room, { tickMs = 100 } = {}) {
   const gaps = new Array(RING).fill(-1);
   let at = 0;
   let last;
   let beats = 0;
   let worstBeatMs = 0;
+  /** The worst beat once the engine is WARM. The first monthly pass is JIT:
+   * measured at X1c, a 48×48 room's beat is 26 ms cold and 11.34 ms warm, and
+   * the whole of the difference is the first run of the quest pass. A budget
+   * checked against a cold maximum is a budget checked against the compiler
+   * (CLAUDE.md: warm the instrument before timing a phase, and keep the cold
+   * run as its own row, because a player does pay it once). */
+  let worstWarmBeatMs = 0;
 
   /** One beat at `now` milliseconds. Returns the frame it broadcast. */
   function step(now) {
+    let elapsed = tickMs;                 // the first beat has nothing to measure
     if (last !== undefined) {
-      gaps[at % RING] = now - last;
+      elapsed = now - last;
+      gaps[at % RING] = elapsed;
       at += 1;
     }
     last = now;
     beats += 1;
     const started = performance.now();
-    const frame = room.beat();
+    // The real gap, not the nominal one: the room's own wall clock is what
+    // every seat reads the hour from (X1c), so a server that fell behind must
+    // not also lose the afternoon.
+    const frame = room.beat(elapsed);
     const took = performance.now() - started;
     if (took > worstBeatMs) worstBeatMs = took;
+    // Three sim-months at two ticks a beat, which is long enough for the
+    // monthly pass to have run a few times.
+    if (beats > WARMUP_BEATS) {
+      if (took > worstWarmBeatMs) worstWarmBeatMs = took;
+      costs[costAt % costs.length] = took;
+      costAt += 1;
+    }
     return frame;
   }
 
@@ -62,8 +84,14 @@ export function createPump(room, { tickMs = 100 } = {}) {
     step,
     beats: () => beats,
     /** What the beat cost the server, which is the budget plan §3.8 sets at
-     * 20 ms — measured rather than predicted, the first time a room runs. */
+     * 20 ms — measured rather than predicted, the first time a room runs.
+     * This one includes the cold beats; `worstWarmBeatMs` is the one to gate
+     * on, and the pair is the finding. */
     worstBeatMs: () => worstBeatMs,
+    worstWarmBeatMs: () => worstWarmBeatMs,
+    /** How many beats the warm number is over, so a reading taken from a short
+     * run cannot be mistaken for a measurement (the p95-of-eighteen lesson). */
+    warmBeats: () => Math.max(0, beats - WARMUP_BEATS),
     jitter: () => jitterDigest(gaps, tickMs),
     /** The real clock, for `server/index.js`. Nothing in a test calls this. */
     start() {

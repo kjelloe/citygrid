@@ -1,0 +1,695 @@
+// Two browsers, one city (X1c — the gate X1 named for its client half).
+//
+// `tools/room_soak.mjs` proves the wire with scripted clients in node: five
+// city years, one hash, a resync, a refused build. What it cannot prove is that
+// the PAGE joins — that `?join=<code>` reaches `openSession`, that the socket
+// transport builds a mirror from a room's WELCOME, that another seat's command
+// arrives through `onMessage` and redraws, and that the two clients agree about
+// what time it is. A feature is not built until it is driven on the real page.
+//
+// **The real server**, not a static one of this gate's own. Every other browser
+// gate stands up its own file server, and that is how a Content-Security-Policy
+// that blocked the importmap went unnoticed while eight gates were green — and
+// here there is no choice anyway, because the socket lives in
+// `server/index.js`. Console errors are listened for as well as `pageerror`: a
+// CSP violation is reported to the console and nowhere else.
+//
+// **The build goes through the seam** (`CITY.apply`), not through a pointer.
+// The subject is the wire: whether a command crosses it, is sequenced, comes
+// back and reaches the other seat. `play_smoke` owns the question of whether a
+// hand on a screen reaches a command, and it owns it on one client — aiming
+// this gate at the hand as well would be two subjects and twice the flake.
+
+import { chromium } from "playwright";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { startServer } from "../server/index.js";
+import { createStore } from "../server/store.js";
+import { formatRoomCode } from "../shared/roomcode.js";
+
+const SIZE = 48;
+const problems = [];
+function check(name, condition, detail = "") {
+  console.log(`${condition ? "ok  " : "FAIL"}  ${name}${detail ? `  (${detail})` : ""}`);
+  if (!condition) problems.push(`${name}${detail ? ` — ${detail}` : ""}`);
+}
+
+/** Where a tile is on screen, asked of the same camera the renderer uses — the
+ * helper `play_smoke` has, for the same reason: a click has to land on the tile
+ * the gate means, and at the tile's own HEIGHT rather than at y = 0 (V4). */
+async function tilePixel(page, x, y) {
+  return page.evaluate(([tx, ty]) => {
+    const { renderer } = globalThis.CITY;
+    const canvas = document.getElementById("city");
+    const model = renderer.model;
+    const h = model.heightAt((tx + 0.5) * model.tileM, (ty + 0.5) * model.tileM) / model.tileM;
+    const v = new globalThis.THREE_VEC(tx + 0.5, h, ty + 0.5);
+    v.project(renderer.view.camera);
+    return { x: ((v.x + 1) / 2) * canvas.clientWidth, y: ((1 - v.y) / 2) * canvas.clientHeight };
+  }, [x, y]);
+}
+
+/** Waits for something to become true in the page, with a reason when it does
+ * not — a gate that times out saying "timeout" is a gate nobody can debug. */
+async function until(page, what, read, arg, ms = 30_000) {
+  const started = Date.now();
+  let last;
+  while (Date.now() - started < ms) {
+    last = await page.evaluate(read, arg).catch((error) => ({ error: String(error.message ?? error) }));
+    if (last?.ok) return last;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  throw new Error(`${what}: ${JSON.stringify(last)}`);
+}
+
+const roomDir = await mkdtemp(join(tmpdir(), "citygrid-room-smoke-"));
+const server = await startServer({
+  port: 0,
+  store: createStore({ dir: roomDir }),
+  fresh: true,
+  tickMs: 100,
+  roomId: "smoke",
+  options: { seed: 1003, width: SIZE, height: SIZE, seats: 4 },
+});
+const code = server.room.code();
+const origin = `http://127.0.0.1:${server.port}`;
+console.log(`room ${formatRoomCode(code)} at ${origin}`);
+
+const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
+
+/** One client: its own context, so its storage and its service worker are its
+ * own — two seats sharing a profile is one browser pretending to be two. */
+async function openClient(seat) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+  });
+  await page.goto(`${origin}/?join=${code}&seat=${seat}&life=0`);
+  const joined = await until(page, `seat ${seat} never joined`, () => {
+    const city = globalThis.CITY;
+    if (!city) return { ok: false, why: "no CITY" };
+    if (city.room === undefined) return { ok: false, why: "no room on the session" };
+    return { ok: true, room: city.room, seat: city.seat, width: city.state?.width };
+  });
+  return { seat, context, page, errors, joined };
+}
+
+try {
+  const a = await openClient(1);
+  const b = await openClient(2);
+  check("two browsers joined one room", a.joined.room === code && b.joined.room === code,
+    `${a.joined.room} / ${b.joined.room}`);
+  check("and took different seats", a.joined.seat === 1 && b.joined.seat === 2,
+    `${a.joined.seat} / ${b.joined.seat}`);
+  check("each is playing the room's city, not one of its own",
+    a.joined.width === SIZE && b.joined.width === SIZE, `${a.joined.width} / ${b.joined.width}`);
+
+  // Both seats' arrivals have to have landed on both clients before anything is
+  // compared: a seat joining is a COMMAND and arrives in a frame, so until it
+  // does the two cities differ for a reason that is not a defect.
+  const players = (page) => until(page, "both seats never arrived", () => {
+    const seats = globalThis.CITY.state.players.map((p) => p.seat).sort();
+    return { ok: seats.length >= 2, seats };
+  });
+  const seatsA = await players(a.page);
+  const seatsB = await players(b.page);
+  check("both arrivals reached both clients", seatsA.seats.length === 2 && seatsB.seats.length === 2,
+    `${JSON.stringify(seatsA.seats)} / ${JSON.stringify(seatsB.seats)}`);
+
+  // **Seat one builds.** Through the seam, and on dry ground the city picks
+  // rather than a tile somebody remembered.
+  const built = await a.page.evaluate(async () => {
+    const city = globalThis.CITY;
+    const { width, height, tiles } = city.state;
+    for (let z = 6; z < height - 6; z += 1) {
+      for (let x = 4; x + 6 < width - 4; x += 1) {
+        const cells = Array.from({ length: 6 }, (unused, i) => z * width + x + i);
+        const clear = cells.every((i) => tiles.terrain[i] !== 3 && tiles.terrain[i] !== 4
+          && tiles.road[i] === 0 && tiles.buildingId[i] === 0);
+        if (!clear) continue;
+        const outcome = await city.apply({ type: "placeRoad", actor: city.seat, runs: [cells[0], 6] });
+        return { result: outcome.result, cells };
+      }
+    }
+    return { result: "no dry ground" };
+  });
+  check("seat one's road was accepted by the ROOM", built.result === "ok", String(built.result));
+
+  // **And seat two sees it**, which is the whole claim: a frame carrying
+  // somebody else's command, with no promise waiting for it, reaching the
+  // mirror through `onMessage`.
+  const seen = await until(b.page, "seat two never saw seat one's road", (cells) => {
+    const road = globalThis.CITY.state.tiles.road;
+    const laid = cells.filter((i) => road[i] !== 0).length;
+    return { ok: laid === cells.length, laid, of: cells.length };
+  }, built.cells, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the other seat saw it", seen.ok === true, seen.why ?? `${seen.laid} of ${seen.of} tiles`);
+
+  // **Stop the clock before comparing three hashes.** The pump never pauses, so
+  // a hash read while frames are in flight compares a client to a room that has
+  // moved on — and the first run of this gate duly reported three different
+  // numbers with no divergence anywhere (`room_soak` learned the same thing).
+  // Speed 0 is a room whose city stands still while its frames keep flowing.
+  server.room.setSpeed(0);
+  const settled = (page) => until(page, "a client never caught up to the stopped room", (want) => {
+    const city = globalThis.CITY;
+    return { ok: city.state.tick === want && city.pending === 0, tick: city.state.tick, want };
+  }, server.room.tick(), 15_000);
+  const ticks = await Promise.all([a, b].map(({ page }) => settled(page)))
+    .catch((error) => { problems.push(String(error.message ?? error)); return []; });
+  check("both clients caught up to the stopped room",
+    ticks.length === 2 && ticks.every((t) => t.ok), JSON.stringify(ticks.map((t) => t?.tick)));
+
+  // One city, by the project's own contract (`shared/statehash.js`).
+  const hashes = await Promise.all([a, b].map(({ page }) => page.evaluate(() => globalThis.CITY.hash())));
+  check("both browsers and the room are on one hash",
+    hashes[0] === hashes[1] && hashes[0] === server.room.hash(),
+    `${hashes[0]} / ${hashes[1]} / ${server.room.hash()}`);
+
+  // **The same hour** (A63 against A41): the room's played clock, not each
+  // page's own. Within one beat of each other, because the two read it from
+  // different frames.
+  const clocks = await Promise.all([a, b].map(({ page }) => page.evaluate(() => globalThis.CITY.roomSeconds)));
+  // And the held moment: a stopped room's sun does not move (A41).
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const held = await Promise.all([a, b].map(({ page }) => page.evaluate(() => globalThis.CITY.roomSeconds)));
+  check("a paused room holds its hour", held.every((s, i) => s === clocks[i]),
+    `${clocks.join(" / ")} then ${held.join(" / ")}`);
+  check("both clients take the hour from the room",
+    clocks.every((s) => typeof s === "number") && Math.abs(clocks[0] - clocks[1]) < 1,
+    `${clocks[0]} / ${clocks[1]}`);
+  check("and the room's clock is running", Math.max(...clocks) > 0, `${Math.max(...clocks)} s`);
+
+  // **A third player joins through the LOBBY** (X2b): no `?join=` in the URL,
+  // just the code typed into the screen as a player would type it. This is the
+  // whole of slice 5.2's join half driven end to end — the field, the
+  // normalisation, the door's "any free seat", and the page that comes up.
+  const third = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const lobby = await third.newPage();
+  const lobbyErrors = [];
+  lobby.on("pageerror", (error) => lobbyErrors.push(`pageerror: ${error.message}`));
+  lobby.on("console", (message) => {
+    if (message.type() === "error") lobbyErrors.push(`console: ${message.text()}`);
+  });
+  await lobby.goto(`${origin}/?life=0`);
+  await lobby.waitForSelector("#joinCode", { timeout: 30_000 });
+
+  // The refusal first, because a button that always navigates proves nothing
+  // about the field. Nonsense stays on the lobby and says why.
+  await lobby.fill("#joinCode", "nonsense");
+  await lobby.click("#join");
+  const refused = await lobby.evaluate(() => {
+    const line = document.querySelector(".lobby-join-problem");
+    return { shown: line !== null && !line.hidden, words: line?.textContent ?? "", onLobby: Boolean(document.querySelector("#joinCode")) };
+  });
+  check("a bad code is refused on the lobby, in words", refused.shown && refused.words.length > 10
+    && refused.onLobby, JSON.stringify(refused));
+
+  // Then the real code, typed the way it is READ OUT — grouped and lower case.
+  await lobby.fill("#joinCode", formatRoomCode(code).toLowerCase());
+  await lobby.click("#join");
+  const joined3 = await until(lobby, "the lobby never joined the room", () => {
+    const city = globalThis.CITY;
+    if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+    return { ok: true, room: city.room, seat: city.seat };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("a code typed into the lobby joins the room", joined3.ok === true && joined3.room === code,
+    joined3.why ?? JSON.stringify(joined3));
+  // Seats one and two are taken, so the door had to choose — and the player
+  // never said which. That is the X2b decision, seen from the furthest end.
+  check("the door gave it a seat it never asked for", joined3.seat === 3, `seat ${joined3.seat}`);
+  check("the lobby join reported no page or console errors", lobbyErrors.length === 0,
+    lobbyErrors.slice(0, 3).join(" | "));
+  await third.close();
+
+  // **The inbox, end to end** (X3b). The item's own gate line: request →
+  // approve → the demolition executes and is paid for, and the direct path is
+  // refused. Seat two asks about the road seat one built above.
+  //
+  // Filing goes through the seam because the hand that FILES one is still
+  // unbuilt — the inbox answers and withdraws, and asking needs a tool that
+  // picks tiles. Answering goes through the PANEL, because that is the half
+  // under test.
+  // **Through the HAND, not the seam.** The whole claim is that the refusal is
+  // the door, and `onResult` is the controller's callback — a command posted
+  // through `CITY.apply` never reaches it, so an earlier version of this drove
+  // the seam and then waited for a panel nothing had opened. The tool is
+  // picked and a tile of the other seat's road is clicked, as a player would.
+  await b.page.evaluate(async () => {
+    const THREE = await import("/vendor/three.module.js");
+    globalThis.THREE_VEC = THREE.Vector3;
+    document.querySelector("#controls-dismiss")?.click();
+  });
+  const theirTile = await b.page.evaluate((cell) => {
+    const { width } = globalThis.CITY.state;
+    return { x: cell % width, y: Math.floor(cell / width) };
+  }, built.cells[1]);
+  const spot = await tilePixel(b.page, theirTile.x, theirTile.y);
+  await b.page.click('#tools button[data-tool="bulldoze"]').catch(async () => {
+    await b.page.evaluate(() => globalThis.CITY.controller.setTool("bulldoze"));
+  });
+  await b.page.mouse.move(spot.x, spot.y);
+  await b.page.mouse.down();
+  await b.page.mouse.up();
+  const direct = await until(b.page, "the demolish was never refused", () => {
+    const readout = document.querySelector("[data-result]");
+    return { ok: readout?.dataset.result === "notOwner", said: readout?.dataset.result ?? "nothing" };
+  }, undefined, 15_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the direct path is refused — nothing you did not build is yours to destroy",
+    direct.ok === true, direct.why ?? direct.said);
+
+  // **Filing goes through the HAND now** (X3b, 2026-10-08): the refusal above is
+  // the door. Seat two's demolish was refused `notOwner`, so the game offered to
+  // ask — the panel is open on their screen with the owner named in it, and all
+  // that is left is to fill it in and press Ask. No new tool, and the player is
+  // already looking at the ground in question.
+  const offered = await until(b.page, "the refusal did not offer to ask", () => {
+    const panel = document.querySelector("#ask");
+    return { ok: panel !== null && !panel.hidden, words: panel?.querySelector(".ask-what")?.textContent ?? "" };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("a refused demolish offers to ask, and names the owner", offered.ok === true,
+    offered.why ?? offered.words);
+
+  // **The other button first** (§25.4): the same panel files a report, which
+  // asks for nothing and ends as an acknowledgement. Filed, read back, and
+  // withdrawn again so the demolition below is the only thing in the inbox.
+  await b.page.fill("#ask-title", "Your road is noisy");
+  await b.page.fill("#ask-reason", "Carts all night");
+  await b.page.fill("#ask-offer", "99");
+  await b.page.click("#ask-report");
+  const reported = await until(b.page, "the report was never filed", () => {
+    const nuisance = globalThis.CITY.state.requests.filter((r) => r.kind === "nuisance");
+    return { ok: nuisance.length > 0, offer: nuisance[0]?.offer, title: nuisance[0]?.title };
+  }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  // **The offer is dropped**, whatever was in the field: nobody pays somebody
+  // to be told about a noise, and a number the owner could never take would
+  // read as an offer in their inbox.
+  check("a report is filed, and offers nothing however much was typed",
+    reported.ok === true && reported.offer === 0 && reported.title === "Your road is noisy",
+    reported.why ?? JSON.stringify(reported));
+  await b.page.evaluate(async () => {
+    const city = globalThis.CITY;
+    const mine = city.state.requests.find((r) => r.kind === "nuisance" && r.status === "pending");
+    if (mine) await city.apply({ type: "withdrawRequest", actor: city.seat, id: mine.id });
+  });
+
+  // Then the demolition, through the same door.
+  await b.page.mouse.move(spot.x, spot.y);
+  await b.page.mouse.down();
+  await b.page.mouse.up();
+  await until(b.page, "the second refusal did not offer to ask", () => {
+    const panel = document.querySelector("#ask");
+    return { ok: panel !== null && !panel.hidden };
+  }, undefined, 15_000);
+  await b.page.fill("#ask-title", "Your road blocks my pipe");
+  await b.page.fill("#ask-reason", "It runs through my water main");
+  await b.page.fill("#ask-offer", "40");
+  await b.page.click("#ask-send");
+  const filed = await until(b.page, "the request was never filed", () => {
+    const pending = globalThis.CITY.state.requests.filter((r) => r.status === "pending");
+    return { ok: pending.length > 0, pending: pending.length,
+      offer: pending[0]?.offer, title: pending[0]?.title };
+  }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the panel files the request, with what was typed in it",
+    filed.ok === true && filed.offer === 40 && filed.title === "Your road blocks my pipe",
+    filed.why ?? JSON.stringify(filed));
+
+  // Seat ONE answers it, in the panel, as a player would.
+  const waiting = await until(a.page, "the request never reached the owner's inbox", () => {
+    const city = globalThis.CITY;
+    const rail = document.querySelector("#rail-inbox");
+    return { ok: rail !== null && city.state.requests.some((r) => r.status === "pending"),
+      rail: rail !== null, requests: city.state.requests.length };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the owner's inbox exists and has the request in it", waiting.ok === true,
+    waiting.why ?? JSON.stringify(waiting));
+
+  await a.page.click("#controls-dismiss").catch(() => {});
+  await a.page.click("#rail-inbox");
+  const drawn = await until(a.page, "the inbox drawer never drew the row", () => {
+    const rows = [...document.querySelectorAll(".inbox-row")].map((el) => el.textContent?.trim());
+    const agree = document.querySelector('.inbox-row button[data-action="approve"]');
+    return { ok: rows.length > 0 && agree !== null, rows: rows.length,
+      words: rows[0]?.slice(0, 60) ?? "" };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the inbox draws the row, in words", drawn.ok === true,
+    drawn.why ?? `${drawn.rows} row(s): ${drawn.words}`);
+
+  const purseBefore = await a.page.evaluate(() => globalThis.CITY.state.players
+    .find((p) => p.seat === globalThis.CITY.seat).treasury);
+  await a.page.click('.inbox-row button[data-action="approve"]');
+  // The tile the request was actually ABOUT — one, because the demolish that
+  // opened the panel was a single click. An earlier cut waited for all six of
+  // seat one's road to go and reported "never cleared" about a request that had
+  // been honoured exactly as filed.
+  const cleared = await until(b.page, "the tile was never cleared", (cell) => {
+    const road = globalThis.CITY.state.tiles.road;
+    return { ok: road[cell] === 0, still: road[cell] };
+  }, built.cells[1], 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("agreeing in the inbox clears the ground, on the OTHER client",
+    cleared.ok === true, cleared.why ?? JSON.stringify(cleared));
+
+  const purseAfter = await a.page.evaluate(() => globalThis.CITY.state.players
+    .find((p) => p.seat === globalThis.CITY.seat).treasury);
+  check("and the owner was paid the offer", purseAfter - purseBefore === 40,
+    `${purseBefore} → ${purseAfter}`);
+  await a.page.click("#rail-inbox");
+
+  // **Pointing at something** (X3b). Seven canned phrases from a closed list;
+  // the inspector is already open on the tile, which is why the control is
+  // there. The receiving seat gets it as an alert that is a BUTTON, and
+  // pressing it moves their camera — which is the half the item names.
+  const pinged = await a.page.evaluate(async () => {
+    const city = globalThis.CITY;
+    return (await city.apply({ type: "ping", actor: city.seat, x: 12, z: 14, message: "look" })).result;
+  });
+  check("a ping is accepted", pinged === "ok", String(pinged));
+  const heard = await until(b.page, "the other seat never heard the ping", () => {
+    const go = document.querySelector(".alert-go[data-ping]");
+    return { ok: go !== null, at: go?.dataset.ping ?? "", words: go?.textContent?.trim() ?? "" };
+  }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the other seat sees it, named and placed", heard.ok === true && heard.at === "12,14",
+    heard.why ?? JSON.stringify(heard));
+
+  // And pressing it takes them there.
+  const before = await b.page.evaluate(() => ({
+    x: globalThis.CITY.renderer.view.targetX, z: globalThis.CITY.renderer.view.targetZ,
+  }));
+  await b.page.click(".alert-go[data-ping]");
+  const after = await until(b.page, "the camera never moved", (was) => {
+    const view = globalThis.CITY.renderer.view;
+    const moved = Math.abs(view.targetX - was.x) + Math.abs(view.targetZ - was.z);
+    return { ok: moved > 0.5, moved: Math.round(moved * 100) / 100, x: view.targetX, z: view.targetZ };
+  }, before, 15_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("and pressing it jumps the camera to the tile", after.ok === true,
+    after.why ?? JSON.stringify(after));
+
+  // **Chat** (X3b). Off by default, so the room this gate boots has it off and
+  // the panel is absent — which is the first thing to check, because a control
+  // that can never carry anything is worse than none.
+  const noChat = await a.page.evaluate(() => document.querySelector("#rail-chat") === null);
+  check("a room with chat off has no chat panel at all", noChat === true, String(noChat));
+
+  // And the ON path, in a room made with chat enabled. Two browsers, because a
+  // line one player cannot see the other say proves nothing — and on this
+  // server rather than a second one, since the registry can hold both.
+  const talkative = server.rooms.add({
+    options: { seed: 2024, width: 48, height: 48, seats: 4, chatEnabled: true },
+  });
+  check("a room can be made with chat on", talkative.ok === true, String(talkative.reason));
+  if (talkative.ok) {
+    server.rooms.start();
+    const chatCode = talkative.room.code();
+    const talkers = [];
+    for (const seatWanted of [1, 2]) {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+      page.on("console", (m) => { if (m.type() === "error") errors.push(`console: ${m.text()}`); });
+      await page.goto(`${origin}/?join=${chatCode}&seat=${seatWanted}&life=0`);
+      await until(page, `chat seat ${seatWanted} never joined`, () => ({ ok: globalThis.CITY?.room !== undefined }));
+      await page.click("#controls-dismiss").catch(() => {});
+      talkers.push({ context, page, errors });
+    }
+    await talkers[0].page.click("#rail-chat");
+    await talkers[1].page.click("#rail-chat");
+    await talkers[0].page.fill("#chat-text", "  Hello  there  ");
+    await talkers[0].page.click("#chat-send");
+    const heard = await until(talkers[1].page, "the other seat never heard the line", () => {
+      const lines = [...document.querySelectorAll(".chat-line")].map((el) => el.textContent?.trim());
+      return { ok: lines.length > 0, lines };
+    }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    // Trimmed and collapsed on the way in, by the same sanitiser a request
+    // title goes through — and rendered as TEXT, which is why the markup below
+    // comes back as characters rather than as an element.
+    check("a line reaches the other seat, trimmed", heard.ok === true
+      && String(heard.lines?.[0]).includes("Hello there"), heard.why ?? JSON.stringify(heard.lines));
+
+    await talkers[0].page.fill("#chat-text", "<b>not bold</b>");
+    await talkers[0].page.click("#chat-send");
+    const safe = await until(talkers[1].page, "the second line never arrived", () => {
+      const last = [...document.querySelectorAll(".chat-line")].pop();
+      return { ok: (last?.textContent ?? "").includes("not bold"),
+        bold: last?.querySelector("b") !== null && last?.querySelector("b") !== undefined,
+        text: last?.textContent ?? "" };
+    }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("and markup arrives as characters, not as markup",
+      safe.ok === true && safe.bold === false, safe.why ?? JSON.stringify(safe));
+    check("neither talker reported a page or console error",
+      talkers.every((t) => t.errors.length === 0),
+      talkers.flatMap((t) => t.errors).slice(0, 3).join(" | "));
+    for (const talker of talkers) await talker.context.close();
+  }
+
+  // **A standing answer** (X3b): what happens to requests while nobody is
+  // looking. Seat one sets "always agree", seat two asks about the rest of its
+  // road, and the MONTH answers — the request is gone and the ground with it,
+  // with nobody having pressed anything.
+  await a.page.click("#rail-inbox");
+  await a.page.click('.inbox-policy button[data-policy="approve"]');
+  const policy = await until(a.page, "the standing answer never took", () => {
+    const player = globalThis.CITY.state.players.find((p) => p.seat === globalThis.CITY.seat);
+    const pressed = document.querySelector('.inbox-policy button[data-policy="approve"]');
+    return { ok: player?.requestPolicy === "approve" && pressed?.getAttribute("aria-pressed") === "true",
+      policy: player?.requestPolicy, pressed: pressed?.getAttribute("aria-pressed") };
+  }, undefined, 15_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("a standing answer can be set, and the control says so",
+    policy.ok === true, policy.why ?? JSON.stringify(policy));
+  await a.page.click("#rail-inbox");
+
+  const standing = await b.page.evaluate(async (cells) => {
+    const city = globalThis.CITY;
+    // **The whole original run**, not the tiles that happen to be left. A run
+    // is `[start, length]` and the tiles still standing are no longer
+    // contiguous — one in the middle went to the demolition above — so
+    // `[left[0], left.length]` named a span that included a cleared tile and
+    // ran one past the end. The reducer is perfectly happy to be asked about
+    // ground that is already bare; it is the gate that cannot invent a run.
+    const outcome = await city.apply({
+      type: "requestDemolition", actor: city.seat, runs: [cells[0], cells.length],
+      title: "The rest of it", reason: "Same pipe", offer: 10,
+    });
+    return { result: outcome.result, tiles: cells };
+  }, built.cells);
+  check("a second request is filed against a standing answer", standing.result === "ok",
+    JSON.stringify(standing.result));
+  // Let the room reach the next month. At the fast speed a sim-month is under a
+  // second of wall clock, and the pass is where a standing answer is given.
+  server.room.setSpeed(3);
+  const answered = await until(b.page, "the standing answer never fired", (tiles) => {
+    const road = globalThis.CITY.state.tiles.road;
+    const left = (tiles ?? []).filter((i) => road[i] !== 0).length;
+    const mine = globalThis.CITY.state.requests.filter((r) => r.status === "pending").length;
+    return { ok: left === 0 && mine === 0, left, pending: mine };
+  }, standing.tiles, 30_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the month answers it, with nobody pressing anything",
+    answered.ok === true, answered.why ?? JSON.stringify(answered));
+
+  // **Watching without playing** (X4e). A third browser joins with `?watch=1`,
+  // takes no seat, sees the city — and has no tools at all, because a toolbar
+  // that only ever says no is the "present but inert" control ruling 029 is
+  // about.
+  const seats = server.room.seats().length;
+  const watchCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const watcher = await watchCtx.newPage();
+  const watchErrors = [];
+  watcher.on("pageerror", (error) => watchErrors.push(`pageerror: ${error.message}`));
+  watcher.on("console", (m) => { if (m.type() === "error") watchErrors.push(`console: ${m.text()}`); });
+  await watcher.goto(`${origin}/?join=${code}&watch=1&life=0`);
+  const watching = await until(watcher, "the watcher never got a city", () => {
+    const city = globalThis.CITY;
+    if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+    return { ok: true, seat: city.seat, width: city.state?.width,
+      tools: document.querySelectorAll("#tools button").length,
+      overlays: document.querySelectorAll(".hud-overlays button").length };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("a watcher sees the city", watching.ok === true && watching.width === SIZE,
+    watching.why ?? JSON.stringify(watching));
+  check("and takes no seat", server.room.seats().length === seats,
+    `${seats} seats before, ${server.room.seats().length} after`);
+  check("and has no tools at all", watching.tools === 0, `${watching.tools} tool buttons`);
+  // Everything that READS the city is still there — this is watching, not a
+  // crippled game.
+  check("but can still read the city", watching.overlays > 0, `${watching.overlays} overlays`);
+  check("the watcher reported no page or console errors", watchErrors.length === 0,
+    watchErrors.slice(0, 3).join(" | "));
+  await watchCtx.close();
+
+  // **Who is in the room** (X4): the last two commands with handlers and no
+  // control, and the home of the two seat events. Built from `state.players`,
+  // so every client draws the same list without a wire message.
+  await b.page.click("#rail-roster");
+  const roster = await until(b.page, "the roster never drew", () => {
+    const rows = [...document.querySelectorAll(".roster-row")].map((el) => ({
+      seat: el.dataset.seat, you: el.classList.contains("you"),
+      text: el.textContent?.trim() ?? "",
+    }));
+    return { ok: rows.length > 0, rows };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the roster lists every seat in the room",
+    roster.ok === true && roster.rows.length === server.room.state.players.length,
+    roster.why ?? JSON.stringify(roster.rows?.map((r) => r.seat)));
+  check("and marks which one is you", (roster.rows ?? []).filter((r) => r.you).length === 1,
+    JSON.stringify(roster.rows?.map((r) => `${r.seat}:${r.you}`)));
+
+  // Saying you are away reaches every client, because it is hashed state.
+  await b.page.click('.roster-row.you button[data-action="away"]');
+  const away = await until(a.page, "the other seat never heard about it", (who) => {
+    const player = globalThis.CITY.state.players.find((p) => p.seat === who);
+    return { ok: player?.status === 1, status: player?.status };
+  }, 2, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("away reaches the other client, because a status is hashed state",
+    away.ok === true, away.why ?? JSON.stringify(away));
+  // And the one control says which way it goes.
+  const back = await until(b.page, "the away button never became a back button", () => {
+    const button = document.querySelector('.roster-row.you button[data-action="back"]');
+    return { ok: button !== null, label: button?.textContent ?? "" };
+  }, undefined, 15_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("and the control now offers the way back", back.ok === true, back.why ?? back.label);
+  await b.page.click('.roster-row.you button[data-action="back"]');
+  await b.page.click("#rail-roster");
+
+  // **Whose city is which** (X3b, Q61). The territory overlay has coloured
+  // buildings by owner since V7 with no control at all; this is the control,
+  // driven as a player would, with two seats' work on the map. The legend is
+  // the half a gate can assert — §16's "never colour alone", which for
+  // territory means a NAMED row per seat — and the picture is saved for
+  // somebody to open, because no gate has ever caught a renderer defect of
+  // this kind.
+  // The first-run controls card covers the map, and a screenshot of a dialog is
+  // not a screenshot of an overlay. Dismissed before anything is shot.
+  await b.page.click("#controls-dismiss").catch(() => {});
+  // `#rail-overlays` first: the rail is a drawer and its buttons are in the DOM
+  // while it is shut, so clicking one without opening it waits for ever on a
+  // control that is present and not visible (the inert-control lesson).
+  await b.page.click("#rail-overlays");
+  await b.page.click('.hud-overlays button[data-overlay="territory"]');
+  const shown = await until(b.page, "the territory overlay never came on", () => {
+    const rows = [...document.querySelectorAll(".legend-seat")]
+      .map((el) => el.textContent?.trim()).filter(Boolean);
+    return { ok: globalThis.CITY.overlay === "territory" && rows.length > 0, overlay: globalThis.CITY.overlay, rows };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the territory overlay has a control, and it works", shown.ok === true,
+    shown.why ?? JSON.stringify(shown));
+  // Against the ROOM's own player list, not a literal: by this point the lobby
+  // join above has taken a third seat, and the first cut of this asked for two
+  // and failed about a legend that was right. The claim is "every seat", so the
+  // number comes from the thing that knows.
+  const inRoom = server.room.state.players.length;
+  check("its legend names every seat in the room", (shown.rows ?? []).length === inRoom,
+    `${(shown.rows ?? []).length} rows for ${inRoom} players: ${JSON.stringify(shown.rows)}`);
+  // **What this picture is, and is not.** It shows the control and the legend —
+  // the half §16 calls "never colour alone", and the half a gate can assert.
+  // It does NOT show two seats' buildings in two colours, because territory
+  // colours BUILDINGS and this room is three months old with none: a city that
+  // has nothing to show makes a green picture of a right overlay (V7's wash,
+  // exactly). That half of the item's gate line needs a played multi-seat city
+  // and is still open.
+  await b.page.screenshot({ path: "reports/smoke-X3b-territory.png" });
+  await b.page.click('.hud-overlays button[data-overlay="territory"]');
+  await b.page.click("#rail-overlays");
+
+  // **Hosting, through the lobby** (X2c). A browser that nobody gave a code to:
+  // it picks its options on the new-game screen, clicks Host, and the room it
+  // gets is a NEW one — not the one this gate booted the server with — which is
+  // the whole of "four people start a room without a URL parameter".
+  const hostCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const hostPage = await hostCtx.newPage();
+  const hostErrors = [];
+  hostPage.on("pageerror", (error) => hostErrors.push(`pageerror: ${error.message}`));
+  hostPage.on("console", (message) => {
+    if (message.type() === "error") hostErrors.push(`console: ${message.text()}`);
+  });
+  await hostPage.goto(`${origin}/?life=0`);
+  await hostPage.waitForSelector("#host", { timeout: 30_000 });
+  await hostPage.click("#host");
+  const hosted = await until(hostPage, "the lobby never hosted a room", () => {
+    const city = globalThis.CITY;
+    if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+    return { ok: true, room: city.room, seat: city.seat, width: city.state?.width, url: globalThis.location.search };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the lobby hosts a room", hosted.ok === true && typeof hosted.room === "string",
+    hosted.why ?? JSON.stringify(hosted));
+  check("and it is a NEW room, not the one the server booted with", hosted.room !== code,
+    `${hosted.room} vs the server's ${code}`);
+  check("the host takes seat one of its own room", hosted.seat === 1, `seat ${hosted.seat}`);
+  // The URL is the invitation: `?join=` is the parameter a guest arrives on, so
+  // the host can copy the address bar and send it.
+  check("the host's address bar carries the code", String(hosted.url).includes(`join=${hosted.room}`),
+    String(hosted.url));
+  check("the hosting browser reported no page or console errors", hostErrors.length === 0,
+    hostErrors.slice(0, 3).join(" | "));
+
+  // And somebody joins THAT room by typing its code, which is the pair of
+  // slices end to end: X2c made it, X2b gets into it.
+  const guestCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const guest = await guestCtx.newPage();
+  const guestErrors = [];
+  guest.on("pageerror", (error) => guestErrors.push(`pageerror: ${error.message}`));
+  guest.on("console", (message) => {
+    if (message.type() === "error") guestErrors.push(`console: ${message.text()}`);
+  });
+  await guest.goto(`${origin}/?life=0`);
+  await guest.waitForSelector("#joinCode", { timeout: 30_000 });
+  await guest.fill("#joinCode", formatRoomCode(hosted.room).toLowerCase());
+  await guest.click("#join");
+  const guestJoined = await until(guest, "the guest never joined the hosted room", () => {
+    const city = globalThis.CITY;
+    if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+    return { ok: true, room: city.room, seat: city.seat };
+  }).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+  check("the guest reported no page or console errors", guestErrors.length === 0,
+    guestErrors.slice(0, 3).join(" | "));
+  check("a guest joins the hosted room by its code",
+    guestJoined.ok === true && guestJoined.room === hosted.room,
+    guestJoined.why ?? JSON.stringify(guestJoined));
+  check("and is given seat two of it", guestJoined.seat === 2, `seat ${guestJoined.seat}`);
+
+  // One city, which is the only claim that matters about a room.
+  const hostedRoom = server.rooms.get(hosted.room);
+  if (hostedRoom) hostedRoom.setSpeed(0);
+  const pair = await Promise.all([hostPage, guest].map((page) => until(page,
+    "a client never caught up to the hosted room", (want) => {
+      const city = globalThis.CITY;
+      return { ok: city.state.tick === want && city.pending === 0, tick: city.state.tick, want };
+    }, hostedRoom?.tick() ?? -1, 15_000))).catch(() => []);
+  check("the host and the guest caught up to their stopped room",
+    pair.length === 2 && pair.every((p) => p.ok), JSON.stringify(pair.map((p) => p?.tick)));
+  const hostedHashes = await Promise.all([hostPage, guest]
+    .map((page) => page.evaluate(() => globalThis.CITY?.hash() ?? "no city").catch((e) => String(e.message ?? e))));
+  check("the host, the guest and the hosted room are on one hash",
+    hostedHashes[0] === hostedHashes[1] && hostedHashes[0] === hostedRoom?.hash(),
+    `${hostedHashes[0]} / ${hostedHashes[1]} / ${hostedRoom?.hash()}`);
+  await guestCtx.close();
+  await hostCtx.close();
+
+  // The desync detector, which is the one thing that must read zero.
+  const desyncs = await Promise.all([a, b].map(({ page }) => page.evaluate(
+    () => ({ desyncs: globalThis.CITY.desyncs, checks: globalThis.CITY.desyncChecks }))));
+  check("neither mirror disagreed with its own simulation",
+    desyncs.every((d) => d.desyncs === 0), JSON.stringify(desyncs));
+
+  for (const client of [a, b]) {
+    check(`seat ${client.seat} reported no page or console errors`, client.errors.length === 0,
+      client.errors.slice(0, 3).join(" | "));
+  }
+
+  await a.context.close();
+  await b.context.close();
+} finally {
+  await browser.close();
+  await server.close();
+  await rm(roomDir, { recursive: true, force: true });
+}
+
+if (problems.length > 0) {
+  console.error(`\n${problems.length} problem(s):`);
+  for (const problem of problems) console.error(`  - ${problem}`);
+  process.exit(1);
+}
+console.log("\nroom smoke ok");

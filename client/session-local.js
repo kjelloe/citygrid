@@ -84,6 +84,20 @@ export async function openLocalSession(given) {
   return {
     get state() { return state; },
     local: true,
+    /** No seat and no room: this session is one player on one machine. Present
+     * rather than absent, because the HUD reads them and a caller that has to
+     * ask which session it holds is a caller the swap will break. */
+    seat: undefined,
+    room: undefined,
+    /** No room clock either: the light cycle falls back to this page's own wall
+     * clock, which is what A41 settled for singleplayer. */
+    roomSeconds: undefined,
+    /** No chat either: there is nobody to say it to. Present rather than
+     * absent, because the drop-in claim is checked by comparing the two APIs
+     * and a caller that has to ask which session it holds is a caller the swap
+     * will break. */
+    say: undefined,
+    onChat: undefined,
     /** Commands in flight. Always 0 here — the reducer is on this thread and a
      * command is done before `apply` returns — and it is on both sides of the
      * seam because a caller that has to ask "which session is this?" is a
@@ -102,6 +116,10 @@ export async function openLocalSession(given) {
     /** The clock belongs to the SESSION (plan.md §3.4, W4), not to `game.js`:
      * a remote session ticks when a frame says to, and a client that also ran
      * its own interval would run the world twice. */
+    /** Whether an interval is running. On both sides of the seam because the
+     * drop-in claim is checked by comparing the two APIs, and because it is
+     * what a gate reads to prove a room's client keeps no clock (X1c). */
+    get clocked() { return clock !== undefined; },
     setSpeed(ms) {
       clearInterval(clock);
       clock = undefined;
