@@ -13817,3 +13817,55 @@ the same nudge with sunSteps=0: azimuth moved, picture different
 crawl the steps exist to prevent, visible in the smallest nudge the arc can make, and it is why the
 number is 48: a step every three seconds of the 148.8 s the sun is up, 0.94° each. The config says
 so where the number is, rather than in a dev-log entry nobody will find.
+
+## M9 — every gate set, re-measured on a quiet machine (2026-10-08)
+
+The item was opened on 2026-10-07 when `quick` took 986 s against a 540 s budget and reported five
+failures, four of which were green when run one at a time. Its ask was a re-measurement from a run,
+per gate, with the numbers written beside the totals — and the thing that made that worth doing was
+learning, three times in one day, that a contended run is not a measurement at all.
+
+| set | gates | measured | was | now | what moved |
+|---|---|---|---|---|---|
+| `quick` | 12 | 522 s | 540 | **600** | `room_smoke` left it (X5); 3% of room is why it kept tripping |
+| `render` | 3 | 6 s | 120 | **60** | the walks are seconds; `lanes_dump` left at S18 |
+| `lanes` | 1 | 39 s | 360 | **240** | 211 s at era 28 — B14 shrank the hilly city under it |
+| `budget` | 1 | 277 s | 360 | **330** | |
+| `shots` | 9 | 303 s | 420 | **390** | gained `sun_shots` (23 s) at S22 |
+| `transport` | 4 | 268 s | 300 | **330** | `rail_shots` and `harbour_shots` both grew read-backs |
+| `kits` | 6 | 395 s | 960 | **480** | the budget was set before the set was ever measured |
+| `sim` | 2 | 354 s | 900 | **450** | **split** |
+| `sweep` | 1 | 628 s | — | **780** | `sim_sweep` alone |
+| `film` | 1 | 116 s | 480 | **180** | 291 s at F2 — the city is smaller since B14 |
+| `room` | 3 | 187 s | 600 | **300** | |
+| `all` | 43 | — | 3420 | **3600** | |
+
+**Most of them come down**, which is the instrument getting tighter rather than looser: `kits` by
+half, `film` to a third, `room` to a half, `lanes` by a third. Two go up and both say why on the
+line. A budget with 15% of room still notices a gate that grows by 20%; a budget with 3% notices the
+weather.
+
+**`sim` is split, which is M2's rule for the fifth time.** 982 s of a 900 s budget with `sim_sweep`
+628 s of it — one gate at two thirds of the set, and raising the budget to fit is what the rule
+forbids. `sim` is `disaster_soak` and `traffic_gate` now; `sweep` is the balance sweep. A gameplay
+slice runs six minutes; an era takes the ten-minute sweep. It is also the honest line between them:
+the sweep is the only gate in the project that WRITES a report.
+
+**The gate that grew, attributed.** `sim_sweep` was 439 s when M2 first measured it and is 586–628 s
+now. Timed on this machine with the quests off and on — the lever D8b added an hour earlier — it is
+**587 s and 586 s**: putting the quest catalogue into the tools, which was era 30's whole second
+half, costs the sweep **nothing**. What it is, is thirty balance eras of a bigger city played 200
+times for 25 years. A sweep tracks the simulation, so its budget has to hold its own growth — and
+the 7% between two quiet runs of the same code (628 against 586) is in the number too.
+
+**The two new sets, run as sets:** `sim` **310 s of 450** (traffic_gate 175, disaster_soak 135) and
+`render` **5 s of 60**. Both inside, with the room the restatement gave them, and both faster than
+the numbers in the table above — which is the 7% this machine moves by between two quiet runs, and
+the reason a budget is a measurement plus room rather than a measurement.
+
+**And what was never the finding.** Every red this item chased on a loaded machine was contention:
+`motion_shots`' "two frozen shots differ", `budget_gate`'s 23 ms cold build, the 604 s sweep. All
+three are green and stable alone, each took a re-run or a pair of arms to establish, and the rule
+had been written into `workitems-measurement.md` after the first one. `gates.mjs` prints `NOT ALONE:
+n other node process(es) are running` before it starts — which is this item's own lesson, finally in
+code rather than in a sentence.

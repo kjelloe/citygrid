@@ -143,7 +143,8 @@ node tools/gates.mjs lanes     # the lane graph's own numbers — its own set si
 node tools/gates.mjs budget    # and the triangle budget — its own set since B3a, ~5 min
 node tools/gates.mjs shots     # the world and behaviour lanes' pictures, ~4.5 min
 node tools/gates.mjs transport # T1-T4's pictures — avenue, rail, harbour (T4b split them), ~3 min
-node tools/gates.mjs sim       # a gameplay slice as well: the three soaks, ~10 min
+node tools/gates.mjs sim       # a gameplay slice as well: the two soaks, ~6 min
+node tools/gates.mjs sweep     # and the 200-game balance sweep when the slice is an ERA, ~10 min
 node tools/gates.mjs kits      # one picture per catalogue definition and per kit, ~6 min
 node tools/gates.mjs film      # the sixty-second storyboard, every frame counted, ~5 min (F2)
 node tools/gates.mjs room      # the headless room — `room_soak`, 5 s, since X1a
@@ -153,6 +154,15 @@ node tools/gates.mjs room      # the headless room — `room_soak`, 5 s, since X
 two to four minutes: `budget_gate` failed twice through the runner and passed four times standalone,
 and both failures were runs started while files were being rewritten. The failure looks like a flake
 and is not one.
+
+**And do not RUN anything either — a gate run is exclusive.** Three reds in one day on 2026-10-08,
+all three mine and all three green alone: `motion_shots` said "two frozen shots differ" and was
+byte-identical; `sim_sweep` read 604 s beside a node suite and 628 s alone; `budget_gate` failed "a
+cold build inside a frame" at **23 ms** and read **8.7** alone, which took two arms of the gate to
+establish because the obvious suspect was the slice in flight. `gates.mjs` prints
+`NOT ALONE: n other node process(es) are running` now, and the rule it states is the one to obey:
+**a timing or determinism red from a contended run is not a finding until it has been seen alone.**
+That includes `./test.sh`, a second gate set, and a `node --test` of one file while you wait.
 
 `film` is the only gate that renders the game as a MINUTE rather than as a frame, so it is the one
 that can see a shot that is right on its own and wrong after the one before it. Run it when a slice

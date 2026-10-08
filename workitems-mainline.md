@@ -280,7 +280,53 @@ minimap and not in frame; aim it (the `aim.mjs` pattern) if the pictures are to 
 CITY. (3) `specs/art-direction.md` gains a skins section whatever the answer is: three looks that
 exist and are not in the art document are three looks nothing re-derives.
 
-## M9 — The `quick` set starves its own gates (S, measurement) — found 2026-10-07
+## M9 — The `quick` set starves its own gates (S, measurement) — found 2026-10-07 — **BUILT 2026-10-08 as `slice-M9`**
+
+*As built: every set re-measured on a quiet machine at era 30, one at a time, with the per-gate
+numbers written into `tools/gates.mjs` beside the totals. **Most budgets come DOWN** — `kits` 960 →
+480, `film` 480 → 180, `room` 600 → 300, `lanes` 360 → 240 — which is the instrument getting tighter
+rather than looser. `quick` goes 540 → 600 because 522 s of 540 is 3% of room and that is why it
+kept tripping on noise; `transport` 300 → 330 because two of its gates grew read-backs.*
+
+| set | gates | measured | was | now |
+|---|---|---|---|---|
+| `quick` | 12 | 522 s | 540 | **600** |
+| `render` | 3 | 6 s | 120 | **60** |
+| `lanes` | 1 | 39 s | 360 | **240** |
+| `budget` | 1 | 277 s | 360 | **330** |
+| `shots` | 9 | 303 s | 420 | **390** |
+| `transport` | 4 | 268 s | 300 | **330** |
+| `kits` | 6 | 395 s | 960 | **480** |
+| `sim` | 2 | 354 s | 900 | **450** |
+| `sweep` | 1 | 628 s | — | **780** |
+| `film` | 1 | 116 s | 480 | **180** |
+| `room` | 3 | 187 s | 600 | **300** |
+| `all` | 43 | — | 3420 | **3600** |
+
+**`sim` is split, which is M2's rule for the fifth time.** 982 s of a 900 s budget with `sim_sweep`
+628 s of it — one gate at two thirds of the set, and raising the budget to fit is what the rule
+forbids. `sim` is the two soaks now and `sweep` is the balance sweep, so a gameplay slice runs six
+minutes and takes the ten-minute sweep when it wants a report. It is also the honest line: the sweep
+is the only gate that WRITES a report.
+
+**And the gate that grew was attributed rather than excused.** `sim_sweep` was 439 s when M2 first
+measured it. Timed on this machine with the quests off and on — the lever D8b added in era 30 —
+**587 s and 586 s**: the quest catalogue in the tools costs the sweep **nothing**. What it is, is
+thirty balance eras of a bigger city played 200 times for 25 years. A sweep tracks the simulation.
+
+**The item's other three bullets.** The three slow gates: `ui_smoke` is 179 s, not the 301 that
+started this item, and `play_smoke` 96 and `lobby_smoke` 39 — the two flakes were fixed on 2026-10-07
+by waiting for the effect instead of reading on the next line. A timing assumption is now hard to
+write: `tools/lib/settle.mjs` waits for the simulation, `ui_smoke`'s `drawn()` waits for the
+renderer (S22), and `room_smoke`'s `until(page, why, read)` prints the last value it saw. And the
+split the item asked us to "consider" is the one above.
+
+**What was NOT the finding, three times over.** Every red this item was chasing on a loaded machine
+was contention: `motion_shots`' "two frozen shots differ", `budget_gate`'s 23 ms cold build, and the
+604 s sweep reading. All three are green and stable alone. `gates.mjs` prints `NOT ALONE` before it
+starts, which is the instrument that finally states this item's own lesson in code.
+
+## M9 — The `quick` set starves its own gates (S, measurement) — the item as written
 
 **Goal.** A gate set that fails tells you about the code.
 
@@ -397,8 +443,8 @@ because a config that arrives after the first frame would move what the first fr
 
 **Where this lane stands, 2026-10-08.** M1–M6 and M8 are built; `main` is the game and was pushed
 on 2026-09-08. What is open: **M7** (the release again, and a merge — `main` is well behind, and
-the push is Kjell's), **M9** (the `quick` gate set takes 986 s against a 540 s budget and starves
-its own gates; two of its named failures are fixed, the budget itself is not), **M10** (the three
+the push is Kjell's), ~~**M9**~~ (built 2026-10-08: every set re-measured quiet, most budgets DOWN, `sim` split from
+`sweep`, and the sweep's growth attributed to the city rather than to the code), **M10** (the three
 interface skins exist and nobody has looked at them — **Q159**, answered as **A137**: `retro` stays
 as built, so M10 is **closed**), and **M11** ("1 tiles": the catalogue has no plural machinery at
 all).

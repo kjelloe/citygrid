@@ -158,7 +158,19 @@ export const SETS = {
   // absorb — and it is a gate rather than a tool since T7 taught it to exit
   // non-zero when the reducer refused what it was photographing.
   kits: ["civic_shots", "foliage_shots", "motion_shots", "role_shots", "street_shots", "trade_shots"],
-  sim: ["disaster_soak", "traffic_gate", "sim_sweep"],
+  // **Split at M9** (2026-10-08), the fifth time M2's rule has fired. Measured
+  // quiet, `sim` was **982 s of a 900 s budget** with `sim_sweep` 628 s of it —
+  // one gate at two thirds of the set, growing with the city rather than with
+  // the code, and raising the budget to fit is what the rule forbids. So the
+  // sweep is its own set: a gameplay slice runs the two soaks in six minutes
+  // and takes the ten-minute sweep when it wants a REPORT, which is the same
+  // line `budget_gate` and `lanes_dump` were split on.
+  sim: ["disaster_soak", "traffic_gate"],
+  // The balance report, and the only gate that writes one. It is `sim_sweep`
+  // alone because it is ten minutes and because an era is a deliberate act —
+  // see `.claude/skills/sim-gate/SKILL.md` for the arms an era with two rules
+  // in it needs.
+  sweep: ["sim_sweep"],
   // The storyboard (F2). A set of its own for the same reason `kits` is one: it
   // is 61 frames of a played 96-tile city on SwiftShader and nothing else can
   // absorb five minutes. It is also the only gate that renders the game as a
@@ -181,7 +193,7 @@ export const SETS = {
 // as paying twice and it never did — but the set list is a thing people add to,
 // and this is one line.
 SETS.all = [...new Set([...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim,
-  ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room])];
+  ...SETS.sweep, ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room])];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -209,6 +221,36 @@ SETS.all = [...new Set([...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.bu
  * `render`'s budget is restated from its new contents rather than kept at a
  * number set when the set took three seconds.
  */
+/**
+ * **Re-measured 2026-10-08 at era 30 (M9), one set at a time on a quiet
+ * machine** — the measurement M9 asked for, and the first one taken with that
+ * discipline enforced: `gates.mjs` prints `NOT ALONE` now, because three reds
+ * in one day were contention and all three were green alone.
+ *
+ *   set        gates  measured   was    now    what moved
+ *   quick        12    522 s     540    600    room_smoke left it (X5); 3% of room was why it kept tripping
+ *   render        3      6 s     120     60    the walks are seconds; lanes_dump left at S18
+ *   lanes         1     39 s     360    240    211 s at era 28 - B14 shrank the hilly city under it
+ *   budget        1    277 s     360    330
+ *   shots         9    303 s     420    390    gained sun_shots (23 s) at S22
+ *   transport     4    268 s     300    330    rail and harbour both grew with their read-backs
+ *   kits          6    395 s     960    480    the budget was set before the set was ever measured
+ *   sim           2    354 s     900    450    SPLIT: disaster_soak 150, traffic_gate 204
+ *   sweep         1    628 s      -     780    sim_sweep alone; 586 s on a second run, so the spread is real
+ *   film          1    116 s     480    180    291 s at F2 - the city is smaller since B14
+ *   room          3    187 s     600    300    room_soak 48, room_churn 58, room_smoke 82
+ *
+ * **Most of these come DOWN**, which is the instrument getting tighter: `kits`
+ * by half, `film` to a third, `room` to a half. Two go up and both say why.
+ *
+ * **The one that grew is `sim_sweep`: 439 s when M2 first measured it, 586-628 s
+ * now - and it is the CITY, not the code.** Timed on this machine with the
+ * quests off and on: **587 s and 586 s**, so D8b (era 30, which put the quest
+ * catalogue into the tools for the first time) costs the sweep nothing at all.
+ * What it is, is thirty balance eras of a bigger city, played 200 times for 25
+ * years. A sweep tracks the simulation, so its budget wants the room its own
+ * growth takes - and the 7% between two quiet runs of the same code is in it.
+ */
 export const BUDGET_MS = {
   // **Restated at S13 from a measured run: 490 s.** Not a gate that grew — the
   // FIXTURE under one did, which is the same restatement `render` took at H7.
@@ -220,7 +262,7 @@ export const BUDGET_MS = {
   // 540 s, and `worker_smoke` (7 s, W2) fits inside it: the set was measured at
   // 494 s with the seam in place, which is 46 s of headroom and the reason this
   // gate went here rather than into a set of its own.
-  quick: 9 * 60 * 1000,
+  quick: 10 * 60 * 1000,
   // Measured after the split (B3a): walkthrough 2, passability 0, lanes_dump 60.
   // Restated at H7, when the FIXTURE changed: `saturatedCity` plays the deputy
   // now, so the lane graph is 7,694 links against 2,436 and the walk is 405 real
@@ -229,29 +271,32 @@ export const BUDGET_MS = {
   // rather than a gate that grew (M2's rule), and the fixture was chosen at ONE
   // mayor and twenty years for exactly this reason — at four mayors lanes_dump
   // had not finished in thirteen minutes.
-  render: 2 * 60 * 1000,
+  render: 1 * 60 * 1000,
   // `lanes_dump` alone: 211 s here, 239 s on the reviewer's machine, and it
   // derives a model per size and terrain — so it tracks the city, not the code.
-  lanes: 6 * 60 * 1000,
+  lanes: 4 * 60 * 1000,
   // `budget_gate` alone, 235 s at B3a with three tiers, two projections, four
   // spans and the desktop viewport D8 added.
-  budget: 6 * 60 * 1000,
+  budget: 5.5 * 60 * 1000,
   // Measured at P75, all five in one run: water 23 s, damage 29, services 50,
   // windows 36, rain 28 — 166 s. The first guess was 20 minutes, from timings
   // taken while probing interactively rather than from the tools themselves.
   // Restated at T4b's split from what is left in it: 210 s measured.
   // `embankment_shots` joined at S18 (six photo frames of a played hilly 128,
   // about 90 s): restated from the contents rather than raised to fit.
-  shots: 7 * 60 * 1000,
+  shots: 6.5 * 60 * 1000,
   // The transport lane's pictures, measured at T4b in one run: avenue 38 s,
   // rail 76, harbour 73 — 187 s.
-  transport: 5 * 60 * 1000,
-  kits: 16 * 60 * 1000,
-  sim: 15 * 60 * 1000,
+  transport: 5.5 * 60 * 1000,
+  kits: 8 * 60 * 1000,
+  sim: 7.5 * 60 * 1000,
+  // `sim_sweep` alone, and the budget carries its own spread: 628 s in the set
+  // run and 586 s standing on its own, the same code both times.
+  sweep: 13 * 60 * 1000,
   // The storyboard, measured at F2: 61 frames in 291 s at 960×540, of which the
   // two walk shots are half — a street frame on SwiftShader is a quarter of a
   // second and the film settles the street cache at every one of them.
-  film: 8 * 60 * 1000,
+  film: 3 * 60 * 1000,
   // Written before X1 had a gate, so the first measurement is read against
   // something: 10 minutes for `room_soak` plus the `room_smoke` that X3b owes.
   // Measured at X1a: **room_soak 5 s** — 466 beats at a 10 ms pump, two
@@ -261,7 +306,7 @@ export const BUDGET_MS = {
   // soak's pump runs at 10 ms where a real room's is 100. `room_smoke` joined
   // it at X1c and brings two browsers with it — measured at 41 s, so the
   // budget is unchanged.
-  room: 10 * 60 * 1000,
+  room: 5 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
   // transport 187 — which is where 35 minutes came from, and `kits` (365 s) was
   // added to `all` in P94 without it. Restated from the contents at P96, the
@@ -281,7 +326,11 @@ export const BUDGET_MS = {
   // measured with, which is the restatement M2's rule asks for rather than a
   // raise to fit a gate that grew. Every individual set is still inside its own
   // budget, which is the half that would have been a finding.
-  all: 57 * 60 * 1000,
+  // **Restated at M9 from the quiet run above**: the sets measure 3,095 s between
+  // them, one at a time, and `all` runs each gate once. 57 minutes was the old
+  // number and the last full run came in at 3,005 s contended; 60 gives the
+  // sweep's own 7% spread somewhere to go without hiding a gate that grew.
+  all: 60 * 60 * 1000,
 };
 
 export function gatesIn(set) {

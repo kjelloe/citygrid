@@ -302,6 +302,14 @@ Two things to keep straight when doing it:
   the one the era shipped. Quote the arm's numbers in the dev-log and say they came from an arm.
 - Run the two sweeps in parallel. They are single-threaded and there are twenty cores.
 
+## The sweep is its own set (M9, 2026-10-08)
+
+`node tools/gates.mjs sweep` is `sim_sweep` alone, 586-628 s; `sim` is the two soaks,
+`disaster_soak` and `traffic_gate`, 354 s. They were one set at 982 s of a 900 s budget, with the
+sweep two thirds of it — so a gameplay slice can run the soaks in six minutes and take the sweep
+when it wants a REPORT. Which is also the honest division: the sweep is the only gate that WRITES
+one, and an era is a deliberate act.
+
 ## Two rules in one era: an arm each, and keep them (era 30)
 
 L2 raised the price of clearing ground and D8b put the quests into the tools, and A133/A136 asked for
