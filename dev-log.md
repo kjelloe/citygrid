@@ -13793,3 +13793,27 @@ set printed the warning and the two sets after it, loading the corrected file, d
 22.6 s, `budget` **277 s of 360 and `budget_gate` ok** — which is the 23 ms answered twice over —
 `render` 6 s of 120, `film` 116 s of 480. Suite **1,978 tests, 1,975 pass, 0 fail, 3 skipped, green
 twice.**
+
+## The round after S22 — the steps are load-bearing, and now it is measured (2026-10-08)
+
+Censuses green: 58 tests across `omissions`, `reachability`, `dead-exports`, `unused-imports`,
+`tools`, `gates` and `purity`. Everything S22 added has a reader, including the renderer's new
+`keyLight` getter, which the gate's `__ask` is the only caller of and which is the point of it.
+
+**The omission was in the slice's own item, and I had skipped it.** S22 says *"advance the azimuth
+in discrete steps … Measure before choosing a step count."* I chose 48, and the gate asserted that
+the light is unchanged inside one step — which a light that never moved at all would also satisfy.
+A check that cannot fail for the right reason is not a measurement.
+
+`tools/shoot.html` takes `sunSteps=<n>` now, the same shape as `wall=0`: the before and the after of
+a decision come out of **one** harness. `sun_shots` shoots the same nudge twice:
+
+```
+a fifth of a step later (0.0129 of the day): azimuth unchanged
+the same nudge with sunSteps=0: azimuth moved, picture different
+```
+
+146.3° against 146.5° — two tenths of a degree, and the frame's digest changes with it. That is the
+crawl the steps exist to prevent, visible in the smallest nudge the arc can make, and it is why the
+number is 48: a step every three seconds of the 148.8 s the sun is up, 0.94° each. The config says
+so where the number is, rather than in a dev-log entry nobody will find.

@@ -206,8 +206,16 @@ export const DEFAULTS = Object.freeze({
   //
   // `arcSteps` quantises both arcs, because `followShadow` snaps the shadow
   // frustum to a shadow texel so edges do not crawl as the view PANS, and a
-  // light that rotates turns the texel grid itself. 0 is continuous. The number
-  // is a measurement: see the dev-log for the shimmer count at each.
+  // light that rotates turns the texel grid itself. 0 is continuous.
+  //
+  // **48 is a step every three seconds** of the 148.8 s the sun is up on a
+  // 240-second day — 0.94° of arc each. That the steps are load-bearing is
+  // measured rather than assumed: `sun_shots` nudges the clock a fifth of a
+  // step and shoots it twice, once as shipped and once with `sunSteps=0`. With
+  // the steps the azimuth is unchanged and the two frames are the same bytes;
+  // without them the light moves 0.2° and the picture changes. A light that
+  // never moved at all would also be "unchanged inside a step", which is why
+  // the second arm is there.
   sun: { arcDegrees: 45, moonArcDegrees: 45, arcSteps: 48 },
   // Time of day (E6, spec §7.3). Presets, not a slider: each one is a
   // composition. `key`, `hemi` and `sunHeight` are FACTORS on whatever the

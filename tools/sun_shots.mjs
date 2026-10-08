@@ -111,7 +111,7 @@ const problems = [];
 const frames = [];
 
 /** One shot at one hour, from the one camera. */
-async function frame(label, hour) {
+async function frame(label, hour, steps) {
   const out = `reports/smoke-S22-${label}.png`;
   // `hour` goes in `extra`, not beside `photo`: `shoot()` has a named parameter
   // per flag and forwards anything ELSE through `extra`, so a top-level `hour`
@@ -128,7 +128,8 @@ async function frame(label, hour) {
   // over, before anybody looked at the number.
   const r = await shoot({ out, seed: SEED, years: YEARS, size: SIZE, tier: "high", streets: 40,
     frames: 2, life: false, photo: camera.photo, width: 1280, height: 720,
-    time: phaseOf(hour, 1), extra: { __ask: ASK, hour } });
+    time: phaseOf(hour, 1),
+    extra: { __ask: ASK, hour, ...(steps === undefined ? {} : { sunSteps: steps }) } });
   if (!r.ok) problems.push(...r.problems.slice(0, 2));
   // `shoot` writes the file and does not hand the bytes back, so the digest is
   // read off disk — which is also what a person comparing two shots does.
@@ -207,6 +208,17 @@ if (cfg.sun.arcSteps > 0) {
   if (!held) {
     problems.push(`the light moved inside one of its ${cfg.sun.arcSteps} steps, `
       + "so the shadow texel grid turns under a camera that is not panning");
+  }
+  // **And the same nudge with the steps OFF**, which is what makes the first
+  // half a measurement rather than a tautology: a light that never moved at all
+  // would also be "unchanged inside a step". With `sunSteps=0` the arc is
+  // continuous, so a fifth of a step has to move it — and the picture with it.
+  const loose = await frame("noon-nudged-continuous", inside, 0);
+  const moved = loose.where && noon?.where && loose.where.azimuth !== noon.where.azimuth;
+  console.log(`the same nudge with sunSteps=0: azimuth ${moved ? "moved" : "UNCHANGED"}, `
+    + `picture ${loose.digest === nudged.digest ? "identical" : "different"}`);
+  if (!moved) {
+    problems.push("with the steps off the light did not move either, so the step check proves nothing");
   }
 } else {
   console.log(`sun.arcSteps is 0, so the arc is continuous and there are no steps to hold still`);

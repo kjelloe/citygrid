@@ -359,6 +359,19 @@ if (wallParam === "0") {
   setConfig({ ...cfg0, road: { ...cfg0.road, wallMinDrop: Infinity } });
 }
 
+// `sunSteps=<n>` overrides `sun.arcSteps` (S22). The steps exist so the light
+// holds still between them — `followShadow` snaps the shadow frustum to a texel
+// and a light that rotates turns the grid under it — and a lever is the only
+// way a gate can show that they are load-bearing rather than decorative: with
+// them, two hours inside one step are the same bytes; with `sunSteps=0` they
+// are not. Same shape as `wall=0`: the before and the after of a decision come
+// out of ONE harness.
+const sunStepsParam = params.get("sunSteps");
+if (sunStepsParam !== null) {
+  const cfg0 = getConfig();
+  setConfig({ ...cfg0, sun: { ...cfg0.sun, arcSteps: Number(sunStepsParam) } });
+}
+
 // `ladder=0` draws every trade lot as the one mass it was before S16a, so a
 // parade of shops and the slab it replaced are the same city photographed twice.
 const ladderParam = params.get("ladder");
