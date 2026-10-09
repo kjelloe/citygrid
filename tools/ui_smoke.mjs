@@ -1025,6 +1025,11 @@ try {
   const drew = (row) => row.triangles > 0 && (held || row.frames > 1);
   check("the card says whether its steps were held short", parsed?.heldSeconds === 1,
     `heldSeconds ${parsed?.heldSeconds}`);
+  // The step COUNT first: `every` is true of no steps, so a card that reported
+  // an empty sweep would pass this and say nothing about any frame. Nine is
+  // what `perf-sweep.js` runs.
+  check("the card has a step for every one the sweep runs",
+    (parsed?.steps?.length ?? 0) >= 9, `${parsed?.steps?.length ?? 0} step(s)`);
   check("every step drew something",
     parsed?.steps?.every(drew) === true,
     (parsed?.steps ?? []).filter((r) => !drew(r)).map((r) => JSON.stringify(r)).join(" | "));

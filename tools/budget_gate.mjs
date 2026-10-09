@@ -941,6 +941,12 @@ try {
   // the chunks are actually being drawn.
   // The whole point of B7: from the city camera a street with people on it is
   // a street with people on it. Held is the cap's business, drawn is this row's.
+  // **The rows exist before anything is true of them.** `every` is true of an
+  // empty list, so a probe that returned none would report this green and the
+  // three crowd rows below it green as well — four claims about a frame
+  // nobody looked at.
+  check("the desktop pass measured some spans at all", big.rows.length >= 2,
+    `${big.rows.length} row(s)`);
   check("the desktop viewport keeps the draw calls under eighty",
     big.rows.every((r) => r.calls <= 80), big.rows.map((r) => `span ${r.span}: ${r.calls}`).join(", "));
   for (const row of big.crowd) {
@@ -949,6 +955,8 @@ try {
   }
   // The whole point of B7: from the city camera a street with people on it is
   // a street with people on it. Held is the cap's business; posed is this row's.
+  check("the crowd pass measured some spans at all", big.crowd.length >= 1,
+    `${big.crowd.length} row(s)`);
   check("the city camera shows a crowd on the desktop screen (B7)",
     big.crowd.every((r) => r.held > 0 && r.posed > 0),
     big.crowd.map((r) => `city ${r.span}t: ${r.posed} posed of ${r.held}`).join(", "));

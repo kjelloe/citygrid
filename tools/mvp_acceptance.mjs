@@ -306,8 +306,12 @@ try {
     }
     return out;
   });
+  // Four overlays, named in the loop above — asserted rather than assumed,
+  // because `every` is true of no overlays at all and a page that had lost
+  // the buttons would pass §24.8 by drawing nothing.
   criterion(8, "Diagnose utility and service problems through overlays",
-    Object.values(overlayCheck).every((n) => n > 0), JSON.stringify(overlayCheck));
+    Object.keys(overlayCheck).length === 4 && Object.values(overlayCheck).every((n) => n > 0),
+    JSON.stringify(overlayCheck));
 
   // §24.9 — build police, fire and hospital, off the toolbar
   const serviceRow = await page.evaluate(() => globalThis.CITY.state.height - 20);

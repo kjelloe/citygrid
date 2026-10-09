@@ -363,6 +363,13 @@ try {
     console.log(`      band ${i} to ${i + 1} on a hillside: ${gap.median} apart at the median, `
       + `${gap.worst} in the darkest twentieth (${gap.lit} washed pixels)`);
   }
+  // **How many bands there are, before anything about them.** `gaps.every(...)`
+  // is true of no bands at all, so a probe that found none would report three
+  // greens about an overlay it never looked at — the shape the room row found
+  // on a phone, where every panel read 0 × 0 and "nothing is clipped" was
+  // perfectly true of a box that was not there.
+  check("there are bands to tell apart at all", gaps.length === washes.length - 1,
+    `${gaps.length} gaps between ${washes.length} washes`);
   check("the wash reaches the ground at all", gaps.every((g) => g.lit > 200),
     gaps.map((g) => g.lit).join(", "));
   // The FLOORS are re-derived on bare ground (B1a). Thirty is where two flat
