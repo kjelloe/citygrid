@@ -398,6 +398,9 @@ button, [role="button"] {
     width: auto;
     bottom: auto;
     max-height: 38vh;
+    /* `max-height` with the default `overflow: visible` is a decoration: the
+       content spills out below the box and keeps its pointer events (X7). */
+    overflow: auto;
   }
 }
 
@@ -634,6 +637,21 @@ button, [role="button"] {
 .hud-advisor h2, .hud-inspector h2 { padding-inline-end: 2rem; }
 .hud-advisor h2 { margin: 0 0 0.25rem; font-size: 0.95rem; }
 .hud-advisor .says { margin: 0; font-size: 0.87rem; line-height: 1.4; }
+
+/* **A readout never eats a click** (X7). The advisor is a card of text whose
+   only control is the close button in its corner, and on a phone at 200% text
+   it overlaps the rail — where it was swallowing the press meant for the inbox
+   button underneath it. Capping its height does not fix that: there are only
+   155 px between the top bar and the rail at that text size, and a card that
+   fits is a card with its third line cut off mid-sentence at NORMAL text,
+   which is what trying it looked like.
+   So the card passes clicks through and its button does not. `.hud-aside > *`
+   keeps `pointer-events: auto` for the inspector beside it, which is a panel
+   of controls and must stay clickable. Found by the room row the release gate
+   added to `a11y_smoke`: the panels it opens exist only in a room, and nothing
+   had ever opened one on a phone. */
+.hud-advisor { pointer-events: none; }
+.hud-advisor .panel-close, .hud-advisor button { pointer-events: auto; }
 .hud-advisor .choices { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.6rem; }
 .hud-advisor .choice {
   min-height: 40px;

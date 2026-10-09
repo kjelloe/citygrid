@@ -32,8 +32,19 @@ function check(name, ok, detail = "") {
 }
 
 const server = spawn(process.execPath, [join(root, "server", "index.js"), String(PORT)], {
-  cwd: root, stdio: "ignore",
+  cwd: root, stdio: ["ignore", "pipe", "pipe"],
 });
+// **The room's code, off the server's own stdout** (X7). The room's panels —
+// the roster, the inbox, the chat, the history — have never been under this
+// sweep, because every gate here opens singleplayer and singleplayer has none
+// of them. The server prints the code it booted with, which is the only way
+// in without a lobby.
+let roomCode = "";
+server.stdout.on("data", (chunk) => {
+  const found = /room code: ([A-Z0-9-]+)/.exec(String(chunk));
+  if (found) roomCode = found[1].replace("-", "");
+});
+server.stderr.on("data", () => {});
 const base = `http://localhost:${PORT}/index.html`;
 for (let attempt = 0; attempt < 60; attempt += 1) {
   try { if ((await fetch(base)).ok) break; } catch { /* not up */ }
@@ -316,6 +327,69 @@ try {
 
   check("no page errors", problems.length === 0, problems.join(" | "));
   await context.close();
+
+  // --- 7. and the same questions IN A ROOM (X7) -----------------------------
+  //
+  // Everything above opens singleplayer, which has no roster, no inbox, no
+  // chat and no history — so the four panels a multiplayer evening lives in
+  // have never been asked whether they can be reached at all. v1.0's V4 is
+  // where that stops being acceptable.
+  if (roomCode) {
+    const roomCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const roomPage = await roomCtx.newPage();
+    const roomProblems = [];
+    roomPage.on("pageerror", (e) => roomProblems.push(`page error — ${e.message}`));
+    await roomPage.goto(`http://localhost:${PORT}/index.html?join=${roomCode}&life=0&lock=0`);
+    const inRoom = await roomPage.waitForFunction(() => globalThis.CITY?.room !== undefined,
+      undefined, { timeout: 30_000 }).then(() => true).catch(() => false);
+    check("a room opens at all, which is what the rest of this block needs", inRoom, roomCode);
+    // The first-run card, as a player dismisses it: it is a dialog over the
+    // middle of the screen and on a phone it covers the rail entirely.
+    await roomPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+
+    if (inRoom) {
+      // Every drawer the room adds, opened and measured. A panel whose button
+      // exists and whose body never appears is the shape of `a-control-that-
+      // is-present-but-inert`, and in a room there are four more of them.
+      const drawers = await roomPage.evaluate(() => [...document.querySelectorAll(".rail-button")]
+        .map((b) => b.dataset.drawer).filter(Boolean));
+      check("the room's rail carries the panels a multiplayer city needs",
+        ["roster", "inbox", "chronicle"].every((key) => drawers.includes(key)), drawers.join(", "));
+
+      const opened = [];
+      for (const key of drawers) {
+        await roomPage.click(`#rail-${key}`);
+        const body = await roomPage.evaluate((want) => {
+          const drawer = document.querySelector(".hud-drawer");
+          const shown = drawer && !drawer.hidden;
+          const panel = document.querySelector(`.hud-${want}`);
+          const rect = panel?.getBoundingClientRect();
+          return {
+            shown: Boolean(shown), visible: Boolean(rect && rect.width > 0 && rect.height > 0),
+            onScreen: Boolean(rect && rect.right <= window.innerWidth + 1 && rect.bottom <= window.innerHeight + 1),
+          };
+        }, key);
+        opened.push({ key, ...body });
+      }
+      const broken = opened.filter((d) => !d.shown || !d.visible || !d.onScreen);
+      check("every panel in a room opens, and opens on screen",
+        broken.length === 0, JSON.stringify(broken));
+
+      // And the keyboard, which is the other half of this file's claim.
+      const unreachable = await roomPage.evaluate(() => [...document.querySelectorAll("#hud button")]
+        .filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && (el.tabIndex < -1 || el.disabled);
+        }).map((el) => el.id || el.textContent.trim()));
+      check("no control in a room is removed from the keyboard's reach",
+        unreachable.length === 0, unreachable.join(", "));
+      check("the room reported no page errors", roomProblems.length === 0,
+        roomProblems.slice(0, 3).join(" | "));
+    }
+    await roomCtx.close();
+  } else {
+    check("the server said which room it booted with", false, "no room code on stdout");
+  }
 } finally {
   await browser.close();
   server.kill();

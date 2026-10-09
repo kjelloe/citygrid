@@ -75,7 +75,7 @@ function connect(url, seat, code) {
     const socket = new WebSocket(url);
     const client = {
       seat, socket, host: createSimHost(), mirror: undefined,
-      frames: 0, commands: 0, checks: 0, divergences: [], resyncs: 0, asked: 0, answered: 0,
+      frames: 0, bytes: 0, commands: 0, checks: 0, divergences: [], resyncs: 0, asked: 0, answered: 0,
       accepted: 0, refused: [],
       hash: () => (client.mirror ? hashState(client.mirror) : ""),
       send: (message) => socket.send(JSON.stringify(message)),
@@ -113,6 +113,10 @@ function connect(url, seat, code) {
     }));
     socket.on("error", reject);
     socket.on("message", (raw) => {
+      // What the room costs a client on the wire (X7, plan §3.8). Counted here
+      // because this is the only place the bytes exist as bytes: everything
+      // below works on the parsed message.
+      client.bytes += raw.length ?? String(raw).length;
       const message = JSON.parse(raw.toString());
       if (message.type === S2C.WELCOME) {
         const ready = client.host.handle({ type: "init", id: 0, save: message.save }).reply;
@@ -203,6 +207,20 @@ const roomDir = await mkdtemp(join(tmpdir(), "citygrid-soak-"));
 // windows are seconds rather than minutes because a soak that waited a quarter
 // of an hour for a regency would not be run.
 const CHURN = process.argv.includes("--churn");
+/**
+ * **The release gate at eight** (X7, v1.0's V4). `plan-v1.md` has named it
+ * since August: eight players on one region for a session. This is the
+ * scripted half — eight clients, each running the real `worker/sim-host.js`,
+ * on one socket each, for five city years — and the half a browser cannot do,
+ * because eight Chromium contexts on one machine measure the machine.
+ *
+ * What it adds to the two-client run is not "more of the same": a room with
+ * eight seats broadcasts every accepted command to eight sockets, so the
+ * frame cost per client and the pump's jitter under that load are plan §3.8's
+ * second measured row, and the hash has eight ways to disagree instead of one.
+ */
+const EIGHT = process.argv.includes("--eight");
+const CLIENTS = EIGHT ? 8 : 2;
 
 const server = await startServer({
   heldForMs: CHURN ? 500 : undefined,
@@ -212,7 +230,7 @@ const server = await startServer({
   // A fresh region every run, for the same reason.
   fresh: true,
   tickMs: 10,                     // the soak's beat; the room still owes 2 ticks a beat at speed 1
-  options: { seed: 1003, width: SIZE, height: SIZE, seats: 4 },
+  options: { seed: 1003, width: SIZE, height: SIZE, seats: Math.max(4, CLIENTS) },
   roomId: "soak",
 });
 const url = `ws://127.0.0.1:${server.port}/ws`;
@@ -220,6 +238,98 @@ const url = `ws://127.0.0.1:${server.port}/ws`;
 // it like any other client would. Hoisted, because the restart check below
 // compares the room that comes back off the disk against it.
 const code = server.room.code();
+
+// **Eight clients, one region** (X7). Its own block rather than a parameter on
+// the one below: the two-client soak is X1's gate and has been measured at
+// 47 s since X1d, and threading `clients[i]` through its pairwise request
+// choreography would make both runs harder to read for no gain.
+if (EIGHT) {
+  const clients = [];
+  for (let seat = 1; seat <= CLIENTS; seat += 1) clients.push(await connect(url, seat, code));
+  check(`${CLIENTS} clients joined one room`,
+    clients.every((c) => c.mirror !== undefined), `${clients.filter((c) => c.mirror).length} of ${CLIENTS}`);
+
+  server.room.setSpeed(3);
+  const ticksPerIteration = (LOOP_MS * TICKS_PER_SECOND_FAST) / 1000;
+  const beats = Math.ceil((YEARS * TICKS_PER_YEAR) / ticksPerIteration);
+  const BUILD_EVERY = Math.max(1, Math.round(beats / 52));
+  const ASK_EVERY = Math.max(4, Math.round(beats / 10));
+  console.log(`${CLIENTS} clients, ${beats} iterations of ${LOOP_MS} ms `
+    + `≈ ${(beats * LOOP_MS / 1000).toFixed(0)} s for ${YEARS * TICKS_PER_YEAR} ticks`);
+
+  // Each seat on its own strip of the map, so eight builders are not eight
+  // refusals for the same ground — and a request around the ring, so every
+  // seat both asks and answers rather than one pair carrying the whole claim.
+  const strip = Math.max(6, Math.floor((SIZE - 8) / CLIENTS));
+  for (let n = 0; n < beats; n += 1) {
+    if (n % BUILD_EVERY === 0) {
+      for (let i = 0; i < clients.length; i += 1) {
+        const run = clearRun(clients[i].mirror, 4 + i * strip, 6);
+        if (run) clients[i].build(run);
+      }
+    }
+    if (n % ASK_EVERY === 1) {
+      for (let i = 0; i < clients.length; i += 1) {
+        const next = (i + 1) % clients.length;
+        const theirs = ownedRoad(clients[i].mirror, clients[next].seat);
+        if (theirs) clients[i].ask(theirs);
+      }
+    }
+    if (n % ASK_EVERY === 3) for (const c of clients) c.answer();
+    await new Promise((resolve) => setTimeout(resolve, LOOP_MS));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 400));
+
+  const hashes = clients.map((c) => c.hash());
+  const jitter = server.pump.jitter();
+  const cost = server.pump.cost();
+  const frames = clients.map((c) => c.frames);
+  const bytes = clients.map((c) => c.bytes);
+  const asked = clients.reduce((n, c) => n + c.asked, 0);
+  const answered = clients.reduce((n, c) => n + c.answered, 0);
+
+  console.log(`\nroom at tick ${server.room.tick()}; frames ${Math.min(...frames)}–${Math.max(...frames)}; `
+    + `${asked} requests asked, ${answered} answered`);
+  console.log(`bytes a client: ${(Math.min(...bytes) / 1024).toFixed(0)}–`
+    + `${(Math.max(...bytes) / 1024).toFixed(0)} KiB over ${YEARS} city years `
+    + `(${(bytes.reduce((a, b) => a + b, 0) / 1024 / 1024).toFixed(2)} MiB from the room in total)`);
+  console.log(`pump jitter p50 ${jitter?.p50Ms} ms p99 ${jitter?.p99Ms} ms max ${jitter?.maxMs} ms `
+    + `(${jitter?.latePct}% late); warm beat p50 ${cost?.p50Ms} ms p99 ${cost?.p99Ms} ms `
+    + `max ${cost?.maxMs} ms over ${cost?.n} beats`);
+
+  check("the room played five city years",
+    server.room.tick() >= YEARS * TICKS_PER_YEAR * 0.9,
+    `tick ${server.room.tick()} of ${YEARS * TICKS_PER_YEAR}`);
+  check(`all ${CLIENTS} clients are on one hash`, new Set(hashes).size === 1,
+    hashes.map((h, i) => `${i + 1}:${h.slice(0, 8)}`).join(" "));
+  check("and it is the room's", hashes[0] === server.room.hash(),
+    `${hashes[0]} vs ${server.room.hash()}`);
+  for (const c of clients) {
+    check(`seat ${c.seat} never diverged`, c.divergences.length === 0,
+      c.divergences.slice(0, 2).map((d) => `tick ${d.tick}: ${d.mine} vs ${d.room}`).join("; "));
+  }
+  check("every seat checked the month's hash rather than assuming it",
+    clients.every((c) => c.checks >= YEARS * 8), clients.map((c) => c.checks).join(" "));
+  // Requests both ways round the ring, which is the half of the release gate
+  // that is about PLAYING rather than about agreeing.
+  check("requests were filed and answered in both directions", asked > 0 && answered > 0,
+    `${asked} asked, ${answered} answered`);
+  // §3.8's bound, and the one number a deployed server is judged on.
+  check("the pump kept its beat under eight clients", (jitter?.p99Ms ?? 1e9) < 150,
+    `p99 ${jitter?.p99Ms} ms against a 150 ms bound`);
+
+  for (const c of clients) c.close();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await server.close();
+  await rm(roomDir, { recursive: true, force: true });
+  if (problems.length > 0) {
+    console.error(`\n${problems.length} problem(s):`);
+    for (const problem of problems) console.error(`  - ${problem}`);
+    process.exit(1);
+  }
+  console.log(`\nroom soak ok — ${CLIENTS} clients, one hash`);
+  process.exit(0);
+}
 
 try {
   const a = await connect(url, 1, code);

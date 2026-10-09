@@ -40,11 +40,12 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **2,028 tests**, green twice in a row on every slice (`./test.sh`), and **twelve gate sets** —
+- **2,087 tests**, green twice in a row on every slice (`./test.sh`), and **thirteen gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
-  `film` and `room` — every one of their budgets re-measured on a quiet machine at era 30 (M9),
-  most of them downwards. `region` is era 31's: a four-seat city played five ways, because the
-  options that divide a region's money cannot be measured at one seat.
+  `release`, `film` and `room` — every one of their budgets re-measured on a quiet machine at
+  era 30 (M9), most of them downwards. `region` is era 31's: a four-seat city played five ways,
+  because the options that divide a region's money cannot be measured at one seat. `release` is
+  X7's: eight scripted clients on one region, which is the wave's own gate.
 
 ## Running it
 
@@ -197,9 +198,12 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**2 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
+**3 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
 anything — both are instruments rather than rules, and both were found by looking at a picture.
 
+- **Q169**: on a phone the advisor's message is cut off mid-sentence — the card ends and the rest
+  of the sentence spills over the map. It has been like that for as long as the phone shot has
+  existed, and it is the first thing anybody will see on a phone at V5.
 - **Q168**: the compare sheet's **terrace** row is captioned "close and low over a residential
   street — the zoom where facades, doors and front gardens have to carry it", and what it renders
   is a region to the horizon with a lake in it. `span: 15` at `pitch: 26°` is a perspective camera

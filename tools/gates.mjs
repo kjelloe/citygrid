@@ -112,6 +112,11 @@ export const GATES = {
   sun_shots: { args: ["tools/sun_shots.mjs"], what: "the sun crosses the sky: three hours from one camera, the light's azimuth read out of the page, and a frozen hour still frozen (S22)" },
   room_soak: { args: ["tools/room_soak.mjs", "5"], what: "two clients, one room, five city years: one order, one hash, and the pump's jitter beside it" },
   room_churn: { args: ["tools/room_soak.mjs", "5", "--churn"], what: "a seat left to the deputy and taken back, with nobody diverging (X4b)" },
+  // **The release gate at eight** (X7, v1.0's V4). Eight scripted clients on
+  // one region for five city years, each running the real `worker/sim-host.js`
+  // — one hash, requests both ways round the ring, and plan §3.8's second
+  // measured row (the pump's p99 and the bytes a client costs).
+  room_eight: { args: ["tools/room_soak.mjs", "5", "--eight"], what: "eight clients, one region, one hash — the wave's release gate (X7)" },
 };
 
 /** What a slice runs. `quick` after any change, `render` for a renderer slice,
@@ -184,6 +189,12 @@ export const SETS = {
   // is a four-seat city played five ways. A gameplay slice that touches
   // anything a SEAT owns runs it; an era runs the tool by hand at 200 games.
   region: ["region_sweep"],
+  // **The wave's release gate** (X7), and its own set by M2's rule rather than
+  // in `room`: that set is 259 s of 300 with the eight BROWSERS inside
+  // `room_smoke`, and the scripted eight is another minute. They answer
+  // different halves — the browsers prove the page, the scripts prove the
+  // hash — and a release is a deliberate act, like an era.
+  release: ["room_eight"],
   // The storyboard (F2). A set of its own for the same reason `kits` is one: it
   // is 61 frames of a played 96-tile city on SwiftShader and nothing else can
   // absorb five minutes. It is also the only gate that renders the game as a
@@ -207,7 +218,7 @@ export const SETS = {
 // and this is one line.
 SETS.all = [...new Set([...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim,
   ...SETS.sweep, ...SETS.region, ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film,
-  ...SETS.room])];
+  ...SETS.room, ...SETS.release])];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -312,6 +323,9 @@ export const BUDGET_MS = {
   // passes rather than one. The gate runs 12 games (120 games, ~200 s); the era
   // report is 200 games and an hour, run by hand, which is what an era is.
   region: 5 * 60 * 1000,
+  // Eight clients for five city years at the soak's hurried speed: measured at
+  // **60 s**, of which 45 is the city years themselves.
+  release: 3 * 60 * 1000,
   // The storyboard, measured at F2: 61 frames in 291 s at 960×540, of which the
   // two walk shots are half — a street frame on SwiftShader is a quarter of a
   // second and the film settles the street cache at every one of them.

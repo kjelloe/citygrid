@@ -59,7 +59,7 @@ Build a road, zone beside it, place a power plant and a pump, and watch it grow.
 One finger paints when a tool is selected and pans when none is; two fingers are
 always the camera. Tap with no tool to inspect a tile.
 
-**Gates.** One runner, twelve sets, and a time budget each — a gate that grows past its share is
+**Gates.** One runner, thirteen sets, and a time budget each — a gate that grows past its share is
 a finding rather than a fact of life. Every gate that exists is in a set, and `test/gates.test.js`
 fails if one is not.
 

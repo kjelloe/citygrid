@@ -15147,3 +15147,113 @@ Suite **2,087 tests, 2,084 pass, 0 fail, 3 skipped, green twice**; `room`
 (A note on gate hygiene: chaining `quick` and `room` in one shell command made
 `room_smoke` red and it was green alone, twice — `a-gate-run-is-exclusive`,
 self-inflicted this time.)
+
+## X7 — the release gate at eight (2026-10-09)
+
+v1.0's V4, and the gate `plan-v1.md` has named since August. It is two halves
+that answer different questions, so it is two gates.
+
+### Eight scripted clients: the hash
+
+`room_soak --eight` — eight clients, each running the real
+`worker/sim-host.js` on its own socket, five city years, with every seat
+building on its own strip and asking the next one round the ring about theirs.
+
+```
+room at tick 756; frames 4577–4582; 68 requests asked, 68 answered
+all 8 clients are on one hash  (1:7d2… 2:7d2… 3:7d2… 4:7d2… 5:7d2… 6:7d2… 7:7d2… 8:7d2…)
+and it is the room's
+bytes a client: 527 KiB over 5 city years (4.12 MiB from the room in total)
+pump jitter p50 10 ms p99 16 ms max 16 ms (1% late)
+warm beat p50 0.06 ms p99 1.3 ms max 1.76 ms over 3000 beats
+```
+
+**Plan §3.8's second measured row.** The p99 is **16 ms against a 150 ms
+bound** — and the soak's pump runs at `tickMs: 10`, a beat ten times faster
+than a real room's, so the bound is being met on a harder clock than the one a
+deployed server keeps. A client costs **527 KiB of frames over five city
+years**, which is the number a phone on a mobile connection cares about.
+
+The requests are the half that is about PLAYING rather than agreeing: 68 filed
+and 68 answered, every seat both asking and answering, because a ring makes
+each of eight do both where a pair makes one do each.
+
+### Eight browsers, one of them a phone: the page
+
+`room_smoke` opens eight contexts in one room — the other half, because a real
+client runs the renderer, the HUD and the worker as well as the reducer.
+
+**Seat 0, not seat numbers.** By that point in the run other blocks have taken
+and released seats, so naming numbers would be a gate asking for a chair
+somebody is sitting in. The door hands out the lowest free one (X2b) and the
+check is that all eight differ: `1 2 4 5 6 3 7 8`.
+
+**And one of them is 390×844.** Every browser in this file had been 1280×800
+since X1c: the join screen, the roster, the inbox and the history had never
+been opened on a phone at all.
+
+```
+ok  8 browsers are in one room
+ok  and every one of them took a seat of its own  (1 2 4 5 6 3 7 8)
+ok  eight browsers and the room are on one hash
+ok  and the phone can open the room's panels  ({"roster":337,"inbox":337,"chronicle":337})
+```
+
+### What the phone found
+
+`a11y_smoke` and `reach_smoke` grew a room row — they spawn `server/index.js`
+now (M12), so the room code is on its stdout and there is a room to open. The
+roster, the inbox, the chat and the history exist only in a room, so **the four
+panels a multiplayer evening lives in had never been read at 200% text, never
+been hit-tested, and never been seen on a phone.**
+
+The first run came back with every panel at **0 × 0** on a phone. Three things
+in a row, and only the first was the gate's fault:
+
+- **The first-run controls card covers the rail on a phone** — 351 px of a
+  390 px screen — so the click never landed. A player dismisses it once; the
+  gate has to as well. Every other browser gate in this project already did.
+- **The advisor's sentence swallowed the press.** At 200% text the card
+  overlaps the rail, and `.hud-aside > *` gives it `pointer-events: auto` for
+  the inspector's sake. A readout must never eat a click: the card passes
+  them through now and its close button does not.
+- **`max-height` with the default `overflow: visible` is a decoration.** The
+  advisor's text spilled out below its own box and kept its pointer events,
+  which is how it reached the rail at all.
+
+**And the check that caught it was the one about SIZE.** A panel that never
+opened passes every other question here: nothing is clipped in a box that is
+not there, and its right edge is inside the viewport because it is at the
+origin. The first version of this row read `offRight: -390` and called it
+readable. Width first, then everything else.
+
+### What the phone found that is not fixed
+
+`reports/hud-phone.png` has read *"…Somebody will want to name a"* and then
+stopped for as long as the shot has existed: the advisor's card ends and the
+rest of the sentence spills over the map. The shot from before today's CSS has
+the same clip, so X7 found it rather than caused it — and whether the card
+should grow, scroll or truncate properly is a look rather than a measurement.
+**Q169**, and it is the first thing anybody will see on a phone at V5.
+
+### A race the set found and the gate did not
+
+`room_smoke`'s hibernation row read the store's directory in the same turn as
+the reap, and `reapEmpty` **starts** that write without awaiting it — the store
+is deliberately off the pump. It passed alone and failed inside the set with
+`0 bytes`, which is the shape of every race: the set is only slower. It waits
+for the file now.
+
+### The sets
+
+`release` is a thirteenth set, by M2's split-rather-than-raise rule: `room` is
+**259 s of 300** with the eight browsers inside `room_smoke`, and the scripted
+eight is another minute. A release is a deliberate act, like an era.
+
+### Measured
+
+Suite **2,087 tests, 2,084 pass, 0 fail, 3 skipped, green twice**. `room`
+**259 s of 300**, `release` **47 s of 180**, `quick` **543 s of 600**.
+
+What is left of V4 is the half this machine cannot do: the same two gates
+against the **deployed** server, which is V5's evening.

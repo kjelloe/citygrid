@@ -70,7 +70,10 @@ const server = await startServer({
   fresh: true,
   tickMs: 100,
   roomId: "smoke",
-  options: { seed: 1003, width: SIZE, height: SIZE, seats: 4 },
+  // **Eight seats** (X7): the release gate `plan-v1.md` has named since August
+  // is eight players in one region, and a room with four of them cannot be
+  // asked the question.
+  options: { seed: 1003, width: SIZE, height: SIZE, seats: 8 },
 });
 const code = server.room.code();
 const origin = `http://127.0.0.1:${server.port}`;
@@ -80,8 +83,8 @@ const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable
 
 /** One client: its own context, so its storage and its service worker are its
  * own — two seats sharing a profile is one browser pretending to be two. */
-async function openClient(seat) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+async function openClient(seat, viewport = { width: 1280, height: 800 }) {
+  const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
@@ -1020,7 +1023,16 @@ try {
     const reaped = server.rooms.reapEmpty(far + 10 * 60 * 1000);
     check("a room nobody came back to is dropped from memory", reaped >= 1
       && server.rooms.get(slept) === undefined, `reaped ${reaped}`);
-    const onDisk = await stat(join(roomDir, `${slept}.json`)).then((i) => i.size).catch(() => 0);
+    // **Waited for, not stat'ed once.** `reapEmpty` STARTS the write and does
+    // not await it — the store is deliberately off the pump — so a gate that
+    // reads the directory in the same turn is reading before the rename. It
+    // passed alone and failed inside the set, which is the shape of every
+    // race: the set is just slower. (`a-gate-that-counts-what-it-sent`.)
+    let onDisk = 0;
+    for (let attempt = 0; attempt < 50 && onDisk === 0; attempt += 1) {
+      onDisk = await stat(join(roomDir, `${slept}.json`)).then((i) => i.size).catch(() => 0);
+      if (onDisk === 0) await new Promise((done) => { setTimeout(done, 100); });
+    }
     check("and it is on the disk, not gone", onDisk > 0, `${onDisk} bytes`);
 
     // And a player types their own code into the lobby, as they would an hour
@@ -1086,6 +1098,73 @@ try {
     check("the stale client reported no page errors", errors.length === 0,
       errors.slice(0, 3).join(" | "));
     await ctx.close();
+  }
+
+  // **The release gate at eight** (X7, v1.0's V4), in browsers. `room_soak
+  // --eight` is the scripted half and proves the HASH; this is the half that
+  // proves the PAGE, because eight real clients each run the renderer, the
+  // HUD and the worker as well as the reducer.
+  //
+  // **And one of them is a phone.** `plan-v1.md` has named eight since August
+  // and every browser in this file has been 1280×800: the join screen, the
+  // roster, the inbox and the history had never been opened on a 390×844
+  // screen at all, which is how the advisor card came to be swallowing the
+  // press meant for the rail (X7, and `a11y_smoke`'s room row found it).
+  {
+    const extra = [];
+    for (let n = 0; n < 6; n += 1) {
+      // **Seat 0 is "any"** (X2b): by this point in the run other blocks have
+      // taken and released seats, so naming numbers here would be a gate
+      // asking for a chair somebody is sitting in. The door hands out the
+      // lowest free one, and the check below is that they are all different.
+      //
+      // The last one is a phone. One rather than eight, because eight Chromium
+      // contexts on one machine measure the machine — and the claim is that a
+      // phone can be IN the room, not that eight phones can.
+      const phone = n === 5;
+      extra.push(await openClient(0, phone ? { width: 390, height: 844 } : undefined));
+    }
+    const everyone = [a, b, ...extra];
+    check(`${everyone.length} browsers are in one room`,
+      everyone.every((c) => c.joined.room === code), everyone.map((c) => c.joined.room).join(" "));
+    check("and every one of them took a seat of its own",
+      new Set(everyone.map((c) => c.joined.seat)).size === everyone.length,
+      everyone.map((c) => c.joined.seat).join(" "));
+
+    // Settle, then one hash. The room is the authority and eight pages have to
+    // agree with it, which is the whole claim of the wave.
+    const room = server.rooms.get(code) ?? server.room;
+    room.setSpeed(0);
+    await Promise.all(everyone.map(({ page }) => until(page, "a client never caught up", (want) => {
+      const city = globalThis.CITY;
+      return { ok: city.state.tick === want && city.pending === 0, tick: city.state.tick };
+    }, room.tick(), 25_000).catch(() => undefined)));
+    const hashes = await Promise.all(everyone.map(({ page }) =>
+      page.evaluate(() => globalThis.CITY?.hash() ?? "none").catch(() => "error")));
+    check("eight browsers and the room are on one hash",
+      new Set([...hashes, room.hash()]).size === 1,
+      hashes.map((h, i) => `${i + 1}:${String(h).slice(0, 8)}`).join(" "));
+    room.setSpeed(2);
+
+    // The phone, specifically: it is in the room and its panels open.
+    const onPhone = extra.at(-1);
+    const panels = await onPhone.page.evaluate(async () => {
+      document.querySelector("#controls-dismiss")?.click();
+      const out = {};
+      for (const key of ["roster", "inbox", "chronicle"]) {
+        document.querySelector(`#rail-${key}`)?.click();
+        const rect = document.querySelector(`.hud-${key}`)?.getBoundingClientRect();
+        out[key] = rect ? Math.round(rect.width) : 0;
+      }
+      return out;
+    });
+    check("and the phone can open the room's panels",
+      Object.values(panels).every((w) => w > 40), JSON.stringify(panels));
+    check("no client in the room reported a page error",
+      everyone.every((c) => c.errors.length === 0),
+      everyone.flatMap((c) => c.errors).slice(0, 3).join(" | "));
+
+    for (const client of extra) await client.context.close();
   }
 
   // The desync detector, which is the one thing that must read zero.

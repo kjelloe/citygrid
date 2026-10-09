@@ -555,6 +555,67 @@ try {
     }
   }
 
+  // --- a ROOM's panels, at 200% text and in high contrast (X7) -------------
+  //
+  // Every check above opens singleplayer. The roster, the inbox, the chat and
+  // the history exist only in a room, so the four panels a multiplayer evening
+  // lives in have never been read at 200% text or asked whether their colours
+  // separate — which is v1.0's V4, and the reason it is in this file rather
+  // than in a note.
+  const roomCode = /room code: ([A-Z0-9-]+)/.exec(serverLog.join(""))?.[1]?.replace("-", "");
+  if (roomCode) {
+    for (const [size, viewport] of [["desktop", { width: 1280, height: 900 }], ["phone", { width: 390, height: 844 }]]) {
+      const roomCtx = await browser.newContext({ viewport });
+      const roomPage = await roomCtx.newPage();
+      roomPage.on("pageerror", (e) => pageErrors.push(`room ${size}: ${e.message}`));
+      await roomPage.goto(`${base}?join=${roomCode}&lock=0&life=0`);
+      const joined = await roomPage.waitForFunction(() => globalThis.CITY?.room !== undefined,
+        undefined, { timeout: 30_000 }).then(() => true).catch(() => false);
+      check(`a room opens on ${size}`, joined, roomCode);
+      if (!joined) { await roomCtx.close(); continue; }
+      // The first-run card, dismissed the way a player dismisses it. On a
+      // phone it is 351 px of a 390 px screen and covers the rail completely,
+      // so a gate that skipped this measured a panel that never opened — and
+      // the first run of this block did exactly that, and only the width
+      // check caught it.
+      await roomPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+
+      await roomPage.addStyleTag({ content: "html { font-size: 200% }" });
+      await roomPage.waitForTimeout(200);
+      for (const key of ["roster", "inbox", "chronicle"]) {
+        await roomPage.click(`#rail-${key}`).catch(() => {});
+        const read = await roomPage.evaluate((want) => {
+          const panel = document.querySelector(`.hud-${want}`);
+          if (!panel) return { missing: true };
+          const rect = panel.getBoundingClientRect();
+          // Clipped text is the 200% failure: a box that did not grow with its
+          // contents hides the end of every sentence in it.
+          const clipped = [...panel.querySelectorAll("*")].filter((el) =>
+            el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).length;
+          return {
+            missing: false,
+            clipped,
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            offRight: Math.round(rect.right - window.innerWidth),
+            sideways: document.documentElement.scrollWidth > window.innerWidth,
+          };
+        }, key);
+        // **Width first.** A panel with no size passes every other check here
+        // — nothing is clipped in a box that is not there, and its right edge
+        // is inside the viewport because it is at the origin. The first run of
+        // this block read `offRight: -390` on a phone and called it readable.
+        check(`${size} · 200% · the ${key} panel is readable`,
+          read.missing === false && read.width > 40 && read.height > 10
+          && read.clipped === 0 && read.offRight <= 1 && !read.sideways,
+          JSON.stringify(read));
+      }
+      await roomCtx.close();
+    }
+  } else {
+    check("the server said which room it booted with", false, "no room code on stdout");
+  }
+
   check("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
   await context.close();
 } finally {

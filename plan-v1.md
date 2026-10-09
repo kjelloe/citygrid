@@ -475,6 +475,7 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
+| **Q169** | **On a phone the advisor's message is cut off mid-sentence** — "…Somebody will want to name a" and then nothing, with the rest spilling over the map. It has been that way for as long as `reports/hud-phone.png` has existed; X7 found it rather than caused it. Grow the card, scroll it, or truncate it properly? | Nothing today — and it is the first thing anybody will see on a phone at V5 |
 | **Q168** | The compare sheet's **terrace** row is captioned "close and low over a residential street — the zoom where facades have to carry it" and renders a region to the horizon with a lake in it: `span: 15` at `pitch: 26°` in a perspective camera sees everything behind the near field. The one row aimed at facades has never photographed any. Re-frame it, or is the wide view wanted there? | Nothing — but it is the row every future facade question is judged on |
 | **Q167** | **Sixteen tools stand up their own static server**, `tools/screenshot.mjs` among them — so every picture this project has taken was served by a harness rather than by the server a player uses. M12 moved the three gates whose premise IS the real server and found a live CSP bug doing it. Should the rest follow, starting with `screenshot.mjs`? | Nothing — the risk is N22's shape, a difference that shows only in a picture nobody took on the real server |
 | ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |

@@ -150,7 +150,7 @@ what is missing is the ACTION. On that refusal the page asks the service worker 
 and reloads — only then, never mid-room (plan §3.9), and never for a `dev` build. `update_smoke`
 gains the row: a client on an old build is refused, reloads, and joins on the new one.
 
-### X7 — The release gate at eight (S) — v1.0's V4
+### ~~X7~~ — The release gate at eight (S) — v1.0's V4 — **built 2026-10-09**, bar the deployed server
 
 **Goal.** The gate `plan-v1.md` has named since August is run as named.
 
