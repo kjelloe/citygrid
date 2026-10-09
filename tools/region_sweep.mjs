@@ -296,6 +296,22 @@ for (const config of CONFIGS) {
   say();
 }
 
+// The same reading `sim_sweep` prints, for the same reason: an arm measured on
+// a configuration where its rule never fires can only come back inert, and the
+// count is what tells that apart from a rule that does nothing.
+say("## Rules that fired");
+say();
+say("| arm | disasters | relief | levies | configuration |");
+say("| --- | --- | --- | --- | --- |");
+for (const config of CONFIGS) {
+  for (const arm of ARMS) {
+    const got = report.configs[`${config.name}/${arm.name}`].summary;
+    say(`| \`${arm.name}\` | ${got.disastersStruck} | ${got.reliefPaid} | ${got.levyCount} `
+      + `| ${config.name} |`);
+  }
+}
+say();
+
 say("## What moved");
 say();
 const base = report.configs["steady-64/null"].summary;

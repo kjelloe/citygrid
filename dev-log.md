@@ -15364,3 +15364,61 @@ ok  a refused demolish offers to ask, and names the owner
       (That ground is Mayor 1's. Ask them to clear one tile?)
 ok  the inbox draws the row, in words  (Mayor 2 asks you to clear one tile…)
 ```
+
+## The unplanned round — what the gates could not have told anybody (2026-10-10)
+
+Three findings from the last stretch that were nobody's item. Each one is an
+instrument that was quietly answering a question it had not been asked.
+
+### A rule that fires in one configuration of four
+
+Era 30's report held the answer to a question a whole round was argued over:
+`disasterRelief` fires **0 times in 200 relaxed games, 0 in 200 steady and 23
+in 200 demanding**. Nobody read it that way, because the counts were in the
+`.json` and the prose printed populations — so X4g's first `disaster-aid` arm
+came back byte-identical to the null on a configuration where the rule it was
+about **cannot fire**, and the obvious reading of that table is "the option
+does nothing".
+
+Both sweeps print the firing rate beside the outcome now. `sim_sweep` watches
+five kinds — the two disaster lines, relief, the levy, and the two ways a city
+runs out of money — and says what the number means:
+
+```
+- rules that fired, over all 200 games: disasterStruck 923, disasterRelief 18,
+  disasterLevy 0, bankrupt 0, unpaidUpkeep 0 — a rule reading 0 here cannot be
+  measured in this configuration, whatever an arm says
+```
+
+`region_sweep` gains the same table, per arm. This is the other half of
+`an-instrument-aimed-at-where-the-city-used-to-be`: that one is about the city
+moving away from the gate, and this is about a rule that was never in the
+configuration at all.
+
+### `every` is true of nothing
+
+X7's room row read **0 × 0** for every panel on a phone and called them
+readable — nothing is clipped in a box that is not there, and its right edge
+is inside the viewport because it is at the origin. That is not a bug in one
+gate; it is a shape, and the sweep for it found four more:
+
+- `a11y_smoke`'s overlay bands — three claims about band separation, all true
+  of no bands;
+- `budget_gate`'s desktop rows and crowd rows — four claims about a frame;
+- `mvp_acceptance` §24.8 — four overlays, so a page that had lost the buttons
+  passes by drawing nothing;
+- `ui_smoke`'s performance card — "every step drew something", true of no
+  steps.
+
+**The guards are derived, not chosen.** The band count is `washes.length - 1`,
+which is 2 of 3 — and the 3 I wrote first was wrong, which is the whole reason
+to derive it rather than pick the number where the gate goes green.
+
+### And one that was not a defect
+
+The budget set reported `LEAKED 6 headless browser(s)` on the run after I had
+driven two browser gates by hand in the same shell. Re-run on a quiet machine:
+no leak, and no stray processes beforehand. The leak detector did its job and
+the finding was mine — `a-gate-run-is-exclusive`, for the second time this
+week, and worth recording precisely because the obvious reading was "a gate
+does not close its browsers".

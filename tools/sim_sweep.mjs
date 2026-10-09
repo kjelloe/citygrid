@@ -152,6 +152,18 @@ function play(config, seed) {
   };
 }
 
+/**
+ * The events whose firing RATE is worth printing beside the outcome.
+ *
+ * Each one is a rule somebody might reach for in a later slice and find
+ * dormant: emergency relief fires on demanding and nowhere else, a bankruptcy
+ * is the thing the relief exists to prevent, and the two disaster lines say
+ * whether the configuration had any weather at all. `an-instrument-aimed-at-
+ * where-the-city-used-to-be` is about the city moving; this is the other half
+ * — a rule that cannot fire in the configuration you are measuring.
+ */
+const WATCHED = ["disasterStruck", "disasterRelief", "disasterLevy", "bankrupt", "unpaidUpkeep"];
+
 const report = { era: rules().era, games: GAMES, years: YEARS, configs: {} };
 const lines = [];
 function say(text = "") {
@@ -200,6 +212,16 @@ for (const config of CONFIGS) {
     waterStarved: [quantile(pick("waterStarved"), 0.5), quantile(pick("waterStarved"), 0.95)],
     shortfalls: live.filter((r) => r.shortfall === 1).length,
     emptied: rows.filter((r) => r.population === 0 && r.peakPopulation > 100).length,
+    // **How often each RULE fired**, not only what the city came out at
+    // (2026-10-10). Era 30's report held the answer to a question a whole
+    // round was argued over — `disasterRelief` fires 0 times in 200 relaxed
+    // games, 0 in 200 steady and 23 in 200 demanding — and nobody read it
+    // that way, because the counts were in the JSON and the prose printed
+    // populations. A rule that fires in one configuration of four is a fact
+    // about the sweep as much as about the rule: an arm measured on the other
+    // three can only come back inert.
+    fired: Object.fromEntries(WATCHED
+      .map((kind) => [kind, rows.reduce((n, r) => n + (r.events[kind] ?? 0), 0)])),
   };
   report.configs[config.name] = { config, summary, rows };
 
@@ -218,6 +240,9 @@ for (const config of CONFIGS) {
   say(`- pollution over developed land ${summary.pollutionDeveloped}, over the whole region ${summary.pollutionRegional}`);
   say(`- crime ${summary.crime}, congested tiles ${summary.congested}, stranded homes ${summary.stranded}`);
   say(`- land value over developed land: p25 ${summary.landValue[0]}, median **${summary.landValue[1]}**, p75 ${summary.landValue[2]}`);
+  say(`- rules that fired, over all ${summary.games} games: `
+    + WATCHED.map((kind) => `${kind} ${summary.fired[kind]}`).join(", ")
+    + ` — a rule reading 0 here cannot be measured in this configuration, whatever an arm says`);
   say(`- power grid ${summary.powerComponents} components; dark buildings: power median `
     + `${summary.powerStarved[0]} p95 ${summary.powerStarved[1]}, water median ${summary.waterStarved[0]} `
     + `p95 ${summary.waterStarved[1]} — in ${summary.shortfalls} of ${summary.livingCities} cities the `
