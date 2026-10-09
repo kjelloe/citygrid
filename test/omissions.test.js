@@ -20,7 +20,7 @@ import { repoRoot, jsFilesIn, stripCommentsAndStrings } from "./helpers/sources.
 import { knownCommands } from "../engine/reducer.js";
 import { C2S, S2C } from "../shared/protocol.js";
 import * as COMMANDS from "../engine/commands.js";
-import { alertKinds } from "../client/ui/alerts-model.js";
+import { alertKinds, CLIENT_KINDS } from "../client/ui/alerts-model.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
 import "../engine/utilities.js";
@@ -343,7 +343,14 @@ test("every event the engine can emit is either an alert or deliberately silent"
 
   // And the other direction: an alert kind the engine no longer emits is a
   // translation nobody will ever read.
-  const orphanAlerts = alertKinds().filter((kind) => !emitted.has(kind));
+  // **Except the ones the PAGE raises** (X6). A resync is not an engine event
+  // and must not become one — the reducer is deterministic and every client
+  // runs it, while a resync happens to one client on one socket — so the alert
+  // list has a second source and `CLIENT_KINDS` names it. `test/hud.test.js`
+  // holds each of those to being raised somewhere in `client/`, so this
+  // exemption cannot become a hiding place.
+  const orphanAlerts = alertKinds()
+    .filter((kind) => !emitted.has(kind) && !CLIENT_KINDS.includes(kind));
   assert.deepEqual(orphanAlerts, [],
     `alert kinds no engine event produces: ${orphanAlerts.join(", ")}`);
 });

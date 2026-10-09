@@ -35,6 +35,18 @@ const KINDS = {
   // place is the whole of what it says.
   ping: { severity: SEVERITY.INFO, textKey: "alert.ping", collapse: false },
   disasterRelief: { severity: SEVERITY.INFO, textKey: "alert.disasterRelief" },
+  // **A resync, which the ENGINE did not produce** (X6). `session.js` has
+  // counted desyncs and asked the transport to put it back since X1c, and the
+  // screen has said nothing about either: a room re-sending the whole city is
+  // the most alarming thing that can happen to a session and its only trace
+  // was a `console.error`.
+  //
+  // It must not become an engine event. The reducer is deterministic and every
+  // client runs it; a resync happens to ONE client on one socket, so an event
+  // for it would be a divergence rather than a report of one. `CLIENT_KINDS`
+  // below is the list of alerts the page raises itself, and it is what stops
+  // the orphan census calling this a translation nobody reads.
+  resynced: { severity: SEVERITY.WARNING, textKey: "status.resynced" },
   // **Your money went to a neighbour** (X4g). Only in a room with `disasterAid`
   // on, and a WARNING rather than info: the seat did nothing and is poorer, and
   // a treasury that falls with nothing on screen to say why is the thing this
@@ -67,6 +79,17 @@ const KINDS = {
 export function alertKinds() {
   return Object.keys(KINDS);
 }
+
+/**
+ * The kinds the PAGE raises, which the engine therefore never emits (X6).
+ *
+ * The orphan half of the alert census — "an alert kind no engine event
+ * produces is a translation nobody will read" — is right about everything
+ * except these, so they are named here rather than the census being loosened.
+ * `test/hud.test.js` holds each one to being raised somewhere in `client/`, so
+ * the exemption cannot become a hiding place.
+ */
+export const CLIENT_KINDS = Object.freeze(["resynced"]);
 
 /** Every key this model can ask the view to render. `test/hud.test.js` checks
  * each one against both catalogues, so a new alert kind with no translation is

@@ -15,7 +15,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { topBar, formatMoney, cityDate } from "../client/ui/hud-model.js";
 import { rciBars } from "../client/ui/rci-model.js";
-import { pushAlerts, createAlerts, visibleAlerts, SEVERITY, alertKeys } from "../client/ui/alerts-model.js";
+import { pushAlerts, createAlerts, visibleAlerts, SEVERITY, alertKeys, alertKinds,
+  CLIENT_KINDS } from "../client/ui/alerts-model.js";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 import { ownerLine } from "../client/ui/inspector-model.js";
 
 /** A city with the named seats in it, for the ownership rows below. The state
@@ -430,4 +435,47 @@ test("the inspector says whose ground it is, and only when that is a question", 
   // commons, and what the player is asking about is the thing they clicked.
   assert.deepEqual(ownerLine(shared.state, { owner: 255, building: { owner: 2 } }),
     { seat: 2, name: "Grace" });
+});
+
+// --- X6: a resync is news, and it does not come from the reducer -------------
+
+test("the alert list can carry news the ENGINE did not produce (X6)", () => {
+  // `session.js` has counted desyncs and asked the transport to resync since
+  // X1c, and the screen has said nothing about either. A room re-sending the
+  // whole city is the most alarming thing that can happen to a player's
+  // session and the only trace of it was a `console.error`.
+  //
+  // It is not an engine event and must not become one: the reducer is
+  // deterministic and every client runs it, while a resync happens to ONE
+  // client on one socket. So the alert list grows a second source, and
+  // `CLIENT_KINDS` is the list of what the page may raise itself — which is
+  // also what stops `test/omissions.test.js`'s orphan check from calling it a
+  // translation nobody will read.
+  assert.ok(CLIENT_KINDS.includes("resynced"), "a resync has no alert kind");
+  assert.ok(alertKinds().includes("resynced"), "the alert table has no row for it");
+
+  const alerts = createAlerts();
+  pushAlerts(alerts, [{ kind: "resynced" }], 120);
+  const shown = visibleAlerts(alerts, 120);
+  assert.equal(shown.length, 1, "the resync raised no alert");
+  assert.equal(shown[0].textKey, "status.resynced");
+  assert.equal(shown[0].severity, SEVERITY.WARNING,
+    "a room re-sending the city is not an aside");
+
+  // And it collapses, because a client that is resyncing repeatedly is one
+  // story and not fifty.
+  pushAlerts(alerts, [{ kind: "resynced" }, { kind: "resynced" }], 121);
+  assert.equal(visibleAlerts(alerts, 121).length, 1, "three resyncs are three rows");
+  assert.equal(visibleAlerts(alerts, 121)[0].count, 3);
+});
+
+test("every client-raised kind is actually raised somewhere in the client (X6)", () => {
+  // The same rule the engine's events get: a kind nobody produces is a
+  // translation nobody will read. The page is the producer here, so the page
+  // is where to look.
+  const sources = ["game.js", "session.js", "ui/hud.js"]
+    .map((f) => readFileSync(join(root, "client", f), "utf8")).join("\n");
+  for (const kind of CLIENT_KINDS) {
+    assert.ok(sources.includes(`"${kind}"`), `nothing in the client raises ${kind}`);
+  }
 });

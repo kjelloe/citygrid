@@ -161,7 +161,15 @@ export async function openMirrorSession(given = {}, transport) {
 
   function announce(command, reply, pushed = false) {
     check(reply);
-    const change = { command, result: reply.result, events: reply.events, tick: reply.tick, pushed };
+    // **`resynced` travels with the change** (X6). The transport marks the
+    // reply it builds from a room's snapshot, and until now the session
+    // dropped the flag — so the page could not tell a frame from the room
+    // re-sending the entire city, which is the most alarming thing that can
+    // happen to a session and said nothing at all.
+    const change = {
+      command, result: reply.result, events: reply.events, tick: reply.tick, pushed,
+      resynced: reply.resynced === true,
+    };
     for (const listener of [...listeners]) listener(change);
   }
 

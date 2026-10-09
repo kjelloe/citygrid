@@ -429,6 +429,10 @@ export async function startGame(root, given = {}) {
     // a tick — and in a ROOM another seat's commands arrive on a frame nobody
     // asked for, so every event they produced was dropped on the floor. The
     // ping gate is what said so: the other seat never heard it.
+    // **The room put us back** (X6). Before the early return, because a resync
+    // arrives as a reply to no command of ours and would otherwise be filtered
+    // out by the very line that exists to catch another seat's frames.
+    if (change.resynced === true) hud.tick([{ kind: "resynced" }]);
     if (change.command.type !== CMD_TICK && change.pushed !== true) return;
     // The room's dial, on this page's label (X2d). Every frame carries it, so
     // the follower costs one comparison and no message.

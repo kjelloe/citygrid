@@ -14,10 +14,10 @@ import { openSettings, loadSettings, applyDisplaySettings } from "./ui/settings.
 import { mixerSettings } from "./ui/settings-model.js";
 import { hasWebGL2, preferredLocale, prefersReducedMotion } from "./capabilities.js";
 import { choicesFromParams, optionsFor, paramsForChoices } from "./lobby/options-model.js";
-import { refusalKey } from "./lobby/join-model.js";
+import { refusalKey, reloadFor, RELOAD_NOTICE } from "./lobby/join-model.js";
 import { listSaves, getSave } from "./storage/db.js";
 import { fromSave } from "../engine/save.js";
-import { setBuildHash } from "../shared/build-hash.js";
+import { setBuildHash, buildHash } from "../shared/build-hash.js";
 
 const params = new URLSearchParams(globalThis.location?.search ?? "");
 export const config = Object.freeze({
@@ -33,6 +33,11 @@ export const config = Object.freeze({
   // city and gets no tools, so a full room is still watchable.
   watch: params.get("watch") === "1",
   locale: params.get("lang") ?? "",
+  // `?build=<hash>` pretends this client is a deploy behind (X6). The door
+  // refuses a build mismatch and the page then fetches the new build; without
+  // this there is no way to drive that path, because every gate runs the same
+  // tree as the server it talks to.
+  build: params.get("build") ?? "",
   debug: params.get("debug") === "1",
   // `?perf=1` — the performance card (D1). It replaces the boot: the sweep
   // needs the saturated fixture and a camera nobody is touching, which is not
@@ -101,6 +106,12 @@ async function boot() {
     const manifest = await (await fetch("./client/precache.json", { cache: "no-store" })).json();
     setBuildHash(manifest.build);
   } catch { /* offline, or a client served without its manifest */ }
+  // **`?build=` makes this client stale on purpose** (X6). The door refuses a
+  // build mismatch and the page then goes and fetches the new build — a path
+  // that is impossible to drive otherwise, because every gate runs the same
+  // tree as the server it talks to. `a-fallback-needs-a-lever`: self-recovering
+  // code hides its own recovery from the gate unless there is a switch.
+  if (config.build) setBuildHash(config.build);
 
   // A stored preference beats the browser's guess, and `?lang=` beats both —
   // a link that names a language is someone showing the game to someone else.
@@ -193,7 +204,46 @@ async function boot() {
     const key = refusalKey(error?.refusal);
     if (!key) return failed(error);
     console.warn(`the room refused this client: ${error.refusal}`);
+    // **A stale client goes and gets the new build** (X6). The words have said
+    // "reload the page to join" since X1b, and a reload of a page served by a
+    // cache-first worker fetches the SAME build — so the player reloads, is
+    // refused again, and the first deploy after v1.0 does that to every phone
+    // that ever opened the game. The page has to ask the WORKER to update;
+    // when a new one takes over, `registerWorker`'s `controllerchange` listener
+    // reloads, which is the path `update_smoke` already proves.
+    if (reloadFor(error?.refusal, buildHash())) {
+      newGame({ key: RELOAD_NOTICE, code });
+      fetchNewBuild();
+      return undefined;
+    }
     return newGame({ key, code });
+  }
+
+  /** Ask the service worker for the new build, and reload even if there is no
+   * worker to ask (X6).
+   *
+   * `update()` re-fetches `sw.js` at its versioned URL; a changed version is a
+   * changed script URL, so the browser installs it, `install` calls
+   * `skipWaiting`, and the `controllerchange` listener in `registerWorker`
+   * reloads this page onto it. With no worker at all — a `file:` page, a
+   * browser without support, a first visit — there is nothing to update and a
+   * plain reload is already correct, because nothing is caching the old build.
+   *
+   * Never mid-room, and that is structural rather than a flag: this is a
+   * refusal at the DOOR, so there is no room to be in the middle of (§3.9). */
+  async function fetchNewBuild() {
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration();
+      if (!registration) { globalThis.location.reload(); return; }
+      await registration.update();
+      // The worker may already have been the new one — then no
+      // `controllerchange` is coming and this page would wait for ever.
+      if (registration.waiting === null && registration.installing === null) {
+        globalThis.location.reload();
+      }
+    } catch {
+      globalThis.location.reload();
+    }
   }
 
   function failed(error) {

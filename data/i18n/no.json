@@ -93,6 +93,8 @@
  "result.notDerelict": "Det har ikke stått forfalt lenge nok",
  "refused.versionMismatch": "Dette rommet kjører en annen versjon av spillet — last inn siden på nytt for å bli med",
  "refused.buildMismatch": "Din utgave av spillet er utdatert — last inn siden på nytt for å bli med",
+ "status.fetchingBuild": "Din utgave av spillet er utdatert — henter den nye…",
+ "status.resynced": "Rommet sendte byen på nytt",
  "refused.roomFull": "Alle plassene i rommet er tatt",
  "refused.seatTaken": "Noen sitter der allerede — velg en annen plass",
  "refused.roomClosed": "Rommet er stengt",

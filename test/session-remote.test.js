@@ -278,3 +278,32 @@ test("a detected desync ASKS to be put back, rather than only saying so (X1c)", 
   assert.equal(asks.length, 1, `the detector fired and asked ${asks.length} times`);
   session.dispose();
 });
+
+test("a resync reaches the page as a change it can say something about (X6)", async () => {
+  // The transport has marked its snapshot reply `resynced` since X1c and the
+  // session dropped the flag on the way through, so the page could not tell an
+  // ordinary frame from the room re-sending the entire city — and said nothing
+  // about either. `client/game.js` raises the `resynced` alert off this.
+  //
+  // Driven through `onMessage`, which is the path a room's pushed frames and
+  // its snapshots both take; the echo transport never calls it, so the double
+  // here is the smallest thing that can.
+  const echo = createEchoTransport();
+  let push;
+  const transport = { ...echo, onMessage(handler) { push = handler; } };
+  const session = await openMirrorSession({ options: OPTIONS }, transport);
+  const changes = [];
+  session.onChange((change) => changes.push(change));
+
+  const frame = { result: RESULT.OK, events: [], tick: 1 };
+  push({ ...frame, resynced: true });
+  assert.equal(changes.filter((c) => c.resynced === true).length, 1,
+    `${changes.length} change(s) and none of them said resynced`);
+
+  // And an ordinary frame does NOT claim to be one, or the alert fires on every
+  // command another seat sends.
+  push({ ...frame, tick: 2 });
+  assert.equal(changes.filter((c) => c.resynced === true).length, 1,
+    "an ordinary frame was announced as a resync");
+  assert.equal(changes.length, 2, "a pushed frame was dropped");
+});

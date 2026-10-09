@@ -14858,3 +14858,89 @@ boundaries read slightly differently — and the three terrace rows are three
 different lights on one street, which is what A140 asked to be judged.
 
 Suite **2,057 tests, 2,054 pass, 0 fail, 3 skipped, green twice**.
+
+## X6 — the stale client goes and gets the new build (2026-10-09)
+
+v1.0's V2. `compatible()` has refused `BUILD_MISMATCH` since X1b and the join
+screen has had the words since X2b:
+
+> Your copy of the game is out of date — reload the page to join
+
+What never existed is the **action**, and the words are worse than useless
+without it: the page is served by a cache-first service worker, so a player who
+reloads is handed the *same* build and refused again. The first deploy after
+v1.0 would do that to every phone that had ever opened the game — and each one
+would read a sentence telling it to do the thing that does not work.
+
+So the refusal now asks the WORKER to update. `registration.update()` re-fetches
+`sw.js` at its versioned URL; a changed version is a changed script URL, which
+is a new worker, which `install`s, calls `skipWaiting`, and trips the
+`controllerchange` listener `registerWorker` has had since P33 — the path
+`update_smoke` already proves end to end. With no worker to ask (a `file:` page,
+a first visit, a browser without support) a plain reload is already correct,
+because nothing is caching anything.
+
+Three guards, and two of them are decisions rather than defence:
+
+- **Only this refusal.** A full room, a mistyped code or a taken seat are
+  answered by the player doing something else; a page that threw itself away
+  whenever anything went wrong would lose their typed code for nothing.
+- **Never on a `dev` build.** `readBuildHash` falls back to `"dev"` when there
+  is no manifest, which is every run from a tree with no precache — and a page
+  that reloaded on that would loop, because the reload fetches the same tree.
+- **Never mid-room**, and that one is structural rather than a flag: this is a
+  refusal at the **door**, so there is no room to be in the middle of (§3.9).
+
+### The lever, because nothing could reach this path
+
+Every gate in this project runs the same tree as the server it talks to, so no
+client is ever a deploy behind and the whole branch was unreachable. `?build=`
+makes one stale on purpose — `a-fallback-needs-a-lever`, which is the memory
+about exactly this: self-recovering code hides its own recovery from the gate.
+
+```
+ok  a client a deploy behind is told the build is old, not that the room is missing
+      ("Your copy of the game is out of date — fetching the new one…")
+ok  and it goes and fetches the new build rather than waiting to be told twice  (4 navigations)
+```
+
+The gate closes the context rather than waiting for the join, because `?build=`
+is still in the address bar after the reload and the client goes round again. A
+real client's reload fetches a build that is no longer stale.
+
+### A resync is news, and it does not come from the reducer
+
+The item's second half. `session.js` has counted desyncs and asked the transport
+to put the client back since X1c, and the screen has said **nothing** about
+either: a room re-sending the entire city is the most alarming thing that can
+happen to a session, and its only trace was a `console.error`.
+
+Three small pieces:
+
+- the transport has marked its snapshot reply `resynced` since X1c, and the
+  session **dropped the flag** — so the page could not tell an ordinary frame
+  from the city being replaced. It travels with the change now.
+- `client/game.js` raises it **before** the early return that filters out
+  anything that is not a tick or a pushed frame, because a resync is a reply to
+  no command of ours and that line would otherwise eat it.
+- the alert list grows a second source. `resynced` is **not** an engine event
+  and must not become one: the reducer is deterministic and every client runs
+  it, while a resync happens to one client on one socket, so an event for it
+  would be a divergence rather than a report of one.
+
+`CLIENT_KINDS` is that second source, named rather than letting the census be
+loosened — `test/omissions.test.js` still refuses an alert kind no engine event
+produces, and `test/hud.test.js` holds every client-raised kind to being raised
+somewhere in `client/`, so the exemption cannot become a hiding place.
+
+**And the status key moved out of the refusal namespace.** The first version
+called it `refused.buildMismatch.reloading`, and `test/i18n.test.js` refused it
+in the same run: every `refused.*` string must be a code the door can actually
+give, and this is what happens *after* one. `status.fetchingBuild` and
+`status.resynced`, in both catalogues.
+
+### Measured
+
+Suite **2,063 tests, 2,060 pass, 0 fail, 3 skipped, green twice**. `room`
+**219 s of 300** with the three new rows; `update_smoke` green, which is the
+gate the reload path leans on.

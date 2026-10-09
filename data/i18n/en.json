@@ -93,6 +93,8 @@
  "result.notDerelict": "That has not stood derelict long enough",
  "refused.versionMismatch": "This room is running a different version of the game — reload the page to join",
  "refused.buildMismatch": "Your copy of the game is out of date — reload the page to join",
+ "status.fetchingBuild": "Your copy of the game is out of date — fetching the new one…",
+ "status.resynced": "The room re-sent the city",
  "refused.roomFull": "Every seat in that room is taken",
  "refused.seatTaken": "Somebody is already in that seat — pick another",
  "refused.roomClosed": "That room has closed",

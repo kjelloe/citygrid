@@ -59,6 +59,38 @@ export function refusalKey(reason) {
   return Object.hasOwn(REFUSAL_LABELS, reason) ? REFUSAL_LABELS[reason] : undefined;
 }
 
+/** What the player is told while the page goes and gets the new build (X6). A
+ * page that threw itself away with no warning would have lost their typed code
+ * for no reason they can see.
+ *
+ * `status.` and not `refused.`: the door's refusals are a closed list keyed off
+ * `REFUSAL`, and `test/i18n.test.js` holds every `refused.*` string to being a
+ * code the door can actually give. This is what happens AFTER one. */
+export const RELOAD_NOTICE = "status.fetchingBuild";
+
+/**
+ * Whether this refusal means the page should go and fetch the new build (X6).
+ *
+ * `compatible()` has refused `BUILD_MISMATCH` since X1b and the join screen has
+ * had the words since X2b; what was missing is the ACTION. A player on a cached
+ * old build is told to reload, presses reload, and a cache-first service worker
+ * serves them the same build again — so the first deploy after v1.0 would do
+ * that to every phone that had ever opened the game. The page has to ask the
+ * WORKER to update, and that is only worth doing for this one refusal.
+ *
+ * **Never on a `dev` build.** `readBuildHash` falls back to `"dev"` when there
+ * is no manifest, which is every run from a tree with no precache; a page that
+ * reloaded on that would loop, because the reload fetches the same tree and the
+ * room refuses again.
+ *
+ * Never mid-room either, and that one is structural rather than a flag: this is
+ * a refusal at the DOOR, so there is no room to be in the middle of (plan §3.9).
+ */
+export function reloadFor(reason, build) {
+  if (reason !== REFUSAL.BUILD_MISMATCH) return false;
+  return typeof build === "string" && build.length > 0 && build !== "dev";
+}
+
 /** How many characters the field accepts: the code plus the separator a player
  * is shown, and a little slack for a space — but not so much that it becomes a
  * place to paste a URL. */

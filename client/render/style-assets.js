@@ -88,11 +88,13 @@ export function slabGeometry(styleName, w, h, d) {
   // because the sun is always above, and which is what keeps the pixel style's
   // unlit material reading as three-dimensional.
   //
-  // The compass shades in `building-kit.js` and `detail-kit.js` are the same
+  // The compass shades in `building-kit.js` and `detail-kit.js` were the same
   // defect an order of magnitude larger — nine pushes each, spanning 18.3% on
-  // `plain` and 40% on `pixel` — and they are NOT touched here: the pixel style
-  // is unlit, so for it the bake IS the light, and removing it from the kit
-  // changes every building in the game. That is Q163, with the numbers.
+  // `plain` and 40% on `pixel`. **Q163 → A140 → S22c** took them off the lit
+  // styles by taking `faceContrastFor` to 0 for them, which lands here too: on
+  // `plain` and `painted` a slab's top and side are now one value and the
+  // light separates them, and on `pixel` the bake still does, because that
+  // style has no other light.
   const c = faceContrastFor(styleName);
   const side = 1 - 0.14 * c;
   return tintFaces(box, { top: 1.0, north: side, east: side });

@@ -959,6 +959,41 @@ try {
     await back.close();
   }
 
+  // **A stale client goes and gets the new build** (X6, v1.0's V2). The door
+  // has refused `BUILD_MISMATCH` since X1b and the page has said "reload the
+  // page to join" ever since — and a reload of a page served by a cache-first
+  // worker fetches the SAME build, so the player reloads, is refused again, and
+  // the first deploy after v1.0 does that to every phone that ever opened the
+  // game. `?build=` is the lever that makes this drivable at all: every gate
+  // otherwise runs the same tree as the server it talks to.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(String(error.message ?? error)));
+    let navigations = 0;
+    page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) navigations += 1; });
+    await page.goto(`${origin}/?join=${code}&build=a-deploy-behind&life=0`);
+    const told = await until(page, "the stale client was never told anything", () => {
+      const said = document.querySelector("#join-refusal, .join-refusal, [role='status']");
+      const text = said?.textContent?.trim() ?? "";
+      return { ok: text.length > 0, text, navigations: 0 };
+    }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("a client a deploy behind is told the build is old, not that the room is missing",
+      told.ok === true && /out of date|utdatert/i.test(told.text), told.why ?? JSON.stringify(told));
+    // And it does not sit there: with no new worker to wait for, the page
+    // reloads itself, which is the half that was missing. `?build=` is still in
+    // the address bar, so it is refused again and goes round — which is why the
+    // context is closed rather than waited on. A real client's reload fetches a
+    // build that is no longer stale.
+    await page.waitForTimeout(2500);
+    check("and it goes and fetches the new build rather than waiting to be told twice",
+      navigations > 1, `${navigations} navigation(s)`);
+    check("the stale client reported no page errors", errors.length === 0,
+      errors.slice(0, 3).join(" | "));
+    await ctx.close();
+  }
+
   // The desync detector, which is the one thing that must read zero.
   const desyncs = await Promise.all([a, b].map(({ page }) => page.evaluate(
     () => ({ desyncs: globalThis.CITY.desyncs, checks: globalThis.CITY.desyncChecks }))));
