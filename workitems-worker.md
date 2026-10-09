@@ -320,7 +320,7 @@ place must still compare link for link against a full derivation.
 blinks through it. Kjell decides whether a frame matters more than the next ten items in the world
 and behaviour lanes.
 
-## W6d — A pedestrian steps six metres when a junction appears (S) — found by `lanes_dump`, 2026-10-08 — **Q161**
+## W6d — **closed 2026-10-09 (A141): stays as built** — A pedestrian steps six metres when a junction appears (S) — found by `lanes_dump`, 2026-10-08 — **Q161**
 
 **What was measured.** `lanes_dump`'s second arm lays one tile that SPLITS a street and then asks
 how much of the city's life came across. On era 29's city, 2 of 400 people were standing on a

@@ -37,9 +37,10 @@ up to sixteen people in a persistent shared region where nobody can destroy anyo
 | The thirteen singleplayer criteria in `gamedesign.md` §24, run as an automated script | Singleplayer MVP |
 | A city can be built, saved, closed, reloaded and continued, on mouse and on touch | Singleplayer MVP |
 | Eight players build one region together, drop in and out, and resolve demolition requests | Multiplayer MVP |
-| Sixteen seats on a 128×128 region for one hour: hashes identical, jitter p99 < 150 ms | Version 1 |
-| Districts, Region Rivals, mutual aid and contracts all playable and swept for fairness | Version 1 |
-| A deploy, a kill and a restart with every live room resumed | Version 1 |
+| Eight players build one region together, on a deployed server, across a disconnect and a reconnect, and real people have played one evening | **v1.0** (P113, `workitems-v1.md`) |
+| Districts, Region Rivals, mutual aid and contracts all playable and swept for fairness; the balance and picture questions the evening ranked | **v1.1** |
+| Sixteen seats on a 128×128 region for one hour: hashes identical, jitter p99 < 150 ms | **v1.2** |
+| A deploy, a kill and a restart with every live room resumed; the master index | **v1.2** |
 
 ## Ordering principles
 
@@ -81,10 +82,10 @@ is theirs for two minutes, then a deputy plays it, then the ground goes to the c
 nobody is in stops playing. `tools/room_smoke.mjs` drives **five browsers** through it and
 `room_churn` takes a seat away and gives it back with no divergence.
 
-What is left in that lane: `splitRule`, `mutualAid` and `disasterAid`, which are **a balance era**
-and want a sweep; and the lobby's remaining rows (the QR, ready, joining a room that has started).
-The history that outlives the alert list was X4h, hibernating to disk was X4f, and the host's
-controls and hosting from a save were X2d — all 2026-10-09.
+What is left in that lane: the lobby's remaining rows (the QR, ready, joining a room that has
+started). `splitRule`, `mutualAid` and `disasterAid` were **era 31** (X4g), the history that
+outlives the alert list was X4h, hibernating to disk was X4f, and the host's controls and hosting
+from a save were X2d — all 2026-10-09.
 Ruling 003 is unmoved — singleplayer opens no socket and `offline_smoke` asserts it.
 
 **And the lane is committed.** All of it was in the working tree and nowhere else on 2026-10-08:
@@ -110,15 +111,9 @@ runs a block from another, which took the road share of a played 64 from about a
 fifth and is the first era whose cause is what the deputy DECIDES — so every number measured on a
 deputy city before it belongs to era 28 and is void rather than comparable.
 
-**Four open questions**, all filed the day the list was emptied and none blocking anything.
-**Q165**: whether a new room's code should be checked against the rooms sleeping on the disk and not
-only against the ones awake (X4f wrote the decision down instead). **Q161**: whether a pedestrian re-seated when a junction appears should keep their side of the
-street, walk out, or stay as they are (W6d, one function). **Q162**: whether the wall's rung is
-still two metres, now that the ladder it was chosen from turns out to be era 28's — B14 took a
-hilly 128 from 130 faced shoulders to 2, and the chosen rung gives 5. **Q163**: whether the lit
-styles give up the compass shades baked into every roof and prop, which is the other half of S22
-being whole and a restyle rather than a slice. **Q164**: whether the sun should stand further out,
-now that it moves — at 83° of elevation at noon a quarter arc moves a short shadow a little.
+**No open questions.** P114 (2026-10-09) answered the six the week raised — A139 to A144: the sun
+stood further out (S22b), the lit styles take the real light (S22c), the re-seat stays, the treasury
+option loses its redundant value, hibernated codes are indexed at boot, and the wall stays at 2 m.
 
 P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall at 2 m, bulldoze priced at 5 in one era with quests loaded into the tools, the stall left at 28.6 ms with W6c held for the room, block spacing 3, the classic skin kept, and a sun that crosses a quarter of the sky at a rate in data.
 
@@ -126,7 +121,7 @@ P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall 
 
 | Lane | Open |
 |---|---|
-| **Multiplayer** | ~~hibernate to disk~~ (built: **X4f** — the reaper writes the room out and the door reads it back) · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · ~~a history that outlives the alert list~~ (built: **X4h**, a capped ring in hashed state) · the lobby's remaining rows (`privacy`, `lateJoin`) · ~~**X4i**~~ (deleted, riding X4h's `SAVE_VERSION` 6 → 7) |
+| **Multiplayer** | ~~hibernate to disk~~ (built: **X4f** — the reaper writes the room out and the door reads it back) · ~~`splitRule`/`mutualAid`/`disasterAid`~~ (built: **X4g**, measured as **era 31** on a new four-seat sweep) · ~~a history that outlives the alert list~~ (built: **X4h**, a capped ring in hashed state) · the lobby's remaining rows (`privacy`, `lateJoin`) · ~~**X4i**~~ (deleted, riding X4h's `SAVE_VERSION` 6 → 7) |
 | **World** | ~~S22~~ (built: the sun crosses the sky — and Q163, Q164 came out of it) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
 | **Behaviour** | B15 · B6's rain |
 | **Mainline** | ~~M7~~ (merged; **the push is Kjell's**) · ~~M9~~ (every set re-measured quiet, `sim` split) · M11 ("1 tiles") · ~~M10~~ (closed, A137) |
@@ -169,6 +164,7 @@ the file to open first.
 | `workitems-transport.md` | the transport lane from `specs/transport-and-landmarks.md` (P61, P62): T1 the avenue; T2–T3 rail and the station; T4 water bodies, marina, ferry and port; T5 ranks, city hall, the airport; ~~T6 leisure and education coverage~~ **built 2026-10-02** (era 10, two hashed layers re-pinned); T7 the cheap catalogue rows | written 2026-09-11, Q87–Q92 answered (A65–A70); **after behaviour** — it is the first lane since cityviewer that moves the hash |
 | `workitems-rules.md` | the rules eras the transport lane and the night's measurements asked for (P93–P100) | **G1–G5, H1–H8, J1–J4 built 2026-10-03/04** — eras 12 to 26, each measured alone |
 | `workitems-multiplayer.md` | Wave 5 as work items against the seam as built (P102): ~~X0~~ **built 2026-10-04** (ws pinned, the build hash real, the `room` set declared), ~~X1's room half~~ **built 2026-10-04** (slice-X1a: room, pump, store, the socket, `room_soak` at five years with one hash and a 9.81 ms worst beat), X1's client half, X2 the lobby, ~~X3a~~ **built 2026-10-04** (slice-X3a: five handlers, one record with two kinds, the fixture re-pinned, nine requests over the wire), X3b ownership on the screen, X4 drop-in and absence | written 2026-10-04. **A125: the headless room now (X0, X1's room half); everything a player sees waits for Kjell's playtest.** W6's second half runs beside X1 and lands before X3 (A126); `ws` as the sibling games have it (A127) |
+| `workitems-v1.md` | **the milestones** (P113, 2026-10-09): v1.0 is the Multiplayer MVP deployed and played once by people — V1 the server on a box, V2 the stale client reloads, V3 the lobby's last rows, V4 the gate at eight, V5 Kjell's evening, V6 the tag; v1.1 the details and the balance; v1.2 scale and operations | written 2026-10-09 |
 
 **The largest gap, stated plainly:** every performance number in this project is SwiftShader.
 The frame-time governor exists to decide what a phone gives up and has never run on a phone. D1
@@ -277,10 +273,10 @@ commands, all three done 2026-10-04), and nothing a player sees is. The slices b
 
 | # | Slice | Depends on | Done when |
 |---|---|---|---|
-| 5.1 | **Server and relay** — `server/` room, seats, store; 10 Hz pump; command relay with sequence numbers; hash verification; snapshot on join; resync; version handshake refusing stale clients | 4.5 | Two real ws clients play five city years with identical hashes; a deliberately corrupted client is detected and resynced; a mismatched build is refused with a reload instruction; the light's hour and the traffic's rush hour follow the room's clock to within one game hour on every client, not each client's own (A63 — B4 built the rush on the local clock because no client plays a room yet) |
-| 5.2 | **Lobby** — room creation, join codes, the options record hashed into initial state, seed preview and regenerate, seats, ready, spectate, host controls, late joining | 5.1 | Four clients configure and start a room end to end; the same options and seed reproduce the same region on every client |
-| 5.3 | **Ownership in play** — territory overlay with colour, pattern and label; request inbox; `REQUEST_DEMOLITION` end to end with compensation; standing policies; nuisance reports; pings; activity feed; name and text sanitisation | 5.2 | Multi-client acceptance: request → approve → demolition executes and is paid for; the direct-destruction path is refused; a request whose target burns down resolves as moot |
-| 5.4 | **Drop-in and absence** — leave and rejoin by seat token, grace window, deputy mayor doctrines answering requests by policy, abandonment sweep, derelict property rule, spectators | 5.3 | Soak: seats join and leave at random ticks for 40 city years with no divergence and no orphaned land; an absent player's city neither collapses nor is destroyed |
+| ✅ 5.1 | **Server and relay** — `server/` room, seats, store; 10 Hz pump; command relay with sequence numbers; hash verification; snapshot on join; resync; version handshake refusing stale clients | 4.5 | Two real ws clients play five city years with identical hashes; a deliberately corrupted client is detected and resynced; a mismatched build is refused with a reload instruction; the light's hour and the traffic's rush hour follow the room's clock to within one game hour on every client, not each client's own (A63 — B4 built the rush on the local clock because no client plays a room yet) |
+| ✅ 5.2 | **Lobby** — room creation, join codes, the options record hashed into initial state, seed preview and regenerate, seats, ready, spectate, host controls, late joining | 5.1 | Four clients configure and start a room end to end; the same options and seed reproduce the same region on every client |
+| ✅ 5.3 | **Ownership in play** — territory overlay with colour, pattern and label; request inbox; `REQUEST_DEMOLITION` end to end with compensation; standing policies; nuisance reports; pings; activity feed; name and text sanitisation | 5.2 | Multi-client acceptance: request → approve → demolition executes and is paid for; the direct-destruction path is refused; a request whose target burns down resolves as moot |
+| ✅ 5.4 | **Drop-in and absence** — leave and rejoin by seat token, grace window, deputy mayor doctrines answering requests by policy, abandonment sweep, derelict property rule, spectators | 5.3 | Soak: seats join and leave at random ticks for 40 city years with no divergence and no orphaned land; an absent player's city neither collapses nor is destroyed |
 
 **Release gate — Multiplayer MVP:** eight players build one Shared City region together across a
 session that spans a disconnect and a reconnect, with requests resolved both ways.
@@ -490,11 +486,6 @@ by number from the code they create.
 | ~~Q142~~ | **Answered A119** — relative criteria (cliffs per km, lots as a share), and the same is owed to `walkthrough` on rolling |
 | ~~Q143~~ | **Answered A121, built 2026-10-04 (era 26)** — the far bank is worth a quarter of a city where the town is hemmed in by water, and nothing where it is not |
 | ~~Q144~~ | **Answered A120** — `lot.maxPlinth` is a reducer rule in the shape of `maxZoneSlope`; the quay as a thing is a later content slice |
-| **Q165** | A new room's code is six Crockford characters and the registry now refuses one a LIVE room holds; it does not ask the disk, because that read would make `add` and the door's `CREATE` asynchronous. So a new room can take a hibernated one's code and leave that city in its file, unreachable until `prune`. Guard it, or leave it written down in `freeCode()`? | Nothing — two in a million with 64 rooms held, and the ten lines are cheaper once a room has been played for a week |
-| **Q164** | The sun crosses the sky and reads quietly at midday: the key light stands at **83.4°** of elevation at noon, 62.4° at dusk. Stand it further out so the shadows lengthen? | Nothing — S22 is built; `reports/smoke-S22-*.png` are the pictures |
-| **Q163** | `building-kit.js` and `detail-kit.js` push nine faces each with a compass shade — a frozen sun direction spanning **18.3%** on `plain` and **40%** on `pixel`. Do the lit styles give theirs up? | Nothing, but it is the other half of S22 being whole. A restyle, not a slice |
-| **Q162** | A132 chose the wall at two metres from **era 28's** ladder (264 against 130). Era 29 reads **24 / 5 / 2** on a hilly 128 and **17 / 4 / 3** on a rolling 96, because B14 paves a fifth of the city instead of a third. Is 2 m still the rung, or 1.2 m? | Nothing — S18c is built at 2 m and the wall is right where it stands |
-| **Q161** | A junction laid mid-street deletes the pavement somebody was standing on, and the geometric re-seat moves them up to **6.2 m**. Keep their side of the street, walk them out, or leave it and write down that two in four hundred moving once per build is below what anybody can see? | **W6d**, one function in `client/life/pedestrians.js`. Nothing — the gate reads the number and is green |
 
 ## What would make us stop and re-plan
 

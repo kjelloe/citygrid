@@ -9,9 +9,15 @@ wrong**. Part 1 is ranked: the top five change what I build next. Part 2 is a
 play session that walks through every one of them in order. Part 3 is the full
 record, including the calls that need no answer unless something looks off.
 
-Waves 0–4 are complete. Wave 5 (multiplayer) has **not** been started, because
-ruling 003 holds it behind the singleplayer MVP being *accepted* — and
-acceptance is this playtest, not a green suite.
+Waves 0–4 are complete, and **Wave 5 is built** — A131 lifted ruling 003's hold on 2026-10-07 and
+the lane ran X0 to X4i between then and 2026-10-09. Singleplayer still opens no socket and
+`offline_smoke` asserts it.
+
+**So this file has two halves now.** Everything below the line is the singleplayer playtest, and it
+is still live: the questions in Part 1 are unanswered until somebody plays for forty minutes.
+Below that, **Part 4 is where the multiplayer evening's notes go** — v1.0's V5 in
+`workitems-v1.md`, which is the acceptance for the room exactly as this file is the acceptance for
+the city. Nothing in a gate replaces either.
 
 ---
 
@@ -350,7 +356,7 @@ per catalogue, including all twenty quests.
 
 | | Why |
 |---|---|
-| **Wave 5 — all multiplayer** | Ruling 003: held behind this playtest |
+| ~~**Wave 5 — all multiplayer**~~ | ~~Ruling 003: held behind this playtest~~ — **built** 2026-10-07 to 2026-10-09 (A131 lifted the hold). What is left is not code: V5, an evening with real people |
 | Advisor personas | **Q18** is open — which ranks unlock which |
 | Long press on mobile | A plain tap already inspects; the contextual actions a long press would open are slice 5.3 |
 | Right-drag rotating | It pans. Rotation is four snapped angles on Q and E; a free-rotate drag would fight ruling 006 |
@@ -372,3 +378,31 @@ your call on which controls are second-class, and it would take the phone from
 55% chrome to somewhere near 35%.
 
 Everything else in this file can wait for your answers.
+
+
+---
+
+# Part 4 — The multiplayer evening (v1.0's V5)
+
+**Empty until it happens.** This is the other acceptance: Kjell and at least three people, on the
+deployed server, for an hour. Five browsers driven by a gate on one machine is not four people on
+an evening, and `workitems-v1.md` says so in the definition of done.
+
+What to write down, in this order — the same shape Part 1 has, because the same thing makes it
+useful:
+
+1. **Did anybody get stuck getting IN?** The address, the code read out loud or sent, a phone
+   joining a desktop's room. Every refusal anybody hit, in the words they saw.
+2. **What did somebody ask "what is this?" about?** A control, a colour, a refusal, a panel.
+3. **Every hitch.** A pause, a stutter, a frame that waited. A134 holds W6c (the model's dirty set)
+   until this says the hitch is felt — so if nobody felt one, write *that*, because it closes an
+   item.
+4. **What did people do that the game did not expect?** Two players painting the same tile, a
+   request nobody answered, somebody leaving for twenty minutes, somebody closing the tab and
+   coming back. The history panel is supposed to answer the last one; find out whether it does.
+5. **Did anybody want something that is not there?** Chat off by default, no room list, no QR yet,
+   no ready button — all deliberate, all cheap to add if the evening asks.
+6. **The desync count.** It must read zero, and the server's `/health` is where to look.
+
+A note that says "it worked" is worth less than a note that says what somebody said while it was
+working.

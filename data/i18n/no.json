@@ -220,6 +220,7 @@
  "alert.disasterOver": "Katastrofen er over",
  "alert.disasterOver.named": "{disaster} er over",
  "alert.disasterRelief": "Krisehjelp innvilget",
+ "alert.disasterLevy": "Regionen betalte krisehjelp til en nabo",
  "alert.wrecked": "Bygning ødelagt",
  "alert.ping": "{name}: {message}",
  "alert.fireStarted": "Brann",

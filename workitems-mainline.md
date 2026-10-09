@@ -452,6 +452,36 @@ pointed the other way.
 fetch leaves the mirror in place and says so. **Gate.** `client_smoke` and one `budget_gate` row,
 because a config that arrives after the first frame would move what the first frame measured.
 
+## M12 — A server you can run on a box (M) — v1.0's V1
+
+**Goal.** `node server/index.js` becomes something a systemd unit on a shared host runs, behind
+nginx, with rooms on a disk that survives a redeploy.
+
+**Do.** Adapted from `../Fireline/DEPLOYING.md`, `../Fireline/tools/ssh-deploy.sh` and
+`../CarrierDominion/DEPLOYING.md`, following `deploy-new-sibling-game-in-box-dos-and-donts.md`:
+- `HOST` (loopback by default under `NODE_ENV=production`), `PORT`, `ROOMS_DIR` outside the repo,
+  `KEEP_FOR_DAYS` mapping to the option that `store.js` reads.
+- `ops/citygrid.service` template: `MemoryMax=512M`, `--max-old-space-size=384`,
+  `Restart=on-failure`, `WorkingDirectory`, the environment above.
+- `ops/nginx.conf` template: a server block shipped HTTP-only (certbot adds TLS), its own
+  `map $http_upgrade` under a unique name, `proxy_read_timeout` long enough for an idle socket.
+- `tools/ssh-deploy.sh`: rsync of an **allowlist** (`client/`, `engine/`, `shared/`, `worker/`,
+  `data/`, `vendor/`, `server/`, `package.json`, `package-lock.json`), `npm ci --omit=dev` on the
+  box, a health check, and a rollback on a failed `nginx -t`; identity in a gitignored
+  `tools/deploy.env`.
+- `/health`: room count, seats, the pump's p50/p99 jitter, uptime — what the unit and a person read.
+- `DEPLOYING.md` at the root, in the siblings' shape; `README.md`'s running section leads with
+  hosting a room.
+
+**Tests.** `test/server-config.test.js`: the defaults, and that a production bind is loopback.
+**Gate.** `room_soak` against the deployed server once (V4 reads it), and the first-time box
+setup done once by hand with its steps written into `DEPLOYING.md` as they were actually run.
+
+## M7b — The v1.0 release (S) — v1.0's V6
+
+`RELEASE.md` re-measured at the release commit, `git tag v1.0`, `main` fast-forwarded, **pushed by
+Kjell**, and the README leading with the room. After V5's evening, not before.
+
 ## Order
 
 **Where this lane stands, 2026-10-08.** M1–M6, M8 and M9 are built, and **M7 is done bar Kjell's

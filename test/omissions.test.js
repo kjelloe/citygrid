@@ -386,9 +386,15 @@ test("the options the project declares and nothing reads are exactly these (Q148
   // the other direction and could not get a reader. It rode X4h's
   // `SAVE_VERSION` bump, because `options` is a hashed field and removing one
   // moves every state's hash.
-  assert.deepEqual(unread.sort(), [
-    "disasterAid", "lateJoin", "mutualAid", "privacy", "seasonYears", "splitRule",
-  ], "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
+  //
+  // **Three left together on 2026-10-09 (X4g, era 31)** — `splitRule`,
+  // `mutualAid` and `disasterAid`, which were one item precisely because all
+  // three change what a city earns and so had to be measured in one era rather
+  // than three slices. What is left is the two the lobby has no mechanism for
+  // (`privacy` needs a room list, `lateJoin` is a restriction nobody has asked
+  // for) and `seasonYears`, which is Wave 6's.
+  assert.deepEqual(unread.sort(), ["lateJoin", "privacy", "seasonYears"],
+    "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
 });
 
 test("every module the client imports actually exists", () => {

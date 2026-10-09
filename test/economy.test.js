@@ -178,6 +178,88 @@ test("a shared treasury divides the region's net between the seats", () => {
   assert.ok(state.players[1].treasury > before, "seat two should share seat one's income");
 });
 
+// --- X4g: the split rule, era 31 ---------------------------------------------
+//
+// `TREASURY_SHARED` and `TREASURY_SPLIT` did the same arithmetic until now —
+// both divided the region's net equally — and `splitRule` was one of the
+// options `test/omissions.test.js` has pinned as unread since Wave 0, with a
+// comment in `economyPass` saying "the rule is one line". It is one line, and
+// the line is only worth writing if it can say something the equal split
+// cannot: that a seat housing three quarters of the region's residents has
+// three quarters of the region's costs.
+
+test("a split treasury divides by the rule the lobby chose, and loses no coin (X4g)", () => {
+  // Seat one houses 90 residents, seat two 30: three quarters against one.
+  const byHead = city({ treasury: "split", splitRule: "population" });
+  addLot(byHead, 1, ZONE_RESIDENTIAL, 3, 3, 2, 90);
+  addLot(byHead, 2, ZONE_RESIDENTIAL, 6, 3, 2, 30);
+  byHead.tax = 12;
+  const was = byHead.players.map((p) => p.treasury);
+  const events = economyPass(byHead);
+  const net = events.find((e) => e.kind === "budget" && e.seat === undefined).net;
+  const got = byHead.players.map((p, i) => p.treasury - was[i]);
+
+  assert.equal(got[0] + got[1], net, "the split minted or lost money");
+  assert.ok(got[0] > got[1] * 2, `by population seat one takes most of ${net}: ${got.join(" / ")}`);
+
+  // And the equal rule on the same city, which is the arm the era report runs:
+  // same net, different shares.
+  const equal = city({ treasury: "split", splitRule: "equal" });
+  addLot(equal, 1, ZONE_RESIDENTIAL, 3, 3, 2, 90);
+  addLot(equal, 2, ZONE_RESIDENTIAL, 6, 3, 2, 30);
+  equal.tax = 12;
+  const flat = equal.players.map((p) => p.treasury);
+  const flatEvents = economyPass(equal);
+  const flatNet = flatEvents.find((e) => e.kind === "budget" && e.seat === undefined).net;
+  const shares = equal.players.map((p, i) => p.treasury - flat[i]);
+  assert.equal(flatNet, net, "the two rules are measuring different cities");
+  assert.equal(shares[0] + shares[1], net, "the equal split minted or lost money");
+  // Equal to within the remainder, which goes to the lowest seat rather than
+  // being dropped: `idiv(net, seats)` each lost up to one coin per seat per
+  // month for sixteen seats, every month, which is not nothing over 25 years.
+  assert.ok(Math.abs(shares[0] - shares[1]) <= 1,
+    `the equal rule stopped being equal: ${shares.join(" / ")}`);
+});
+
+test("a region with nobody living in it falls back to the equal share (X4g)", () => {
+  // A proportional rule with a total of zero is a division by zero in disguise:
+  // every share would be 0 and the whole net would vanish into the remainder.
+  // Equal shares are what "by population" MEANS in a city with no population.
+  const state = city({ treasury: "split", splitRule: "population" });
+  addLot(state, 1, ZONE_COMMERCIAL, 3, 3, 2, 0);
+  state.tax = 12;
+  const was = state.players.map((p) => p.treasury);
+  const events = economyPass(state);
+  const net = events.find((e) => e.kind === "budget" && e.seat === undefined).net;
+  const got = state.players.map((p, i) => p.treasury - was[i]);
+  assert.equal(got[0] + got[1], net);
+  assert.ok(Math.abs(got[0] - got[1]) <= 1,
+    `with nobody housed the shares are not equal: ${got.join(" / ")}`);
+});
+
+test("a seat housing nobody still pays its share of a LOSS (X4g)", () => {
+  // The direction nobody checks. Proportional-to-population on a negative net
+  // means the big seat carries the deficit, which is the point — but a seat
+  // with no residents and a bill of its own must not be made whole by the
+  // rule, or an empty seat is the cheapest seat to play.
+  const state = city({ treasury: "split", splitRule: "population" });
+  addLot(state, 1, ZONE_RESIDENTIAL, 3, 3, 2, 80);
+  // Seat two owns a station: upkeep and no residents.
+  state.buildings.push({
+    id: state.nextId, def: "fireStation", zone: ZONE_NONE, x: 8, y: 8, w: 2, h: 2,
+    owner: 2, level: 1, valueTier: 1, occupancy: 0, condition: 100, builtTick: 0, flags: 0,
+  });
+  state.nextId += 1;
+  state.tax = 0;
+  const was = state.players.map((p) => p.treasury);
+  const events = economyPass(state);
+  const net = events.find((e) => e.kind === "budget" && e.seat === undefined).net;
+  assert.ok(net < 0, `the test needs a loss to divide: ${net}`);
+  const got = state.players.map((p, i) => p.treasury - was[i]);
+  assert.equal(got[0] + got[1], net, "the loss minted or lost money");
+  assert.ok(got[0] < got[1], `the housed seat carries more of the loss: ${got.join(" / ")}`);
+});
+
 test("separate treasuries do not share", () => {
   const state = city({ treasury: "separate" });
   addLot(state, 1, ZONE_RESIDENTIAL, 3, 3);

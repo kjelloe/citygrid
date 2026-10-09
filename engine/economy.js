@@ -19,7 +19,7 @@ import { hasNet } from "./network.js";
 import { isInt, isIntInRange } from "./validate.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
-  TREASURY_SHARED, TREASURY_SPLIT, FUNDING_SERVICES,
+  TREASURY_SHARED, TREASURY_SPLIT, FUNDING_SERVICES, SPLIT_POPULATION,
 } from "./constants.js";
 
 register(CMD_SET_TAX, function setTax(state, command) {
@@ -162,6 +162,75 @@ function settle(player, budget, events) {
   });
 }
 
+/** Each seat's residents, which is what `splitRule: "population"` divides by.
+ * Summed from the lots rather than kept on the player record: `state.population`
+ * is regional by ruling 001 — residents belong to the region and are allocated
+ * at the lot — so the per-seat number is derived, and derived in one place. */
+function residentsBySeat(state) {
+  var out = [];
+  var i;
+  for (i = 0; i < state.players.length; i += 1) out.push(0);
+  for (i = 0; i < state.buildings.length; i += 1) {
+    var lot = state.buildings[i];
+    if (lot.zone !== ZONE_RESIDENTIAL) continue;
+    var at = seatIndex(state, lot.owner);
+    if (at >= 0) out[at] += lot.occupancy;
+  }
+  return out;
+}
+
+function seatIndex(state, seat) {
+  var i;
+  for (i = 0; i < state.players.length; i += 1) {
+    if (state.players[i].seat === seat) return i;
+  }
+  return -1;
+}
+
+/**
+ * A fixed split of the region's net between the seats (X4g, era 31).
+ *
+ * `TREASURY_SPLIT` divided the net equally and `splitRule` went unread from
+ * Wave 0 until here, with a comment promising one line. Two rules:
+ *
+ * - `equal` — what it always did, and still the default.
+ * - `population` — in proportion to the residents each seat houses, because a
+ *   seat housing three quarters of the region's people has three quarters of
+ *   its schools, bins and fires. A region with nobody in it divides equally;
+ *   proportional with a total of zero is a division by zero wearing a hat.
+ *
+ * **The shares sum to the net exactly.** Integer division loses up to one coin
+ * per seat, so the remainder is handed to the seat with the largest share
+ * (lowest seat on a tie, which is why the comparison is strict) rather than
+ * dropped — a split that mints or burns money is a desync waiting for a
+ * sixteen-seat region.
+ */
+function splitNet(state, net) {
+  var seats = state.players.length;
+  if (seats === 0) return;
+  var weights = [];
+  var total = 0;
+  var i;
+  if (state.options.splitRule === SPLIT_POPULATION) {
+    weights = residentsBySeat(state);
+    for (i = 0; i < seats; i += 1) total += weights[i];
+  }
+  if (total === 0) {
+    weights = [];
+    for (i = 0; i < seats; i += 1) weights.push(1);
+    total = seats;
+  }
+  var given = 0;
+  var best = 0;
+  for (i = 0; i < seats; i += 1) {
+    var share = idiv(net * weights[i], total);
+    state.players[i].treasury += share;
+    given += share;
+    if (weights[i] > weights[best]) best = i;
+  }
+  state.players[best].treasury += net - given;
+}
+
 export function economyPass(state) {
   var events = [];
   var mode = state.options.treasury;
@@ -185,9 +254,7 @@ export function economyPass(state) {
         state.players[i].treasury += idiv(net, state.players.length);
       }
     } else {
-      // Fixed split: equal shares (Q17 pending — the rule is one line).
-      var share = idiv(net, state.players.length === 0 ? 1 : state.players.length);
-      for (i = 0; i < state.players.length; i += 1) state.players[i].treasury += share;
+      splitNet(state, net);
     }
     events.push({ kind: "budget", income: totalIncome, expenses: totalExpenses, net: net });
     for (i = 0; i < state.players.length; i += 1) {

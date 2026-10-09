@@ -25,6 +25,7 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Disaster soak** | `node tools/disaster_soak.mjs [games] [years]` | Does every disaster fire, and leave a repairable city? |
 | **Traffic gate** | `node tools/traffic_gate.mjs [games] [years]` | Does routing fit the month tick? Does congestion track the city (people-per-road, population or driving demand) or the dice? |
 | **Balance sweep** | `node tools/sim_sweep.mjs [games] [years]` | 200 games × 4 configurations; writes reports/balance-eraN.md |
+| **Region sweep** | `node tools/region_sweep.mjs [games] [years]` | FOUR seats, four deputies, five arms: the multiplayer rules, which do nothing at one seat. Writes reports/region-eraN.md at 200+ games and **nothing below that**, so the gate's sample cannot overwrite the era's report |
 | **Play shot** | `node tools/play_shot.mjs` | What does the real page look like, both viewports? |
 | **Style sheet** | `MODE=city node tools/style-sheet.mjs` | All three styles from one city, side by side. `MODE=city` shoots them through the perspective camera: a style is geometry, shading and palette, and none of those should change with the projection |
 | **Where is it?** | `ZONE=residential node tools/where.mjs` | The densest window of a zone, the zone mix, the paved fraction |
@@ -301,6 +302,33 @@ Two things to keep straight when doing it:
   the worktree**. That is correct and it must not be copied into `reports/` — the era's report is
   the one the era shipped. Quote the arm's numbers in the dev-log and say they came from an arm.
 - Run the two sweeps in parallel. They are single-threaded and there are twenty cores.
+
+## A rule that does nothing at one seat (X4g, era 31)
+
+`sim_sweep` plays **one seat**, and three of this project's options divide a region between
+several: `splitRule` divides its money, `mutualAid` decides whether a station covers a
+NEIGHBOUR's street, `disasterAid` decides whether relief reaches the seats a disaster reached or
+all of them. At one seat all three are identities — not "small", not "hard to see", but
+arithmetically the same city — so no number from `sim_sweep` could ever have moved, and running it
+to decide them would have produced a flat table and the wrong conclusion.
+
+`tools/region_sweep.mjs` is their sweep: four seats, four deputies, one map, no socket. Three
+things in its shape are the reusable part.
+
+- **Measure the SPREAD, not the total.** Population and treasury totals answer "is the region
+  alive". The gap between the best and worst seat, as a percentage of the mean, answers "is it
+  fair" — and fairness is the whole of what these rules are for. A rule that moves the total and
+  not the spread has not done the thing it was turned on for. Relative rather than absolute,
+  because an absolute gap grows with the city and would call every era less fair than the last
+  (A119).
+- **One arm per rule, and a `split-equal` arm between the null and `split-population`.** The
+  equal-split arm is what proves the baseline: it came out +38 on the whole region's treasury,
+  which is the rounding remainder and nothing else — so `TREASURY_SHARED` and `TREASURY_SPLIT`
+  were the same arithmetic, and the population rule is measured against the right zero.
+- **An arm that changes nothing fails the gate.** The tool compares every arm against the null on
+  eight measures and exits non-zero if one moved none of them. Three of these options were
+  declared and unread for five waves; a rule wired to something no city reaches is that state
+  again with extra steps, and the only instrument that can see it is an arm.
 
 ## The sweep is its own set (M9, 2026-10-08)
 

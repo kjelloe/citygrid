@@ -715,6 +715,9 @@ fully-developed 128×128 16-seat save produced by the AI mayors and kept as
 - Multiplayer HUD additions: player roster with online/regency state, request inbox badge,
   contract panel, territory toggle, speed-vote indicator, and a compact activity feed
   ("Mira zoned industry near your border") — attributable, so consequences have an author.
+  **The feed is the alert list** (X3b) and the **history panel is its record** (X4h): the feed
+  lives in the page and the record is hashed state, because a player who closed the tab has no
+  page. Neither records what was built; the city is that record.
 - Mobile is the same client, not a fork: touch affordances gated on `(pointer: coarse)`, bottom
   scrollable toolbar, confirm/undo for drag tools, full-screen sheets for budget/stats/quests/
   inbox. The request flow is designed thumb-first: long-press a foreign building → *Request

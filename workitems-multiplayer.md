@@ -110,6 +110,56 @@ the review fixes after X4e", has the whole account.*
 4. **The commit discipline, as a check**: `tools/gates.mjs` prints a warning when the working tree
    has more than one dev-log entry since `HEAD` — the cheapest instrument for the finding above.
 
+## Review after X4g (2026-10-09) — P113
+
+*Read on `dev_night` at `9f8fc4e` with era 31 (X4g) in the working tree. On a clean checkout of
+that commit the node suite is red on **two docs checks only** — Q166 in the local questions file
+and not in `plan-v1.md`, and the release count — both already fixed in the uncommitted tree; every
+code test is green (2,020 at the last entry). **Everything since the last review is accepted**: X5,
+S18c, L2 with D8b as era 30, S22, M9, M7 (`main` merged to `28b7800`, the push is Kjell's), X2d's
+four pieces, X4h, X4i's deletion and X4f. The commit discipline is restored — twenty-two commits for
+the two reconstructed days, one per entry since. The findings along the way are the right kind:
+X1d's eight-times-too-fast room, X2d's frame that killed the server and the half-megabyte limit it
+produced, X4h's chronicler that was never registered in the fixture builder.*
+
+**Measured by the reviewer on a clean checkout of `9f8fc4e`:** `room` **217 s of 300**, 3 of 3
+(room_smoke 112, room_churn 58, room_soak 48); `quick` **535 s of 600**, 12 of 12 (ui_smoke 191,
+play_smoke 97, reach_smoke 71). Nothing else was running.
+
+**Three small things, none of them code.**
+- **`README.md` and `server/index.js`'s header still say A125** — "no `?room=`, no socket in the
+  page and no lobby until the client half is built". A131 lifted that on 2026-10-07 and the lobby
+  has hosted rooms since X2c. The README's running section should lead with how to host a room;
+  the header should say what the file does now. → V6 in `workitems-v1.md`, or the next docs pass.
+- **The open questions Q161–Q166** are six picture and judgement calls for Kjell and none blocks a
+  slice. They go into v1.1's list rather than being asked now.
+- **Nothing deploys.** The whole lane runs on a laptop with `node server/index.js`; there is no
+  `HOST`, no unit, no nginx block, no deploy script and no `DEPLOYING.md`, where both sibling games
+  have all five. That is the gap between "built" and "ready to play", and it is V1 in
+  `workitems-v1.md`.
+
+### X6 — The stale client reloads (S) — v1.0's V2
+
+**Goal.** The first deploy after v1.0 does not desync every phone that cached the old build.
+
+**Also in X6:** a resync is told to the player — one status line in both catalogues when the
+room re-sends the city, because today `session.js` counts it and the screen says nothing.
+
+**Do.** `compatible()` already refuses `BUILD_MISMATCH` and the join screen has the words (X1b);
+what is missing is the ACTION. On that refusal the page asks the service worker to `skipWaiting`
+and reloads — only then, never mid-room (plan §3.9), and never for a `dev` build. `update_smoke`
+gains the row: a client on an old build is refused, reloads, and joins on the new one.
+
+### X7 — The release gate at eight (S) — v1.0's V4
+
+**Goal.** The gate `plan-v1.md` has named since August is run as named.
+
+**Do.** `room_soak` with **eight** scripted clients for five city years, one hash; `room_smoke`
+with eight browser contexts (or the most the gate machine holds, written down), across a disconnect
+and a reconnect, a request filed and approved in both directions. The pump's p99 and the frame
+bytes per client go in the dev-log as plan §3.8's second measured row. Run on the deployed server
+(V1), not only on the laptop.
+
 ## What is already there (plan.md §3.9b, checked 2026-10-04)
 
 - **The seam** (W1, W2, W4): `openMirrorSession(given, transport)` takes anything with
@@ -854,9 +904,9 @@ that reads the city stays: the gate counts 15 overlays and 0 tool buttons. `?wat
 `?join=`, and a **Just watch** button beside Join in the lobby.
 
 **Still to build in X4:**
-spectators, a room that ticks at 1× when every seat is in regency, and
-`splitRule`/`mutualAid`/`disasterAid` where income, coverage and repair are shared. ~~Hibernating
-when empty~~ was X4d's standstill and X4f's disk, 2026-10-09. ~~A history
+spectators and a room that ticks at 1× when every seat is in regency. ~~Hibernating when empty~~
+was X4d's standstill and X4f's disk, and ~~`splitRule`/`mutualAid`/`disasterAid`~~ were **era 31**
+(X4g) — all 2026-10-09. ~~A history
 that outlives the alert list~~ was X4h, 2026-10-09.
 
 ## X4 — Drop-in and absence (L) — slice 5.4
@@ -885,13 +935,14 @@ singleplayer playtest was.
 
 ## Order
 
-**Everything in this lane is built except two items.** As of 2026-10-09, in the order it
-happened:
+**Everything in this lane is built except one item**, and it is the lobby's remaining rows. As of
+2026-10-09, in the order it happened:
 
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
 ~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~ →
 ~~X5~~ (the review fixes, and two reds `all` found that the review had not) → ~~X4h~~ →
-~~X4i~~ (a deletion, riding X4h's migration) → ~~X4f~~.
+~~X4i~~ (a deletion, riding X4h's migration) → ~~X4f~~ → ~~X4g~~ (**era 31**, measured on a new
+four-seat sweep).
 
 **And it is all in the history now.** The whole lane was uncommitted on 2026-10-08 — seventy-one
 files, two days, thirty dev-log entries behind `1f13ee7`. Twenty-two commits, one per slice in the
@@ -909,7 +960,10 @@ code or watch without taking a seat. Build, ask a neighbour to clear their groun
 nuisance, answer from an inbox or set a standing answer and let the month do it, point at a tile
 with one of seven phrases, chat if the room has it on, see who is in the room and say you are away.
 Leave, and the city keeps going: the seat is yours for two minutes, then a deputy plays it, then
-after `abandonYears` the ground goes to the commons. A room nobody is in stops playing, and five
+after `abandonYears` the ground goes to the commons. The lobby's money and aid rows are rules now
+(era 31): a split treasury can be divided by the residents each seat houses, mutual aid can be
+withheld so a station stops at a neighbour's border, and emergency relief either reaches the seats
+a disaster was on or the whole region. A room nobody is in stops playing, and five
 minutes later it is written to the disk and dropped — type its code tomorrow and the door reads it
 back, with the roads where you left them. Come back
 an hour later with the page long closed and the **history** panel still says what happened while
@@ -925,7 +979,6 @@ what was built, and it is on screen.
 
 | | What | Why it is left |
 |---|---|---|
-| **X4g** | `splitRule`, `mutualAid`, `disasterAid` | **A balance era**: they change what a city earns, so they need a sweep and a report, not a slice |
 | **X2d** | The lobby's remaining rows | ~~the door's refusals in words~~ · ~~spectate as a lobby choice~~ (X4e) · ~~the host's speed~~ (2026-10-09: `C2S.SPEED`, the host is the first seat in, the guest gets no button) · ~~the host's kick~~ (2026-10-09, with the session-ended path nothing had) · ~~hosting from a save~~ (2026-10-09 — one line at the door, and it found a frame size that killed the server) · the QR (Q5) · ready · joining a room that has started. Two of the seven unread options are its — `privacy` and `lateJoin`, and neither has a mechanism yet: `privacy` cannot mean anything until there is a room list, and `lateJoin` is a restriction nobody has asked for |
 | ~~**X4i**~~ | ~~`absenceYears`, which X4b superseded~~ — **deleted 2026-10-09**, riding X4h's `SAVE_VERSION` 6 → 7 | A decision that lived in a test comment, which is nowhere: X4b built regency on a WALL clock (`regencyAfterMs`) because a person's absence is real time, not sim time, so `absenceYears` was not merely unread but **answered in the other direction**. It was never free — `options` is a hashed field and `OPTION_FIELDS` is its field list — which is why it waited for a migration rather than being its own slice |
 

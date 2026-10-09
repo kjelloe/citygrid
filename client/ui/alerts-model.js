@@ -35,6 +35,11 @@ const KINDS = {
   // place is the whole of what it says.
   ping: { severity: SEVERITY.INFO, textKey: "alert.ping", collapse: false },
   disasterRelief: { severity: SEVERITY.INFO, textKey: "alert.disasterRelief" },
+  // **Your money went to a neighbour** (X4g). Only in a room with `disasterAid`
+  // on, and a WARNING rather than info: the seat did nothing and is poorer, and
+  // a treasury that falls with nothing on screen to say why is the thing this
+  // row exists to stop.
+  disasterLevy: { severity: SEVERITY.WARNING, textKey: "alert.disasterLevy" },
   disasterOver: { severity: SEVERITY.INFO, textKey: "alert.disasterOver", namedKey: "alert.disasterOver.named" },
 
   fireStarted: { severity: SEVERITY.URGENT, textKey: "alert.fireStarted" },

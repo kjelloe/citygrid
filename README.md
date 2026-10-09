@@ -51,15 +51,15 @@ node tools/serve.mjs        # then open the printed URL — boots straight into 
 node server/index.js 8123   # the same page, plus a room on /ws for the headless gate (X1)
 ```
 
-The second one is X1's server. It serves singleplayer exactly as `serve.mjs` does: there is no
-`?room=`, no socket in the page and no lobby until the multiplayer client half is built (A125), so
-the only thing that talks to `/ws` today is `tools/room_soak.mjs`.
+The second one is the room server (X1–X4): the same page, plus **Host a room** and **Join** on the
+new-game screen and `/ws` behind them. Singleplayer still opens no socket. How to run it on a box
+is `workitems-v1.md` V1 and, once built, `DEPLOYING.md`.
 
 Build a road, zone beside it, place a power plant and a pump, and watch it grow.
 One finger paints when a tool is selected and pans when none is; two fingers are
 always the camera. Tap with no tool to inspect a tile.
 
-**Gates.** One runner, eleven sets, and a time budget each — a gate that grows past its share is
+**Gates.** One runner, twelve sets, and a time budget each — a gate that grows past its share is
 a finding rather than a fact of life. Every gate that exists is in a set, and `test/gates.test.js`
 fails if one is not.
 

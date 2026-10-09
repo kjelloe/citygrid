@@ -681,6 +681,22 @@ named, and a restyle rather than a slice, so it is **Q163** with a test that kee
 And the sun reads quietly at midday because the key light stands at **83.4°** of elevation — its
 radius is `max(w, h) × 0.18` while `sunHeight` is 120 — which is **Q164**.
 
+## S22b — The sun stands further out (XS) — A139 (Q164)
+
+`sun.radius` in `data/cityviewer.json` (with the mirror): the key light's distance from the map
+centre as a fraction of the map, 0.18 → about 0.5, so noon is near 45° and dusk near 20°. The
+shadow box's reach follows the longer shadows (re-measure `followShadow`'s texel snap at the new
+angle — the crawl check in S22's gates). Re-take `smoke-S22-{dawn,noon,dusk,night}.png` from the
+same spot: the noon/dusk pair must show the tree's shadow in two visibly different places.
+
+## S22c — The lit styles take the real light (S) — A140 (Q163)
+
+`building-kit.js` and `detail-kit.js`'s compass shade (S 0.88 / E 0.8 / N 0.7 / W 0.62) is dropped
+on `plain` and `painted` and kept on `pixel`, where the bake is the light. `test/toon.test.js`'s
+form test stays for pixel and gains the inverse for the lit styles: a building's four sides at noon
+differ by the LIGHT, measured in a shot, not by the bake. Gate: the compare sheet's terrace row at
+three hours, and `budget_gate` unmoved (colour, not geometry).
+
 ## S22 — A sun that moves, and a moon that takes over (M, renderer) — P109, analysed 2026-10-08 — the item as written
 
 **Decided.** A **quarter arc** across the daylight band (about 0.5°/s on a 240-second day), the

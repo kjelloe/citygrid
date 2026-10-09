@@ -20,7 +20,7 @@
 
 import { registerMonthly } from "./reducer.js";
 import { rules, difficultyOf } from "./rules.js";
-import { clamp } from "../shared/idiv.js";
+import { clamp, idiv } from "../shared/idiv.js";
 import { tileAt, xOf, yOf } from "../shared/grid.js";
 import { nextInt, nextRange, chanceIn } from "../shared/prng.js";
 import { isWater } from "./terrain.js";
@@ -154,6 +154,51 @@ function forEachInRadius(state, cx, cy, radius, visit) {
  * Ruins rather than empty ground, deliberately: the design asks disasters to be
  * recoverable AND to be felt. A tile that silently empties has cost the player
  * nothing to put right. */
+/**
+ * The region pays for a seat's relief, as far as it can (X4g, `disasterAid`).
+ *
+ * Equal turns rather than equal shares: `want` is divided by however many seats
+ * can still give, round by round, so a region where one seat is rich and two
+ * are nearly at the floor still raises what it can without any seat going
+ * below the floor — a levy that made a donor eligible for relief would be a
+ * loop. Returns what was actually raised; the caller's faucet covers the rest,
+ * because §12's recoverability may not depend on how rich the neighbours are.
+ */
+function levy(state, seat, want, floor, events) {
+  var raised = 0;
+  var pass;
+  for (pass = 0; pass < 2 && raised < want; pass += 1) {
+    var givers = 0;
+    var i;
+    for (i = 0; i < state.players.length; i += 1) {
+      if (state.players[i].seat === seat) continue;
+      if (state.players[i].treasury > floor) givers += 1;
+    }
+    if (givers === 0) return raised;
+    var each = idiv(want - raised, givers);
+    if (each === 0) each = 1;
+    for (i = 0; i < state.players.length && raised < want; i += 1) {
+      var donor = state.players[i];
+      if (donor.seat === seat) continue;
+      var spare = donor.treasury - floor;
+      if (spare <= 0) continue;
+      var take = each;
+      if (take > spare) take = spare;
+      if (take > want - raised) take = want - raised;
+      donor.treasury -= take;
+      raised += take;
+      // **A player whose money moved is told.** The relief alert belongs to the
+      // seat that received it, and a donor would otherwise watch a treasury
+      // fall with nothing on screen to say why — which is the shape of
+      // `a-refusal-needs-words-and-a-warning`, in a treasury instead of a
+      // refusal. A new event kind is the alerts table, both catalogues and the
+      // event census; `test/omissions.test.js` fails if it is any fewer.
+      events.push({ kind: "disasterLevy", seat: donor.seat, amount: take, to: seat });
+    }
+  }
+  return raised;
+}
+
 function wreck(state, index, events) {
   var id = state.tiles.buildingId[index];
   if (id === 0) return 0;
@@ -277,14 +322,40 @@ function strike(state, disaster, events) {
   // never above it, and only when a disaster caused the shortfall. It is not a
   // faucet: a solvent city gets nothing, and the floor buys a rebuild, not a
   // city.
+  // **Who PAYS for it** (X4g, era 31). `disasterAid` is §2.6's option — "damage
+  // is paid by the owner of the burnt property; a `disasterAid` option lets the
+  // region share repair costs" — and the question it answers is where the
+  // top-up comes from, not who may have it.
+  //
+  // That is the second answer. The first was to aim the relief at the seats
+  // whose ground the disaster was ON, since the paragraph above claims "only
+  // when a disaster caused the shortfall" while the loop paid every seat below
+  // the floor. It is a defensible rule and **`disaster_soak` refused it**: two
+  // unrecoverable cities, the same count and the same failure the floor was
+  // measured into existence to fix. The disasters that actually ruin a city are
+  // exactly the ones whose spot is unowned — a wildfire picks a forest, a flood
+  // picks a shoreline — so geography cannot stand in for harm, and §12's
+  // "recoverable" is not a property a fairness option may take away.
+  //
+  // So the floor still reaches every seat that cannot rebuild, and the option
+  // decides the source: with aid ON the solvent seats are levied in equal turns
+  // for what the victim needs, never below the floor themselves (a levy that
+  // made a donor eligible would be a loop), and the faucet covers only what the
+  // region cannot raise. With one seat there is nobody to levy, so this is
+  // multiplayer-only by construction — which is why era 31's singleplayer
+  // numbers are byte-identical to era 30's in every column.
+  var shared = state.options.disasterAid === true;
   var i;
   for (i = 0; i < state.players.length; i += 1) {
     var player = state.players[i];
     if (player.treasury >= config.reliefFloor) continue;
     var grant = config.reliefFloor - player.treasury;
     if (grant > config.reliefCap) grant = config.reliefCap;
+    var fromRegion = shared ? levy(state, player.seat, grant, config.reliefFloor, events) : 0;
     player.treasury += grant;
-    events.push({ kind: "disasterRelief", seat: player.seat, amount: grant });
+    events.push({
+      kind: "disasterRelief", seat: player.seat, amount: grant, fromRegion: fromRegion,
+    });
   }
 
   events.push({

@@ -42,6 +42,11 @@ const REQUIRED_DOCS = [
   "workitems-transport.md",
   "workitems-rules.md",
   "workitems-multiplayer.md",
+  // The milestones (P113, 2026-10-09): v1.0 is the Multiplayer MVP deployed and
+  // played once, v1.1 the details and balance, v1.2 scale and operations. It
+  // owns the definition of done and the order; every item in it points at a
+  // lane file for its tests and gates. This list is what noticed it existed.
+  "workitems-v1.md",
   "specs/transport-and-landmarks.md",
 ];
 
@@ -441,6 +446,33 @@ test("a balance report's two halves agree with each other", () => {
       const held = entry.summary?.population ?? [];
       if (said.join() !== held.join()) {
         problems.push(`${name} ${config}: the table says ${said.join("/")} and the data says ${held.join("/")}`);
+      }
+    }
+  }
+  assert.deepEqual(problems, [], problems.join("; "));
+});
+
+test("a region report's two halves agree with each other too (X4g)", () => {
+  // The same rule for the four-seat sweep, written at the same time as the
+  // sweep rather than after an era got it wrong. Its table is one row per ARM
+  // rather than one block per configuration, and the column held against the
+  // data is the treasury spread — the measure the whole sweep exists for, so a
+  // prose half that drifted from it would be the one number worth catching.
+  const files = readdirSync(join(repoRoot, "reports"))
+    .filter((name) => /^region-era\d+\.json$/.test(name)).sort();
+  const problems = [];
+  for (const name of files) {
+    const report = JSON.parse(readFileSync(join(repoRoot, "reports", name), "utf8"));
+    const md = readFileSync(join(repoRoot, "reports", name.replace(/\.json$/, ".md")), "utf8");
+    for (const [key, entry] of Object.entries(report.configs ?? {})) {
+      const [config, arm] = key.split("/");
+      const block = new RegExp(`## ${config}\\b[\\s\\S]*?(?=\\n## |$)`).exec(md);
+      if (!block) { problems.push(`${name}: no ${config} block in the prose`); continue; }
+      const row = new RegExp(`\\| \`${arm}\` \\|[^|]*\\|[^|]*\\|[^|]*\\| (\\d+)% \\|`).exec(block[0]);
+      if (!row) { problems.push(`${name}: no ${arm} row under ${config}`); continue; }
+      if (Number(row[1]) !== entry.summary.treasurySpread) {
+        problems.push(`${name} ${key}: the table says ${row[1]}% and the data says `
+          + `${entry.summary.treasurySpread}%`);
       }
     }
   }

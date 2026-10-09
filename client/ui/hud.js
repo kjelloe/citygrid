@@ -666,7 +666,7 @@ export function createHud(root, {
     // The same guard the inbox, the roster and the alert list have: `refresh()`
     // runs twice a second in a room, and a row rebuilt under the cursor cannot
     // be pressed.
-    const signature = rows.map((r) => `${r.tick}:${r.textKey}:${r.name}`).join("|");
+    const signature = rows.map((r) => `${r.tick}:${r.textKey}:${r.name}:${r.other ?? ""}`).join("|");
     if (signature === chronicleSignature) return;
     chronicleSignature = signature;
     chronicleBar.innerHTML = "";

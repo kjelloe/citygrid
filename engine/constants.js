@@ -46,6 +46,11 @@ export var TREASURY_SHARED = "shared";
 export var TREASURY_SPLIT = "split";
 export var TREASURY_SEPARATE = "separate";
 
+/** How `TREASURY_SPLIT` divides the region's net (X4g, era 31). Equal shares,
+ * or in proportion to the residents each seat houses. */
+export var SPLIT_EQUAL = "equal";
+export var SPLIT_POPULATION = "population";
+
 export var TERRAIN_STYLE_FLAT = "flat";
 export var TERRAIN_STYLE_ROLLING = "rolling";
 export var TERRAIN_STYLE_HILLY = "hilly";

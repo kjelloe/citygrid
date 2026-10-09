@@ -13,9 +13,17 @@ measured when somebody last looked, which is a different claim and the only one 
   a game that no longer existed, so `test/docs.test.js` fails past fifty commits of drift rather
   than printing a note nobody reads (M7).
 - **Date:** 2026-10-08
-- **Balance era:** era 30 (`reports/balance-era30.md`), measured 2026-10-08 over 200 games per
-  configuration, with **two arms beside it** (`balance-era30-arm-{bulldoze,quests}`) because two
-  rules moved at once. Era 30 is L2's price for clearing ground — a bulldoze costs 5 before
+- **Balance era:** era 31 (`reports/balance-era31.md` and `reports/region-era31.md`), measured
+  2026-10-09. X4g made the three multiplayer options that divide a region into rules — `splitRule`,
+  `mutualAid`, `disasterAid` — which **no single-seat sweep could have measured**, because at one
+  seat all three are arithmetic identities. So the era brought a second instrument: four seats,
+  four deputies, five arms, 200 games each. `splitRule: population` takes the treasury spread
+  between seats from 1% to 70%; withholding mutual aid costs the region **10.5% of its money and
+  4.1% of its people** and leaves it less fair as well as poorer; `disasterAid` pays relief 43
+  times against 13 and changes nothing else at all. Singleplayer is **byte-identical to era 30** in
+  every population and treasury quantile, bar five relief payments of 200 demanding games.
+  Era 30 was L2 and D8b, with **two arms beside it** (`balance-era30-arm-{bulldoze,quests}`)
+  because two rules moved at once. Era 30 is L2's price for clearing ground — a bulldoze costs 5 before
   difficulty scaling, so **relaxed 3, steady 4, demanding 6**, where it was 0, 0 and 1 — and D8b's
   quests, which the tools had never loaded. Both are **economically invisible to the deputy's city**:
   population 1811 / 1710 / 1543 / 1572 against era 29's 1811 / 1710 / 1545 / 1572, and a treasury
@@ -32,10 +40,11 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **1,978 tests**, green twice in a row on every slice (`./test.sh`), and **eleven gate sets** —
-  `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `film` and
-  `room` — every one of their budgets re-measured on a quiet machine at era 30 (M9), most of them
-  downwards.
+- **2,028 tests**, green twice in a row on every slice (`./test.sh`), and **twelve gate sets** —
+  `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
+  `film` and `room` — every one of their budgets re-measured on a quiet machine at era 30 (M9),
+  most of them downwards. `region` is era 31's: a four-seat city played five ways, because the
+  options that divide a region's money cannot be measured at one seat.
 
 ## Running it
 
@@ -139,6 +148,7 @@ is only comparable within an era.
 | `film` | 1 | **116 s** | 180 s | the sixty-second storyboard, every frame counted for triangles and for life |
 | `sim` | 2 | **354 s** | 450 s | `disaster_soak` and `traffic_gate` |
 | `sweep` | 1 | **628 s** | 780 s | the 200-game balance sweep, which is the only gate that writes a report |
+| `region` | 1 | **201 s** | 300 s | four seats, five arms: the sample that says every multiplayer rule still reaches a city (X4g) |
 | `room` | 3 | **187 s** | 600→300 s | five browsers in one room, and two `ws` clients on one hash |
 
 Every budget on that table was re-measured at era 30 and **most of them came down** — `kits` by
@@ -187,10 +197,13 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**5 open questions** are on the list (`dev-questions.md`, bottom section), none blocking anything —
+**0 open questions** are on the list (`dev-questions.md`, bottom section), none blocking anything —
 each one is a picture, a rung or an improbability that a slice measured and handed back rather than
 choosing for itself.
 
+- **Q166**: a shared treasury and a split treasury are the same arithmetic — the whole difference
+  over 200 four-seat games is the rounding remainder. Should `shared` become a real single purse,
+  or should the option lose a value?
 - **Q165**: a new room's code is refused if a live room holds it and not if a hibernated one does,
   because asking the disk would make the door asynchronous. Two in a million with 64 rooms held,
   and the cost is one sleeping city left unreachable until `prune`. Guard it, or leave it written

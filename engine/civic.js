@@ -14,7 +14,7 @@ import { tileAt, DIR8, neighbour, forEachInRadius } from "../shared/grid.js";
 import { isWater } from "./terrain.js";
 import {
   ZONE_NONE, ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL,
-  TERRAIN_FOREST, FLAG_POWERED, FLAG_WATERED, FLAG_RUINED,
+  TERRAIN_FOREST, FLAG_POWERED, FLAG_WATERED, FLAG_RUINED, OWNER_NATURE,
 } from "./constants.js";
 
 /** Scratch buffers for the smoothing passes. They live outside the state
@@ -178,9 +178,23 @@ export function coveragePass(state) {
     if ((flags & FLAG_POWERED) === 0) strength = idiv(strength, 2);
     if ((flags & FLAG_WATERED) === 0) strength = idiv(strength, 2);
 
+    // **Mutual aid** (X4g, era 31, ruling 001 and `specs/plan.md` §2.6). "My
+    // fire station covers your street if it is in range. This is a gift, not a
+    // bug — it is what makes a neighbour worth having." It was a gift nobody
+    // could decline: this pass had no idea whose ground it was depositing on.
+    // With aid off a station stops at the border — but only at ANOTHER SEAT's
+    // border. Unowned ground is nobody's and is still covered, because a seat
+    // that could not cover the commons could not cover ground it is about to
+    // claim.
+    var owner = building.owner;
+    var withheld = state.options.mutualAid === false;
     forEachInRadius(state.width, state.height, building.x, building.y, def.radius,
       function deposit(index, x, y, distance) {
         if (distance > def.radius) return;
+        if (withheld) {
+          var at = state.tiles.owner[index];
+          if (at !== OWNER_NATURE && at !== owner) return;
+        }
         var falloff = 100 - idiv(distance * 100, def.radius + 1);
         field[index] += idiv(strength * falloff, 100);
       });

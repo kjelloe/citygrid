@@ -96,6 +96,14 @@ export const GATES = {
   disaster_soak: { args: ["tools/disaster_soak.mjs", "200", "25"], what: "every disaster fires, no unrepairable cities" },
   traffic_gate: { args: ["tools/traffic_gate.mjs", "200", "25"], what: "routing fits the month tick" },
   sim_sweep: { args: ["tools/sim_sweep.mjs", "200", "25"], what: "200 games × 4 configs → reports/balance-eraN.md" },
+  // **A sample, not the era report** (X4g). The full run is 200 games × 5 arms
+  // × 2 configs of a FOUR-SEAT city — 2,000 games and an hour — which is not a
+  // gate, it is an era. The tool writes no report under 200 games and fails on
+  // an arm that changed nothing at all, which is the tripwire worth having
+  // between eras: three of these options were declared and unread for five
+  // waves, and a rule wired to something no city reaches is that state again
+  // with extra steps.
+  region_sweep: { args: ["tools/region_sweep.mjs", "10", "25"], what: "four seats, five arms: every arm still reaches a city (X4g)" },
 
   // The room (X1). Two real `ws` clients on a real HTTP server, each running
   // the same `worker/sim-host.js` the game runs, for five city years — and the
@@ -171,6 +179,11 @@ export const SETS = {
   // see `.claude/skills/sim-gate/SKILL.md` for the arms an era with two rules
   // in it needs.
   sweep: ["sim_sweep"],
+  // The multiplayer arms (X4g). Its own set rather than in `sweep`, by M2's
+  // split-rather-than-raise rule: `sweep` is ten minutes of one tool and this
+  // is a four-seat city played five ways. A gameplay slice that touches
+  // anything a SEAT owns runs it; an era runs the tool by hand at 200 games.
+  region: ["region_sweep"],
   // The storyboard (F2). A set of its own for the same reason `kits` is one: it
   // is 61 frames of a played 96-tile city on SwiftShader and nothing else can
   // absorb five minutes. It is also the only gate that renders the game as a
@@ -193,7 +206,8 @@ export const SETS = {
 // as paying twice and it never did — but the set list is a thing people add to,
 // and this is one line.
 SETS.all = [...new Set([...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim,
-  ...SETS.sweep, ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room])];
+  ...SETS.sweep, ...SETS.region, ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film,
+  ...SETS.room])];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -293,6 +307,11 @@ export const BUDGET_MS = {
   // `sim_sweep` alone, and the budget carries its own spread: 628 s in the set
   // run and 586 s standing on its own, the same code both times.
   sweep: 13 * 60 * 1000,
+  // The four-seat arms (X4g). Measured at 40 games: **400 games in 11 minutes**
+  // — 1.65 s a game, which is four deputies and four seats' worth of monthly
+  // passes rather than one. The gate runs 12 games (120 games, ~200 s); the era
+  // report is 200 games and an hour, run by hand, which is what an era is.
+  region: 5 * 60 * 1000,
   // The storyboard, measured at F2: 61 frames in 291 s at 960×540, of which the
   // two walk shots are half — a street frame on SwiftShader is a quarter of a
   // second and the film settles the street cache at every one of them.

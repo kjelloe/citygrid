@@ -8,6 +8,7 @@ import { sanitiseText } from "./validate.js";
 import { LIMITS } from "../shared/protocol.js";
 import {
   MODE_SHARED_CITY, TREASURY_SHARED, TERRAIN_STYLE_ROLLING, WATER_RIVER,
+  SPLIT_EQUAL, SPLIT_POPULATION,
   DIFFICULTY_STEADY, SEAT_MAX,
 } from "./constants.js";
 
@@ -79,7 +80,11 @@ export function defaultOptions(overrides) {
     disasters: given.disasters === undefined ? false : given.disasters === true,
     quests: given.quests === undefined ? true : given.quests === true,
     treasury: given.treasury ? given.treasury : TREASURY_SHARED,
-    splitRule: given.splitRule ? given.splitRule : "equal",
+    // `equal` or `population` (X4g, era 31) — read by `splitNet` in
+    // `engine/economy.js` when the treasury is SPLIT. Anything else is read as
+    // `equal`, which is what an unknown rule has to mean: a lobby from a later
+    // build must not divide a region's money by a rule this one cannot do.
+    splitRule: given.splitRule === SPLIT_POPULATION ? SPLIT_POPULATION : SPLIT_EQUAL,
     // Ruling 001: services and aid cross borders by default — a neighbour
     // should be worth having before they are worth resenting.
     mutualAid: given.mutualAid === undefined ? true : given.mutualAid === true,

@@ -13,6 +13,7 @@ import {
   PHASE_NONE, PHASE_WARNING, PHASE_ACTIVE, disasterName,
 } from "../engine/disasters.js";
 import { createState, hashState, copyState } from "../engine/state.js";
+import { rules } from "../engine/rules.js";
 import { defaultOptions } from "../engine/options.js";
 import { apply } from "../engine/reducer.js";
 import { CMD_JOIN, CMD_TICK, CMD_BULLDOZE } from "../engine/commands.js";
@@ -402,4 +403,130 @@ test("the list of ruins is exactly the ruined tiles, derived both ways", () => {
   assert.equal(state.tiles.flags[flagged[0]] & FLAG_RUINED, 0, "the ruin survived the bulldozer");
   assert.deepEqual(state.derelicts.map((d) => d.tile), flagged.slice(1),
     "a cleared ruin kept its entry, so its tile is still derelict to the rule");
+});
+
+// --- X4g: who PAYS for the relief, era 31 ------------------------------------
+//
+// The relief floor was measured into existence by `disaster_soak`: two cities
+// in 200 games were made genuinely unrecoverable, so a strike tops a treasury
+// up TO a floor. §2.6 asks a second question about it — "damage is paid by the
+// owner of the burnt property; a `disasterAid` option lets the region share
+// repair costs" — and `disasterAid` has been on the unread list since Wave 0.
+//
+// **The first answer was refused by a gate.** Aiming the relief at the seats
+// whose ground the disaster was ON is defensible, and it put two unrecoverable
+// cities straight back: the disasters that ruin a city are exactly the ones
+// whose spot is unowned, since a wildfire picks a forest and a flood a
+// shoreline. So the option decides the SOURCE, not the eligibility.
+
+/** Two seats who own a corner each, and a disaster aimed at seat one's. */
+function region(overrides) {
+  const state = town({ seats: 2, ...overrides });
+  apply(state, { type: CMD_JOIN, actor: 2, seat: 2, name: "Neighbour" });
+  for (let y = 8; y < 16; y += 1) {
+    for (let x = 8; x < 16; x += 1) state.tiles.owner[y * state.width + x] = 1;
+  }
+  for (let y = 18; y < 23; y += 1) {
+    for (let x = 18; x < 23; x += 1) state.tiles.owner[y * state.width + x] = 2;
+  }
+  for (const player of state.players) player.treasury = 0;
+  return state;
+}
+
+test("relief still reaches every seat that cannot rebuild, aid or no aid (X4g)", () => {
+  for (const disasterAid of [false, true]) {
+    const state = region({ disasterAid });
+    arm(state, DISASTER_EARTHQUAKE, { x: 12, y: 12, radius: 3 });
+    const events = disasterPass(state);
+    const relieved = events.filter((e) => e.kind === "disasterRelief").map((e) => e.seat).sort();
+    assert.deepEqual(relieved, [1, 2], `aid ${disasterAid}: ${JSON.stringify(relieved)}`);
+    for (const player of state.players) {
+      assert.ok(player.treasury > 0, `aid ${disasterAid}: seat ${player.seat} got nothing`);
+    }
+  }
+});
+
+test("with aid on the region pays for it, and never below its own floor (X4g)", () => {
+  const floor = rules().disasters.reliefFloor;
+  const state = region({ disasterAid: true });
+  state.players[0].treasury = 0;            // the victim
+  state.players[1].treasury = floor * 4;    // the only seat that can give
+  const was = state.players[1].treasury;
+  arm(state, DISASTER_EARTHQUAKE, { x: 12, y: 12, radius: 3 });
+  const events = disasterPass(state);
+  const paid = events.find((e) => e.kind === "disasterRelief" && e.seat === 1);
+  assert.ok(paid, "the victim was not relieved");
+  assert.equal(paid.fromRegion, paid.amount, "the faucet paid what the region could have");
+  assert.equal(state.players[1].treasury, was - paid.amount, "the donor was not levied");
+  assert.ok(state.players[1].treasury >= floor, "a donor was pushed below the relief floor");
+});
+
+test("and with aid off the money comes from nowhere, as it always did (X4g)", () => {
+  const floor = rules().disasters.reliefFloor;
+  const state = region({ disasterAid: false });
+  state.players[0].treasury = 0;
+  state.players[1].treasury = floor * 4;
+  const was = state.players[1].treasury;
+  arm(state, DISASTER_EARTHQUAKE, { x: 12, y: 12, radius: 3 });
+  const events = disasterPass(state);
+  const paid = events.find((e) => e.kind === "disasterRelief" && e.seat === 1);
+  assert.equal(paid.fromRegion, 0, "aid was off and the region was levied anyway");
+  assert.equal(state.players[1].treasury, was, "a bystander paid with aid off");
+});
+
+test("a region with nobody solvent falls back to the faucet (X4g)", () => {
+  // Recoverability may not depend on how rich the neighbours are: if the levy
+  // raises nothing, the grant is paid anyway.
+  const state = region({ disasterAid: true });
+  for (const player of state.players) player.treasury = 0;
+  arm(state, DISASTER_EARTHQUAKE, { x: 12, y: 12, radius: 3 });
+  const events = disasterPass(state);
+  const paid = events.filter((e) => e.kind === "disasterRelief");
+  assert.equal(paid.length, 2, "a broke region was left broke");
+  for (const event of paid) assert.equal(event.fromRegion, 0, "money came from a seat that had none");
+});
+
+test("one seat is never levied, so singleplayer cannot tell the option is there (X4g)", () => {
+  // Which is why era 31's one-seat sweep is byte-identical to era 30's in every
+  // column: with nobody to levy, aid on and aid off are the same arithmetic.
+  //
+  // Compared on the treasury and the relief rather than on `hashState`: the
+  // OPTION is itself a hashed field, so two arms of one city can never share a
+  // hash however identically they behave. (A hash compare here failed for
+  // exactly that reason, which is worth the sentence.)
+  const arms = [false, true].map((disasterAid) => {
+    const state = town({ seats: 1, disasterAid });
+    state.players[0].treasury = 0;
+    arm(state, DISASTER_EARTHQUAKE, { x: 12, y: 12, radius: 3 });
+    const events = disasterPass(state);
+    const relief = events.filter((e) => e.kind === "disasterRelief");
+    return { treasury: state.players[0].treasury, paid: relief.map((e) => `${e.amount}/${e.fromRegion}`) };
+  });
+  assert.equal(arms[0].treasury, arms[1].treasury, "disasterAid moved a one-seat treasury");
+  assert.deepEqual(arms[0].paid, arms[1].paid, "disasterAid changed a one-seat relief");
+  assert.deepEqual(arms[0].paid, ["3000/0"], `the test never got relief: ${arms[0].paid}`);
+});
+
+test("a seat that was levied is told, because its money moved (X4g)", () => {
+  // The relief alert belongs to the seat that RECEIVED it. A donor would
+  // otherwise watch its treasury fall with nothing on screen to say why.
+  const floor = rules().disasters.reliefFloor;
+  const state = region({ disasterAid: true });
+  state.players[0].treasury = 0;
+  state.players[1].treasury = floor * 4;
+  arm(state, DISASTER_EARTHQUAKE, { x: 12, y: 12, radius: 3 });
+  const events = disasterPass(state);
+  const told = events.filter((e) => e.kind === "disasterLevy");
+  assert.equal(told.length, 1, `the donor was not told: ${JSON.stringify(told)}`);
+  assert.equal(told[0].seat, 2, "the alert went to the wrong seat");
+  assert.equal(told[0].to, 1, "the levy does not say who it was for");
+  assert.equal(told[0].amount, floor, `levied ${told[0].amount} of ${floor}`);
+
+  // And nobody is told when nobody paid.
+  const alone = region({ disasterAid: false });
+  alone.players[0].treasury = 0;
+  alone.players[1].treasury = floor * 4;
+  arm(alone, DISASTER_EARTHQUAKE, { x: 12, y: 12, radius: 3 });
+  assert.equal(disasterPass(alone).filter((e) => e.kind === "disasterLevy").length, 0,
+    "a levy was announced with aid off");
 });

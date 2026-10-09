@@ -259,3 +259,62 @@ test("the deputy builds for both of them", () => {
   }
   assert.ok(covered > 50, `only ${covered} tiles have any education coverage`);
 });
+
+// --- X4g: mutual aid, era 31 -------------------------------------------------
+//
+// "My fire station covers your street if it is in range. This is a gift, not a
+// bug — it is what makes a neighbour worth having" (`specs/plan.md` §2.6,
+// ruling 001). It was a gift nobody could decline: `coveragePass` deposited
+// into the field with no idea whose ground it was, and `mutualAid` has been on
+// `test/omissions.test.js`'s unread list since Wave 0.
+
+/** Two seats, so there is a border for the aid to cross or stop at. */
+function region() {
+  const state = createState(defaultOptions({ width: W, height: W, seed: 7, seats: 2 }));
+  apply(state, { type: CMD_JOIN, actor: 1, seat: 1, name: "One" });
+  apply(state, { type: CMD_JOIN, actor: 2, seat: 2, name: "Two" });
+  state.players[0].treasury = 1000000;
+  state.players[1].treasury = 1000000;
+  state.quests.vars.push({ name: "rank", value: 4 });
+  state.quests.vars.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return state;
+}
+
+test("a station covers a neighbour's ground, or does not, by the lobby's option (X4g)", () => {
+  // A BLOCK of their land, not one tile: the fields are smoothed at radius 1
+  // after the deposit, so a single withheld tile surrounded by covered ones
+  // reads 58 rather than 0 — the blur crosses a border one tile wide. The
+  // interior of a block is what the rule is actually about, and the edge
+  // bleeding a little is the same blur every other field has.
+  const theirs = at(20, 16);
+  const nobodys = at(16, 20);
+  const read = (aid) => {
+    const state = region();
+    state.options.mutualAid = aid;
+    place(state, "school", 16, 16);
+    for (let y = 14; y <= 18; y += 1) {
+      for (let x = 18; x <= 22; x += 1) state.tiles.owner[at(x, y)] = 2;
+    }
+    coveragePass(state);
+    return { theirs: state.tiles.education[theirs], nobodys: state.tiles.education[nobodys] };
+  };
+  const given = read(true);
+  const withheld = read(false);
+  assert.ok(given.theirs > 0, "the gift was never given");
+  assert.equal(withheld.theirs, 0, "aid was withheld and the neighbour was covered anyway");
+  // **Unowned ground is nobody's and is still covered.** Withholding aid is
+  // about a NEIGHBOUR, not about the map: a seat that could not cover the
+  // commons could not cover ground it is about to claim.
+  assert.ok(withheld.nobodys > 0, "withholding aid stopped a station covering the commons");
+  assert.equal(given.nobodys, withheld.nobodys, "the option changed the wrong tiles");
+});
+
+test("withholding aid does not stop a seat covering its OWN ground (X4g)", () => {
+  const state = region();
+  state.options.mutualAid = false;
+  const mine = at(19, 16);
+  state.tiles.owner[mine] = 1;
+  place(state, "school", 16, 16);
+  coveragePass(state);
+  assert.ok(state.tiles.education[mine] > 0, "a seat stopped covering its own street");
+});

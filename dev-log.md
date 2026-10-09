@@ -14358,3 +14358,179 @@ city stays in its file until `prune`. The comment in `freeCode()` is the decisio
 
 Suite **2,020 tests, 2,017 pass, 0 fail, 3 skipped, green twice**. `room` **221 s of a 300 s
 budget** — `room_smoke` 115 s (it was 110 before the block), `room_churn` 58 s, `room_soak` 48 s.
+
+
+## X4g — era 31: the three options that divide a region (2026-10-09)
+
+`splitRule`, `mutualAid` and `disasterAid` have been on `test/omissions.test.js`'s
+declared-but-unread list since Wave 0. They were one work item and not three slices because all
+three change what a region **earns**. What the item did not say, and what turned out to be the
+shape of the whole round, is that **no sweep this project owns could ever have measured them.**
+
+### A rule that is an identity at one seat
+
+`sim_sweep` plays one seat. At one seat `splitRule` divides a net between seats and one seat is not
+a division; `mutualAid` decides whether a station covers a **neighbour's** street and one seat has
+no neighbour; `disasterAid` decides where a seat's relief money comes from and there is nobody else
+to take it from. Not "small", not "hard to see" — arithmetically the same city. A 200-game run
+would have printed a flat table, and a flat table reads as *these rules do nothing*.
+
+So the era's first deliverable is an instrument: **`tools/region_sweep.mjs`** — four seats, four
+deputies, one map, no socket and no browser, five arms — and `region` as a twelfth gate set.
+
+**It measures the spread, not the total.** Population and treasury totals answer *is the region
+alive*; the gap between the best and worst seat as a percentage of the mean answers *is it fair*,
+which is the whole of what these rules are for. Relative rather than absolute, because an absolute
+gap grows with the city and would call every era less fair than the last (A119).
+
+### The three rules
+
+- **`splitRule`.** `TREASURY_SPLIT` divided the net equally whatever the option said, under a
+  comment promising "the rule is one line". `population` divides it in proportion to the residents
+  each seat houses. The shares now **sum to the net exactly**: the remainder used to go to nobody.
+- **`mutualAid`.** The coverage pass had no idea whose ground it was depositing on, so §2.6's "my
+  fire station covers your street — this is a gift, not a bug" was a gift nobody could decline.
+  With aid off a station stops at **another seat's** border and still covers its own ground and the
+  commons, because a seat that could not cover the commons could not cover ground it is about to
+  claim.
+- **`disasterAid`** — see below, because the first answer was wrong and a gate is what said so.
+
+### The rule a gate refused
+
+The relief floor tops a treasury up to 3,000 after a strike. Its own comment says "only when a
+disaster caused the shortfall" and the loop paid **every seat** below the floor — at one seat the
+same sentence, at four a faucet for three bystanders. So the first version of `disasterAid` aimed
+the relief at the seats whose ground the disaster was **on**.
+
+It is a defensible rule, the unit tests liked it, the singleplayer sweep liked it, and
+`disaster_soak` refused it:
+
+```
+FAIL — 2 unrecoverable cities:
+  seed 90078: §0 left — cannot afford to rebuild anything (after storm, flood, blackout)
+  seed 90183: §0 left — ... (after wildfire, downpour, blackout, contamination, blackout, blackout)
+```
+
+**Two is the number that created the rule.** The relief floor exists because a 200-game soak found
+exactly two cities a disaster had made unrecoverable. Narrowing it put them straight back, and the
+reason is in the list of disasters: a wildfire picks a **forest** and a flood a **shoreline**, both
+unowned, and a blackout has no locality at all. The disasters that actually ruin a city are the
+ones whose spot is nobody's. Geography cannot stand in for harm, and §12's *recoverable* is not a
+fairness option's to take away.
+
+The second answer is the one §2.6 asked for all along — *"damage is paid by the owner of the burnt
+property; a `disasterAid` option lets the region share repair costs"*. The option decides **who
+pays**, not who may have it:
+
+- the floor still reaches every seat that cannot rebuild, whatever the options say;
+- with aid **on**, the solvent seats are levied in equal turns for what the victim needs, never
+  below the floor themselves (a levy that made a donor eligible would be a loop), and the faucet
+  covers only what the region cannot raise, because recoverability may not depend on how rich the
+  neighbours are;
+- with one seat there is nobody to levy, so the whole option is **multiplayer-only by
+  construction**.
+
+`disaster_soak` is green again, and the singleplayer sweep came back identical in a way the first
+attempt was not — see the table below.
+
+**And a levied player is told.** `disasterLevy` is a new event kind with a WARNING row in the
+alerts table and a sentence in both catalogues. The relief alert belongs to the seat that received
+it; a donor would otherwise watch its treasury fall with nothing on screen to say why, which is
+`a-refusal-needs-words-and-a-warning` in a treasury instead of a refusal. A new event kind is three
+layers and the event census fails if it is any fewer.
+
+### The singleplayer sweep: nothing moved at all
+
+```
+                  era 30                            era 31
+relaxed-64        pop 1514/1811/2245  relief  0     identical, relief  0
+steady-64         pop 1494/1710/2186  relief  0     identical, relief  0
+demanding-64      pop 1444/1543/1766  relief 23     identical, relief 23
+steady-64-nodis   pop 1476/1572/1978  relief  0     identical, relief  0
+```
+
+Every population, treasury, crime and land-value quantile in all four configurations is
+byte-identical, and so is every relief count. 200 of 200 cities alive, 0 emptied. That is the
+claim the era wants: **all of era 31 is in the four-seat sweep**, and singleplayer cannot tell any
+of it happened.
+
+(The first, refused version of the rule did not have this property: it moved five relief payments
+and three wrecked buildings on demanding. "Identical" is a stronger result than "almost
+identical", and it came from fixing the rule rather than from accepting the drift.)
+
+### The four-seat sweep
+
+200 games × 25 years, five arms, two configurations. `demanding-64` is in the table **because of
+what the first run found**; see the section after this one.
+
+| arm | population | treasury total | treasury spread | residents spread | poorest seat | relief | levied |
+|---|---|---|---|---|---|---|---|
+| steady `null` | 4262 | 10,868,873 | 1% | 110% | 2,706,872 | 0 | 0 |
+| steady `split-equal` | 4262 | 10,869,289 | 1% | 110% | 2,706,872 | 0 | 0 |
+| steady `split-population` | 4255 | 10,869,289 | **70%** | 114% | **1,781,454** | 0 | 0 |
+| steady `no-mutual-aid` | **4087** | **9,726,154** | 1% | **119%** | 2,418,540 | 0 | 0 |
+| steady `disaster-aid` | 4262 | 10,868,873 | 1% | 110% | 2,706,872 | 0 | 0 |
+| demanding `null` | 3905 | 6,135,868 | 2% | 100% | 1,517,133 | 43 | 0 |
+| demanding `split-equal` | 3905 | 6,181,849 | 2% | 102% | 1,525,092 | 43 | 0 |
+| demanding `split-population` | 3914 | 6,056,569 | **71%** | 106% | **947,599** | 65 | 0 |
+| demanding `no-mutual-aid` | **3834** | **5,218,552** | 2% | **113%** | 1,293,049 | **77** | 0 |
+| demanding `disaster-aid` | 3909 | 6,135,868 | 2% | 100% | 1,517,133 | 43 | **43,589** |
+
+Three answers, each a different kind of answer:
+
+- **`split-population` does what it is for, and it is not gentle.** The treasury spread goes 1% →
+  70% on steady and 2% → 71% on demanding; the poorest seat loses a third of its money (2,706,872 →
+  1,781,454; 1,517,133 → 947,599) and relief is paid 65 times against 43. Population costs seven
+  residents of 4,262. One column says it.
+- **A neighbour is worth about a tenth of the region's money — measured.** `no-mutual-aid` costs
+  **1,142,719 of 10,868,873 (−10.5%)** and **175 residents of 4,262 (−4.1%)** on steady, 15% of the
+  money on demanding, and leaves the region **less fair as well as poorer**: residents spread 110% →
+  119%, and relief paid 77 times against 43 because seats genuinely reach the floor. Ruling 001 said
+  a neighbour should be worth having before they are worth resenting; this is the number under it.
+- **`disasterAid` is a transfer and the sweep can see that it is one.** 99 levies moving **43,589**
+  over 200 demanding games, with the region's treasury total **byte-identical to the coin** — which
+  is exactly what a transfer means — relief paid 43 times either way, and both spreads and the
+  poorest seat unchanged. It is a fairness choice with no economic cost to the region, which is
+  worth knowing before anybody tunes it.
+
+### Two instrument defects, both found by the instrument
+
+**The first run measured a city where the rule cannot fire.** `disaster-aid` came back
+byte-identical to the null, the tool said so and exited non-zero, and the cause was in era 30's own
+report unread: `disasterRelief` fires **0 times in 200 relaxed games, 0 in 200 steady and 23 in 200
+demanding**. The floor is 3,000 and a steady region ends twenty-five years with ten million. The
+configurations were `steady-64` and `steady-96` — two cities the rule cannot reach
+(`an-instrument-aimed-at-where-the-city-used-to-be`). `demanding-64` replaced the second.
+
+**The second was worse, and I stopped a half-finished run for it.** When the rule became a levy,
+`reliefPaid` stopped being able to tell the arms apart — the victim is topped up either way, and
+what changes is where the money came from. An arm measured on a quantity that cannot differ looks
+inert for ever. The subject is `levyCount` now and `levied` is a measured column, and the run that
+was twenty minutes in died because its own arm description still described the rule I had replaced:
+a report whose prose argues with the code is the thing `models-of-code-go-stale` is about, and it is
+cheaper to lose twenty minutes than to ship it.
+
+What survives as the reusable part: **every arm declares its own subject, the tool prints the count
+beside the outcome, and an arm that moved nothing is two different failures.** With its subject
+present it is inert and the gate fails; without it the sample is too small and the gate says so and
+passes. `split-population`'s subject is residents housed, `no-mutual-aid`'s is stations built,
+`disaster-aid`'s is levies paid. That is `fire_arms`' rule (A83) and
+`a-failure-counter-is-not-a-subject-counter`, and it earned itself twice in one afternoon.
+
+### A shared treasury is a split treasury with a different name
+
+The `split-equal` arm exists to put a zero under the population rule and it answered a different
+question: **+416 across a whole region over 200 games**, the rounding remainder and nothing else.
+`TREASURY_SHARED` adds `idiv(net, seats)` to every record; `TREASURY_SPLIT` on `equal` adds the
+same share plus the remainder. §26.1 offers "shared treasury, or separate by option" and the engine
+had **three values where it had two behaviours**. Filed as Q166 and **answered the same day as
+A142**: `shared` goes, the lobby offers an equal split and a split by residents housed, and an old
+save naming `shared` loads as `equal`. That is X2d's row, not this one.
+
+### Measured
+
+Suite **2,032 tests green twice**. `sim` **310 s of 450** with `disaster_soak` green; `region` the
+10-game sample, not the era report — the tool writes nothing under 200 games, so a tripwire can
+never overwrite an era's authority. The era's reports are `reports/balance-era31.{md,json}` and
+`reports/region-era31.{md,json}`, each one run, and `test/docs.test.js` holds **both** pairs'
+halves against each other — written with the sweep this time rather than after an era got it wrong.

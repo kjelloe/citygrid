@@ -220,6 +220,7 @@
  "alert.disasterOver": "Disaster over",
  "alert.disasterOver.named": "{disaster} over",
  "alert.disasterRelief": "Emergency relief granted",
+ "alert.disasterLevy": "The region paid for a neighbour's emergency relief",
  "alert.wrecked": "Building destroyed",
  "alert.ping": "{name}: {message}",
  "alert.fireStarted": "Fire",

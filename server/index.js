@@ -11,10 +11,12 @@
 // process, this one hosts rooms, and its wire is snapshots while this one's is
 // commands.
 //
-// **Nothing a player can see** (A125). There is no `?room=` in the page, no
-// socket transport in the client and no lobby: this serves the singleplayer
-// game exactly as `tools/serve.mjs` does, and answers `/ws` for the headless
-// soak. Until Kjell has playtested, that is the whole of it.
+// **Everything a player can see** (A131, 2026-10-07, which lifted A125's hold).
+// The page has a lobby that hosts and joins, `?join=CODE` opens the door, and
+// the client has a socket transport — so this is the whole game over HTTP and
+// the rooms over `/ws`, not a static server with a soak endpoint attached.
+// Ruling 003 is unmoved: singleplayer opens no socket at all, and
+// `offline_smoke` asserts it.
 
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
