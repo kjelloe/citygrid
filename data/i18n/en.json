@@ -380,6 +380,7 @@
  "inbox.withdraw": "Withdraw",
  "inbox.offer": "Offered §{offer}",
  "inbox.expires": "{months} months left",
+ "inbox.expires.one": "one month left",
  "hud.overlays": "Overlays",
  "hud.saves": "Saves",
  "hud.undo": "Undo",

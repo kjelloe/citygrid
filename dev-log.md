@@ -15332,6 +15332,28 @@ invisible to a scanner that knows only the call it replaced.** The fix is to
 teach the scanner the new shape in the same commit, not to spell the keys out
 again.
 
+### The omissions sweep found the sweep itself
+
+Run on the slice just written, which is where it keeps paying. The test looked
+for `{count}`, `{tiles}` and `{n}` — **a list of token NAMES, which is a choice
+somebody made** — and missed `{months} months left`, which is on a request row
+a player reads before deciding whether to answer it, and five statistics
+verdicts.
+
+The detector is derived now: a token followed by a **plural noun**, which is
+the thing that actually reads wrong at one. Two guards keep it honest — the
+noun needs four letters (`is`, `was`, `has`) and the token must not be one of
+the catalogue's nine TEXT tokens, because `{name} reports a nuisance` and
+`{name} is playing again` are a verb after a name rather than a count. A tenth
+text token added later fails here loudly rather than quietly reporting a
+sentence as counted.
+
+It caught one real string — `inbox.expires` said *"1 months left"* on a row
+with two buttons under it — and five that are a **constant rather than a
+count**: `statistics.js` fills `stat.verdict.*` with `WINDOW`, which is 12 and
+has been since the reading was written, so a `.one` there would be a string no
+screen can ever show. Those are listed with that reason.
+
 ### Measured
 
 Suite **2,090 tests, 2,087 pass, 0 fail, 3 skipped, green twice**; `quick`

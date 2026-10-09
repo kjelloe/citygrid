@@ -380,6 +380,7 @@
  "inbox.withdraw": "Trekk tilbake",
  "inbox.offer": "Tilbudt §{offer}",
  "inbox.expires": "{months} måneder igjen",
+ "inbox.expires.one": "én måned igjen",
  "hud.overlays": "Kartlag",
  "hud.saves": "Lagring",
  "hud.undo": "Angre",

@@ -412,17 +412,58 @@ const NO_SINGULAR = {
   // resident has not been saved. Listed rather than fixed so the next reader
   // sees it was considered.
   "hud.slot.summary": "a save-slot summary; a city with one resident is not a city anybody saved",
+  // **A constant, not a count.** `statistics.js` fills these with `WINDOW`,
+  // which is 12 and has been since the reading was written: "every reading is
+  // over the last year, because a month is noise and the player has no way to
+  // act on it". A `.one` here would be a string no screen can ever show.
+  "stat.verdict.better": "the window is the constant WINDOW = 12, not a count",
+  "stat.verdict.worse": "the window is the constant WINDOW = 12, not a count",
+  "stat.verdict.rising": "the window is the constant WINDOW = 12, not a count",
+  "stat.verdict.falling": "the window is the constant WINDOW = 12, not a count",
+  "stat.verdict.steady": "the window is the constant WINDOW = 12, not a count",
 };
+
+/**
+ * Tokens that are filled with TEXT, so the word after them is a verb rather
+ * than a counted noun: `{name} reports a nuisance`, `{name} is playing again`.
+ *
+ * A list of nine rather than a list of verbs, because the verbs are endless
+ * and these are the whole set of text tokens the catalogue has — and a tenth
+ * added later fails loudly here rather than quietly reporting a sentence as
+ * counted.
+ */
+const TEXT_TOKENS = new Set([
+  "name", "other", "player", "disaster", "reason", "message", "facing", "slot", "seed",
+]);
+
+/**
+ * Every key whose English puts a token in front of a counted noun.
+ *
+ * **Derived, not a list of token names.** The first version of this looked for
+ * `{count}`, `{tiles}` and `{n}` — and missed `{months} months left`, which is
+ * on a request row a player reads before deciding, and five statistics
+ * verdicts. A token's NAME is a choice somebody made; a token followed by a
+ * plural noun is the thing that actually reads wrong at one.
+ */
+function countedKeys(catalogue) {
+  return Object.entries(catalogue)
+    .filter(([key]) => !key.endsWith(".one"))
+    .filter(([, text]) => {
+      for (const match of text.matchAll(/\{(\w+)\}\s+([A-Za-z]{4,}s)\b/g)) {
+        if (!TEXT_TOKENS.has(match[1])) return true;
+      }
+      return false;
+    })
+    .map(([key]) => key);
+}
 
 test("every counted string has a singular, or says why it has none (M11)", () => {
   // The catalogue has no plural machinery: `t()` substitutes `{token}` and
   // nothing else. `plural()` picks between `key` and `key.one`, which is the
   // whole of the rule — Norwegian's 1-vs-many matches English's, and a second
   // rule for the rest of the game to disagree with is worse than two strings.
-  const counted = Object.entries(locales.en)
-    .filter(([key, text]) => /\{(count|tiles|n)\}/.test(text) && !key.endsWith(".one"))
-    .map(([key]) => key);
-  assert.ok(counted.length >= 5, `only ${counted.length} counted strings — this is scanning nothing`);
+  const counted = countedKeys(locales.en);
+  assert.ok(counted.length >= 8, `only ${counted.length} counted strings — this is scanning nothing`);
 
   const missing = counted
     .filter((key) => !Object.hasOwn(NO_SINGULAR, key))
@@ -440,10 +481,10 @@ test("a singular form exists in every catalogue, and says ONE rather than {count
     for (const key of Object.keys(locales.en).filter((k) => k.endsWith(".one"))) {
       assert.ok(typeof catalogue[key] === "string" && catalogue[key].length > 0,
         `${name} has no ${key}`);
-      // A singular that still interpolates the count is a singular in name
-      // only: the whole point is that the sentence reads naturally at one.
-      assert.equal(/\{(count|tiles|n)\}/.test(catalogue[key]), false,
-        `${name}'s ${key} still carries a count token: "${catalogue[key]}"`);
+      // A singular that still counts is a singular in name only: the whole
+      // point is that the sentence reads naturally at one.
+      assert.equal(countedKeys({ [key.slice(0, -4)]: catalogue[key] }).length, 0,
+        `${name}'s ${key} still reads as a plural: "${catalogue[key]}"`);
     }
   }
 });

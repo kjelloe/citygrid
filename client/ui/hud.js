@@ -1201,7 +1201,7 @@ export function createHud(root, {
         if (row.reason) item.append(el("p", "inbox-reason", row.reason));
         const facts = [];
         if (row.offer > 0) facts.push(t("inbox.offer", { offer: row.offer }));
-        if (row.actions.length > 0) facts.push(t("inbox.expires", { months: row.expiresInMonths }));
+        if (row.actions.length > 0) facts.push(t(plural("inbox.expires", row.expiresInMonths), { months: row.expiresInMonths }));
         if (facts.length > 0) item.append(el("p", "inbox-facts", facts.join(" · ")));
         if (row.actions.length > 0) {
           const buttons = el("div", "inbox-actions");
