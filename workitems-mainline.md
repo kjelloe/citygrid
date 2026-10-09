@@ -452,7 +452,7 @@ pointed the other way.
 fetch leaves the mirror in place and says so. **Gate.** `client_smoke` and one `budget_gate` row,
 because a config that arrives after the first frame would move what the first frame measured.
 
-## M12 — A server you can run on a box (M) — v1.0's V1
+## ~~M12~~ — A server you can run on a box (M) — v1.0's V1 — **built 2026-10-09**
 
 **Goal.** `node server/index.js` becomes something a systemd unit on a shared host runs, behind
 nginx, with rooms on a disk that survives a redeploy.
@@ -476,6 +476,22 @@ nginx, with rooms on a disk that survives a redeploy.
 **Tests.** `test/server-config.test.js`: the defaults, and that a production bind is loopback.
 **Gate.** `room_soak` against the deployed server once (V4 reads it), and the first-time box
 setup done once by hand with its steps written into `DEPLOYING.md` as they were actually run.
+
+**Built 2026-10-09.** `server/config.js` (pure, reads an env object) owns `HOST`, `PORT`,
+`ROOMS_DIR`, `KEEP_FOR_DAYS`, `TRUST_PROXY` and `ALLOWED_ORIGINS`; the Origin check is on the
+upgrade and the forwarded address is read only under `TRUST_PROXY=1`. `/healthz` and `/health` are
+one handler reporting `rssMb`, the worst room's jitter and `resyncs` — not desyncs, because the
+monthly hash is compared on the client and the server cannot count them. **`tools/serve.mjs` is
+deleted**: `run.sh`, `serve_smoke`, `reach_smoke` and `a11y_smoke` all spawn `server/index.js`, and
+unifying them found a live CSP bug in one run (the policy is per page now). A143's code index is in
+(`rooms.claimCodes` from the store's file names at boot). `ops/citygrid.service`, `ops/nginx.conf`,
+`tools/ssh-deploy.sh`, `tools/deploy.env.example` and `DEPLOYING.md`, with `test/deploy.test.js`
+parsing all of them — three files one port, the heap cap under the unit cap, the nginx block
+HTTP-only with its own upgrade map, no `grep -w ':port'`, and an rsync allowlist **derived from
+`client/precache.json`**. What is left is running the steps on the box.
+
+**Still owed by the box, not the code:** the first-time setup run once by hand, and `room_soak`
+against the deployed server (V4).
 
 ## M7b — The v1.0 release (S) — v1.0's V6
 

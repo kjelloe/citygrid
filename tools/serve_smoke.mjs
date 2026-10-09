@@ -8,9 +8,15 @@
 // `import ... from "three"` cannot resolve and the game dies at boot with
 // "Failed to resolve module specifier".
 //
-// So this one starts `tools/serve.mjs` as a child process, exactly as `run.sh`
-// does, and loads `http://localhost:<port>` — the bare origin a person types,
-// not `/index.html`.
+// So this one starts the server as a child process, exactly as `run.sh` does,
+// and loads `http://localhost:<port>` — the bare origin a person types, not
+// `/index.html`.
+//
+// **It is `server/index.js` since M12**, and `tools/serve.mjs` is gone. Two
+// servers for one tree is two chances to be wrong about one tree, and this gate
+// was the proof: the CSP that broke the page was on the one `run.sh` ran and
+// not on the one the other gates stood up. The deployed server is now the only
+// server, so every browser gate that spawns one spawns the real thing.
 //
 //   node tools/serve_smoke.mjs
 
@@ -28,7 +34,7 @@ function check(name, ok, detail = "") {
   console.log(`${ok ? "ok  " : "FAIL"}  ${name}${detail ? `  (${detail})` : ""}`);
 }
 
-const server = spawn(process.execPath, [join(root, "tools", "serve.mjs"), String(PORT)], {
+const server = spawn(process.execPath, [join(root, "server", "index.js"), String(PORT)], {
   cwd: root, stdio: ["ignore", "pipe", "pipe"],
 });
 const serverLog = [];
@@ -95,6 +101,24 @@ try {
     const got = response.headers.get("content-type") ?? "";
     check(`${path} is served as ${type}`, response.ok && got.startsWith(type), `${response.status} ${got}`);
   }
+
+  // **What the unit, nginx and a person read** (M12). Both paths, because
+  // `/healthz` is the shared box's convention and `/health` is what the
+  // sibling deploy scripts curl — and the deploy guard is only a guard if the
+  // thing it curls exists.
+  for (const path of ["/health", "/healthz"]) {
+    const response = await fetch(base + path);
+    const body = await response.json().catch(() => undefined);
+    check(`${path} answers with the numbers a restart policy needs`,
+      response.ok && body?.ok === true && typeof body.rssMb === "number"
+      && typeof body.rooms === "number" && typeof body.uptimeSeconds === "number"
+      && body.resyncs === 0 && typeof body.build === "string",
+      JSON.stringify(body));
+  }
+  // And it is not cached, or a sweep reads an old answer for ever.
+  const health = await fetch(`${base}/healthz`);
+  check("health is never cached", (health.headers.get("cache-control") ?? "").includes("no-store"),
+    health.headers.get("cache-control") ?? "(none)");
 
   check("no console or page errors", problems.length === 0, problems.join(" | "));
   await context.close();

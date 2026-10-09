@@ -31,7 +31,7 @@ function check(name, ok, detail = "") {
   console.log(`${ok ? "ok  " : "FAIL"}  ${name}${detail ? `  (${detail})` : ""}`);
 }
 
-const server = spawn(process.execPath, [join(root, "tools", "serve.mjs"), String(PORT)], {
+const server = spawn(process.execPath, [join(root, "server", "index.js"), String(PORT)], {
   cwd: root, stdio: "ignore",
 });
 const base = `http://localhost:${PORT}/index.html`;

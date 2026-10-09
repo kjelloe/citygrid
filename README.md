@@ -47,7 +47,7 @@ the desync detector, the replay verifier and the multiplayer acceptance gate.
 ```
 
 ```sh
-node tools/serve.mjs        # then open the printed URL — boots straight into a playable city
+node server/index.js       # then open the printed URL — boots straight into a playable city
 node server/index.js 8123   # the same page, plus a room on /ws for the headless gate (X1)
 ```
 

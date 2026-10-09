@@ -14534,3 +14534,148 @@ Suite **2,032 tests green twice**. `sim` **310 s of 450** with `disaster_soak` g
 never overwrite an era's authority. The era's reports are `reports/balance-era31.{md,json}` and
 `reports/region-era31.{md,json}`, each one run, and `test/docs.test.js` holds **both** pairs'
 halves against each other — written with the sweep this time rather than after an era got it wrong.
+
+## M12 — a server you can run on a box (2026-10-09)
+
+v1.0's V1. `node server/index.js` took a port on `argv[2]` and nothing else: no
+bind address, no data directory outside the repo, no proxy, no origin check, and
+nothing for a restart policy to read. The box this is going on already serves
+several live games behind one nginx and one certbot, and
+`../Fireline/deploy-new-sibling-game-in-box-dos-and-donts.md` is the list of
+what that costs — every line of it paid for in real breakage. Three of its rules
+are decisions the code makes now rather than a deploy script's:
+
+- **`HOST` is loopback under `NODE_ENV=production`.** A `0.0.0.0` bind exposes
+  the raw port through the firewall and bypasses TLS entirely, and it is the one
+  mistake no later nginx edit undoes. A script that remembers to pass `HOST` is
+  a script somebody will copy without it, so the default carries the rule. In
+  development the default is every interface on purpose — the phone on the same
+  WiFi is how this project tests a phone at all.
+- **`X-Forwarded-For` only under `TRUST_PROXY=1`.** Behind nginx every socket's
+  address is `127.0.0.1`, so without it the per-address connection cap counts
+  the whole internet as one client; believed unconditionally it is a rate limit
+  anybody can type their way around. The header is a chain and the **first**
+  entry is the client, capped at 64 characters because an unbounded header would
+  become an unbounded `Map` key — the cap paying for its own bypass.
+- **An Origin check on the upgrade.** The browser's same-origin policy does
+  **not** apply to `new WebSocket(...)`: without this, a page the player merely
+  visits can open a socket into their room and play as them, and there is no
+  cookie to be missing because a room needs none. No origin is allowed (every
+  gate here is a script, and a non-browser client cannot be tricked by a web
+  page); an exact `ALLOWED_ORIGINS` entry is allowed, because behind nginx the
+  `Host` is `127.0.0.1:8133` while the browser's `Origin` is the public name;
+  otherwise the origin's host must **equal** the request's, never prefix it, or
+  `city.example.evil.com` walks in.
+
+`server/config.js` is pure and reads an env **object**, so every branch is a
+test rather than a deployment.
+
+### One server
+
+`tools/serve.mjs` is deleted. It was a second static server for the same tree
+with its own header set and its own type table, and that is precisely how
+`serve_smoke` came to exist: **eight gates passed while `./run.sh` was broken**,
+because the server a player used sent a Content-Security-Policy that blocked the
+page's importmap and every other gate stood up its own. `run.sh`, `serve_smoke`,
+`reach_smoke` and `a11y_smoke` all start `server/index.js` now — `a11y_smoke`
+had a fourteen-line server of its own, which is the same defect in miniature.
+
+**And unifying them found a live bug in one run.** The CSP was computed from
+`index.html` and sent with every file, so `tools/shoot.html` — which `a11y_smoke`
+drives, and which has inline scripts of its own — was refused by the policy of a
+page it is not:
+
+```
+Executing inline script violates the following Content Security Policy directive
+'script-src 'self' 'sha256-nrwuPWg9wi1daziyhZHvNKQ9FJDKuEpGeyoPVzWEBoM=''
+```
+
+The policy is per page now, memoised by path, and only a document carries one. A
+single global policy would also have meant `index.html` permitting
+`shoot.html`'s scripts, which is wider than it needs to be.
+
+### `/healthz`, and what it will not claim
+
+Both paths reach one handler: `/healthz` is the box-wide convention — one path a
+monitoring sweep hits across every port on the machine — and `/health` is what
+the sibling deploy scripts curl.
+
+```
+{"ok":true,"build":"43879f3c6729","uptimeSeconds":3,"rssMb":83,"rooms":1,
+ "seats":0,"jitter":{"p50Ms":100,"p99Ms":102,"maxMs":102},"resyncs":0}
+```
+
+`rssMb` because the box caps this process and a sweep should see the climb
+before the OOM reaper acts. The jitter is the **worst** room's rather than an
+average over rooms: one city stalling is the thing worth seeing, and averaging
+it away is how a stall hides.
+
+**It reports `resyncs`, not desyncs, and that is not a shortcut.** The monthly
+state hash is compared on the CLIENT, which is the only place that holds both
+numbers, so the server genuinely cannot count desyncs. A resync request is what
+a client sends when it finds one — the server-side shadow of the same event, and
+the number a sweep can actually read. It must be 0.
+
+### A143: the codes asleep on the disk
+
+Q165 asked whether a new room could be minted onto a hibernated one's code and
+X4f wrote the answer down rather than guarding it, because asking the disk is a
+read and that would have made `add` asynchronous and the door's `CREATE` branch
+with it. A143 chose the other option, and it is ten lines: the server lists the
+store's file names once at boot, `rooms.claimCodes` takes them, and `freeCode()`
+refuses a claimed code as well as a held one. The door stays synchronous, a
+sleeping city can never be overwritten by a stranger's new room, and a claim
+stops the **minter** rather than the room it belongs to — a woken room is given
+its own code explicitly and must get it.
+
+### The templates, and a test that parses them
+
+`ops/citygrid.service`, `ops/nginx.conf`, `tools/ssh-deploy.sh`,
+`tools/deploy.env.example` (with `tools/deploy.env` gitignored) and
+`DEPLOYING.md`. None of it runs on this machine, which is exactly why
+`test/deploy.test.js` exists — a template nobody parses goes stale the first
+time a variable is added, and the way you find out is a box that will not start.
+Eight checks, and these four are the box's own rules in executable form:
+
+- **three files, one port** — the unit, the proxy and the env example. A port
+  claimed in the hosting document, written into the unit and left at the old
+  value in the proxy answers 502 while the service is perfectly healthy.
+- **`--max-old-space-size` ≤ 80% of `MemoryMax`** — arithmetic, so a test rather
+  than a comment. V8 cannot see the cgroup; without the flag the first sign of
+  memory pressure is a SIGKILL mid-checkpoint.
+- **the nginx block is HTTP-only, declares no `http2`, and owns its upgrade map
+  under a unique name** — `listen 443 ssl` with no certificate fails the whole
+  config and certbot runs `nginx -t` before it can fix it; `http2` is a
+  per-socket property the box already warns about; and referencing the shared
+  `$connection_upgrade` fails when it is not loaded while redeclaring it is a
+  config error, so a unique name is the only form that is safe both ways.
+- **no `grep -w ':<port>'`** — it NEVER matches `127.0.0.1:8133`, because a
+  colon preceded by a digit is not a word boundary, so the check reports every
+  port free for ever. That bug shipped in two deploy scripts on this box before
+  it was caught, which is why it is a test and not a note.
+
+**The rsync allowlist is derived, not transcribed.** `client/precache.json` is
+what the service worker fetches, so its top-level directories are exactly what
+an installed client will ask the box for; the test takes them from the manifest
+and requires each one in the allowlist. A file the page caches and the rsync
+skips is a 404 for every installed client, and the only gate that could catch
+that needs a deployed server. The same test asserts `test/`, `tools/`, `specs/`,
+`reports/`, `debugging/` and `.claude/` are **not** in it.
+
+**And the first run of that test failed on its own comments.** These templates
+are commented with the exact strings they forbid — `listen 443`, `http2`,
+`grep -w ':8133'` — because the comment is where the reason lives. Strip the
+comments before any "this must not appear" check: `a-grep-that-counts-a-comment`,
+in a test written to hold a comment's promise.
+
+### Measured
+
+Suite **2,052 tests, 2,049 pass, 0 fail, 3 skipped, green twice**. `quick`
+**545 s of 600** — all twelve browser gates on the one server, including the
+three that now spawn it. `serve_smoke` reads `/health` and `/healthz` and
+asserts `resyncs` is 0 and the answer is `no-store`.
+
+What is left for the box itself is the box: the first-time setup in
+`DEPLOYING.md` is written as the steps to run in order, each verifiable before
+the next, and its claim is only true once somebody has run them. V4's eight
+clients and V5's evening are the acceptance, not a green suite.

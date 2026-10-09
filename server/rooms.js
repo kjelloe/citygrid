@@ -42,6 +42,11 @@ export function createRooms({
 } = {}) {
   /** code → `{ room, pump, stop, emptySince }`. */
   const held = new Map();
+  /** Codes that belong to a room this process is not holding — the hibernated
+   * files, listed once at boot (A143). A claim stops the MINTER, never the room
+   * it belongs to: a sleeping room that wakes is given its own code explicitly
+   * and must get it. */
+  const claimedCodes = new Set();
   /** code → the promise that is reading it off the disk (X4f). Two players
    * typing the same code at the same moment are two `wake` calls in flight
    * before either resolves, and `add` mints a room per call — so the second
@@ -53,24 +58,26 @@ export function createRooms({
     return held.get(normaliseRoomCode(code));
   }
 
-  /** A code no room in this process is using. `createRoom` mints its own when
-   * it is given none, and nothing checked the result against the registry: one
-   * in a thousand million per pair is small and 64 rooms make it a two in a
-   * million, and what it does is REPLACE a live room's entry in the map with a
-   * stranger's. The namespace belongs to the registry, so the minting does
-   * too — and worldgen is expensive, so the retry happens before the city is
-   * made rather than by making two.
+  /** A code no room in this process is using **and none asleep on the disk**.
    *
-   * The disk is a different question and deliberately not asked here: a code
-   * could collide with a HIBERNATED room's file (X4f), and finding that out is
-   * a read, which would make `add` asynchronous and the door's `CREATE` branch
-   * with it. The live room wins the code, the sleeping city stays in its file
-   * until `prune`, and the odds are the ones above. Written down rather than
-   * guarded (Q165). */
+   * `createRoom` mints its own when it is given none, and nothing checked the
+   * result against the registry: one in a thousand million per pair is small
+   * and 64 rooms make it a two in a million, and what it does is REPLACE a live
+   * room's entry in the map with a stranger's. The namespace belongs to the
+   * registry, so the minting does too — and worldgen is expensive, so the retry
+   * happens before the city is made rather than by making two.
+   *
+   * **The sleeping rooms are in it since A143.** Q165 asked whether a new room
+   * could take a hibernated one's code and X4f wrote the answer down rather
+   * than guarding it, because asking the DISK is a read and that would have
+   * made `add` asynchronous and the door's `CREATE` branch with it. A143 chose
+   * the other option: the server lists the store's codes once at boot and
+   * `claimCodes` hands them here, so the door stays synchronous and a sleeping
+   * city can never be overwritten by a stranger's new room. */
   function freeCode() {
     for (let tries = 0; tries < 8; tries += 1) {
       const code = makeRoomCode(randomBytes(6));
-      if (!held.has(code)) return code;
+      if (!held.has(code) && !claimedCodes.has(code)) return code;
     }
     return makeRoomCode(randomBytes(6));
   }
@@ -116,6 +123,18 @@ export function createRooms({
 
     get: (code) => entryFor(code)?.room,
     pumpFor: (code) => entryFor(code)?.pump,
+
+    /** The codes of the rooms asleep on the disk, from the server at boot
+     * (A143). Normalised on the way in like every other code this project
+     * reads, and anything that is not a code is dropped rather than claimed. */
+    claimCodes(codes) {
+      for (const code of codes ?? []) {
+        const id = normaliseRoomCode(code);
+        if (id) claimedCodes.add(id);
+      }
+      return claimedCodes.size;
+    },
+    claimed: (code) => claimedCodes.has(normaliseRoomCode(code)),
 
     /**
      * The room for a code, off the DISK if it is not in memory (X4f).

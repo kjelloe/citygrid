@@ -411,7 +411,15 @@ export function createRoom(given = {}) {
    * bytes, to start its reducer again from — which is exactly what WELCOME
    * already carries, so there is one shape for both and not two.
    */
+  /** How many times this room has been asked to resend its city (M12). The
+   * server cannot count DESYNCS — the monthly hash is compared on the client,
+   * which is the only place that knows both numbers — but a resync request is
+   * what a client sends WHEN it finds one, so this is the server-side shadow of
+   * the same event and the one a `/health` sweep can read. */
+  var resyncs = 0;
+
   function resync(connection, seat) {
+    resyncs += 1;
     const message = {
       type: S2C.SNAPSHOT, seat, tick: state.tick, hash: hashState(state),
       save: JSON.parse(JSON.stringify(toSave(state))),
@@ -431,6 +439,7 @@ export function createRoom(given = {}) {
     submit,
     beat,
     resync,
+    resyncs: () => resyncs,
     hash: () => hashState(state),
     tick: () => state.tick,
     /** The city as bytes a store or a joiner can keep — copied, because

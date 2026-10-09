@@ -171,7 +171,7 @@ test("README names the runner rather than a list that drifts", () => {
 
 test("a tool that is not a gate is not expected to be in a set", () => {
   // `i18n_review.mjs` writes a table for a person to read and writes their
-  // edits back; `screenshot.mjs`, `serve.mjs` and `repin.mjs` are the same
+  // edits back; `screenshot.mjs` and `repin.mjs` are the same
   // shape. None of them passes or fails, so none belongs in a set — and the
   // naming convention above (`_smoke`, `_gate`, `_soak`) is what keeps that
   // distinction from being a matter of memory.

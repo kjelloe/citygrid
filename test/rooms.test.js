@@ -389,3 +389,57 @@ test("two rooms never share a code, however the dice fall (X4f)", () => {
     rooms.stop();
   }
 });
+
+test("the codes asleep on the disk are claimed at boot (A143, M12)", () => {
+  // Q165 asked whether a new room could be given the code of a HIBERNATED one,
+  // and X4f wrote the answer down instead of guarding it: `freeCode()` checked
+  // the rooms in memory and the disk is a read, which would have made `add`
+  // asynchronous and the door's CREATE branch with it. A143 chose the other
+  // option — the server lists the store's codes ONCE at boot and the registry
+  // refuses those too, so the door stays synchronous and a sleeping city can
+  // never be overwritten by a stranger's new room.
+  const rooms = createRooms({ tickMs: 100, limit: 4 });
+  try {
+    rooms.claimCodes(["ABC123", "abc-124", "", undefined, "ZZZZZZ"]);
+    // Normalised on the way in, like every other code this project reads.
+    assert.equal(rooms.claimed("ABC123"), true);
+    assert.equal(rooms.claimed("abc-124"), true, "a claimed code was not normalised");
+    assert.equal(rooms.claimed("QQQQQQ"), false);
+
+    // And a room that wakes up TAKES its claim with it rather than tripping over
+    // it: the claim exists to stop a stranger minting that code, not to stop
+    // the room it belongs to coming back.
+    const woken = rooms.add({ options: SMALL, code: "ABC123" });
+    assert.equal(woken.ok, true, woken.reason);
+    assert.equal(woken.room.code(), "ABC123");
+  } finally {
+    rooms.stop();
+  }
+});
+
+test("a minted code is never one that is asleep (A143, M12)", () => {
+  // The whole point, and it is testable because `freeCode()` retries: claim
+  // every code the generator could possibly mint and the registry must give up
+  // rather than hand out a claimed one.
+  const rooms = createRooms({ tickMs: 100, limit: 8 });
+  try {
+    const minted = [];
+    for (let n = 0; n < 6; n += 1) {
+      const made = rooms.add({ options: SMALL });
+      assert.equal(made.ok, true, made.reason);
+      minted.push(made.room.code());
+    }
+    rooms.stop();
+
+    // Now claim those six and mint six more: none may collide.
+    const after = createRooms({ tickMs: 100, limit: 8 });
+    after.claimCodes(minted);
+    const again = [];
+    for (let n = 0; n < 6; n += 1) again.push(after.add({ options: SMALL }).room.code());
+    after.stop();
+    const clash = again.filter((code) => minted.includes(code));
+    assert.deepEqual(clash, [], `a minted code was already asleep: ${clash.join(", ")}`);
+  } finally {
+    rooms.stop();
+  }
+});

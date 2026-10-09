@@ -29,15 +29,67 @@ import { chatFrom, CHATS_PER_SECOND } from "./chat.js";
 import { formatRoomCode } from "../shared/roomcode.js";
 import { createStore } from "./store.js";
 import { C2S, S2C, REFUSAL, LIMITS } from "../shared/protocol.js";
-import { setBuildHash } from "../shared/build-hash.js";
+import { setBuildHash, buildHash } from "../shared/build-hash.js";
+import { serverConfig, originAllowed, clientAddress } from "./config.js";
+import { createHash } from "node:crypto";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
+/** Every type the client actually asks for. `.jpg` and `.glb` came from
+ * `tools/serve.mjs` when this became the ONE server (M12): a file served as
+ * `application/octet-stream` is a file the browser downloads instead of
+ * showing, and a reference image in `reports/` is a legitimate request. */
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
-  ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml",
+  ".css": "text/css; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml", ".glb": "model/gltf-binary",
   ".webmanifest": "application/manifest+json", ".woff2": "font/woff2",
 };
+
+/**
+ * The CSP for one HTML file, with a hash for each of ITS inline scripts.
+ *
+ * Moved here from `tools/serve.mjs` with the rest of the static half (M12),
+ * because two servers sending different headers for one tree is how
+ * `serve_smoke` came to exist: `default-src 'self'` with no `script-src`
+ * blocks inline scripts — including `<script type="importmap">`, without which
+ * `import … from "three"` cannot resolve and the game dies at boot.
+ *
+ * **Per page, not one policy for the server.** The first version hashed
+ * `index.html` and sent that policy with every file, and `a11y_smoke` went red
+ * at once: `tools/shoot.html` has inline scripts of its own, so the page it
+ * drives was refused by the policy of a page it is not. One global policy
+ * would also have meant index.html permitting shoot.html's scripts, which is
+ * wider than it needs to be. Memoised per path, because a hash per request of
+ * a file that does not change is work nobody asked for.
+ *
+ * Hashes rather than `'unsafe-inline'`, and computed from the file that is
+ * actually served, so the policy cannot drift from the page.
+ */
+const policies = new Map();
+async function contentPolicy(target) {
+  const had = policies.get(target);
+  if (had) return had;
+  let hashes = [];
+  try {
+    const html = await readFile(target, "utf8");
+    hashes = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
+      .map((m) => `'sha256-${createHash("sha256").update(m[1], "utf8").digest("base64")}'`);
+  } catch {
+    hashes = [];
+  }
+  const policy = [
+    "default-src 'self'",
+    `script-src 'self' ${hashes.join(" ")}`.trim(),
+    "img-src 'self' data:",
+    "style-src 'self' 'unsafe-inline'",
+    // The socket is same-origin, and naming it is what stops a page served
+    // from here reaching a socket somewhere else.
+    "connect-src 'self'",
+  ].join("; ");
+  policies.set(target, policy);
+  return policy;
+}
 
 /** The build hash the handshake compares, read from the manifest the client
  * reads (X0). The server does the I/O the engine may not. */
@@ -50,33 +102,71 @@ async function readBuildHash() {
   }
 }
 
-function serveStatic(req, res) {
-  const url = new URL(req.url, "http://localhost");
-  let path = decodeURIComponent(url.pathname);
-  if (path.endsWith("/")) path += "index.html";
-  const target = join(root, normalize(path));
-  // Resolved first, then checked: a path that climbs out of the root is refused
-  // rather than normalised into something that looks safe.
-  if (!resolve(target).startsWith(root)) {
-    res.writeHead(403).end("Forbidden");
-    return;
-  }
-  readFile(target).then((body) => {
-    res.writeHead(200, { "content-type": TYPES[extname(target)] ?? "application/octet-stream" });
-    res.end(body);
-  }).catch(() => res.writeHead(404).end("Not found"));
+/**
+ * The static half, and since M12 it is the ONLY one: `run.sh` and the three
+ * browser smokes start this file, where they used to start `tools/serve.mjs`.
+ * Two servers that serve the same tree with different headers is the shape
+ * `serve_smoke` was written for — it exists because `run.sh`'s CSP blocked the
+ * importmap on the server a player uses while every other gate stood up its own.
+ *
+ * `health` is passed in rather than read from a module, because what it reports
+ * belongs to the running rooms and this function is reused by nothing else.
+ */
+function makeStatic(health) {
+  return function serveStatic(req, res) {
+    const url = new URL(req.url, "http://localhost");
+    let path = decodeURIComponent(url.pathname);
+    // **`/healthz` is the box-wide convention** and `/health` is what the
+    // sibling playbooks' deploy scripts curl, so both reach the same handler
+    // (`../Fireline/DEPLOYING.md` does the same). A monitoring sweep hits one
+    // path across every port on the machine.
+    if (path === "/health" || path === "/healthz") {
+      const body = JSON.stringify(health(), undefined, 1);
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(body);
+      return;
+    }
+    if (path.endsWith("/")) path += "index.html";
+    const target = join(root, normalize(path));
+    // Resolved first, then checked: a path that climbs out of the root is
+    // refused rather than normalised into something that looks safe.
+    if (!resolve(target).startsWith(root)) {
+      res.writeHead(403).end("Forbidden");
+      return;
+    }
+    readFile(target).then(async (body) => {
+      const headers = {
+        "content-type": TYPES[extname(target)] ?? "application/octet-stream",
+        "cache-control": "no-cache",
+      };
+      // Only a document carries a policy: a `.js` served with one is a header
+      // nothing reads, and the hashes belong to the page that holds the scripts.
+      if (extname(target) === ".html") headers["content-security-policy"] = await contentPolicy(target);
+      res.writeHead(200, headers);
+      res.end(body);
+    }).catch(() => res.writeHead(404).end("Not found"));
+  };
 }
 
 export async function startServer({
-  port = 0, options, tickMs = 100, roomId = "room", store, fresh = false, code,
-  heldForMs, regencyAfterMs,
+  port, host, options, tickMs = 100, roomId = "room", store, fresh = false, code,
+  heldForMs, regencyAfterMs, env = {},
 } = {}) {
+  // **The environment, through one pure module** (M12, `server/config.js`): the
+  // port, the bind address, where the rooms live, how long they are kept,
+  // whether a proxy's forwarded address may be believed, and which origins may
+  // open a socket. A caller's explicit `port`/`host` still wins, which is what
+  // every gate in this project passes (`port: 0` for an ephemeral one).
+  const config = serverConfig(env);
+  const bind = host ?? config.host;
+  const listenPort = port === undefined ? config.port : port;
+  const startedAt = Date.now();
   await readBuildHash();
   // **Before the room is generated** (X1c): `generateWorld` reads `rules()`,
   // and a room built from the engine's mirror with no quests in it cannot agree
   // with a browser that loaded `data/` — quest progress is hashed state.
   await loadServerContent();
-  const saves = store ?? createStore();
+  const saves = store ?? createStore({ dir: config.roomsDir, keepForDays: config.keepForDays });
   // **A room survives a restart** (plan.md §3.5) — which it did not until this
   // read existed. The store wrote a checkpoint every thirty beats and nobody
   // ever opened one: "persists so a restart resumes it" was true of the writing
@@ -94,6 +184,10 @@ export async function startServer({
   // before it drops it, and the door reads one back when somebody types a code
   // this process is not holding.
   const rooms = createRooms({ tickMs, heldForMs, regencyAfterMs, store: saves });
+  // **The codes asleep on the disk, claimed once** (A143). A new room can never
+  // be minted onto a hibernated one's code, and the door stays synchronous
+  // because this is the only read — see `freeCode()` in `server/rooms.js`.
+  rooms.claimCodes(await saves.codes());
   const booted = kept?.save
     ? rooms.add({ save: kept.save, code: wanted, keep: true })
     : rooms.add({ options: options ?? { seed: 1003, width: 64, height: 64, seats: LIMITS.SEATS_MAX }, code: wanted, keep: true });
@@ -101,7 +195,40 @@ export async function startServer({
   const room = booted.room;
   const pump = booted.pump;
 
-  const http = createServer(serveStatic);
+  /**
+   * What the unit, nginx and a person read (`/health` and `/healthz`, M12).
+   *
+   * The shared box caps this process's memory, so `rssMb` is here for the
+   * reason `../Fireline/deploy-new-sibling-game-in-box-dos-and-donts.md` gives:
+   * a sweep should see the climb before the OOM reaper acts. The pump's jitter
+   * is here because a restart policy needs something to read, and `desyncs` is
+   * the one number that must be zero — a room whose clients disagree is the
+   * failure this whole wave is built to make visible.
+   */
+  function health() {
+    const rooms_ = rooms.all();
+    const beats = rooms_.map(({ pump: each }) => each.jitter()).filter(Boolean);
+    const worst = (key) => (beats.length === 0 ? undefined : Math.max(...beats.map((j) => j[key])));
+    return {
+      ok: true,
+      build: buildHash(),
+      uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
+      rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+      rooms: rooms_.length,
+      seats: rooms_.reduce((n, { room: each }) => n + each.seats().length, 0),
+      // The worst room's jitter, not an average over rooms: one city stalling
+      // is the thing worth seeing, and averaging it away is how a stall hides.
+      jitter: beats.length === 0 ? undefined : { p50Ms: worst("p50Ms"), p99Ms: worst("p99Ms"), maxMs: worst("maxMs") },
+      // **Not "desyncs"** — the monthly hash is compared on the CLIENT, which is
+      // the only place that holds both numbers, so the server cannot count
+      // them. A resync request is what a client sends when it finds one, which
+      // is the server-side shadow of the same event and the number a sweep can
+      // actually read. It must be 0.
+      resyncs: rooms_.reduce((n, { room: each }) => n + each.resyncs(), 0),
+    };
+  }
+
+  const http = createServer(makeStatic(health));
   const sockets = new WebSocketServer({
     server: http,
     path: "/ws",
@@ -110,11 +237,32 @@ export async function startServer({
     // measurement; the old ceiling was 32 KB and a 48x48 save is 14, a 128x128
     // is 89.
     maxPayload: LIMITS.MESSAGE_BYTES,
+    /**
+     * **The Origin check** (M12). The browser's same-origin policy does NOT
+     * apply to `new WebSocket(...)`: without this, a page the player merely
+     * visits can open a socket into their room and play as them, and there is
+     * no cookie to be missing because a room needs none. `server/config.js`
+     * owns the rule — no origin is allowed (every gate here is a script), an
+     * exact `ALLOWED_ORIGINS` entry is allowed, and otherwise the origin's host
+     * must equal the request's.
+     */
+    verifyClient({ origin, req }, done) {
+      if (originAllowed(origin, config, req.headers.host)) return done(true);
+      // 403 rather than a silent drop: a developer with a reverse proxy and no
+      // `ALLOWED_ORIGINS` needs to be able to tell this from a crash.
+      console.warn(`refused a socket from origin ${origin} (host ${req.headers.host})`);
+      return done(false, 403, "origin not allowed");
+    },
   });
 
   const perIp = new Map();
   sockets.on("connection", (socket, request) => {
-    const ip = request.socket.remoteAddress ?? "?";
+    // The forwarded address only when a proxy put it there (M12): behind nginx
+    // every socket's `remoteAddress` is 127.0.0.1, so without `TRUST_PROXY=1`
+    // the per-address cap would count the whole internet as one client — and
+    // WITH it believed unconditionally, anybody could set the header and have
+    // their own.
+    const ip = clientAddress(request, config);
     const open = (perIp.get(ip) ?? 0) + 1;
     perIp.set(ip, open);
     // A connection cap per address, which is the cheapest half of §3.5's
@@ -301,7 +449,12 @@ export async function startServer({
     });
   });
 
-  await new Promise((resolve) => http.listen(port, resolve));
+  // **The bind address is the rule, not the port** (M12). Under
+  // `NODE_ENV=production` it is loopback unless `HOST` says otherwise, because
+  // a `0.0.0.0` bind on a shared box exposes the raw port through the firewall
+  // and bypasses TLS entirely — the one mistake in the sibling's dos-and-donts
+  // that cannot be undone by a later nginx edit.
+  await new Promise((resolve) => http.listen(listenPort, bind, resolve));
   rooms.start();
 
   // A checkpoint every thirty beats — three seconds at 100 ms — started and not
@@ -336,6 +489,10 @@ export async function startServer({
 
   return {
     port: http.address().port,
+    host: bind,
+    config,
+    /** What `/health` answers, for a test that would rather call than curl. */
+    health,
     /** The room this process booted with. Hosted rooms are reached through
      * `rooms`, by the code their host was given. */
     room,
@@ -357,8 +514,15 @@ export async function startServer({
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const port = Number(process.argv[2] ?? process.env.PORT ?? 8123);
-  const server = await startServer({ port });
-  console.log(`city grid: http://localhost:${server.port}/  (ws on /ws)`);
+  // `argv[2]` still wins, because `run.sh` has taken a port there since slice 0
+  // and `./run.sh 8200` is in every document. Everything else comes from the
+  // environment, which is what a systemd unit can set.
+  const server = await startServer({
+    port: process.argv[2] ? Number(process.argv[2]) : undefined,
+    env: process.env,
+  });
+  console.log(`city grid: http://${server.host}:${server.port}/  (ws on /ws, health on /healthz)`);
   console.log(`room code: ${formatRoomCode(server.room.code())}`);
+  console.log(`rooms: ${server.config.roomsDir}, kept ${server.config.keepForDays} days`
+    + `${server.config.trustProxy ? ", trusting X-Forwarded-For" : ""}`);
 }

@@ -69,5 +69,18 @@ export function createStore({ dir = "rooms", keepForDays = 30 } = {}) {
     return removed;
   }
 
-  return { put, get, prune, settled: () => writing };
+  /** Every room id with a file, for the registry's code claim at boot (A143).
+   * The id IS the code for a hosted room — `server/index.js` keys its own room
+   * by `roomId` and every other by `each.code()` — so the file names are the
+   * claim, and a directory that does not exist yet is simply no rooms. */
+  async function codes() {
+    try {
+      return (await readdir(dir)).filter((n) => n.endsWith(".json"))
+        .map((n) => n.replace(/\.json$/, ""));
+    } catch {
+      return [];
+    }
+  }
+
+  return { put, get, prune, codes, settled: () => writing };
 }

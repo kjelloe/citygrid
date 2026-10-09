@@ -13,42 +13,40 @@
 //   node tools/a11y_smoke.mjs
 
 import { chromium } from "playwright";
-import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
+import { spawn } from "node:child_process";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".json": "application/json", ".png": "image/png",
-};
-
-function serve() {
-  return createServer(async (req, res) => {
-    try {
-      const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
-      const target = join(root, normalize(path === "/" ? "/index.html" : path));
-      if (!target.startsWith(root)) return res.writeHead(403).end();
-      const body = await readFile(target);
-      res.writeHead(200, { "content-type": TYPES[extname(target)] ?? "application/octet-stream" });
-      res.end(body);
-    } catch {
-      res.writeHead(404).end();
-    }
-  });
-}
-
+const PORT = 8197;
 let failures = 0;
 function check(name, ok, detail = "") {
   if (!ok) failures += 1;
   console.log(`${ok ? "ok  " : "FAIL"}  ${name}${detail ? `  (${detail})` : ""}`);
 }
 
-const server = serve();
-await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-const port = server.address().port;
-const base = `http://127.0.0.1:${port}/index.html`;
+// **The real server** (M12). This gate stood up a fourteen-line static server
+// of its own with a type table of its own, which is the shape `serve_smoke` was
+// written to catch: eight gates passed while `./run.sh` was broken, because
+// every one of them served the tree a slightly different way. There is one
+// server now and every browser gate spawns it.
+const server = spawn(process.execPath, [join(root, "server", "index.js"), String(PORT)], {
+  cwd: root, stdio: ["ignore", "pipe", "pipe"],
+});
+const serverLog = [];
+server.stdout.on("data", (d) => serverLog.push(String(d)));
+server.stderr.on("data", (d) => serverLog.push(String(d)));
+await new Promise((resolve, reject) => {
+  const deadline = setTimeout(() => reject(new Error(`the server never answered:\n${serverLog.join("")}`)), 20_000);
+  const poll = setInterval(async () => {
+    const up = await fetch(`http://127.0.0.1:${PORT}/healthz`).then((r) => r.ok).catch(() => false);
+    if (!up) return;
+    clearInterval(poll);
+    clearTimeout(deadline);
+    resolve();
+  }, 150);
+});
+const base = `http://127.0.0.1:${PORT}/index.html`;
 // `lock=0`: Playwright cannot drive a page that has taken the pointer, and
 // this gate presses F and C (K3, A58). The locked path has its own pass in
 // `play_smoke`.
@@ -308,7 +306,7 @@ try {
     // A shoot page that throws otherwise looks exactly like a slow one (V6).
     shot.on("pageerror", (error) => console.log(`      shoot page error: ${error.message}`));
     shot.on("console", (msg) => { if (msg.type() === "error") console.log(`      shoot console: ${msg.text()}`); });
-    await shot.goto(`http://127.0.0.1:${port}/tools/shoot.html`
+    await shot.goto(`http://127.0.0.1:${PORT}/tools/shoot.html`
       // `years=0`: bare hillside, no city. What this measures is the WASH under
       // shading, and a city is only the thing standing in front of it — but the
       // sample is the ground pixels a city leaves visible, so every slice that
@@ -440,7 +438,7 @@ try {
   const stillContext = await browser.newContext({ viewport: { width: 1000, height: 700 }, reducedMotion: "reduce" });
   const stillPage = await stillContext.newPage();
   stillPage.on("pageerror", (error) => problems.push(`motion: ${error.message}`));
-  await stillPage.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=48&lock=0&funds=500000`);
+  await stillPage.goto(`http://127.0.0.1:${PORT}/index.html?seed=1003&size=48&lock=0&funds=500000`);
   await started(stillPage);
   const stillCars = await seedTraffic(stillPage);
   const still = await stillPage.evaluate(async () => {
@@ -561,7 +559,7 @@ try {
   await context.close();
 } finally {
   await browser.close();
-  server.close();
+  server.kill();
 }
 
 console.log(failures === 0 ? "\naccessibility smoke ok" : `\n${failures} check(s) failed`);

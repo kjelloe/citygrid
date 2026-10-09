@@ -1,0 +1,56 @@
+# /etc/systemd/system/citygrid.service — a template, not a deployed file.
+#
+# Copy it, set the User, the WorkingDirectory and the Environment block, then
+# `sudo systemctl daemon-reload && sudo systemctl enable --now citygrid`.
+# DEPLOYING.md is the playbook; every value here is explained there and in
+# `server/config.js`.
+
+[Unit]
+Description=City Grid room server
+After=network.target
+
+[Service]
+User=citygrid
+WorkingDirectory=/opt/citygrid
+
+# **`--max-old-space-size` a quarter under `MemoryMax`.** V8 cannot see the
+# cgroup, so without the flag the first sign of memory pressure is a SIGKILL
+# from the OOM reaper — no GC pressure, no stack trace, and possibly mid-write
+# of a room's checkpoint. With it, V8 collects hard and the worst case is a
+# clean heap-OOM that `Restart=on-failure` recovers from.
+# (`../Fireline/deploy-new-sibling-game-in-box-dos-and-donts.md`.)
+MemoryMax=512M
+ExecStart=/usr/bin/node --max-old-space-size=384 server/index.js
+
+Restart=on-failure
+RestartSec=3
+
+# **Loopback is the default under production and this line is why it is safe to
+# rely on.** A 0.0.0.0 bind exposes the raw port through the firewall and
+# bypasses TLS entirely; nginx is the only public path.
+Environment=NODE_ENV=production
+# Claim a port in the box's hosting document first, one per game.
+Environment=PORT=8133
+# Rooms live OUTSIDE the deployed tree, so an allowlist rsync can neither skip
+# them (losing every city on a deploy) nor carry them.
+Environment=ROOMS_DIR=/var/lib/citygrid/rooms
+Environment=KEEP_FOR_DAYS=30
+# nginx terminates TLS and proxies, so every socket's own address is 127.0.0.1:
+# without this the per-address connection cap counts the whole internet as one
+# client. Only set it where a proxy really does set the header — believed
+# unconditionally it is a rate limit anybody can type their way around.
+Environment=TRUST_PROXY=1
+# The public name, exactly as a browser sends it in `Origin`. The browser's
+# same-origin policy does not apply to `new WebSocket(...)`, so without this a
+# page the player merely visits could open a socket into their room.
+Environment=ALLOWED_ORIGINS=https://citygrid.kjell.today
+
+# A little hardening, none of which the game needs to do without.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/citygrid
+
+[Install]
+WantedBy=multi-user.target

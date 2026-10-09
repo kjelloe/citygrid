@@ -15,7 +15,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readdir, readFile, writeFile, utimes, stat } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, writeFile, utimes, stat, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createStore } from "../server/store.js";
@@ -83,4 +83,25 @@ test("keepForDays removes the rooms nobody has touched, and only those", async (
 test("pruning a directory that does not exist is nothing, not a crash", async () => {
   const store = createStore({ dir: join(await scratch(), "never-made") });
   assert.deepEqual(await store.prune(), []);
+});
+
+test("the store lists the codes it is holding, for the registry's claim (A143)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "citygrid-codes-"));
+  try {
+    const store = createStore({ dir });
+    assert.deepEqual(await store.codes(), [], "an empty store listed something");
+    await store.put("ABC123", { save: { v: 1 }, tick: 3, code: "ABC123" });
+    await store.put("room", { save: { v: 1 }, tick: 3, code: "QRS789" });
+    await store.settled();
+    assert.deepEqual((await store.codes()).sort(), ["ABC123", "room"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a store whose directory does not exist lists nothing rather than throwing (A143)", async () => {
+  // The boot path calls this before anything has written a file, which on a
+  // fresh box is every boot until the first room sleeps.
+  const store = createStore({ dir: join(tmpdir(), `citygrid-missing-${Date.now()}`) });
+  assert.deepEqual(await store.codes(), []);
 });

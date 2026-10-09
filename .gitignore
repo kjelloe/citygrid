@@ -58,3 +58,6 @@ reports/.*.png
 # `node tools/gates.mjs film` run — working files, like the compare sheet's
 # per-view captures. What a film DELIVERS is F3's `media/`, which is committed.
 reports/storyboard/
+
+# The box and the key (M12). The template is tools/deploy.env.example.
+tools/deploy.env

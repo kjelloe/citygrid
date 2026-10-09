@@ -47,6 +47,10 @@ const REQUIRED_DOCS = [
   // owns the definition of done and the order; every item in it points at a
   // lane file for its tests and gates. This list is what noticed it existed.
   "workitems-v1.md",
+  // The box (M12, 2026-10-09). A playbook that goes stale is a box that will
+  // not start, and `test/deploy.test.js` holds its table against the variables
+  // `server/config.js` actually reads.
+  "DEPLOYING.md",
   "specs/transport-and-landmarks.md",
 ];
 
