@@ -50,6 +50,12 @@ export const C2S = Object.freeze({
   // them. **No version bump:** a type only ever SENT by a newer client is
   // additive, which is the reasoning X2c's `CREATE` used.
   SPEED: "speed",
+  // **The host removes a seat** (X2d). Not a command: the seat, the socket and
+  // the token are the ROOM's and none of them is in the state, so this rides
+  // the wire like the speed does — and the city learns about it as the
+  // `CMD_LEAVE` the room queues on the kicked seat's behalf, which every client
+  // replays in order like any other. Additive, so no version bump.
+  KICK: "kick",
 });
 
 /** Server → client. */

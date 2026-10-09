@@ -74,3 +74,47 @@ test("a city with nobody in it has an empty roster rather than a row about natur
   assert.deepEqual(rosterFor(undefined, 1), []);
   assert.deepEqual(rosterFor(city([{ seat: 0, name: "nature", status: PLAYER_ACTIVE }]), 1), []);
 });
+
+// --- the host's remove (X2d) -------------------------------------------------
+
+test("only the host is offered a remove, and never on their own row", () => {
+  // A button the ROOM would refuse is the same lie as one the reducer would:
+  // the host is passed in rather than guessed, and the room checks it again
+  // beside the seats it protects.
+  const state = city([
+    { seat: 1, name: "Ada", status: PLAYER_ACTIVE },
+    { seat: 2, name: "Grace", status: PLAYER_ACTIVE },
+    { seat: 3, name: "Alan", status: PLAYER_AFK },
+  ]);
+  const asHost = rosterFor(state, 1, 1);
+  assert.deepEqual(asHost.map((r) => r.actions.includes(ROSTER_ACTIONS.REMOVE)), [false, true, true],
+    "the host can remove themselves, or cannot remove a guest");
+  // Away is still removable: a seat somebody has stepped away from is exactly
+  // the one a host wants back.
+  const asGuest = rosterFor(state, 2, 1);
+  assert.deepEqual(asGuest.map((r) => r.actions.includes(ROSTER_ACTIONS.REMOVE)), [false, false, false],
+    "a guest was offered somebody else's removal");
+});
+
+test("a seat that has already gone cannot be removed", () => {
+  // Nothing to close and nothing to free, and a button that does nothing is the
+  // defect X2d's speed control was.
+  const state = city([
+    { seat: 1, name: "Ada", status: PLAYER_ACTIVE },
+    { seat: 2, name: "Grace", status: PLAYER_GONE },
+  ]);
+  const rows = rosterFor(state, 1, 1);
+  assert.equal(rows[1].actions.includes(ROSTER_ACTIONS.REMOVE), false);
+});
+
+test("with no host named, nobody is offered a removal", () => {
+  // Singleplayer and the in-process rooms: `host` defaults to 0, which is not a
+  // seat, so the table is the one it was before X2d.
+  const state = city([
+    { seat: 1, name: "Ada", status: PLAYER_ACTIVE },
+    { seat: 2, name: "Grace", status: PLAYER_ACTIVE },
+  ]);
+  for (const row of rosterFor(state, 1)) {
+    assert.equal(row.actions.includes(ROSTER_ACTIONS.REMOVE), false);
+  }
+});

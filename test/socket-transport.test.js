@@ -486,3 +486,50 @@ test("asking for a speed is a message and nothing else", async () => {
   assert.equal(asked.speed, 3);
   assert.equal(transport.roomSpeed, 1, "the page moved its own dial instead of asking");
 });
+
+// --- the room can end the session (X2d) --------------------------------------
+
+test("a refusal mid-session ends it, with the reason, and the page is told", async () => {
+  // Before X2d nothing watched the close at all: a kicked, reaped or restarted
+  // room left the player in a city that had quietly stopped receiving frames,
+  // with no message and nothing to do — which looks exactly like a game that is
+  // still running. The reason has to be REMEMBERED across the close, because a
+  // kick arrives on a session with nothing pending and rejecting an empty queue
+  // tells nobody.
+  const { room, socket, transport } = roomAndTransport();
+  const ready = transport.post({ type: "init" });
+  socket.open();
+  socket.push(welcomeFrom(room));
+  await ready;
+  const ended = [];
+  transport.onEnded((reason) => ended.push(reason));
+  socket.push({ type: S2C.REFUSED, reason: REFUSAL.BANNED });
+  socket.close();
+  assert.deepEqual(ended, [REFUSAL.BANNED], "the page was not told why the session ended");
+});
+
+test("a close with nothing before it ends the session with no reason to give", async () => {
+  // A pulled cable and a restarted server are not a refusal, and the page says
+  // so rather than guessing at one.
+  const { room, socket, transport } = roomAndTransport();
+  const ready = transport.post({ type: "init" });
+  socket.open();
+  socket.push(welcomeFrom(room));
+  await ready;
+  const ended = [];
+  transport.onEnded((reason) => ended.push(reason));
+  socket.close();
+  assert.deepEqual(ended, [undefined]);
+});
+
+test("the host's removal is a message and nothing else", async () => {
+  const { room, socket, transport } = roomAndTransport();
+  const ready = transport.post({ type: "init" });
+  socket.open();
+  socket.push(welcomeFrom(room));
+  await ready;
+  transport.kick(2);
+  const asked = socket.last(C2S.KICK);
+  assert.ok(asked, "no kick message was sent");
+  assert.equal(asked.seat, 2);
+});

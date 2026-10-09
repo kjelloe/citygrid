@@ -20,6 +20,12 @@ export const ROSTER_ACTIONS = Object.freeze({
   AWAY: "away",
   BACK: "back",
   LEAVE: "leave",
+  /** The host's, and only on somebody else's row (X2d). It is not a command:
+   * removing a player is the ROOM's business — the seat, the socket and the
+   * token are the server's and none of them is in the state — so this rides
+   * `C2S.KICK` the way the speed does, and the city learns about it as the
+   * `CMD_LEAVE` the room queues on the kicked seat's behalf. */
+  REMOVE: "remove",
 });
 
 /** Each action's label, spelled out — a key built as `roster.${action}` is
@@ -29,6 +35,7 @@ export const ROSTER_LABELS = Object.freeze({
   [ROSTER_ACTIONS.AWAY]: "roster.away",
   [ROSTER_ACTIONS.BACK]: "roster.back",
   [ROSTER_ACTIONS.LEAVE]: "roster.leave",
+  [ROSTER_ACTIONS.REMOVE]: "roster.remove",
 });
 
 /** One word per status, and four different ones: playing, away, run by the
@@ -45,11 +52,17 @@ const STATUS_KEYS = {
  * One row per seat, in seat order — the territory legend's rule, and for the
  * same reason: a list that reorders itself between frames cannot be learned.
  *
- * The actions are **your own and only yours**. Kicking somebody is the host's
- * and is X4's; a button the reducer would refuse is a lie told by the
- * interface (CLAUDE.md: permission checks live in the reducer).
+ * The actions are **your own and only yours — except the host's** (X2d). A
+ * button the reducer would refuse is a lie told by the interface (CLAUDE.md:
+ * permission checks live in the reducer), and the same goes for one the ROOM
+ * would refuse: `host` is passed in rather than guessed, the room checks it
+ * again beside the seats it protects, and a guest is offered nothing.
+ *
+ * A host is not offered their own removal. There is nobody to hand the room to
+ * and the city would keep running with no one able to turn the clock, which is
+ * a worse state than any a button should be able to reach.
  */
-export function rosterFor(state, seat) {
+export function rosterFor(state, seat, host = 0) {
   const rows = [];
   for (const player of state?.players ?? []) {
     if (!(player.seat > 0)) continue;
@@ -58,6 +71,12 @@ export function rosterFor(state, seat) {
     if (you && player.status !== PLAYER_GONE) {
       actions.push(player.status === PLAYER_AFK ? ROSTER_ACTIONS.BACK : ROSTER_ACTIONS.AWAY);
       actions.push(ROSTER_ACTIONS.LEAVE);
+    }
+    // Somebody who has already gone cannot be removed: there is no socket to
+    // close and no seat to free, and a button that does nothing is the defect
+    // X2d's speed control was.
+    if (!you && host > 0 && seat === host && player.status !== PLAYER_GONE) {
+      actions.push(ROSTER_ACTIONS.REMOVE);
     }
     rows.push({
       seat: player.seat,

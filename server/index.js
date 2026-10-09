@@ -133,6 +133,9 @@ export async function startServer({
         if (message.type === S2C.WELCOME) gave = Number(message.seat) || undefined;
         socket.send(JSON.stringify(message));
       },
+      /** For the one message that ends a session rather than answering it
+       * (X2d's kick). The room has no socket and should not grow one. */
+      close() { socket.close(); },
     };
     let acted = 0;
     let second = Math.floor(Date.now() / 1000);
@@ -206,6 +209,16 @@ export async function startServer({
       if (message.type === C2S.SPEED) {
         if (watching) return;
         mine.setSpeed(Number(message.speed), seat);
+        return;
+      }
+      // **The host removes a seat** (X2d). The room decides and frees the
+      // chair; the door is the only thing holding the socket, so closing it is
+      // the door's half — and `kick` hands the connection back for exactly
+      // that, rather than the room reaching for a socket it does not have.
+      if (message.type === C2S.KICK) {
+        if (watching) return;
+        const gone = mine.kick(Number(message.seat), seat);
+        gone?.close?.();
         return;
       }
       // **Chat** (X3b). Not a command: it never reaches the reducer, so a line

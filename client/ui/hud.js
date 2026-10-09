@@ -80,7 +80,7 @@ export function createHud(root, {
   onSave, onLoad, onExport, onImport, slots,
   onQuestChoice, quests, onTax, onFunding, onLoan, onNewCity, onSettings, onStatistics, onHelp, minimap,
   onResolveRequest, onWithdrawRequest, onFileRequest, onFocusTile, onPing, onSetPolicy,
-  onSetStatus, onLeaveRoom, onSay, watching = false, canSetSpeed = true,
+  onSetStatus, onLeaveRoom, onSay, onKick, host = 0, watching = false, canSetSpeed = true,
   onStreet, onLeaveStreet, onPhoto, onLeavePhoto, onSavePhoto,
   showControlsCard = false, onDismissControlsCard,
 }) {
@@ -623,10 +623,10 @@ export function createHud(root, {
 
   function renderRoster() {
     if (!onSetStatus) return;
-    const rows = rosterFor(state, seat);
+    const rows = rosterFor(state, seat, host);
     // The same guard the inbox and the alert list have: `refresh()` runs twice
     // a second in a room, and a row rebuilt under the cursor cannot be pressed.
-    const signature = rows.map((r) => `${r.seat}:${r.status}:${r.name}`).join("|");
+    const signature = rows.map((r) => `${r.seat}:${r.status}:${r.name}:${r.actions.join(",")}`).join("|");
     if (signature === rosterSignature) return;
     rosterSignature = signature;
     rosterBar.innerHTML = "";
@@ -642,9 +642,9 @@ export function createHud(root, {
         button.type = "button";
         button.dataset.action = action;
         button.addEventListener("click", () => {
-          const done = action === ROSTER_ACTIONS.LEAVE
-            ? onLeaveRoom?.()
-            : onSetStatus?.(action === ROSTER_ACTIONS.AWAY ? PLAYER_AFK : PLAYER_ACTIVE);
+          const done = action === ROSTER_ACTIONS.LEAVE ? onLeaveRoom?.()
+            : action === ROSTER_ACTIONS.REMOVE ? onKick?.(row.seat)
+              : onSetStatus?.(action === ROSTER_ACTIONS.AWAY ? PLAYER_AFK : PLAYER_ACTIVE);
           Promise.resolve(done).then(() => refresh());
         });
         item.append(button);

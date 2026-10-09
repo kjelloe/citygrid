@@ -252,6 +252,11 @@ export async function startGame(root, given = {}) {
     // no room behind it, which is how this file tells the two situations apart
     // without knowing what a socket is.
     canSetSpeed: sim.setRoomSpeed === undefined || sim.isHost === true,
+    // The host's removal, on the roster (X2d). `host` is passed rather than
+    // guessed: a roster that worked out who the host is would be a second
+    // source for a fact the WELCOME already carries.
+    host: sim.isHost ? (sim.seat ?? 0) : 0,
+    onKick: sim.kick ? (who) => sim.kick(who) : undefined,
     state,
     seat,
     controller,
@@ -409,6 +414,14 @@ export async function startGame(root, given = {}) {
   // A line from the room goes straight to the panel: it is not state, nothing
   // orders it against commands, and a client that misses one has not diverged.
   sim.onChat?.((line) => hud.addChatLine(line));
+
+  // **And the room can end this session** (X2d). Nothing watched the close
+  // before: a kicked, reaped or restarted room left the player in a city that
+  // had quietly stopped receiving frames, with no message and nothing to do —
+  // which looks exactly like a game that is still running. The reason is the
+  // door's refusal code when it gave one; a close with nothing before it is a
+  // dropped connection and says so instead of guessing.
+  sim.onEnded?.((reason) => { given.onRoomEnded?.(reason); });
 
   sim.onChange((change) => {
     // Ticks, **and frames pushed by a room** (X3b). This read `!== CMD_TICK`

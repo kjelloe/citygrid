@@ -202,6 +202,17 @@ async function boot() {
     return undefined;
   }
 
+  /** The room ended the session (X2d): a kick, a reaped room, a restarted
+   * server. Back to the lobby with the door's own sentence where there is one —
+   * the same path a refused JOIN takes, because "you are not in that room" is
+   * the same news whether it arrives before the city or after it. */
+  function roomEnded(reason) {
+    const key = refusalKey(reason) ?? "room.ended";
+    session?.stop();
+    session = undefined;
+    return newGame({ key });
+  }
+
   async function play(given) {
     // `?funds=` applies to any NEW city, whichever screen started it (W2).
     if (config.funds > 0 && given.options) given.options.startingTreasury = config.funds;
@@ -211,6 +222,7 @@ async function boot() {
     const preferences = loadSettings();
     session = await startGame(app, {
       ...given,
+      onRoomEnded: roomEnded,
       onNewCity: newGame,
       onSettings: showSettings,
       audioSettings: mixerSettings(preferences),

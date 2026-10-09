@@ -26,7 +26,7 @@ import { encodeRuns } from "../shared/grid.js";
 import { RESULT, C2S, S2C, REFUSAL, PROTOCOL_VERSION } from "../shared/protocol.js";
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, formatRoomCode } from "../shared/roomcode.js";
 import { buildHash, setBuildHash } from "../shared/build-hash.js";
-import { PLAYER_ACTIVE, PLAYER_REGENT } from "../engine/constants.js";
+import { PLAYER_ACTIVE, PLAYER_REGENT, PLAYER_GONE } from "../engine/constants.js";
 
 /** A seat's status in the room's own city. */
 const seatStatus = (room, seat) => room.state.players.find((p) => p.seat === seat)?.status;
@@ -906,4 +906,56 @@ test("the room has one speed more than a player has words for, and it is the gat
     "the room's rates and the player's words moved apart by more than the gates' one");
   assert.equal(TICKS_PER_SECOND[0], 0, "the first speed is not paused");
   assert.ok(TICKS_PER_SECOND[3] > TICKS_PER_SECOND[2], "the gates' speed is not the fastest");
+});
+
+// --- the host removes a seat (X2d) -------------------------------------------
+
+test("only the host may remove a seat, and never their own", () => {
+  const room = createRoom({ options: OPTIONS });
+  const host = joined(room, "host", 1);
+  const guest = joined(room, "guest", 2);
+  assert.equal(room.kick(1, 2), undefined, "a guest removed the host");
+  assert.equal(room.kick(1, 1), undefined, "the host removed themselves");
+  assert.equal(room.kick(3, 1), undefined, "a seat nobody is in was removed");
+  assert.ok(room.kick(2, 1), "the host could not remove a guest");
+  assert.ok(host.welcome, "the host's own seat went with it");
+  assert.ok(guest.connection.last(S2C.REFUSED), "the removed seat was told nothing");
+  assert.equal(guest.connection.last(S2C.REFUSED).reason, REFUSAL.BANNED);
+});
+
+test("a removed seat is freed at once, not held like a dropped socket", () => {
+  // `leave` keeps a seat warm for `heldForMs` because a dropped socket is an
+  // accident (X4a). A kick is a decision, and a held seat would be the player
+  // walking back in with the token from their last WELCOME.
+  const room = createRoom({ options: OPTIONS });
+  joined(room, "host", 1);
+  const guest = joined(room, "guest", 2);
+  const token = guest.welcome.token;
+  room.kick(2, 1);
+  // The same token, offered again, gets nothing back: the seat is free, so this
+  // is a NEW joiner taking an empty chair rather than a return to a held one.
+  const back = wire("again");
+  const refusal = room.join(back, {
+    type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: room.code(),
+    seat: 2, token,
+  });
+  assert.equal(refusal, "", `coming back was refused: ${refusal}`);
+  assert.notEqual(back.last(S2C.WELCOME).token, token, "the old token still opens the seat");
+});
+
+test("the city learns about a removal in the frame, like everything else", () => {
+  // A room that only closed the socket would leave every other client's roster
+  // showing somebody who is not there — and the rosters are built from
+  // `state.players`, which is hashed, so the fix cannot be a message.
+  const room = createRoom({ options: OPTIONS });
+  const host = joined(room, "host", 1);
+  joined(room, "guest", 2);
+  room.kick(2, 1);
+  room.beat(1000, 1000);
+  const frame = host.connection.last(S2C.FRAME);
+  const left = (frame.cmds ?? []).find((c) => c.command?.type === "leave");
+  assert.ok(left, "no leave reached the frame");
+  assert.equal(left.seat, 2);
+  assert.equal(room.state.players.find((p) => p.seat === 2).status, PLAYER_GONE,
+    "the removed player is still playing as far as the city knows");
 });

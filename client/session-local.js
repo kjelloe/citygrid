@@ -99,6 +99,10 @@ export async function openLocalSession(given) {
     roomSpeed: undefined,
     isHost: false,
     setRoomSpeed: undefined,
+    /** Nobody to remove and no room to end the session (X2d). Declared rather
+     * than omitted, for the drop-in claim the member lists are compared on. */
+    kick: undefined,
+    onEnded: undefined,
     /** No chat either: there is nobody to say it to. Present rather than
      * absent, because the drop-in claim is checked by comparing the two APIs
      * and a caller that has to ask which session it holds is a caller the swap

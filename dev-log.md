@@ -14029,3 +14029,53 @@ ok  and the city kept running while it changed                 (6 then 11)
 
 Suite **1,990 tests, 1,987 pass, 0 fail, 3 skipped, green twice**; `room` 190 s of 300, `quick`
 547 s of 600.
+
+## X2d — the host removes a seat, and a room can end your session (2026-10-09)
+
+`refused.banned` — *"The host has removed you from that room"* — was written in X1b and had no
+sender. The reason it had none is bigger than a kick: **nothing in the page watched the socket
+close.** A kicked, reaped or restarted room left the player in a city that had quietly stopped
+receiving frames, with no message and nothing to do, which looks exactly like a game that is still
+running. So this slice is two things, and the second is the one that was missing.
+
+**`transport.onEnded(handler)`**, called once when the room ends the session — with the door's
+refusal code when it gave one, and `undefined` for a close with nothing before it. The reason has to
+be **remembered across the close**: a kick arrives on a session with nothing pending, so rejecting
+the (empty) queue of promises tells nobody. `main.js` sends the player back to the lobby with the
+door's own sentence, which is the path a refused JOIN already takes — *you are not in that room* is
+the same news whether it arrives before the city or after it. A close with no reason says
+`room.ended` ("You are no longer in that room") rather than guessing at a refusal: a pulled cable is
+not a decision.
+
+**`C2S.KICK`, and the room decides.** `room.kick(seat, by)` refuses anybody but the host and refuses
+the host their own seat — there is nobody to hand the room to and the city would keep running with
+no one able to turn the clock. **Nothing is held**: `leave` keeps a seat warm for `heldForMs`
+because a dropped socket is an accident (X4a), and a kick is a decision, so a held seat would be the
+player walking back in with the token from their last WELCOME. The test drives exactly that — the
+old token, offered again, gets a *new* one, because what it opened is a free chair rather than a
+held seat.
+
+**And it is not a ban, which the code says out loud.** There is no identity to ban: no accounts, and
+a token is this room's and regenerated. Somebody with the code can type it again and get a free
+seat. The refusal says what just happened, not what will happen next — a list keyed to an address
+would ban a household behind one router to stop one person.
+
+**The city hears about it in the frame.** `kick` queues a `CMD_LEAVE` on the removed seat's behalf,
+the same shape regency uses for the deputy's commands, so every client's roster moves at once and
+none of them moved early. A room that only closed the socket would leave everybody else looking at
+somebody who is not there — and the rosters are built from `state.players`, which is hashed, so the
+fix could not have been a message.
+
+The Remove button is the host's, on everybody else's row, and never on a seat that has already
+gone — nothing to close and no chair to free, which is the defect the speed button was two hours
+ago. `rosterFor(state, seat, host)` takes the host rather than working it out, because a roster that
+guessed would be a second source for a fact the WELCOME already carries.
+
+```
+ok  the host is offered a removal on somebody else's row and not their own
+ok  a guest is offered none                                   (0 remove buttons)
+ok  the removed player is back on the lobby, told why         ("The host has removed you from that room")
+ok  and the city knows, in the frame, like everything else    (status 3)
+```
+
+Suite **1,999 tests, 1,996 pass, 0 fail, 3 skipped, green twice**; `room` 191 s of 300.

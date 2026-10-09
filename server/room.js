@@ -21,7 +21,7 @@ import { hashState } from "../engine/state.js";
 import { generateWorld } from "../engine/worldgen.js";
 import { defaultOptions } from "../engine/options.js";
 import { toSave, fromSave } from "../engine/save.js";
-import { CMD_TICK, CMD_JOIN, CMD_SET_STATUS } from "../engine/commands.js";
+import { CMD_TICK, CMD_JOIN, CMD_LEAVE, CMD_SET_STATUS } from "../engine/commands.js";
 import { TICKS_PER_MONTH, PLAYER_ACTIVE, PLAYER_REGENT } from "../engine/constants.js";
 import { C2S, S2C, REFUSAL, PROTOCOL_VERSION, compatible, LIMITS } from "../shared/protocol.js";
 import { makeRoomCode, normaliseRoomCode } from "../shared/roomcode.js";
@@ -462,6 +462,39 @@ export function createRoom(given = {}) {
     /** A watcher's connection has gone. Separate from `leave`, because there is
      * no seat to hold and nothing to come back to. */
     stopWatching(connection) { watchers.delete(connection); },
+    /**
+     * The host removes a seat (X2d).
+     *
+     * **Nothing is held.** `leave` keeps a seat warm for `heldForMs` because a
+     * dropped socket is an accident (X4a); a kick is a decision, and holding
+     * the seat would be the player walking back in with the token from their
+     * last WELCOME. The seat is freed at once and the regency clock starts, so
+     * the deputy takes it on the same terms as any other empty chair.
+     *
+     * **And it is not a ban.** There is no identity to ban — no accounts, and a
+     * token is this room's and regenerated — so somebody with the code can type
+     * it again and get a free seat. The refusal the door sends says what just
+     * happened, not what will happen next; a list keyed to an address would ban
+     * a household behind one router to stop one person.
+     *
+     * @returns the kicked connection, so the caller can close the socket it is
+     *   the only one holding — or `undefined` when nothing happened.
+     */
+    kick(seat, by, at = Date.now()) {
+      if (!(by > 0) || by !== hostSeat) return undefined;
+      if (seat === hostSeat) return undefined;
+      const sitting = seats.get(seat);
+      if (!sitting) return undefined;
+      seats.delete(seat);
+      held.delete(seat);
+      emptySince.set(seat, at);
+      // The city hears about it as a command, in the frame, in order — the same
+      // shape regency uses. A room that only closed the socket would leave
+      // every other client's roster showing somebody who is not there.
+      queue.push({ seat, command: { type: CMD_LEAVE, actor: seat } });
+      sitting.connection.send({ type: S2C.REFUSED, reason: REFUSAL.BANNED });
+      return sitting.connection;
+    },
     leave(seat, at = Date.now()) {
       const sitting = seats.get(seat);
       seats.delete(seat);

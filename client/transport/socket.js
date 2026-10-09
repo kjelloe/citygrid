@@ -127,6 +127,13 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
    * else is told twice. */
   let roomSpeed = 1;
   let hostSeat = 0;
+  /** Why the room ended this session, if it said (X2d). A kick is a REFUSED
+   * followed by a close; a reaped room, a restarted server and a pulled cable
+   * are a close with nothing before it, and the page has to tell those apart —
+   * one has a sentence to show and the others have "the room could not be
+   * reached". */
+  let endedBecause;
+  let endedListener;
   let listener;
   let chatListener;
   let closed = false;
@@ -178,6 +185,12 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
   socket.onclose = () => {
     closed = true;
     fail(new Error("the room closed the connection"));
+    // **The session is over and the page has to say so** (X2d). Before this
+    // nothing watched the close at all: a kicked, reaped or restarted room left
+    // the player in a city that had quietly stopped receiving frames, with no
+    // message and nothing to do — the worst shape a failure can take, because
+    // it looks exactly like a game that is still running.
+    endedListener?.(endedBecause);
   };
 
   /** Everything outstanding fails together: a promise that never settles is a
@@ -264,7 +277,12 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
         // answer and never a disconnect (§3.7.3); anything else means the door
         // said no and the player has a sentence to read.
         if (message.soft) waiting.shift()?.resolve({ ...fullPatch(), type: "result", result: RESULT.RATE_LIMITED, events: [] });
-        else fail(refusalError(message.reason));
+        else {
+          // Remembered for the close that follows: a kick arrives on a session
+          // with nothing pending, so rejecting the (empty) queue tells nobody.
+          endedBecause = message.reason;
+          fail(refusalError(message.reason));
+        }
         break;
       // **Chat** (X3b): its own listener, because it is not the city. Nothing
       // here reaches the reducer or the mirror — a line that could move a city
@@ -298,6 +316,18 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
     setRoomSpeed(next) {
       sendOrHold({ type: C2S.SPEED, speed: next });
     },
+    /** The host removes a seat (X2d). Like the speed, nothing happens locally:
+     * the room frees the chair and the city hears about it as the `CMD_LEAVE`
+     * that rides the next frame, so every roster moves at once and none of them
+     * moved early. */
+    kick(seat) {
+      sendOrHold({ type: C2S.KICK, seat });
+    },
+    /** Called once, when the room ends this session — with the door's refusal
+     * code if it gave one, and `undefined` for a close with nothing before it.
+     * The page shows the first and says "the room could not be reached" for the
+     * second, which are different facts. */
+    onEnded(handler) { endedListener = handler; },
     get closed() { return closed; },
     /** Commands posted and not yet answered by a frame. The number a gate waits
      * on rather than guessing at a delay. `held` is not added to it: a command

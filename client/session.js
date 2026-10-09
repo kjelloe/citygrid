@@ -248,6 +248,11 @@ export async function openMirrorSession(given = {}, transport) {
      * `game.js` tells the two situations apart without knowing what a socket
      * is. */
     setRoomSpeed: transport.setRoomSpeed ? (next) => transport.setRoomSpeed(next) : undefined,
+    /** The host's removal, and the end of a session (X2d). Both absent on every
+     * transport with no room behind it, which is how `game.js` tells the two
+     * situations apart without knowing what a socket is. */
+    kick: transport.kick ? (seat) => transport.kick(seat) : undefined,
+    onEnded: transport.onEnded ? (handler) => transport.onEnded(handler) : undefined,
     async load(saveData) {
       try {
         const reply = await post({ type: "init", save: saveData });

@@ -529,6 +529,43 @@ try {
     check("neither talker reported a page or console error",
       talkers.every((t) => t.errors.length === 0),
       talkers.flatMap((t) => t.errors).slice(0, 3).join(" | "));
+
+    // **The host removes a seat** (X2d). Here rather than in the room above,
+    // because a kicked seat is gone and everything after this needs the two
+    // seats up there — this room has two of its own and is finished with them.
+    //
+    // Three claims, and they are different: the host is offered a Remove on
+    // everybody else's row and not their own, the guest is offered none;
+    // pressing it ends that player's session on the lobby with the door's own
+    // sentence; and the CITY hears about it as a `CMD_LEAVE` in the frame, so
+    // the host's own roster moves rather than only the kicked page.
+    // The roster is behind its own rail button, like the inbox and the chat.
+    await talkers[0].page.click("#rail-roster");
+    await talkers[1].page.click("#rail-roster");
+    const offered = await talkers[0].page.evaluate(() => ({
+      onTheirs: Boolean(document.querySelector('.roster-row:not(.you) [data-action="remove"]')),
+      onMine: Boolean(document.querySelector('.roster-row.you [data-action="remove"]')),
+    }));
+    check("the host is offered a removal on somebody else's row and not their own",
+      offered.onTheirs === true && offered.onMine === false, JSON.stringify(offered));
+    const guestOffered = await talkers[1].page.evaluate(() =>
+      document.querySelectorAll('[data-action="remove"]').length);
+    check("a guest is offered none", guestOffered === 0, `${guestOffered} remove buttons`);
+
+    await talkers[0].page.click('.roster-row:not(.you) [data-action="remove"]');
+    const back = await until(talkers[1].page, "the removed player never left the city", () => ({
+      ok: document.querySelector("#joinCode") !== null,
+      said: document.querySelector(".lobby-join-problem")?.textContent ?? "",
+    }), undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("the removed player is back on the lobby, told why",
+      back.ok === true && back.said.length > 10, back.why ?? JSON.stringify(back));
+    const told = await until(talkers[0].page, "the host's own city never heard", () => {
+      const player = globalThis.CITY.state.players.find((p) => p.seat === 2);
+      return { ok: player?.status === 3, status: player?.status };
+    }, undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("and the city knows, in the frame, like everything else",
+      told.ok === true, told.why ?? JSON.stringify(told));
+
     for (const talker of talkers) await talker.context.close();
   }
 
