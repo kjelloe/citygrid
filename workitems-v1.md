@@ -24,16 +24,45 @@ sweep, spectators, hibernation to disk, the history, the region's money and aid 
 
 | | Item | Where | Size |
 |---|---|---|---|
-| V1 | **The server you can run on a box** — `HOST` honoured (loopback by default when `NODE_ENV=production`), `PORT`, a data directory for rooms outside the repo, a systemd unit template with `MemoryMax` and `--max-old-space-size` a quarter under it, an nginx server block shipped HTTP-only with its own upgrade map, `tools/ssh-deploy.sh` reading a gitignored `deploy.env`, and `DEPLOYING.md` — all adapted from `../Fireline/DEPLOYING.md` and `../CarrierDominion/DEPLOYING.md`, with the shared-box rules in `../Fireline/deploy-new-sibling-game-in-box-dos-and-donts.md` followed to the letter (claim a port, bind loopback, `ln … ; nginx -t \|\| rm …`). `/health` with the pump's jitter and the room count, because the unit's restart policy needs something to read | `workitems-mainline.md` **M12** | M |
+| V1 | **The server you can run on a box** — plus the omissions below: an `Origin` check, `X-Forwarded-For` behind a trusted proxy, and `server/index.js` as the one server the smokes drive — `HOST` honoured (loopback by default when `NODE_ENV=production`), `PORT`, a data directory for rooms outside the repo, a systemd unit template with `MemoryMax` and `--max-old-space-size` a quarter under it, an nginx server block shipped HTTP-only with its own upgrade map, `tools/ssh-deploy.sh` reading a gitignored `deploy.env`, and `DEPLOYING.md` — all adapted from `../Fireline/DEPLOYING.md` and `../CarrierDominion/DEPLOYING.md`, with the shared-box rules in `../Fireline/deploy-new-sibling-game-in-box-dos-and-donts.md` followed to the letter (claim a port, bind loopback, `ln … ; nginx -t \|\| rm …`). `/health` with the pump's jitter and the room count, because the unit's restart policy needs something to read | `workitems-mainline.md` **M12** | M |
 | V2 | **The stale client is told to reload.** `compatible()` refuses a build mismatch and the join screen has the words; the page must then actually update — `skipWaiting` on the explicit reload, never mid-room (plan §3.9) — and `update_smoke` proves a client on the old build is refused, reloads, and joins. Without this the first deploy after v1.0 desyncs every cached phone | `workitems-multiplayer.md` **X6** | S |
 | V3 | **The lobby's last rows**: the join code as a QR (Q5, a hand-rolled encoder under `shared/`, no dependency), *ready* before the host starts, joining a room that has started, and `lateJoin` meaning something. `privacy` stays unread until a room list exists (v1.2) | `workitems-multiplayer.md` **X2d** | S |
-| V4 | **The release gate at eight**: `room_soak` with eight scripted clients and `room_smoke` with eight browsers (or four, if the gate machine cannot hold eight, and the number written down), across a disconnect and a reconnect, requests resolved both ways — the gate `plan-v1.md` has named since August | `workitems-multiplayer.md` **X7** | S |
+| V4 | **The release gate at eight** — plus a 390×844 context in `room_smoke` and a room row in `reach_smoke` and `a11y_smoke`, because no room has ever been seen on a phone: `room_soak` with eight scripted clients and `room_smoke` with eight browsers (or four, if the gate machine cannot hold eight, and the number written down), across a disconnect and a reconnect, requests resolved both ways — the gate `plan-v1.md` has named since August | `workitems-multiplayer.md` **X7** | S |
 | V5 | **One real evening.** Kjell and at least three people, on the deployed server, for an hour: a notes file in `playtest-notes.md`'s shape, every refusal they hit, every "what is this", every hitch (A134's trigger for W6c is read here). This is the acceptance; nothing in a gate replaces it | **Kjell** | — |
 | V6 | **The release**: `RELEASE.md` re-measured at the tag, `git tag v1.0`, `main` fast-forwarded and **pushed**, and the README leading with how to host a room | `workitems-mainline.md` **M7b** | S |
 
 **Not in v1.0, on purpose:** W6c (A134 — held until V5 says the hitch is felt); Wave 6's modes,
 districts and contracts; rivals and seasons; sixteen seats for an hour; the master index and the
 room list; a phone performance card; every picture question in Q161–Q166.
+
+## Omissions pass (2026-10-09, after P113) — checked against the code
+
+- **No `Origin` check on the socket.** `server/index.js` caps connections per IP and payloads per
+  message, and accepts a WebSocket from any page on the internet. On a public hostname that is a
+  cross-site socket: a stranger's page can open a room in a visitor's browser. V1 adds the check
+  (the page's own origin, or an allowlist from the environment) and refuses the rest at the door.
+- **Behind nginx every client is one IP.** The per-IP cap reads `remoteAddress`, which is the
+  proxy's; eight players behind TLS are "one address with eight connections" and the ninth is
+  refused. V1 reads `X-Forwarded-For` only when a trusted proxy is configured (`TRUST_PROXY=1`).
+- **Three smokes drive `tools/serve.mjs`, not the room server.** `serve_smoke`, `reach_smoke` and
+  `a11y_smoke` spawn the static server, so the real server's static path and CSP have never been
+  under a gate — and plan §3.5 said "one server, not two". V1 makes `server/index.js` the one
+  server (`tools/serve.mjs` becomes a thin alias or goes), and the three smokes spawn it.
+- **No room has ever been seen on a phone.** `room_smoke`'s five contexts are all 1280×800; the
+  join screen, the inbox, the roster, the chat and the request panel have no phone row, and
+  `reach_smoke` and `a11y_smoke` never open a room, so the room's panels have never been hit-tested
+  or contrast-checked. V4 adds a 390×844 context to `room_smoke` and a room row to both sweeps.
+- **A resync is silent to the player.** `session.js` counts desyncs and asks the transport to
+  resync; nothing on screen says "the room re-sent the city". A short status line, in both
+  catalogues, in X6.
+- **`plan-v1.md`'s Wave 5 rows were unticked** while the lane was built; ticked in this pass.
+  `specs/gamedesign.md` §34's as-built table has no multiplayer rows, and `playtest-notes.md` still
+  opens with "Wave 5 has not been started" — both are the ally's next docs round, and the
+  playtest file is where V5's notes go.
+- **Checked and fine:** `wss:` follows the page's protocol (`session.js`); chat, names and reasons
+  go through the reducer's sanitiser with `LIMITS`; the host-only speed is enforced on the server;
+  the per-seat command rate is enforced; the stale-client reload path exists on `controllerchange`
+  and only needs the refusal to trigger it (V2).
 
 ## v1.1 — the remaining details and the balance
 
