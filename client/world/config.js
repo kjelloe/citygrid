@@ -216,7 +216,7 @@ export const DEFAULTS = Object.freeze({
   // without them the light moves 0.2° and the picture changes. A light that
   // never moved at all would also be "unchanged inside a step", which is why
   // the second arm is there.
-  sun: { arcDegrees: 45, moonArcDegrees: 45, arcSteps: 48 },
+  sun: { arcDegrees: 45, moonArcDegrees: 45, arcSteps: 48, radius: 1.0 },
   // Time of day (E6, spec §7.3). Presets, not a slider: each one is a
   // composition. `key`, `hemi` and `sunHeight` are FACTORS on whatever the
   // style's rig already says, so a preset changes the hour without changing

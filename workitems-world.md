@@ -681,13 +681,23 @@ named, and a restyle rather than a slice, so it is **Q163** with a test that kee
 And the sun reads quietly at midday because the key light stands at **83.4°** of elevation — its
 radius is `max(w, h) × 0.18` while `sunHeight` is 120 — which is **Q164**.
 
-## S22b — The sun stands further out (XS) — A139 (Q164)
+## ~~S22b~~ — The sun stands further out (XS) — A139 (Q164) — **built 2026-10-09**
 
 `sun.radius` in `data/cityviewer.json` (with the mirror): the key light's distance from the map
 centre as a fraction of the map, 0.18 → about 0.5, so noon is near 45° and dusk near 20°. The
 shadow box's reach follows the longer shadows (re-measure `followShadow`'s texel snap at the new
 angle — the crawl check in S22's gates). Re-take `smoke-S22-{dawn,noon,dusk,night}.png` from the
 same spot: the noon/dusk pair must show the tree's shadow in two visibly different places.
+
+**Built.** `sun.radius` is a multiple of the RIG's key-light height rather than of the map, because
+a fraction of the map made the elevation a function of the region's size (84.5° on a 64, 79.1° on a
+128) and because A139's "0.5 of the map" and "noon near 45°" cannot both hold at any size — the
+angle is the decision. Noon 45.0°, dusk 12.4°, the same in every style and on every map.
+`sun_shots` **measures the shadow** now rather than only the light: the shipped sun moves its
+centroid **141 px** between noon and dusk against **42** for the geometry it replaced, out of one
+harness (`SUN_RADIUS=` and `?sunRadius=`), with the bound at 100 between the two. The four frames
+had no shadow anybody could see — 8% darker than the lit grass — and nothing in the gate had ever
+looked at the ground.
 
 ## S22c — The lit styles take the real light (S) — A140 (Q163)
 

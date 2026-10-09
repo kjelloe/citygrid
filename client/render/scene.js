@@ -16,7 +16,7 @@ import { PALETTES, lightingFor } from "./style-assets.js";
 import { createModel } from "../world/model.js";
 import { createTraffic } from "../life/traffic.js";
 import { phaseForPreset } from "../world/rush.js";
-import { sunAt, lightPosition } from "../world/sun.js";
+import { sunAt, lightPosition, SUN_HEIGHT } from "../world/sun.js";
 import { countrysideFor } from "../world/countryside.js";
 import { treesFor } from "../world/foliage.js";
 import { streetProps } from "../world/street-furniture.js";
@@ -148,6 +148,11 @@ export function createRenderer(canvas, state, options = {}) {
    * cast edge crawling as the view pans, which on a row of fences reads as
    * shimmer (spec §7.2).
    */
+  /** How far outside the followed box a shadow may still start, in map units.
+   * The kit's tallest building is about forty units and the sun stands at 45°
+   * (S22b), so a shadow is about as long as the thing that casts it. */
+  const SHADOW_SLACK = 40;
+
   function followShadow() {
     if (!shadowLight || !renderer.shadowMap.enabled) return;
     const cam = shadowLight.shadow.camera;
@@ -195,13 +200,15 @@ export function createRenderer(canvas, state, options = {}) {
    * old code did in the other direction, rewriting x and z to the same two
    * constants every time the hour moved (S22). */
   let sunAzimuth = 0;
-  let sunHeightNow = 120;
+  let sunHeightNow = SUN_HEIGHT;
+  /** The style's key-light height, before the hour's factor (S22b). */
+  let sunBase = SUN_HEIGHT;
   // The hour a frozen city settles its traffic at (B4). A live renderer is told
   // the phase every frame; a frozen one never draws a frame before it settles.
   const startPhase = options.phase ?? phaseForPreset(options.time ?? "day");
   if (lights.key > 0) {
     const key = new THREE.DirectionalLight(lights.keyColour, lights.key);
-    const sun = lights.sunHeight ?? 120;
+    const sun = lights.sunHeight ?? SUN_HEIGHT;
     // **Where the sun stands is `client/world/sun.js`'s answer** (S22). It was
     // `(width × 0.6, sun, height × 0.35)` here and the same two constants in
     // `applyHour`, so the light rose and fell on ONE azimuth and every shadow
@@ -210,7 +217,11 @@ export function createRenderer(canvas, state, options = {}) {
     // questions of.
     sunAzimuth = sunAt(startPhase, getConfig(), 1).azimuth;
     sunHeightNow = sun;
-    const stood = lightPosition(sunAzimuth, sun, state.width, state.height);
+    // The rig's own height, kept so `placeKey` can measure the radius against
+    // it rather than against the hour's (S22b): the preset factor is what makes
+    // a dusk sun low and the reach must not follow it down.
+    sunBase = sun;
+    const stood = lightPosition(sunAzimuth, sun, state.width, state.height, getConfig().sun, sunBase);
     key.position.set(stood.x, stood.y, stood.z);
     key.target.position.set(state.width / 2, 0, state.height / 2);
     scene.add(key.target);
@@ -228,7 +239,17 @@ export function createRenderer(canvas, state, options = {}) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // Tight enough to be worth following: a quarter of the map rather than
     // three quarters, which quadruples the texel density at the same map size.
-    const reach = Math.max(state.width, state.height) * 0.28;
+    //
+    // **Plus the length of a shadow** (S22b). The sun used to stand at 82° and
+    // cast almost nothing sideways; at 45° a thing casts a shadow as long as it
+    // is tall, so a building at the edge of this box throws one OUTSIDE it and
+    // the shadow is simply missing. `shadowReach` is that slack: the tallest
+    // thing the kit builds, which is what a shadow's length is a multiple of.
+    // A dusk sun's shadows are longer still and their far ends do clip — a box
+    // that contained them would be four times this one, and `followShadow`
+    // snaps to a texel of `extent / mapSize`, so the cost of the slack is
+    // paid in shadow sharpness everywhere.
+    const reach = Math.max(state.width, state.height) * 0.28 + SHADOW_SLACK;
     key.shadow.camera.left = -reach;
     key.shadow.camera.right = reach;
     key.shadow.camera.top = reach;
@@ -258,7 +279,7 @@ export function createRenderer(canvas, state, options = {}) {
   // bounce off the ground that keeps the underside of an eave off black.
   if (lights.fill > 0) {
     const fill = new THREE.DirectionalLight(lights.fillColour ?? 0xffffff, lights.fill);
-    fill.position.set(state.width * 0.4, (lights.sunHeight ?? 120) * 0.55, state.height * 0.75);
+    fill.position.set(state.width * 0.4, (lights.sunHeight ?? SUN_HEIGHT) * 0.55, state.height * 0.75);
     fill.target.position.set(state.width / 2, 0, state.height / 2);
     scene.add(fill.target);
     scene.add(fill);
@@ -313,7 +334,7 @@ export function createRenderer(canvas, state, options = {}) {
 
   /** The one place the key light's position is written (S22). */
   function placeKey() {
-    const stood = lightPosition(sunAzimuth, sunHeightNow, state.width, state.height);
+    const stood = lightPosition(sunAzimuth, sunHeightNow, state.width, state.height, getConfig().sun, sunBase);
     keyLight.position.set(stood.x, stood.y, stood.z);
   }
 

@@ -34,10 +34,36 @@ export const SUN_BAND = { from: 0, to: 0.62 };
  * it — the one part of the day where a fixed azimuth is the right answer. */
 export const MOON_BAND = { from: 0.62, to: 0.9 };
 
-/** How far round the map the light stands from the centre, in map units of the
- * larger side. The rig's old constant was `(width × 0.6, y, height × 0.35)`,
- * which is this radius at `BASE_AZIMUTH`. */
-const REACH = 0.18;
+/**
+ * How far out the light stands, **as a multiple of how high it stands**.
+ * `sun.radius` in `data/cityviewer.json` is the real one; this is the fallback
+ * for a caller with no config.
+ *
+ * **The unit changed with the value** (S22b, A139). It used to be a fraction of
+ * the larger map side — `0.18`, which is the rig's old `(width × 0.6, y,
+ * height × 0.35)` at `BASE_AZIMUTH` — and that made the sun's ELEVATION a
+ * function of the region's size: against a `sunHeight` of 120 tile-units it
+ * stood at 84.5° on a 64, 81.8° on a 96 and 79.1° on a 128. A sun that is
+ * lower over a bigger region is not a thing anybody chose.
+ *
+ * Measured against `SUN_HEIGHT` instead — the preset table's full-height unit —
+ * `radius` IS the elevation at noon: `1.0` is 45° on every map, and a preset
+ * with a lower `sunHeight` stands the sun LOWER rather than nearer, which is
+ * the shape the old geometry had and the thing the dusk frame is for.
+ *
+ * A139 asked for "about 0.5 of the map, so noon is near 45°", and those two
+ * cannot both hold on any size this game ships: 0.5 of a 96 map is 68°. The
+ * ANGLE is the decision, so the angle is what is implemented, and `sun_shots`
+ * prints the ladder so the choice stays re-judgeable from numbers.
+ */
+const REACH = 1.0;
+
+/** The fallback for a rig that names no height — the `?? 120` `scene.js` has
+ * defaulted to in three places. The real one is the STYLE's (`plain` stands its
+ * key light at 150 tile-units and another style at 60), and it is the number
+ * `radius` is measured against: the same radius is then the same ANGLE in every
+ * style, which is the whole point of S22b. */
+export const SUN_HEIGHT = 120;
 
 /** The azimuth the city was lit from for the whole project before this slice:
  * `atan2(+0.1 w, −0.15 h)`, about 146°, which on a 64 map is `(+6.4, −9.6)` of
@@ -93,12 +119,21 @@ export function sunAt(seconds, cfg, period) {
  * Where to stand a light that is `azimuth` round a `width` × `height` map, in
  * map units, at height `y`.
  *
- * The radius is of the LARGER side, so the light clears a long map's short
- * edge; `scene.js` had `0.6 w` and `0.35 h` separately, which on a map twice as
- * wide as it is tall pointed somewhere else entirely.
+ * `cfg` is the `sun` block and its `radius` is a multiple of `baseHeight` — the
+ * STYLE's key-light height, before the hour's preset factor (S22b). So
+ * `radius: 1.0` is 45° at noon in every style and on every map, a preset that
+ * stands the sun lower gets a lower sun rather than a nearer one, and the arc's
+ * azimuth is the only thing the map's shape still touches. `scene.js` had `0.6 w` and `0.35 h` as
+ * separate constants, which on a map twice as wide as it is tall pointed
+ * somewhere else entirely; the fraction-of-the-map radius that replaced them
+ * fixed the direction and left the elevation depending on the region's size.
  */
-export function lightPosition(azimuth, y, width, height) {
-  const reach = Math.max(width, height) * REACH;
+export function lightPosition(azimuth, y, width, height, cfg, baseHeight) {
+  // The RIG's height, not the hour's: the preset's `sunHeight` factor is what
+  // makes a dusk sun low, and dividing the reach by it too would cancel exactly
+  // that — every hour would read the same elevation, which is what the first
+  // version of this did (45.0° at dawn, noon, dusk and midnight alike).
+  const reach = (baseHeight ?? SUN_HEIGHT) * (cfg?.radius ?? REACH);
   return {
     x: width / 2 + Math.sin(azimuth) * reach,
     y,

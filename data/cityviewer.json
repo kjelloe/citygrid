@@ -212,7 +212,8 @@
  "sun": {
   "arcDegrees": 45,
   "moonArcDegrees": 45,
-  "arcSteps": 48
+  "arcSteps": 48,
+  "radius": 1.0
  },
  "presets": {
   "day": {

@@ -21,6 +21,7 @@
 //      `sun.arcSteps` must put the light in exactly the same place, because
 //      `followShadow` snaps the shadow frustum to a texel and a light that
 //      rotates turns the texel grid under it.
+import { chromium } from "playwright";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
@@ -37,8 +38,16 @@ const SEED = 1003;
 const SIZE = Number(process.argv[2] ?? 96);
 const YEARS = 18;
 
-setConfig(DEFAULTS);
+// **A lever for the arm** (`fallback-needs-a-lever`). `SUN_RADIUS=0.115`
+// reproduces the geometry S22b replaced — the old `0.18 of a 96 map` against a
+// rig height of 150 — so the before and the after are two runs of one gate
+// rather than a number somebody remembers. The shadow measurement at the bottom
+// is what the two runs are compared on.
+const RADIUS = process.env.SUN_RADIUS ? Number(process.env.SUN_RADIUS) : DEFAULTS.sun.radius;
+setConfig({ ...DEFAULTS, sun: { ...DEFAULTS.sun, radius: RADIUS } });
 const cfg = getConfig();
+console.log(`sun.radius ${RADIUS}${RADIUS === DEFAULTS.sun.radius ? "" : " (an ARM, not the shipped sun)"}`
+  + ` — the light stands that many times its own rig height out from the city`);
 const state = playedCity({ seed: SEED, size: SIZE, years: YEARS });
 const model = createModel(state);
 
@@ -99,11 +108,43 @@ console.log(`                a ${subject.def} at level ${subject.level}, camera 
  * changed; this says the SUN moved, which is the claim. */
 const ASK = `(state, view) => {
   const key = view.keyLight;
-  return key === undefined ? undefined : {
+  if (key === undefined) return undefined;
+  // **And whether a shadow is being cast at all** (S22b). Q164 asked whether a
+  // quarter arc moves a short shadow enough to see, and the first four frames
+  // of this gate show no shadow ANYWHERE: the light's azimuth and elevation
+  // were measured, printed and argued over for a whole question while the
+  // pictures under them had none. A gate that reads a light and calls it a
+  // shadow is \`a-pool-that-counts-but-never-draws\` with the sun in it.
+  const cam = key.shadow && key.shadow.camera;
+  const target = key.target ? key.target.position : undefined;
+  return {
     x: +key.position.x.toFixed(4),
     z: +key.position.z.toFixed(4),
     y: +key.position.y.toFixed(2),
     azimuth: +Math.atan2(key.position.x - state.width / 2, key.position.z - state.height / 2).toFixed(5),
+    castShadow: key.castShadow === true,
+    shadowsOn: view.renderer ? view.renderer.shadowMap.enabled === true : undefined,
+    // The box the shadow is drawn into, and where it is centred: a shadow cast
+    // outside it is simply missing, and the photo camera stands wherever the
+    // subject is rather than where the orbit view's target is.
+    box: cam ? +(cam.right - cam.left).toFixed(1) : undefined,
+    // The texel the box is snapped to, which is what S22b had to re-measure:
+    // the box grew to hold a 45° sun's shadows and a wider box at the same map
+    // size is a coarser shadow everywhere.
+    texel: cam && key.shadow.mapSize
+      ? +((cam.right - cam.left) / key.shadow.mapSize.x).toFixed(4) : undefined,
+    boxAt: target ? [+target.x.toFixed(1), +target.z.toFixed(1)] : undefined,
+    // Does anything in the scene actually cast one?
+    casters: (() => {
+      let n = 0;
+      view.scene.traverse((o) => { if (o.castShadow && o.visible) n += 1; });
+      return n;
+    })(),
+    receivers: (() => {
+      let n = 0;
+      view.scene.traverse((o) => { if (o.receiveShadow && o.visible) n += 1; });
+      return n;
+    })(),
   };
 }`;
 
@@ -129,7 +170,8 @@ async function frame(label, hour, steps) {
   const r = await shoot({ out, seed: SEED, years: YEARS, size: SIZE, tier: "high", streets: 40,
     frames: 2, life: false, photo: camera.photo, width: 1280, height: 720,
     time: phaseOf(hour, 1),
-    extra: { __ask: ASK, hour, ...(steps === undefined ? {} : { sunSteps: steps }) } });
+    extra: { __ask: ASK, hour, sunRadius: RADIUS,
+      ...(steps === undefined ? {} : { sunSteps: steps }) } });
   if (!r.ok) problems.push(...r.problems.slice(0, 2));
   // `shoot` writes the file and does not hand the bytes back, so the digest is
   // read off disk — which is also what a person comparing two shots does.
@@ -148,6 +190,11 @@ async function frame(label, hour, steps) {
   console.log(`${out} hour=${hour} ok=${r.ok} light=${where ? `${where.x},${where.z}` : "none"} `
     + `azimuth=${where ? (where.azimuth * 180 / Math.PI).toFixed(1) : "?"}° `
     + `elevation=${elevation === undefined ? "?" : elevation.toFixed(1)}° digest=${digest ?? "?"}`);
+  if (where) {
+    console.log(`                shadows=${where.shadowsOn} cast=${where.castShadow} `
+      + `box=${where.box} (${where.texel} units a texel) at ${where.boxAt} `
+      + `casters=${where.casters} receivers=${where.receivers}`);
+  }
   if (!where) problems.push(`${out}: the page has no key light to ask about`);
   frames.push({ label, hour, digest, where, file: out });
   return frames[frames.length - 1];
@@ -233,6 +280,98 @@ if (cfg.sun.arcSteps > 0) {
     const apart = Math.abs(night.where.azimuth - noon.where.azimuth) * 180 / Math.PI;
     console.log(`the moon stands ${apart.toFixed(0)}° from the sun's noon`);
     if (apart < 120) problems.push(`the moon is ${apart.toFixed(0)}° from the sun — it took the sun's arc`);
+  }
+}
+
+// **Where the shadow actually IS** (S22b). Everything above measures the LIGHT
+// — where it stands, how far it swept, that a frozen hour is frozen — and none
+// of it looks at the ground. Q164 was argued for a whole round from "a quarter
+// arc moves a short shadow a little" while nothing had checked that these
+// frames contain a shadow at all; they do, and at noon it is **8% darker than
+// the grass around it**, which is why nobody had seen it by eye.
+//
+// The rule is one rule over both frames (`match-lit-pixels-not-palette-values`):
+// take the ground band, call the commonest colour the lit grass, and call a
+// pixel shadowed when it is the same hue and meaningfully darker. The centroid
+// of those pixels is what has to MOVE between noon and dusk — that is A139's
+// gate, in a number.
+{
+  const SHADOW = `(data, w, h) => {
+    const from = Math.floor(h * 0.55);
+    const counts = new Map();
+    for (let y = from; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        const i = (y * w + x) * 4;
+        const g = data[i + 1];
+        // Grass only: green dominant, and not the dirt path or a roof.
+        if (g <= data[i] || g <= data[i + 2]) continue;
+        const key = (data[i] << 16) | (g << 8) | data[i + 2];
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    let lit = 0;
+    let most = 0;
+    for (const [key, n] of counts) if (n > most) { most = n; lit = key; }
+    const litG = (lit >> 8) & 255;
+    let n = 0;
+    let sx = 0;
+    let sy = 0;
+    for (let y = from; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        const i = (y * w + x) * 4;
+        const g = data[i + 1];
+        if (g <= data[i] || g <= data[i + 2]) continue;
+        // Darker than the lit grass by more than the terrain's own banding.
+        if (g > litG * 0.95) continue;
+        n += 1; sx += x; sy += y;
+      }
+    }
+    return { lit: litG, shaded: n, x: n ? Math.round(sx / n) : -1, y: n ? Math.round(sy / n) : -1 };
+  }`;
+  const browser = await chromium.launch({ args: ["--no-sandbox"] });
+  const page = await browser.newPage();
+  const measure = async (file) => page.evaluate(async ({ b64, rule }) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    // eslint-disable-next-line no-eval
+    return eval(rule)(data, canvas.width, canvas.height);
+  }, { b64: (await readFile(file)).toString("base64"), rule: SHADOW });
+
+  const shade = {};
+  for (const label of ["noon", "dusk"]) {
+    const frame = frames.find((f) => f.label === label);
+    if (!frame) continue;
+    shade[label] = await measure(frame.file);
+    console.log(`${label}: ${shade[label].shaded} shadowed ground pixels, centred at `
+      + `(${shade[label].x}, ${shade[label].y}), lit grass green ${shade[label].lit}`);
+  }
+  await browser.close();
+
+  for (const [label, got] of Object.entries(shade)) {
+    if (got.shaded < 2000) {
+      problems.push(`${label} has ${got.shaded} shadowed ground pixels — nothing is casting one`);
+    }
+  }
+  if (shade.noon?.shaded >= 2000 && shade.dusk?.shaded >= 2000) {
+    const apart = Math.hypot(shade.noon.x - shade.dusk.x, shade.noon.y - shade.dusk.y);
+    console.log(`the shadow's centre moved ${apart.toFixed(0)} px between noon and dusk`);
+    // **The bound comes from the arm, not from where it goes green.** One
+    // harness, two radii: the geometry S22b replaced (`SUN_RADIUS=0.115`) moves
+    // the shadow's centre **42 px**, and A139's sun moves it **141**. 100 sits
+    // between them with room either side — picking 45 would have been a
+    // threshold tuned to the thing it is supposed to refuse
+    // (`a-constant-tuned-to-a-gate`).
+    if (apart < 100) {
+      problems.push(`the shadow moved ${apart.toFixed(0)} px between noon and dusk; the sun this `
+        + "replaced moved it 42 and A139's moves it 141, so this is the old geometry");
+    }
   }
 }
 

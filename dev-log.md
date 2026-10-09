@@ -14679,3 +14679,97 @@ What is left for the box itself is the box: the first-time setup in
 `DEPLOYING.md` is written as the steps to run in order, each verifiable before
 the next, and its claim is only true once somebody has run them. V4's eight
 clients and V5's evening are the acceptance, not a green suite.
+
+## S22b — the sun stands further out, and the shots had no shadow in them (2026-10-09)
+
+A139. S22 made the light move and Q164 asked whether the thing it moves can be
+seen: the key light stood at `max(w, h) × 0.18` against a rig height of 150
+tile-units, which is **83.4° of elevation at noon** — almost overhead, where a
+quarter of the sky moves a short shadow a little. Kjell's answer: stand it
+further out, "about 0.5 of the map, so noon is near 45° and dusk near 20°".
+
+### The two numbers in the answer disagree, so the angle wins
+
+0.5 of a 96 map against a rig height of 150 is **68°**, not 45. On a 64 it is
+75° and on a 128 it is 62. The fraction and the angle cannot both hold at any
+size this game ships — because a radius measured against the MAP makes the
+sun's elevation a function of the region's size, which is the second thing
+wrong with it:
+
+```
+radius 0.18:   84.5° on a 64,  81.8° on a 96,  79.1° on a 128
+```
+
+A bigger region had a lower sun, and nobody chose that. So `sun.radius` is a
+multiple of the **rig's own key-light height** now: `1.0` is 45° at noon in
+every style and on every map, and the preset's `sunHeight` factor still drops a
+dusk sun low rather than bringing it near. The angle is what A139 decided and
+the angle is what is implemented.
+
+**The first version of this cancelled the thing it was for.** Measuring the
+radius against the HOUR's height — `y × radius` — is elegant and makes every
+hour read exactly 45.0°, dusk and midnight included, because the preset factor
+divides out of both sides. The gate printed four identical elevations and that
+is what said so. It is the rig's height, before the hour's factor:
+
+```
+                 dawn    noon    dusk    night
+as shipped      45.0°   45.0°   12.4°   26.6°
+```
+
+### The pictures had no shadow in them, and nobody had looked
+
+Q164 was argued for a round from "a quarter arc moves a short shadow a little",
+and the four frames under it show no shadow by eye at all. They are not missing:
+at noon the shadowed grass is **8% darker** than the lit grass — 123 against
+113 in green — which is below what anybody sees in a screenshot they are not
+measuring.
+
+Everything the gate did measured the **light**: where it stands, how far it
+swept, that a frozen hour is frozen, that the moon is not on the sun's arc. None
+of it touched the ground. `a-pool-that-counts-but-never-draws`, with the sun in
+it.
+
+So the gate measures the shadow now, with one rule over both frames
+(`match-lit-pixels-not-palette-values`): take the ground band, call the
+commonest grass colour the lit one, call a pixel shadowed when it is the same
+hue and more than 5% darker, and report the centroid. The centroid is what has
+to move.
+
+```
+                 shadowed px   centre        noon→dusk
+0.115 (before)      94,074     (398, 480)      42 px
+1.0  (as shipped)  109,458     (423, 493)     141 px
+```
+
+**Both rows come out of one harness.** `sunRadius=<n>` is a URL parameter on
+`tools/shoot.html` and `SUN_RADIUS=` is the gate's lever, so the before and the
+after are two runs rather than a number somebody remembers — and the bound is
+**100 px**, chosen between the two rather than just above the one it must
+refuse (`a-constant-tuned-to-a-gate`).
+
+**The first arm was byte-identical to the shipped sun**, because the lever was a
+node-side `setConfig` and the page is a different process: it reached the model
+and not the renderer. `a-knob-you-turned-is-not-a-knob-it-read`, in the same
+afternoon as the memory that names it.
+
+### The shadow box
+
+A 45° sun throws a shadow as long as the thing that casts it, so a building at
+the edge of the followed box throws one outside it and the shadow is simply
+missing. `SHADOW_SLACK` is 40 map units — about the kit's tallest building — on
+top of the 0.28-of-the-map box. The cost is in sharpness and it is measured:
+the box is **133.8 units across at 4096, which is 0.0327 units a texel**. A
+dusk sun's shadows are longer still and their far ends do clip; a box that
+contained those would be four times this one and every shadow in the game would
+be blurrier for it.
+
+The crawl check holds: the same frozen hour is the same bytes twice, a nudge
+inside an arc step moves nothing, and the same nudge with `sunSteps=0` moves
+both the light and the picture. `budget_gate` is unmoved at **276 s of 330** —
+this is colour and geometry the renderer was already drawing, not new geometry.
+
+### Measured
+
+Suite **2,055 tests, 2,052 pass, 0 fail, 3 skipped, green twice**. `sun_shots`
+green with seven frames and the two numbers above; `budget_gate` 276 s of 330.

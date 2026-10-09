@@ -373,6 +373,23 @@ if (sunStepsParam !== null) {
   setConfig({ ...cfg0, sun: { ...cfg0.sun, arcSteps: Number(sunStepsParam) } });
 }
 
+// `sunRadius=<n>` overrides `sun.radius` (S22b) — how far out the light stands
+// as a multiple of its rig height, which IS its elevation. The arm this exists
+// for is the geometry A139 replaced: `sunRadius=0.115` is the old
+// "0.18 of a 96 map" against a rig that stands its key light 150 units up, so
+// `sun_shots` can photograph the before and the after with one harness instead
+// of quoting a number nobody can re-measure.
+//
+// It is a URL parameter and not a `setConfig` in the TOOL because the page is a
+// different process: a node-side `setConfig` reaches the model and not the
+// renderer, which is how the first version of this arm came out byte-identical
+// to the shipped sun (`a-knob-you-turned-is-not-a-knob-it-read`).
+const sunRadiusParam = params.get("sunRadius");
+if (sunRadiusParam !== null) {
+  const cfg0 = getConfig();
+  setConfig({ ...cfg0, sun: { ...cfg0.sun, radius: Number(sunRadiusParam) } });
+}
+
 // `ladder=0` draws every trade lot as the one mass it was before S16a, so a
 // parade of shops and the slab it replaced are the same city photographed twice.
 const ladderParam = params.get("ladder");
