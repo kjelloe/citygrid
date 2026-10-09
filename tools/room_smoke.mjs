@@ -823,6 +823,46 @@ try {
     check("and the host is offered the start, not the waiting", hostSees.start === 1
       && hostSees.waiting === 0, JSON.stringify(hostSees));
 
+    // **The code, and a QR of the link** (Q5 → A11). The code has only ever
+    // been in the address bar; the QR is for the person standing next to the
+    // host with a phone, who cannot be sent a link. Counted rather than
+    // admired: a canvas with no dark modules in it is a white square, which is
+    // exactly what a hand-rolled encoder fails as.
+    const invite = await hostPage.evaluate(() => {
+      const canvas = document.querySelector("canvas.roster-qr");
+      if (!canvas) return { ok: false, why: "no QR canvas" };
+      const ctx = canvas.getContext("2d");
+      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark += 1;
+      return {
+        ok: true,
+        code: document.querySelector(".roster-code")?.textContent?.trim() ?? "",
+        modules: Number(canvas.dataset.modules),
+        label: canvas.getAttribute("aria-label") ?? "",
+        width: canvas.width,
+        darkShare: Math.round((dark / (canvas.width * canvas.height)) * 100),
+      };
+    });
+    check("the lobby shows the room's code in words", invite.ok === true
+      && invite.code.replace("-", "") === hosted.room, invite.why ?? JSON.stringify(invite));
+    // A QR is between a third and a half dark by construction — the mask is
+    // CHOSEN to keep it near half — so a blank canvas and a solid one both
+    // fail here.
+    check("and a QR of the join link, with modules actually drawn in it",
+      invite.ok === true && invite.modules >= 21 && invite.width === (invite.modules + 8) * 4
+      && invite.darkShare > 20 && invite.darkShare < 55, JSON.stringify(invite));
+    check("the QR says in words what it is, for a reader that cannot see it",
+      /scan|skann/i.test(invite.label ?? ""), invite.label);
+    // **And a picture somebody can point a phone at.** Every check above is
+    // this project checking its own arithmetic; the one thing it cannot do is
+    // scan. The file is the handover — `reports/lobby-qr.png`, the real panel
+    // at the size it is drawn, for V5's evening.
+    await hostPage.locator(".roster-invite").screenshot({ path: "reports/lobby-qr.png" })
+      .catch(() => {});
+    console.log(`      wrote reports/lobby-qr.png — point a phone at it; it should open `
+      + `?join=${hosted.room}`);
+
     // The guest says it is ready, and the HOST's roster hears it — which is
     // the half that proves this rides the frame rather than living in one page.
     await guest.click(".roster-ready");

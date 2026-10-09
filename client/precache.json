@@ -1,6 +1,6 @@
 {
- "version": "88bae6612196",
- "build": "6b6c77046f47",
+ "version": "3da8283b6217",
+ "build": "c5120387e0d0",
  "generated": "2026-10-09",
  "files": [
   "./client/audio/audio-model.js",
@@ -214,6 +214,7 @@
   "./shared/idiv.js",
   "./shared/prng.js",
   "./shared/protocol.js",
+  "./shared/qr.js",
   "./shared/roomcode.js",
   "./shared/statehash.js",
   "./vendor/three.module.js",

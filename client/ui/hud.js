@@ -35,6 +35,8 @@ import { inboxFor, ACTIONS, ACTION_LABELS, policyChoices } from "./inbox-model.j
 import { askTargetFor, defaultOffer } from "./ask-model.js";
 import { seatName, otherOwnerName } from "./seats.js";
 import { rosterFor, ROSTER_ACTIONS, ROSTER_LABELS, canStart } from "./roster-model.js";
+import { formatRoomCode } from "../../shared/roomcode.js";
+import { qrMatrix } from "../../shared/qr.js";
 import { chronicleRows } from "./chronicle-model.js";
 import { PLAYER_ACTIVE, PLAYER_AFK } from "../../engine/constants.js";
 import { PING_MESSAGES, PING_LABELS } from "./ping-model.js";
@@ -623,6 +625,40 @@ export function createHud(root, {
   const rosterBar = el("div", "hud-roster");
   let rosterSignature;
 
+  /** The join link as a canvas, or `undefined` when there is nothing to draw —
+   * which a caller shows as the code in words alone rather than as a broken
+   * picture (X2d). A canvas rather than 841 elements: a module is a filled
+   * rectangle and the whole code is one node. */
+  function qrPicture(url, pixel) {
+    const code = url ? qrMatrix(url) : undefined;
+    if (!code) return undefined;
+    const quiet = 4;                                  // the standard's margin
+    const span = (code.size + quiet * 2) * pixel;
+    const canvas = el("canvas", "roster-qr");
+    canvas.width = span;
+    canvas.height = span;
+    canvas.dataset.modules = String(code.size);
+    // A label, because a canvas is invisible to a screen reader and the code
+    // in words is the same information.
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", t("roster.qr"));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return undefined;
+    // Light first and dark on top: the quiet margin is part of the code, and a
+    // transparent canvas on a dark skin is a QR nothing can read.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, span, span);
+    ctx.fillStyle = "#000000";
+    for (let r = 0; r < code.size; r += 1) {
+      for (let c = 0; c < code.size; c += 1) {
+        if (code.modules[r * code.size + c]) {
+          ctx.fillRect((c + quiet) * pixel, (r + quiet) * pixel, pixel, pixel);
+        }
+      }
+    }
+    return canvas;
+  }
+
   function renderRoster() {
     if (!onSetStatus) return;
     const lobby = room?.();
@@ -640,6 +676,18 @@ export function createHud(root, {
     // waiting; everybody else is told what they are waiting for, which is the
     // half a player with no button needs.
     if (lobby?.started === false) {
+      // **The code, and a QR of the link** (X2d, Q5 → A11). The code has only
+      // ever been in the address bar, which is where a host finds it to send —
+      // and the person standing next to them with a phone cannot be sent
+      // anything. The QR is hand-rolled (`shared/qr.js`) because the client has
+      // no runtime dependencies and will not grow one for a picture.
+      if (lobby.code) {
+        const invite = el("div", "roster-invite");
+        invite.append(el("p", "roster-code", formatRoomCode(lobby.code)));
+        const picture = qrPicture(lobby.join, 4);
+        if (picture) invite.append(picture);
+        rosterBar.append(invite);
+      }
       if (starting) {
         const go = el("button", "roster-start", t("roster.start"));
         go.type = "button";

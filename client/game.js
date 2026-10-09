@@ -262,7 +262,14 @@ export async function startGame(root, given = {}) {
     // every frame — a snapshot taken at boot would leave the lobby saying
     // "waiting" for ever.
     room: sim.room === undefined ? undefined
-      : () => ({ started: sim.roomStarted !== false, ready: sim.readySeats ?? [] }),
+      : () => ({
+        started: sim.roomStarted !== false,
+        ready: sim.readySeats ?? [],
+        code: sim.room,
+        // The link a QR carries, built here because the page knows where it is
+        // served from and `client/ui/` should not reach for `location`.
+        join: `${globalThis.location.origin}${globalThis.location.pathname}?join=${sim.room}`,
+      }),
     onReady: sim.setReady ? (value) => sim.setReady(value) : undefined,
     onStart: sim.start ? () => sim.start() : undefined,
     state,

@@ -314,6 +314,7 @@
  "ask.nobody": "Nobody owns that ground",
  "ask.twoOwners": "That is two people's ground; ask about one at a time",
  "hud.roster": "Players",
+ "roster.qr": "Scan to join this room",
  "roster.ready": "I'm ready",
  "roster.notReady": "Not yet",
  "roster.start": "Start the game",

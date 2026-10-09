@@ -15044,3 +15044,106 @@ Suite **2,076 tests, 2,073 pass, 0 fail, 3 skipped, green twice**; `room`
 **222 s of 300**, `quick` **494 s of 600**.
 
 What is left of X2d is the QR (Q5).
+
+## X2d — the QR, hand-rolled (2026-10-09)
+
+The last of X2d's rows, and the oldest promise in the file: *"QR generation will
+be hand-rolled to keep the zero-dependency rule"* — A11, written at P8 and
+cashed here. The game has one runtime dependency (`ws`, on the server) and the
+client has none, so a library for one picture on one screen is not a trade this
+project makes.
+
+### What it does, and what it deliberately does not
+
+`shared/qr.js`: byte mode, error correction level **M**, versions 1 to 10.
+That is 271 characters against the ~50 a join URL needs. Alphanumeric mode
+would pack an uppercase URL tighter and is a second encoder to be wrong in; the
+other thirty versions are a table nobody would exercise. Narrow and verified
+beats general and plausible.
+
+### How it is verified, since nobody here has a phone
+
+A QR that does not scan is worse than none: it looks right, the player points a
+phone at it, and nothing happens. So `test/qr.test.js` is the standard, three
+ways.
+
+- **A round trip through a decoder written from the spec.** It finds the format
+  area, reads the mask out of it, walks the zigzag, de-interleaves the blocks
+  and decodes the bitstream. Every length from 0 to the capacity, including the
+  boundaries where an encoder breaks — the terminator that does not fit, the
+  pad bytes, the version where the length field goes from 8 bits to 16.
+- **The Reed-Solomon syndromes.** A clean codeword evaluates to zero at every
+  root of the generator, which no arithmetic bug in the field tables survives
+  and which is independent of the reading order.
+- **The fixed patterns, read off the matrix**: three finders with their
+  separators, both timing lines alternating, an alignment pattern at every
+  centre the version names, and the dark module.
+
+**The format table is checked algebraically rather than transcribed.** The
+standard prints fifteen bits for each (level, mask) pair and quoting them from
+memory would be a known-answer test whose known answer is a guess. What is
+asserted instead is what the table IS: un-XOR the constant and the remainder
+divides by the BCH generator, the payload names its own mask, and any two of
+the eight differ in at least seven places — which is the code's minimum
+distance and the reason a scanner can read the format off a smudged corner. The
+one value that anchors them is the one I can derive: level M with mask 0 has an
+all-zero payload, so its BCH remainder is zero and the format **is** the XOR
+constant.
+
+### Two bugs, both caught by the decoder
+
+- **The zigzag shifted one column too few.** The traversal moves two columns at
+  a time and shifts left by one at the vertical timing column; I adjusted only
+  the pair that lands on it, which gives (5,4), (4,3), (2,1) — column 4 written
+  twice, the second write winning, and column 0 never written at all. The
+  encoder and the decoder shared the bug and **still disagreed**, because a
+  module written twice is read once. That is the round trip earning its place:
+  a bug in both directions does not cancel if it is a bug about ordering.
+- **A format bit was written over the dark module.** Seven of the fifteen go in
+  the bottom-left column and eight in the top-right row; the module between
+  them is the dark module and belongs to neither. Writing eight in the column
+  put a format bit on it, and the dark module is the first thing a scanner
+  checks after the finders.
+
+### Where it shows
+
+The roster, while the room has not started — which is where the lobby is now.
+The code has only ever existed in the address bar, which is fine for a host
+sending a link and no use at all to the person standing next to them with a
+phone.
+
+The QR is a `<canvas>`: a module is a filled rectangle and the whole code is one
+node, where 841 elements would be 841 elements. It paints white first, because
+the quiet margin is part of the code and a transparent canvas on a dark skin is
+a QR nothing can read, and it carries `role="img"` with a sentence, because a
+canvas is invisible to a screen reader and the code in words is the same
+information.
+
+### The gate, and the one thing it cannot do
+
+```
+ok  the lobby shows the room's code in words  (5DA-048)
+ok  and a QR of the join link, with modules actually drawn in it
+      (29 modules, 148 px, 32% dark)
+ok  the QR says in words what it is, for a reader that cannot see it
+```
+
+The dark share is the check that matters: a QR is between a third and a half
+dark by construction — the mask is *chosen* to keep it near half — so a blank
+canvas and a solid one both fail it.
+
+**And the gate writes `reports/lobby-qr.png`.** Every check above is this
+project checking its own arithmetic; the one thing it cannot do is scan. The
+file is the handover: the real panel at the size it is drawn, for a phone at
+V5's evening. If it does not scan, the decoder and the encoder share a mistake
+this author made twice, and that is the gap the dev-log is naming rather than
+papering over.
+
+### Measured
+
+Suite **2,087 tests, 2,084 pass, 0 fail, 3 skipped, green twice**; `room`
+**226 s of 300**, `quick` **485 s of 600**.
+
+(A note on gate hygiene: chaining `quick` and `room` in one shell command made
+`room_smoke` red and it was green alone, twice — `a-gate-run-is-exclusive`,
+self-inflicted this time.)
