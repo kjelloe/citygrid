@@ -400,7 +400,11 @@ test("the options the project declares and nothing reads are exactly these (Q148
   // than three slices. What is left is the two the lobby has no mechanism for
   // (`privacy` needs a room list, `lateJoin` is a restriction nobody has asked
   // for) and `seasonYears`, which is Wave 6's.
-  assert.deepEqual(unread.sort(), ["lateJoin", "privacy", "seasonYears"],
+  // **`lateJoin` left on 2026-10-09 (X2d)**: a room with it off refuses a seat
+  // that has never played once the host has started, which is the only thing
+  // it can mean — a player whose train went into a tunnel is not a late joiner
+  // and X4a holds their seat on purpose.
+  assert.deepEqual(unread.sort(), ["privacy", "seasonYears"],
     "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
 });
 

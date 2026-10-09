@@ -800,6 +800,60 @@ try {
     guestJoined.why ?? JSON.stringify(guestJoined));
   check("and is given seat two of it", guestJoined.seat === 2, `seat ${guestJoined.seat}`);
 
+  // **The lobby waits, and the host starts it** (X2d's last rows). A hosted
+  // room does not play until the host says go, which is the whole point: the
+  // city would otherwise be twelve years old before the second person typed the
+  // code. The guest is here, so this is the state a real lobby is in.
+  {
+    const before = server.rooms.get(hosted.room)?.tick() ?? -1;
+    await hostPage.click("#rail-roster");
+    await guest.click("#rail-roster");
+    const waiting = await guest.evaluate(() => ({
+      waiting: document.querySelector(".roster-waiting")?.textContent?.trim() ?? "",
+      ready: document.querySelectorAll(".roster-ready").length,
+      start: document.querySelectorAll(".roster-start").length,
+    }));
+    check("a guest is told what it is waiting for, and offered the way to be ready",
+      waiting.waiting.length > 0 && waiting.ready === 1 && waiting.start === 0,
+      JSON.stringify(waiting));
+    const hostSees = await hostPage.evaluate(() => ({
+      start: document.querySelectorAll(".roster-start").length,
+      waiting: document.querySelectorAll(".roster-waiting").length,
+    }));
+    check("and the host is offered the start, not the waiting", hostSees.start === 1
+      && hostSees.waiting === 0, JSON.stringify(hostSees));
+
+    // The guest says it is ready, and the HOST's roster hears it — which is
+    // the half that proves this rides the frame rather than living in one page.
+    await guest.click(".roster-ready");
+    const heard = await until(hostPage, "the host never saw the guest get ready", () => {
+      const row = [...document.querySelectorAll(".roster-row")]
+        .find((r) => r.dataset.seat === "2");
+      return { ok: /ready|klar/i.test(row?.textContent ?? ""), said: row?.textContent?.trim() };
+    }, undefined, 15_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("a seat that says it is ready says so on every screen", heard.ok === true,
+      heard.why ?? heard.said);
+
+    check("and the room is not playing while it waits",
+      (server.rooms.get(hosted.room)?.tick() ?? -1) === before,
+      `${before} → ${server.rooms.get(hosted.room)?.tick()}`);
+
+    await hostPage.click(".roster-start");
+    const playing = await until(hostPage, "the room never started", () => ({
+      ok: globalThis.CITY.state.tick > 0, tick: globalThis.CITY.state.tick,
+    }), undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("the host's start sets the clock going", playing.ok === true,
+      playing.why ?? JSON.stringify(playing));
+    // And the controls are gone rather than inert, which is the rule a button
+    // that cannot do anything broke in X2d's first round.
+    const after = await hostPage.evaluate(() => ({
+      start: document.querySelectorAll(".roster-start").length,
+      ready: document.querySelectorAll(".roster-ready, .roster-notReady").length,
+    }));
+    check("a started room offers neither a start nor a ready",
+      after.start === 0 && after.ready === 0, JSON.stringify(after));
+  }
+
   // One city, which is the only claim that matters about a room.
   const hostedRoom = server.rooms.get(hosted.room);
   if (hostedRoom) hostedRoom.setSpeed(0);

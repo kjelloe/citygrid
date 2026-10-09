@@ -42,7 +42,15 @@ export var MODE_DISTRICTS = "districts";
 export var MODE_REGION_RIVALS = "regionRivals";
 export var MODE_SCENARIO_COOP = "scenarioCoop";
 
-export var TREASURY_SHARED = "shared";
+/** How a region's money is divided (§26.1).
+ *
+ * **There were three and there are two** (A142 ← Q166, 2026-10-09). `shared`
+ * added `idiv(net, seats)` to every seat's record and `split` on the `equal`
+ * rule added the same share plus the remainder: era 31's four-seat sweep
+ * measured the whole difference over 200 games as **+416**, the rounding and
+ * nothing else. Three values for two behaviours is a lobby row that asks the
+ * player a question with no answer. `splitRule` is what makes `split` mean
+ * something — equally, or by the residents each seat houses. */
 export var TREASURY_SPLIT = "split";
 export var TREASURY_SEPARATE = "separate";
 

@@ -1,6 +1,6 @@
 {
  "name": "empty",
- "why": "X4h and X4i, SAVE_VERSION 6 to 7: the city keeps a chronicle — a capped ring of the news a returning player needs (who came and went, what was asked of them, what the weather did) — and the absenceYears option is deleted, which X4b had answered in the other direction by building regency on a wall clock. Both move every state hash and so ride one migration. Re-pinned a second time once engine/chronicle.js was loaded everywhere the other systems are: the first pass pinned cities that had the field and could never fill it, because the chronicler is registered by importing the module.",
+ "why": "A142 (Q166): the treasury option loses the value that was a second name for another one. Era 31 measured shared and split-on-equal as the same arithmetic - the whole difference over 200 four-seat games was +416, the rounding remainder and nothing else - so three values stood for two behaviours and the lobby row asked a question with no answer. The default is split with an equal rule now, which is what shared always was plus the coin that used to go to nobody; an unknown value reads as split rather than being passed through to a branch that matched neither, which is how a typo used to become a separate treasury. SAVE_VERSION 7 to 8 with a migration mapping shared to split and setting splitRule to equal explicitly, because a save from before era 31 never had one. The option string is hashed state, so every fixture hash moves and no events change.",
  "generate": false,
  "options": {
   "seed": 1,
@@ -25,7 +25,7 @@
    },
    "repeat": 1,
    "result": "ok",
-   "hash": "d76634b1d6e6a5c6",
+   "hash": "048d5c3302200d40",
    "events": []
   },
   {
@@ -34,7 +34,7 @@
    },
    "repeat": 11,
    "result": "ok",
-   "hash": "1f3289683ac2c8ad",
+   "hash": "f4d42056a00f01d7",
    "events": [
     "budget",
     "questOffered"
@@ -46,7 +46,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "08545c0b4c9c96b1",
+   "hash": "bcce7ba260defce7",
    "events": [
     "budget"
    ]
@@ -57,12 +57,12 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "da085a7b07b22c26",
+   "hash": "52992ab3e8d174cc",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 30,
+ "era": 31,
  "repinnedAt": "2026-10-09"
 }

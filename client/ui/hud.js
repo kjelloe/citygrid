@@ -34,7 +34,7 @@ import { TERRITORY, territoryLegend } from "./territory-model.js";
 import { inboxFor, ACTIONS, ACTION_LABELS, policyChoices } from "./inbox-model.js";
 import { askTargetFor, defaultOffer } from "./ask-model.js";
 import { seatName, otherOwnerName } from "./seats.js";
-import { rosterFor, ROSTER_ACTIONS, ROSTER_LABELS } from "./roster-model.js";
+import { rosterFor, ROSTER_ACTIONS, ROSTER_LABELS, canStart } from "./roster-model.js";
 import { chronicleRows } from "./chronicle-model.js";
 import { PLAYER_ACTIVE, PLAYER_AFK } from "../../engine/constants.js";
 import { PING_MESSAGES, PING_LABELS } from "./ping-model.js";
@@ -81,7 +81,8 @@ export function createHud(root, {
   onSave, onLoad, onExport, onImport, slots,
   onQuestChoice, quests, onTax, onFunding, onLoan, onNewCity, onSettings, onStatistics, onHelp, minimap,
   onResolveRequest, onWithdrawRequest, onFileRequest, onFocusTile, onPing, onSetPolicy,
-  onSetStatus, onLeaveRoom, onSay, onKick, host = 0, watching = false, canSetSpeed = true,
+  onSetStatus, onLeaveRoom, onSay, onKick, onReady, onStart, room = undefined,
+  host = 0, watching = false, canSetSpeed = true,
   onStreet, onLeaveStreet, onPhoto, onLeavePhoto, onSavePhoto,
   showControlsCard = false, onDismissControlsCard,
 }) {
@@ -624,20 +625,37 @@ export function createHud(root, {
 
   function renderRoster() {
     if (!onSetStatus) return;
-    const rows = rosterFor(state, seat, host);
+    const lobby = room?.();
+    const rows = rosterFor(state, seat, host, lobby);
+    const starting = canStart(seat, host, lobby);
     // The same guard the inbox and the alert list have: `refresh()` runs twice
     // a second in a room, and a row rebuilt under the cursor cannot be pressed.
-    const signature = rows.map((r) => `${r.seat}:${r.status}:${r.name}:${r.actions.join(",")}`).join("|");
+    const signature = `${starting}|${lobby?.started}|`
+      + rows.map((r) => `${r.seat}:${r.status}:${r.name}:${r.ready}:${r.actions.join(",")}`).join("|");
     if (signature === rosterSignature) return;
     rosterSignature = signature;
     rosterBar.innerHTML = "";
+    // **Before the room starts, the roster is the lobby** (X2d). The host's
+    // start goes above the seats because it is the one thing that ends the
+    // waiting; everybody else is told what they are waiting for, which is the
+    // half a player with no button needs.
+    if (lobby?.started === false) {
+      if (starting) {
+        const go = el("button", "roster-start", t("roster.start"));
+        go.type = "button";
+        go.addEventListener("click", () => Promise.resolve(onStart?.()).then(() => refresh()));
+        rosterBar.append(go);
+      } else {
+        rosterBar.append(el("p", "roster-waiting", t("roster.waiting")));
+      }
+    }
     for (const row of rows) {
       const item = el("div", `roster-row${row.you ? " you" : ""}`);
       item.dataset.seat = String(row.seat);
       const swatch = el("i", "swatch");
       swatch.style.background = `#${row.colour.toString(16).padStart(6, "0")}`;
       item.append(swatch, el("span", "roster-name", row.name),
-        el("span", "roster-status", t(row.statusKey)));
+        el("span", "roster-status", row.ready ? t("roster.ready") : t(row.statusKey)));
       for (const action of row.actions) {
         const button = el("button", `roster-${action}`, t(ROSTER_LABELS[action]));
         button.type = "button";
@@ -645,7 +663,9 @@ export function createHud(root, {
         button.addEventListener("click", () => {
           const done = action === ROSTER_ACTIONS.LEAVE ? onLeaveRoom?.()
             : action === ROSTER_ACTIONS.REMOVE ? onKick?.(row.seat)
-              : onSetStatus?.(action === ROSTER_ACTIONS.AWAY ? PLAYER_AFK : PLAYER_ACTIVE);
+              : action === ROSTER_ACTIONS.READY ? onReady?.(true)
+                : action === ROSTER_ACTIONS.NOT_READY ? onReady?.(false)
+                  : onSetStatus?.(action === ROSTER_ACTIONS.AWAY ? PLAYER_AFK : PLAYER_ACTIVE);
           Promise.resolve(done).then(() => refresh());
         });
         item.append(button);

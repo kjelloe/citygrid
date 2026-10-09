@@ -14944,3 +14944,103 @@ give, and this is what happens *after* one. `status.fetchingBuild` and
 Suite **2,063 tests, 2,060 pass, 0 fail, 3 skipped, green twice**. `room`
 **219 s of 300** with the three new rows; `update_smoke` green, which is the
 gate the reload path leans on.
+
+## X2d — the lobby waits, and the treasury loses a value (2026-10-09)
+
+Three of X2d's last rows, and A142.
+
+### A142: three values for two behaviours
+
+Era 31 measured it and Q166 asked it: `TREASURY_SHARED` added `idiv(net, seats)`
+to every seat's record and `TREASURY_SPLIT` on the `equal` rule added the same
+share plus the remainder — **+416 across a whole region over 200 games**, the
+rounding and nothing else. §26.1 offers "shared treasury, or separate by
+option" and the engine had three values for two behaviours, which is a lobby row
+that asks the player a question with no answer.
+
+`shared` is gone. The default is `split` with an `equal` rule, which is what
+`shared` always was plus the coin that used to go to nobody, and **an unknown
+value reads as `split`** — the old line was `given.treasury ? given.treasury :
+TREASURY_SHARED`, so a typo in a lobby reached `economyPass`, matched neither
+branch and became `separate`: a region playing a money rule nobody chose.
+
+`SAVE_VERSION` 7 → 8. The migration maps `shared` to `split` and sets
+`splitRule` to `equal` **explicitly**, because a save from before era 31 never
+had one and the default of a later build is not what it was playing. The option
+string is hashed, so every fixture hash moved and no events changed.
+
+`TREASURY_SEPARATE` left `test/dead-exports.test.js`'s pinned list in the same
+commit: `defaultOptions` reads it now, which is that rule going red in the
+direction that means somebody did the work.
+
+### A room that has not started
+
+A room has begun playing the moment it was created since X1 — right for the
+process's own room, and wrong for one a host made for friends who have not
+arrived: the city is twelve years old before the second player types the code.
+
+`started` defaults to **true**, because `room_soak`, `room_churn` and the
+restored room all depend on a room that plays at once; the LOBBY is what passes
+`false`. The beat refuses to advance while it is false whatever the speed dial
+says, the host's `start` is the only thing that flips it, and starting twice
+returns `false` rather than erroring — so the door can tell "not allowed" from
+"already going" without a second call.
+
+**`ready` is room metadata, not hashed state.** It is about the people in the
+lobby and never about the city; putting it in the reducer would make a decision
+about who pressed a button part of the replay contract. It rides the WELCOME and
+every frame, exactly as `speed` and `host` do — a lobby that had to ask would be
+a frame behind, and a joiner would see an empty one until the first frame.
+
+A seat that leaves takes its readiness with it, or the host waits for somebody
+who is not there.
+
+### `lateJoin`, and what it cannot mean
+
+The seventh of the unread options. What it cannot mean is "nobody may join once
+the clock starts": a player whose train went into a tunnel is not a late joiner,
+and X4a holds their seat for two minutes on purpose. **A player record in the
+city is what tells them apart** — a seat that has never played is refused once
+the room has started, and a seat coming back to its own city is not.
+
+`REFUSAL.ROOM_STARTED` is its own code and its own sentence, rather than
+`ROOM_CLOSED`: *"That game has already started, and it is not taking new
+players"* says the room is running and not taking anybody, where `ROOM_CLOSED`
+would say it is gone. The same distinction X1b drew between `ROOM_FULL` and
+`SEAT_TAKEN`, for the third time.
+
+### The roster is the lobby
+
+Before the clock runs, the roster is the only place that lists who is here — so
+"I am ready" goes on your own row rather than into a second panel that exists
+for ninety seconds. The host's Start sits above the seats because it is the one
+thing that ends the waiting, and everybody else is told *what* they are waiting
+for, which is the half a player with no button needs.
+
+The controls are **gone** in a started room rather than disabled, which is the
+rule X2d's own speed control broke in its first round: a button that is present
+and inert passes every gate.
+
+`room` is passed to the HUD as a **function** rather than a value, because the
+HUD is built once and the room's answer changes with every frame — a snapshot
+taken at boot would leave the lobby saying "waiting" for ever.
+
+### Measured
+
+```
+ok  a guest is told what it is waiting for, and offered the way to be ready
+      ("Waiting for the host to start", 1 ready button, 0 start buttons)
+ok  and the host is offered the start, not the waiting
+ok  a seat that says it is ready says so on every screen  (Mayor 2 · I'm ready · Remove)
+ok  and the room is not playing while it waits  (0 → 0)
+ok  the host's start sets the clock going  (tick 1)
+ok  a started room offers neither a start nor a ready
+```
+
+The guest's ready reaching the **host's** roster is the half that proves this
+rides the frame rather than living in one page.
+
+Suite **2,076 tests, 2,073 pass, 0 fail, 3 skipped, green twice**; `room`
+**222 s of 300**, `quick` **494 s of 600**.
+
+What is left of X2d is the QR (Q5).

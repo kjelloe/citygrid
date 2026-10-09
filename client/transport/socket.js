@@ -126,6 +126,11 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
    * speed is refreshed by every frame, because the host can turn it and nobody
    * else is told twice. */
   let roomSpeed = 1;
+  /** Whether the room has started, and who has said they are ready (X2d).
+   * Room metadata like the speed and the host: it rides the WELCOME and every
+   * frame, because a lobby that had to ask would be a frame behind. */
+  let started = true;
+  let readySeats = [];
   let hostSeat = 0;
   /** Why the room ended this session, if it said (X2d). A kick is a REFUSED
    * followed by a close; a reaped room, a restarted server and a pulled cable
@@ -214,6 +219,8 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
     seat = Number(message.seat) || seat;
     code = message.room ?? code;
     if (typeof message.speed === "number") roomSpeed = message.speed;
+    if (typeof message.started === "boolean") started = message.started;
+    if (Array.isArray(message.ready)) readySeats = message.ready;
     if (typeof message.host === "number") hostSeat = message.host;
     // A fresh token every time, so a copied one is good for one return.
     if (message.token) tokens.set(code, message.token);
@@ -233,6 +240,8 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
   function onFrame(frame) {
     if (typeof frame.at === "number") roomSeconds = frame.at / 1000;
     if (typeof frame.speed === "number") roomSpeed = frame.speed;
+    if (typeof frame.started === "boolean") started = frame.started;
+    if (Array.isArray(frame.ready)) readySeats = frame.ready;
     const answered = [];
     let next = 0;                     // how far down `waiting` the frame has got
     const events = [];
@@ -312,6 +321,15 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
      * control at all rather than one that does nothing — ruling 029's rule, and
      * the defect this slice is about. */
     get roomSpeed() { return roomSpeed; },
+    get roomStarted() { return started; },
+    get readySeats() { return readySeats; },
+    /** This seat says it is ready, or takes it back (X2d). Nothing happens
+     * locally: the room decides and every lobby hears it on the next frame, so
+     * no client's list moves early. */
+    setReady(value) { sendOrHold({ type: C2S.READY, ready: value === true }); },
+    /** The host starts the room. Only the host may, and the ROOM is what
+     * enforces that — a client-side check would be a suggestion. */
+    start() { sendOrHold({ type: C2S.START }); },
     get isHost() { return seat > 0 && seat === hostSeat; },
     /** Ask the room to change speed. Nothing happens locally: the answer comes
      * back as the `speed` on the next frame, like every other fact about the

@@ -100,6 +100,13 @@ export async function openLocalSession(given) {
     roomSpeed: undefined,
     isHost: false,
     setRoomSpeed: undefined,
+    /** Nothing to be ready for and nothing to start (X2d): a singleplayer city
+     * is already playing. Declared rather than omitted, for the drop-in claim
+     * the member lists are compared on. */
+    roomStarted: true,
+    readySeats: [],
+    setReady: undefined,
+    start: undefined,
     /** Nobody to remove and no room to end the session (X2d). Declared rather
      * than omitted, for the drop-in claim the member lists are compared on. */
     kick: undefined,

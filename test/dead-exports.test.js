@@ -40,7 +40,10 @@ const DECLARED_AHEAD = [
   "engine/constants.js: FLAG_DERELICT",
   "engine/constants.js: NET_NONE",
   "engine/constants.js: MODE_SCENARIO_COOP",
-  "engine/constants.js: TREASURY_SEPARATE",
+  // `TREASURY_SEPARATE` LEFT this list on 2026-10-09 (A142): `defaultOptions`
+  // reads it, because the treasury option validates now instead of passing any
+  // string through to a branch that matched neither value. The rule going red
+  // in the direction that means somebody did the work.
   // `PLAYER_REGENT` LEFT this list on 2026-10-08: the roster reads it to say
   // "run by the deputy", which is one of the four statuses a seat can be in.
   // The thing that SETS it is regency, still X4's.

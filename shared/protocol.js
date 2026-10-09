@@ -18,7 +18,7 @@ export const PROTOCOL_VERSION = 3;
  * only ever compare two identical strings. `shared/build-hash.js` holds it. */
 export { buildHash, setBuildHash } from "./build-hash.js";
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /** Client → server. */
 export const C2S = Object.freeze({
@@ -56,6 +56,11 @@ export const C2S = Object.freeze({
   // `CMD_LEAVE` the room queues on the kicked seat's behalf, which every client
   // replays in order like any other. Additive, so no version bump.
   KICK: "kick",
+  // **X2d's last rows.** A seat says it is ready and the host starts the room.
+  // Both are ROOM metadata and neither is a command: nothing about who pressed
+  // a button belongs in a city's replay.
+  READY: "ready",
+  START: "start",
 });
 
 /** Server → client. */
@@ -78,6 +83,11 @@ export const REFUSAL = Object.freeze({
   // both, which is a refusal that lies about what to do next.
   SEAT_TAKEN: "seatTaken",
   ROOM_CLOSED: "roomClosed",
+  // **X2d: the room started without you.** `lateJoin: false` refuses a seat
+  // that has never played once the host has started the clock — and it needs
+  // its own sentence rather than `ROOM_CLOSED`, which tells a player the room
+  // is gone when it is running happily and simply not taking anybody new.
+  ROOM_STARTED: "roomStarted",
   BAD_CODE: "badCode",
   // X2a: `BAD_CODE` meant "no room with that code" and was also what the door
   // gave a message that is not a hello at all — telling a player to check a

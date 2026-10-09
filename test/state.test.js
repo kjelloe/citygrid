@@ -48,7 +48,10 @@ test("every option is hashed — options are part of the replay contract", () =>
   const variants = {
     mode: "districts", difficulty: "demanding", terrainStyle: "hilly", waterStyle: "lakes",
     treeDensity: 99, seats: 3, startingTreasury: 999, disasters: true, quests: false,
-    treasury: "split", splitRule: "population", mutualAid: false, disasterAid: true,
+    // `separate`, because `split` is the DEFAULT since A142 — a variant that
+    // equals the base proves nothing, and this test would have reported the
+    // treasury as unhashed for ever once `shared` went.
+    treasury: "separate", splitRule: "population", mutualAid: false, disasterAid: true,
     openBorders: false, derelictYears: 9, abandonYears: 9,
     requestExpiryMonths: 3, freeTextReasons: false, chatEnabled: true, privacy: "public",
     lateJoin: false, seasonYears: 50, keepForDays: 90, cityName: "Ny Bergen",

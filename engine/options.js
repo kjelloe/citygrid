@@ -7,7 +7,7 @@
 import { sanitiseText } from "./validate.js";
 import { LIMITS } from "../shared/protocol.js";
 import {
-  MODE_SHARED_CITY, TREASURY_SHARED, TERRAIN_STYLE_ROLLING, WATER_RIVER,
+  MODE_SHARED_CITY, TREASURY_SPLIT, TREASURY_SEPARATE, TERRAIN_STYLE_ROLLING, WATER_RIVER,
   SPLIT_EQUAL, SPLIT_POPULATION,
   DIFFICULTY_STEADY, SEAT_MAX,
 } from "./constants.js";
@@ -79,7 +79,13 @@ export function defaultOptions(overrides) {
     startingTreasury: given.startingTreasury === undefined ? 20000 : given.startingTreasury,
     disasters: given.disasters === undefined ? false : given.disasters === true,
     quests: given.quests === undefined ? true : given.quests === true,
-    treasury: given.treasury ? given.treasury : TREASURY_SHARED,
+    // `split` or `separate` (A142). Anything else — a typo, a lobby from
+    // another build, or the `shared` that era 31 measured as the same
+    // arithmetic — reads as `split`, which is what `shared` always was. The old
+    // line passed any string through, so a typo reached `economyPass`, matched
+    // neither branch and became `separate`: a region playing a money rule
+    // nobody chose.
+    treasury: given.treasury === TREASURY_SEPARATE ? TREASURY_SEPARATE : TREASURY_SPLIT,
     // `equal` or `population` (X4g, era 31) — read by `splitNet` in
     // `engine/economy.js` when the treasury is SPLIT. Anything else is read as
     // `equal`, which is what an unknown rule has to mean: a lobby from a later

@@ -19,7 +19,7 @@ import { hasNet } from "./network.js";
 import { isInt, isIntInRange } from "./validate.js";
 import {
   ZONE_RESIDENTIAL, ZONE_COMMERCIAL, ZONE_INDUSTRIAL, ZONE_NONE,
-  TREASURY_SHARED, TREASURY_SPLIT, FUNDING_SERVICES, SPLIT_POPULATION,
+  TREASURY_SPLIT, FUNDING_SERVICES, SPLIT_POPULATION,
 } from "./constants.js";
 
 register(CMD_SET_TAX, function setTax(state, command) {
@@ -236,9 +236,9 @@ export function economyPass(state) {
   var mode = state.options.treasury;
   var i;
 
-  if (mode === TREASURY_SHARED || mode === TREASURY_SPLIT) {
-    // One city, one purse — or one city whose income is divided. Either way
-    // the whole region's books are balanced together first.
+  if (mode === TREASURY_SPLIT) {
+    // One city whose income is divided: the whole region's books are balanced
+    // together, then `splitNet` decides the shares.
     var totalIncome = 0;
     var totalExpenses = 0;
     for (i = 0; i < state.players.length; i += 1) {
@@ -247,15 +247,7 @@ export function economyPass(state) {
       totalExpenses += budget.expenses;
     }
     var net = totalIncome - totalExpenses;
-    if (mode === TREASURY_SHARED) {
-      // A shared treasury lives on every player's record so that a seat can
-      // leave, return, or be added without the money having to move.
-      for (i = 0; i < state.players.length; i += 1) {
-        state.players[i].treasury += idiv(net, state.players.length);
-      }
-    } else {
-      splitNet(state, net);
-    }
+    splitNet(state, net);
     events.push({ kind: "budget", income: totalIncome, expenses: totalExpenses, net: net });
     for (i = 0; i < state.players.length; i += 1) {
       if (state.players[i].treasury < 0) state.players[i].treasury = 0;

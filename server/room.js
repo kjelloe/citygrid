@@ -140,6 +140,25 @@ export function createRoom(given = {}) {
    * time it took, or a room under load runs slower than the clock says. */
   let tickCredit = 0;
   let speed = given.speed === undefined ? 1 : given.speed;
+  /**
+   * Whether the room has started (X2d).
+   *
+   * A room has always begun playing the moment it was created, which is right
+   * for the process's own room and wrong for one a host made for friends who
+   * have not arrived: the city is twelve years old before the second player
+   * types the code. `started: false` is the lobby's room — the clock holds
+   * until the host says go.
+   *
+   * It defaults to TRUE, because every room this project made before X2d
+   * started at once and `room_soak`, `room_churn` and the restored room all
+   * depend on that. The lobby is what passes `false`.
+   */
+  let started = given.started !== false;
+  /** Which seats have said they are ready (X2d). ROOM metadata, like `speed`
+   * and `host`, and deliberately not hashed state: it is about the people in
+   * the lobby and never about the city, and putting it in the reducer would
+   * make a decision about who pressed a button part of the replay contract. */
+  const readySeats = new Set();
   /** Whoever got here first (X2d). See `host()` below for why it is not 1. */
   let hostSeat = 0;
 
@@ -276,6 +295,15 @@ export function createRoom(given = {}) {
     const asked = Number(hello.seat) || 0;
     const at = Number.isFinite(hello.at) ? hello.at : Date.now();
     const seat = asked > 0 ? asked : firstFreeSeat(at);
+    // **`lateJoin: false` refuses a seat that has never played** (X2d). The
+    // option has been declared and unread since Wave 0, and what it cannot
+    // mean is "nobody may join after the clock starts": a player whose train
+    // went into a tunnel is not a late joiner, and X4a holds their seat for two
+    // minutes on purpose. A player record in the city is what tells them apart.
+    if (state.options.lateJoin === false && started
+      && seat > 0 && !state.players.some((p) => p.seat === seat)) {
+      return refuse(REFUSAL.ROOM_STARTED);
+    }
     if (seat === 0) return refuse(REFUSAL.ROOM_FULL);
     // `SEAT_TAKEN`, not `ROOM_FULL` (X1b): the room may have three seats free.
     if (seats.has(seat)) return refuse(REFUSAL.SEAT_TAKEN);
@@ -308,6 +336,9 @@ export function createRoom(given = {}) {
     connection.send({
       type: S2C.WELCOME,
       seat,
+      // A joiner's lobby is empty until the first frame without these (X2d).
+      started,
+      ready: [...readySeats].sort((a, b) => a - b),
       token,
       room: code,
       // Who may turn the clock, and where it is now (X2d). Both on the WELCOME
@@ -374,7 +405,10 @@ export function createRoom(given = {}) {
     // Watchers are deliberately not counted: watching is not playing, and an
     // abandoned room with one idle tab open would otherwise tick for ever.
     const awake = seats.size > 0 || regents.size > 0;
-    const rate = awake ? (TICKS_PER_SECOND[speed] ?? 0) : 0;
+    // A room that has not started does not play, whatever its dial says: the
+    // host's Start is what sets the clock going, and until then the lobby is
+    // the room.
+    const rate = awake && started ? (TICKS_PER_SECOND[speed] ?? 0) : 0;
     const ran = Math.max(0, elapsedMs);
     tickCredit += ran * rate;
     const ticks = Math.floor(tickCredit / 1000);
@@ -385,7 +419,12 @@ export function createRoom(given = {}) {
     // to advance through it (X1c).
     if (rate > 0) playedMs += ran;
 
-    const frame = { type: S2C.FRAME, tick: state.tick, seq, cmds, ticks, at: playedMs, speed };
+    const frame = {
+      type: S2C.FRAME, tick: state.tick, seq, cmds, ticks, at: playedMs, speed,
+      // The same path `speed` and `host` take (X2d): a client that had to ask
+      // would be a client whose lobby is a frame behind.
+      started, ready: [...readySeats].sort((a, b) => a - b),
+    };
     // The hash rides the frame once a sim-month (plan.md §3.7.9): often enough
     // that a drift cannot reach a save, rare enough that it is not the cost the
     // room is paying to avoid.
@@ -454,6 +493,32 @@ export function createRoom(given = {}) {
      * who started this" are not the same claim. */
     host: () => hostSeat,
     speed: () => speed,
+    started: () => started,
+    /** Which seats have said they are ready, lowest first (X2d). */
+    ready: () => [...readySeats].sort((a, b) => a - b),
+    /** A seat says it is ready, or takes it back. Only a seat that is IN the
+     * room: a watcher has nothing to be ready for, and a seat that has left
+     * takes its readiness with it or the host waits for somebody who is not
+     * there. */
+    setReady(seat, value) {
+      if (!seats.has(seat)) return false;
+      if (value) readySeats.add(seat);
+      else readySeats.delete(seat);
+      return true;
+    },
+    /**
+     * The host starts the room (X2d). Returns whether anything changed, so the
+     * door can tell "not allowed" from "already going" without a second call.
+     *
+     * Only the host, for the same reason only the host sets the speed: a room
+     * where anybody can start the clock is a room where the person still
+     * reading the lobby loses the argument.
+     */
+    start(by) {
+      if (by !== hostSeat || started) return false;
+      started = true;
+      return true;
+    },
     /**
      * The room's clock. `by` is the seat asking, and only the host may turn it
      * — a shared clock that anybody can change is four people fighting over one
@@ -508,6 +573,9 @@ export function createRoom(given = {}) {
     leave(seat, at = Date.now()) {
       const sitting = seats.get(seat);
       seats.delete(seat);
+      // Readiness leaves with the seat (X2d), or the host waits on somebody
+      // who is not in the room.
+      readySeats.delete(seat);
       if (sitting) held.set(seat, { token: sitting.token, since: at });
       // The regency clock starts HERE, not at the next beat: the seat became
       // empty when they left, and starting it a beat later would make the

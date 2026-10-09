@@ -343,9 +343,15 @@ export async function startServer({
         // from the other end" — and the door dropped it on the floor, so the
         // only way to host a city that already existed was to have the server
         // boot with it. One field, and the half that was missing was this line.
-        const made = rooms.add(message.save === undefined
-          ? { options: message.options }
-          : { save: message.save });
+        // **A hosted room has not started** (X2d). The process's own room plays
+        // at once — `room_soak` and the restored room both depend on it — and a
+        // room a player made for friends who have not arrived holds its clock
+        // until the host presses Start, or the city is twelve years old before
+        // the second person types the code.
+        const made = rooms.add({
+          ...(message.save === undefined ? { options: message.options } : { save: message.save }),
+          started: false,
+        });
         if (!made.ok) {
           connection.send({ type: S2C.REFUSED, reason: made.reason });
           socket.close();
@@ -395,6 +401,19 @@ export async function startServer({
       if (message.type === C2S.SPEED) {
         if (watching) return;
         mine.setSpeed(Number(message.speed), seat);
+        return;
+      }
+      // **A seat says it is ready, and the host starts the room** (X2d). Not
+      // commands: nothing about who has pressed a button belongs in a city's
+      // replay, so both ride the frame the way `speed` and `host` do.
+      if (message.type === C2S.READY) {
+        if (watching) return;
+        mine.setReady(seat, message.ready === true);
+        return;
+      }
+      if (message.type === C2S.START) {
+        if (watching) return;
+        mine.start(seat);
         return;
       }
       // **The host removes a seat** (X2d). The room decides and frees the

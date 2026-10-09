@@ -959,3 +959,116 @@ test("the city learns about a removal in the frame, like everything else", () =>
   assert.equal(room.state.players.find((p) => p.seat === 2).status, PLAYER_GONE,
     "the removed player is still playing as far as the city knows");
 });
+
+/** A hello for a room whose code is minted rather than given. */
+const helloFor = (code, over) => ({
+  type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: code, ...over,
+});
+
+// --- X2d's last rows: ready, and the room that has started -------------------
+
+test("a room can be made that has not started, and the host starts it (X2d)", async () => {
+  // A room starts playing the moment it is created, which is right for the
+  // process's own room and wrong for one a host made for friends who have not
+  // arrived yet: the city is twelve years old before the second player types
+  // the code. `started: false` is the lobby's room — the clock does not move
+  // until the host says so.
+  const room = createRoom({ options: OPTIONS, started: false });
+  const host = wire("host");
+  room.join(host, helloFor(room.code(), { seat: 1 }));
+  const was = room.tick();
+  room.beat(1000, 1000);
+  room.beat(1000, 2000);
+  assert.equal(room.tick(), was, "a room that has not started played anyway");
+  assert.equal(room.started(), false);
+
+  // The host starts it, and only the host.
+  const guest = wire("guest");
+  room.join(guest, helloFor(room.code(), { seat: 2 }));
+  assert.equal(room.start(2), false, "a guest started the room");
+  assert.equal(room.started(), false);
+  assert.equal(room.start(1), true);
+  assert.equal(room.started(), true);
+  room.beat(1000, 3000);
+  assert.ok(room.tick() > was, "a started room did not play");
+
+  // And starting twice is not an error, it is nothing.
+  assert.equal(room.start(1), false, "the room started twice");
+});
+
+test("every seat says whether it is ready, and the room says who is (X2d)", async () => {
+  // Ready is ROOM metadata, not hashed state: it is about the people in the
+  // lobby and never about the city, so putting it in the reducer would make a
+  // decision about who has pressed a button part of the replay contract.
+  const room = createRoom({ options: OPTIONS, started: false });
+  const host = wire("host");
+  const guest = wire("guest");
+  room.join(host, helloFor(room.code(), { seat: 1 }));
+  room.join(guest, helloFor(room.code(), { seat: 2 }));
+  assert.deepEqual(room.ready(), [], "somebody was ready before anybody said so");
+
+  room.setReady(2, true);
+  assert.deepEqual(room.ready(), [2]);
+  room.setReady(2, false);
+  assert.deepEqual(room.ready(), []);
+
+  // A seat that leaves takes its readiness with it, or the host waits for
+  // somebody who is not there.
+  room.setReady(2, true);
+  room.leave(2, 5000);
+  assert.deepEqual(room.ready(), [], "a seat that left is still ready");
+});
+
+test("the frame carries whether the room has started, and who is ready (X2d)", async () => {
+  // The same path `speed` and `host` take: a client that had to ask would be a
+  // client whose lobby is a frame behind, and the WELCOME has to carry it too
+  // or a joiner sees an empty lobby until the first frame.
+  const room = createRoom({ options: OPTIONS, started: false });
+  const host = wire("host");
+  room.join(host, helloFor(room.code(), { seat: 1 }));
+  const welcome = host.last(S2C.WELCOME);
+  assert.equal(welcome.started, false, "the welcome does not say whether the room has started");
+  assert.deepEqual(welcome.ready, []);
+
+  room.setReady(1, true);
+  room.beat(1000, 1000);
+  const frame = host.last(S2C.FRAME);
+  assert.equal(frame.started, false);
+  assert.deepEqual(frame.ready, [1]);
+});
+
+test("lateJoin: false refuses a NEW seat once the room has started (X2d)", async () => {
+  // The option has been declared and unread since Wave 0. What it cannot mean
+  // is "nobody may join after the clock starts": a player whose train went into
+  // a tunnel is not a late joiner, and X4a holds their seat for two minutes on
+  // purpose. So it refuses a seat that has never played.
+  const room = createRoom({ options: { ...OPTIONS, seats: 3, lateJoin: false }, started: false });
+  const host = wire("host");
+  room.join(host, helloFor(room.code(), { seat: 1 }));
+  const early = wire("early");
+  assert.equal(room.join(early, helloFor(room.code(), { seat: 2 })), "",
+    "a seat was refused before the room even started");
+
+  room.start(1);
+  room.beat(1000, 1000);
+  const late = wire("late");
+  assert.equal(room.join(late, helloFor(room.code(), { seat: 3 })), REFUSAL.ROOM_STARTED);
+  assert.equal(late.last(S2C.REFUSED)?.reason, REFUSAL.ROOM_STARTED);
+
+  // **But a seat coming back is not a late joiner.** It has a player record in
+  // the city, which is the thing that tells them apart.
+  room.leave(2, 2000);
+  const back = wire("back");
+  assert.equal(room.join(back, helloFor(room.code(), { seat: 2 })), "",
+    "a returning player was refused as a late joiner");
+});
+
+test("lateJoin defaults to true, and a started room takes anybody (X2d)", async () => {
+  const room = createRoom({ options: OPTIONS, started: false });
+  room.join(wire("host"), helloFor(room.code(), { seat: 1 }));
+  room.start(1);
+  room.beat(1000, 1000);
+  const late = wire("late");
+  assert.equal(room.join(late, helloFor(room.code(), { seat: 2 })), "",
+    "the default refused a late joiner");
+});

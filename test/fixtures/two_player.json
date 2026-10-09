@@ -1,6 +1,6 @@
 {
  "name": "two_player",
- "why": "X4h, second event round: a filed request records WHICH KIND was filed and a withdrawal records who it was between. The chronicle made three sentences out of one event list and two of them were wrong: a noise complaint read \"asked you about some ground\" (section 25.4 is that a report cannot force a change, so a row calling it a demolition request argues with the design), and a withdrawal was never recorded at all, because requestWithdrawn is its own event kind and the chronicler had no rule for it - the withdrawn sentence sat in the panel catalogue where nothing could ever reach it. So requestFiled carries request.kind into the entry string and requestWithdrawn carries from and to. Only two_player.json has a request in it.",
+ "why": "A142 (Q166): the treasury option loses the value that was a second name for another one. Era 31 measured shared and split-on-equal as the same arithmetic - the whole difference over 200 four-seat games was +416, the rounding remainder and nothing else - so three values stood for two behaviours and the lobby row asked a question with no answer. The default is split with an equal rule now, which is what shared always was plus the coin that used to go to nobody; an unknown value reads as split rather than being passed through to a branch that matched neither, which is how a typo used to become a separate treasury. SAVE_VERSION 7 to 8 with a migration mapping shared to split and setting splitRule to equal explicitly, because a save from before era 31 never had one. The option string is hashed state, so every fixture hash moves and no events change.",
  "options": {
   "seed": 4242,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Ada"
    },
    "result": "ok",
-   "hash": "14f571a1df684a5a",
+   "hash": "ef62de85947520d4",
    "events": [
     "seatJoined"
    ]
@@ -47,7 +47,7 @@
     "name": "Bo"
    },
    "result": "ok",
-   "hash": "339b911c061d7831",
+   "hash": "deaf3170df48939f",
    "events": [
     "seatJoined"
    ]
@@ -62,7 +62,7 @@
     ]
    },
    "result": "ok",
-   "hash": "8cde160383deee16",
+   "hash": "edeea377408c55f8",
    "events": [
     "built"
    ]
@@ -77,7 +77,7 @@
     ]
    },
    "result": "ok",
-   "hash": "69d93ea7deccc1b9",
+   "hash": "eed86177cf6d7fab",
    "events": [
     "built"
    ]
@@ -93,7 +93,7 @@
     ]
    },
    "result": "ok",
-   "hash": "b4e0afad9ad18ff9",
+   "hash": "69da2ac9989e3ecb",
    "events": [
     "zoned"
    ]
@@ -109,7 +109,7 @@
     ]
    },
    "result": "ok",
-   "hash": "32efb18efd07425d",
+   "hash": "f48a9c97839cea3f",
    "events": [
     "zoned"
    ]
@@ -124,7 +124,7 @@
     ]
    },
    "result": "ok",
-   "hash": "5945e45e87d848f2",
+   "hash": "52fe7aec9e50aefc",
    "events": [
     "built"
    ]
@@ -139,7 +139,7 @@
     ]
    },
    "result": "notOwner",
-   "hash": "5945e45e87d848f2",
+   "hash": "52fe7aec9e50aefc",
    "events": []
   },
   {
@@ -155,7 +155,7 @@
     "offer": 250
    },
    "result": "ok",
-   "hash": "b68e5a39eac03f29",
+   "hash": "9817a69f376fd14f",
    "events": [
     "requestFiled"
    ]
@@ -168,7 +168,7 @@
     "approve": true
    },
    "result": "ok",
-   "hash": "688730f7924e9908",
+   "hash": "0d106bddef40a69a",
    "events": [
     "built",
     "requestResolved"
@@ -181,7 +181,7 @@
     "rate": 8
    },
    "result": "ok",
-   "hash": "07ec767d758c201d",
+   "hash": "290ba11065f58313",
    "events": [
     "taxSet"
    ]
@@ -192,7 +192,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "5648000419e4631b",
+   "hash": "08471d9cffe0731d",
    "events": [
     "budget"
    ]
@@ -203,12 +203,12 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "cfa9c92f9249a911",
+   "hash": "ea588be4c8ca9607",
    "events": [
     "budget"
    ]
   }
  ],
- "era": 30,
+ "era": 31,
  "repinnedAt": "2026-10-09"
 }

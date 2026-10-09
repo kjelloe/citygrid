@@ -273,6 +273,37 @@ registerMigration(6, function chronicleAndAbsence(data) {
   return out;
 });
 
+/**
+ * 7 → 8: the treasury option loses the value that was a second name for
+ * another one (A142 ← Q166).
+ *
+ * Era 31's four-seat sweep measured `shared` and `split`-on-`equal` as the same
+ * arithmetic — the whole difference over 200 games was the rounding remainder —
+ * so a save that names `shared` is a save that means `split` with an `equal`
+ * rule, and says so now. The stored checksum goes because the option string is
+ * hashed state and a city's hash moves with it.
+ */
+registerMigration(7, function oneTreasuryPerBehaviour(data) {
+  var out = {};
+  for (var key in data) {
+    if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
+  }
+  if (out.options && out.options.treasury === "shared") {
+    var options = {};
+    for (var field in out.options) {
+      if (Object.hasOwn(out.options, field)) options[field] = out.options[field];
+    }
+    options.treasury = "split";
+    // A shared treasury was always an equal split, so a save that had never
+    // heard of `splitRule` gets the rule it was playing rather than the
+    // default of a later build.
+    options.splitRule = "equal";
+    out.options = options;
+  }
+  out.v = 8;
+  return out;
+});
+
 export function migrate(data) {
   var working = data;
   var guard = 0;

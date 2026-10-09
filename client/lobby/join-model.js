@@ -39,6 +39,7 @@ export const REFUSAL_LABELS = Object.freeze({
   [REFUSAL.ROOM_FULL]: "refused.roomFull",
   [REFUSAL.SEAT_TAKEN]: "refused.seatTaken",
   [REFUSAL.ROOM_CLOSED]: "refused.roomClosed",
+  [REFUSAL.ROOM_STARTED]: "refused.roomStarted",
   [REFUSAL.BAD_CODE]: "refused.badCode",
   [REFUSAL.MALFORMED]: "refused.malformed",
   [REFUSAL.BANNED]: "refused.banned",

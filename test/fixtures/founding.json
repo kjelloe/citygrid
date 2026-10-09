@@ -1,6 +1,6 @@
 {
  "name": "founding",
- "why": "X4h and X4i, SAVE_VERSION 6 to 7: the city keeps a chronicle — a capped ring of the news a returning player needs (who came and went, what was asked of them, what the weather did) — and the absenceYears option is deleted, which X4b had answered in the other direction by building regency on a wall clock. Both move every state hash and so ride one migration. Re-pinned a second time once engine/chronicle.js was loaded everywhere the other systems are: the first pass pinned cities that had the field and could never fill it, because the chronicler is registered by importing the module.",
+ "why": "A142 (Q166): the treasury option loses the value that was a second name for another one. Era 31 measured shared and split-on-equal as the same arithmetic - the whole difference over 200 four-seat games was +416, the rounding remainder and nothing else - so three values stood for two behaviours and the lobby row asked a question with no answer. The default is split with an equal rule now, which is what shared always was plus the coin that used to go to nobody; an unknown value reads as split rather than being passed through to a branch that matched neither, which is how a typo used to become a separate treasury. SAVE_VERSION 7 to 8 with a migration mapping shared to split and setting splitRule to equal explicitly, because a save from before era 31 never had one. The option string is hashed state, so every fixture hash moves and no events change.",
  "options": {
   "seed": 1003,
   "width": 48,
@@ -34,7 +34,7 @@
     "name": "Mayor"
    },
    "result": "ok",
-   "hash": "1ab15cf9684bcd06",
+   "hash": "e2d1ff9b9b0dd56e",
    "events": [
     "seatJoined"
    ]
@@ -49,7 +49,7 @@
     ]
    },
    "result": "ok",
-   "hash": "0a1d1712b2dc07f1",
+   "hash": "cdee5a5b220de009",
    "events": [
     "built"
    ]
@@ -64,7 +64,7 @@
     ]
    },
    "result": "ok",
-   "hash": "998ddc7d0bb6aa40",
+   "hash": "1929556947613cb8",
    "events": [
     "built"
    ]
@@ -84,7 +84,7 @@
     ]
    },
    "result": "ok",
-   "hash": "a9152ae823bddf63",
+   "hash": "adff7247f2dfe01b",
    "events": [
     "zoned"
    ]
@@ -104,7 +104,7 @@
     ]
    },
    "result": "ok",
-   "hash": "b94fb8cb8e4507de",
+   "hash": "a386dd4c9f1b17c6",
    "events": [
     "zoned"
    ]
@@ -122,7 +122,7 @@
     ]
    },
    "result": "ok",
-   "hash": "e3a8bc6e4b049cc0",
+   "hash": "474188fe6b7d2248",
    "events": [
     "zoned"
    ]
@@ -136,7 +136,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "7ae7c1074672972c",
+   "hash": "cf029c14a12a5c84",
    "events": [
     "placed"
    ]
@@ -150,7 +150,7 @@
     "y": 8
    },
    "result": "ok",
-   "hash": "835a96e4c6484c02",
+   "hash": "ce6cd96127d146ca",
    "events": [
     "placed"
    ]
@@ -187,7 +187,7 @@
     ]
    },
    "result": "ok",
-   "hash": "50d7ee9a7101b524",
+   "hash": "f9bf3b8bb65f1e4c",
    "events": [
     "built"
    ]
@@ -224,7 +224,7 @@
     ]
    },
    "result": "ok",
-   "hash": "537fdb4c9fe07cab",
+   "hash": "b12901a6f1b33943",
    "events": [
     "built"
    ]
@@ -236,7 +236,7 @@
     "rate": 9
    },
    "result": "ok",
-   "hash": "8e0debe90545a1e9",
+   "hash": "7c6efc45adb3b291",
    "events": [
     "taxSet"
    ]
@@ -247,7 +247,7 @@
    },
    "repeat": 12,
    "result": "ok",
-   "hash": "3b14559d36772ffc",
+   "hash": "ea86bfe9c585e9e4",
    "events": [
     "budget",
     "highCrime",
@@ -260,7 +260,7 @@
    },
    "repeat": 132,
    "result": "ok",
-   "hash": "d24e108d45898c0c",
+   "hash": "44d850145883b7e4",
    "events": [
     "budget",
     "developed",
@@ -275,7 +275,7 @@
    },
    "repeat": 144,
    "result": "ok",
-   "hash": "824e33ec68f694fd",
+   "hash": "3eb6d1cd9e45c6c5",
    "events": [
     "abandoned",
     "budget",
@@ -289,7 +289,7 @@
    },
    "repeat": 288,
    "result": "ok",
-   "hash": "cfcbd27063d50aef",
+   "hash": "5654eb71a8b6d117",
    "events": [
     "abandoned",
     "budget",
@@ -302,6 +302,6 @@
    ]
   }
  ],
- "era": 30,
+ "era": 31,
  "repinnedAt": "2026-10-09"
 }

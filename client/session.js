@@ -215,6 +215,12 @@ export async function openMirrorSession(given = {}, transport) {
      * the speed control is this page's business at all. */
     get roomSpeed() { return transport.roomSpeed; },
     get isHost() { return transport.isHost; },
+    /** Whether the host has started the room, and who has said they are ready
+     * (X2d). Both ride the frame, so a lobby never has to ask. */
+    get roomStarted() { return transport.roomStarted; },
+    get readySeats() { return transport.readySeats; },
+    setReady: transport.setReady ? (value) => transport.setReady(value) : undefined,
+    start: transport.start ? () => transport.start() : undefined,
     /** Chat, passed straight through (X3b). It is NOT the city: it never
      * reaches the reducer or the mirror, so it is here only because `game.js`
      * holds one object, and it is absent on every transport that has no room

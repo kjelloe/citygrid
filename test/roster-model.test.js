@@ -14,7 +14,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { rosterFor, ROSTER_ACTIONS } from "../client/ui/roster-model.js";
+import { rosterFor, ROSTER_ACTIONS, canStart } from "../client/ui/roster-model.js";
 import { PLAYER_COLOURS } from "../client/render/palette.js";
 import { PLAYER_ACTIVE, PLAYER_AFK, PLAYER_REGENT, PLAYER_GONE } from "../engine/constants.js";
 
@@ -116,5 +116,67 @@ test("with no host named, nobody is offered a removal", () => {
   ]);
   for (const row of rosterFor(state, 1)) {
     assert.equal(row.actions.includes(ROSTER_ACTIONS.REMOVE), false);
+  }
+});
+
+// --- X2d: ready, and the host's start ----------------------------------------
+
+test("a room that has not started offers ready, and the host offers start (X2d)", () => {
+  // Before the clock runs, the roster IS the lobby: it is the only place that
+  // lists who is here, so it is where "I am ready" belongs rather than in a
+  // second panel that exists for ninety seconds.
+  const state = city([
+    { seat: 1, name: "Ada", status: PLAYER_ACTIVE },
+    { seat: 2, name: "Grace", status: PLAYER_ACTIVE },
+  ]);
+  const room = { started: false, ready: [] };
+  const waiting = rosterFor(state, 2, 1, room);
+  assert.ok(waiting.find((r) => r.you).actions.includes(ROSTER_ACTIONS.READY),
+    "a guest in a room that has not started cannot say so");
+  assert.equal(canStart(2, 1, room), false, "a guest was offered the start");
+  assert.equal(canStart(1, 1, room), true, "the host cannot start the room");
+
+  // And the row says who is ready, for everybody, because waiting for somebody
+  // is the whole of what the screen is for.
+  const seen = rosterFor(state, 1, 1, { started: false, ready: [2] });
+  assert.equal(seen.find((r) => r.seat === 2).ready, true);
+  assert.equal(seen.find((r) => r.seat === 1).ready, false);
+});
+
+test("a seat that has said it is ready is offered the way back (X2d)", () => {
+  const state = city([
+    { seat: 1, name: "Ada", status: PLAYER_ACTIVE },
+    { seat: 2, name: "Grace", status: PLAYER_ACTIVE },
+  ]);
+  const mine = rosterFor(state, 2, 1, { started: false, ready: [2] }).find((r) => r.you);
+  assert.ok(mine.actions.includes(ROSTER_ACTIONS.NOT_READY), "ready cannot be taken back");
+  assert.equal(mine.actions.includes(ROSTER_ACTIONS.READY), false, "both halves were offered");
+});
+
+test("a started room has no ready and no start at all (X2d)", () => {
+  // The controls are gone rather than disabled: a button that cannot do
+  // anything is the defect X2d's own speed control was, and nothing about a
+  // running city is waiting for anybody.
+  const state = city([
+    { seat: 1, name: "Ada", status: PLAYER_ACTIVE },
+    { seat: 2, name: "Grace", status: PLAYER_ACTIVE },
+  ]);
+  const room = { started: true, ready: [2] };
+  for (const seat of [1, 2]) {
+    assert.equal(canStart(seat, 1, room), false, `seat ${seat} was offered a start in a running room`);
+    for (const row of rosterFor(state, seat, 1, room)) {
+      assert.equal(row.actions.includes(ROSTER_ACTIONS.READY), false, "ready in a running room");
+      assert.equal(row.actions.includes(ROSTER_ACTIONS.NOT_READY), false);
+    }
+  }
+});
+
+test("singleplayer has no lobby, so it has neither (X2d)", () => {
+  // `rosterFor` is called with no room at all in singleplayer, and the default
+  // has to be "already playing" or a city with one seat would wait for itself.
+  const state = city([{ seat: 1, name: "Ada", status: PLAYER_ACTIVE }]);
+  assert.equal(canStart(1, 0, undefined), false);
+  for (const row of rosterFor(state, 1, 0)) {
+    assert.equal(row.actions.includes(ROSTER_ACTIONS.READY), false);
   }
 });

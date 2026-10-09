@@ -8,6 +8,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createState, copyState, hashState } from "../engine/state.js";
 import { defaultOptions } from "../engine/options.js";
+import { TREASURY_SPLIT, TREASURY_SEPARATE } from "../engine/constants.js";
+import * as constants from "../engine/constants.js";
+const TREASURY_SHARED = constants.TREASURY_SHARED;
 import { apply } from "../engine/reducer.js";
 import "../engine/build-commands.js";
 import "../engine/development.js";
@@ -474,4 +477,39 @@ test("the debt survives a copy and reaches the hash", () => {
   const other = copyState(state);
   other.players[0].debt += 1;
   assert.notEqual(hashState(other), hashState(state), "the hash cannot see a debt");
+});
+
+// --- A142: the treasury option loses its redundant value ---------------------
+
+test("the treasury option has two values for two behaviours (A142)", () => {
+  // Era 31 measured it: `TREASURY_SHARED` added `idiv(net, seats)` to every
+  // seat's record and `TREASURY_SPLIT` on the `equal` rule added the same share
+  // plus the remainder, and the whole difference over 200 four-seat games was
+  // **+416** — the rounding, and nothing else. §26.1 offers "shared treasury,
+  // or separate by option" and the engine had three values for two behaviours,
+  // which is a lobby row that asks the player a question with no answer.
+  assert.equal(TREASURY_SHARED, undefined, "`shared` is back as a constant");
+  assert.deepEqual([TREASURY_SPLIT, TREASURY_SEPARATE].sort(), ["separate", "split"]);
+  // And the default is the one that used to be `shared`, which is the same
+  // arithmetic plus the coin that used to go to nobody.
+  assert.equal(defaultOptions({}).treasury, TREASURY_SPLIT);
+  assert.equal(defaultOptions({}).splitRule, "equal");
+});
+
+test("an option naming the value that is gone reads as the one that replaced it (A142)", () => {
+  // Not a refusal: a lobby from another build, a URL somebody kept, or a save
+  // migrated by the step below all hand this string in, and a region whose
+  // money rule silently became `separate` would be a different game.
+  const was = defaultOptions({ treasury: "shared" });
+  assert.equal(was.treasury, TREASURY_SPLIT);
+  assert.equal(was.splitRule, "equal", "a shared treasury was always an equal split");
+  // And anything else is the DEFAULT rather than a pass-through. The old line
+  // was `given.treasury ? given.treasury : TREASURY_SHARED`, so a typo in a
+  // lobby reached `economyPass`, matched neither branch, and became `separate`
+  // — a region playing a different money rule from the one anybody chose.
+  // `splitRule` was given the same treatment in era 31 for the same reason.
+  for (const nonsense of ["nonsense", "SPLIT", "", 7, null]) {
+    assert.equal(defaultOptions({ treasury: nonsense }).treasury, TREASURY_SPLIT,
+      `treasury ${JSON.stringify(nonsense)} was passed through`);
+  }
 });

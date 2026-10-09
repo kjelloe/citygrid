@@ -257,6 +257,14 @@ export async function startGame(root, given = {}) {
     // source for a fact the WELCOME already carries.
     host: sim.isHost ? (sim.seat ?? 0) : 0,
     onKick: sim.kick ? (who) => sim.kick(who) : undefined,
+    // **Ready, and the host's start** (X2d). `room` is a FUNCTION rather than a
+    // value because the HUD is built once and the room's answer changes with
+    // every frame — a snapshot taken at boot would leave the lobby saying
+    // "waiting" for ever.
+    room: sim.room === undefined ? undefined
+      : () => ({ started: sim.roomStarted !== false, ready: sim.readySeats ?? [] }),
+    onReady: sim.setReady ? (value) => sim.setReady(value) : undefined,
+    onStart: sim.start ? () => sim.start() : undefined,
     state,
     seat,
     controller,

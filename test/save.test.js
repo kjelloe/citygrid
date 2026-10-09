@@ -225,3 +225,35 @@ test("a save from before the derelict clock starts its ruins at the tick it load
     "a migrated ruin has no clock, so it could never be cleared by a neighbour");
   assert.equal(toSave(loaded.state).v, SAVE_VERSION);
 });
+
+test("a version 7 save naming a shared treasury loads as an equal split (A142)", () => {
+  // Era 31 measured the two as the same arithmetic — +416 across a whole region
+  // over 200 games, which is the rounding remainder — so this is a rename and
+  // not a rule change, and the city a player comes back to is the city they
+  // left. `splitRule` is set explicitly rather than left to the default,
+  // because a save from before era 31 never had one and the default of a LATER
+  // build is not what it was playing.
+  const state = createState(defaultOptions({ width: 16, height: 16, seats: 2 }));
+  const old = toSave(state);
+  old.v = 7;
+  old.options = { ...old.options, treasury: "shared" };
+  delete old.options.splitRule;
+  delete old.hash;
+
+  const back = fromSave(old);
+  assert.equal(back.ok, true, back.reason);
+  assert.equal(back.state.options.treasury, "split");
+  assert.equal(back.state.options.splitRule, "equal");
+});
+
+test("a version 7 save that was already split is left alone (A142)", () => {
+  const state = createState(defaultOptions({ width: 16, height: 16, seats: 2 }));
+  const old = toSave(state);
+  old.v = 7;
+  old.options = { ...old.options, treasury: "split", splitRule: "population" };
+  delete old.hash;
+  const back = fromSave(old);
+  assert.equal(back.ok, true, back.reason);
+  assert.equal(back.state.options.splitRule, "population",
+    "the migration overwrote a rule the save had chosen");
+});
