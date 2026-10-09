@@ -55,6 +55,7 @@ const SYSTEMS = {
   quests: () => import("../engine/quests.js"),
   requests: () => import("../engine/requests.js"),
   history: () => import("../engine/history.js"),
+  chronicle: () => import("../engine/chronicle.js"),
 };
 
 /** Registration is global and permanent — `register()` writes into a module

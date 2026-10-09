@@ -49,7 +49,7 @@ test("every option is hashed — options are part of the replay contract", () =>
     mode: "districts", difficulty: "demanding", terrainStyle: "hilly", waterStyle: "lakes",
     treeDensity: 99, seats: 3, startingTreasury: 999, disasters: true, quests: false,
     treasury: "split", splitRule: "population", mutualAid: false, disasterAid: true,
-    openBorders: false, derelictYears: 9, absenceYears: 9, abandonYears: 9,
+    openBorders: false, derelictYears: 9, abandonYears: 9,
     requestExpiryMonths: 3, freeTextReasons: false, chatEnabled: true, privacy: "public",
     lateJoin: false, seasonYears: 50, keepForDays: 90, cityName: "Ny Bergen",
   };
@@ -187,7 +187,11 @@ test("copyOptions carries every declared field and nothing else", () => {
 test("defaults match the rulings", () => {
   const options = defaultOptions({});
   assert.equal(options.derelictYears, 5, "P8: five city years");
-  assert.equal(options.absenceYears, 5);
+  // `absenceYears` is GONE (X4i, 2026-10-09): X4b answered it in the other
+  // direction, building regency on a wall clock because a person's absence is
+  // real time and not sim time.
+  assert.equal(Object.hasOwn(options, "absenceYears"), false,
+    "absenceYears is back, and nothing can read it");
   assert.equal(options.mutualAid, true, "services cross borders by default");
   assert.equal(options.disasters, false, "disasters are opt-in");
   assert.equal(options.privacy, "private");

@@ -1,6 +1,6 @@
 {
- "version": "a5f702257a39",
- "build": "d0cf1b07cb0b",
+ "version": "fb24b73c88e1",
+ "build": "57a87ec45991",
  "generated": "2026-10-09",
  "files": [
   "./client/audio/audio-model.js",
@@ -97,6 +97,7 @@
   "./client/ui/build-model.js",
   "./client/ui/camera-cluster.js",
   "./client/ui/camera-model.js",
+  "./client/ui/chronicle-model.js",
   "./client/ui/controls-card.js",
   "./client/ui/help-model.js",
   "./client/ui/help.js",
@@ -175,6 +176,7 @@
   "./data/quests/tutorial.json",
   "./engine/build-commands.js",
   "./engine/catalogue.js",
+  "./engine/chronicle.js",
   "./engine/civic.js",
   "./engine/commands.js",
   "./engine/constants.js",

@@ -855,10 +855,8 @@ that reads the city stays: the gate counts 15 overlays and 0 tool buttons. `?wat
 
 **Still to build in X4:**
 spectators, a room that ticks at 1× when every seat is in regency and hibernates when empty, and
-`splitRule`/`mutualAid`/`disasterAid` where income, coverage and repair are shared — and **a
-history that outlives the alert list**, which X3b's activity-feed item resolved into this one: what
-a player who was away needs is not a second feed but a record of what happened while they were, and
-"what did the deputy do" is the same question.
+`splitRule`/`mutualAid`/`disasterAid` where income, coverage and repair are shared. ~~A history
+that outlives the alert list~~ was X4h, 2026-10-09.
 
 ## X4 — Drop-in and absence (L) — slice 5.4
 
@@ -886,12 +884,13 @@ singleplayer playtest was.
 
 ## Order
 
-**Everything in this lane is built except five items**, and the fifth is a deletion. As of
-2026-10-08, in the order it happened:
+**Everything in this lane is built except three items.** As of 2026-10-09, in the order it
+happened:
 
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
 ~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~ →
-~~X5~~ (the review fixes, and two reds `all` found that the review had not).
+~~X5~~ (the review fixes, and two reds `all` found that the review had not) → ~~X4h~~ →
+~~X4i~~ (a deletion, riding X4h's migration).
 
 **And it is all in the history now.** The whole lane was uncommitted on 2026-10-08 — seventy-one
 files, two days, thirty dev-log entries behind `1f13ee7`. Twenty-two commits, one per slice in the
@@ -909,7 +908,15 @@ code or watch without taking a seat. Build, ask a neighbour to clear their groun
 nuisance, answer from an inbox or set a standing answer and let the month do it, point at a tile
 with one of seven phrases, chat if the room has it on, see who is in the room and say you are away.
 Leave, and the city keeps going: the seat is yours for two minutes, then a deputy plays it, then
-after `abandonYears` the ground goes to the commons. A room nobody is in stops playing.
+after `abandonYears` the ground goes to the commons. A room nobody is in stops playing. Come back
+an hour later with the page long closed and the **history** panel still says what happened while
+you were away — who came and went, who was handed to a deputy, what was asked of you and how it
+ended, and what the weather did. It is in the save and in the hash, so both browsers read the same
+rows.
+
+What it deliberately does not keep is what anybody BUILT. A regent deputy lays a hundred streets
+in a year, and a log of them would be the city written twice: the city is already the record of
+what was built, and it is on screen.
 
 ### What is left
 
@@ -917,9 +924,8 @@ after `abandonYears` the ground goes to the commons. A room nobody is in stops p
 |---|---|---|
 | **X4f** | Hibernate to **disk**, not only to a standstill | X4d stopped the city; the second half is writing it out and dropping the pump, which wants the store's checkpoint path |
 | **X4g** | `splitRule`, `mutualAid`, `disasterAid` | **A balance era**: they change what a city earns, so they need a sweep and a report, not a slice |
-| **X4h** | A history that outlives the alert list | X3b's activity-feed item resolved into this one: what a returning player needs is a record of what happened while they were away, and "what did the deputy do" is the same question |
 | **X2d** | The lobby's remaining rows | ~~the door's refusals in words~~ · ~~spectate as a lobby choice~~ (X4e) · ~~the host's speed~~ (2026-10-09: `C2S.SPEED`, the host is the first seat in, the guest gets no button) · ~~the host's kick~~ (2026-10-09, with the session-ended path nothing had) · ~~hosting from a save~~ (2026-10-09 — one line at the door, and it found a frame size that killed the server) · the QR (Q5) · ready · joining a room that has started. Two of the seven unread options are its — `privacy` and `lateJoin`, and neither has a mechanism yet: `privacy` cannot mean anything until there is a room list, and `lateJoin` is a restriction nobody has asked for |
-| **X4i** | `absenceYears`, which X4b superseded | A decision living in a test comment, which is nowhere. X4b built regency on a WALL clock (`regencyAfterMs`) because a person's absence is real time, not sim time — a paused room would never hand over and a fast one would hand over in seconds. So `absenceYears` is not merely unread, it has been **answered in the other direction**. Delete it or find it a job. It is not free either way: `options` is a hashed field and `OPTION_FIELDS` is its field list, so removing one moves every state's hash — a `SAVE_VERSION` bump and a fixture re-pin. It should ride with the next era or the next migration rather than be a slice |
+| ~~**X4i**~~ | ~~`absenceYears`, which X4b superseded~~ — **deleted 2026-10-09**, riding X4h's `SAVE_VERSION` 6 → 7 | A decision that lived in a test comment, which is nowhere: X4b built regency on a WALL clock (`regencyAfterMs`) because a person's absence is real time, not sim time, so `absenceYears` was not merely unread but **answered in the other direction**. It was never free — `options` is a hashed field and `OPTION_FIELDS` is its field list — which is why it waited for a migration rather than being its own slice |
 
 Wave 6 (modes, seasons, scale to sixteen, operations) is not in this file and does not start until
 the release gate above is met. W6's second half runs beside all of it — different files.

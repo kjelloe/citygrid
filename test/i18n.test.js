@@ -304,6 +304,22 @@ const FILLED_BY_ITS_RENDERER = {
   "stat.verdict.falling": ["change", "months"],
   "stat.verdict.better": ["change", "months"],
   "stat.verdict.worse": ["change", "months"],
+  // `client/ui/chronicle-model.js` → a `textKey` per row (X4h), filled by the
+  // history panel. The seat names are resolved in the model and the sentence is
+  // a key, which is the alert list's division and the same one.
+  "chronicle.seatJoined": ["name"],
+  "chronicle.seatLeft": ["name"],
+  "chronicle.statusActive": ["name"],
+  "chronicle.statusAway": ["name"],
+  "chronicle.statusRegent": ["name"],
+  "chronicle.statusGone": ["name"],
+  "chronicle.requestFiled": ["name", "other"],
+  "chronicle.reportFiled": ["name", "other"],
+  "chronicle.requestResolved": ["name", "other"],
+  "chronicle.approved": ["name"],
+  "chronicle.declined": ["name"],
+  "chronicle.acknowledged": ["name", "other"],
+  "chronicle.withdrawn": ["name", "other"],
   // The one the reviewer found. `hud.js` assembles `result.<code>` for every
   // answer the reducer gives, and this is the only one of the eleven with a
   // token in it — which is why it was the only one that could show a brace.

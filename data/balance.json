@@ -140,7 +140,6 @@
  },
  "multiplayer": {
   "derelictYears": 5,
-  "absenceYears": 5,
   "abandonYears": 5,
   "requestExpiryMonths": 12,
   "seasonYears": 25

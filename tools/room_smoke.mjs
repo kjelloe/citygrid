@@ -569,6 +569,33 @@ try {
     for (const talker of talkers) await talker.context.close();
   }
 
+  // **What happened while you were away** (X4h). The alert list is the feed and
+  // this is the RECORD: it is hashed state, so the two browsers must show the
+  // same rows, and it survives a page that was closed — which the alert list,
+  // living in the page, cannot. Driven here because by now both seats have
+  // joined and a request has been filed and resolved between them, which is
+  // most of what the panel is for.
+  await a.page.click("#rail-chronicle");
+  await b.page.click("#rail-chronicle");
+  const histories = await Promise.all([a, b].map(({ page }) => page.evaluate(() => ({
+    rows: [...document.querySelectorAll(".chronicle-row")].map((el) => el.textContent?.trim()),
+    entries: globalThis.CITY.state.chronicle.entries.length,
+  }))));
+  check("both seats see the same history, and it is not empty",
+    histories[0].entries > 1 && histories[0].rows.length === histories[1].rows.length
+    && histories[0].rows.join("|") === histories[1].rows.join("|"),
+    JSON.stringify(histories.map((h) => h.rows.length)));
+  check("and it says who, in words", histories[0].rows.some((r) => String(r).includes("Mayor 1")),
+    histories[0].rows.slice(0, 3).join(" / "));
+  // **Nobody is Mayor 0.** The first run of this block read "Mayor 0 agreed to
+  // clear the ground": `requestResolved` carried an id and a status, which is
+  // all an alert beside the live request needs and not enough for a row read
+  // an hour later. Seat 0 is the CITY — the weather's row — and a sentence
+  // naming it as a player is the shape that defect takes. Asserted on the
+  // words rather than on the state, because the state was correct both times.
+  const seatZero = histories[0].rows.filter((r) => String(r).includes("Mayor 0"));
+  check("and nobody in it is Mayor 0", seatZero.length === 0, seatZero.join(" / "));
+
   // **A standing answer** (X3b): what happens to requests while nobody is
   // looking. Seat one sets "always agree", seat two asks about the rest of its
   // road, and the MONTH answers — the request is gone and the ground with it,

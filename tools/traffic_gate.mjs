@@ -31,6 +31,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/chronicle.js";
 import "../engine/requests.js";
 // **The quests, loaded** (D8b, Q158 → A136, era 30). The pass is registered by
 // importing the module and the CATALOGUE comes from `data/quests/` — there is

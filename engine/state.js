@@ -11,7 +11,7 @@ import {
   makeSink, writeU8, writeI32, writeI64, writeString, writeBool, finish,
 } from "../shared/canonical.js";
 import { OPTION_FIELDS, copyOptions } from "./options.js";
-import { TERRAIN_GRASS, OWNER_NATURE, HISTORY_FIELDS, FUNDING_SERVICES } from "./constants.js";
+import { TERRAIN_GRASS, OWNER_NATURE, HISTORY_FIELDS, FUNDING_SERVICES, CHRONICLE_FIELDS } from "./constants.js";
 
 /** Per-tile arrays, in hash order. Appending is safe; reordering is not. */
 export var TILE_LAYERS = [
@@ -138,6 +138,12 @@ export function createState(options) {
     // and saved: a loaded city with empty graphs is a city that has forgotten
     // twenty years the player remembers.
     history: { samples: [] },
+    // What happened while you were away (X4h). A capped ring of the news a
+    // returning player needs — who came and went, what was asked of them, what
+    // the weather did — kept in STATE because the page a player's alerts lived
+    // in is gone by the time they come back. `engine/chronicle.js` decides what
+    // goes in it; this is only where it lives.
+    chronicle: { entries: [] },
     // Department funding (§9.4), as a percentage per service. Hashed: it
     // changes what the police actually cover and what the city pays for them,
     // so two clients that disagreed about it would disagree about crime.
@@ -199,6 +205,7 @@ export function copyState(state) {
       vars: copyQuestVars(state.quests.vars),
     },
     history: { samples: copyHistorySamples(state.history.samples) },
+    chronicle: { entries: copyChronicle(state.chronicle.entries) },
     funding: copyFunding(state.funding),
     traffic: {
       commuters: state.traffic.commuters,
@@ -289,6 +296,19 @@ function copyFunding(funding) {
 
 /** Local, like `copyDisaster` and `copyQuestEntries` above: `engine/history.js`
  * imports the reducer, and the reducer imports this file. */
+function copyChronicle(entries) {
+  var out = [];
+  for (var i = 0; i < entries.length; i += 1) {
+    var entry = entries[i];
+    var copy = { kind: entry.kind, how: entry.how };
+    for (var f = 0; f < CHRONICLE_FIELDS.length; f += 1) {
+      copy[CHRONICLE_FIELDS[f]] = entry[CHRONICLE_FIELDS[f]];
+    }
+    out.push(copy);
+  }
+  return out;
+}
+
 function copyHistorySamples(samples) {
   var out = [];
   var i;
@@ -416,6 +436,20 @@ export function writeState(sink, state) {
   // Funding, in FUNDING_SERVICES order — never key order.
   for (var fs = 0; fs < FUNDING_SERVICES.length; fs += 1) {
     writeI32(sink, state.funding[FUNDING_SERVICES[fs]]);
+  }
+
+  // The chronicle (X4h). Length first, then each entry's fields in
+  // CHRONICLE_FIELDS order, and the kind as bytes — the same shape the history
+  // below uses, for the same reason: canonical serialisation may not depend on
+  // key order.
+  writeI32(sink, state.chronicle.entries.length);
+  for (var ce = 0; ce < state.chronicle.entries.length; ce += 1) {
+    var entry = state.chronicle.entries[ce];
+    writeString(sink, entry.kind);
+    writeString(sink, entry.how);
+    for (var cf = 0; cf < CHRONICLE_FIELDS.length; cf += 1) {
+      writeI32(sink, entry[CHRONICLE_FIELDS[cf]]);
+    }
   }
 
   // The history. Length first, then each sample's fields in HISTORY_FIELDS

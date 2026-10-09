@@ -10,7 +10,7 @@
 import { SAVE_VERSION } from "../shared/protocol.js";
 import { createState, TILE_LAYERS, hashState, copyState } from "./state.js";
 import { defaultOptions } from "./options.js";
-import { HISTORY_FIELDS, FUNDING_SERVICES, FLAG_RUINED } from "./constants.js";
+import { HISTORY_FIELDS, FUNDING_SERVICES, FLAG_RUINED, CHRONICLE_FIELDS } from "./constants.js";
 
 /** [value, count, value, count, ...] */
 export function encodeLayer(array) {
@@ -84,6 +84,7 @@ export function toSave(state) {
     traffic: copy.traffic,
     quests: copy.quests,
     history: copy.history,
+    chronicle: copy.chronicle,
     funding: copy.funding,
     players: copy.players,
     buildings: copy.buildings,
@@ -237,6 +238,41 @@ registerMigration(5, function requestAnswerer(data) {
   return out;
 });
 
+/**
+ * 6 → 7: X4h gave the city a chronicle, and X4i took `absenceYears` away.
+ *
+ * Two changes in one migration because they are one act: both move every
+ * state's hash, and a `SAVE_VERSION` bump is the only thing that makes either
+ * of them affordable. `absenceYears` was answered in the other direction by
+ * X4b — regency runs on a WALL clock, because a person's absence is real time
+ * and not sim time, so a paused room would never hand a seat over and a fast
+ * one would hand it over in seconds. An option nothing reads and nothing CAN
+ * read is a number that looks like a feature.
+ *
+ * A save from version 6 has no chronicle and gets an empty one, which is right:
+ * it has no record of what happened before this build, and inventing entries
+ * for events nobody witnessed would be a history the city never had. The
+ * checksum goes for the usual reason — it was taken over a shorter field list.
+ */
+registerMigration(6, function chronicleAndAbsence(data) {
+  var out = {};
+  for (var key in data) {
+    if (Object.hasOwn(data, key) && key !== "hash") out[key] = data[key];
+  }
+  out.chronicle = { entries: [] };
+  if (out.options) {
+    var options = {};
+    for (var field in out.options) {
+      if (Object.hasOwn(out.options, field) && field !== "absenceYears") {
+        options[field] = out.options[field];
+      }
+    }
+    out.options = options;
+  }
+  out.v = 7;
+  return out;
+});
+
 export function migrate(data) {
   var working = data;
   var guard = 0;
@@ -298,6 +334,26 @@ export function fromSave(data) {
   for (var fi = 0; fi < FUNDING_SERVICES.length; fi += 1) {
     var got = save.funding ? save.funding[FUNDING_SERVICES[fi]] : undefined;
     state.funding[FUNDING_SERVICES[fi]] = typeof got === "number" ? got | 0 : 100;
+  }
+
+  // The chronicle (X4h), restored the same way and for the same reason: an
+  // older save has none, an empty one is what that city genuinely had, and the
+  // fields are copied through the engine's own list rather than by spreading
+  // whatever the file happened to contain.
+  state.chronicle = { entries: [] };
+  if (save.chronicle && Array.isArray(save.chronicle.entries)) {
+    for (var ci = 0; ci < save.chronicle.entries.length; ci += 1) {
+      var was = save.chronicle.entries[ci];
+      var entry = {
+        kind: typeof was.kind === "string" ? was.kind : "",
+        how: typeof was.how === "string" ? was.how : "",
+      };
+      for (var cf = 0; cf < CHRONICLE_FIELDS.length; cf += 1) {
+        var value = was[CHRONICLE_FIELDS[cf]];
+        entry[CHRONICLE_FIELDS[cf]] = typeof value === "number" ? value | 0 : 0;
+      }
+      state.chronicle.entries.push(entry);
+    }
   }
 
   // A save written before slice 4.6 has no history. An empty one is correct —

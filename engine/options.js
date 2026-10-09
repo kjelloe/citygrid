@@ -30,7 +30,6 @@ export var OPTION_FIELDS = [
   "disasterAid",
   "openBorders",
   "derelictYears",
-  "absenceYears",
   "abandonYears",
   "requestExpiryMonths",
   "freeTextReasons",
@@ -88,7 +87,6 @@ export function defaultOptions(overrides) {
     openBorders: given.openBorders === undefined ? true : given.openBorders === true,
     // Ruling from P8: five city years, era 0, for the sweep to challenge.
     derelictYears: given.derelictYears === undefined ? 5 : given.derelictYears,
-    absenceYears: given.absenceYears === undefined ? 5 : given.absenceYears,
     abandonYears: given.abandonYears === undefined ? 5 : given.abandonYears,
     requestExpiryMonths: given.requestExpiryMonths === undefined ? 12 : given.requestExpiryMonths,
     freeTextReasons: given.freeTextReasons === undefined ? true : given.freeTextReasons === true,

@@ -439,10 +439,13 @@ The seam is built, so this is checkable rather than aspirational. What exists an
 
 What is declared and **not read by anything** — nine options in `engine/options.js`, some of
 them also numbers in `data/balance.json`: `absenceYears`, `abandonYears`, `disasterAid`,
-`splitRule`, `lateJoin`, `chatEnabled`, `privacy`, `mutualAid` and `seasonYears`. Four have been
-wired since the list was written: `keepForDays` (X1a's store), `requestExpiryMonths` and
-`freeTextReasons` (X3a's requests) and `derelictYears` (X3c's override). That is the honest state of §3.3's regency
-and abandonment rules: the knobs exist, the mechanics do not. (`mutualAid` the OPTION is unread;
+`splitRule`, `lateJoin`, `chatEnabled`, `privacy`, `mutualAid` and `seasonYears`. Six have left the
+list since it was written: `keepForDays` (X1a's store), `requestExpiryMonths` and `freeTextReasons`
+(X3a's requests), `derelictYears` (X3c's override) and `chatEnabled` (X4d's room) were wired, and
+`absenceYears` was **deleted** by X4i because X4b had answered it in the other direction — regency
+runs on a wall clock, since a person's absence is real time and a paused room would never hand over.
+An unread option leaves the list one of those two ways, never by being left alone. That is the
+honest state of §3.3's regency and abandonment rules: the knobs exist, the mechanics do not. (`mutualAid` the OPTION is unread;
 `CMD_MUTUAL_AID` the command is a different thing with the same name, which is why the test that
 pins this list strips strings as well as comments.)
 

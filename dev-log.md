@@ -14127,3 +14127,149 @@ ok  and it is that city, not a new one           (saved at 25, hosted at 25)
 ```
 
 Suite **2,001 tests, 1,998 pass, 0 fail, 3 skipped, green twice**; `room` 211 s of 300.
+
+## X4h — a history that outlives the alert list, and X4i deleted (2026-10-09)
+
+X3b found that **the alert list is the activity feed** — once `sim.onChange` stopped dropping
+every event another seat produced, the feed existed and nobody had to build one. What it is not is
+a **record**. Alerts live in the page: they collapse by kind, expire after two sim-years, and are
+capped at what fits on screen. A player who closed the tab and came back an hour later has none of
+them, because the page they lived in is gone.
+
+So the record is **state**. `state.chronicle` is a ring of 24 entries, each one integers and two
+short strings, appended by the reducer after a command succeeds:
+
+```js
+var outcome = handler(state, command);
+if (chronicler && outcome && outcome.result === RESULT.OK) chronicler(state, outcome.events);
+```
+
+That is one place rather than one per handler, which is what makes the **deputy's** commands
+recorded on exactly the same terms as a player's — "what did the deputy do while I was gone" is the
+same question as "what happened while I was away", and it would not have been if the hook had gone
+into the UI or into each command. `engine/chronicle.js` registers itself through
+`registerChronicler`, so a node script that forgets the import ticks a city that can never fill its
+own chronicle (`node-scripts-need-engine-side-effect-imports`, and this one bit — see below).
+
+**What it keeps is a decision, not a filter.** `WHO` is a table of six kinds — seats joining,
+leaving and changing status, requests filed and resolved, and the weather — and each kind says
+which seats the row is about. Written out rather than "everything with a seat on it", because that
+would let somebody adding an event elsewhere change what a save contains without choosing to.
+
+**What it deliberately does not keep is what anybody built.** A regent deputy lays a hundred
+streets in a year; a log of them would be the city written twice. The city is already the record of
+what was built, and it is on screen.
+
+**Two fields for two ideas.** A `requestResolved` event's `status` is a string (`approved`,
+`declined`) and a `seatStatus` event's `status` is an integer (`PLAYER_AFK`). They share a name on
+the wire and they are not the same fact, so the entry has `status` (int) and `how` (string) rather
+than one widened field — `two-fields-for-one-idea`, applied before it cost anything this time.
+
+### Five places, four more, and the one the two-file rule cannot see
+
+New nested state: `copyChronicle` in the deep copy, `writeState`, `HASHED_FIELDS`, the save
+migration, the snapshot projection (`copyState` covers it). `CHRONICLE_FIELDS` lives in
+`engine/constants.js` so that `writeState` and `fromSave` read one list.
+
+**And X4i rode the same migration.** `absenceYears` was an option nothing read, and X4b had not
+merely left it unread — it had **answered it in the other direction**: regency runs on a wall clock
+(`regencyAfterMs`), because a person's absence is real time, not sim time, and a paused room would
+never hand over while a fast one would hand over in seconds. That decision was living in a test
+comment, which is nowhere. Deleting it moves every state hash (`options` is hashed and
+`OPTION_FIELDS` is its field list), so it waited for a migration rather than being its own slice.
+`SAVE_VERSION` 6 → 7 does both: give an old save an empty chronicle, strip `absenceYears`, drop the
+stored checksum because it was taken over a different field list.
+
+An old save gets an **empty** chronicle and no invented rows. Entries for events nobody witnessed
+would be a history the city never had.
+
+### Three re-pins, and what each one was
+
+1. The fields, first pass — and it pinned **cities that had the chronicle and could never fill
+   it**, because the chronicler is registered by importing the module and the fixture builder did
+   not. Fifteen files load `engine/history.js`; all fifteen now load this one beside it.
+2. The same fixtures again, with the field filling.
+3. **The event got richer.** The gate caught this one and it is the real finding of the slice:
+
+```
+ok  both seats see the same history, and it is not empty  ([6,6])
+ok  and it says who, in words  (Mayor 0 agreed to clear the ground / ...)
+```
+
+**"Mayor 0 agreed to clear the ground."** `requestResolved` carried an `id` and a `status` and
+nothing else — enough for an alert that says *a request ended*, because the page it fires in
+already knows which request, and not enough for a row a player reads an hour later. All **seven**
+emissions in `engine/requests.js` now carry `from`, `to` and `by`, and `WHO.requestResolved` reads
+the answerer first: an owner's approval and a neighbour's derelict override are different news, and
+`resolvedBy` is X3b's field precisely so they can be told apart. `two_player.json` is the only
+fixture with a request in it, so it is the only one the third pin moved.
+
+The lesson is narrower than "events should be rich". An event's fields are sized to its **reader**,
+and this slice added a reader with a different need: the feed reads an event beside the state it
+came from, a record reads it an hour after that state is gone.
+
+### The omissions sweep found two more of exactly the same thing
+
+Run on the slice's own new code, which is where it keeps paying
+(`omissions-sweep-your-own-slice`):
+
+- **A noise complaint read *"asked you about some ground"*.** `requestFiled` is one event for two
+  kinds of request, and it already carried `request: request.kind` — the chronicle dropped it. §25.4
+  is that a report is a civil outlet and cannot force a change, so a row calling one a demolition
+  request is the panel arguing with the design. The kind goes into the entry's one short string,
+  read through `kind` as the resolution is; `chronicle.reportFiled` is its own sentence rather than
+  the other one with a noun swapped.
+- **A withdrawal had no row at all, and `chronicle.withdrawn` was a sentence nothing could
+  reach.** `CMD_WITHDRAW_REQUEST` emits `requestWithdrawn`, its own kind, which `WHO` had no rule
+  for — so `how` could never hold the word `withdrawn` while the panel's catalogue had a line for
+  it. **Both halves were invisible:** the reachability scan sees the key is referenced as a
+  literal, and the event census sees the event has a reader. This is `a-dead-field-and-a-dead-
+  command` again — two halves of one feature on two different censuses, each invisible to the
+  other. It is also the news most worth having: the request waiting in your inbox is gone.
+
+The test that catches the class rather than the instance drives all five endings in one city and
+holds the set of `how` values against `RESOLUTION_LABELS` **in both directions**. The second
+direction is the one that found something. The gate gained the complement: **no row may say "Mayor
+0"** — seat 0 is the city, the weather's row, and a sentence naming it as a player is the shape
+this whole family of defects takes on screen.
+
+```
+ok  both seats see the same history, and it is not empty  ([7,7])
+ok  and it says who, in words  (Mayor 1 agreed to clear the ground / Mayor 2 asked Mayor 1 about
+                               some ground / Mayor 2 withdrew their request to Mayor 1)
+ok  and nobody in it is Mayor 0
+```
+
+Six rows became seven, which is the withdrawal that was never recorded.
+
+### One label widened the whole rail
+
+`reach_smoke` went red at **331 of 403** sampled map points, under its 85% bar, and the blocked
+table said how:
+
+```
+HEAD   rail-overlays 2  rail-budget 2  rail-saves 2  help 2  settings 2      351 of 403
+X4h    rail-overlays 4  rail-budget 4  rail-saves 4  help 6  settings 4      331 of 403
+```
+
+Every button doubled, including the two dialogs in `rail-extras` that this slice never touched. The
+rail is a flex **column**, so its width is the widest button's, and `hud.chronicle` was *"What
+happened"* against one-word neighbours — the strip went from one sampled column to two and took a
+fifth of the map's clickable share with it. `chrome-share-is-a-union` from the other end: the
+chrome is not a sum of panels, it is one shape, and the longest string in a shared column is a
+layout decision.
+
+`"History"` / `"Historikk"`, and the arm at HEAD is what proved it was the label and not the
+button: **349 of 403**, which is one new control costing two points, the honest price.
+
+`play_smoke` was red in the same run and green alone — and it is red for the same reason, since it
+clicks the map where the gate's own geometry says the map is.
+
+### Measured
+
+Suite **2,015 tests, 2,012 pass, 0 fail, 3 skipped, green twice**. `room` **216 s of a 300 s
+budget** — `room_smoke` 110 s, `room_churn` 58 s, `room_soak` 48 s — with the panel driven in both
+browsers and held to the same rows. **Four re-pins**, which is the honest count: the fields, the
+same fields once the chronicler was actually registered, the resolution's seats, and the filing's
+kind with the withdrawal. `quick` **544 s of 600** (it was 578 before M9 split `sim`).
+Era unchanged: nothing here changes what a city earns.

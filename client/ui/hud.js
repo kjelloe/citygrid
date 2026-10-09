@@ -35,6 +35,7 @@ import { inboxFor, ACTIONS, ACTION_LABELS, policyChoices } from "./inbox-model.j
 import { askTargetFor, defaultOffer } from "./ask-model.js";
 import { seatName, otherOwnerName } from "./seats.js";
 import { rosterFor, ROSTER_ACTIONS, ROSTER_LABELS } from "./roster-model.js";
+import { chronicleRows } from "./chronicle-model.js";
 import { PLAYER_ACTIVE, PLAYER_AFK } from "../../engine/constants.js";
 import { PING_MESSAGES, PING_LABELS } from "./ping-model.js";
 import { RESULT } from "../../shared/protocol.js";
@@ -653,6 +654,43 @@ export function createHud(root, {
     }
   }
 
+  // **What happened while you were away** (X4h). Built from `state.chronicle`,
+  // which is hashed state and therefore the same on every client — the alert
+  // list is the feed and this is the RECORD, and the difference is that a
+  // player who closed the tab still has this one.
+  const chronicleBar = el("div", "hud-chronicle");
+  let chronicleSignature;
+
+  function renderChronicle() {
+    const rows = chronicleRows(state);
+    // The same guard the inbox, the roster and the alert list have: `refresh()`
+    // runs twice a second in a room, and a row rebuilt under the cursor cannot
+    // be pressed.
+    const signature = rows.map((r) => `${r.tick}:${r.textKey}:${r.name}`).join("|");
+    if (signature === chronicleSignature) return;
+    chronicleSignature = signature;
+    chronicleBar.innerHTML = "";
+    if (rows.length === 0) {
+      chronicleBar.append(el("p", "chronicle-empty", t("chronicle.empty")));
+      return;
+    }
+    for (const row of rows) {
+      const line = el("div", "chronicle-row");
+      const words = t(row.textKey, { name: row.name, other: row.other ?? "" });
+      if (row.at && onFocusTile) {
+        // A row with a place is a button that takes the camera there, which is
+        // the shape a ping row already has in the alert list.
+        const go = el("button", "chronicle-at", words);
+        go.type = "button";
+        go.addEventListener("click", () => onFocusTile(row.at));
+        line.append(go);
+      } else {
+        line.append(el("span", undefined, words));
+      }
+      chronicleBar.append(line);
+    }
+  }
+
   const DRAWERS = [
     { key: "overlays", labelKey: "hud.overlays", body: overlayBar },
     { key: "budget", labelKey: "budget.tax", body: budgetBar },
@@ -674,6 +712,16 @@ export function createHud(root, {
   if (onSay) {
     DRAWERS.push({ key: "chat", labelKey: "hud.chat", body: chatBar });
   }
+  // Always: a singleplayer city has a history too — disasters, and the seat
+  // joining at the start — and a record that only existed in a room would be
+  // the one a returning player is most likely to be without.
+  //
+  // One word, like every other rail label. The rail is a flex COLUMN and its
+  // width is the widest button's, so "What happened" widened the whole strip
+  // from one sampled column to two and took `reach_smoke` from 351 to 331 of
+  // 403 — the chrome share is shared, which is `chrome-share-is-a-union` from
+  // the other end.
+  DRAWERS.push({ key: "chronicle", labelKey: "hud.chronicle", body: chronicleBar });
   let openKey;
   const railButtons = [];
   for (const entry of DRAWERS) {
@@ -1121,6 +1169,7 @@ export function createHud(root, {
   function refresh() {
     renderInbox();
     renderRoster();
+    renderChronicle();
     const bar = topBar(state, seat, previous);
     money.textContent = bar.money;
     trend.textContent = bar.trend > 0 ? "▲" : bar.trend < 0 ? "▼" : "—";

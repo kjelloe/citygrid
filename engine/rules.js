@@ -79,7 +79,11 @@ var RULES = {
     ceilingByRank: [4000, 12000, 30000, 60000],
     interestPerThousand: 6,
   },
-  multiplayer: { derelictYears: 5, absenceYears: 5, abandonYears: 5, requestExpiryMonths: 12, seasonYears: 25 },
+  // `absenceYears` is GONE since X4i (2026-10-09): X4b answered it in the other
+  // direction — regency runs on a wall clock, because a person's absence is
+  // real time and not sim time — so the number had no reader and could not get
+  // one. A rule nothing reads is a number that looks like a feature.
+  multiplayer: { derelictYears: 5, abandonYears: 5, requestExpiryMonths: 12, seasonYears: 25 },
   development: {
     _slope: "H6 (A100): the steepest step in elevation units between a tile and a four-neighbour that may still be zoned. Six, because that is the grade a STREET may climb: road.maxGrade is 15%, a tile is 20 m and an elevation step is 0.5 m, so 15% of 20 m is 3 m is six steps. You may not zone ground a street could not be built on. Measured over three 128 maps a style: it leaves rolling at 100% of its buildable tiles (93% are at 4 or less) and flat at 100%, and takes hilly from 100% to 41% - which is the point, and is still 17,000 tiles of city.",
     maxZoneSlope: 6,

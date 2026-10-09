@@ -18,7 +18,7 @@ export const PROTOCOL_VERSION = 3;
  * only ever compare two identical strings. `shared/build-hash.js` holds it. */
 export { buildHash, setBuildHash } from "./build-hash.js";
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** Client → server. */
 export const C2S = Object.freeze({

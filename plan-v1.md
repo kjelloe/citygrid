@@ -124,7 +124,7 @@ P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall 
 
 | Lane | Open |
 |---|---|
-| **Multiplayer** | hibernate to disk · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · a history that outlives the alert list · the lobby's remaining rows (`privacy`, `lateJoin`) · **X4i**: `absenceYears`, which X4b answered in the other direction — delete it, with the `SAVE_VERSION` bump that a hashed field list needs |
+| **Multiplayer** | hibernate to disk · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · ~~a history that outlives the alert list~~ (built: **X4h**, a capped ring in hashed state) · the lobby's remaining rows (`privacy`, `lateJoin`) · ~~**X4i**~~ (deleted, riding X4h's `SAVE_VERSION` 6 → 7) |
 | **World** | ~~S22~~ (built: the sun crosses the sky — and Q163, Q164 came out of it) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
 | **Behaviour** | B15 · B6's rain |
 | **Mainline** | ~~M7~~ (merged; **the push is Kjell's**) · ~~M9~~ (every set re-measured quiet, `sim` split) · M11 ("1 tiles") · ~~M10~~ (closed, A137) |

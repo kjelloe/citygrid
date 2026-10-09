@@ -44,6 +44,18 @@ function needsExistingActor(type) {
   return type !== CMD_TICK && type !== CMD_JOIN;
 }
 
+/** The chronicle's hook (X4h). A module rather than an import, for the reason
+ * every other system here is registered: adding one must never edit the
+ * reducer. `undefined` until `engine/chronicle.js` is loaded, which is what
+ * makes a tool that does not want a chronicle able to run without one — and
+ * what keeps `engine/` free of a cycle, since the chronicle reads `state` and
+ * the reducer must not know what is in it. */
+var chronicler;
+
+export function registerChronicler(fn) {
+  chronicler = fn;
+}
+
 export function apply(state, command) {
   if (!command || typeof command.type !== "string") return fail(RESULT.INVALID);
   // Own properties only. A lookup straight into the table would resolve
@@ -57,7 +69,14 @@ export function apply(state, command) {
     var allowed = canAct(state, command.actor);
     if (allowed !== RESULT.OK) return fail(allowed);
   }
-  return handler(state, command);
+  var outcome = handler(state, command);
+  // **After the command, not inside it.** Every handler returns its events and
+  // this is the one place they all pass through, so the record cannot miss a
+  // kind because somebody wrote a new handler and forgot — and it sees the
+  // deputy's commands on exactly the same terms as a player's, which is the
+  // half X4h is actually for.
+  if (chronicler && outcome && outcome.result === RESULT.OK) chronicler(state, outcome.events);
+  return outcome;
 }
 
 // --- the clock -------------------------------------------------------------

@@ -33,6 +33,12 @@ Ask in this order.
 3. **Is this a hash-inert addition?** A new subsystem whose state is empty or absent in the default
    game hashes to nothing, and the fixture never notices. This is the cheapest way to land a whole
    feature — check whether the change can be shaped that way before re-pinning.
+4. **Will the new field FILL in the fixture?** A system that registers itself by being imported
+   does nothing in a tool that does not import it, and the fixture builder is such a tool. X4h's
+   first pin recorded three cities that had a `chronicle` field and could never put a row in it —
+   green, pinned, and wrong. Before re-pinning, print the new field from a built fixture and look
+   at it; if it is empty, ask whether it is empty because the city is quiet or because nothing is
+   wired (`node-scripts-need-engine-side-effect-imports`).
 
 ## The ritual
 

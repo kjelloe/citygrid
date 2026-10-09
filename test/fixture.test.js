@@ -84,6 +84,7 @@ const HASHED_FIELDS = [
   "funding",
   "height",
   "history",
+  "chronicle",
   "jobs",
   "nextId",
   "options",

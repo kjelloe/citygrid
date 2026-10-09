@@ -51,6 +51,7 @@ import "../../engine/fire.js";
 import "../../engine/disasters.js";
 import "../../engine/traffic.js";
 import "../../engine/history.js";
+import "../../engine/chronicle.js";
 import "../../engine/requests.js";
 import { makeDeputy, deputyTurn } from "../../engine/deputy.js";
 import { isWater, isBuildable } from "../../engine/terrain.js";

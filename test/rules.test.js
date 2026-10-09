@@ -153,8 +153,12 @@ test("the tax drag table spans the whole tax range", () => {
 
 test("the multiplayer thresholds match the ruling", () => {
   assert.equal(balance.multiplayer.derelictYears, 5);
-  assert.equal(balance.multiplayer.absenceYears, 5);
   assert.equal(balance.multiplayer.seasonYears, 25);
+  // `absenceYears` left with X4i (2026-10-09). X4b answered it in the other
+  // direction — regency is a WALL clock, because a person's absence is real
+  // time and not sim time — so the number had no reader and could not get one.
+  assert.equal(balance.multiplayer.absenceYears, undefined,
+    "absenceYears is back, and nothing can read it");
 });
 
 // --- a duplicate key is not an error, which is the problem -------------------

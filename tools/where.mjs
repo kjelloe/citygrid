@@ -15,6 +15,7 @@ import "../engine/fire.js";
 import "../engine/disasters.js";
 import "../engine/traffic.js";
 import "../engine/history.js";
+import "../engine/chronicle.js";
 import "../engine/requests.js";
 
 const seed = Number(process.env.SEED ?? 2026);

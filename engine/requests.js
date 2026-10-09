@@ -252,7 +252,10 @@ register(CMD_WITHDRAW_REQUEST, function withdrawRequest(state, command) {
   if (request.from !== command.actor) return fail(RESULT.NOT_OWNER);
   request.status = WITHDRAWN;
   request.resolvedBy = command.actor;
-  return ok([{ kind: "requestWithdrawn", id: request.id }]);
+  // Who withdrew it and who it was against (X4h): an owner who was away
+  // should learn that the request waiting in their inbox is gone, and `id`
+  // alone cannot say that an hour later.
+  return ok([{ kind: "requestWithdrawn", id: request.id, from: request.from, to: request.to }]);
 });
 
 /**
@@ -306,16 +309,22 @@ register(CMD_RESOLVE_REQUEST, function resolveRequest(state, command) {
 
   // A nuisance report has no second answer: acknowledging it is all the channel
   // can do, which is the design's point — a civil outlet, not a lever (§25.4).
+  // **Who it was between, and who answered** (X4h). The event carried only an
+  // id and a status, which is enough for an alert that says "a request ended"
+  // and not enough for a RECORD a player reads an hour later — "Mayor 0 agreed
+  // to clear the ground" is what a row made from it looked like. `resolvedBy`
+  // is X3b's field and exists because an owner's approval and a neighbour's
+  // derelict override are different news.
   if (request.kind === REQUEST_NUISANCE) {
     request.status = ACKNOWLEDGED;
     request.resolvedBy = command.actor;
-    return ok([{ kind: "requestResolved", id: request.id, status: request.status }]);
+    return ok([{ kind: "requestResolved", id: request.id, status: request.status, from: request.from, to: request.to, by: request.resolvedBy }]);
   }
 
   if (!command.approve) {
     request.status = DECLINED;
     request.resolvedBy = command.actor;
-    return ok([{ kind: "requestResolved", id: request.id, status: request.status }]);
+    return ok([{ kind: "requestResolved", id: request.id, status: request.status, from: request.from, to: request.to, by: request.resolvedBy }]);
   }
 
   var done = approveRequest(state, request, command.actor);
@@ -357,7 +366,7 @@ function approveRequest(state, request, by) {
   return {
     result: RESULT.OK,
     events: [
-      { kind: "requestResolved", id: request.id, status: request.status },
+      { kind: "requestResolved", id: request.id, status: request.status, from: request.from, to: request.to, by: request.resolvedBy },
       { kind: "built", actor: request.to, tiles: committed.tiles, cost: bill },
     ],
   };
@@ -419,7 +428,7 @@ function requestPass(state) {
     if (policy === "decline") {
       request.status = DECLINED;
       request.resolvedBy = request.to;
-      events.push({ kind: "requestResolved", id: request.id, status: request.status });
+      events.push({ kind: "requestResolved", id: request.id, status: request.status, from: request.from, to: request.to, by: request.resolvedBy });
       continue;
     }
     if (policy === "approve") {
@@ -428,7 +437,7 @@ function requestPass(state) {
       if (request.kind === REQUEST_NUISANCE) {
         request.status = ACKNOWLEDGED;
         request.resolvedBy = request.to;
-        events.push({ kind: "requestResolved", id: request.id, status: request.status });
+        events.push({ kind: "requestResolved", id: request.id, status: request.status, from: request.from, to: request.to, by: request.resolvedBy });
         continue;
       }
       var answered = approveRequest(state, request, request.to);
@@ -442,12 +451,12 @@ function requestPass(state) {
     }
     if (request.kind === REQUEST_DEMOLITION && !anythingToRemove(state, request)) {
       request.status = MOOT;
-      events.push({ kind: "requestResolved", id: request.id, status: request.status });
+      events.push({ kind: "requestResolved", id: request.id, status: request.status, from: request.from, to: request.to, by: request.resolvedBy });
       continue;
     }
     if (state.tick >= request.expiresTick) {
       request.status = EXPIRED;
-      events.push({ kind: "requestResolved", id: request.id, status: request.status });
+      events.push({ kind: "requestResolved", id: request.id, status: request.status, from: request.from, to: request.to, by: request.resolvedBy });
     }
   }
   return events;

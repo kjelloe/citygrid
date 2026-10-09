@@ -85,6 +85,11 @@ export var HISTORY_FIELDS = [
   "crime", "congested", "demandR", "demandC", "demandI",
 ];
 
+/** A chronicle entry's integer fields, in the order they are hashed and copied
+ * (X4h). The KIND is a string and is written first, outside this list, exactly
+ * as a quest id is — a field list is for the numbers. */
+export var CHRONICLE_FIELDS = ["tick", "seat", "other", "x", "y", "status"];
+
 // --- department funding (gamedesign.md §9.4) --------------------------------
 
 /** The services that carry a funding level. These are the `service` values in
