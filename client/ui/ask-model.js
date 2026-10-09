@@ -14,6 +14,7 @@
 // interface that opens a form the reducer will reject is worse than one that
 // says why now.
 
+import { plural } from "../i18n.js";
 import { OWNER_NATURE, OWNER_COMMONS } from "../../engine/constants.js";
 
 /** What a request offers by default. §25.4's channel is civil rather than a
@@ -53,12 +54,10 @@ export function askTargetFor(state, tiles, seat) {
     to,
     toName: player?.name && player.name.length > 0 ? player.name : `Mayor ${to}`,
     tiles: count,
-    // **One tile is not "1 tiles".** The catalogue has no plural machinery —
-    // `hud.residents` is "{count} residents" and says "1 residents" too — and
-    // inventing one here would be a second rule for the rest of the game to
-    // disagree with. Two keys is the smallest honest fix, and it is here rather
-    // than in the panel so it is tested; the general gap is filed as its own
-    // item.
-    whatKey: count === 1 ? "ask.what.one" : "ask.what",
+    // **One tile is not "1 tiles"** — and M11 made that one rule rather than a
+    // choice made here. `plural()` picks `key.one` at exactly one, and
+    // `test/i18n.test.js` holds every counted string in the catalogue to
+    // having both forms.
+    whatKey: plural("ask.what", count),
   };
 }

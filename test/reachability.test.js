@@ -99,6 +99,19 @@ function reachable() {
   for (const m of source.matchAll(/"([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9-]+)+)"/g)) {
     if (known.has(m[1])) keys.add(m[1]);
   }
+  // **And `plural("key", n)` reaches `key.one` too** (M11). The key itself is
+  // a literal and the loop above finds it; the singular is the one form a
+  // scan cannot see, and it is the form the whole item exists to add. Without
+  // this, six live sentences read as dead the moment they learned to say "one
+  // resident" — `a-key-assembled-at-runtime-is-invisible`, one call deeper.
+  // Every quoted key inside a `plural(...)` call, because the first argument
+  // is as often a ternary as a literal — `plural(mine ? "sent" : "waiting", n)`
+  // is two keys and two singulars.
+  for (const call of source.matchAll(/\bplural\(([^)]*)\)/g)) {
+    for (const found of call[1].matchAll(/"([^"]+)"/g)) {
+      if (known.has(`${found[1]}.one`)) keys.add(`${found[1]}.one`);
+    }
+  }
 
   // Built at runtime. Each generator mirrors the expression in the code, and
   // the comment names where.

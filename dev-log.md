@@ -15257,3 +15257,88 @@ Suite **2,087 tests, 2,084 pass, 0 fail, 3 skipped, green twice**. `room`
 
 What is left of V4 is the half this machine cannot do: the same two gates
 against the **deployed** server, which is V5's evening.
+
+## M11 — "1 tiles" (2026-10-10)
+
+Found in X3b and filed then: the catalogue has **no plural machinery**. `t()`
+substitutes `{token}` and nothing else, so `"{count} residents"` has read
+*"1 residents"* since slice 4.1 — and X3b put the same shape into a sentence a
+player is asked to **act** on, *"Ask them to clear 1 tiles?"*, which is where it
+stops being a blemish.
+
+X3b fixed its own two sentences with a second key each, chosen inline, and said
+in a comment why it was not inventing a rule: *"a second rule for the rest of
+the game to disagree with is worse than two strings."* M11 is that rule, made
+once.
+
+### `plural(key, n)` and nothing else
+
+`key.one` at exactly one, `key` otherwise. Not a plural system: Norwegian's
+one-versus-many matches English's, and a language that needs more than two
+forms gets this function changed in one place, which is the reason it is a
+function rather than a ternary at each call site.
+
+Two decisions inside it, both about what is NOT one:
+
+- **Zero is plural** — "0 residents" — and zero is the number a readout spends
+  its first minute showing.
+- **A count that is not a number is plural too.** `undefined` must not pick a
+  sentence written for exactly one.
+
+And it falls back to `key` when `key.one` does not exist, because `t()` renders
+a missing key **as the key**: `hud.residents.one` on screen is worse than
+"1 residents".
+
+**The catalogue is a parameter**, defaulting to the live one. The choice IS a
+question about a catalogue, and a parameter is what lets `test/i18n.test.js`
+ask it of the files on disk — a browser's `fetch` cannot reach them from node,
+and a `setCatalogue` that only a test called would be a setter with no real
+caller, which this project has been bitten by twice.
+
+### The sweep the item asked for
+
+Eight counted strings, four of which had no singular: `hud.residents`,
+`hud.tiles`, `advisor.more` and `inbox.waiting.nuisance`. The item said the
+sweep was part of the work *"because the two found in X3b were found by reading
+a screenshot rather than by looking"* — so it is a test now: every key whose
+English carries `{count}`, `{tiles}` or `{n}` has a `.one` in both catalogues,
+or is listed with a reason.
+
+One is listed: `hud.slot.summary` ("Year 12, 1 residents") is a save-slot line,
+and a city with one resident is not a city anybody saved. The list cannot
+outlive what it exempts — a second assertion fails if it names a string that is
+no longer counted.
+
+And a singular that still carries `{count}` is a singular in name only, so that
+is checked too.
+
+### Two censuses went blind in the same moment
+
+`plural()` builds the key one call deeper than a literal, and both scans lost
+sight of six live sentences the moment they learned to say "one resident":
+
+- **the filler census** — "a templated key is either filled where it is named
+  or declared here" — looks for `t("key", {…})` and now also for
+  `t(plural("key", n), {…})`;
+- **the reachability census** reported `ask.what.one` and five others as keys
+  nothing can show. It reads every quoted key inside a `plural(...)` call now,
+  because the first argument is as often a ternary as a literal:
+  `plural(mine ? "inbox.sent.demolition" : "inbox.waiting.demolition", tiles)`
+  is two keys and two singulars.
+
+This is `a-key-assembled-at-runtime-is-invisible` for the third time, and the
+shape is worth naming: **a helper that chooses a key makes every key it chooses
+invisible to a scanner that knows only the call it replaced.** The fix is to
+teach the scanner the new shape in the same commit, not to spell the keys out
+again.
+
+### Measured
+
+Suite **2,090 tests, 2,087 pass, 0 fail, 3 skipped, green twice**; `quick`
+**522 s of 600**. On screen, in a room:
+
+```
+ok  a refused demolish offers to ask, and names the owner
+      (That ground is Mayor 1's. Ask them to clear one tile?)
+ok  the inbox draws the row, in words  (Mayor 2 asks you to clear one tile…)
+```

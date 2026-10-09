@@ -11,6 +11,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot, jsFilesIn, stripComments } from "./helpers/sources.js";
 import { RESULT, REFUSAL } from "../shared/protocol.js";
+import { plural } from "../client/i18n.js";
 import { DISASTER_NAMES } from "../engine/disasters.js";
 
 const dir = join(repoRoot, "data", "i18n");
@@ -282,6 +283,7 @@ const FILLED_BY_ITS_RENDERER = {
   "inbox.waiting.demolition": ["name", "tiles"],
   "inbox.waiting.demolition.one": ["name"],
   "inbox.waiting.nuisance": ["name", "tiles"],
+  "inbox.waiting.nuisance.one": ["name"],
   "inbox.sent.demolition": ["name", "tiles"],
   "inbox.sent.demolition.one": ["name"],
   "inbox.sent.nuisance": ["name"],
@@ -348,8 +350,14 @@ test("a templated key called by its own name is called with values", () => {
 /** Does anything call `t()` on this key by name, with values beside it? */
 function calledWithValues(key, sources) {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const call = new RegExp(`\\bt\\(\\s*["'\`]${escaped}["'\`]\\s*,`);
-  return sources.some((source) => call.test(source));
+  // Two shapes: `t("key", { … })` and `t(plural("key", n), { … })` (M11). The
+  // second is still a literal — that is the rule a runtime-assembled key broke
+  // three times — but the key is one call deeper, and a scan that only knew
+  // the first reported three live readouts as unfilled the moment they learned
+  // to say "one resident".
+  const direct = new RegExp(`\\bt\\(\\s*["'\`]${escaped}["'\`]\\s*,`);
+  const pluralised = new RegExp(`\\bt\\(\\s*plural\\(\\s*["'\`]${escaped}["'\`]`);
+  return sources.some((source) => direct.test(source) || pluralised.test(source));
 }
 
 test("a templated key is either filled where it is named or declared here", () => {
@@ -384,4 +392,82 @@ test("a declared key is one no scan could have checked", () => {
   const covered = Object.keys(FILLED_BY_ITS_RENDERER).filter((key) => calledWithValues(key, sources));
   assert.deepEqual(covered, [],
     `filled at a named call site after all, so the declaration is stale: ${covered.join(", ")}`);
+});
+
+// --- M11: a sentence with a number in it reads correctly at every number -----
+
+/**
+ * Counted strings that have NO singular form, each with the reason.
+ *
+ * The list is the decision. A key that carries a count and reads "1 residents"
+ * is a blemish on a readout and sloppiness at a decision point — X3b found
+ * *"Ask them to clear 1 tiles?"* in a sentence the player is asked to act on —
+ * so the default is that a counted string has two forms, and anything that
+ * does not says why here.
+ */
+const NO_SINGULAR = {
+  // A number beside a label rather than inside a sentence: "Year 12, 1
+  // residents" is the same shape, but this one is a summary line on a save
+  // slot where the count never reaches 1 in practice — a city with one
+  // resident has not been saved. Listed rather than fixed so the next reader
+  // sees it was considered.
+  "hud.slot.summary": "a save-slot summary; a city with one resident is not a city anybody saved",
+};
+
+test("every counted string has a singular, or says why it has none (M11)", () => {
+  // The catalogue has no plural machinery: `t()` substitutes `{token}` and
+  // nothing else. `plural()` picks between `key` and `key.one`, which is the
+  // whole of the rule — Norwegian's 1-vs-many matches English's, and a second
+  // rule for the rest of the game to disagree with is worse than two strings.
+  const counted = Object.entries(locales.en)
+    .filter(([key, text]) => /\{(count|tiles|n)\}/.test(text) && !key.endsWith(".one"))
+    .map(([key]) => key);
+  assert.ok(counted.length >= 5, `only ${counted.length} counted strings — this is scanning nothing`);
+
+  const missing = counted
+    .filter((key) => !Object.hasOwn(NO_SINGULAR, key))
+    .filter((key) => !Object.hasOwn(locales.en, `${key}.one`));
+  assert.deepEqual(missing, [],
+    `counted and with no singular: ${missing.join(", ")} — add a \`.one\` or list it in NO_SINGULAR`);
+
+  // And the list cannot outlive what it exempts.
+  const stale = Object.keys(NO_SINGULAR).filter((key) => !counted.includes(key));
+  assert.deepEqual(stale, [], `NO_SINGULAR names strings that are not counted: ${stale.join(", ")}`);
+});
+
+test("a singular form exists in every catalogue, and says ONE rather than {count} (M11)", () => {
+  for (const [name, catalogue] of Object.entries(locales)) {
+    for (const key of Object.keys(locales.en).filter((k) => k.endsWith(".one"))) {
+      assert.ok(typeof catalogue[key] === "string" && catalogue[key].length > 0,
+        `${name} has no ${key}`);
+      // A singular that still interpolates the count is a singular in name
+      // only: the whole point is that the sentence reads naturally at one.
+      assert.equal(/\{(count|tiles|n)\}/.test(catalogue[key]), false,
+        `${name}'s ${key} still carries a count token: "${catalogue[key]}"`);
+    }
+  }
+});
+
+test("plural() picks the singular at one and the plural everywhere else (M11)", () => {
+  // Including zero, which English counts as plural ("0 residents"), and which
+  // is the number a readout spends most of its first minute showing.
+  // The catalogue is passed in: these are the files on disk, where a browser's
+  // `fetch` cannot reach and where the decision actually has to be right.
+  for (const [name, catalogue] of Object.entries(locales)) {
+    assert.equal(plural("hud.residents", 1, catalogue), "hud.residents.one", name);
+    for (const n of [0, 2, 11, 100]) {
+      assert.equal(plural("hud.residents", n, catalogue), "hud.residents", `${name}: ${n} chose the singular`);
+    }
+    // A key with no singular at all falls back to itself rather than to a
+    // missing string — `t()` renders a missing key as the key, which on screen
+    // is "hud.slot.summary".
+    assert.equal(plural("hud.slot.summary", 1, catalogue), "hud.slot.summary", name);
+    assert.equal(plural("nothing.here", 1, catalogue), "nothing.here", name);
+    // And a count that is not a number is not a singular: `undefined` reads as
+    // "many" rather than throwing or picking "one".
+    for (const odd of [undefined, null, NaN, "1"]) {
+      assert.equal(plural("hud.residents", odd, catalogue), "hud.residents",
+        `${name}: ${String(odd)} chose the singular`);
+    }
+  }
 });

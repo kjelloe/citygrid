@@ -117,14 +117,17 @@ option loses its redundant value, hibernated codes are indexed at boot, and the 
 
 P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall at 2 m, bulldoze priced at 5 in one era with quests loaded into the tools, the stall left at 28.6 ms with W6c held for the room, block spacing 3, the classic skin kept, and a sun that crosses a quarter of the sky at a rate in data.
 
-**What is unblocked and unbuilt, 2026-10-08**, by lane and cheapest first:
+**What is unblocked and unbuilt, 2026-10-10**, by lane and cheapest first. **v1.0's code is
+done**: V1–V4 are built (`workitems-v1.md`), and what is left of the milestone is V5 — Kjell's
+evening on a deployed box — and M7b's tag and push after it. Everything below is v1.1's, and the
+top of v1.1 is written on the night rather than here.
 
 | Lane | Open |
 |---|---|
-| **Multiplayer** | ~~hibernate to disk~~ (built: **X4f** — the reaper writes the room out and the door reads it back) · ~~`splitRule`/`mutualAid`/`disasterAid`~~ (built: **X4g**, measured as **era 31** on a new four-seat sweep) · ~~a history that outlives the alert list~~ (built: **X4h**, a capped ring in hashed state) · the lobby's remaining rows (`privacy`, `lateJoin`) · ~~**X4i**~~ (deleted, riding X4h's `SAVE_VERSION` 6 → 7) |
-| **World** | ~~S22~~ (built: the sun crosses the sky — and Q163, Q164 came out of it) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
+| **Multiplayer** | **Nothing unblocked.** X4f, X4g (era 31), X4h, X4i, X2d's last rows, X6 and X7 all built 2026-10-09; `privacy` is the one unread option left and it cannot mean anything until there is a room list (v1.2). What remains is V5's evening and the deployed-server half of V4 |
+| **World** | ~~S22~~ · ~~S22b~~ (the sun stands where its shadows can be seen — and the frames Q164 was argued from had none) · ~~S22c~~ (the lit styles took the real light) · ~~S18c~~ · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
 | **Behaviour** | B15 · B6's rain |
-| **Mainline** | ~~M7~~ (merged; **the push is Kjell's**) · ~~M9~~ (every set re-measured quiet, `sim` split) · M11 ("1 tiles") · ~~M10~~ (closed, A137) |
+| **Mainline** | ~~M7~~ (merged; **the push is Kjell's**) · ~~M9~~ · ~~M12~~ (the box: config, origin check, `/healthz`, one server, `DEPLOYING.md`) · **M11** ("1 tiles") · ~~M10~~ (closed, A137) · M7b after V5 |
 | **Rules / worker / measurement** | ~~L2~~ **with ~~D8b~~ folded in** — built as **era 30** · W6c **held** until the room is played (A134) · W6d (Q161) · what is left of D8b: the picture tools still build quest-free cities, which is its own re-shoot |
 | **Waiting on hardware** | F3, D3, the rest of D5 — all need a phone |
 

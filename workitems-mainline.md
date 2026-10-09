@@ -221,7 +221,7 @@ balance eras: the page names `782e759` from 2026-09-08 and says every commit sin
 
 **Done when** `main` is `dev_night`, the page names its own commit, and Kjell has pushed.
 
-## M11 — "1 tiles" (S, i18n) — found in X3b, 2026-10-08
+## ~~M11~~ — "1 tiles" (S, i18n) — found in X3b, **built 2026-10-10**
 
 **Goal.** A sentence with a number in it reads correctly at every number.
 
@@ -247,6 +247,13 @@ of several screens. (a) is the smaller change and the one X3b has already half-b
 **Tests first.** `test/i18n.test.js`: every key whose English contains `{count}` or `{tiles}` has a
 `.one` form in both catalogues, or is listed with a reason. That is the shape this project uses for
 every other catalogue rule, and it is what stops the next counted string shipping without one.
+
+**Built** as (a): `plural(key, n)` in `client/i18n.js`, with the catalogue as a defaulted parameter
+so the test can ask it of the files on disk. Four counted strings had no singular and have one now;
+`hud.slot.summary` is listed with its reason. The sweep is the test. And both catalogue censuses
+had to learn the new shape in the same commit — `plural()` puts the key one call deeper, so the
+filler scan and the reachability scan each lost sight of six live sentences
+(`a-key-assembled-at-runtime-is-invisible`, a third time).
 
 ## M10 — The three skins, and whether the classic one is the right classic (S) — P108, 2026-10-07 — **closed 2026-10-08 (A137): `retro` stays as built**
 

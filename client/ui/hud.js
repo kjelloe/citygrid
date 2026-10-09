@@ -25,7 +25,7 @@ import { budgetPanel, fundingRows, fundingSteps, loanSteps, repaySteps } from ".
 import { TOOLS } from "../input/tools.js";
 import { buildingCost } from "../../engine/utilities.js";
 import { rankOf } from "../../engine/unlock.js";
-import { t } from "../i18n.js";
+import { t, plural } from "../i18n.js";
 import { makeRoving } from "./roving.js";
 import { createCameraCluster } from "./camera-cluster.js";
 import { createControlsCard } from "./controls-card.js";
@@ -1009,7 +1009,7 @@ export function createHud(root, {
       advisor.append(options);
     }
     if (waiting.length > 1) {
-      advisor.append(el("p", "tracker", t("advisor.more", { count: waiting.length - 1 })));
+      advisor.append(el("p", "tracker", t(plural("advisor.more", waiting.length - 1), { count: waiting.length - 1 })));
     }
   }
 
@@ -1242,7 +1242,7 @@ export function createHud(root, {
     money.textContent = bar.money;
     trend.textContent = bar.trend > 0 ? "▲" : bar.trend < 0 ? "▼" : "—";
     trend.className = `hud-trend ${bar.trend > 0 ? "up" : bar.trend < 0 ? "down" : "flat"}`;
-    pop.textContent = t("hud.residents", { count: bar.population });
+    pop.textContent = t(plural("hud.residents", bar.population), { count: bar.population });
     date.textContent = t("hud.date", { year: bar.year, month: bar.month });
 
     for (const b of rciBars(state)) {
@@ -1370,7 +1370,7 @@ export function createHud(root, {
     const refused = preview.result !== undefined && preview.result !== RESULT.OK;
     readout.textContent = refused
       ? `${t(`result.${preview.result}`, valuesFor(preview.result, preview.at))}${cost}`
-      : `${t("hud.tiles", { count: preview.tiles })}${cost}`;
+      : `${t(plural("hud.tiles", preview.tiles), { count: preview.tiles })}${cost}`;
     if (refused) readout.dataset.result = preview.result;
     else delete readout.dataset.result;
   }

@@ -22,6 +22,7 @@
 
 import { TICKS_PER_MONTH } from "../../engine/constants.js";
 import { seatName } from "./seats.js";
+import { plural } from "../i18n.js";
 import { REQUEST_POLICIES } from "../../engine/requests.js";
 
 export const ACTIONS = Object.freeze({
@@ -60,14 +61,15 @@ function wasForced(request) {
 function textKeyFor(request, seat, tiles) {
   const mine = request.from === seat;
   if (request.status === PENDING) {
-    if (request.kind === "nuisance") return mine ? "inbox.sent.nuisance" : "inbox.waiting.nuisance";
-    // One tile is not "1 tiles". The catalogue has no plural machinery and
-    // inventing some here would be a second rule for the rest of the game to
-    // disagree with (`hud.residents` says "1 residents" too) — so the two
-    // sentences that count tiles carry a second key, and the gap itself is
-    // filed as its own item.
-    if (tiles === 1) return mine ? "inbox.sent.demolition.one" : "inbox.waiting.demolition.one";
-    return mine ? "inbox.sent.demolition" : "inbox.waiting.demolition";
+    // **One tile is not "1 tiles"** — and since M11 that is one rule rather
+    // than a pair of keys chosen here. `plural()` picks `key.one` at exactly
+    // one and `key` otherwise, and `test/i18n.test.js` holds every counted
+    // string in the catalogue to having both forms, so the next one cannot
+    // ship without them.
+    if (request.kind === "nuisance") {
+      return plural(mine ? "inbox.sent.nuisance" : "inbox.waiting.nuisance", tiles);
+    }
+    return plural(mine ? "inbox.sent.demolition" : "inbox.waiting.demolition", tiles);
   }
   if (wasForced(request)) return mine ? "inbox.settled.youCleared" : "inbox.settled.wasCleared";
   switch (request.status) {
