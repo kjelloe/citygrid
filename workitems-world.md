@@ -699,13 +699,22 @@ harness (`SUN_RADIUS=` and `?sunRadius=`), with the bound at 100 between the two
 had no shadow anybody could see — 8% darker than the lit grass — and nothing in the gate had ever
 looked at the ground.
 
-## S22c — The lit styles take the real light (S) — A140 (Q163)
+## ~~S22c~~ — The lit styles take the real light (S) — A140 (Q163) — **built 2026-10-09**
 
 `building-kit.js` and `detail-kit.js`'s compass shade (S 0.88 / E 0.8 / N 0.7 / W 0.62) is dropped
 on `plain` and `painted` and kept on `pixel`, where the bake is the light. `test/toon.test.js`'s
 form test stays for pixel and gains the inverse for the lit styles: a building's four sides at noon
 differ by the LIGHT, measured in a shot, not by the bake. Gate: the compare sheet's terrace row at
 three hours, and `budget_gate` unmoved (colour, not geometry).
+
+**Built.** `faceContrastFor` returns 0 for `plain` and `painted` and 1.3 for `pixel`; the kits still
+push the nine compass faces, because pixel is built from the same geometry, and `test/toon.test.js`
+keeps the count as a tripwire beside the new inverse rule. Two tests had to stop claiming what the
+change made false — "each style bakes a different contrast" is now "three styles are still three,
+and the RIG tells them apart". The sheet's three terrace rows found two defects by eye: `time:
+"dawn"` and `time: "dusk"` are not presets (the list in the test was its own guess; it is derived
+from `DEFAULTS.presets` now, and the sun's direction is the separate `hour` field), and the terrace
+row renders a region to the horizon where its caption promises a street (**Q168**).
 
 ## S22 — A sun that moves, and a moon that takes over (M, renderer) — P109, analysed 2026-10-08 — the item as written
 

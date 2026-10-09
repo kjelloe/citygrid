@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { repoRoot, stripComments } from "./helpers/sources.js";
 import { RAMPS, rampBytes } from "../client/render/ramps.js";
 import { lightingFor, faceContrastFor } from "../client/render/style-light.js";
+import { setFaceContrast, shade } from "../client/render/detail-kit.js";
 import { PALETTES } from "../client/render/palettes.js";
 import { STYLES } from "../client/render/style-table.js";
 import { simulate, distance } from "./helpers/colour-vision.js";
@@ -122,14 +123,43 @@ test("the anime rig is a temperature split, not a dimmer", () => {
     `fill ${anime.fill} against key ${anime.key} — the shadow side will be black`);
 });
 
-test("the toon ramp already quantises, so the baked contrast comes down", () => {
-  // Face contrast is baked into every vertex at build time and a ramp quantises
-  // on top of it; at 1.0 the two multiply and a wall reads as two flat sheets.
-  assert.ok(faceContrastFor("painted") <= 0.4,
-    `painted bakes ${faceContrastFor("painted")} of face contrast on top of a ramp`);
-  assert.ok(faceContrastFor("painted") > 0, "a style with no baked contrast at all loses its form");
-  assert.equal(faceContrastFor("plain"), 0.65, "plain's contrast moved");
-  assert.equal(faceContrastFor("pixel"), 1.3, "pixel's contrast moved");
+test("an unlit style bakes its light, and a lit one no longer does (S22c, A140)", () => {
+  // **The sun that moves is the sun that shades** (A140, Q163). `building-kit`
+  // and `detail-kit` push a fixed compass shade — S 0.88 / E 0.8 / N 0.7 /
+  // W 0.62 — into every roof, gable and prop, which is a sun DIRECTION frozen
+  // into the geometry. S22 gave the city a sun that crosses the sky; a baked
+  // direction underneath it is the light arguing with itself, and as rendered
+  // the baked sides spanned 18.3% of the range on `plain`.
+  //
+  // `pixel` keeps it and must: that style is UNLIT (`lightingFor` gives it
+  // `key: 0`), so the bake is its only light and a style with no baked contrast
+  // at all loses its form — which is what this test has defended since P1.
+  assert.equal(faceContrastFor("pixel"), 1.3, "pixel's contrast moved, and pixel has no other light");
+  assert.ok(faceContrastFor("pixel") > 1, "an unlit style must bake MORE than the shades as written");
+
+  // And the inverse, which is S22c: a lit style bakes nothing, so every face it
+  // shows is shaded by the light that is actually in the scene.
+  for (const style of ["plain", "painted"]) {
+    assert.equal(faceContrastFor(style), 0,
+      `${style} still bakes a compass direction under a sun that moves`);
+    assert.ok(lightingFor(style).key > 0, `${style} bakes nothing and is not lit either`);
+  }
+});
+
+test("with nothing baked, every face comes out of the kit the same colour (S22c)", () => {
+  // The arithmetic under the row above, at the place it is applied: `shade()`
+  // pulls a value towards white by the contrast, so a contrast of 0 makes the
+  // four compass shades one value and the geometry carries no direction at all.
+  setFaceContrast(faceContrastFor("plain"));
+  const faces = [0.88, 0.8, 0.7, 0.62, 1.0].map((v) => shade(v));
+  assert.equal(new Set(faces).size, 1, `the kit still bakes ${new Set(faces).size} shades`);
+  assert.equal(faces[0], 1, "a flat bake must be WHITE, or every building is tinted");
+
+  // pixel, the other way: five shades stay five.
+  setFaceContrast(faceContrastFor("pixel"));
+  assert.equal(new Set([0.88, 0.8, 0.7, 0.62, 1.0].map((v) => shade(v))).size, 5,
+    "pixel lost the only light it has");
+  setFaceContrast(1);
 });
 
 test("the scene builds the lights the rig names, and no others", () => {
@@ -240,14 +270,11 @@ test("the slab's bake has no direction left in it (S22)", () => {
   // what is baked is TOP against SIDE: direction-free, because the sun is
   // always above, and still enough form for the pixel style's unlit material.
   //
-  // The contrast multipliers stay pinned — they are the art direction
-  // (`specs/art-direction.md` §3) and three styles depend on them. The call is
-  // read as source because `style-assets.js` imports three and node cannot load
-  // it; what is asserted is that the two side faces take ONE shade, which is
-  // the claim, rather than the characters the mean happens to be spelled with.
-  assert.equal(faceContrastFor("plain"), 0.65, "the soft rig's baked contrast moved");
-  assert.equal(faceContrastFor("painted"), 0.3, "the toon ramp's baked contrast moved");
-  assert.equal(faceContrastFor("pixel"), 1.3, "the pixel style's baked contrast moved");
+  // The contrast multipliers are the test above's business now (S22c took the
+  // lit styles to 0); what is asserted here is the SLAB's own claim — that its
+  // two side faces take one shade, so the mesh carries no direction whatever
+  // the contrast is. The call is read as source because `style-assets.js`
+  // imports three and node cannot load it.
   const assets = readFileSync(join(repoRoot, "client", "render", "style-assets.js"), "utf8");
   const call = /tintFaces\(box, \{([^}]*)\}\)/.exec(assets);
   assert.ok(call, "slabGeometry no longer calls tintFaces at all");
@@ -266,8 +293,15 @@ test("the kit's compass shades are still a frozen azimuth, and it is counted (Q1
   // where the bake is.
   //
   // This keeps the count honest, it does not forbid the shades: the pixel style
-  // is unlit, so for it the bake IS the light. Q163 is whether the lit styles
-  // give theirs up, and that is a restyle rather than a slice.
+  // is unlit, so for it the bake IS the light, and the geometry it needs is the
+  // geometry every style is built from.
+  //
+  // **Q163 was answered as A140 and built as S22c**: the lit styles give theirs
+  // up through `faceContrastFor`, which is 0 for them now, so these nine faces
+  // come out of `shade()` as one colour on `plain` and `painted` and as nine on
+  // `pixel`. The count stays here as the tripwire that the GEOMETRY did not
+  // move — a tenth compass face would be a new frozen azimuth for the one style
+  // that cannot drop it.
   for (const file of ["building-kit.js", "detail-kit.js"]) {
     const source = stripComments(readFileSync(join(repoRoot, "client", "render", file), "utf8"));
     const pushes = source.match(/push(?:Quad|Tri)\s*\(/g) ?? [];

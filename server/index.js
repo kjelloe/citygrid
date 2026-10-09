@@ -491,8 +491,6 @@ export async function startServer({
     port: http.address().port,
     host: bind,
     config,
-    /** What `/health` answers, for a test that would rather call than curl. */
-    health,
     /** The room this process booted with. Hosted rooms are reached through
      * `rooms`, by the code their host was given. */
     room,

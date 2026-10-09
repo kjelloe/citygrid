@@ -197,31 +197,25 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**0 open questions** are on the list (`dev-questions.md`, bottom section), none blocking anything —
-each one is a picture, a rung or an improbability that a slice measured and handed back rather than
-choosing for itself.
+**2 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
+anything — both are instruments rather than rules, and both were found by looking at a picture.
 
-- **Q166**: a shared treasury and a split treasury are the same arithmetic — the whole difference
-  over 200 four-seat games is the rounding remainder. Should `shared` become a real single purse,
-  or should the option lose a value?
-- **Q165**: a new room's code is refused if a live room holds it and not if a hibernated one does,
-  because asking the disk would make the door asynchronous. Two in a million with 64 rooms held,
-  and the cost is one sleeping city left unreachable until `prune`. Guard it, or leave it written
-  down where it is?
-- **Q161**: a junction laid mid-street deletes the pavement somebody was standing on, and the
-  geometric re-seat moves them up to 6.2 m. Keep their side of the street, walk them out, or leave
-  it and write down that two people in four hundred moving once per build is below what anybody can
-  see? (W6d, one function.)
-- **Q162**: the wall's rung was chosen from a ladder of 264 faced shoulders against 130, and those
-  are **era 28's** numbers — B14 paves a fifth of the city instead of a third, so a hilly 128 now
-  reads 24 / 5 / 2 at 1.2 / 2 / 3 m. Is two metres still the rung?
-- **Q163**: `building-kit.js` and `detail-kit.js` push nine faces each with a COMPASS shade, which
-  is a sun direction frozen into every roof and prop — 18.3% of spread on `plain`, 40% on `pixel`,
-  against the 5.6% S22 removed from the slab. Do the lit styles give theirs up? It is a restyle
-  rather than a slice, and the pixel style is unlit, so for it the bake IS the light.
-- **Q164**: the sun crosses the sky now and reads quietly at midday, because the key light stands
-  at **83.4°** of elevation at noon (62.4° at dusk, where it reads well). Stand it further out so
-  the shadows lengthen?
+- **Q168**: the compare sheet's **terrace** row is captioned "close and low over a residential
+  street — the zoom where facades, doors and front gardens have to carry it", and what it renders
+  is a region to the horizon with a lake in it. `span: 15` at `pitch: 26°` is a perspective camera
+  at a shallow angle, so fifteen tiles across the near field still shows everything behind them.
+  The one row aimed at facades has never photographed any. Re-frame it, or is the wide view wanted?
+- **Q167**: **sixteen tools stand up their own static server**, `tools/screenshot.mjs` among them —
+  so every picture this project has taken was served by a harness rather than by the server a
+  player uses. M12 moved the three gates whose premise IS the real server and found a live CSP bug
+  in one run doing it. Should the rest follow, starting with `screenshot.mjs`?
+
+**Q161–Q166 were answered on 2026-10-09 as A139–A144** (P114) and the work is done or scheduled:
+the sun stands further out (**S22b**, built — and the frames it was argued from turned out to have
+no shadow anybody could see), the lit styles give up their baked compass shade (**S22c**, built),
+the wall stays at two metres, the re-seated pedestrian stays where the geometry puts it (W6d
+closed), room codes are read off the disk at boot (**A143**, built in M12), and the treasury option
+loses its redundant value (X2d's row).
 
 The seven the week raised were answered on 2026-10-08 as **A132–A138** (P111), and what each one
 left behind is work rather than a question:

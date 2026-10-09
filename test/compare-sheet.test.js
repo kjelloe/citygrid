@@ -16,17 +16,49 @@ import { readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { VIEWS } from "../tools/compare_sheet.mjs";
+import { DEFAULTS } from "../client/world/config.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const references = () => readdirSync(join(root, "debugging"))
   .filter((name) => /^transport-world-.*\.png$/.test(name));
 
-test("every reference in debugging/ is matched by exactly one view", () => {
+test("every reference in debugging/ is aimed at by at least one view", () => {
   // The lane's whole point is the comparison. A reference Kjell added and
   // nothing aims at is the same failure as a command with no control
   // (ruling 026): absent, and silent about it.
-  const matched = VIEWS.map((v) => v.reference).sort();
-  assert.deepEqual(matched, references().sort());
+  //
+  // **At least one, not exactly one** (S22c): the terrace is shot at three
+  // HOURS against the one reference it was drawn at, because the lit styles
+  // bake no compass shade any more and a facade's form comes from the light —
+  // which can only be judged by seeing one street under three suns. The
+  // direction that matters is still exact: a reference nothing aims at.
+  const aimed = new Set(VIEWS.map((v) => v.reference));
+  assert.deepEqual([...aimed].sort(), references().sort());
+});
+
+test("two views of one reference differ by exactly one thing", () => {
+  // Three rows against `transport-world-3.png` is only worth the sheet's space
+  // if the rows differ by the HOUR and nothing else — same camera, same city,
+  // same style. Two rows that moved the camera as well would compare two
+  // framings and call the difference light.
+  const byReference = new Map();
+  for (const view of VIEWS) {
+    if (!byReference.has(view.reference)) byReference.set(view.reference, []);
+    byReference.get(view.reference).push(view);
+  }
+  for (const [reference, views] of byReference) {
+    if (views.length < 2) continue;
+    // The hour is TWO fields: `time` picks the colour preset and `hour` the
+    // sun's place on its arc, because a preset name is not a time of day —
+    // there are four of them (`day`, `sunset`, `night`, `rain`) and the arc is
+    // continuous. Everything else — camera, city, style — has to match.
+    const frames = views.map(({ id, reference: r, note, time, hour, ...rest }) => JSON.stringify(rest));
+    assert.equal(new Set(frames).size, 1,
+      `the ${views.length} views of ${reference} differ by more than the hour`);
+    const hours = views.map((v) => `${v.time}@${v.hour ?? "default"}`);
+    assert.equal(new Set(hours).size, views.length,
+      `two views of ${reference} are at the same hour (${hours.join(", ")})`);
+  }
 });
 
 test("every view names a reference that is actually there", () => {
@@ -74,11 +106,25 @@ test("the city is played, not seeded", () => {
   }
 });
 
-test("the views are the real camera's modes and the real styles", () => {
+test("the views are the real camera's modes, styles and HOURS", () => {
+  // **The hour list is derived, and it used to be a guess.** This test pinned
+  // `["day", "dusk", "night", "dawn"]`, and the renderer's presets are `day`,
+  // `sunset`, `night` and `rain` — so two of the four names it allowed do not
+  // exist, and a row naming one gets `day` silently. S22c's first three terrace
+  // rows did exactly that and came out as the same street in the same light
+  // three times; the sheet is the only thing that said so.
+  const hours = Object.keys(DEFAULTS.presets);
+  assert.ok(hours.length >= 3, `only ${hours.join(", ")} — this is scanning nothing`);
   for (const view of VIEWS) {
     assert.ok(["city", "ortho"].includes(view.mode), `${view.id}: mode ${view.mode}`);
     assert.ok(["plain", "painted", "pixel"].includes(view.style), `${view.id}: style ${view.style}`);
-    assert.ok(["day", "dusk", "night", "dawn"].includes(view.time), `${view.id}: time ${view.time}`);
+    assert.ok(hours.includes(view.time),
+      `${view.id}: time "${view.time}" is not a preset — the presets are ${hours.join(", ")}`);
+    // And the sun's place on its arc, where a row names one: a fraction of the
+    // day, which is what `?hour=` takes.
+    if (view.hour !== undefined) {
+      assert.ok(view.hour >= 0 && view.hour < 1, `${view.id}: hour ${view.hour} is not a day fraction`);
+    }
   }
 });
 

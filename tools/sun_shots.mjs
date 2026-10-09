@@ -326,7 +326,35 @@ if (cfg.sun.arcSteps > 0) {
         n += 1; sx += x; sy += y;
       }
     }
-    return { lit: litG, shaded: n, x: n ? Math.round(sx / n) : -1, y: n ? Math.round(sy / n) : -1 };
+    // **And the building's faces** (S22c). The kits used to push a fixed
+    // compass shade into every wall, so a building had form whether or not
+    // anything lit it. The lit styles bake nothing now, which means the form
+    // has to come from the light — and if it does not, every wall in the city
+    // is one flat colour and the style is broken in a way no unit test can
+    // see. Walls are the un-green, un-sky pixels above the ground band.
+    let walls = 0;
+    const bands = new Map();
+    // The middle band only: above it is sky, and a DUSK sky is warm olive
+    // rather than blue, so a "not green, not blue" rule counts it as wall and
+    // reports a quarter of a million wall pixels. Measured on the band the
+    // buildings are actually in.
+    for (let y = Math.floor(h * 0.3); y < from; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        const i = (y * w + x) * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        if (g > r && g > b) continue;             // foliage and grass
+        if (b > r && b > g) continue;             // sky
+        const lum = Math.round((r * 0.3 + g * 0.6 + b * 0.1) / 4);
+        walls += 1;
+        bands.set(lum, (bands.get(lum) ?? 0) + 1);
+      }
+    }
+    // A band worth counting is one that covers a real area, not a seam.
+    const solid = [...bands.values()].filter((n) => n > walls * 0.01).length;
+    return {
+      lit: litG, shaded: n, x: n ? Math.round(sx / n) : -1, y: n ? Math.round(sy / n) : -1,
+      walls, faceBands: solid,
+    };
   }`;
   const browser = await chromium.launch({ args: ["--no-sandbox"] });
   const page = await browser.newPage();
@@ -350,13 +378,23 @@ if (cfg.sun.arcSteps > 0) {
     if (!frame) continue;
     shade[label] = await measure(frame.file);
     console.log(`${label}: ${shade[label].shaded} shadowed ground pixels, centred at `
-      + `(${shade[label].x}, ${shade[label].y}), lit grass green ${shade[label].lit}`);
+      + `(${shade[label].x}, ${shade[label].y}), lit grass green ${shade[label].lit}; `
+      + `${shade[label].walls} wall pixels across ${shade[label].faceBands} tones`);
   }
   await browser.close();
 
   for (const [label, got] of Object.entries(shade)) {
     if (got.shaded < 2000) {
       problems.push(`${label} has ${got.shaded} shadowed ground pixels — nothing is casting one`);
+    }
+    // **The form, now that nothing is baked** (S22c). `plain` gives up the
+    // compass shade the kits used to push into every wall, so a building's
+    // sides are told apart by the LIGHT or not at all. One tone across every
+    // wall in frame is the P1 failure — "a style with no baked contrast loses
+    // its form" — happening to the style that is supposed to be lit instead.
+    if (got.faceBands < 4) {
+      problems.push(`${label} has ${got.walls} wall pixels in ${got.faceBands} tone(s): with the `
+        + "bake gone, the light is not giving the buildings their form");
     }
   }
   if (shade.noon?.shaded >= 2000 && shade.dusk?.shaded >= 2000) {

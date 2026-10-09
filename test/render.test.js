@@ -165,20 +165,28 @@ test("every style palette differs from every other", () => {
 
 // --- style separation -------------------------------------------------------
 
-test("each style bakes a different face contrast", () => {
-  // This is the setting that made the three candidates look alike: the shading
-  // is baked into every vertex at build time, so it dominates the lights. If
-  // two styles bake the same contrast they will read as one style with two
-  // colour schemes, which is exactly the mistake that was called out.
-  const contrasts = ["plain", "pixel", "painted"].map(faceContrastFor);
-  assert.equal(new Set(contrasts).size, 3, `two styles bake the same contrast: ${contrasts}`);
-  // Plain is the soft one and pixel is unlit, so the bake IS its light.
-  // Painted bakes LEAST since P1, and that is the point: its toon ramp does the
-  // quantising, so baked contrast on top of it multiplies and a wall reads as
-  // two flat sheets. Plain has no ramp and has to bake its own form.
-  assert.ok(faceContrastFor("painted") < faceContrastFor("plain"),
-    "painted bakes as hard as plain, on top of a ramp that already quantises");
-  assert.ok(faceContrastFor("pixel") > faceContrastFor("painted"), "pixel is unlit and needs the hardest bake");
+test("three styles are still three, and it is the LIGHT that tells them apart", () => {
+  // This test used to say "each style bakes a different face contrast", and the
+  // mistake it was written for is real: the shading is baked into every vertex
+  // at build time, so if two styles bake the same thing they read as one style
+  // with two colour schemes, which is exactly what was called out at P1.
+  //
+  // **S22c moved where the difference lives** (A140 ← Q163). `plain` and
+  // `painted` bake NOTHING now — a compass shade under a sun that crosses the
+  // sky is a frozen azimuth arguing with a moving one — so they can no longer
+  // differ there, and must differ where a style ought to: in the rig.
+  const contrasts = ["plain", "painted"].map(faceContrastFor);
+  assert.deepEqual(contrasts, [0, 0], "a lit style is baking a direction again");
+  assert.ok(faceContrastFor("pixel") > 1, "pixel is unlit and the bake is its only light");
+
+  const rigs = ["plain", "pixel", "painted"].map(lightingFor);
+  // Each rig is a different composition, and the cheapest proof is that no two
+  // agree on the key: pixel has none at all, and the other two are a soft
+  // diorama against an anime rig with a cool fill.
+  const keys = rigs.map((r) => r.key);
+  assert.equal(new Set(keys).size, 3, `two styles light the same way: ${keys}`);
+  assert.equal(lightingFor("pixel").key, 0, "the unlit style grew a key light");
+  assert.ok(lightingFor("painted").fill > 0, "the anime rig lost the fill that colours its shadow");
 });
 
 test("plain is lit softly and painted is not", () => {

@@ -382,7 +382,7 @@ client half below, which waits for the playtest (A125).
   injectable clock, 100 ms): drain the inbound queue, assign `seq`, validate through `apply`,
   advance the ticks the speed owes, broadcast one frame `{tick, seq, cmds[]}` serialised once,
   record the gap in a jitter ring (plan §3.6). The state hash rides the frame once a sim-month.
-- `server/index.js`: the static client (what `tools/serve.mjs` does today — one server, not two)
+- `server/index.js`: the static client as well as the rooms — **one server, not two**, which M12 finally made true by deleting `tools/serve.mjs`
   plus `/ws`. `HELLO` → `compatible()` → `WELCOME` with seat, token and snapshot, or `REFUSED`
   with the reason; allowlist-validated inbound frames; `LIMITS` enforced; per-seat rate limits as
   a `RATE_LIMITED` result, never a disconnect.

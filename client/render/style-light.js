@@ -9,16 +9,31 @@
 // vertex at build time, so it dominates whatever the lights do afterwards. A
 // style that wants soft light has to bake soft shading too.
 
-/** How hard this style bakes its face shading. See detail-kit's `contrast`. */
+/**
+ * How hard this style bakes its face shading. See detail-kit's `contrast`.
+ *
+ * **Only the unlit style bakes anything now** (S22c, A140 ← Q163). The kits
+ * push a fixed compass shade — S 0.88 / E 0.8 / N 0.7 / W 0.62 — into every
+ * roof, gable and prop, which is a sun DIRECTION frozen into the geometry. S22
+ * gave the city a sun that crosses the sky and S22b stood it where its shadows
+ * can be seen; a baked direction underneath that is the light arguing with
+ * itself, and as rendered the baked sides spanned 18.3% of the range on `plain`
+ * against 5.6% for the slab tint S22 had already removed.
+ *
+ * `pixel` is the exception and has to be: `lightingFor` gives it `key: 0`, so
+ * the bake is its ONLY light. "A style with no baked contrast at all loses its
+ * form" has been true of it since P1 and still is — `test/toon.test.js` keeps
+ * both halves now, the rule for pixel and its inverse for the lit styles.
+ *
+ * What this replaced, kept because the ladder is the decision: `painted` was
+ * 0.3 (a toon ramp already quantises, and at 1.0 a wall read as two flat
+ * sheets, P1) and `plain` was 0.65 (0.4 was tried first and lost the form —
+ * soft means gentle, not absent). Both of those were about how much bake to
+ * keep under a FIXED light. There is no fixed light any more.
+ */
 export function faceContrastFor(styleName) {
   if (styleName === "pixel") return 1.3;
-  // A toon ramp already quantises; baked contrast on top of it multiplies, and
-  // at 1.0 a wall read as two flat sheets with the form gone (slice P1).
-  if (styleName === "painted") return 0.3;
-  // 0.4 was tried first and was a mistake: at that setting a roof and the wall
-  // under it land on the same value and the building loses its form. Soft
-  // means gentle, not absent.
-  return 0.65;
+  return 0;
 }
 
 export function lightingFor(styleName) {

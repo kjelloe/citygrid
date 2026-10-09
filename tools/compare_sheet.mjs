@@ -70,6 +70,26 @@ export const VIEWS = [
     style: "plain", time: "day", size: 64, years: 40, frames: 240,
     note: "close and low over a residential street — the zoom where facades, doors and front gardens have to carry it",
   },
+  // **The same street at two more hours** (S22c, A140). The lit styles bake no
+  // compass shade any more, so a facade's form comes from the light that is
+  // actually in the scene — and the only way to judge that is to see one street
+  // under three suns. The reference is the same picture in all three rows on
+  // purpose: it is the hour the reference was drawn at, and the two rows either
+  // side of it are what the sun now does to it.
+  {
+    id: "terrace-morning",
+    reference: "transport-world-3.png",
+    mode: "city", span: 15, pitch: 26, yaw: 20, fx: 29, fy: 47,
+    style: "plain", time: "day", hour: 0.06, size: 64, years: 40, frames: 240,
+    note: "the same street early, with the sun at the start of its arc — with nothing baked, this is the light alone (S22c)",
+  },
+  {
+    id: "terrace-dusk",
+    reference: "transport-world-3.png",
+    mode: "city", span: 15, pitch: 26, yaw: 20, fx: 29, fy: 47,
+    style: "plain", time: "sunset", hour: 0.58, size: 64, years: 40, frames: 240,
+    note: "and at dusk, where the sun is lowest and the form is hardest to carry (S22c)",
+  },
 ];
 
 
@@ -150,6 +170,15 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
         out: file, seed: 1003, years: view.years, size: view.size,
         style: view.style, mode: view.mode, span: view.span, pitch: view.pitch,
         yaw: view.yaw, fx: view.fx, fy: view.fy, time: view.time,
+        // **The hour, where a row names one** (S22c). `time` is a PRESET name —
+        // `day`, `sunset`, `night`, `rain` — and the sun's direction comes from
+        // `hour`, which `shoot()` forwards through `extra`. The first version of
+        // the three terrace rows passed `time: "dawn"` and `time: "dusk"`, which
+        // are not presets at all: the renderer fell back to `day` and the sheet
+        // showed the same street three times in the same light
+        // (`a-knob-you-turned-is-not-a-knob-it-read`, and only the picture said
+        // so).
+        ...(view.hour === undefined ? {} : { extra: { hour: view.hour } }),
         // `life=1` so the cars are where the traffic put them, and four seconds
         // of frames so they have somewhere to have got to: the local sim fills a
         // road at one car per link per frame, and a first-frame shot of a busy

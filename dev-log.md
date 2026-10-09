@@ -14773,3 +14773,88 @@ this is colour and geometry the renderer was already drawing, not new geometry.
 
 Suite **2,055 tests, 2,052 pass, 0 fail, 3 skipped, green twice**. `sun_shots`
 green with seven frames and the two numbers above; `budget_gate` 276 s of 330.
+
+## S22c — the lit styles take the real light (2026-10-09)
+
+A140, answering Q163. `building-kit.js` and `detail-kit.js` push nine faces
+each with a **compass shade** — SOUTH 0.88, EAST 0.8, NORTH 0.7, WEST 0.62 —
+into every roof, gable and prop. That is a sun DIRECTION frozen into the
+geometry, and as rendered it spanned 18.3% of the range on `plain` against the
+5.6% S22 had already removed from the slab. S22 gave the city a sun that crosses
+the sky and S22b stood it where its shadows can be seen; a baked azimuth
+underneath that is the light arguing with itself.
+
+The change is one number: `faceContrastFor` returns **0** for the lit styles.
+`shade()` pulls a value towards white by the contrast, so at 0 the four compass
+shades become one and the geometry carries no direction at all. `pixel` keeps
+1.3 and must — `lightingFor` gives it `key: 0`, so the bake is its only light,
+and "a style with no baked contrast at all loses its form" has been true of it
+since P1.
+
+**The kit still pushes the nine faces**, because `pixel` is built from the same
+geometry as everything else. `test/toon.test.js` keeps the count as a tripwire
+that a tenth frozen azimuth has not appeared, and gains the inverse of its old
+rule: the lit styles must bake nothing, and `shade()` must flatten the five
+shades to one white.
+
+### What two tests had to stop claiming
+
+- **"each style bakes a different face contrast"** (`test/render.test.js`) is
+  false now — `plain` and `painted` both bake nothing. The mistake it was
+  written for at P1 is real, so the test keeps it and moves it: three styles
+  must still be three, and they are told apart by the **rig** now, which is
+  where a style ought to differ. No two share a key light, and `pixel` has none.
+- **"the contrast multipliers stay pinned"** in the slab test was pinning 0.65
+  and 0.3. Those were decisions about how much bake to keep under a FIXED light,
+  and there is no fixed light. The slab's own claim — both side faces take one
+  shade, so the mesh carries no direction whatever the contrast is — is what
+  that test keeps.
+
+### The gate: one street under three suns, and two things wrong with it
+
+The item asks to judge on the compare sheet's terrace row at three hours, so the
+sheet grew two more rows against the same reference. Both of the following were
+found by **looking at the sheet**, and neither by the suite.
+
+**`time: "dawn"` and `time: "dusk"` are not hours.** The presets are `day`,
+`sunset`, `night` and `rain`; a name outside that list falls back to `day`, so
+the first sheet showed the same street three times in the same light. And the
+test that should have caught it was pinning its own guess:
+
+```js
+assert.ok(["day", "dusk", "night", "dawn"].includes(view.time));
+```
+
+Two of those four have never existed. The list is derived from
+`DEFAULTS.presets` now, so a row naming a preset the renderer does not have
+fails in node rather than in a picture. The sun's DIRECTION is `hour`, a
+fraction of the day, which is a second field — `shoot()` forwards it through
+`extra`, and a new test holds the three rows to differing by the hour and
+nothing else.
+
+**And the terrace row is not a terrace.** Its caption is *"close and low over a
+residential street — the zoom where facades, doors and front gardens have to
+carry it"* and it renders a region to the horizon with a lake in it: `span: 15`
+at `pitch: 26°` is a perspective camera at a shallow angle, so fifteen tiles
+across the near field still shows everything behind them. The one row aimed at
+facades has never photographed any, and it has been like that since the sheet
+was written. **Q168**, because re-framing it is a picture decision.
+
+### Measured
+
+`sun_shots` gained the other half of S22b's measurement: the walls in frame, by
+tone. With nothing baked, a building's form has to come from the light, and if
+it does not then every wall in the city is one flat colour — the P1 failure,
+happening to the style that is supposed to be lit.
+
+```
+noon:  9,077 wall pixels across 18 tones
+dusk: 86,000 wall pixels across 17 tones
+```
+
+The bound is four tones. The shadow measurement moved with the change —
+**155 px** between noon and dusk, where the bake-free walls make the shadow
+boundaries read slightly differently — and the three terrace rows are three
+different lights on one street, which is what A140 asked to be judged.
+
+Suite **2,057 tests, 2,054 pass, 0 fail, 3 skipped, green twice**.
