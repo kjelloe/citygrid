@@ -14273,3 +14273,88 @@ browsers and held to the same rows. **Four re-pins**, which is the honest count:
 same fields once the chronicler was actually registered, the resolution's seats, and the filing's
 kind with the withdrawal. `quick` **544 s of 600** (it was 578 before M9 split `sim`).
 Era unchanged: nothing here changes what a city earns.
+
+## X4f — hibernating to disk, and waking up again (2026-10-09)
+
+X4d built the first half and said so: *"an empty one hibernates to disk. The first half is cheaper
+than the second"* — an empty room stops beating, which is reversible and free to undo. The reaper
+then drops the room five minutes later, and **that is where the city went**.
+
+It was not lost. The checkpoint pass has written every room to the store every thirty beats since
+X2c, keyed by its code. Nothing ever opened one. A player who came back to their own code got
+
+```
+No room with that code
+```
+
+with their city sitting in a file beside the answer, and `prune` deleted it `keepForDays` later,
+unread. This is `a-mirror-with-no-loader` with a room in it: the writing half was true, the reading
+half had never existed, and the gate that proved hosting worked never came back an hour later.
+
+### Two lines and a door that waits
+
+- **`reapEmpty` writes before it drops.** The checkpoint is three seconds behind at worst and a
+  room that stopped beating has not moved since, so it is usually the same bytes — but "usually" is
+  not a guarantee and this is the last moment the city exists in this process. Not awaited, for the
+  reason nothing else awaits the store: `server/store.js` is deliberately off the pump.
+- **`rooms.wake(code)` reads one back.** A held room is answered from memory and never from the
+  disk — waking one that is awake would replace a city people are playing with whatever the last
+  checkpoint said.
+- **The door awaits it.** `HELLO` was synchronous and now one branch is not, which needed two
+  guards that a synchronous handler never did:
+  - `entering`, set **synchronously** when the HELLO is accepted. `seat` could not do this job: it
+    is only assigned once the room has answered, and the disk read in between is a turn of the
+    event loop, so two HELLOs in the same tick would both pass the old guard.
+  - `waking`, a code → promise map in the registry. Two players typing the same code at the same
+    moment are two `wake` calls in flight before either resolves, and `add` mints a room per call:
+    the second would register a second copy of the same city over the first and the two halves of
+    the room would never see each other's commands. Asserted with `Promise.all` of two wakes.
+  - and the socket is checked for being open after the await, because a player who gave up during
+    the read would otherwise be seated with nobody on the other end — and the seat held for
+    `heldForMs` after that.
+
+### The gate
+
+Driven through the real door, because the whole point is a player typing their own code into the
+lobby an hour later: host from the lobby, build a road, close the browser, move the reaper's clock
+on, and come back in a new context.
+
+```
+ok  the room to be slept has something in it worth keeping  (ok)
+ok  a room nobody came back to is dropped from memory       (reaped 1)
+ok  and it is on the disk, not gone                         (23804 bytes)
+ok  a code whose room is on the disk still opens it          ({"room":"78K3D2","tick":5,"road":18})
+ok  and it is the same city, at the hour it stopped          (slept at 5, woke at 5)
+ok  and the road the host built is still there              (road 18)
+ok  the woken room is registered under the same code, and beating
+```
+
+**The road is the assertion that matters.** A tick comparison is weak — a fresh room of the same
+seed starts at 0 and would pass `tick >= 5` the moment it had beaten five times — but a city that
+was never slept has no road where this one put one. `aim-a-shot-at-the-subject`, in a room.
+
+**The reaper's clock bit first.** `reapEmpty(far)` then `reapEmpty(far + 1000)` reaped **0**: the
+first sweep STAMPS the room and the second takes it only once the grace has passed, and the grace
+is five minutes. A thousand milliseconds apart proves the room is immortal rather than that it is
+kept. The gate moves the second sweep ten minutes on, and the first run said "reaped 0" plainly —
+which is `a-failure-counter-is-not-a-subject-counter` paying off, since a reaper that returns a
+count is a reaper a gate can argue with.
+
+### And the omissions sweep found a collision nobody owned
+
+`createRoom` mints its own code from `randomBytes(6)` when it is given none, and **nothing held the
+result against the registry** — which is a `Map` keyed by code, so a collision does not fail, it
+REPLACES a live room's entry with a stranger's. One in 1,073,741,824 per pair and a two in a
+million with 64 rooms held; silently losing a city people are playing is not a two-in-a-million
+kind of cost. The namespace belongs to the registry, so `freeCode()` now mints there, before
+worldgen rather than by making two cities and throwing one away.
+
+The disk is a different question and is **written down rather than guarded** (Q165): a new code
+could collide with a hibernated room's file, and finding that out is a read, which would make `add`
+asynchronous and the door's `CREATE` branch with it. The live room wins the code and the sleeping
+city stays in its file until `prune`. The comment in `freeCode()` is the decision.
+
+### Measured
+
+Suite **2,020 tests, 2,017 pass, 0 fail, 3 skipped, green twice**. `room` **221 s of a 300 s
+budget** — `room_smoke` 115 s (it was 110 before the block), `room_churn` 58 s, `room_soak` 48 s.

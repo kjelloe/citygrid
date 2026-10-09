@@ -187,10 +187,14 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**4 open questions** are on the list (`dev-questions.md`, bottom section), all filed the day the
-list was emptied and none blocking anything — each one is a picture or a rung that a slice measured
-and handed back rather than choosing for itself.
+**5 open questions** are on the list (`dev-questions.md`, bottom section), none blocking anything —
+each one is a picture, a rung or an improbability that a slice measured and handed back rather than
+choosing for itself.
 
+- **Q165**: a new room's code is refused if a live room holds it and not if a hibernated one does,
+  because asking the disk would make the door asynchronous. Two in a million with 64 rooms held,
+  and the cost is one sleeping city left unreachable until `prune`. Guard it, or leave it written
+  down where it is?
 - **Q161**: a junction laid mid-street deletes the pavement somebody was standing on, and the
   geometric re-seat moves them up to 6.2 m. Keep their side of the street, walk them out, or leave
   it and write down that two people in four hundred moving once per build is below what anybody can
@@ -271,11 +275,12 @@ Everything else on this list has been answered and built; the seven above replac
   of 7,678 reused — and a build action is **28.6 ms**, down from a warm 98.3. What is left is W6c:
   the last 28 ms is allocation rather than algorithm, because both graphs still build 8,896 link
   objects every time.
-- **Multiplayer is built and has never been PLAYED.** Sixteen of Wave 5's twenty items are done
-  (X0 to X4e), and what is left is four: hibernating a room to disk rather than to a standstill;
-  `splitRule`, `mutualAid` and `disasterAid`, which change what a city earns and are therefore a
-  balance era; a history that outlives the alert list; and the lobby's remaining rows (the QR code,
-  ready, host controls, hosting from a save). The gap is not code — it is that **five browsers on
+- **Multiplayer is built and has never been PLAYED.** Twenty of Wave 5's twenty-two items are
+  done, and what is left is two: `splitRule`, `mutualAid` and `disasterAid`, which change what a
+  city earns and are therefore a balance era; and the lobby's remaining rows (the QR code, ready,
+  joining a room that has started). Since 2026-10-09 a room hibernates to the disk and wakes when
+  somebody types its code (X4f), the city keeps a history that outlives the alert list (X4h), and
+  the host holds the clock and the door (X2d). The gap is not code — it is that **five browsers on
   one machine driven by a gate is not eight people on an evening**, and the release gate for the
   wave says eight clients for an hour with a desync count of zero. That evening is Kjell's.
   Ruling 003 is unmoved either way: singleplayer opens no socket and `offline_smoke` asserts it.

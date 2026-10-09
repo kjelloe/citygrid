@@ -81,9 +81,10 @@ is theirs for two minutes, then a deputy plays it, then the ground goes to the c
 nobody is in stops playing. `tools/room_smoke.mjs` drives **five browsers** through it and
 `room_churn` takes a seat away and gives it back with no divergence.
 
-What is left in that lane: hibernating to DISK rather than to a standstill; `splitRule`,
-`mutualAid` and `disasterAid`, which are **a balance era** and want a sweep; a history that outlives
-the alert list; and the lobby's remaining rows (the QR, ready, host controls, hosting from a save).
+What is left in that lane: `splitRule`, `mutualAid` and `disasterAid`, which are **a balance era**
+and want a sweep; and the lobby's remaining rows (the QR, ready, joining a room that has started).
+The history that outlives the alert list was X4h, hibernating to disk was X4f, and the host's
+controls and hosting from a save were X2d — all 2026-10-09.
 Ruling 003 is unmoved — singleplayer opens no socket and `offline_smoke` asserts it.
 
 **And the lane is committed.** All of it was in the working tree and nowhere else on 2026-10-08:
@@ -110,7 +111,8 @@ fifth and is the first era whose cause is what the deputy DECIDES — so every n
 deputy city before it belongs to era 28 and is void rather than comparable.
 
 **Four open questions**, all filed the day the list was emptied and none blocking anything.
-**Q161**: whether a pedestrian re-seated when a junction appears should keep their side of the
+**Q165**: whether a new room's code should be checked against the rooms sleeping on the disk and not
+only against the ones awake (X4f wrote the decision down instead). **Q161**: whether a pedestrian re-seated when a junction appears should keep their side of the
 street, walk out, or stay as they are (W6d, one function). **Q162**: whether the wall's rung is
 still two metres, now that the ladder it was chosen from turns out to be era 28's — B14 took a
 hilly 128 from 130 faced shoulders to 2, and the chosen rung gives 5. **Q163**: whether the lit
@@ -124,7 +126,7 @@ P111 (2026-10-08) answered the seven the week raised — A132 to A138: the wall 
 
 | Lane | Open |
 |---|---|
-| **Multiplayer** | hibernate to disk · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · ~~a history that outlives the alert list~~ (built: **X4h**, a capped ring in hashed state) · the lobby's remaining rows (`privacy`, `lateJoin`) · ~~**X4i**~~ (deleted, riding X4h's `SAVE_VERSION` 6 → 7) |
+| **Multiplayer** | ~~hibernate to disk~~ (built: **X4f** — the reaper writes the room out and the door reads it back) · `splitRule`/`mutualAid`/`disasterAid` (**a balance era**) · ~~a history that outlives the alert list~~ (built: **X4h**, a capped ring in hashed state) · the lobby's remaining rows (`privacy`, `lateJoin`) · ~~**X4i**~~ (deleted, riding X4h's `SAVE_VERSION` 6 → 7) |
 | **World** | ~~S22~~ (built: the sun crosses the sky — and Q163, Q164 came out of it) · ~~S18c~~ (built; its ladder was era 28's — Q162) · S19b · S18's shore line · S20's subject counts · S15b · S15c · S14 |
 | **Behaviour** | B15 · B6's rain |
 | **Mainline** | ~~M7~~ (merged; **the push is Kjell's**) · ~~M9~~ (every set re-measured quiet, `sim` split) · M11 ("1 tiles") · ~~M10~~ (closed, A137) |
@@ -488,6 +490,7 @@ by number from the code they create.
 | ~~Q142~~ | **Answered A119** — relative criteria (cliffs per km, lots as a share), and the same is owed to `walkthrough` on rolling |
 | ~~Q143~~ | **Answered A121, built 2026-10-04 (era 26)** — the far bank is worth a quarter of a city where the town is hemmed in by water, and nothing where it is not |
 | ~~Q144~~ | **Answered A120** — `lot.maxPlinth` is a reducer rule in the shape of `maxZoneSlope`; the quay as a thing is a later content slice |
+| **Q165** | A new room's code is six Crockford characters and the registry now refuses one a LIVE room holds; it does not ask the disk, because that read would make `add` and the door's `CREATE` asynchronous. So a new room can take a hibernated one's code and leave that city in its file, unreachable until `prune`. Guard it, or leave it written down in `freeCode()`? | Nothing — two in a million with 64 rooms held, and the ten lines are cheaper once a room has been played for a week |
 | **Q164** | The sun crosses the sky and reads quietly at midday: the key light stands at **83.4°** of elevation at noon, 62.4° at dusk. Stand it further out so the shadows lengthen? | Nothing — S22 is built; `reports/smoke-S22-*.png` are the pictures |
 | **Q163** | `building-kit.js` and `detail-kit.js` push nine faces each with a compass shade — a frozen sun direction spanning **18.3%** on `plain` and **40%** on `pixel`. Do the lit styles give theirs up? | Nothing, but it is the other half of S22 being whole. A restyle, not a slice |
 | **Q162** | A132 chose the wall at two metres from **era 28's** ladder (264 against 130). Era 29 reads **24 / 5 / 2** on a hilly 128 and **17 / 4 / 3** on a rolling 96, because B14 paves a fifth of the city instead of a third. Is 2 m still the rung, or 1.2 m? | Nothing — S18c is built at 2 m and the wall is right where it stands |

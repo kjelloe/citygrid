@@ -24,7 +24,8 @@
 import { createRoom } from "./room.js";
 import { createPump } from "./pump.js";
 import { REFUSAL } from "../shared/protocol.js";
-import { normaliseRoomCode } from "../shared/roomcode.js";
+import { makeRoomCode, normaliseRoomCode } from "../shared/roomcode.js";
+import { randomBytes } from "node:crypto";
 
 /** How many rooms one process will hold. Not a measurement — a 48-tile room is
  * about a megabyte of state and a beat of 0.1 ms, so this is well inside what
@@ -37,16 +38,44 @@ const ROOM_LIMIT = 64;
 const EMPTY_FOR_MS = 5 * 60 * 1000;
 
 export function createRooms({
-  tickMs = 100, limit = ROOM_LIMIT, emptyForMs = EMPTY_FOR_MS, heldForMs, regencyAfterMs,
+  tickMs = 100, limit = ROOM_LIMIT, emptyForMs = EMPTY_FOR_MS, heldForMs, regencyAfterMs, store,
 } = {}) {
   /** code → `{ room, pump, stop, emptySince }`. */
   const held = new Map();
+  /** code → the promise that is reading it off the disk (X4f). Two players
+   * typing the same code at the same moment are two `wake` calls in flight
+   * before either resolves, and `add` mints a room per call — so the second
+   * would register a second copy of the same city over the first and the two
+   * halves of the room would never see each other's commands. */
+  const waking = new Map();
 
   function entryFor(code) {
     return held.get(normaliseRoomCode(code));
   }
 
-  return {
+  /** A code no room in this process is using. `createRoom` mints its own when
+   * it is given none, and nothing checked the result against the registry: one
+   * in a thousand million per pair is small and 64 rooms make it a two in a
+   * million, and what it does is REPLACE a live room's entry in the map with a
+   * stranger's. The namespace belongs to the registry, so the minting does
+   * too — and worldgen is expensive, so the retry happens before the city is
+   * made rather than by making two.
+   *
+   * The disk is a different question and deliberately not asked here: a code
+   * could collide with a HIBERNATED room's file (X4f), and finding that out is
+   * a read, which would make `add` asynchronous and the door's `CREATE` branch
+   * with it. The live room wins the code, the sleeping city stays in its file
+   * until `prune`, and the odds are the ones above. Written down rather than
+   * guarded (Q165). */
+  function freeCode() {
+    for (let tries = 0; tries < 8; tries += 1) {
+      const code = makeRoomCode(randomBytes(6));
+      if (!held.has(code)) return code;
+    }
+    return makeRoomCode(randomBytes(6));
+  }
+
+  const registry = {
     count: () => held.size,
 
     /** `{ options }` for a new city or `{ save, code }` for one off the disk.
@@ -63,7 +92,9 @@ export function createRooms({
         // The registry's own windows, unless the caller named one: a gate that
         // wants a seat handed over in seconds rather than a quarter of an hour
         // passes them to `startServer` and they arrive here.
-        room = createRoom({ heldForMs, regencyAfterMs, ...given });
+        room = createRoom({
+          heldForMs, regencyAfterMs, ...given, code: normaliseRoomCode(given.code) || freeCode(),
+        });
       } catch (error) {
         // A save the room cannot read: `createRoom` throws, and a player who
         // asked to host from a broken file needs a sentence rather than a
@@ -85,6 +116,44 @@ export function createRooms({
 
     get: (code) => entryFor(code)?.room,
     pumpFor: (code) => entryFor(code)?.pump,
+
+    /**
+     * The room for a code, off the DISK if it is not in memory (X4f).
+     *
+     * X4d stopped an empty room's clock and the reaper then dropped the room
+     * five minutes later — and dropped the city with it, as far as anybody
+     * holding the code could tell: the checkpoint file stayed on the disk,
+     * nothing ever opened it, and `prune` deleted it `keepForDays` later
+     * unread. A player who came back to their own room was told there was no
+     * such room while their city sat in a file.
+     *
+     * Asynchronous because a disk is, which is why the door awaits it; a held
+     * room is answered from memory without touching the store, because waking
+     * one that is awake would overwrite a city people are playing with
+     * whatever the last checkpoint said.
+     */
+    async wake(code) {
+      const id = normaliseRoomCode(code);
+      const already = held.get(id)?.room;
+      if (already) return already;
+      if (!store) return undefined;
+      const pending = waking.get(id);
+      if (pending) return pending;
+      const reading = (async () => {
+        // The reap's own write may still be in the queue — `store.put` is
+        // deliberately off the pump, so it is started and not awaited, and a
+        // read that raced it would restore the checkpoint before the last one.
+        await store.settled?.();
+        const kept = await store.get(id);
+        if (!kept?.save) return undefined;
+        const woken = registry.add({ save: kept.save, code: kept.code || id });
+        if (!woken.ok) return undefined;
+        registry.start();
+        return woken.room;
+      })().finally(() => waking.delete(id));
+      waking.set(id, reading);
+      return reading;
+    },
 
     /** One beat of one room, for a test driving the clock by hand. `at` is
      * forwarded because the room's regency window is measured against it, and a
@@ -117,6 +186,13 @@ export function createRooms({
         if (!empty) { entry.emptySince = undefined; continue; }
         if (entry.emptySince === undefined) { entry.emptySince = now; continue; }
         if (now - entry.emptySince < emptyForMs) continue;
+        // **Written out before it is dropped** (X4f). The checkpoint pass is
+        // three seconds behind at best and a room that stopped beating when it
+        // emptied has not moved since, so this is usually the same bytes — but
+        // "usually" is not a guarantee, and this is the last moment the city
+        // exists in this process. Not awaited, for the reason nothing else
+        // awaits the store: the reaper runs on an interval beside the pump.
+        store?.put(code, { save: entry.room.save(), tick: entry.room.tick(), code });
         entry.stop?.();
         held.delete(code);
         reaped += 1;
@@ -132,4 +208,5 @@ export function createRooms({
       held.clear();
     },
   };
+  return registry;
 }

@@ -21,7 +21,7 @@
 // this gate at the hand as well would be two subjects and twice the flake.
 
 import { chromium } from "playwright";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startServer } from "../server/index.js";
@@ -868,6 +868,96 @@ try {
   }
   await guestCtx.close();
   await hostCtx.close();
+
+  // **Hibernating to disk, and waking up** (X4f). X4d stopped an empty room's
+  // clock; the reaper then dropped the room five minutes later and the city with
+  // it, as far as anybody holding the code could tell — the checkpoint file stayed
+  // on the disk, nothing ever opened it, and `prune` deleted it unread. Driven
+  // here rather than in node because the whole point is the DOOR: a player types
+  // their own code into the lobby and the room is in a file.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(String(error.message ?? error)));
+    await page.goto(`${origin}/?life=0`);
+    await page.waitForSelector("#host", { timeout: 30_000 });
+    await page.click("#host");
+    const hosted = await until(page, "the lobby never hosted a room to hibernate", () => {
+      const city = globalThis.CITY;
+      if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+      return { ok: true, room: city.room, seat: city.seat };
+    }, undefined, 30_000);
+    const slept = hosted.room.replace("-", "");
+    const road = await page.evaluate(async () => {
+      const city = globalThis.CITY;
+      const { width, height, tiles } = city.state;
+      for (let z = 10; z < height - 6; z += 1) {
+        for (let x = 4; x + 6 < width - 4; x += 1) {
+          const cells = Array.from({ length: 6 }, (unused, i) => z * width + x + i);
+          const clear = cells.every((i) => tiles.terrain[i] !== 3 && tiles.terrain[i] !== 4
+            && tiles.road[i] === 0 && tiles.buildingId[i] === 0);
+          if (!clear) continue;
+          const outcome = await city.apply({ type: "placeRoad", actor: city.seat, runs: [cells[0], 6] });
+          return { result: outcome.result, first: cells[0] };
+        }
+      }
+      return { result: "no dry ground" };
+    });
+    check("the room to be slept has something in it worth keeping", road.result === "ok",
+      String(road.result));
+    while (await page.evaluate(() => globalThis.CITY.pending > 0)) {
+      await new Promise((done) => { setTimeout(done, 20); });
+    }
+
+    // Everybody leaves, and the city stands still rather than being dropped —
+    // that is X4d, and it is the state the reaper finds.
+    await ctx.close();
+    const was = { tick: server.rooms.get(slept).tick(), hash: server.rooms.get(slept).hash() };
+    while (server.rooms.get(slept).seats().length > 0) {
+      await new Promise((done) => { setTimeout(done, 50); });
+    }
+    // The reaper's own clock, moved on rather than waited out: the first sweep
+    // STAMPS the room and the second takes it, and the gap between the two has
+    // to be longer than the registry's grace — five minutes by default, so a
+    // thousand milliseconds apart reaps nothing and says so ("reaped 0").
+    const far = Date.now() + 60 * 60 * 1000;
+    server.rooms.reapEmpty(far);
+    const reaped = server.rooms.reapEmpty(far + 10 * 60 * 1000);
+    check("a room nobody came back to is dropped from memory", reaped >= 1
+      && server.rooms.get(slept) === undefined, `reaped ${reaped}`);
+    const onDisk = await stat(join(roomDir, `${slept}.json`)).then((i) => i.size).catch(() => 0);
+    check("and it is on the disk, not gone", onDisk > 0, `${onDisk} bytes`);
+
+    // And a player types their own code into the lobby, as they would an hour
+    // later. Before X4f this answered "No room with that code" with the city in
+    // a file beside the answer.
+    const back = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const backPage = await back.newPage();
+    const backErrors = [];
+    backPage.on("pageerror", (error) => backErrors.push(String(error.message ?? error)));
+    await backPage.goto(`${origin}/?join=${slept}&life=0`);
+    const woke = await until(backPage, "the slept room never woke up", (first) => {
+      const city = globalThis.CITY;
+      if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+      return {
+        ok: true, room: city.room, tick: city.state?.tick, width: city.state?.width,
+        road: city.state?.tiles?.road[first] ?? 0,
+      };
+    }, road.first, 30_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("a code whose room is on the disk still opens it", woke.ok === true,
+      woke.why ?? JSON.stringify(woke));
+    check("and it is the same city, at the hour it stopped", woke.tick >= was.tick,
+      `slept at ${was.tick}, woke at ${woke.tick}`);
+    check("and the road the host built is still there", woke.road > 0, `road ${woke.road}`);
+    const again = server.rooms.get(slept);
+    check("the woken room is registered under the same code, and beating",
+      again !== undefined && server.rooms.pumpFor(slept) !== undefined, String(again?.code()));
+    check("waking reported no page or console errors",
+      errors.length === 0 && backErrors.length === 0,
+      [...errors, ...backErrors].slice(0, 3).join(" | "));
+    await back.close();
+  }
 
   // The desync detector, which is the one thing that must read zero.
   const desyncs = await Promise.all([a, b].map(({ page }) => page.evaluate(

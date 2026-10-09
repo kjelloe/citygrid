@@ -244,3 +244,148 @@ test("a save the room cannot read is refused in its own words", () => {
   assert.equal(refused.reason, REFUSAL.BAD_SAVE);
   assert.ok(String(refused.detail ?? "").length > 0, "no detail for the log");
 });
+
+// --- X4f: hibernating to DISK, not only to a standstill ----------------------
+//
+// X4d stopped an empty room's clock, which is reversible and free. The reaper
+// then DROPS it after five minutes, and until this slice that dropped the city
+// with it: the file the checkpoint pass had written stayed on the disk, nothing
+// ever opened it, and a player who came back to their own code was told "no
+// room with that code" while their city sat there. `prune` would delete it
+// `keepForDays` later, unread.
+//
+// A fake store rather than the disk: the registry's job is deciding WHEN, and a
+// test that writes files measures the filesystem.
+
+/** A store that remembers rather than writes. The shape is `server/store.js`'s
+ * — `put`, `get`, `settled` — and nothing here may use a method the real one
+ * does not have. */
+function fakeStore() {
+  const written = new Map();
+  return {
+    written,
+    puts: 0,
+    put(id, record) { this.puts += 1; written.set(id, record); return Promise.resolve(); },
+    get: async (id) => written.get(id),
+    settled: () => Promise.resolve(),
+  };
+}
+
+test("a reaped room is written out before it is dropped (X4f)", async () => {
+  const store = fakeStore();
+  const rooms = createRooms({ tickMs: 100, emptyForMs: 1000, store });
+  try {
+    const room = rooms.add({ options: SMALL }).room;
+    const code = room.code();
+    rooms.beat(code, 1000, 1000);
+    rooms.reapEmpty(0);
+    assert.equal(store.puts, 0, "a room still inside its grace was written out");
+    assert.equal(rooms.reapEmpty(5000), 1);
+    await store.settled();
+
+    const record = store.written.get(code);
+    assert.ok(record, "the room was dropped without being written out");
+    assert.equal(record.code, code, "a restored room with a new code is a different room");
+    assert.equal(record.tick, room.tick());
+    assert.ok(record.save, "the record carries no city");
+  } finally {
+    rooms.stop();
+  }
+});
+
+test("and comes back, as the same city, when somebody asks for its code (X4f)", async () => {
+  const store = fakeStore();
+  const rooms = createRooms({ tickMs: 100, emptyForMs: 1000, store });
+  try {
+    const room = rooms.add({ options: SMALL }).room;
+    const code = room.code();
+    room.join({ send: () => {} }, {
+      type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), room: code,
+    });
+    rooms.beat(code, 2000, 2000);
+    const was = { tick: room.tick(), hash: room.hash() };
+    assert.ok(was.tick > 0, "the room never played");
+    room.leave(1, 3000);
+    rooms.reapEmpty(4000);
+    rooms.reapEmpty(10_000);
+    assert.equal(rooms.get(code), undefined, "the room was not dropped");
+
+    const woken = await rooms.wake(code);
+    assert.ok(woken, "a code with a city on the disk was refused");
+    assert.equal(woken.code(), code);
+    assert.equal(woken.tick(), was.tick, "the city came back at a different hour");
+    assert.equal(woken.hash(), was.hash, "the city came back as a different city");
+    assert.equal(rooms.get(code), woken, "a woken room was not registered");
+    assert.ok(rooms.pumpFor(code), "a woken room has no clock");
+  } finally {
+    rooms.stop();
+  }
+});
+
+test("waking is idempotent, and a code with nothing behind it stays refused (X4f)", async () => {
+  const store = fakeStore();
+  const rooms = createRooms({ tickMs: 100, emptyForMs: 1000, store });
+  try {
+    const room = rooms.add({ options: SMALL }).room;
+    const code = room.code();
+
+    // A held room is answered from memory and never read off the disk: waking
+    // one that is already awake would replace a city people are playing with
+    // whatever the last checkpoint said.
+    assert.equal(await rooms.wake(code), room);
+    assert.equal(store.puts, 0);
+
+    rooms.reapEmpty(0);
+    rooms.reapEmpty(10_000);
+    // **Two players type the code at once.** Both calls are in flight before
+    // either resolves, and `add` mints a room per call — so without a guard the
+    // second would register a second copy of the same city over the first, and
+    // the two halves of the room would never see each other's commands.
+    const [one, two] = await Promise.all([rooms.wake(code), rooms.wake(code)]);
+    assert.equal(one, two, "two rooms came back for one code");
+    assert.equal(rooms.count(), 1);
+
+    assert.equal(await rooms.wake("ZZZZZZ"), undefined, "a code with no city woke something");
+  } finally {
+    rooms.stop();
+  }
+});
+
+test("a registry with no store cannot wake, and says so by refusing (X4f)", async () => {
+  // The registry is used without a store by every test above and by any caller
+  // that does not want persistence; `wake` must then behave exactly as `get`
+  // and not throw its way out of the door's hand.
+  const rooms = createRooms({ tickMs: 100 });
+  try {
+    const room = rooms.add({ options: SMALL }).room;
+    assert.equal(await rooms.wake(room.code()), room);
+    assert.equal(await rooms.wake("ZZZZZZ"), undefined);
+  } finally {
+    rooms.stop();
+  }
+});
+
+test("two rooms never share a code, however the dice fall (X4f)", () => {
+  // `createRoom` minted its own code when it was given none and nothing held
+  // the result against the registry — and `held` is a Map keyed by code, so a
+  // collision REPLACES a live room with a stranger's. One in a thousand million
+  // per pair is small; silently losing a city people are playing is not.
+  const rooms = createRooms({ tickMs: 100, limit: 8 });
+  try {
+    const codes = new Set();
+    for (let n = 0; n < 8; n += 1) {
+      const made = rooms.add({ options: SMALL });
+      assert.equal(made.ok, true, made.reason);
+      codes.add(made.room.code());
+    }
+    assert.equal(codes.size, 8, "two rooms came back with one code");
+    assert.equal(rooms.count(), 8, "a room replaced another in the registry");
+    // And a code that was ASKED for is still honoured exactly: a restored room
+    // keeps the code the people who were in it still have.
+    rooms.stop();
+    const asked = rooms.add({ options: SMALL, code: "ABC123" });
+    assert.equal(asked.room.code(), "ABC123");
+  } finally {
+    rooms.stop();
+  }
+});

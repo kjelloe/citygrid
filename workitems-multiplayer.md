@@ -854,8 +854,9 @@ that reads the city stays: the gate counts 15 overlays and 0 tool buttons. `?wat
 `?join=`, and a **Just watch** button beside Join in the lobby.
 
 **Still to build in X4:**
-spectators, a room that ticks at 1× when every seat is in regency and hibernates when empty, and
-`splitRule`/`mutualAid`/`disasterAid` where income, coverage and repair are shared. ~~A history
+spectators, a room that ticks at 1× when every seat is in regency, and
+`splitRule`/`mutualAid`/`disasterAid` where income, coverage and repair are shared. ~~Hibernating
+when empty~~ was X4d's standstill and X4f's disk, 2026-10-09. ~~A history
 that outlives the alert list~~ was X4h, 2026-10-09.
 
 ## X4 — Drop-in and absence (L) — slice 5.4
@@ -884,13 +885,13 @@ singleplayer playtest was.
 
 ## Order
 
-**Everything in this lane is built except three items.** As of 2026-10-09, in the order it
+**Everything in this lane is built except two items.** As of 2026-10-09, in the order it
 happened:
 
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
 ~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~ →
 ~~X5~~ (the review fixes, and two reds `all` found that the review had not) → ~~X4h~~ →
-~~X4i~~ (a deletion, riding X4h's migration).
+~~X4i~~ (a deletion, riding X4h's migration) → ~~X4f~~.
 
 **And it is all in the history now.** The whole lane was uncommitted on 2026-10-08 — seventy-one
 files, two days, thirty dev-log entries behind `1f13ee7`. Twenty-two commits, one per slice in the
@@ -908,7 +909,9 @@ code or watch without taking a seat. Build, ask a neighbour to clear their groun
 nuisance, answer from an inbox or set a standing answer and let the month do it, point at a tile
 with one of seven phrases, chat if the room has it on, see who is in the room and say you are away.
 Leave, and the city keeps going: the seat is yours for two minutes, then a deputy plays it, then
-after `abandonYears` the ground goes to the commons. A room nobody is in stops playing. Come back
+after `abandonYears` the ground goes to the commons. A room nobody is in stops playing, and five
+minutes later it is written to the disk and dropped — type its code tomorrow and the door reads it
+back, with the roads where you left them. Come back
 an hour later with the page long closed and the **history** panel still says what happened while
 you were away — who came and went, who was handed to a deputy, what was asked of you and how it
 ended, and what the weather did. It is in the save and in the hash, so both browsers read the same
@@ -922,7 +925,6 @@ what was built, and it is on screen.
 
 | | What | Why it is left |
 |---|---|---|
-| **X4f** | Hibernate to **disk**, not only to a standstill | X4d stopped the city; the second half is writing it out and dropping the pump, which wants the store's checkpoint path |
 | **X4g** | `splitRule`, `mutualAid`, `disasterAid` | **A balance era**: they change what a city earns, so they need a sweep and a report, not a slice |
 | **X2d** | The lobby's remaining rows | ~~the door's refusals in words~~ · ~~spectate as a lobby choice~~ (X4e) · ~~the host's speed~~ (2026-10-09: `C2S.SPEED`, the host is the first seat in, the guest gets no button) · ~~the host's kick~~ (2026-10-09, with the session-ended path nothing had) · ~~hosting from a save~~ (2026-10-09 — one line at the door, and it found a frame size that killed the server) · the QR (Q5) · ready · joining a room that has started. Two of the seven unread options are its — `privacy` and `lateJoin`, and neither has a mechanism yet: `privacy` cannot mean anything until there is a room list, and `lateJoin` is a restriction nobody has asked for |
 | ~~**X4i**~~ | ~~`absenceYears`, which X4b superseded~~ — **deleted 2026-10-09**, riding X4h's `SAVE_VERSION` 6 → 7 | A decision that lived in a test comment, which is nowhere: X4b built regency on a WALL clock (`regencyAfterMs`) because a person's absence is real time, not sim time, so `absenceYears` was not merely unread but **answered in the other direction**. It was never free — `options` is a hashed field and `OPTION_FIELDS` is its field list — which is why it waited for a migration rather than being its own slice |

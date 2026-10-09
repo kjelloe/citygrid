@@ -88,7 +88,10 @@ export async function startServer({
   // **A registry, not a room** (X2c): hosting means a player makes one, so the
   // process holds several. The one it boots with is `keep`, which is how the
   // reaper tells the process's own room from an abandoned host's.
-  const rooms = createRooms({ tickMs, heldForMs, regencyAfterMs });
+  // The store goes to the registry too (X4f): the reaper writes a room out
+  // before it drops it, and the door reads one back when somebody types a code
+  // this process is not holding.
+  const rooms = createRooms({ tickMs, heldForMs, regencyAfterMs, store: saves });
   const booted = kept?.save
     ? rooms.add({ save: kept.save, code: wanted, keep: true })
     : rooms.add({ options: options ?? { seed: 1003, width: 64, height: 64, seats: LIMITS.SEATS_MAX }, code: wanted, keep: true });
@@ -145,6 +148,33 @@ export async function startServer({
     let said = 0;
     let chatSecond = second;
 
+    /** True from the moment a HELLO is accepted until its room is open. See the
+     * HELLO branch: `seat` cannot carry this, because it is only set once the
+     * room has answered and the read in between is a turn of the event loop. */
+    let entering = false;
+
+    /** The door, once it may have to wait (X4f). Everything here was inline
+     * until the room could be on the disk. */
+    async function enter(message) {
+      mine = await rooms.wake(message.room);
+      if (mine === undefined) {
+        connection.send({ type: S2C.REFUSED, reason: REFUSAL.BAD_CODE });
+        socket.close();
+        return;
+      }
+      // The socket may have gone while the disk was being read — a player who
+      // gave up, or a tunnel. Joining then would seat a connection nobody is
+      // on the other end of, and the seat would be held for `heldForMs`.
+      if (socket.readyState !== socket.OPEN) return;
+      const refusal = mine.join(connection, message);
+      if (refusal) { socket.close(); return; }
+      // A watcher is welcomed with seat 0 (X4e) and `gave` is therefore
+      // undefined, which is exactly right: everything gated on having a seat
+      // is reached by nothing a watcher sends.
+      watching = message.spectate === true;
+      seat = gave;
+    }
+
     socket.on("message", (raw) => {
       let message;
       try { message = JSON.parse(raw.toString()); } catch { return; }
@@ -157,7 +187,7 @@ export async function startServer({
       // the same socket joins it — so the client's answer is the `WELCOME` of
       // the room it just made and there is no second message to invent.
       if (message.type === C2S.CREATE) {
-        if (seat !== undefined) return;
+        if (seat !== undefined || entering) return;
         // **Options OR a save** (X2d). `createRoom` has taken `{ save }` since
         // X1a — "hosting from a save is §3.3's the world never pauses, seen
         // from the other end" — and the door dropped it on the floor, so the
@@ -179,23 +209,19 @@ export async function startServer({
         return;
       }
       if (message.type === C2S.HELLO) {
-        if (seat !== undefined) return;
+        if (seat !== undefined || entering) return;
         // **Which room?** The code is the door's business (X2a) and now the
         // registry's too: a code nobody is hosting is `BAD_CODE`, and it must
         // be answered before `join` is reached or there is no room to ask.
-        mine = rooms.get(message.room);
-        if (mine === undefined) {
-          connection.send({ type: S2C.REFUSED, reason: REFUSAL.BAD_CODE });
-          socket.close();
-          return;
-        }
-        const refusal = mine.join(connection, message);
-        if (refusal) { socket.close(); return; }
-        // A watcher is welcomed with seat 0 (X4e) and `gave` is therefore
-        // undefined, which is exactly right: everything below this line is
-        // gated on having a seat, so a watcher reaches none of it.
-        watching = message.spectate === true;
-        seat = gave;
+        //
+        // **And it may be on the disk** (X4f), which is why this one branch
+        // waits: a room everybody left is dropped after five minutes and its
+        // city is in a file, so the code is good and the answer takes a read.
+        // `entering` is set here, synchronously, because `seat` cannot be — two
+        // HELLOs in the same tick would both pass the guard above and the
+        // second would join a room the first is still opening.
+        entering = true;
+        enter(message).finally(() => { entering = false; });
         return;
       }
       if (seat === undefined || mine === undefined) return;   // nothing before the door
