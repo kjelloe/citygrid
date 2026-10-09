@@ -145,10 +145,16 @@ node tools/gates.mjs shots     # the world and behaviour lanes' pictures, ~4.5 m
 node tools/gates.mjs transport # T1-T4's pictures — avenue, rail, harbour (T4b split them), ~3 min
 node tools/gates.mjs sim       # a gameplay slice as well: the two soaks, ~6 min
 node tools/gates.mjs sweep     # and the 200-game balance sweep when the slice is an ERA, ~10 min
+node tools/gates.mjs region    # four seats, five arms — a multiplayer RULE needs this one (X4g), ~3 min
 node tools/gates.mjs kits      # one picture per catalogue definition and per kit, ~6 min
 node tools/gates.mjs film      # the sixty-second storyboard, every frame counted, ~5 min (F2)
-node tools/gates.mjs room      # the headless room — `room_soak`, 5 s, since X1a
+node tools/gates.mjs room      # the room: two soaks and five browsers — EIGHT since X7, ~4.5 min
+node tools/gates.mjs release   # eight scripted clients on one region, one hash (X7), ~1 min
 ```
+
+Thirteen sets. `region` and `release` are the two newest and the two most often forgotten:
+**a rule that divides a region between seats cannot be measured at one seat** (X4g), and the wave's
+release claim is eight clients rather than two (X7).
 
 **Do not edit source while a gate is running.** A browser gate reads the module tree as it goes for
 two to four minutes: `budget_gate` failed twice through the runner and passed four times standalone,

@@ -25,6 +25,7 @@ stand in for playtesting at scale, and every gameplay slice ends here.
 | **Disaster soak** | `node tools/disaster_soak.mjs [games] [years]` | Does every disaster fire, and leave a repairable city? |
 | **Traffic gate** | `node tools/traffic_gate.mjs [games] [years]` | Does routing fit the month tick? Does congestion track the city (people-per-road, population or driving demand) or the dice? |
 | **Balance sweep** | `node tools/sim_sweep.mjs [games] [years]` | 200 games × 4 configurations; writes reports/balance-eraN.md |
+| **The release gate** | `node tools/gates.mjs release` (`room_soak 5 --eight`) | Eight scripted clients on one region for five city years: one hash, requests both ways round the ring, and plan §3.8's second measured row — the pump's p99 and the bytes a client costs. The BROWSER half is eight contexts inside `room_smoke`, one of them a phone |
 | **Region sweep** | `node tools/region_sweep.mjs [games] [years]` | FOUR seats, four deputies, five arms: the multiplayer rules, which do nothing at one seat. Writes reports/region-eraN.md at 200+ games and **nothing below that**, so the gate's sample cannot overwrite the era's report |
 | **Play shot** | `node tools/play_shot.mjs` | What does the real page look like, both viewports? |
 | **Style sheet** | `MODE=city node tools/style-sheet.mjs` | All three styles from one city, side by side. `MODE=city` shoots them through the perspective camera: a style is geometry, shading and palette, and none of those should change with the projection |
