@@ -86,6 +86,14 @@ export const REFUSAL = Object.freeze({
   // next.
   MALFORMED: "malformed",
   BANNED: "banned",
+  // **X2d: hosting from a save.** A `CREATE` may carry a city instead of a seed,
+  // and a file the room cannot read needs its own sentence — it was answered
+  // `BAD_CODE` ("No room with that code"), which is a refusal that lies about
+  // what to do next in exactly the way X1b's `ROOM_FULL` did for a taken seat.
+  // Additive for a client that has words for it; one that does not falls back
+  // to the generic failure, which is what `refusalKey` returning `undefined`
+  // is for.
+  BAD_SAVE: "badSave",
   RATE_LIMIT: "rateLimit",
 });
 
@@ -127,6 +135,21 @@ export const RESULT = Object.freeze({
 export const LIMITS = Object.freeze({
   COMMANDS_PER_SECOND: 20,
   CELLS_PER_COMMAND: 4096,
+  /** The biggest frame the door will read, in bytes (X2d).
+   *
+   * It was `CELLS_PER_COMMAND * 8` — the biggest COMMAND there is — and that
+   * was right until one message type began carrying a city: a `CREATE` that
+   * hosts a saved city sends the save, and a save is **14 KB on a 48x48 and
+   * 89 KB on a 128x128** (measured 2026-10-09). The old ceiling was 32 KB, so
+   * hosting from a save was refused by the transport before the server saw it.
+   *
+   * Half a megabyte is six times the biggest city this project generates, and
+   * still far below anything a client sends by accident. **It is a ceiling, not
+   * a budget**: `ws` closes the socket at 1009 and `server/index.js` has to
+   * survive that, which is its own rule — a client must not be able to end a
+   * room by sending something large.
+   */
+  MESSAGE_BYTES: 512 * 1024,
   PENDING_REQUESTS_PER_PAIR: 3,
   TITLE_BYTES: 64,
   REASON_BYTES: 240,

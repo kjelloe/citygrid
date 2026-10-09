@@ -100,8 +100,11 @@ export async function startServer({
   const sockets = new WebSocketServer({
     server: http,
     path: "/ws",
-    // A frame larger than the biggest command there is, is not a command.
-    maxPayload: LIMITS.CELLS_PER_COMMAND * 8,
+    // Big enough for the biggest MESSAGE, which since X2d is a `CREATE`
+    // carrying a saved city — not the biggest command. See `LIMITS` for the
+    // measurement; the old ceiling was 32 KB and a 48x48 save is 14, a 128x128
+    // is 89.
+    maxPayload: LIMITS.MESSAGE_BYTES,
   });
 
   const perIp = new Map();
@@ -155,7 +158,14 @@ export async function startServer({
       // the room it just made and there is no second message to invent.
       if (message.type === C2S.CREATE) {
         if (seat !== undefined) return;
-        const made = rooms.add({ options: message.options });
+        // **Options OR a save** (X2d). `createRoom` has taken `{ save }` since
+        // X1a — "hosting from a save is §3.3's the world never pauses, seen
+        // from the other end" — and the door dropped it on the floor, so the
+        // only way to host a city that already existed was to have the server
+        // boot with it. One field, and the half that was missing was this line.
+        const made = rooms.add(message.save === undefined
+          ? { options: message.options }
+          : { save: message.save });
         if (!made.ok) {
           connection.send({ type: S2C.REFUSED, reason: made.reason });
           socket.close();
@@ -237,6 +247,23 @@ export async function startServer({
       }
       if (message.type === C2S.RESYNC_REQUEST) mine.resync(connection, seat);
       if (message.type === C2S.LATENCY) connection.send({ type: S2C.PONG, at: message.at });
+    });
+
+    // **A bad frame must not end the room** (X2d). `ws` emits `error` on the
+    // socket for a frame over `maxPayload` (close code 1009) and for a
+    // malformed one — and an `error` event with no listener is an UNCAUGHT
+    // EXCEPTION in node, so the whole server died. One client sending something
+    // large could take down everybody else's city, which is a denial of
+    // service with no attacker required: it is how this was found, by a gate
+    // trying to host a saved city over a 32 KB ceiling.
+    //
+    // The socket is closed and the seat left through the handler below, like
+    // any other disconnection. Nothing is told to the client, because by the
+    // time `ws` raises this the frame is already refused and the connection is
+    // going.
+    socket.on("error", (error) => {
+      console.warn(`a socket failed and was closed: ${String(error?.message ?? error)}`);
+      socket.close();
     });
 
     socket.on("close", () => {

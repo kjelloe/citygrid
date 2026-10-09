@@ -209,3 +209,38 @@ test("a room everybody has left stops beating, and starts again when somebody co
     rooms.stop();
   }
 });
+
+// --- hosting a city that already exists (X2d) --------------------------------
+
+test("a room can be hosted from a save, and it is the same city", async () => {
+  // `createRoom` has taken `{ save }` since X1a — "hosting from a save is
+  // §3.3's the world never pauses, seen from the other end" — and the DOOR
+  // dropped the field, so the only way to host a city that already existed was
+  // to boot the server with it. The registry needed nothing: it passes `given`
+  // straight through, which is why this is one line at the door and a test
+  // here to say the line is there.
+  const first = createRooms();
+  const made = first.add({ options: { seed: 77, width: 32, height: 32, seats: 2 } });
+  assert.equal(made.ok, true, String(made.reason));
+  const save = made.room.save();
+  const hash = made.room.hash();
+
+  const second = createRooms();
+  const hosted = second.add({ save });
+  assert.equal(hosted.ok, true, `hosting from a save was refused: ${hosted.reason}`);
+  assert.equal(hosted.room.hash(), hash, "the hosted city is not the saved one");
+  // A different code, because it is a different room: the save carries a city,
+  // not a room.
+  assert.notEqual(hosted.room.code(), made.room.code());
+});
+
+test("a save the room cannot read is refused in its own words", () => {
+  // It answered `BAD_CODE` — "No room with that code" — which tells a player to
+  // check a join code they never typed. X1b's lesson about `ROOM_FULL` for a
+  // taken seat, in a second place.
+  const rooms = createRooms();
+  const refused = rooms.add({ save: { version: 1, nonsense: true } });
+  assert.equal(refused.ok, false, "a broken save made a room");
+  assert.equal(refused.reason, REFUSAL.BAD_SAVE);
+  assert.ok(String(refused.detail ?? "").length > 0, "no detail for the log");
+});

@@ -43,6 +43,7 @@ export const REFUSAL_LABELS = Object.freeze({
   [REFUSAL.MALFORMED]: "refused.malformed",
   [REFUSAL.BANNED]: "refused.banned",
   [REFUSAL.RATE_LIMIT]: "refused.rateLimit",
+  [REFUSAL.BAD_SAVE]: "refused.badSave",
 });
 
 /**

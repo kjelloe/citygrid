@@ -14079,3 +14079,51 @@ ok  and the city knows, in the frame, like everything else    (status 3)
 ```
 
 Suite **1,999 tests, 1,996 pass, 0 fail, 3 skipped, green twice**; `room` 191 s of 300.
+
+## X2d — hosting a city that already exists, and a frame that killed the server (2026-10-09)
+
+`createRoom` has taken `{ save }` since X1a — *"hosting from a save is §3.3's the world never pauses,
+seen from the other end"* — and `server/rooms.js` passes `given` straight through, so the registry
+needed nothing at all. **The door dropped the field.** `C2S.CREATE` carried `options` and
+`rooms.add({ options: message.options })` ignored everything else, so the only way to host a city
+that already existed was to boot the server with it. The fix is one line at the door and a button in
+the lobby, beside Continue rather than beside Host — what it opens is the SAVE, and the region
+chosen above it has nothing to do with it.
+
+**A save the room cannot read now says so.** It was answered `BAD_CODE` — *"No room with that
+code"* — which tells a player to check a join code they never typed. `REFUSAL.BAD_SAVE` is X1b's
+lesson about `ROOM_FULL` for a taken seat, in a second place.
+
+**And then the gate killed the server.**
+
+```
+WS_ERR_UNSUPPORTED_MESSAGE_LENGTH  (close code 1009)
+Emitted 'error' event on WebSocket instance at: ...
+```
+
+Two defects in one crash, and the second is much the worse.
+
+- **`maxPayload` was `CELLS_PER_COMMAND * 8` — 32 KB, the size of the biggest COMMAND.** Right
+  until one message type began carrying a city: a save is **14 KB on a 48×48 and 89 KB on a
+  128×128** (measured). `LIMITS.MESSAGE_BYTES` is half a megabyte now, six times the biggest city
+  this project generates, with the measurement written where the number is.
+- **An `error` event with no listener is an uncaught exception in node, so the whole server died.**
+  One client sending something large could end everybody else's city — a denial of service with no
+  attacker required, found by a gate trying to do something reasonable. `socket.on("error")` closes
+  that one socket and the seat leaves through the normal path. Nothing is told to the client: by the
+  time `ws` raises this, the frame is refused and the connection is going.
+
+**The gate's own race, twice.** "Saved at 26, hosted at 25" — the tick was read after the save
+rather than with it, so an in-flight tick landed between them. Settling `pending` was not enough
+either: **pausing a ROOM is a round trip.** `pause()` asks the room to stop and the frames keep
+arriving until it does, and `pending` counts posts, not incoming frames. The gate waits for the
+room's own dial to reach 0 and then for the tick to stop moving — two equal samples, the shape
+`ui_smoke` waits for the renderer with.
+
+```
+ok  the host's city got somewhere to save        (tick 25)
+ok  the lobby hosts a room from a saved city     (room TRF62Q, tick 25)
+ok  and it is that city, not a new one           (saved at 25, hosted at 25)
+```
+
+Suite **2,001 tests, 1,998 pass, 0 fail, 3 skipped, green twice**; `room` 211 s of 300.

@@ -67,8 +67,10 @@ export function createRooms({
       } catch (error) {
         // A save the room cannot read: `createRoom` throws, and a player who
         // asked to host from a broken file needs a sentence rather than a
-        // dropped socket.
-        return { ok: false, reason: REFUSAL.BAD_CODE, detail: String(error.message ?? error) };
+        // dropped socket — and its OWN sentence (X2d). This answered `BAD_CODE`
+        // for a year's worth of slices, which tells a player to check a join
+        // code they never typed.
+        return { ok: false, reason: REFUSAL.BAD_SAVE, detail: String(error.message ?? error) };
       }
       const pump = createPump(room, { tickMs });
       // `emptySince` is left UNSET rather than stamped with `Date.now()`: the

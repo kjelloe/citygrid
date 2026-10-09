@@ -202,6 +202,16 @@ async function boot() {
     return undefined;
   }
 
+  /** Host a city that already exists (X2d). The save crosses as bytes on the
+   * `CREATE`, because the room restores through `fromSave` — the same function
+   * and the same checksum the page restores through, which is what makes this
+   * the one transfer in the project that proves itself. */
+  async function hostSaved(slot) {
+    const row = await getSave(slot);
+    if (!row?.save) return failed(new Error(`there is nothing in slot ${slot}`));
+    return hostRoom({ host: { save: row.save } });
+  }
+
   /** The room ended the session (X2d): a kick, a reaped room, a restarted
    * server. Back to the lobby with the door's own sentence where there is one —
    * the same path a refused JOIN takes, because "you are not in that room" is
@@ -273,8 +283,12 @@ async function boot() {
   /** **Hosting** (X2c). The options are the ones chosen on the lobby, and the
    * ROOM generates the city from them — so the preview's world is let go and
    * the seed in the record is what makes the two the same region. */
-  async function hostRoom({ options, mayorName }) {
-    const session = await play({ host: options, mayorName }).catch(failed);
+  async function hostRoom({ options, host, mayorName }) {
+    // `host` is a save to open; `options` is a region to generate. One or the
+    // other reaches the transport as `given.host`, and the door tells them
+    // apart by which field the CREATE carries.
+    const session = await play({ host: host ?? options, mayorName })
+      .catch((error) => refusedJoin(error));
     // The code in the address bar, so a host has something to send somebody:
     // `?join=` is the parameter a guest arrives on, which makes the URL a host
     // copies the invitation itself.
@@ -312,6 +326,10 @@ async function boot() {
       // name and nothing else. The seat is the door's answer — a player who
       // typed a code cannot know which are free.
       onHost: hostRoom,
+      // **Hosting the city you were already playing** (X2d). Offered on the
+      // same condition Continue is — there is a save — and it opens THAT city
+      // in a room rather than the region the lobby is showing.
+      onHostSave: latest ? () => hostSaved(latest.slot) : undefined,
       onJoin({ join, mayorName, spectate }) {
         play({ join, mayorName, spectate }).catch((error) => refusedJoin(error, join));
       },

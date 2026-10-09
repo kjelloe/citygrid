@@ -42,7 +42,7 @@ function randomSeed() {
  *   generated region, so the game does not generate a second one.
  * @param onContinue optional; shown only when there is a save to continue.
  */
-export function createNewGame(root, { choices: initial, onStart, onContinue, onSettings, onJoin, onHost, refused } = {}) {
+export function createNewGame(root, { choices: initial, onStart, onContinue, onSettings, onJoin, onHost, onHostSave, refused } = {}) {
   let choices = sanitiseChoices(initial ?? {});
   let world;
 
@@ -307,6 +307,23 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     resume.id = "continue";
     resume.addEventListener("click", () => onContinue());
     actions.append(resume);
+  }
+  // **And host the city you were already playing** (X2d). Beside Continue
+  // rather than beside Host, because what it opens is the SAVE — the region
+  // chosen above has nothing to do with it, and a button that ignored the
+  // options it stands under would be the lobby lying about what it does.
+  // `createRoom` has taken a save since X1a and the door dropped the field;
+  // this is the other end of that one line.
+  if (onHostSave) {
+    const hostSave = el("button", "lobby-host-save", t("lobby.hostSave"));
+    hostSave.type = "button";
+    hostSave.id = "host-save";
+    hostSave.addEventListener("click", () => {
+      diorama?.dispose();
+      diorama = undefined;
+      onHostSave();
+    });
+    actions.append(hostSave);
   }
   const seedLine = el("p", "lobby-seed");
   actions.append(seedLine);

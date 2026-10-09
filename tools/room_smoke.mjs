@@ -788,6 +788,57 @@ try {
   check("the host, the guest and the hosted room are on one hash",
     hostedHashes[0] === hostedHashes[1] && hostedHashes[0] === hostedRoom?.hash(),
     `${hostedHashes[0]} / ${hostedHashes[1]} / ${hostedRoom?.hash()}`);
+  // **And hosting a city that already exists** (X2d). `createRoom` has taken a
+  // save since X1a and the door dropped the field, so the only way to host one
+  // was to boot the server with it. The discriminator is the TICK: a generated
+  // room starts at 0, and a hosted save starts where the city was saved.
+  {
+    // The tick is read in the SAME turn as the save, after the seam has
+    // settled. Pausing stops the clock but not the posts already in flight, so
+    // a tick read afterwards was one ahead of the one in the file — "saved at
+    // 26, hosted at 25", which is a gate counting what it sent rather than
+    // what arrived.
+    const savedAt = await hostPage.evaluate(async () => {
+      const city = globalThis.CITY;
+      city.resume();
+      // Somewhere to come back to, and far enough in that the tick is not zero.
+      await new Promise((done) => { setTimeout(done, 2500); });
+      // **Pausing a ROOM is a round trip** (X2d). `pause()` asks the room to
+      // stop and the frames keep arriving until it does — `pending` counts
+      // posts, not incoming frames, so a save taken on the next line was a
+      // tick behind the page by the time the page was read. Wait for the
+      // room's own dial to reach 0, then for the tick to stop moving: two
+      // equal samples, which is the same shape `ui_smoke` waits for the
+      // renderer with.
+      city.pause();
+      while (city.roomSpeed !== undefined && city.roomSpeed !== 0) {
+        await new Promise((done) => { setTimeout(done, 20); });
+      }
+      let last = -1;
+      while (last !== city.state.tick) {
+        last = city.state.tick;
+        await new Promise((done) => { setTimeout(done, 200); });
+      }
+      while (city.pending > 0) await new Promise((done) => { setTimeout(done, 20); });
+      await city.save(1);
+      return city.state.tick;
+    });
+    check("the host's city got somewhere to save", savedAt > 0, `tick ${savedAt}`);
+    await hostPage.goto(`${origin}/?life=0`);
+    await hostPage.waitForSelector("#host-save", { timeout: 30_000 });
+    await hostPage.click("#host-save");
+    const fromSave = await until(hostPage, "the lobby never hosted the saved city", () => {
+      const city = globalThis.CITY;
+      if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+      return { ok: true, room: city.room, tick: city.state?.tick };
+    }, undefined, 30_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("the lobby hosts a room from a saved city", fromSave.ok === true,
+      fromSave.why ?? JSON.stringify(fromSave));
+    check("and it is that city, not a new one", fromSave.tick >= savedAt,
+      `saved at ${savedAt}, hosted at ${fromSave.tick}`);
+    check("hosting from a save reported no page or console errors", hostErrors.length === 0,
+      hostErrors.slice(0, 3).join(" | "));
+  }
   await guestCtx.close();
   await hostCtx.close();
 

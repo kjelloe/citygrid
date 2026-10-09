@@ -156,11 +156,15 @@ export function createSocketTransport(url, given = {}, { connect, storage } = {}
     // answers with its `WELCOME`, so everything after this line is the same
     // path for both and there is no second code path to keep in step.
     if (given.create !== undefined) {
+      // `create` is the options a new region is generated from, or `{ save }`
+      // to host a city that already exists (X2d). One or the other, and the
+      // room tells them apart by which field arrived.
       say({
         type: C2S.CREATE,
         version: PROTOCOL_VERSION,
         build: buildHash(),
-        options: given.create,
+        options: given.create?.save === undefined ? given.create : undefined,
+        save: given.create?.save,
         name: given.name,
       });
       return;

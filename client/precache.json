@@ -1,6 +1,6 @@
 {
- "version": "0e8451b25e98",
- "build": "a7a71a761156",
+ "version": "a5f702257a39",
+ "build": "d0cf1b07cb0b",
  "generated": "2026-10-09",
  "files": [
   "./client/audio/audio-model.js",
