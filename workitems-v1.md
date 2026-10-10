@@ -80,6 +80,8 @@ Q167's one static handler under sixteen tools. The instrument findings are the b
 batch: a gate that passes on zero subjects, a rule that cannot fire in the configuration an arm
 measured, and a dead constant that fences dead imports.*
 
+**Measured by the reviewer on a clean checkout of `f401088`:** suite green twice; `room` **262 s of 300**, 3 of 3 (room_smoke 157 — eight browsers with a phone among them — room_churn 58, room_soak 48); `release` **47 s of 180**, `room_eight` green. `quick` was green at 535 s of 600 on the previous checkout and was not re-run.
+
 **V1 to V4 are built. What is left of v1.0 is one phone defect, one evening and one tag.**
 
 - **K6 — the phone's first-run card** (`workitems-navigation.md`), found by looking at
