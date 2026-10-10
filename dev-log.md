@@ -15659,3 +15659,37 @@ at 421, rail starts at 579.
   regression, `ui_smoke`, `reach_smoke` and `mvp_acceptance` unmoved.
 - `reports/play-phone.png` and `reports/play-phone-first-screen.png` re-taken:
   six gestures, each with its sentence beside it, nothing clipped.
+
+## K6c — the rail is one strip (2026-10-10)
+
+Overlays, Tax, Saves, History, Controls, Statistics, Settings — seven buttons at
+390 px, wrapping to two rows: **94 px of a 44 px button**, measured. A room adds
+Requests and Players, which is nine. The first playtest named it on 2026-08-29
+("the rail needs to be icons rather than words") and nothing had been done since.
+
+Icons are an art decision and v1.1's. The v1.0 answer is the one the alert chips
+under the rail already use: a row that scrolls. `flex-wrap: nowrap`,
+`overflow-x: auto`, and `flex: 0 0 auto` on the buttons — without that last one a
+nowrap row squeezes every label instead of overflowing, which is the same
+mistake in the other direction.
+
+**The fade is conditional, and that is the only interesting part.** A cut-off
+button has to read as "more", and a mask that is always on dims the last button
+of a rail that fits. `hud.js` writes `data-more` — `end`, `start`, `both`, or
+nothing — from the strip's own scroll position, on `scroll` and from the
+`ResizeObserver` that already publishes the layout heights, and the stylesheet
+masks against that. Measured on a phone: `scrollWidth 572` in a `clientWidth
+371`, `data-more: "end"`, and the shot shows "Contro…" fading out at the right
+edge.
+
+### Measured
+
+- `play_smoke`'s phone block: 7 buttons, rail **44 px of a 44 px button**
+  (`flex-wrap: nowrap`), and every button inside the strip and the screen after
+  `scrollIntoView` — the reachability half, asked the way a finger asks it.
+- `room_smoke`'s phone client: **9 buttons**, 44 px of a 44 px button,
+  `data-more: "end"`, every one reachable. This is the only gate with a phone
+  IN a room, so it is where the longest rail there is gets measured.
+- Suite 2,109 green twice; `quick` 517/600 s; `room` 260/300 s.
+- `reports/hud-phone.png` re-taken: one row, and the advisor above it now
+  finishes its sentence — *"…name a roundabout after you."*

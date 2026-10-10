@@ -352,7 +352,7 @@ confirmation (ruling 028). The URL is the `?join=<code>` form the host already h
 button puts the join URL on the clipboard (the perf card's clipboard row is the pattern) and a
 second context opening that URL lands in the room.
 
-### K6c — The rail is one strip (XS)
+### ~~K6c — The rail is one strip (XS)~~ — **built 2026-10-10**
 
 **What the picture shows.** `reports/hud-phone.png`: Overlays, Tax, Saves, History, Controls,
 Statistics, Settings wrap to two rows at 390 px, and a room adds Requests and Players. Named by
@@ -363,6 +363,12 @@ the first playtest on 2026-08-29 ("icons rather than words"), never done.
 edge so a cut-off button reads as "more". Icons are v1.1's — an art decision.
 **Tests first.** `play_smoke` phone row: the rail's height is one button, with nine buttons in a
 room; `reach_smoke`: every rail button can still be brought on screen (scrolled to).
+
+**Built 2026-10-10.** 94 px of a 44 px button before, 44 after. `flex: 0 0 auto` with the nowrap,
+or the row squeezes the labels instead of overflowing. The fade is conditional — `hud.js` writes
+`data-more` (`end`/`start`/`both`) from the strip's scroll position and the stylesheet masks
+against it, because a fade that is always on dims the last button of a rail that fits. The nine-
+button case is `room_smoke`'s phone client, the only phone this project has ever put in a room.
 
 ### K6d — `--url` for the room gates (S)
 

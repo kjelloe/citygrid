@@ -360,10 +360,35 @@ button, [role="button"] {
     align-items: stretch;
     gap: 0.4rem;
   }
-  .hud-rail { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
+  /* **One strip, not two rows** (K6c). Seven buttons at 390 px wrapped to two
+     rows — 94 px of a 44 px button, measured — and a room adds Requests and
+     Players, which is nine. The first playtest named it on 2026-08-29 ("the
+     rail needs to be icons rather than words"); icons are an art decision and
+     v1.1's, so the v1.0 answer is the one the alert chips under it already
+     use: a row that scrolls. `flex: 0 0 auto` with it, or a nowrap row
+     squeezes every label instead of overflowing. */
+  .hud-rail {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .hud-rail::-webkit-scrollbar { display: none; }
+  /* A cut-off button has to read as "more". The mask is only applied while
+     there IS more — `hud.js` sets `data-more` from the strip's own scroll
+     position — because a permanent fade dims the last button on a rail that
+     fits. */
+  .hud-rail[data-more="end"] { mask-image: linear-gradient(to right, #000 calc(100% - 1.6rem), transparent); }
+  .hud-rail[data-more="start"] { mask-image: linear-gradient(to left, #000 calc(100% - 1.6rem), transparent); }
+  .hud-rail[data-more="both"] {
+    mask-image: linear-gradient(to right, transparent, #000 1.6rem, #000 calc(100% - 1.6rem), transparent);
+  }
   .rail-extras { flex-direction: row; margin: 0; padding: 0 0 0 0.45rem; border-top: none;
     border-inline-start: 1px solid color-mix(in srgb, var(--fg) 20%, transparent); }
-  .rail-button { flex: 1 1 auto; text-align: center; }
+  .rail-button { flex: 0 0 auto; text-align: center; }
   .hud-drawer { width: 100%; max-height: 46vh; }
 }
 

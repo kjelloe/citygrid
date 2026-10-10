@@ -1437,9 +1437,22 @@ export function createHud(root, {
   // The minimap sits above the panel, and the panel's height changes with its
   // contents and with the language. Published as a custom property rather than
   // guessed at in the stylesheet, because a guess is wrong in Norwegian.
+  /** Which end of the rail has more on it (K6c), as a data attribute the
+   * stylesheet fades against. A phone's rail is one scrolling strip, and a
+   * fade that is always there dims the last button of a rail that fits. */
+  function markRailOverflow() {
+    const slack = rail.scrollWidth - rail.clientWidth;
+    if (slack <= 1) { delete rail.dataset.more; return; }
+    const atStart = rail.scrollLeft <= 1;
+    const atEnd = rail.scrollLeft >= slack - 1;
+    rail.dataset.more = atStart ? "end" : atEnd ? "start" : "both";
+  }
+  rail.addEventListener("scroll", markRailOverflow, { passive: true });
+
   let panelWatch;
   if (globalThis.ResizeObserver) {
     panelWatch = new globalThis.ResizeObserver(() => {
+      markRailOverflow();
       root.style.setProperty("--panel-height", `${panel.getBoundingClientRect().height}px`);
       // The top bar wraps — to three lines at 200% text on a phone — and the
       // rail hangs below it. A fixed offset put the rail inside the top bar and
@@ -1452,7 +1465,9 @@ export function createHud(root, {
     panelWatch.observe(panel);
     panelWatch.observe(top);
     panelWatch.observe(side);
+    panelWatch.observe(rail);
   }
+  markRailOverflow();
 
   refresh();
   return {

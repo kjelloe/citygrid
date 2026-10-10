@@ -1077,6 +1077,44 @@ try {
     check("the advisor never reaches the rail",
       advisor.card.bottom <= advisor.rail.top + 1,
       `card ends at ${Math.round(advisor.card.bottom)}, rail starts at ${Math.round(advisor.rail.top)}`);
+
+    // --- the rail is one strip (K6c) -----------------------------------------
+    //
+    // `reports/hud-phone.png`: Overlays, Tax, Saves, History, Controls,
+    // Statistics and Settings wrap to two rows at 390 px, and a room adds
+    // Requests and Players. Named by the first playtest on 2026-08-29 ("icons
+    // rather than words") and never done. One non-wrapping strip that scrolls,
+    // so the rail is one button high whatever is on it — `room_smoke` asks the
+    // same question of a room's nine.
+    const rail = await page.evaluate(() => {
+      const strip = document.querySelector(".hud-rail");
+      const buttons = [...strip.querySelectorAll(".rail-button")];
+      const height = strip.getBoundingClientRect().height;
+      const tallest = Math.max(...buttons.map((b) => b.getBoundingClientRect().height));
+      // Every button brought into view the way a finger brings it, then asked
+      // whether it is inside the strip AND inside the screen.
+      const unreachable = [];
+      for (const button of buttons) {
+        button.scrollIntoView({ block: "nearest", inline: "nearest" });
+        const b = button.getBoundingClientRect();
+        const s = strip.getBoundingClientRect();
+        if (!(b.width > 0 && b.height > 0 && b.left >= s.left - 1 && b.right <= s.right + 1
+          && b.left >= -1 && b.right <= window.innerWidth + 1)) unreachable.push(button.id || button.textContent);
+      }
+      strip.scrollLeft = 0;
+      return {
+        buttons: buttons.length, height, tallest,
+        scrolls: strip.scrollWidth > strip.clientWidth,
+        wrap: getComputedStyle(strip).flexWrap,
+        unreachable,
+      };
+    });
+    check("the phone's rail has buttons on it", rail.buttons >= 7, `${rail.buttons} buttons`);
+    check("the phone's rail is one button high",
+      rail.height <= rail.tallest + 2,
+      `${Math.round(rail.height)}px of a ${Math.round(rail.tallest)}px button, flex-wrap: ${rail.wrap}`);
+    check("and every button on it can be brought on screen",
+      rail.unreachable.length === 0, rail.unreachable.join(", "));
     await page.screenshot({ path: "reports/play-phone-first-screen.png" });
     await phone.close();
   }

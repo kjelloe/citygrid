@@ -121,11 +121,9 @@ Then **M7b**: the release page re-measured, `git tag v1.0`, `main` fast-forwarde
   drew the QR; there is no **Copy link** or share control anywhere, and on a phone the address bar
   is the hardest thing on the screen to copy. One button beside the code, `navigator.share` where
   it exists and the clipboard otherwise, in the lobby and on the roster. → K6.
-- **The phone's rail wraps to two rows** — Overlays, Tax, Saves, History, Controls, Statistics,
-  Settings — which the first playtest named on 2026-08-29 ("the rail needs to be icons rather than
-  words") and nothing has done since; in a room it gains Requests and Players. Icons are an art
-  decision and v1.1's; the v1.0 mitigation is a **single non-wrapping strip that scrolls**, like the
-  alert chips under it. → K6.
+- ~~**The phone's rail wraps to two rows**~~ — **built 2026-10-10 as K6c.** 94 px of a 44 px
+  button before, 44 after, with a conditional fade at the edge a button is cut off at; `room_smoke`'s
+  phone client measures the nine-button case. Icons are still an art decision and v1.1's. → K6.
 - **The deployed half of V4 cannot be run as written.** `room_soak` and `room_smoke` have no way to
   be pointed at another server — they spawn their own — so "the gates against the box once" is a
   sentence with no command behind it. A `--url` on both (the browsers open the given origin, the

@@ -1160,6 +1160,38 @@ try {
     });
     check("and the phone can open the room's panels",
       Object.values(panels).every((w) => w > 40), JSON.stringify(panels));
+
+    // **A room's rail is the longest one there is** (K6c): the seven a
+    // singleplayer city has plus Requests and Players. It wrapped to two rows
+    // at 390 px — which is where the "icons rather than words" note from the
+    // first playtest on 2026-08-29 came from — and is one scrolling strip now.
+    // Asked here because this is the only gate that has a phone IN a room.
+    const strip = await onPhone.page.evaluate(() => {
+      const rail = document.querySelector(".hud-rail");
+      const buttons = [...rail.querySelectorAll(".rail-button")];
+      const unreachable = [];
+      for (const button of buttons) {
+        button.scrollIntoView({ block: "nearest", inline: "nearest" });
+        const b = button.getBoundingClientRect();
+        const r = rail.getBoundingClientRect();
+        if (!(b.width > 0 && b.left >= r.left - 1 && b.right <= r.right + 1
+          && b.right <= window.innerWidth + 1)) unreachable.push(button.id || button.textContent);
+      }
+      rail.scrollLeft = 0;
+      return {
+        buttons: buttons.length,
+        height: Math.round(rail.getBoundingClientRect().height),
+        tallest: Math.round(Math.max(...buttons.map((b) => b.getBoundingClientRect().height))),
+        more: rail.dataset.more ?? "none",
+        unreachable,
+      };
+    });
+    check("a room's phone rail carries every panel", strip.buttons >= 9, `${strip.buttons} buttons`);
+    check("and it is one button high, with nine on it",
+      strip.height <= strip.tallest + 2, `${strip.height}px of a ${strip.tallest}px button`);
+    check("and says there is more to scroll to", strip.more !== "none", strip.more);
+    check("and every one of them can be brought on screen",
+      strip.unreachable.length === 0, strip.unreachable.join(", "));
     check("no client in the room reported a page error",
       everyone.every((c) => c.errors.length === 0),
       everyone.flatMap((c) => c.errors).slice(0, 3).join(" | "));
