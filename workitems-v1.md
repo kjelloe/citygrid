@@ -68,35 +68,80 @@ room list; a phone performance card; every picture question in Q161–Q166.
 light) — two small world items that make S22 whole; they go after M12 and before X6, because the
 evening should be played under the sun as it will ship.
 
+## Review after X7, M11 and Q167 (2026-10-10) — P118
+
+*Read on `dev_night` at `f401088`, the tree clean. On a clean checkout the suite is green twice;
+the `room`, `release` and `quick` sets are below. **Everything since the last review is accepted**:
+M12 (the box — config, an origin check, the proxy's address, `/healthz`, one static handler,
+`DEPLOYING.md` with the first-time steps written as they will be run), S22b and S22c, X6, X2d's
+last rows and the hand-rolled QR, X7 (eight scripted clients on one hash with a p99 of 16 ms
+against the plan's 150; eight browsers with a phone among them), M11, the unplanned round and
+Q167's one static handler under sixteen tools. The instrument findings are the best of the
+batch: a gate that passes on zero subjects, a rule that cannot fire in the configuration an arm
+measured, and a dead constant that fences dead imports.*
+
+**V1 to V4 are built. What is left of v1.0 is one phone defect, one evening and one tag.**
+
+- **K6 — the phone's first-run card** (`workitems-navigation.md`), found by looking at
+  `reports/play-phone.png`: bare key names with no explanation and no touch row, clipped at the
+  edge. It is the first thing a phone player sees at V5. Before V5.
+- **Q169, the advisor's card cut mid-sentence on a phone**, is the second thing they see. The ally
+  left it as a look for Kjell; the reviewer's recommendation is **scroll inside the cap**, which is
+  one CSS line and the same shape as K6's fix, and it goes into K6 unless Kjell says ellipsis.
+- **Q170 — the sun's shadow is invisible** (8% darker than the ground, by the gate's own number).
+  Opened by the reviewer; a v1.1 picture item unless Kjell wants the evening played under visible
+  shadows.
+
+**V5, as a checklist for Kjell** (everything the ally cannot do):
+1. `DEPLOYING.md` "First-time box setup", steps 1–8, run in order on the shared box — claim the
+   port, the user and Node, the unit, one deploy, nginx HTTP-only, the shared certificate
+   lineage, the outside check and the neighbour sweep, the hosting document.
+2. `node tools/gates.mjs release` and `room` pointed at the box once (`ROOM_URL`), which is the
+   deployed half of V4 the ally could not run.
+3. Open the address on a phone, scan the QR from a second device, host a room, invite at least
+   three people, play an hour at the map's seat cap, lose a connection on purpose and come back,
+   file and answer a request both ways, leave the room overnight and open it the next day.
+4. Notes into `playtest-notes.md`: every refusal, every "what is this", every hitch — A134's W6c
+   trigger is read here — and the top of v1.1 is written from them.
+
+Then **M7b**: the release page re-measured, `git tag v1.0`, `main` fast-forwarded and pushed.
+
 ## v1.1 — the remaining details and the balance
 
-Everything that makes the game better without making it a different game, gathered after V5's
-notes. In the order the notes are likely to rank them:
+**The top of this list is written on the night of V5.** Below it, everything open in every lane
+on 2026-10-10, gathered into one table so nothing has to be found by reading ten files. Cheapest
+first within each group; sizes as the lane files have them.
 
-- **What the evening found** — the top of this list is written on the night.
-- **Balance**: the deputy's spacing and stranded homes (Q157/A135 stands, re-read with the
-  notes), a single purse if the evening wants a common pot (A142), the quests-in-the-sweep era's
-  follow-ups, W6d's re-seat (Q161), a phone performance card and the tier retune it unblocks (D2,
-  D3, D5).
-- **The world**: S19b, S18's shore line, S15b and S15c (tone), S14, S20's subject counts, B15 and
-  B6's rain, the film (F3, needs a phone's frame rate).
-- **The stall**: W6c, if V5 felt it.
-- **Modes and districts** (Wave 6.1): `data/modes.json`, district claiming, the commons band, open
-  borders, supply contracts, shared civic projects, the multi-seat demand allocation — the first
-  thing that makes two rooms play differently.
-- **Rivals and seasons** (Wave 6.2): per-seat scoring, per-seat rank (A129), season markers, the
-  recap.
+| Group | Item | Lane | Size |
+|---|---|---|---|
+| **Kjell's looks** | Q168 the compare sheet's terrace row has never photographed a facade — re-frame it | world | XS |
+| | Q170 the sun's shadow is invisible — intensity, tint, radius, with `sun_shots` | world | S |
+| | Q157/A135 the deputy's spacing, re-read with the evening's notes | behaviour | — |
+| **The world** | S19b a station faces its track | world | S |
+| | S18's shore line | world | XS |
+| | S20's subject counts in the picture gates | world | S |
+| | S15b the lit response · S15c the road is the largest colour | world | M + M |
+| | S14 the embankment (now the wall's job; close or re-scope) | world | S |
+| | S11's remaining half: `hilly` as a playable map, the walk green on it | world | M |
+| | what is left of D8b — the picture tools still build quest-free cities | measurement | S |
+| **Behaviour** | B15 count B14's refusals | behaviour | S |
+| | B6's rain (the overcast hour is built; the rain itself is not) | behaviour | M |
+| | a single purse if the evening wants a common pot (A142) | multiplayer | M, hashed |
+| **The stall** | W6c the graph that is not rebuilt — only if V5 felt the hitch (A134) | worker | L |
+| **Modes** (Wave 6.1) | `data/modes.json`, district claiming, the commons band, open borders, supply contracts, shared civic projects, the multi-seat demand allocation | new lane | L |
+| **Rivals** (Wave 6.2) | per-seat scoring and per-seat rank (A129), season markers, the recap | new lane | L |
+| **Hardware** | D2 a phone card · D3 the tier retune · D5's rest · F3 the film | measurement, film | needs a phone |
 
 ## v1.2 — scale and operations, if needed
 
 - **Scale** (Wave 6.3): sixteen seats on 128×128 for an hour with hashes identical and jitter p99
-  under 150 ms; clock degradation under load; checkpointing with log truncation; `profile_run`
-  and `host_probe`; the predicted budgets in plan §3.8 replaced with measured ones.
+  under 150 ms (eight measured 16 ms at X7); clock degradation under load; checkpointing with log
+  truncation; `profile_run` and `host_probe`; plan §3.8's remaining rows measured.
 - **Operations** (Wave 6.4): backups and room restore proven by a kill and a restart with every
-  live room resumed; `/metrics`; the master index and the server browser, and `privacy` with it.
+  live room resumed; `/metrics` beyond `/healthz`; the master index and the server browser, and
+  `privacy` with it (the one unread option left).
 - **Whatever v1.1's evening ranked below the line.**
 
 ## Order
 
-V1 → V2 → V3 → V4 → V5 (Kjell) → V6. V1 first because V4 and V5 need a server that is not a
-laptop; V2 before V3 because the first deploy after the lobby changes is the first stale client.
+~~V1 → V2 → V3 → V4~~ built 2026-10-09. **K6 → V5 (Kjell) → M7b.** Then v1.1 from the notes.

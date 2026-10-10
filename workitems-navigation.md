@@ -306,6 +306,29 @@ events, because the buttons have to work under a finger and not only under a mou
 **Also fixed here:** the reviewer's cosmetic note — `onPointerUp` asked `intentNow(event.buttons)`
 twice for one answer.
 
+## K6 — The first-run card on a phone (S) — found by the reviewer in `reports/play-phone.png`, 2026-10-10
+
+**What the picture shows.** The card a phone player sees first is a column of bare key names —
+`ArrowUp ArrowDown ArrowLeft Arro…` (clipped at the right edge), `Q`, `E`, `PageUp PageDown`,
+`+ =`, `-`, `H Home`, `F`, `C` — with **no explanation visible beside any of them**, and no row
+about touch at all. `controls-card.js` builds the same rows for every pointer: six mouse rows and
+every keyboard key the cluster carries, each `dt` a key and each `dd` a label the phone layout does
+not show. A phone has no keys and no mouse; the gestures it does have (one-finger drag pans, pinch
+zooms, two-finger twist rotates, the border pull, the compass button opens the cluster, tap-to-walk
+in the street) are the ones the card never names. Ruling 027 and A58: the card is the discovery
+surface for a scheme with no buttons, and on a phone it discovers nothing.
+
+**Do.** Two row sets in `controls-card.js`, chosen by `isCoarsePointer()` (`client/capabilities.js`,
+which has existed since N12): the touch rows on a coarse pointer, the mouse and key rows on a fine
+one; the explanation on the same line as its gesture, wrapping, never clipped; the keys that need a
+keyboard are not listed where there is none. Both catalogues. `test/controls-card.test.js`: the
+coarse set names no key and every row has a label; `play_smoke` on the phone viewport: every `dd`
+in the card has a non-empty box inside the viewport (the `every`-is-true-of-nothing guard from the
+unplanned round applies here first). **And Q169 with it** unless Kjell says otherwise: the
+advisor's card on a phone scrolls inside its cap instead of spilling over the map.
+
+**Why v1.0.** It is the first thing a phone player sees at V5, before the room.
+
 ## Review after K3 (2026-09-11)
 
 *Read on `dev_night` at `a4f1c7b`. Re-run by the reviewer: the suite twice, `gates.mjs quick` and

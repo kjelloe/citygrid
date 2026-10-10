@@ -478,6 +478,7 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
+| **Q170** | the sun moves and its shadow is 8% darker than the ground — nobody can see it; raise it? | **Kjell**; a v1.1 picture item unless the evening should be played under visible shadows |
 | **Q169** | **On a phone the advisor's message is cut off mid-sentence** — "…Somebody will want to name a" and then nothing, with the rest spilling over the map. It has been that way for as long as `reports/hud-phone.png` has existed; X7 found it rather than caused it. Grow the card, scroll it, or truncate it properly? | Nothing today — and it is the first thing anybody will see on a phone at V5 |
 | **Q168** | The compare sheet's **terrace** row is captioned "close and low over a residential street — the zoom where facades have to carry it" and renders a region to the horizon with a lake in it: `span: 15` at `pitch: 26°` in a perspective camera sees everything behind the near field. The one row aimed at facades has never photographed any. Re-frame it, or is the wide view wanted there? | Nothing — but it is the row every future facade question is judged on |
 | ~~Q167~~ | **Built 2026-10-10 under P116** — `server/static.js` is the one handler and all sixteen browser tools call it; the conversion found nine dead `const root` lines fencing dead imports, and the strippers every census reads through blind from the first quote inside a regex literal |
