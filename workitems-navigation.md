@@ -306,38 +306,70 @@ events, because the buttons have to work under a finger and not only under a mou
 **Also fixed here:** the reviewer's cosmetic note — `onPointerUp` asked `intentNow(event.buttons)`
 twice for one answer.
 
-## K6 — The first-run card on a phone (S) — found by the reviewer in `reports/play-phone.png`, 2026-10-10
+## K6 — The phone before the evening (M) — four pieces, all before V5 (P119, P120)
 
-**What the picture shows.** The card a phone player sees first is a column of bare key names —
-`ArrowUp ArrowDown ArrowLeft Arro…` (clipped at the right edge), `Q`, `E`, `PageUp PageDown`,
-`+ =`, `-`, `H Home`, `F`, `C` — with **no explanation visible beside any of them**, and no row
-about touch at all. `controls-card.js` builds the same rows for every pointer: six mouse rows and
-every keyboard key the cluster carries, each `dt` a key and each `dd` a label the phone layout does
-not show. A phone has no keys and no mouse; the gestures it does have (one-finger drag pans, pinch
-zooms, two-finger twist rotates, the border pull, the compass button opens the cluster, tap-to-walk
-in the street) are the ones the card never names. Ruling 027 and A58: the card is the discovery
-surface for a scheme with no buttons, and on a phone it discovers nothing.
+*Found by rehearsing V5 on paper against `reports/play-phone.png` and `reports/hud-phone.png`: the
+four things a guest on a phone meets before the room, each a small defect nobody had looked at.*
 
-**Do.** Two row sets in `controls-card.js`, chosen by `isCoarsePointer()` (`client/capabilities.js`,
-which has existed since N12): the touch rows on a coarse pointer, the mouse and key rows on a fine
-one; the explanation on the same line as its gesture, wrapping, never clipped; the keys that need a
-keyboard are not listed where there is none. Both catalogues. `test/controls-card.test.js`: the
-coarse set names no key and every row has a label; `play_smoke` on the phone viewport: every `dd`
-in the card has a non-empty box inside the viewport (the `every`-is-true-of-nothing guard from the
-unplanned round applies here first). **And Q169 with it** unless Kjell says otherwise: the
-advisor's card on a phone scrolls inside its cap instead of spilling over the map.
+### K6a — The first-run card on a phone, and the advisor's card (S) — A146 (Q169)
 
-**Three more pieces, from the second omissions pass (P119), all small and all before V5:**
-- **Copy the invitation**: one button beside the room code in the lobby and on the roster —
-  `navigator.share` where the browser has it, the clipboard otherwise, with its own strings and a
-  `room_smoke` row that reads the clipboard the way `ui_smoke` reads the perf card's.
-- **The phone's rail is one strip that scrolls**, never two rows: `flex-wrap: nowrap`,
-  `overflow-x: auto`, the way the alert chips already behave. `play_smoke`'s phone row asserts the
-  rail is one row high. Icons are v1.1's (an art decision, playtest §2).
-- **`--url` on `room_soak` and `room_smoke`** so both can be pointed at a deployed server, and
-  `gates.mjs room --url` / `release --url` pass it through; the default stays "spawn our own".
+**What the picture shows.** `reports/play-phone.png`: a column of bare key names — `ArrowUp
+ArrowDown ArrowLeft Arro…` clipped at the edge, `Q`, `E`, `PageUp PageDown`, `+ =`, `-`, `H Home`,
+`F`, `C` — with no explanation visible beside any and no row about touch. `controls-card.js`
+builds the same six mouse rows and every cluster key for every pointer; a phone has neither.
 
-**Why v1.0.** It is the first thing a phone player sees at V5, before the room.
+**Do.** Two row sets chosen by `isCoarsePointer()` (`client/capabilities.js`): on a coarse pointer
+the gestures — one-finger drag pans, pinch zooms, two-finger twist rotates, a drag from the border
+pans with a tool in hand, the compass opens the camera cluster, tap the ground to walk in the
+street — and no key; on a fine pointer the rows as they are. Every explanation on the same line as
+its gesture, wrapping, never clipped. **And the advisor's card** (A146): `overflow-y: auto` inside
+its 38vh cap, a background behind every line.
+**Tests first.** `test/controls-card.test.js`: the coarse set names no key, every row has a label,
+both catalogues. `play_smoke` phone row: every `dd` has a non-empty box inside the viewport (the
+*every-is-true-of-nothing* guard: assert the count first), and the advisor's text box is inside
+the card's box after a long message.
+
+### K6b — Copy the invitation (S)
+
+**What is missing.** The host's address bar is the invitation (X2c) and the QR is drawn (X2d);
+nothing copies or shares it, and on a phone the address bar is the hardest thing to copy.
+
+**Do.** One **Copy link** button beside the room code in the lobby and on the roster:
+`navigator.share({ url })` where the browser has it (phones), `navigator.clipboard.writeText`
+otherwise, a two-second "Copied" state, strings in both catalogues, `role=status` for the
+confirmation (ruling 028). The URL is the `?join=<code>` form the host already has.
+**Tests first.** `test/join-model.test.js`: the invitation URL for a code; `room_smoke`: the
+button puts the join URL on the clipboard (the perf card's clipboard row is the pattern) and a
+second context opening that URL lands in the room.
+
+### K6c — The rail is one strip (XS)
+
+**What the picture shows.** `reports/hud-phone.png`: Overlays, Tax, Saves, History, Controls,
+Statistics, Settings wrap to two rows at 390 px, and a room adds Requests and Players. Named by
+the first playtest on 2026-08-29 ("icons rather than words"), never done.
+
+**Do.** `.hud-rail` on a coarse pointer: `flex-wrap: nowrap; overflow-x: auto;
+-webkit-overflow-scrolling: touch`, the way the alert chips already scroll; a fade at the right
+edge so a cut-off button reads as "more". Icons are v1.1's — an art decision.
+**Tests first.** `play_smoke` phone row: the rail's height is one button, with nine buttons in a
+room; `reach_smoke`: every rail button can still be brought on screen (scrolled to).
+
+### K6d — `--url` for the room gates (S)
+
+**What is missing.** `room_soak` and `room_smoke` spawn their own server; V4's "the gates against
+the deployed box once" has no command behind it.
+
+**Do.** `--url <origin>` on both: the browsers open `<origin>` and the scripted clients dial
+`<origin>/ws` (`wss` when `https`); nothing is spawned; the build hash in the handshake is the one
+the box serves, so a stale local checkout is refused with the reload reason — which is itself a
+check worth printing. `gates.mjs room --url …` and `release --url …` pass it through. Default
+unchanged.
+**Tests first.** `test/tools.test.js`: the argument parses and the default spawns; a run against
+the local server started by hand (`node server/index.js`) passes identically to the spawned one.
+
+**Order inside K6:** a → c → b → d. **Done when** a phone guest can read how to move, read the
+whole advisor message, see every rail button, and be sent a link they can tap; and the release set
+can be pointed at the box.
 
 ## Review after K3 (2026-09-11)
 

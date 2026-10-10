@@ -198,7 +198,7 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**3 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
+**0 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
 anything — both are instruments rather than rules, and both were found by looking at a picture.
 Q167 was the third and is **built** (2026-10-10, P116): one handler serves the tree, and all
 sixteen browser tools call it.
