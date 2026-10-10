@@ -667,8 +667,38 @@ button, [role="button"] {
 }
 .hud-advisor .tracker { margin: 0.5rem 0 0; font-size: 0.75rem; opacity: 0.65; }
 
+/* **A relative offset inside a clipped column is cut off** (K6a, A146 — Q169).
+   This block used to read `inset-inline: 0.6rem; top: 3.2rem`, left over from
+   when the advisor was positioned on the left edge on its own. The card is a
+   flex child of `.hud-aside`, which is positioned, capped at 38vh and
+   `overflow: auto` since X7 — so `top` moved the PAINT and not the layout box,
+   and the bottom 51 px of the card, background and all, was painted outside
+   the aside's box and clipped away. Measured on a 390x844 phone: aside
+   100 → 208, card painted 151 → 259, the text box ending at 248. That is the
+   sentence that stops mid-word in every phone screenshot this project has.
+   The card lays out where the column puts it now, and a long message scrolls
+   INSIDE it rather than spilling out of it. */
 @media (max-width: 520px) {
-  .hud-advisor { width: auto; inset-inline: 0.6rem; top: 3.2rem; }
+  .hud-advisor {
+    width: auto;
+    /* **Bounded by the rail, not by a share of the screen.** 38vh is 320 px of
+       an 844 px phone at normal text and far too much at 200%, where the top
+       bar wraps to three lines and the rail climbs: the card reached the rail
+       and — because the text below takes presses so it can be scrolled — ATE
+       the press meant for the inbox button. That is X7's defect, and X7's own
+       `a11y_smoke` room row caught it again within the hour (K6a).
+       `--top-height`, `--side-height` and `--panel-height` are published by the
+       HUD's ResizeObserver, so this shrinks as the text grows. */
+    max-height: min(38vh, calc(100dvh - var(--top-height, 3.6rem) - var(--side-height, 3rem)
+      - var(--panel-height, 9rem) - 2.4rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* The card passes clicks through (X7) — so the one thing a finger must be
+     able to drag is the text itself, which is also the only thing there is to
+     scroll. It can only have this because the cap above keeps the card off the
+     rail. */
+  .hud-advisor .says { pointer-events: auto; touch-action: pan-y; }
 }
 
 /* --- minimap (§13.3) --------------------------------------------------------
@@ -1376,6 +1406,18 @@ button, [role="button"] {
 }
 .controls-card dt { font-weight: 600; white-space: nowrap; }
 .controls-card dd { margin: 0; }
+/* **A gesture is a phrase, not a key name** (K6a). The two-column grid is sized
+   for `PageUp PageDown`; "One finger, tool in hand" beside it leaves the
+   explanation 212 px of a 390 px screen and every row wraps to three lines —
+   1043 px of card in a 675 px box, measured. One column on a phone, the gesture
+   above what it does. */
+@media (max-width: 520px) {
+  /* And a width, or one column shrink-to-fits: the card came out 195 px wide
+     on a 390 px screen the moment the grid stopped holding it open. */
+  .controls-card { width: 90vw; }
+  .controls-card dl { grid-template-columns: 1fr; gap: 0 0; }
+  .controls-card dt { white-space: normal; margin-top: 0.55rem; }
+}
 .controls-note { margin: 0 0 0.8rem; opacity: 0.75; font-size: 0.9em; }
 .controls-dismiss { min-height: 44px; width: 100%; }
 

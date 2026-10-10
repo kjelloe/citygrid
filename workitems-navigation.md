@@ -311,7 +311,7 @@ twice for one answer.
 *Found by rehearsing V5 on paper against `reports/play-phone.png` and `reports/hud-phone.png`: the
 four things a guest on a phone meets before the room, each a small defect nobody had looked at.*
 
-### K6a — The first-run card on a phone, and the advisor's card (S) — A146 (Q169)
+### ~~K6a — The first-run card on a phone, and the advisor's card (S) — A146 (Q169)~~ — **built 2026-10-10**
 
 **What the picture shows.** `reports/play-phone.png`: a column of bare key names — `ArrowUp
 ArrowDown ArrowLeft Arro…` clipped at the edge, `Q`, `E`, `PageUp PageDown`, `+ =`, `-`, `H Home`,
@@ -328,6 +328,16 @@ its 38vh cap, a background behind every line.
 both catalogues. `play_smoke` phone row: every `dd` has a non-empty box inside the viewport (the
 *every-is-true-of-nothing* guard: assert the count first), and the advisor's text box is inside
 the card's box after a long message.
+
+**Built 2026-10-10.** Six gesture rows, each checked against the code that makes it. Three
+measurements the item did not predict: the card opened **scrolled past its first two rows**
+(`dismiss.focus()` on a button below the fold — `scrollTop: 370`), the two-column grid is sized for
+key names and wrapped every row to three lines (one column and a `width: 90vw` on a phone), and the
+advisor's clip was a **relative offset inside a clipped column** — `top: 3.2rem` moved the paint
+and not the box, so 51 px of card were painted outside `.hud-aside` and cut away. Giving the text
+`pointer-events: auto` so it could be scrolled re-opened X7's "a readout never eats a press" within
+the hour, caught by X7's own `a11y_smoke` room row; the card is bounded by `--side-height` now and
+`play_smoke` asserts it never reaches the rail.
 
 ### K6b — Copy the invitation (S)
 

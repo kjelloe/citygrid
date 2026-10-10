@@ -15561,3 +15561,101 @@ puts back, so all four attempts arrive under the root and come back 404. The
 `403` is the third of three, and a test demanding 403 would have been asserting
 which layer refused rather than that the file is not served. Both facts are now
 in the comment beside it.
+
+## K6a — what a finger does, and the sentence that stopped mid-word (2026-10-10)
+
+Two cards a guest meets before anything else, neither of which had ever been
+looked at on a phone.
+
+### The first-run card named six things a phone does not have
+
+`reports/play-phone.png` has been a column of bare key names — `ArrowUp`,
+`ArrowDown`, `ArrowLeft Arro…` clipped at the edge, `Q`, `E`, `PageUp PageDown`,
+`+ =`, `H Home` — with no explanation visible beside any of them and not one row
+about touch. `controls-card.js` built `POINTER_ROWS` (four mouse rows and two
+free-look rows) plus every cluster key, for every pointer. The card whose whole
+job is to teach a scheme with no buttons in it was teaching a phone player the
+mouse.
+
+`GESTURE_ROWS` on a coarse pointer, and no key: one finger moves the map, one
+finger with a tool draws, two fingers pinch and twist, a drag from the edge pans
+with a tool still in hand, a tap looks at a tile — and walks, in the street —
+and the compass opens the camera. Six gestures, each one checked against the
+code that makes it: `test/controls-card.test.js` asserts `gestures.js` emits
+`zoomBy`, `rotate`, `panBy` and `tap`, that `edge.js` has the border pull and
+that `controller.js` seeks the walker on a tap. That is the argument
+`test/help.test.js` makes for the help sheet — a card that describes controls
+from memory describes an earlier build's controls.
+
+Two layout defects came out with it, both measured rather than guessed:
+
+- **The card opened scrolled past its first two rows.** `dismiss.focus()` on a
+  button at the bottom of a card that scrolls is a scroll: `scrollTop: 370` of
+  1043 px of content in a 673 px box, so "One finger" and "One finger, tool in
+  hand" were above the top edge at boot. `focus({ preventScroll: true })`.
+- **The two-column grid is sized for key names.** `grid-template-columns: auto
+  1fr` with `white-space: nowrap` on the term left the explanation 212 px of a
+  390 px screen and wrapped every row to three lines. One column on a phone, the
+  gesture above what it does — and a `width: 90vw` with it, because the moment
+  the grid stopped holding the card open it shrank to 195 px.
+
+The card is now 572 px of content in a 572 px box: nothing scrolls, every row is
+on screen, and `play_smoke`'s new phone block counts the rows **before** saying
+anything is true of all of them.
+
+### The advisor's card was clipped by the column it lives in (A146, Q169)
+
+The symptom is in every phone screenshot this project has: *"Somebody will want
+to name a"* and then nothing, the rest of the sentence over the map with no
+background behind it. The cause is one line:
+
+```css
+.hud-advisor { width: auto; inset-inline: 0.6rem; top: 3.2rem; }   /* ≤520px */
+```
+
+left over from when the advisor was positioned on the left edge on its own. The
+card is a flex child of `.hud-aside`, which is positioned, capped at 38vh and
+`overflow: auto` since X7 — and a **relative offset moves the paint, not the
+layout box**. Measured on a 390×844 phone: the column runs 100 → 208, the card
+was painted 151 → 259 and the text ended at 248. Forty pixels of sentence,
+and the card's own background with it, painted outside the clip.
+
+The offsets are gone, the card lays out where the column puts it, and a message
+longer than the cap scrolls inside it. Measured after: card 100 → 208 against a
+column of 100 → 208; the longest real quest text (246 characters) makes a 166 px
+card inside a 321 px cap; four of them concatenated scroll, and the last line
+sits at 410 against a card bottom of 421.
+
+### And the fix re-opened X7's defect within the hour
+
+A card that scrolls has to take a touch, so `.says` got `pointer-events: auto` —
+and `a11y_smoke`'s room row went red: **the inbox panel on a phone at 200% text
+read 0 × 0**, because the press meant for `#rail-inbox` landed on the advisor's
+text. That is exactly what X7's `pointer-events: none` was for, and the gate X7
+wrote to catch it caught it again.
+
+The answer is not to take the scrolling away but to bound the card so it cannot
+reach the rail. The HUD already publishes `--top-height`, `--side-height` and
+`--panel-height` from a `ResizeObserver`, and `--side-height` exists precisely
+because "the advisor column has to stop above the rail":
+
+```css
+max-height: min(38vh, calc(100dvh - var(--top-height) - var(--side-height)
+  - var(--panel-height) - 2.4rem));
+```
+
+38vh is 320 px of a phone at normal text and far too much at 200%, where the top
+bar wraps to three lines and the rail climbs. The cap shrinks with the text now,
+and `play_smoke` states the invariant as geometry rather than waiting for a
+panel to fail somewhere else: **the advisor never reaches the rail** — card ends
+at 421, rail starts at 579.
+
+### Measured
+
+- Suite **2,109 green twice** (2,106 before: three new tests in
+  `test/controls-card.test.js`).
+- `quick` **524 s of 600** — `play_smoke` 104 s with the new phone block (97 s
+  before it), `a11y_smoke` green including the room row that caught the
+  regression, `ui_smoke`, `reach_smoke` and `mvp_acceptance` unmoved.
+- `reports/play-phone.png` and `reports/play-phone-first-screen.png` re-taken:
+  six gestures, each with its sentence beside it, nothing clipped.

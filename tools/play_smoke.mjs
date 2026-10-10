@@ -979,6 +979,108 @@ try {
     await context.close();
   }
 
+  // --- the phone's first screen (K6a, A146 — Q169) ---------------------------
+  //
+  // Two cards a guest meets before anything else, and nobody had looked at
+  // either on a phone. `reports/play-phone.png` was a column of bare key names
+  // clipped at the right edge; `reports/hud-phone.png` has had the advisor's
+  // sentence stopping mid-word since the shot existed — the card is a flex
+  // child of a column that is capped and clipped, and a `top: 3.2rem` left over
+  // from an older layout moved its PAINT and not its box, so its bottom 51 px
+  // were cut away.
+  //
+  // Its own context because this is the one row that must NOT dismiss the
+  // first-run card.
+  {
+    const phone = await browser.newContext({
+      viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+    });
+    const page = await phone.newPage();
+    page.on("pageerror", (error) => problems.push(`phone first screen: page error — ${error.message}`));
+    await page.goto(`http://127.0.0.1:${port}/index.html?seed=1003&size=64&lock=0&life=0`);
+    await page.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });
+
+    const card = await page.evaluate(() => {
+      const node = document.getElementById("controls-card");
+      if (!node) return { rows: 0 };
+      const inside = (b) => b.width > 0 && b.height > 0
+        && b.left >= -1 && b.top >= -1
+        && b.right <= window.innerWidth + 1 && b.bottom <= window.innerHeight + 1;
+      const rows = [...node.querySelectorAll("dt")].map((dt, i) => {
+        const dd = node.querySelectorAll("dd")[i];
+        return {
+          term: dt.textContent, what: dd?.textContent ?? "",
+          termFits: inside(dt.getBoundingClientRect()),
+          whatFits: Boolean(dd) && inside(dd.getBoundingClientRect()),
+        };
+      });
+      return { rows: rows.length, rows_: rows, fits: inside(node.getBoundingClientRect()) };
+    });
+    // The *every-is-true-of-nothing* guard: count the rows before saying
+    // anything is true of all of them (X7's 0x0 panels).
+    check("the phone's first-run card has rows", card.rows >= 4, `${card.rows} rows`);
+    check("the whole first-run card is on the phone's screen", card.fits === true);
+    check("every row on the phone's card is explained, and inside the screen",
+      card.rows > 0 && card.rows_.every((r) => r.what.trim().length > 0 && r.termFits && r.whatFits),
+      JSON.stringify((card.rows_ ?? []).filter((r) => !r.termFits || !r.whatFits || !r.what.trim())));
+    check("and it names no key a phone does not have",
+      card.rows > 0 && card.rows_.every((r) => !/\b(Arrow|Page|Home|drag the mouse)\b/.test(r.term)),
+      (card.rows_ ?? []).map((r) => r.term).join(" | "));
+
+    // Now the advisor. The first tutorial quest arrives on the month tick, so
+    // the clock is what brings the card — then its text is replaced with the
+    // longest sentence the catalogue holds, four times over, because the
+    // question is what the LAYOUT does with a message longer than the cap and
+    // no quest in the game is that long yet.
+    await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    await page.waitForSelector(".hud-advisor:not([hidden])", { timeout: 60000 });
+    const advisor = await page.evaluate(async () => {
+      const en = await (await fetch("/data/i18n/en.json")).json();
+      const longest = Object.entries(en)
+        .filter(([key]) => key.startsWith("quest.") && key.endsWith(".text"))
+        .map(([, value]) => value).sort((a, b) => b.length - a.length)[0];
+      const node = document.querySelector(".hud-advisor");
+      const column = document.querySelector(".hud-aside");
+      const says = node.querySelector(".says");
+      says.textContent = longest.repeat(4);
+      node.scrollTop = node.scrollHeight;
+      const box = (n) => {
+        const b = n.getBoundingClientRect();
+        return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, h: b.height };
+      };
+      return {
+        card: box(node), column: box(column), says: box(says),
+        rail: box(document.querySelector(".hud-rail")),
+        scrolls: node.scrollHeight > node.clientHeight,
+        overflow: getComputedStyle(node).overflowY,
+        chars: says.textContent.length,
+      };
+    });
+    const fits = (inner, outer) => inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1
+      && inner.left >= outer.left - 1 && inner.right <= outer.right + 1;
+    check("the advisor's card is a card, not a sliver", advisor.card.h > 40, `${Math.round(advisor.card.h)}px`);
+    check("the whole advisor card is inside the column that clips it",
+      fits(advisor.card, advisor.column),
+      `card ${Math.round(advisor.card.top)}–${Math.round(advisor.card.bottom)}, `
+      + `column ${Math.round(advisor.column.top)}–${Math.round(advisor.column.bottom)}`);
+    check("a message longer than the cap scrolls inside the card",
+      advisor.scrolls && /auto|scroll/.test(advisor.overflow),
+      `${advisor.chars} chars, overflow-y: ${advisor.overflow}`);
+    check("and its last line is inside the card once scrolled to the end",
+      fits({ ...advisor.says, top: advisor.card.top }, advisor.card),
+      `text ends at ${Math.round(advisor.says.bottom)}, card at ${Math.round(advisor.card.bottom)}`);
+    // **The card must not reach the rail.** Its text takes presses so it can be
+    // scrolled, and a readout over a button is X7's defect — which this slice
+    // re-introduced for an hour and `a11y_smoke`'s room row caught. Stated here
+    // as the geometry rather than as a consequence, so it is one assertion and
+    // not a panel that fails to open somewhere else.
+    check("the advisor never reaches the rail",
+      advisor.card.bottom <= advisor.rail.top + 1,
+      `card ends at ${Math.round(advisor.card.bottom)}, rail starts at ${Math.round(advisor.rail.top)}`);
+    await page.screenshot({ path: "reports/play-phone-first-screen.png" });
+    await phone.close();
+  }
+
   // --- the locked look (K3, A58) ---------------------------------------------
   //
   // A pass of its own, with nothing else in it. Pointer Lock is what Kjell's

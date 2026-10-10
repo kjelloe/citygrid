@@ -86,10 +86,13 @@ measured, and a dead constant that fences dead imports.*
 
 - **K6 — the phone's first-run card** (`workitems-navigation.md`), found by looking at
   `reports/play-phone.png`: bare key names with no explanation and no touch row, clipped at the
-  edge. It is the first thing a phone player sees at V5. Before V5.
-- **Q169, the advisor's card cut mid-sentence on a phone**, is the second thing they see. The ally
-  left it as a look for Kjell; the reviewer's recommendation is **scroll inside the cap**, which is
-  one CSS line and the same shape as K6's fix, and it goes into K6 unless Kjell says ellipsis.
+  edge. It is the first thing a phone player sees at V5. Before V5. ~~**K6a built 2026-10-10**~~ —
+  six gesture rows on a coarse pointer, the card one column wide on a phone and opening at its
+  first row; K6c, K6b and K6d remain.
+- ~~**Q169, the advisor's card cut mid-sentence on a phone**~~ — **built with K6a (A146)**. It was
+  not a cap at all: a `top: 3.2rem` left over from an older layout moved the card's PAINT inside a
+  column that clips, so 51 px of it were cut away. The card scrolls inside a cap bounded by the
+  rail now, and `play_smoke` asserts both.
 - **Q170 — the sun's shadow is invisible** (8% darker than the ground, by the gate's own number).
   Opened by the reviewer; a v1.1 picture item unless Kjell wants the evening played under visible
   shadows.

@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "./helpers/sources.js";
-import { POINTER_ROWS } from "../client/ui/controls-card.js";
+import { POINTER_ROWS, GESTURE_ROWS, cardRows } from "../client/ui/controls-card.js";
 import { CAMERA_BUTTONS } from "../client/ui/camera-model.js";
 import { SETTING_ROWS, defaultSettings, sanitiseSettings } from "../client/ui/settings-model.js";
 
@@ -23,13 +23,53 @@ const catalogues = ["en", "no"].map((l) => ({
 }));
 
 test("every string the card shows is in both catalogues", () => {
-  const used = POINTER_ROWS.flatMap((row) => [row.keysKey, row.labelKey])
+  const used = [...POINTER_ROWS, ...GESTURE_ROWS].flatMap((row) => [row.keysKey, row.labelKey])
     .concat(["controls.title", "controls.dismiss", "controls.reopen"]);
   for (const { locale, keys } of catalogues) {
     for (const key of used) {
       assert.equal(typeof keys[key], "string", `${locale} has no "${key}"`);
     }
   }
+});
+
+// --- K6a: the card a phone gets (A146, Q169) ---------------------------------
+//
+// `reports/play-phone.png` was a column of bare key names — ArrowUp, Q, E,
+// PageUp, `+ =` — clipped at the right edge, with no explanation visible beside
+// any of them and no row about touch. The card built the mouse rows and every
+// cluster key for every pointer, and a phone has neither.
+
+test("a coarse pointer is offered gestures, and a fine one keys", () => {
+  assert.ok(GESTURE_ROWS.length >= 4, `${GESTURE_ROWS.length} gesture rows`);
+  assert.deepEqual(cardRows(true), GESTURE_ROWS);
+  assert.deepEqual(cardRows(false), POINTER_ROWS);
+});
+
+test("the gesture rows name no key and no mouse button", () => {
+  // The whole defect in one assertion: a row that says "Q" or "Left drag" on a
+  // screen with neither is a row that teaches a phone player nothing.
+  const { keys } = catalogues.find((c) => c.locale === "en");
+  for (const row of GESTURE_ROWS) {
+    const what = keys[row.keysKey];
+    assert.doesNotMatch(what, /\b(key|Arrow|Page|click|mouse|button|drag the mouse)\b/i,
+      `"${what}" names something a phone does not have`);
+    assert.ok(keys[row.labelKey].length > what.length,
+      `"${what}" has no explanation beside it — ${keys[row.labelKey]}`);
+  }
+});
+
+test("every gesture named is one the recogniser can make", () => {
+  // The argument `test/help.test.js` makes for the help sheet: a card that
+  // describes controls from memory describes an earlier build's controls.
+  const gestures = read("client", "input", "gestures.js");
+  const edge = read("client", "input", "edge.js");
+  const controller = read("client", "input", "controller.js");
+  assert.match(gestures, /type:\s*"zoomBy"/, "nothing pinches to zoom");
+  assert.match(gestures, /type:\s*"rotate"/, "nothing twists to turn");
+  assert.match(gestures, /type:\s*"panBy"/, "nothing pans");
+  assert.match(gestures, /type:\s*"tap"/, "nothing taps");
+  assert.match(edge, /borderPull|isBorderPull/, "a drag from the border does not pan");
+  assert.match(controller, /walker\?\.seek|walker\.seek/, "a tap in the street does not walk");
 });
 
 test("the card can be put away for good and brought back", () => {

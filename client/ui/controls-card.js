@@ -16,6 +16,7 @@
 
 import { t } from "../i18n.js";
 import { CAMERA_BUTTONS } from "./camera-model.js";
+import { isCoarsePointer } from "../capabilities.js";
 
 /** What the mouse does, per mode. Not derivable from the camera table — these
  * are gestures rather than buttons — so they are named here, and
@@ -31,6 +32,36 @@ export const POINTER_ROWS = [
   { keysKey: "controls.mouse.walk", labelKey: "controls.walk" },
   { keysKey: "controls.mouse.move", labelKey: "controls.look" },
 ];
+
+/**
+ * What a finger does (K6a, A146).
+ *
+ * `reports/play-phone.png` was a column of bare key names — `ArrowUp`,
+ * `Q`, `E`, `PageUp PageDown`, `+ =` — clipped at the right edge, with no
+ * explanation visible beside any of them and not one row about touch. The card
+ * built `POINTER_ROWS` and every cluster key for every pointer, and a phone has
+ * neither a mouse nor a keyboard: the first thing a guest met was a list of
+ * controls their device does not have.
+ *
+ * Gestures rather than keys, and each one is a gesture the recogniser actually
+ * makes — `test/controls-card.test.js` checks each claim against
+ * `gestures.js`, `edge.js` and `controller.js`, which is the argument
+ * `test/help.test.js` makes for the help sheet.
+ */
+export const GESTURE_ROWS = [
+  { keysKey: "controls.touch.pan", labelKey: "controls.touch.pan.what" },
+  { keysKey: "controls.touch.paint", labelKey: "controls.touch.paint.what" },
+  { keysKey: "controls.touch.pinch", labelKey: "controls.touch.pinch.what" },
+  { keysKey: "controls.touch.border", labelKey: "controls.touch.border.what" },
+  { keysKey: "controls.touch.tap", labelKey: "controls.touch.tap.what" },
+  { keysKey: "controls.touch.compass", labelKey: "controls.touch.compass.what" },
+];
+
+/** The rows for this pointer. A function rather than a branch inside the
+ * builder, so the choice can be asked of the module without a browser. */
+export function cardRows(coarse) {
+  return coarse ? GESTURE_ROWS : POINTER_ROWS;
+}
 
 /**
  * Shows the card, once, unless the player has put it away.
@@ -53,16 +84,19 @@ export function createControlsCard(root, { shown = true, onDismiss } = {}) {
   title.textContent = t("controls.title");
   card.append(title);
 
+  const coarse = isCoarsePointer();
   const list = document.createElement("dl");
-  for (const row of POINTER_ROWS) {
+  for (const row of cardRows(coarse)) {
     const key = document.createElement("dt");
     key.textContent = t(row.keysKey);
     const what = document.createElement("dd");
     what.textContent = t(row.labelKey);
     list.append(key, what);
   }
-  // And the keys the cluster carries, so the card and the buttons agree.
-  for (const button of CAMERA_BUTTONS) {
+  // And the keys the cluster carries, so the card and the buttons agree — on a
+  // device that has keys. A phone is told about the compass instead, which is
+  // the same cluster reached by the gesture that opens it.
+  for (const button of coarse ? [] : CAMERA_BUTTONS) {
     if (button.keys.length === 0) continue;
     const key = document.createElement("dt");
     key.textContent = button.keys
@@ -96,7 +130,10 @@ export function createControlsCard(root, { shown = true, onDismiss } = {}) {
   root.append(card);
   // Focus goes to the button: a dialog that appears without focus is a dialog a
   // keyboard player has to hunt for, and this one has exactly one action.
-  dismiss.focus?.();
+  // **`preventScroll`** (K6a): the button is the last thing in a card that
+  // scrolls on a phone, so focusing it scrolled the card to the bottom and the
+  // first two rows opened out of sight — measured at `scrollTop: 370`.
+  dismiss.focus?.({ preventScroll: true });
   return {
     node: card,
     dispose() { card.remove(); },
