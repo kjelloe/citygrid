@@ -117,10 +117,9 @@ Then **M7b**: the release page re-measured, `git tag v1.0`, `main` fast-forwarde
 *Walked through V5's checklist as a host and as a guest on a phone, against the code and
 `reports/hud-phone.png`, before anybody does it for real.*
 
-- **A host cannot copy the invitation.** X2c made the host's address bar the invitation and X2d
-  drew the QR; there is no **Copy link** or share control anywhere, and on a phone the address bar
-  is the hardest thing on the screen to copy. One button beside the code, `navigator.share` where
-  it exists and the clipboard otherwise, in the lobby and on the roster. → K6.
+- ~~**A host cannot copy the invitation.**~~ — **built 2026-10-10 as K6b.** `navigator.share` where
+  it exists and the clipboard otherwise, beside the code in the lobby and on the started roster;
+  `room_smoke` opens what was copied in a second browser and lands in the room. → K6.
 - ~~**The phone's rail wraps to two rows**~~ — **built 2026-10-10 as K6c.** 94 px of a 44 px
   button before, 44 after, with a conditional fade at the edge a button is cut off at; `room_smoke`'s
   phone client measures the nine-button case. Icons are still an art decision and v1.1's. → K6.

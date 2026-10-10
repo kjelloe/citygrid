@@ -339,7 +339,7 @@ and not the box, so 51 px of card were painted outside `.hud-aside` and cut away
 the hour, caught by X7's own `a11y_smoke` room row; the card is bounded by `--side-height` now and
 `play_smoke` asserts it never reaches the rail.
 
-### K6b — Copy the invitation (S)
+### ~~K6b — Copy the invitation (S)~~ — **built 2026-10-10**
 
 **What is missing.** The host's address bar is the invitation (X2c) and the QR is drawn (X2d);
 nothing copies or shares it, and on a phone the address bar is the hardest thing to copy.
@@ -351,6 +351,13 @@ confirmation (ruling 028). The URL is the `?join=<code>` form the host already h
 **Tests first.** `test/join-model.test.js`: the invitation URL for a code; `room_smoke`: the
 button puts the join URL on the clipboard (the perf card's clipboard row is the pattern) and a
 second context opening that URL lands in the room.
+
+**Built 2026-10-10.** The pure half is `invitationUrl(location, code)` in `join-model.js` — the
+canonical code, never the formatted one — and `game.js` and the QR read it too. The tests went into
+`test/lobby-model.test.js`, which is where `join-model.js` is already tested. The round trip is in
+`room_smoke`: what the button copies is opened in a second browser and lands in the room (seat 4).
+It also moved an older check — the copy block takes a seat, so the lobby block's `seat === 3`
+became `seat > 0 && seat !== 1 && seat !== 2`, which is what its own sentence says.
 
 ### ~~K6c — The rail is one strip (XS)~~ — **built 2026-10-10**
 

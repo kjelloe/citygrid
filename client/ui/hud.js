@@ -659,6 +659,59 @@ export function createHud(root, {
     return canvas;
   }
 
+  /**
+   * The code, a way to hand it over, and (in the lobby) the QR (X2d, K6b).
+   *
+   * **Copy link** is K6b: the address bar has been the invitation since X2c and
+   * nothing copied it, which on a phone is the hardest thing on the screen to
+   * do by hand. `navigator.share` where the browser has it — that is the sheet
+   * a phone opens, with the messaging apps in it — and the clipboard otherwise.
+   * The confirmation is `role="status"` so a screen reader hears it happen
+   * (ruling 028), and it goes back to the label after two seconds because a
+   * button stuck on "Copied" cannot be pressed again with any confidence.
+   *
+   * Shown after the room starts too, where there used to be nothing: a host
+   * with `lateJoin` on can still invite somebody, and the code was only ever on
+   * screen before the start.
+   */
+  function inviteBlock(lobby, { qr = false } = {}) {
+    const invite = el("div", "roster-invite");
+    invite.append(el("p", "roster-code", formatRoomCode(lobby.code)));
+    if (lobby.join) {
+      const copy = el("button", "roster-copy", t("roster.copy"));
+      copy.type = "button";
+      copy.id = "roster-copy";
+      copy.dataset.url = lobby.join;
+      const said = el("p", "roster-copied");
+      said.setAttribute("role", "status");
+      let saidTimer;
+      copy.addEventListener("click", async () => {
+        const shared = await share(lobby.join);
+        said.textContent = t(shared ? "roster.shared" : "roster.copied");
+        globalThis.clearTimeout(saidTimer);
+        saidTimer = globalThis.setTimeout(() => { said.textContent = ""; }, 2000);
+      });
+      invite.append(copy, said);
+    }
+    if (qr) {
+      const picture = qrPicture(lobby.join, 4);
+      if (picture) invite.append(picture);
+    }
+    return invite;
+  }
+
+  /** Hands a URL to whatever this device uses to pass things on. Returns
+   * whether the share sheet took it, so the words can say which happened — and
+   * swallows the cancel, because a player who closed the sheet has not hit an
+   * error. */
+  async function share(url) {
+    try {
+      if (navigator.share) { await navigator.share({ url }); return true; }
+      await navigator.clipboard?.writeText(url);
+    } catch { /* cancelled, or no permission: the code is still on screen */ }
+    return false;
+  }
+
   function renderRoster() {
     if (!onSetStatus) return;
     const lobby = room?.();
@@ -681,13 +734,7 @@ export function createHud(root, {
       // and the person standing next to them with a phone cannot be sent
       // anything. The QR is hand-rolled (`shared/qr.js`) because the client has
       // no runtime dependencies and will not grow one for a picture.
-      if (lobby.code) {
-        const invite = el("div", "roster-invite");
-        invite.append(el("p", "roster-code", formatRoomCode(lobby.code)));
-        const picture = qrPicture(lobby.join, 4);
-        if (picture) invite.append(picture);
-        rosterBar.append(invite);
-      }
+      if (lobby.code) rosterBar.append(inviteBlock(lobby, { qr: true }));
       if (starting) {
         const go = el("button", "roster-start", t("roster.start"));
         go.type = "button";
@@ -696,6 +743,11 @@ export function createHud(root, {
       } else {
         rosterBar.append(el("p", "roster-waiting", t("roster.waiting")));
       }
+    } else if (lobby?.code) {
+      // The room is running, and a host with `lateJoin` on can still invite
+      // somebody. The QR is the lobby's — it is 150 px of a drawer — but the
+      // code and the link belong on the roster for as long as the room does.
+      rosterBar.append(inviteBlock(lobby));
     }
     for (const row of rows) {
       const item = el("div", `roster-row${row.you ? " you" : ""}`);

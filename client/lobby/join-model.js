@@ -111,6 +111,28 @@ export function joinReady({ code = "", name = "" } = {}) {
   return { ok: true, join, mayorName: sanitiseText(String(name), NAME_MAX) };
 }
 
+/**
+ * The link that invites somebody into this room (K6b).
+ *
+ * The host's address bar has been the invitation since X2c and the QR has drawn
+ * it since X2d, and nothing has ever copied or shared it — which on a phone is
+ * the hardest thing on the screen to do by hand. One function, because the
+ * button, the QR and `game.js` must not disagree about what the invitation is.
+ *
+ * The CANONICAL code, never the formatted one: `formatRoomCode` puts a
+ * separator in for a human to read out, and a link carrying it would refuse
+ * `BAD_CODE` for everybody the host sent it to.
+ *
+ * `undefined` for a room with no usable code, which the lobby shows as the code
+ * in words alone — the same answer `qrPicture` gives a code it cannot draw,
+ * rather than a link to a room that does not exist.
+ */
+export function invitationUrl(at, code) {
+  const join = normaliseRoomCode(String(code ?? ""));
+  if (!join || !at?.origin) return undefined;
+  return `${at.origin}${at.pathname ?? "/"}?join=${join}`;
+}
+
 /** The options a HOSTED room is generated from (X2c).
  *
  * `optionsFor` defaults to `seats: 1` — the singleplayer part, and the one

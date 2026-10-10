@@ -13,7 +13,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { joinReady, JOIN_FIELD_MAX, hostOptions, REFUSAL_LABELS, refusalKey,
-  reloadFor, RELOAD_NOTICE } from "../client/lobby/join-model.js";
+  reloadFor, RELOAD_NOTICE, invitationUrl } from "../client/lobby/join-model.js";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -174,4 +174,37 @@ test("the player is told what is about to happen, in both catalogues (X6)", () =
     assert.ok(strings[RELOAD_NOTICE], `${locale} has no ${RELOAD_NOTICE}`);
     assert.ok(strings["status.resynced"], `${locale} has no status.resynced`);
   }
+});
+
+// --- the invitation (K6b) ----------------------------------------------------
+//
+// X2c made the host's address bar the invitation and X2d drew it as a QR, and
+// there has never been anything that copies or shares it — on a phone the
+// address bar is the hardest thing on the screen to copy. The URL is one
+// function so the button, the QR and `game.js` cannot disagree about what the
+// invitation IS.
+
+test("the invitation is the page it was served from, with the code on it", () => {
+  assert.equal(invitationUrl({ origin: "https://citygrid.kjell.today", pathname: "/" }, "Y9NDDG"),
+    "https://citygrid.kjell.today/?join=Y9NDDG");
+  assert.equal(invitationUrl({ origin: "http://localhost:8123", pathname: "/index.html" }, "y9nddg"),
+    "http://localhost:8123/index.html?join=Y9NDDG");
+});
+
+test("the invitation carries the code the door accepts, not the one on screen", () => {
+  // `formatRoomCode` puts a separator in for a human to read out; the door
+  // takes the canonical six. A link with the separator in it would be a link
+  // that refuses `BAD_CODE` for everybody the host sends it to.
+  const url = invitationUrl({ origin: "https://x.test", pathname: "/" }, "Y9N-DDG");
+  assert.match(url, /\?join=Y9NDDG$/);
+  assert.equal(joinReady({ code: new URL(url).searchParams.get("join") }).join, "Y9NDDG");
+});
+
+test("a room with no code has no invitation", () => {
+  // The lobby renders the invite block from this: `undefined` is "show the code
+  // in words alone", the same answer `qrPicture` gives for a code it cannot
+  // draw, rather than a link to a room that does not exist.
+  assert.equal(invitationUrl({ origin: "https://x.test", pathname: "/" }, ""), undefined);
+  assert.equal(invitationUrl({ origin: "https://x.test", pathname: "/" }, "nope"), undefined);
+  assert.equal(invitationUrl(undefined, "Y9NDDG"), undefined);
 });

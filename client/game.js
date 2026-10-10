@@ -26,6 +26,7 @@ import { TIME } from "./ui/settings-model.js";
 import { loadSettings, saveSettings } from "./ui/settings.js";
 import { buildingLabelKey } from "./ui/build-model.js";
 import { createHud } from "./ui/hud.js";
+import { invitationUrl } from "./lobby/join-model.js";
 import { createMinimap } from "./render/minimap.js";
 import { openStatistics } from "./ui/statistics.js";
 import { openHelp } from "./ui/help.js";
@@ -266,9 +267,11 @@ export async function startGame(root, given = {}) {
         started: sim.roomStarted !== false,
         ready: sim.readySeats ?? [],
         code: sim.room,
-        // The link a QR carries, built here because the page knows where it is
-        // served from and `client/ui/` should not reach for `location`.
-        join: `${globalThis.location.origin}${globalThis.location.pathname}?join=${sim.room}`,
+        // The link a QR carries and the copy button hands over, built here
+        // because the page knows where it is served from and `client/ui/`
+        // should not reach for `location`. The FORM of it is
+        // `invitationUrl` (K6b), so three readers cannot disagree about it.
+        join: invitationUrl(globalThis.location, sim.room),
       }),
     onReady: sim.setReady ? (value) => sim.setReady(value) : undefined,
     onStart: sim.start ? () => sim.start() : undefined,

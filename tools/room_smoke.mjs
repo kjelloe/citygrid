@@ -123,6 +123,74 @@ try {
   check("both arrivals reached both clients", seatsA.seats.length === 2 && seatsB.seats.length === 2,
     `${JSON.stringify(seatsA.seats)} / ${JSON.stringify(seatsB.seats)}`);
 
+  // **Copy link** (K6b): the invitation, handed over.
+  //
+  // The host's address bar has been the invitation since X2c and the QR has
+  // drawn it since X2d; nothing copied it, and on a phone the address bar is
+  // the hardest thing on the screen to copy by hand. The gate is the round
+  // trip — what the button puts on the clipboard has to be a link that lands
+  // somebody in this room.
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      permissions: ["clipboard-read", "clipboard-write"],
+    });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(`${origin}/?join=${code}&life=0`);
+    await until(page, "the copier never joined", () => ({ ok: globalThis.CITY?.room !== undefined }));
+    await page.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    await page.click("#rail-roster");
+    const offered = await page.evaluate(() => {
+      const button = document.querySelector("#roster-copy");
+      return {
+        there: Boolean(button),
+        url: button?.dataset.url,
+        // Which half of the button this machine measures. `navigator.share` is
+        // the phone's path and a headless Linux Chromium has none, so the
+        // clipboard is what is asserted below — said out loud rather than
+        // assumed, because the gate would otherwise be silent about having
+        // measured only one of the two.
+        hasShare: typeof navigator.share === "function",
+        said: document.querySelector(".roster-copied")?.getAttribute("role"),
+      };
+    });
+    check("the roster offers the invitation", offered.there === true, JSON.stringify(offered));
+    check("and the confirmation is a status a screen reader hears",
+      offered.said === "status", String(offered.said));
+    check("the link is this room's join URL",
+      offered.url === `${origin}/?join=${code}`, `${offered.url}`);
+
+    if (offered.hasShare) {
+      check("this browser has a share sheet, so the clipboard half is not measured here",
+        true, "navigator.share exists");
+    } else {
+      await page.click("#roster-copy");
+      const pasted = await page.evaluate(() => navigator.clipboard.readText());
+      check("the button puts the join link on the clipboard", pasted === offered.url, pasted);
+      const saidIt = await page.textContent(".roster-copied");
+      check("and says so, in words", (saidIt ?? "").trim().length > 0, saidIt ?? "(nothing)");
+
+      // The round trip: a second browser opens what was copied and is in the
+      // room. A link that copies cleanly and refuses at the door would pass
+      // every check above.
+      const guestCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const guest = await guestCtx.newPage();
+      await guest.goto(pasted.includes("life=0") ? pasted : `${pasted}&life=0`);
+      const landed = await until(guest, "the copied link never joined", () => {
+        const city = globalThis.CITY;
+        return { ok: city?.room !== undefined, room: city?.room, seat: city?.seat };
+      }).catch((error) => ({ room: String(error.message), seat: -1 }));
+      check("and somebody opening it lands in this room",
+        landed.room === code && landed.seat > 0, JSON.stringify(landed));
+      await guestCtx.close();
+    }
+    check("the copier reported no page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
+    await ctx.close();
+  }
+
+
   // **Seat one builds.** Through the seam, and on dry ground the city picks
   // rather than a tile somebody remembered.
   const built = await a.page.evaluate(async () => {
@@ -275,7 +343,14 @@ try {
     joined3.why ?? JSON.stringify(joined3));
   // Seats one and two are taken, so the door had to choose — and the player
   // never said which. That is the X2b decision, seen from the furthest end.
-  check("the door gave it a seat it never asked for", joined3.seat === 3, `seat ${joined3.seat}`);
+  //
+  // **Not seat 3 by name** (K6b): the number is incidental and this check is
+  // about the door choosing. It read `=== 3` until the copy-link block above
+  // joined and left a seat of its own, and the run went red for a reason that
+  // was not a defect — a test transcribing a number rather than asserting what
+  // it stands for.
+  check("the door gave it a seat it never asked for",
+    joined3.seat > 0 && joined3.seat !== 1 && joined3.seat !== 2, `seat ${joined3.seat}`);
   check("the lobby join reported no page or console errors", lobbyErrors.length === 0,
     lobbyErrors.slice(0, 3).join(" | "));
   await third.close();

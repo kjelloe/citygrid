@@ -15693,3 +15693,48 @@ edge.
 - Suite 2,109 green twice; `quick` 517/600 s; `room` 260/300 s.
 - `reports/hud-phone.png` re-taken: one row, and the advisor above it now
   finishes its sentence — *"…name a roundabout after you."*
+
+## K6b — copy the invitation (2026-10-10)
+
+X2c made the host's address bar the invitation and X2d drew it as a QR. Nothing
+ever copied or shared it — and on a phone the address bar is the hardest thing
+on the screen to get hold of by hand.
+
+**One function owns what the invitation IS.** `invitationUrl(location, code)` in
+`join-model.js`, which `game.js`, the QR and the button all read, so three
+readers cannot disagree. It carries the CANONICAL code and never the formatted
+one: `formatRoomCode` puts a separator in for a human to read out, and a link
+with `Y9N-DDG` in it would refuse `BAD_CODE` for everybody the host sent it to.
+A room with no usable code has no invitation — `undefined`, which the roster
+shows as the code in words alone, the same answer `qrPicture` gives a code it
+cannot draw.
+
+**Copy link** sits beside the code: `navigator.share({ url })` where the browser
+has it (the phone's sheet, with the messaging apps in it), the clipboard
+otherwise, a confirmation in `role="status"` so a screen reader hears it
+(ruling 028), and back to the label after two seconds — a button stuck on
+"Copied" cannot be pressed again with any confidence. It is on the started
+roster too, where there used to be nothing at all: a host with `lateJoin` on can
+still invite somebody, and the code was only ever on screen before the start.
+
+### The gate is the round trip
+
+`room_smoke` asks what the button puts on the clipboard and then **opens it in a
+second browser**: a link that copies cleanly and is refused at the door would
+pass every other check. Measured: `http://127.0.0.1:53601/?join=TMADMF` copied,
+and the guest lands in `TMADMF` on seat 4. The gate also prints which half of
+the button it measured — `navigator.share` is undefined in a headless Linux
+Chromium, so the clipboard path is the one asserted, said out loud rather than
+assumed.
+
+**And it moved an older check.** The copy block joins and leaves a seat, so the
+lobby block further down — which had read `joined3.seat === 3` — went red for a
+reason that was not a defect. The sentence beside it is *"the door gave it a
+seat it never asked for"*, and the number was incidental: it asserts
+`seat > 0 && seat !== 1 && seat !== 2` now, which is what the sentence means.
+`a-test-that-transcribes-a-line`, in a gate rather than in a unit test.
+
+### Measured
+
+- Suite **2,112 green twice** (2,109 before: three tests for the invitation).
+- `room_smoke` green, `room` set unaffected in length; `quick` 517/600 s.
