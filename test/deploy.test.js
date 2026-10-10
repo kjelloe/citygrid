@@ -124,7 +124,10 @@ test("the deploy guard curls a path the server actually serves", () => {
   // A deploy guard is only a guard if the thing it curls exists. `/healthz` is
   // the box-wide convention and `server/index.js` answers both it and `/health`.
   assert.ok(script.includes("/healthz"), "the script checks no health path");
-  const server = read("server/index.js");
+  // Both server files, because the static handler moved to `server/static.js`
+  // when the picture harness started sharing it (Q167) — and the claim here is
+  // about the SERVER, not about which of its files holds the route.
+  const server = read("server/index.js") + read("server/static.js");
   assert.ok(server.includes('path === "/healthz"'), "the server answers no /healthz");
   assert.ok(server.includes('path === "/health"'), "the server answers no /health");
   // A restart that is checked immediately reports success while a unit

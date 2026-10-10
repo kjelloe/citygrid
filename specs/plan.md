@@ -56,7 +56,8 @@ citygrid/
   shared/       prng.js, idiv.js, grid.js, canonical.js, statehash.js, protocol.js
   engine/       reducer.js, state.js, permissions.js, systems/*.js   <- pure, no three.js, no DOM
   worker/       sim-worker.js                    <- singleplayer state owner
-  server/       server.js, room.js, seats.js, lobby.js, store.js     <- multiplayer state owner
+  server/       index.js, static.js, config.js, room.js, rooms.js, store.js,
+                pump.js, chat.js, content.js            <- the one server: page + rooms
   client/       main.js, session.js, session-remote.js, transport/{ws,local}.js,
                 render/{terrain,buildings,network,vehicles,overlay,camera}.js,
                 ui/*.js (model/view split: pure *_model.js + thin DOM),

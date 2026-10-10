@@ -14,24 +14,18 @@
 // it as well as beside it, which is what a player dragging a block does. Under
 // the old rule `lotFree` ignored the road layer and lots grew on the street.
 //
-//   node street_proof.mjs <repo root> <label>
+//   node street_proof.mjs [repo root] [label] [out dir]   # defaults: this tree, now, reports
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { join, extname, normalize } from "node:path";
+import { resolve } from "node:path";
 
-const root = process.argv[2];
-const label = process.argv[3];
-const out = process.argv[4];
-const T = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
-const server = createServer(async (q, s) => {
-  try {
-    const url = decodeURIComponent((q.url ?? "/").split("?")[0]);
-    const t = join(root, normalize(url === "/" ? "/index.html" : url));
-    s.writeHead(200, { "content-type": T[extname(t)] ?? "application/octet-stream" });
-    s.end(await readFile(t));
-  } catch { s.writeHead(404).end(); }
-});
+// The tree to photograph, which is another worktree's and not this one's — the
+// handler is shared since Q167 but the ROOT is this tool's whole argument.
+const root = resolve(process.argv[2] ?? resolve(import.meta.dirname, ".."));
+const label = process.argv[3] ?? "now";
+const out = process.argv[4] ?? "reports";
+const server = createServer(makeStatic({ root }));
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const port = server.address().port;
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });

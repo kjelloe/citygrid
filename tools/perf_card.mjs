@@ -16,30 +16,16 @@
 // something honest (`workitems-measurement.md`, D1).
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".json": "application/json", ".png": "image/png",
-};
 
 function serve() {
-  return createServer(async (req, res) => {
-    try {
-      const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
-      const target = join(root, normalize(path === "/" ? "/index.html" : path));
-      if (!target.startsWith(root)) return res.writeHead(403).end();
-      const body = await readFile(target);
-      res.writeHead(200, { "content-type": TYPES[extname(target)] ?? "application/octet-stream" });
-      res.end(body);
-    } catch {
-      res.writeHead(404).end();
-    }
-  });
+  return createServer(makeStatic());
 }
 
 const arg = (name, fallback) => {
@@ -57,7 +43,12 @@ const out = join(root, arg("--out",
 const server = serve();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
-const browser = await chromium.launch();
+// The same flags every other measuring gate passes (the omissions round after
+// Q167). This card's output file is called `swiftshader.json` and the card said
+// `renderer: "swiftshader (headless chromium)"` — a label nobody had asked the
+// browser about, on the one tool that launched with no GL flags at all. It is
+// read back below now, so the name in the card is the renderer that drew it.
+const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
 const problems = [];
 let card;
 
@@ -76,6 +67,13 @@ try {
   // in worldgen and the model derivation alone.
   await page.waitForFunction(() => globalThis.PERF_CARD !== undefined, undefined, { timeout: 1800000 });
   card = await page.evaluate(() => globalThis.PERF_CARD);
+  // Read back rather than declared: this file is written to `swiftshader.json`
+  // and used to SAY `swiftshader (headless chromium)` without ever asking.
+  card.renderer = await page.evaluate(() => {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    const info = gl?.getExtension("WEBGL_debug_renderer_info");
+    return info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "unknown";
+  });
   await context.close();
 } finally {
   await browser.close();
@@ -118,7 +116,6 @@ for (const row of card.steps) {
   }
 }
 
-card.renderer = "swiftshader (headless chromium)";
 card.note = "Frame times are software rendering. Triangles, draw calls and the "
   + "governor's decisions are the machine-independent half.";
 await mkdir(dirname(out), { recursive: true });

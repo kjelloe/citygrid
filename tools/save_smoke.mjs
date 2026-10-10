@@ -12,30 +12,12 @@
 // is not a save.
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".json": "application/json", ".png": "image/png",
-};
+import { join } from "node:path";
 
 function serve() {
-  return createServer(async (req, res) => {
-    try {
-      const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
-      const target = join(root, normalize(path === "/" ? "/index.html" : path));
-      if (!target.startsWith(root)) return res.writeHead(403).end();
-      const body = await readFile(target);
-      res.writeHead(200, { "content-type": TYPES[extname(target)] ?? "application/octet-stream" });
-      res.end(body);
-    } catch {
-      res.writeHead(404).end();
-    }
-  });
+  return createServer(makeStatic());
 }
 
 const problems = [];

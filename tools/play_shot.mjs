@@ -8,15 +8,9 @@
 //   node tools/play_shot.mjs   →  reports/play-desktop.png, reports/play-phone.png
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { join, extname, normalize } from "node:path";
-const root = new URL("..", import.meta.url).pathname;
-const T = { ".html":"text/html",".js":"text/javascript",".css":"text/css",".json":"application/json" };
-const server = createServer(async (q,s)=>{ try{
-  const t = join(root, normalize(decodeURIComponent((q.url??"/").split("?")[0]) === "/" ? "/index.html" : decodeURIComponent((q.url??"/").split("?")[0])));
-  s.writeHead(200,{"content-type":T[extname(t)]??"application/octet-stream"}); s.end(await readFile(t));
-}catch{ s.writeHead(404).end(); }});
+const server = createServer(makeStatic());
 await new Promise(r=>server.listen(0,"127.0.0.1",r));
 const p = server.address().port;
 const b = await chromium.launch({args:["--use-gl=swiftshader","--enable-unsafe-swiftshader"]});

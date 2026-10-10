@@ -26,7 +26,6 @@ import { moverSpec } from "../world/mover-spec.js";
 import { cityFigure } from "../world/figure.js";
 import { TREE_KINDS } from "../world/foliage.js";
 
-const TOP = 1.0;
 const SOUTH = 0.88;
 const NORTH = 0.7;
 const EAST = 0.8;

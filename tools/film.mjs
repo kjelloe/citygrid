@@ -13,9 +13,10 @@
 // the film are the same camera and a review on one machine holds on another.
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
-import { join, extname, normalize } from "node:path";
+import { join } from "node:path";
 import { problemsIn } from "../client/world/film.js";
 import { PALETTES } from "../client/render/palettes.js";
 import { PRESET_NAMES } from "../client/render/time-of-day.js";
@@ -34,18 +35,7 @@ const OUT = arg("out", `reports/storyboard/${LIST}`);
 // `.mjs` is in here because the page imports `tools/lib/saturated.mjs`: served
 // as octet-stream, a module script is refused outright and the page simply
 // never becomes ready (the same table `screenshot.mjs` carries).
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".json": "application/json", ".png": "image/png",
-};
-const server = createServer(async (q, s) => {
-  try {
-    const path = decodeURIComponent((q.url ?? "/").split("?")[0]);
-    const file = join(root, normalize(path));
-    s.writeHead(200, { "content-type": TYPES[extname(file)] ?? "application/octet-stream" });
-    s.end(await readFile(file));
-  } catch { s.writeHead(404).end(); }
-});
+const server = createServer(makeStatic());
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const port = server.address().port;
 

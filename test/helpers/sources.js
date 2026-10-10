@@ -45,6 +45,45 @@ export function docExists(name) {
   }
 }
 
+/**
+ * Where a regex literal ends, or -1 if the `/` at `i` is a division.
+ *
+ * The three strippers below all read a quote as the start of a string, and a
+ * pattern like `/^\+\s*"([^"]+)"/` holds two of them — so from the first
+ * such regex onwards the whole file was one unterminated string and every
+ * census that scanned it saw NOTHING. `tools/i18n_review.mjs` lost its last 88
+ * lines that way, which is why its four module constants read as dead
+ * (Q167's omissions round, 2026-10-10).
+ *
+ * The regex-or-division question is decided by what comes before, which is the
+ * only way to decide it without a parser: after a value — a name, a number, a
+ * closing bracket — a `/` divides; after an operator, a comma, an opening
+ * bracket or a keyword it opens a pattern.
+ */
+function regexEnd(source, i) {
+  let k = i - 1;
+  while (k >= 0 && /\s/.test(source[k])) k -= 1;
+  const before = k < 0 ? "" : source[k];
+  if (before && !/[=(,:[!&|?{};+\-*%~^<>\n]/.test(before)) {
+    const word = /[\w$)\]]/.test(before) ? source.slice(0, k + 1).match(/[\w$]+$/)?.[0] : "";
+    if (!["return", "typeof", "case", "in", "of", "new", "delete", "void", "do", "else", "yield", "await"].includes(word ?? "")) {
+      return -1;
+    }
+  }
+  let j = i + 1;
+  let inClass = false;
+  while (j < source.length) {
+    const c = source[j];
+    if (c === "\\") { j += 2; continue; }
+    if (c === "\n") return -1; // an unterminated "pattern" was a division after all
+    if (inClass) { if (c === "]") inClass = false; }
+    else if (c === "[") inClass = true;
+    else if (c === "/") return j;
+    j += 1;
+  }
+  return -1;
+}
+
 // Strips line comments, block comments and string literals so that a banned
 // word in prose or in a message never fails a guard.
 export function stripCommentsAndStrings(source) {
@@ -59,6 +98,9 @@ export function stripCommentsAndStrings(source) {
       i += 2;
       while (i < n && source.slice(i, i + 2) !== "*/") i += 1;
       i += 2;
+    } else if (source[i] === "/" && regexEnd(source, i) !== -1) {
+      i = regexEnd(source, i) + 1;
+      out += '/""/';
     } else if (source[i] === '"' || source[i] === "'" || source[i] === "`") {
       const quote = source[i];
       i += 1;
@@ -92,6 +134,10 @@ export function stripComments(source) {
       i += 2;
       while (i < n && source.slice(i, i + 2) !== "*/") i += 1;
       i += 2;
+    } else if (source[i] === "/" && regexEnd(source, i) !== -1) {
+      const end = regexEnd(source, i);
+      out += source.slice(i, end + 1);
+      i = end + 1;
     } else if (source[i] === '"' || source[i] === "'" || source[i] === "`") {
       const quote = source[i];
       out += source[i];
@@ -140,6 +186,9 @@ export function stripButKeepInterpolations(source) {
       i += 2;
       while (i < n && source.slice(i, i + 2) !== "*/") i += 1;
       i += 2;
+    } else if (source[i] === "/" && regexEnd(source, i) !== -1) {
+      i = regexEnd(source, i) + 1;
+      out += '/""/';
     } else if (source[i] === '"' || source[i] === "'") {
       const quote = source[i];
       i += 1;

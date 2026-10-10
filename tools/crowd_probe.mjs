@@ -13,24 +13,10 @@
 // disagreement between them is visible in one screen.
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".json": "application/json", ".css": "text/css", ".png": "image/png",
-};
-const server = createServer(async (req, res) => {
-  try {
-    const path = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
-    const file = join(root, normalize(path));
-    res.writeHead(200, { "content-type": TYPES[extname(file)] ?? "application/octet-stream" });
-    res.end(await readFile(file));
-  } catch { res.writeHead(404).end(); }
-});
+const server = createServer(makeStatic());
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const port = server.address().port;
 

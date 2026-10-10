@@ -118,9 +118,17 @@ grep -rn 'import(' client/
 
 **At least one gate must use the real server.** Every gate stood up its own static server inside
 its own file, so all eight passed while `./run.sh` served a Content-Security-Policy that blocked
-the importmap and the game would not boot at all. `tools/serve_smoke.mjs` spawns `tools/serve.mjs`
-and loads the bare origin. **Listen for console errors, not only `pageerror`** — a CSP violation is
-reported to the console, which is why this was invisible.
+the importmap and the game would not boot at all. `tools/serve_smoke.mjs` spawns `server/index.js`
+— the deployed server, since M12 deleted `tools/serve.mjs` — and loads the bare origin. **Listen
+for console errors, not only `pageerror`** — a CSP violation is reported to the console, which is
+why this was invisible.
+
+**And no tool stands one up of its own any more** (Q167). The handler is `server/static.js`'s
+`makeStatic()`, which `server/index.js` and all sixteen browser tools call: a picture harness needs
+no pump, no socket and no city, so the PROCESS is not shared, but the bytes and the headers are.
+Before this, every picture this project argued art direction from was served by a fourteen-line
+harness with its own type table and no CSP. `test/tools.test.js` pins it — a tool that calls
+`createServer` without `makeStatic` is a red suite.
 
 **Reachability runs in two directions.** `test/reachability.test.js` asks whether every function
 has a control; `tools/reach_smoke.mjs` asks whether every control can actually be clicked, and
@@ -144,6 +152,13 @@ rescued `seasonYears` was one I had written ten minutes earlier about that very 
 `test/helpers/sources.js` has `stripCommentsAndStrings`; use it, exclude the module that declares the
 thing and the one that serializes it, and state the rule in the assertion. Then PIN the result, so
 adding another is a deliberate act.
+
+**And verify the stripper itself.** Those three functions read a `/` as division and a quote as the
+start of a string, so `/^\+\s*"([^"]+)"/` — a regex literal holding two quotes — turned the rest
+of the file into one unterminated string: the last 88 of `tools/i18n_review.mjs`'s 143 lines were
+invisible to every scan that lists `tools/`, and the tell was four module constants reading as
+dead. They know regex literals since Q167's round, and `test/sources.test.js` is the instrument's
+own gate — the cases that broke it, plus the division that must not be mistaken for a pattern.
 
 **A shot aimed by a proxy photographs the proxy.** F2's first shot list picked its subjects with
 "the longest straight corridor", "the furthest house" and "near the centre of mass", and the

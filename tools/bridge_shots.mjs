@@ -98,7 +98,6 @@ async function frame(out, opts, note) {
 // and not the tile's verges. `span` floors at 8 tiles in city mode, so this is
 // as close as this harness stands.
 const along = at.horizontal ? 1 : 0;
-const across = at.horizontal ? 0 : 1;
 await frame("reports/smoke-S13-bridge.png",
   { mode: "city", span: 8, pitch: 28, yaw: along, fx: at.x, fy: at.y, width: 1280, height: 720 },
   "the crossing from the bank");

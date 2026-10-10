@@ -16,9 +16,10 @@
 //      an identical image.
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settle } from "./lib/settle.mjs";
 import { createHash } from "node:crypto";
@@ -26,24 +27,9 @@ import { SWEEP } from "../client/debug/perf-sweep.js";
 import { OVERLAY_CHOICES } from "../client/ui/overlays.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".json": "application/json", ".png": "image/png",
-};
 
 function serve() {
-  return createServer(async (req, res) => {
-    try {
-      const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
-      const target = join(root, normalize(path === "/" ? "/index.html" : path));
-      if (!target.startsWith(root)) return res.writeHead(403).end();
-      const body = await readFile(target);
-      res.writeHead(200, { "content-type": TYPES[extname(target)] ?? "application/octet-stream" });
-      res.end(body);
-    } catch {
-      res.writeHead(404).end();
-    }
-  });
+  return createServer(makeStatic());
 }
 
 const problems = [];

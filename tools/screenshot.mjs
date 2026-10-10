@@ -9,32 +9,32 @@
 //   STYLE=plain|pixel|painted SPAN=40 YAW=0 W=1280 H=720 node tools/screenshot.mjs
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
 import { writeFile, mkdir } from "node:fs/promises";
-import { extname, join, resolve, normalize, dirname } from "node:path";
+import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".json": "application/json", ".css": "text/css", ".png": "image/png",
-};
-
+/**
+ * The tree, served by the SERVER's own handler (Q167, 2026-10-10).
+ *
+ * This file had fourteen lines of static server and a six-entry type table, so
+ * every picture this project has ever taken — the compare sheets the art
+ * direction is argued from included — came off a harness rather than off the
+ * server a player uses. M12 deleted `tools/serve.mjs` for exactly that and
+ * left this one standing.
+ *
+ * It is the HANDLER that is shared and not the process: a picture harness
+ * needs no pump, no socket and no city, and spawning a room to take a
+ * screenshot would be absurd. What had to stop differing is the bytes and the
+ * headers — the type table here was missing `.svg`, `.woff2`, `.webmanifest`
+ * and `.glb`, and it sent no Content-Security-Policy at all, so a shot could
+ * not have caught a policy that breaks the real page.
+ */
 async function serve() {
-  const server = createServer(async (req, res) => {
-    try {
-      const path = decodeURIComponent(new URL(req.url, "http://x").pathname);
-      const target = join(root, normalize(path));
-      if (!target.startsWith(root)) return res.writeHead(403).end();
-      const body = await readFile(target);
-      res.writeHead(200, { "content-type": TYPES[extname(target)] ?? "application/octet-stream" });
-      res.end(body);
-    } catch {
-      res.writeHead(404).end("not found");
-    }
-  });
+  const server = createServer(makeStatic());
   await new Promise((done) => server.listen(0, done));
   return { server, port: server.address().port };
 }

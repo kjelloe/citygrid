@@ -52,3 +52,33 @@ test("no module imports a name it never uses", () => {
   assert.deepEqual(unused, [],
     `${unused.length} name(s) imported and never used — delete the import, or call it`);
 });
+
+/**
+ * The same question one line down: a module constant declared and never read.
+ *
+ * `building-kit.js` kept `TOP = 1.0` after the roof stopped multiplying by it,
+ * and nine tools kept `const root = …` after Q167 moved serving the tree into
+ * `server/static.js` — where it did something worse than nothing: it kept
+ * `join`, `dirname` and `fileURLToPath` LOOKED-AT, so the import census above
+ * passed over three dead imports per file.
+ *
+ * Top-level only, and `const` only. A local in a 200-line function is a
+ * different question with a different answer, and `let` is often written to
+ * before it is read.
+ */
+test("no module declares a top-level const it never reads", () => {
+  const dead = [];
+  for (const dir of ["engine", "client", "shared", "worker", "server", "tools"]) {
+    for (const file of jsFilesIn(dir)) {
+      const code = stripButKeepInterpolations(file.source);
+      const re = /^const\s+([A-Za-z_$][\w$]*)\s*=/gm;
+      let m;
+      while ((m = re.exec(code)) !== null) {
+        const rest = code.slice(0, m.index) + code.slice(m.index + m[0].length);
+        if (!new RegExp(`\\b${m[1]}\\b`).test(rest)) dead.push(`${file.path}: ${m[1]}`);
+      }
+    }
+  }
+  assert.deepEqual(dead, [],
+    `${dead.length} constant(s) declared and never read — delete them, or read them`);
+});

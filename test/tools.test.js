@@ -12,10 +12,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { repoRoot, jsFilesIn, stripComments } from "./helpers/sources.js";
+import { repoRoot, jsFilesIn, stripComments, stripCommentsAndStrings } from "./helpers/sources.js";
 
 const scripts = () => {
   const dir = join(repoRoot, "tools");
@@ -104,4 +104,37 @@ test("every entry on the quest-free list says what it would cost to move", () =>
   for (const [path, why] of Object.entries(QUEST_FREE)) {
     assert.ok(typeof why === "string" && why.length > 20, `${path} has no reason on it`);
   }
+});
+
+test("one implementation of serving the tree, and the tools share it (Q167)", () => {
+  // M12 deleted `tools/serve.mjs` because two static servers for one tree is
+  // two chances to be wrong about it — and left sixteen more, one per picture
+  // gate, each with its own type table and none sending the headers a player
+  // gets. `tools/screenshot.mjs` was the one that mattered: every picture this
+  // project has taken came off its fourteen-line server, so the frames the art
+  // direction is argued from were served by a harness rather than by the game.
+  //
+  // The handler is shared, not the process: a picture harness needs no pump,
+  // no socket and no city. What had to stop differing is the bytes and the
+  // headers.
+  const own = [];
+  for (const { path, source } of jsFilesIn("tools")) {
+    const code = stripCommentsAndStrings(source);
+    if (!/\bcreateServer\s*\(/.test(code)) continue;
+    // A tool may still call `createServer`, but what it passes has to come
+    // from `server/static.js` — directly, or wrapped so it can patch a file
+    // first (`update_smoke` deploys twice, `offline_smoke` goes offline).
+    if (/makeStatic\s*\(/.test(code)) continue;
+    own.push(path);
+  }
+  assert.deepEqual(own, [],
+    `tools that still serve the tree their own way: ${own.join(", ")} — use server/static.js`);
+});
+
+test("and the shared handler is the one the server itself runs (Q167)", () => {
+  // The other direction: a `server/static.js` nothing in `server/` used would
+  // be a second implementation wearing the first one's name.
+  const server = readFileSync(join(repoRoot, "server", "index.js"), "utf8");
+  assert.match(server, /from "\.\/static\.js"/,
+    "server/index.js does not use the handler the tools share");
 });

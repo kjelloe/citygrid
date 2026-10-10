@@ -13,27 +13,11 @@
 // that a save made on one arm restores on the other.
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".json": "application/json", ".css": "text/css", ".png": "image/png",
-  ".webmanifest": "application/manifest+json",
-};
 
 function serve() {
-  return createServer(async (req, res) => {
-    try {
-      const path = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
-      const file = join(root, normalize(path === "/" ? "/index.html" : path));
-      res.writeHead(200, { "content-type": TYPES[extname(file)] ?? "application/octet-stream" });
-      res.end(await readFile(file));
-    } catch { res.writeHead(404).end(); }
-  });
+  return createServer(makeStatic());
 }
 
 const problems = [];

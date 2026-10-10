@@ -20,6 +20,13 @@ that is how `serve_smoke` came to exist at all: eight gates passed while
 `./run.sh` was broken, because the server a player used sent a
 Content-Security-Policy the others did not.
 
+The static half is `server/static.js` — the type table, the per-page policy and
+the handler — and since Q167 every browser tool calls it too. They do not share
+the PROCESS, because a picture harness needs no pump and no rooms, but a file
+served to a gate now carries the headers it carries to a player. Nothing in
+`tools/` serves this tree its own way, and `test/tools.test.js` keeps it that
+way.
+
 ## Configuration
 
 Everything comes from the environment, and `server/config.js` owns the defaults

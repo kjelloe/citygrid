@@ -15422,3 +15422,142 @@ no leak, and no stray processes beforehand. The leak detector did its job and
 the finding was mine — `a-gate-run-is-exclusive`, for the second time this
 week, and worth recording precisely because the obvious reading was "a gate
 does not close its browsers".
+
+## Q167 — one way to serve this tree, and the instrument that could not see it (2026-10-10)
+
+Sixteen tools stood up their own static server. Each was fourteen lines, each
+had its own type table, none of them sent a Content-Security-Policy, and
+`tools/screenshot.mjs` was one of them — so **every picture this project has
+argued art direction from was served by a harness**, not by the server a player
+uses. M12 had already paid for this shape once: it deleted `tools/serve.mjs`
+because two servers for one tree is two chances to be wrong about one tree, and
+the live CSP bug it found that day was on the server `run.sh` ran and not on the
+one the gates stood up.
+
+**The process is not the thing to share.** A picture harness needs no pump, no
+socket, no city and no room, and spawning `server/index.js` to take a screenshot
+would be absurd. What has to be the same is the bytes and the headers, so the
+static half moved into `server/static.js` — `TYPES`, `contentPolicy(target)`
+(per page, memoised) and `makeStatic({ health, root })` — and `server/index.js`
+is now `createServer(makeStatic({ health }))`. `health` arrives as a function
+and is absent for every caller with no rooms to report, which is what keeps the
+module free of the room.
+
+Sixteen tools call it now:
+
+```
+screenshot, film, play_shot, play_smoke, ui_smoke, save_smoke, worker_smoke,
+offline_smoke, update_smoke, lobby_smoke, budget_gate, mvp_acceptance,
+crowd_probe, street_proof, perf_card, skin_shots
+```
+
+Two of them could not simply swap the handler in, and both say why in the file:
+
+- `update_smoke` serves a tree that CHANGES under a running client. Its handler
+  answers from the patched map when a path is in it and delegates to
+  `makeStatic()` otherwise, so everything the second deploy does not patch
+  arrives with the headers a player gets.
+- `street_proof` photographs **another worktree**, which is its whole argument,
+  so it passes `root`. That argument had also been silently optional: run with
+  no arguments it wrote `undefined/street-undefined-air.png`. Its three
+  arguments have defaults now (this tree, `now`, `reports`).
+
+`test/tools.test.js` pins the result from both ends: a tool that calls
+`createServer` without `makeStatic` is a red suite, and so is a `server/`
+that does not call it either.
+
+**What the conversion revealed is the better half of the entry.** Nine tools
+kept `const root = join(dirname(fileURLToPath(import.meta.url)), "..")` after
+the thing that read it was gone — and that dead line did something worse than
+nothing: it kept `join`, `dirname` and `fileURLToPath` **looked-at**, so
+`test/unused-imports.test.js` passed over three dead imports per file. A dead
+declaration is a fence around dead imports. The census has a companion now —
+"no module declares a top-level const it never reads" — which found two more
+nobody was looking for: `TOP = 1.0` in `building-kit.js`, left behind when the
+roof stopped multiplying by it, and `across` in `bridge_shots.mjs`.
+
+### The instrument was blind from the first quote inside a pattern
+
+Writing that census found something larger. `test/helpers/sources.js` holds the
+three strippers that **fourteen guard tests** read the repo through, and all
+three treated `/` as division and a quote as the start of a string. So this
+line:
+
+```js
+const key = /^\+\s*"([^"]+)"\s*:/.exec(line);
+```
+
+made the rest of the file one unterminated string literal. `tools/i18n_review.mjs`
+lost **the last 88 of its 143 lines** to every scan that lists `tools/` — the
+unused-import census, the dead-export census, the i18n reachability scan, the
+subset check. The tell was that its four module constants read as dead when
+every one of them is used below that line.
+
+The three strippers know regex literals now, which cannot be decided without
+looking backwards: after a value — a name, a number, a closing bracket — a `/`
+divides; after an operator, a comma, an opening bracket or one of eleven
+keywords it opens a pattern. A character class may hold a `/` and a newline
+inside an unterminated "pattern" means it was a division after all.
+
+Measured: three files in the scanned trees hold a quote-bearing regex literal
+(`i18n_review`, `lobby_smoke`, `serve_smoke`). The suite stayed green when the
+blindness was lifted, which is the good outcome and not the expected one — the
+scans had nothing hidden behind it beyond the dead constants.
+
+`test/sources.test.js` is new and is the instrument's own gate: the two cases
+that broke it, the division that must not be mistaken for a pattern, a `/`
+inside a character class, a pattern after `return`, and one assertion against
+the real `i18n_review.mjs` rather than only against five-line fixtures.
+
+### Measured
+
+- Suite: **2100 tests, 0 fail, twice.** (2092 before; +6 for the stripper, +1
+  for the dead-const census, +1 for the serving census's second half.)
+- `quick` 509 s of 600 — every gate green, `serve_smoke` among them, which is
+  the one that would notice a header moved.
+- `shots` 320/390, `kits` 424/480, `transport` 260/330, `film` 123/180,
+  `budget` 278/330, `room` 272/300 — all green. The picture sets matter here
+  because `screenshot.mjs` now sends a real CSP for the first time, and
+  `sun_shots` was the first proof that `tools/shoot.html`'s own inline scripts
+  survive a per-page policy.
+- `play_shot`, `crowd_probe`, `street_proof` and `perf_card` run by hand, the
+  four converted tools that are not gates.
+- `client/precache.json` re-made: deleting one constant from a renderer module
+  changes the build hash, and `test/pwa.test.js` is what says so.
+
+### Two more the sweep found, in the same shape
+
+**The one tool that measures frames asked for no renderer.** Nineteen tools pass
+`--use-gl=swiftshader --enable-unsafe-swiftshader`; `perf_card.mjs` launched
+chromium with **no arguments at all** — and then wrote
+`renderer: "swiftshader (headless chromium)"` into a file called
+`reports/perf/swiftshader.json`. The label was a claim, not a reading
+(`a-knob-you-turned-is-not-a-knob-it-read`). It now passes the same flags as
+everything else and reads the renderer back out of
+`WEBGL_debug_renderer_info`:
+
+```
+"renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+```
+
+So the claim was true, and is now measured. Two runs after the change: `street
+walk 60m` p95 **3966 ms** then **467 ms**, with 393k triangles against 226k —
+the walk ends where the city puts it, and a card whose walk ended in the dense
+quarter is not comparable with one that did not. The row already prints its
+triangles beside its p95, which is what makes that readable; the lesson is the
+project's own — take the number twice.
+
+**`makeStatic`'s path guard had no assertion anywhere.** It was a private
+function in `server/index.js` until today and `serve_smoke` is the only thing
+that had ever driven it — through a browser, which cannot ask for
+`/../../etc/passwd`. `test/static.test.js` asks it directly: the index with a
+policy, a module without one and with `cache-control: no-cache`, a 404, a query
+that is not part of the path, `/health` answered only for a caller that passed
+one, and two pages whose policies differ.
+
+The traversal check asserts **the property, not the branch**: `new URL()`
+flattens `..` in the pathname and `normalize()` flattens what percent-decoding
+puts back, so all four attempts arrive under the root and come back 404. The
+`403` is the third of three, and a test demanding 403 would have been asserting
+which layer refused rather than that the file is not served. Both facts are now
+in the comment beside it.

@@ -30,17 +30,9 @@
 //   node tools/budget_gate.mjs [--tier=low|medium|high]      (default: all three)
 
 import { chromium } from "playwright";
+import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".json": "application/json", ".png": "image/png",
-  ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json",
-};
+import { join } from "node:path";
 
 /** How far the estimate may sit from the truth and still be worth planning
  * with. Ruling 019 recorded "within about 10%" when the model was last
@@ -52,18 +44,7 @@ const TOLERANCE = 0.25;
 const asked = process.argv.find((a) => a.startsWith("--tier="))?.split("=")[1];
 const TIERS = asked ? [asked] : ["low", "medium", "high"];
 
-const server = createServer(async (req, res) => {
-  try {
-    const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
-    const target = join(root, normalize(path === "/" ? "/index.html" : path));
-    if (!target.startsWith(root)) return res.writeHead(403).end();
-    const body = await readFile(target);
-    res.writeHead(200, { "content-type": TYPES[extname(target)] ?? "application/octet-stream" });
-    res.end(body);
-  } catch {
-    res.writeHead(404).end();
-  }
-});
+const server = createServer(makeStatic());
 
 let failures = 0;
 function check(name, ok, detail = "") {

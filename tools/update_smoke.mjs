@@ -19,41 +19,29 @@
 import { chromium } from "playwright";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { join, extname, normalize, dirname } from "node:path";
+import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { makeStatic, TYPES } from "../server/static.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".json": "application/json", ".png": "image/png",
-  ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json",
-};
 
 /** Files the server pretends were redeployed. Empty until the second deploy. */
 const deployed = new Map();
 
-const server = createServer(async (req, res) => {
-  try {
-    const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
-    const patched = deployed.get(path);
-    if (patched !== undefined) {
-      res.writeHead(200, {
-        "content-type": TYPES[extname(path)] ?? "text/plain",
-        "cache-control": "no-cache",
-      });
-      return res.end(patched);
-    }
-    const target = join(root, normalize(path === "/" ? "/index.html" : path));
-    if (!target.startsWith(root)) return res.writeHead(403).end();
-    const body = await readFile(target);
-    res.writeHead(200, {
-      "content-type": TYPES[extname(target)] ?? "application/octet-stream",
-      "cache-control": "no-cache",
-    });
-    res.end(body);
-  } catch {
-    res.writeHead(404).end();
-  }
+// The second deploy's bytes in front of the real handler (Q167). This gate
+// cannot simply BE `makeStatic()` — its whole subject is a tree that changes
+// under a running client — but everything it does not patch has to arrive with
+// the headers a player gets, which is the one thing a per-gate server never did.
+const serveStatic = makeStatic({ root });
+const server = createServer((req, res) => {
+  const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
+  const patched = deployed.get(path);
+  if (patched === undefined) return serveStatic(req, res);
+  res.writeHead(200, {
+    "content-type": TYPES[extname(path)] ?? "text/plain",
+    "cache-control": "no-cache",
+  });
+  res.end(patched);
 });
 
 let failures = 0;

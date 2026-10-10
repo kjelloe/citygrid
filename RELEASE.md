@@ -198,8 +198,10 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**3 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
+**2 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
 anything — both are instruments rather than rules, and both were found by looking at a picture.
+Q167 was the third and is **built** (2026-10-10, P116): one handler serves the tree, and all
+sixteen browser tools call it.
 
 - **Q169**: on a phone the advisor's message is cut off mid-sentence — the card ends and the rest
   of the sentence spills over the map. It has been like that for as long as the phone shot has
@@ -209,10 +211,6 @@ anything — both are instruments rather than rules, and both were found by look
   is a region to the horizon with a lake in it. `span: 15` at `pitch: 26°` is a perspective camera
   at a shallow angle, so fifteen tiles across the near field still shows everything behind them.
   The one row aimed at facades has never photographed any. Re-frame it, or is the wide view wanted?
-- **Q167**: **sixteen tools stand up their own static server**, `tools/screenshot.mjs` among them —
-  so every picture this project has taken was served by a harness rather than by the server a
-  player uses. M12 moved the three gates whose premise IS the real server and found a live CSP bug
-  in one run doing it. Should the rest follow, starting with `screenshot.mjs`?
 
 **Q161–Q166 were answered on 2026-10-09 as A139–A144** (P114) and the work is done or scheduled:
 the sun stands further out (**S22b**, built — and the frames it was argued from turned out to have
