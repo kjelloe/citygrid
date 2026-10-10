@@ -141,9 +141,7 @@ first within each group; sizes as the lane files have them.
 
 | Group | Item | Lane | Size |
 |---|---|---|---|
-| **Kjell's looks** | Q168 the compare sheet's terrace row has never photographed a facade — re-frame it | world | XS |
-| | Q170 the sun's shadow is invisible — intensity, tint, radius, with `sun_shots` | world | S |
-| | Q157/A135 the deputy's spacing, re-read with the evening's notes | behaviour | — |
+| **Kjell's looks** | Q157/A135 the deputy's spacing, re-read with the evening's notes | behaviour | — |
 | **The world** | S19b a station faces its track | world | S |
 | | S18's shore line | world | XS |
 | | S20's subject counts in the picture gates | world | S |
@@ -171,4 +169,6 @@ first within each group; sizes as the lane files have them.
 
 ## Order
 
-~~V1 → V2 → V3 → V4~~ built 2026-10-09. **K6 → V5 (Kjell) → M7b.** Then v1.1 from the notes.
+~~V1 → V2 → V3 → V4~~ built 2026-10-09. **K6 (a → c → b → d) → S22d → S8b → V5 (Kjell) → M7b.**
+Then v1.1 from the notes. P120 (2026-10-10) answered Q168–Q170 as recommended, which is what put S22d
+and S8b ahead of the evening.
