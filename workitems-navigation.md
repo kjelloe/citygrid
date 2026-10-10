@@ -327,6 +327,16 @@ in the card has a non-empty box inside the viewport (the `every`-is-true-of-noth
 unplanned round applies here first). **And Q169 with it** unless Kjell says otherwise: the
 advisor's card on a phone scrolls inside its cap instead of spilling over the map.
 
+**Three more pieces, from the second omissions pass (P119), all small and all before V5:**
+- **Copy the invitation**: one button beside the room code in the lobby and on the roster —
+  `navigator.share` where the browser has it, the clipboard otherwise, with its own strings and a
+  `room_smoke` row that reads the clipboard the way `ui_smoke` reads the perf card's.
+- **The phone's rail is one strip that scrolls**, never two rows: `flex-wrap: nowrap`,
+  `overflow-x: auto`, the way the alert chips already behave. `play_smoke`'s phone row asserts the
+  rail is one row high. Icons are v1.1's (an art decision, playtest §2).
+- **`--url` on `room_soak` and `room_smoke`** so both can be pointed at a deployed server, and
+  `gates.mjs room --url` / `release --url` pass it through; the default stays "spawn our own".
+
 **Why v1.0.** It is the first thing a phone player sees at V5, before the room.
 
 ## Review after K3 (2026-09-11)

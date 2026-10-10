@@ -95,11 +95,12 @@ measured, and a dead constant that fences dead imports.*
   shadows.
 
 **V5, as a checklist for Kjell** (everything the ally cannot do):
+0. The DNS record for `citygrid.kjell.today` pointing at the box, live before certbot runs.
 1. `DEPLOYING.md` "First-time box setup", steps 1–8, run in order on the shared box — claim the
    port, the user and Node, the unit, one deploy, nginx HTTP-only, the shared certificate
    lineage, the outside check and the neighbour sweep, the hosting document.
-2. `node tools/gates.mjs release` and `room` pointed at the box once (`ROOM_URL`), which is the
-   deployed half of V4 the ally could not run.
+2. `node tools/gates.mjs release --url https://citygrid.kjell.today` and `room --url …` once (the
+   switch is K6's), which is the deployed half of V4 the ally could not run.
 3. Open the address on a phone, scan the QR from a second device, host a room, invite at least
    three people, play an hour at the map's seat cap, lose a connection on purpose and come back,
    file and answer a request both ways, leave the room overnight and open it the next day.
@@ -107,6 +108,30 @@ measured, and a dead constant that fences dead imports.*
    trigger is read here — and the top of v1.1 is written from them.
 
 Then **M7b**: the release page re-measured, `git tag v1.0`, `main` fast-forwarded and pushed.
+
+## Omissions pass, second (2026-10-10, after P119) — the evening, rehearsed on paper
+
+*Walked through V5's checklist as a host and as a guest on a phone, against the code and
+`reports/hud-phone.png`, before anybody does it for real.*
+
+- **A host cannot copy the invitation.** X2c made the host's address bar the invitation and X2d
+  drew the QR; there is no **Copy link** or share control anywhere, and on a phone the address bar
+  is the hardest thing on the screen to copy. One button beside the code, `navigator.share` where
+  it exists and the clipboard otherwise, in the lobby and on the roster. → K6.
+- **The phone's rail wraps to two rows** — Overlays, Tax, Saves, History, Controls, Statistics,
+  Settings — which the first playtest named on 2026-08-29 ("the rail needs to be icons rather than
+  words") and nothing has done since; in a room it gains Requests and Players. Icons are an art
+  decision and v1.1's; the v1.0 mitigation is a **single non-wrapping strip that scrolls**, like the
+  alert chips under it. → K6.
+- **The deployed half of V4 cannot be run as written.** `room_soak` and `room_smoke` have no way to
+  be pointed at another server — they spawn their own — so "the gates against the box once" is a
+  sentence with no command behind it. A `--url` on both (the browsers open the given origin, the
+  scripted clients dial its `/ws`), and `gates.mjs release --url` passes it through. → K6.
+- **The DNS record is step zero.** `DEPLOYING.md` assumes `citygrid.kjell.today` resolves; nothing
+  says who creates the record or that certbot's challenge needs it live first. → V5's checklist.
+- **Checked and fine:** the join screen and roster strings exist in both catalogues (the parity
+  test); `ALLOWED_ORIGINS` is documented with the exact-match rule; the release set's scripted
+  eight and the room set's eight browsers are two gates on purpose.
 
 ## v1.1 — the remaining details and the balance
 
