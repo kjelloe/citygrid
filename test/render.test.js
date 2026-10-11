@@ -196,8 +196,20 @@ test("plain is lit softly and painted is not", () => {
   // exposure than the key does, or the result is merely darker.
   assert.ok(plain.hemi > plain.key, "plain's fill should outweigh its key");
   assert.ok(painted.key > painted.hemi, "painted is a key-light style");
-  assert.ok(plain.shadowIntensity < painted.shadowIntensity, "a soft style needs a pale shadow");
-  assert.ok(plain.shadowRadius > painted.shadowRadius, "a soft style needs a blurred shadow");
+  // **The shadow is no longer the softness knob** (S22d, A145 ← Q170). It was:
+  // plain had the paler, blurrier shadow of the two, and `sun_shots` measured
+  // what that produced — a cast shadow **8% darker than the same ground with
+  // the shadows switched off**, which is a shadow in a histogram and not in a
+  // picture. Softness is the key-to-fill ratio above, which is unchanged;
+  // plain's shadow is the STRONGER one now because its sun stands high (150
+  // against 60) and drops a small shadow under the building, and a small
+  // shadow has to be dark to be seen at all. Painted keeps the paler one for
+  // the reason its rig always gave: a low sun's long shadows at full strength
+  // swallow the cool fill that is supposed to colour them.
+  assert.ok(plain.shadowIntensity > painted.shadowIntensity,
+    "plain's small, high-sun shadow has to be the darker one to be seen");
+  assert.ok(plain.shadowRadius < painted.shadowRadius,
+    "and the crisper one: a radius-3 penumbra spread the same shadow to 8% darker (the ladder is in sun_shots)");
   // A high sun drops the shadow under the building instead of stretching it.
   assert.ok(plain.sunHeight > painted.sunHeight, "plain's sun should stand higher");
 });

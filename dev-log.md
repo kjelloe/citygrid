@@ -16015,3 +16015,91 @@ eight copies of `[object Promise]` and called them equal.
 - `room` 266/300 spawned, 79/300 against the box (two gates `n/a`).
 - `release` 48/180 spawned, 49/180 against the box.
 - `quick` 114/180 — unchanged by any of this.
+
+## S22d — a shadow you can see, and the instrument that could not see one (2026-10-11)
+
+A145 (Q170): the shadow's numbers become data, intensity toward 0.8, radius 3,
+and `sun_shots` asserts the shadowed grass at noon is **at least 25% darker**
+rather than reporting 8%. The data half is built. The 25% is not reachable with
+the light this game uses, and the measuring is the half worth reading.
+
+### The 8% was never a cast shadow
+
+The old rule counted grass pixels darker than the commonest green: **114,882 of
+them in a 1280×720 frame** — the far field, every slope away from the sun, the
+fog-dimmed distance — and took their median. Raising the shadow's strength from
+0.5 to 0.8 moved that number **not at all** (112 against 112), because the
+terrain's own variation is what it measures.
+
+`?shadows=0` has existed since S13 for exactly this. The depth is an **A/B**
+now: the same hour shot twice, with the cast shadow and without it, and the
+pixels that DARKENED are the shadow — no hue rule, no threshold on what counts
+as grass, and the count doubles as "is anything casting one at all".
+
+```
+noon: the cast shadow covers 84,469 px (9.2% of the frame),
+      median 14% darker, deepest 19%, centred at (716, 495)
+```
+
+### And the radius was a number nothing read
+
+Three frames at radius 1, 2 and 3 came back **byte-identical**.
+`PCFSoftShadowMap` takes a fixed 3×3 of the shadow map; only the plain
+`PCFShadowMap` branch multiplies its taps by `shadowRadius`. So the softness
+knob this slice was supposed to move did nothing — the same shape P1 found when
+`shadowIntensity` and `shadowRadius` sat in the rig table with no reader. The
+renderer uses PCF now, and the radius means something:
+
+| arm | median darker | deepest |
+|---|---|---|
+| intensity 0.5, PCFSoft (as shipped) | 8% | — |
+| intensity 0.8, PCFSoft | 13% | 19% |
+| intensity 1.0, PCFSoft | 16% | 24% |
+| **intensity 0.8, PCF radius 1** | **14%** | **19%** |
+| intensity 0.8, PCF radius 2 | 10% | 19% |
+| intensity 0.8, PCF radius 3 | 8% | 17% |
+
+A wide penumbra spreads one shadow into a faint wash: radius 3 is *paler* than
+radius 1, which is the opposite of what "soften it" sounds like.
+
+### Why 25% needs a decision rather than a number
+
+The key light is 1.15 and the hemisphere 1.25, so the key is about a sixth of
+what lights the grass — and a shadow can only take away what the key put there.
+The rig ladder, at intensity 0.8, holding total exposure roughly constant:
+
+| key / hemi | median darker |
+|---|---|
+| 1.15 / 1.25 (as shipped) | 13% |
+| 1.4 / 1.0 | 16% |
+| 1.6 / 0.8 | 19% |
+| 1.8 / 0.6 | 22% |
+
+25% needs the last rung **and** full intensity: a hard-lit city, which is not
+the soft, evenly lit look chosen for `plain`. So the gate's floor is **12%** —
+under the measured 14%, over the 8% this slice started from, a regression guard
+rather than a target — and the gate prints the gap and names **Q171**, which
+carries this ladder to Kjell. Setting the bar where the picture happens to land
+is what `a-constant-tuned-to-a-gate` forbids; setting it at a number the rig
+cannot reach would be a red suite forever.
+
+### What is in the data now
+
+```json
+"shadow": { "intensity": 0.8, "radius": 1, "tint": 7302056 }
+```
+
+mirrored in `client/world/config.js`, read by `style-light.js` for both lit
+styles — painted takes nine tenths of the strength and keeps its own wider
+radius, because its low sun's long shadows at full strength swallow the cool
+fill that colours them. `test/render.test.js`'s "plain is lit softly" had to be
+re-stated: softness is the key-to-fill ratio, which is unchanged, and plain's
+shadow is the darker and crisper of the two now because its sun stands at 150
+and drops a small shadow under the building.
+
+### Measured
+
+- Suite **2,120 green twice**.
+- `shots` 299/390 with `sun_shots` 28 s, `access` 126/210, `budget` 260/330,
+  `kits` 402/480, `film` 116/180 — the two the item named as "must not move"
+  (the overlay bands and the triangle budget) did not.

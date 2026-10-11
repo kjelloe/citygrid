@@ -663,7 +663,7 @@ minutes it wants its census sampled or its own set — not a larger number.
   part, and life survives a build since B11). `workitems-multiplayer.md` says so and
   orders it before X3.
 
-## S22d — A shadow you can see (S, renderer) — A145 (Q170) — before V5
+## ~~S22d — A shadow you can see (S, renderer) — A145 (Q170)~~ — **built 2026-10-11**, and it raised **Q171**
 
 *Written on 2026-10-11: the order has named this item since P120 and the lane had no entry for it,
 so the only description anywhere was the answer paragraph in `dev-questions.md`. This is it.*
@@ -703,6 +703,20 @@ beside the shots.
 
 **Size.** S, one day. Before V5, because the evening is the first time anybody plays under this
 light.
+
+**Built 2026-10-11.** Three findings, and the item's own number was not reachable:
+
+1. **The 8% was never a cast shadow.** The old rule counted every grass pixel darker than the
+   commonest green — 114,882 of them — so its median was the terrain's variation and did not move
+   when the shadow doubled in strength. The depth is an **A/B** now (`?shadows=0` on the same
+   hour), which also answers "is anything casting one".
+2. **`shadow.radius` had no reader.** `PCFSoftShadowMap` ignores it; three frames at radius 1, 2
+   and 3 were byte-identical. The renderer uses `PCFShadowMap` now, and a wide penumbra turns out
+   to be PALER: radius 1 reads 14%, radius 3 reads 8%.
+3. **25% needs a different light.** The key is a sixth of what lights the grass, so the ceiling is
+   about 16%. The rig ladder (holding exposure constant) reaches 22% at key 1.8 / hemi 0.6, which
+   is not the soft look `plain` was chosen for. The gate's floor is **12%** — under the measured
+   14%, over the 8% this started from — and **Q171** carries the ladder to Kjell.
 
 ## S8b — The terrace row photographs a region, not a facade (XS, measurement) — A147 (Q168) — with S22d
 

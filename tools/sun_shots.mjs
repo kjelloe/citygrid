@@ -152,7 +152,7 @@ const problems = [];
 const frames = [];
 
 /** One shot at one hour, from the one camera. */
-async function frame(label, hour, steps) {
+async function frame(label, hour, steps, shadows = true) {
   const out = `reports/smoke-S22-${label}.png`;
   // `hour` goes in `extra`, not beside `photo`: `shoot()` has a named parameter
   // per flag and forwards anything ELSE through `extra`, so a top-level `hour`
@@ -169,7 +169,7 @@ async function frame(label, hour, steps) {
   // over, before anybody looked at the number.
   const r = await shoot({ out, seed: SEED, years: YEARS, size: SIZE, tier: "high", streets: 40,
     frames: 2, life: false, photo: camera.photo, width: 1280, height: 720,
-    time: phaseOf(hour, 1),
+    time: phaseOf(hour, 1), shadows,
     extra: { __ask: ASK, hour, sunRadius: RADIUS,
       ...(steps === undefined ? {} : { sunSteps: steps }) } });
   if (!r.ok) problems.push(...r.problems.slice(0, 2));
@@ -316,6 +316,13 @@ if (cfg.sun.arcSteps > 0) {
     let n = 0;
     let sx = 0;
     let sy = 0;
+    // **How dark, not only how many** (S22d, A145). The count says a shadow
+    // exists; a shadow 8% darker than the grass around it exists and cannot be
+    // SEEN, which is what Q170 was. The median of the shadowed greens against
+    // the lit green is the depth, and the median rather than the mean because
+    // the deepest pixels are a thin edge under the eaves and would carry an
+    // average on their own (a-flat-average-hides-a-rare-rule).
+    const shadedGreens = [];
     for (let y = from; y < h; y += 1) {
       for (let x = 0; x < w; x += 1) {
         const i = (y * w + x) * 4;
@@ -324,8 +331,12 @@ if (cfg.sun.arcSteps > 0) {
         // Darker than the lit grass by more than the terrain's own banding.
         if (g > litG * 0.95) continue;
         n += 1; sx += x; sy += y;
+        shadedGreens.push(g);
       }
     }
+    shadedGreens.sort((a, b) => a - b);
+    const median = shadedGreens.length ? shadedGreens[shadedGreens.length >> 1] : litG;
+    const depth = litG > 0 ? 1 - median / litG : 0;
     // **And the building's faces** (S22c). The kits used to push a fixed
     // compass shade into every wall, so a building had form whether or not
     // anything lit it. The lit styles bake nothing now, which means the form
@@ -353,6 +364,7 @@ if (cfg.sun.arcSteps > 0) {
     const solid = [...bands.values()].filter((n) => n > walls * 0.01).length;
     return {
       lit: litG, shaded: n, x: n ? Math.round(sx / n) : -1, y: n ? Math.round(sy / n) : -1,
+      median, depth: Math.round(depth * 1000) / 1000,
       walls, faceBands: solid,
     };
   }`;
@@ -372,16 +384,108 @@ if (cfg.sun.arcSteps > 0) {
     return eval(rule)(data, canvas.width, canvas.height);
   }, { b64: (await readFile(file)).toString("base64"), rule: SHADOW });
 
+  // **How dark the cast shadow is, by A/B** (S22d, A145 ← Q170).
+  //
+  // The rule below — grass pixels darker than the commonest green — counts
+  // 114,882 pixels in a 1280x720 frame: the far field, every slope away from
+  // the sun and the fog-dimmed distance, as well as the shadow. Its MEDIAN is
+  // the terrain's own variation, which is why it read 9% before this slice and
+  // 9% after the shadow was made half again as strong. A number that does not
+  // move when its subject does is not measuring its subject.
+  //
+  // So the depth is measured the way `?shadows=0` was put there for: shoot the
+  // same hour twice, with the cast shadow and without it, and the pixels that
+  // DARKENED are the shadow — exactly, with no hue rule and no threshold on
+  // what counts as grass. The centroid check below keeps the old rule and its
+  // ladder (42 px against 141 px, S22b): two instruments, two claims.
+  const pair = async (label, hour) => {
+    const withShadow = frames.find((f) => f.label === label) ?? await frame(label, hour);
+    const without = await frame(`${label}-noshadow`, hour, undefined, false);
+    const depth = await page.evaluate(async ({ a, b }) => {
+      const load = async (b64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        return ctx.getImageData(0, 0, canvas.width, canvas.height);
+      };
+      const shaded = await load(a);
+      const lit = await load(b);
+      const drops = [];
+      let n = 0;
+      let sx = 0;
+      let sy = 0;
+      for (let i = 0; i < shaded.data.length; i += 4) {
+        const litLum = lit.data[i] * 0.3 + lit.data[i + 1] * 0.6 + lit.data[i + 2] * 0.1;
+        const shadedLum = shaded.data[i] * 0.3 + shaded.data[i + 1] * 0.6 + shaded.data[i + 2] * 0.1;
+        // Two levels, so the compression and the dither are not a shadow.
+        if (litLum <= 0 || litLum - shadedLum < 2) continue;
+        drops.push(1 - shadedLum / litLum);
+        const px = (i / 4) % shaded.width;
+        n += 1; sx += px; sy += Math.floor((i / 4) / shaded.width);
+      }
+      drops.sort((p, q) => p - q);
+      return {
+        pixels: n,
+        share: Math.round((n / (shaded.width * shaded.height)) * 1000) / 10,
+        median: drops.length ? Math.round(drops[drops.length >> 1] * 1000) / 1000 : 0,
+        deepest: drops.length ? Math.round(drops[Math.floor(drops.length * 0.95)] * 1000) / 1000 : 0,
+        x: n ? Math.round(sx / n) : -1, y: n ? Math.round(sy / n) : -1,
+      };
+    }, {
+      a: (await readFile(withShadow.file)).toString("base64"),
+      b: (await readFile(without.file)).toString("base64"),
+    });
+    console.log(`${label}: the cast shadow covers ${depth.pixels} px (${depth.share}% of the frame), `
+      + `median ${(depth.median * 100).toFixed(0)}% darker, deepest ${(depth.deepest * 100).toFixed(0)}%, `
+      + `centred at (${depth.x}, ${depth.y})`);
+    return depth;
+  };
+
   const shade = {};
   for (const label of ["noon", "dusk"]) {
     const frame = frames.find((f) => f.label === label);
     if (!frame) continue;
     shade[label] = await measure(frame.file);
     console.log(`${label}: ${shade[label].shaded} shadowed ground pixels, centred at `
-      + `(${shade[label].x}, ${shade[label].y}), lit grass green ${shade[label].lit}; `
+      + `(${shade[label].x}, ${shade[label].y}), lit grass green ${shade[label].lit}, `
+      + `shadowed median ${shade[label].median} — ${(shade[label].depth * 100).toFixed(0)}% darker; `
       + `${shade[label].walls} wall pixels across ${shade[label].faceBands} tones`);
   }
+  // **The cast shadow's depth, by A/B** (S22d). Done before the browser closes,
+  // because the comparison is two PNGs decoded in the page.
+  const cast = await pair("noon", HOURS[1][1]);
   await browser.close();
+
+  if (cast.pixels < 2000) {
+    problems.push(`the cast shadow covers ${cast.pixels} px: with shadows off the frame is the `
+      + "same picture, so nothing is casting one");
+  } else if (cast.median < 0.12) {
+    problems.push(`the cast shadow is ${(cast.median * 100).toFixed(0)}% darker than the same `
+      + `ground without it (deepest ${(cast.deepest * 100).toFixed(0)}%); the floor is 12%`);
+  }
+  // **The floor is 12% and A145 asked for 25%**, and the difference is a
+  // decision rather than a defect (S22d). The ladder, measured on this camera
+  // with the A/B above:
+  //
+  //   intensity 0.8, PCF radius 1 — 14% (shipped)     radius 2 — 10%, radius 3 — 8%
+  //   intensity 1.0, PCFSoft      — 16%               0.8 PCFSoft — 13%
+  //   key 1.4/hemi 1.0 — 16%   key 1.6/0.8 — 19%   key 1.8/0.6 — 22%
+  //
+  // 25% needs the last rung AND full intensity: a hard-lit city, which is not
+  // the soft, evenly lit look Kjell chose for `plain`. So the gate guards what
+  // this rig can deliver — 12% is under the measured 14% and over the 8% this
+  // slice started from — and the choice between the soft rig and his number is
+  // Q171, with this ladder under it.
+  if (cast.median < 0.25) {
+    console.log(`note  A145 asks for 25% and this rig tops out near 16%: the key light is a `
+      + `sixth of the lit ground's value, so the shadow cannot take more than that away. `
+      + `Q171 carries the ladder.`);
+  }
 
   for (const [label, got] of Object.entries(shade)) {
     if (got.shaded < 2000) {

@@ -9,6 +9,8 @@
 // vertex at build time, so it dominates whatever the lights do afterwards. A
 // style that wants soft light has to bake soft shading too.
 
+import { getConfig, DEFAULTS } from "../world/config.js";
+
 /**
  * How hard this style bakes its face shading. See detail-kit's `contrast`.
  *
@@ -34,6 +36,19 @@
 export function faceContrastFor(styleName) {
   if (styleName === "pixel") return 1.3;
   return 0;
+}
+
+/**
+ * The shadow's numbers, from `data/cityviewer.json` (S22d, A145 ← Q170).
+ *
+ * They were literals here — `shadowIntensity: 0.5`, `shadowRadius: 5` — and
+ * CLAUDE.md's rule is that numbers live in `data/*.json` with the mirror as the
+ * fallback. What the literals produced is the reason the rule exists: at noon
+ * the shadowed grass was **8% darker than the lit grass**, measured by
+ * `sun_shots`, and nothing could see it. The gate asks for 25% now.
+ */
+function shadowConfig() {
+  return getConfig().shadow ?? DEFAULTS.shadow;
 }
 
 export function lightingFor(styleName) {
@@ -70,12 +85,15 @@ export function lightingFor(styleName) {
       hemiGround: 0x6a5a86,
       hemi: 0.68,
       sunHeight: 60,
+      // **Painted keeps a softer shadow than the data's** (S22d): a low sun
+      // casts long shadows and at full strength they swallow the cool fill
+      // that is supposed to colour them, so the rig takes nine tenths of the
+      // configured strength and its own smaller radius. The TINT is shared —
+      // it is what a toon material tints its unlit side with, and one cool
+      // violet for the whole game is the decision, not a per-style one.
       shadowRadius: 2.5,
-      // Less than 1, deliberately: a low sun casts long shadows and at full
-      // strength they swallow the cool fill that is supposed to colour them.
-      shadowIntensity: 0.72,
-      // What the toon material tints its unlit side with.
-      shadowTint: 0x6f6aa8,
+      shadowIntensity: Math.min(0.9, shadowConfig().intensity * 0.9),
+      shadowTint: shadowConfig().tint,
     };
   }
   // Plain is the SOFT one, and softness is not a smaller number on the same
@@ -91,7 +109,7 @@ export function lightingFor(styleName) {
     hemiGround: 0x93aa78,
     hemi: 1.25,
     sunHeight: 150,
-    shadowRadius: 5,
-    shadowIntensity: 0.5,
+    shadowRadius: shadowConfig().radius,
+    shadowIntensity: shadowConfig().intensity,
   };
 }

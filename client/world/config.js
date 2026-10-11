@@ -217,6 +217,15 @@ export const DEFAULTS = Object.freeze({
   // never moved at all would also be "unchanged inside a step", which is why
   // the second arm is there.
   sun: { arcDegrees: 45, moonArcDegrees: 45, arcSteps: 48, radius: 1.0 },
+  // **The shadow, as data** (S22d, A145 ← Q170). `style-light.js` held these as
+  // literals and `sun_shots` measured what they produced: at noon the shadowed
+  // grass was **8% darker than the lit grass**, which is a shadow in a
+  // histogram and not in a picture. `intensity` is the key light's shadow
+  // strength and `radius` its softness in shadow-map texels; `tint` is what a
+  // toon material tints its unlit side with, and it is a COOLER violet rather
+  // than a darker grey because a shadow reads by hue as much as by value — the
+  // ground going darker is what makes a soft style look dirty.
+  shadow: { intensity: 0.8, radius: 1, tint: 0x6f6ba8 },
   // Time of day (E6, spec §7.3). Presets, not a slider: each one is a
   // composition. `key`, `hemi` and `sunHeight` are FACTORS on whatever the
   // style's rig already says, so a preset changes the hour without changing

@@ -479,6 +479,7 @@ by number from the code they create.
 
 | # | Question | Blocks |
 |---|---|---|
+| **Q171** | **A145's 25% shadow is not reachable with the light `plain` uses.** Measured properly for the first time (an A/B against the same frame with the shadows off): 8% → **14% darker**, ceiling about 16%, because the key light is a sixth of what lights the grass. The rig ladder reaches 22% at key 1.8/hemi 0.6 — a hard-lit city rather than the soft look `plain` was chosen for. Keep the soft rig at 14%, or re-balance? | Nothing — the gate's floor is 12% and the ladder is in the dev-log. V5 is played under this light |
 | ~~Q167~~ | **Built 2026-10-10 under P116** — `server/static.js` is the one handler and all sixteen browser tools call it; the conversion found nine dead `const root` lines fencing dead imports, and the strippers every census reads through blind from the first quote inside a regex literal |
 | ~~Q102~~ | **Answered A113** — the verge is ground, not carriageway, from the air; the house grows after, in its own round |
 | ~~Q105~~ | **Answered A83** — B1a's fire costs a demanding city nothing (+1.1%) and is worth +10.4% on steady; era 4's −14% was the coupling A82 removed |

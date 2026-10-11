@@ -236,7 +236,14 @@ export function createRenderer(canvas, state, options = {}) {
     // sized (ruling 040 — a tier changes at runtime).
     shadowLight = key;
     keyLight = key;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // **`PCFSoftShadowMap` ignores `shadow.radius`** (S22d). three's soft
+    // variant takes a fixed 3x3 of the shadow map and interpolates; only the
+    // plain `PCFShadowMap` branch multiplies its taps by `shadowRadius`. So the
+    // radius in the config was a number nothing consulted — the same shape P1
+    // found when `shadowIntensity` and `shadowRadius` were in the rig table and
+    // neither was read — and a ladder of 1, 2, 3 came back with three
+    // byte-identical frames. PCF with a radius IS the softness knob.
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     // Tight enough to be worth following: a quarter of the map rather than
     // three quarters, which quadruples the texel density at the same map size.
     //

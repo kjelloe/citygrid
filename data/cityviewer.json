@@ -213,7 +213,12 @@
   "arcDegrees": 45,
   "moonArcDegrees": 45,
   "arcSteps": 48,
-  "radius": 1.0
+  "radius": 1
+ },
+ "shadow": {
+  "intensity": 0.8,
+  "radius": 1,
+  "tint": 7302056
  },
  "presets": {
   "day": {
