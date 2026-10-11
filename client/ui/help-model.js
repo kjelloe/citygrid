@@ -12,6 +12,7 @@
 
 import { TOOLS } from "../input/tools.js";
 import { CAMERA_BUTTONS } from "./camera-model.js";
+import { GESTURE_ROWS } from "./controls-card.js";
 
 /** Fixed bindings, each one asserted against the controller by
  * `test/help.test.js` so the card cannot drift from the code. */
@@ -79,7 +80,34 @@ function labelKeyFor(name) {
   return `tool.${name}`;
 }
 
-export function helpSections() {
+/**
+ * The sheet, for the pointer that is going to read it.
+ *
+ * **A phone is offered gestures and no key** (the omissions round after K6a).
+ * K6a gave the first-run card two row sets because a column of key names is no
+ * use to a finger; this sheet is the same table one layer along — the rail's
+ * Controls button opens it — and three of its four sections are keys. Every one
+ * of them named something the device does not have, for as long as the sheet
+ * has existed. `one-table-many-readers`, from the reader nobody checked.
+ *
+ * The tools keep their section on a phone, without the keys: the names are how
+ * a player knows what the toolbar's buttons are called, and the shortcut is the
+ * only part a touchscreen cannot use.
+ */
+export function helpSections(coarse = false) {
+  if (coarse) {
+    return [
+      { titleKey: "help.tools", rows: toolKeys().map(({ labelKey }) => ({ labelKey })) },
+      // `controls.title` — "Moving around" — rather than `help.camera`: the
+      // gesture rows are the camera AND the drawing, which is what one finger
+      // does differently depending on what is in hand.
+      { titleKey: "controls.title", rows: GESTURE_ROWS.map(({ keysKey, labelKey }) => ({ keysKey, labelKey })) },
+      // What is left of the mouse section once the mouse is gone: the two rows
+      // that are about the GAME rather than about a button.
+      { titleKey: "help.pointer", rows: POINTER.filter((row) => row.labelKey !== "help.wheel"
+        && row.labelKey !== "help.rightDrag" && row.labelKey !== "help.drag") },
+    ];
+  }
   return [
     { titleKey: "help.tools", rows: toolKeys() },
     { titleKey: "help.camera", rows: CAMERA_KEYS },

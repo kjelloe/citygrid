@@ -20,7 +20,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { repoRoot } from "./helpers/sources.js";
+import { repoRoot, jsFilesIn, stripCommentsAndStrings } from "./helpers/sources.js";
 import { readQuests } from "./helpers/content.js";
 import { catalogue } from "../engine/catalogue.js";
 import { DISASTER_NAMES } from "../engine/disasters.js";
@@ -209,4 +209,38 @@ test("every panel with a close button has a label for it", () => {
     assert.ok(catalogues.en[key], `${key} is not in the catalogue`);
     assert.ok(catalogues.no[key], `${key} is not translated`);
   }
+});
+
+// --- a control a finger cannot issue (the omissions round after K6a) ---------
+//
+// Ruling 027 says a control needs a screen. This is the same claim one step
+// further on: a control needs a way to be ISSUED on the device the player has.
+// Loading a save slot is `shift`-click, and a phone has no shift — so a phone
+// player can save to a slot and can never load one, and the only thing that
+// says so is a `title`, which a touchscreen never shows.
+
+/** Click handlers that read a modifier key, with what a touch player does
+ * instead. An entry with no answer is a control a phone cannot reach. */
+const MODIFIER_ONLY = {
+  "client/ui/hud.js": "shift-click loads a save slot (K7, unplanned 2026-10-11): a phone can save "
+    + "and cannot load. The lobby's Continue reaches the AUTOSAVE only. Needs a touch control — "
+    + "a second button on a used slot, or a Load row — which is a design call, not a fix",
+};
+
+test("no control is issued only with a modifier key", () => {
+  const found = [];
+  for (const file of jsFilesIn("client")) {
+    const code = stripCommentsAndStrings(file.source);
+    // Inside the input layer a modifier is a legitimate chord on a keyboard
+    // (`ctrl`-Z, a run key); on a BUTTON it is the only way to press it.
+    if (file.path.includes("client/input/")) continue;
+    if (!/\b(shiftKey|ctrlKey|metaKey|altKey)\b/.test(code)) continue;
+    found.push(file.path);
+  }
+  const unexplained = found.filter((path) => !Object.hasOwn(MODIFIER_ONLY, path));
+  assert.deepEqual(unexplained, [],
+    `a control only a keyboard can issue: ${unexplained.join(", ")} — give it a touch path, `
+    + "or list it in MODIFIER_ONLY with what a phone player does instead");
+  const stale = Object.keys(MODIFIER_ONLY).filter((path) => !found.includes(path));
+  assert.deepEqual(stale, [], `MODIFIER_ONLY names files that no longer read a modifier: ${stale.join(", ")}`);
 });

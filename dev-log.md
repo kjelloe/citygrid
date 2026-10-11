@@ -15738,3 +15738,81 @@ seat it never asked for"*, and the number was incidental: it asserts
 
 - Suite **2,112 green twice** (2,109 before: three tests for the invitation).
 - `room_smoke` green, `room` set unaffected in length; `quick` 517/600 s.
+
+## The round after K6a–K6c — the same table, one layer along (2026-10-11)
+
+The omissions sweep on the three slices just written, which is where this
+project's best findings come from (`omissions-sweep-your-own-slice`).
+
+### The help sheet was offering a phone three sections of keys
+
+K6a gave the FIRST-RUN card two row sets because a column of key names is no use
+to a finger. The sheet behind the rail's **Controls** button is the same table
+one layer along — `help-model.js` — and nobody had looked at it: Tools (ten
+shortcut letters), Camera (the cluster's keys), Actions (Space, Shift, Ctrl+Z,
+`?`) and "Mouse and touch". On a phone, three of the four sections named things
+the device does not have, and one of them advertised `?` as the way to open the
+sheet the player was already reading.
+
+`helpSections(coarse)` now returns, for a coarse pointer: the tools **without
+their keys** (the names are how a player knows what the toolbar's buttons are
+called — the shortcut is the only part a touchscreen cannot use), the six
+`GESTURE_ROWS` under *Moving around* rather than *Camera* (one finger is the
+camera AND the drawing, depending on what is in hand), and what is left of the
+mouse section once the mouse is gone — the two rows that are about the game
+rather than about a button.
+
+Three layout defects came with it, all of them the same shape as K6a's:
+
+- the two-column grid squeezed the explanation into a third of the screen —
+  one column on a phone, as in the first-run card;
+- the `•` that holds the key column open became a bullet on a line of its own
+  above every tool name once there was no key column — it is only drawn on a
+  fine pointer now;
+- `.help-gesture` is `opacity: 0.4`, which is right for a bullet and wrong for
+  a term: "One finger" was the faint half of its own row.
+
+**And `lobby_smoke` was asserting the defect.** It opened the sheet on both
+viewports and asked both of them for four sections and the tool shortcuts — so
+the gate would have gone red if the sheet had ever been fixed. It asks each
+viewport the question that is true of it now: the desktop for its four sections
+and its keys, the phone for gestures and **not one `<kbd>`**.
+
+### The half of the copy button a phone takes was never driven
+
+`navigator.share` is the path every phone at V5 will use, and a headless Linux
+Chromium has none — so K6b's gate measured the clipboard and said so, which is
+the right half of `a-fallback-needs-a-lever` and not the whole of it. The
+platform API is installed with `addInitScript` before the page loads: the page
+is real, only the sheet is a double, and the gate asks whether the button hands
+it the invitation and leaves the clipboard alone. Measured:
+`[{"url":"http://127.0.0.1:58380/?join=207RA6"}]`, and the words say *Link
+shared* rather than *Link copied*.
+
+### Measured
+
+- Suite **2,115 green twice** (2,112 before: three tests for the phone sheet).
+- `quick` **560 s of 600** — `lobby_smoke` green after its two checks were
+  split by viewport, `play_smoke` with four more phone rows. The set is 40 s
+  from its budget; M2's rule is split rather than raise, and the next slice to
+  add a browser row should expect to do the splitting.
+- `room` 269/300 s with the share row in it.
+- One run reported `LEAKED 7 headless browser(s)` beside a real failure; the
+  re-run alone was clean, which is `a-gate-run-is-exclusive` for the third time
+  — the leak counter is reading my own re-runs.
+
+### And a control a phone cannot issue at all
+
+The sweep for other keyboard-only paths found one: **loading a save slot is
+`shift`-click** (`hud.js`, since slice 4.x), and a phone has no shift. A phone
+player can save to a slot and can never load one — the lobby's **Continue**
+reaches the autosave and nothing else — and the only thing that says so is a
+`title`, which a touchscreen never shows.
+
+Not fixed here: the answer is a touch control (a second button on a used slot,
+or a Load row), which is a design call rather than a defect with one right fix.
+It is filed as **K7** and `test/reachability.test.js` has a new census —
+*"no control is issued only with a modifier key"* — with `hud.js` on its
+allow-list naming what a phone player does instead. Ruling 027 says a control
+needs a screen; this is the same claim one step on: it needs a way to be ISSUED
+on the device the player has. Suite 2,116.

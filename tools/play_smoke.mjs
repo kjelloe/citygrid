@@ -1115,6 +1115,36 @@ try {
       `${Math.round(rail.height)}px of a ${Math.round(rail.tallest)}px button, flex-wrap: ${rail.wrap}`);
     check("and every button on it can be brought on screen",
       rail.unreachable.length === 0, rail.unreachable.join(", "));
+
+    // --- and the sheet behind the Controls button ----------------------------
+    //
+    // The same table one layer along (the omissions round after K6a): the rail
+    // opens `help.js`, which listed the tool keys, the camera keys and the
+    // action keys for every device. Every one of them names something a phone
+    // does not have.
+    await page.evaluate(() => document.getElementById("help")?.scrollIntoView({ inline: "nearest" }));
+    await page.click("#help");
+    const sheet = await page.evaluate(() => {
+      const dialog = document.querySelector("dialog.help");
+      if (!dialog) return { open: false };
+      return {
+        open: dialog.open === true,
+        rows: dialog.querySelectorAll("dd").length,
+        keys: dialog.querySelectorAll("kbd").length,
+        gestures: [...dialog.querySelectorAll(".help-gesture")].map((n) => n.textContent)
+          .filter((text) => text !== "•").length,
+        inside: (() => {
+          const b = dialog.getBoundingClientRect();
+          return b.width > 0 && b.right <= window.innerWidth + 1 && b.left >= -1;
+        })(),
+      };
+    });
+    check("the Controls button opens a sheet on a phone", sheet.open === true && sheet.rows > 4,
+      JSON.stringify(sheet));
+    check("and there is not one key on it", sheet.keys === 0, `${sheet.keys} <kbd> element(s)`);
+    check("and the gestures are named on it", sheet.gestures >= 4, `${sheet.gestures} named`);
+    check("and it fits the screen it opened on", sheet.inside === true);
+    await page.evaluate(() => document.querySelector("dialog.help")?.close());
     await page.screenshot({ path: "reports/play-phone-first-screen.png" });
     await phone.close();
   }

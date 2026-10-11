@@ -97,6 +97,19 @@ measured, and a dead constant that fences dead imports.*
   Opened by the reviewer; a v1.1 picture item unless Kjell wants the evening played under visible
   shadows.
 
+**Found on 2026-10-11, after K6a–K6c** (the omissions sweep on those slices):
+
+- ~~**The help sheet offered a phone three sections of keys**~~ — **fixed the same day.** The rail's
+  Controls button opens `help.js`, the same table as the first-run card one layer along; a phone
+  gets the gestures and not one `<kbd>` now. `lobby_smoke` had been ASSERTING the defect — it asked
+  both viewports for four sections and the tool shortcuts — and asks each its own question now.
+- ~~**The share half of Copy link was never driven**~~ — **gated the same day.** `navigator.share`
+  is the path every phone at V5 takes and no gate machine has one; `room_smoke` installs it before
+  the page loads and asserts the button hands it the invitation.
+- **K7 — a phone cannot load a save** (`workitems-navigation.md`): loading a slot is `shift`-click,
+  and the lobby's Continue reaches the autosave only. XS, but the touch control is a design call.
+  Before V5 if the evening is played on phones.
+
 **V5, as a checklist for Kjell** (everything the ally cannot do):
 0. The DNS record for `citygrid.kjell.today` pointing at the box, live before certbot runs.
 1. `DEPLOYING.md` "First-time box setup", steps 1–8, run in order on the shared box — claim the

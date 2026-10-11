@@ -195,14 +195,28 @@ try {
         sections: document.querySelectorAll(".help-section").length,
         rows: document.querySelectorAll(".help-section dd").length,
         keys: [...document.querySelectorAll(".help kbd")].map((k) => k.textContent),
+        gestures: [...document.querySelectorAll(".help .help-gesture")]
+          .map((n) => n.textContent).filter((text) => text && text !== "•"),
         rawKeys: /\b(help|menu|tool|zone)\.[a-z]/i.test(body.textContent ?? ""),
         atTop: body.scrollTop,
       };
     });
-    check(`${label}: the controls card lists every section`, card.sections === 4, `${card.sections} sections`);
-    check(`${label}: it names the tool shortcuts`,
-      ["R", "W", "P", "B", "1", "2", "3", "0"].every((k) => card.keys.includes(k)),
-      card.keys.join(" "));
+    // **The sheet is not the same sheet on both** (the omissions round after
+    // K6a). A phone is offered gestures and no key — the keyboard sections
+    // named three things it does not have — so this gate asks each viewport
+    // the question that is true of it rather than one question of both, which
+    // is how it came to be asserting the defect.
+    if (label === "phone") {
+      check(`${label}: the controls card has sections`, card.sections >= 3, `${card.sections} sections`);
+      check(`${label}: it offers gestures and not one key`,
+        card.keys.length === 0 && card.gestures.length >= 4,
+        `${card.keys.length} keys, ${card.gestures.length} gestures`);
+    } else {
+      check(`${label}: the controls card lists every section`, card.sections === 4, `${card.sections} sections`);
+      check(`${label}: it names the tool shortcuts`,
+        ["R", "W", "P", "B", "1", "2", "3", "0"].every((k) => card.keys.includes(k)),
+        card.keys.join(" "));
+    }
     check(`${label}: no raw key is showing on the card`, card.rawKeys === false);
     check(`${label}: the card opens at the top`, card.atTop === 0);
     await page.keyboard.press("Escape");

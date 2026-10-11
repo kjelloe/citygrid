@@ -390,6 +390,24 @@ unchanged.
 **Tests first.** `test/tools.test.js`: the argument parses and the default spawns; a run against
 the local server started by hand (`node server/index.js`) passes identically to the spawned one.
 
+## K7 — A phone cannot load a save (XS) — found 2026-10-11, unplanned
+
+**What the code says.** `hud.js`: `if (event.shiftKey || slot === slots.auto) onLoad?.(slot)`. A
+save slot is saved to by tapping it and loaded from by **shift**-clicking it, and a phone has no
+shift. The only thing that says so is the button's `title`, which a touchscreen never shows. The
+lobby's **Continue** reaches the AUTOSAVE and nothing else, so a phone player who saved to slot 2
+cannot get back to it at all.
+
+**Why it is not fixed yet.** The fix is a touch control and there are three reasonable ones — a
+second button on a used slot, a Load row beside the save row, or a tap that opens a two-button
+choice — and which it is depends on how much room the saves drawer has on a phone. Kjell's call,
+or the reviewer's. It is XS whichever way it goes.
+
+**Held by a census meanwhile.** `test/reachability.test.js` — *"no control is issued only with a
+modifier key"* — lists `client/ui/hud.js` with what a phone player does instead, so a second one
+cannot appear quietly. Ruling 027 says a control needs a screen; this is the same claim one step
+on: it needs a way to be issued on the device the player has.
+
 **Order inside K6:** a → c → b → d. **Done when** a phone guest can read how to move, read the
 whole advisor message, see every rail button, and be sent a link they can tap; and the release set
 can be pointed at the box.

@@ -124,3 +124,41 @@ test("the card describes the mouse buttons the controller actually binds (P34)",
   assert.match(controller, /yawBy\(renderer\.view/);
   assert.match(controller, /pitchBy\(renderer\.view/);
 });
+
+// --- the same sheet on a phone (the omissions round after K6a) ---------------
+//
+// K6a gave the FIRST-RUN card gesture rows on a coarse pointer, because a
+// column of key names is no use to a finger. The help sheet behind the rail's
+// Controls button is the same table one layer along and was never looked at:
+// three of its four sections are keys, and on a phone every one of them names
+// something the device does not have. `one-table-many-readers`, from the
+// reader nobody checked.
+
+test("the sheet a phone opens has no key in it", () => {
+  const sections = helpSections(true);
+  assert.ok(sections.length > 0, "a phone is offered nothing at all");
+  for (const section of sections) {
+    for (const row of section.rows) {
+      assert.equal(row.keys, undefined,
+        `${section.titleKey} offers a phone the key ${JSON.stringify(row.keys)}`);
+    }
+  }
+});
+
+test("and it still says how to build, move and look at things", () => {
+  // The sections may change shape; what a phone player needs from this sheet
+  // does not. Each of these is a claim about the GAME, not about a key.
+  const labels = helpSections(true).flatMap((s) => s.rows.map((r) => r.labelKey));
+  assert.ok(labels.includes("help.tapInspect"), "nothing says how to look at a tile");
+  assert.ok(labels.some((key) => key.startsWith("controls.touch.")), "no gesture is named");
+  assert.ok(labels.some((key) => key.startsWith("tool.") || key.startsWith("zone.")),
+    "nothing names the tools");
+});
+
+test("a fine pointer is offered exactly what it was before", () => {
+  // The default is the keyboard sheet: `helpSections()` with no argument is
+  // what `openHelp` called for a year, and a phone is the new branch rather
+  // than the other way round.
+  assert.deepEqual(helpSections(false), helpSections());
+  assert.ok(helpSections(false).flatMap((s) => s.rows).some((row) => row.keys?.length > 0));
+});

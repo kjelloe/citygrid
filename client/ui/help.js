@@ -6,6 +6,7 @@
 
 import { t } from "../i18n.js";
 import { helpSections } from "./help-model.js";
+import { isCoarsePointer } from "../capabilities.js";
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -22,7 +23,11 @@ export async function openHelp() {
   heading.tabIndex = -1;
   body.append(heading);
 
-  for (const section of helpSections()) {
+  // The pointer that is about to read it (the omissions round after K6a): a
+  // phone gets the gesture rows and no key, the same choice the first-run card
+  // makes.
+  const coarse = isCoarsePointer();
+  for (const section of helpSections(coarse)) {
     if (section.rows.length === 0) continue;
     const block = el("section", "help-section");
     block.append(el("h2", undefined, t(section.titleKey)));
@@ -31,8 +36,14 @@ export async function openHelp() {
       const keys = el("dt");
       if (row.keys) {
         for (const key of row.keys) keys.append(el("kbd", undefined, key));
-      } else {
-        // A pointer gesture has no key; the description carries it.
+      } else if (row.keysKey) {
+        // A gesture names itself — "Two fingers" — rather than being a bullet.
+        keys.append(el("span", "help-gesture", t(row.keysKey)));
+      } else if (!coarse) {
+        // A pointer gesture has no key; the description carries it, and the
+        // bullet holds the key column open. There is no key column on a phone
+        // — the rows are one above the other — so the bullet would be a line
+        // of its own above every tool name.
         keys.append(el("span", "help-gesture", "•"));
       }
       list.append(keys, el("dd", undefined, t(row.labelKey)));

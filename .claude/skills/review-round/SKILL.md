@@ -160,6 +160,21 @@ invisible to every scan that lists `tools/`, and the tell was four module consta
 dead. They know regex literals since Q167's round, and `test/sources.test.js` is the instrument's
 own gate — the cases that broke it, plus the division that must not be mistaken for a pattern.
 
+**A table with two readers has two readers.** K6a gave the first-run card gesture rows on a coarse
+pointer; the help sheet behind the rail's Controls button is the same table one layer along and
+still listed three sections of keys to a phone — and `lobby_smoke` was ASSERTING that, because it
+asked both viewports for four sections and the tool shortcuts. Two rules fall out. Sweep for the
+other readers of any table you change (`one-table-many-readers`), and when a check runs in a loop
+over viewports or modes, ask whether its claim is about the game or about that configuration: one
+question over two configurations pins whichever was written first.
+
+**A fix can repeal a rule written somewhere else.** Making that card scrollable needed
+`pointer-events: auto` on its text, which re-ate the press X7's `pointer-events: none` was written
+to protect — and X7's own `a11y_smoke` room row caught it inside the hour. When a change restores
+something an older fix removed, run the gate that caught the old defect, then fix the geometry
+rather than the symptom: the card is bounded by `--side-height` now so it cannot reach the rail at
+any text size.
+
 **A shot aimed by a proxy photographs the proxy.** F2's first shot list picked its subjects with
 "the longest straight corridor", "the furthest house" and "near the centre of mass", and the
 storyboard came back with a sawtooth factory roof where the high street should be, a forest where

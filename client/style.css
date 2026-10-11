@@ -901,6 +901,19 @@ button, [role="button"] {
   text-align: center;
 }
 .help-gesture { opacity: 0.4; }
+/* A gesture that NAMES itself is a term, not a bullet: on a phone every row in
+   the camera section is one, and 0.4 made the half of the row that says what
+   you do the faint half (the omissions round after K6a). */
+.help-gesture:not(:only-child), dt:has(> .help-gesture:not(:empty)) .help-gesture { opacity: 1; font-weight: 600; }
+/* One column on a phone, like the first-run card (K6a): a gesture is a phrase,
+   and "One finger, tool in hand" beside it leaves the explanation a third of a
+   390 px screen. */
+@media (max-width: 520px) {
+  .help-section dl { grid-template-columns: 1fr; gap: 0 0; }
+  .help-section dt { margin-top: 0.5rem; }
+  .help-section dt:empty { display: none; }
+  .help-section dt:empty + dd { margin-top: 0.3rem; }
+}
 .help-close {
   align-self: flex-start;
   min-height: 44px;

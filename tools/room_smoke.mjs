@@ -188,6 +188,35 @@ try {
     }
     check("the copier reported no page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
     await ctx.close();
+
+    // **The half a phone takes** (`a-fallback-needs-a-lever`). `navigator.share`
+    // is the path every phone at V5 will use and no gate machine has it: a
+    // headless Linux Chromium has no share sheet, so everything above measured
+    // the clipboard. The platform API is installed before the page loads —
+    // the PAGE is real, only the sheet is a double — and the question is
+    // whether the button calls it with the invitation and leaves the clipboard
+    // alone.
+    const shareCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await shareCtx.addInitScript(() => {
+      globalThis.SHARED = [];
+      navigator.share = (data) => { globalThis.SHARED.push(data); return Promise.resolve(); };
+    });
+    const sharePage = await shareCtx.newPage();
+    await sharePage.goto(`${origin}/?join=${code}&life=0`);
+    await until(sharePage, "the sharer never joined", () => ({ ok: globalThis.CITY?.room !== undefined }));
+    await sharePage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    await sharePage.click("#rail-roster");
+    await sharePage.click("#roster-copy");
+    const shared = await sharePage.evaluate(() => ({
+      calls: globalThis.SHARED,
+      said: document.querySelector(".roster-copied")?.textContent ?? "",
+    }));
+    check("a device with a share sheet is given the invitation, not the clipboard",
+      shared.calls.length === 1 && shared.calls[0]?.url === `${origin}/?join=${code}`,
+      JSON.stringify(shared.calls));
+    check("and the words say it was shared rather than copied",
+      shared.said.trim().length > 0 && shared.said !== "", shared.said || "(nothing)");
+    await shareCtx.close();
   }
 
 
