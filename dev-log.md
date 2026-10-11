@@ -16152,3 +16152,39 @@ two of them would be a sheet comparing two old framings.
 - The sheet: 6 rows at `71df76e`, `terrace` 65,840 triangles in city mode and
   215,450 in the street — which is the street camera drawing facades that the
   aerial never had to.
+
+## The round after K6d, S22d and S8b (2026-10-11)
+
+**Tests.** Four, all of them about a number or a flag that could go quiet:
+
+- `lightingFor` takes its shadow from the config, asserted by setting a config
+  the file does not contain and reading the rig back — `a-mirror-with-no-loader`
+  for the third time in this project, and the shape S22d could most easily have
+  landed in.
+- The shipped rung is pinned: intensity 0.8, radius 1, with the ladder's other
+  two rungs in the message, so an edit to the file is a deliberate act.
+- The shadow map TYPE is pinned to `PCFShadowMap`, because the soft variant
+  ignores the radius and the census that catches an unread number cannot catch
+  a number the GPU drops.
+- Every gate the runner hands `--url` to actually reads it: the names come off
+  `TAKES_URL` and each one's file has to call `roomTarget`. A flag passed to a
+  gate that ignores it is a green run of the gate's own server.
+
+**Docs.** `workitems-world.md`'s renderer summary still said `PCFSoftShadowMap,
+radius 5, intensity 0.5` — the numbers this slice replaced and the type it
+replaced them under. `DEPLOYING.md` gained the two commands that are V5's
+step 2, which were a sentence with no command behind them until K6d. `RELEASE.md`
+is at 2,124 tests.
+
+**Memories.** Three: a knob the GPU ignores; measure a feature by removing it;
+a cap equal to the claim. And the "second thread needs the data the first one
+loaded" memory gains K6d, where the boundary was a PROCESS rather than a thread
+and the symptom was identical — one side agreeing with itself and disagreeing
+with the authority at the first tick that reads data.
+
+**Omissions.** The sweep over tonight's ten changed files found one thing worth
+writing down: **`shadow.tint` cannot reach the style the game ships with.**
+`tintShadows` patches a toon material, which is `painted`; `plain` is Lambert.
+So A145's "cooler rather than darker" is a third option that needs a shader
+patch of its own, and Q171 says so now rather than leaving the next person to
+find it by changing the number and seeing nothing happen.

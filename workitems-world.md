@@ -833,8 +833,12 @@ to be judged at the hour the reference shows, and the moving sun is judged at th
   into `day` (0–0.4), `rain` (0.4–0.5), `sunset` (0.5–0.62 and 0.9–1.0) and `night` (0.62–0.9),
   and `setTime` walks to the new one over a **1-second** fade. `sunHeight` multipliers are
   **day 1.0, rain 0.75, night 0.5, sunset 0.22** on a rig default of 120.
-- **Shadows** are off at Low, 2048 at Medium, 4096 at High; `PCFSoftShadowMap`, radius 5,
-  intensity 0.5. The shadow camera is an ortho box a **quarter of the map** (`reach = max(w,h) ×
+- **Shadows** are off at Low, 2048 at Medium, 4096 at High; **`PCFShadowMap`, radius 1, intensity
+  0.8, from `data/cityviewer.json`'s `shadow` block** (S22d). It was `PCFSoftShadowMap` with radius
+  5 and intensity 0.5 as literals in the rig, and that soft variant ignores the radius entirely —
+  three radii, three byte-identical frames — while the result measured **8% darker than the same
+  ground with the shadows off**. It is 14% now; the ceiling with this light is about 16% and
+  **Q171** carries the ladder. The shadow camera is an ortho box a **quarter of the map** (`reach = max(w,h) ×
   0.28`), `far: 400`, following the camera's target and **snapped to a shadow texel** so edges do
   not crawl as the view pans (spec §7.2).
 - **Some geometry DOES carry a baked directional shade, and it is the one real obstacle.**

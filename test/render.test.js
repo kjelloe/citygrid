@@ -661,3 +661,50 @@ test("only the cars on screen are counted for the budget (R1.1)", () => {
   assert.match(scene, /counts\.cars = traffic\.count\(bounds\)/,
     "the budget counts every car in the city, not the ones on screen");
 });
+
+// --- the shadow is data, and the data is read (S22d) --------------------------
+//
+// `shadowIntensity` and `shadowRadius` were literals in the rig table, and P1
+// found both of them with no reader at all. S22d moved them into
+// `data/cityviewer.json`, which is a second way for the same thing to happen:
+// a block in the file, a mirror in `config.js`, and a renderer that still uses
+// its own numbers. `a-mirror-with-no-loader`, three times in this project.
+
+test("the lit styles take their shadow from the config, not from a literal", async () => {
+  const { setConfig, DEFAULTS, getConfig } = await import("../client/world/config.js");
+  const before = getConfig();
+  try {
+    setConfig({ ...DEFAULTS, shadow: { intensity: 0.33, radius: 7, tint: 0x123456 } });
+    const plain = lightingFor("plain");
+    assert.equal(plain.shadowIntensity, 0.33, "plain's shadow strength is not the config's");
+    assert.equal(plain.shadowRadius, 7, "plain's shadow radius is not the config's");
+    const painted = lightingFor("painted");
+    assert.equal(painted.shadowTint, 0x123456, "the toon tint is not the config's");
+    // Painted takes nine tenths of the configured strength: its low sun's long
+    // shadows at full strength swallow the cool fill that colours them.
+    assert.ok(painted.shadowIntensity < 0.33 + 1e-9 && painted.shadowIntensity > 0,
+      `painted's shadow is ${painted.shadowIntensity} against a configured 0.33`);
+  } finally {
+    setConfig(before);
+  }
+});
+
+test("and the shipped numbers are the ones the gate measured with", async () => {
+  // The ladder is in `tools/sun_shots.mjs` and the dev-log; this is the rung
+  // that was chosen, pinned so a later edit to the file is a deliberate act.
+  // 8% darker is what the renderer gave before this block existed.
+  const file = JSON.parse(readFileSync(join(repoRoot, "data", "cityviewer.json"), "utf8"));
+  assert.equal(file.shadow.intensity, 0.8, "A145 asked for intensity toward 0.8");
+  assert.equal(file.shadow.radius, 1,
+    "radius 1 measured 14% darker, radius 2 10% and radius 3 8%: a wide penumbra is paler");
+});
+
+test("the shadow map type is the one that reads the radius (S22d)", () => {
+  // `PCFSoftShadowMap` takes a fixed 3x3 and ignores `shadow.radius`, so three
+  // frames at radius 1, 2 and 3 came back byte-identical — a config number
+  // with no reader, which is the thing the census above exists to catch and
+  // could not, because the reader was there and the GPU ignored it.
+  const scene = readFileSync(join(repoRoot, "client", "render", "scene.js"), "utf8");
+  assert.match(scene, /shadowMap\.type = THREE\.PCFShadowMap/,
+    "the renderer is back on a shadow map type that ignores shadow.radius");
+});

@@ -181,6 +181,31 @@ test("--url with nothing after it, or something that is not an origin, refuses (
   });
 });
 
+test("every gate the runner hands --url to actually reads it (K6d)", async () => {
+  // A flag passed to a gate that does not read it is a green run of the gate's
+  // own server — which is the one thing v1.0's V4 is trying to stop. The
+  // runner's list and the gates' own argument handling, asserted as a pair.
+  const runner = stripCommentsAndStrings(readFileSync(join(repoRoot, "tools", "gates.mjs"), "utf8"));
+  const names = /TAKES_URL = new Set\(\[([^\]]*)\]/.exec(runner);
+  assert.ok(names, "the runner no longer names which gates take --url");
+  // The names are gone with the strings — this file's scanner strips them —
+  // so they are read off the RAW source and the stripped copy is only used to
+  // find the list.
+  const raw = readFileSync(join(repoRoot, "tools", "gates.mjs"), "utf8");
+  const list = /TAKES_URL = new Set\(\[([^\]]*)\]/.exec(raw);
+  const takers = [...list[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(takers.length >= 2, `only ${takers.join(", ")} take --url`);
+  const { GATES } = await import("../tools/gates.mjs");
+  for (const name of takers) {
+    const gate = GATES[name];
+    assert.ok(gate, `${name} is on the --url list and is not a gate`);
+    const file = gate.args[0];
+    const source = stripCommentsAndStrings(readFileSync(join(repoRoot, file), "utf8"));
+    assert.match(source, /roomTarget\(/,
+      `${name} is handed --url and ${file} never asks what it means`);
+  }
+});
+
 test("both room gates and the runner read the same --url (K6d)", () => {
   // The three places the flag has to exist, asserted as a set rather than
   // trusted: a flag the runner passes to a gate that does not read it is a

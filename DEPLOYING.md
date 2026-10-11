@@ -163,3 +163,16 @@ The room list and the master index (ruling 009 — a documented later addition
 with inert hooks in place), and a metrics endpoint beyond `/healthz`. The
 release gate for the wave is **eight clients and one real evening**
 (`workitems-v1.md` V4 and V5), not a green suite.
+
+The scripted half of that gate can be pointed at this box (K6d):
+
+```sh
+node tools/gates.mjs release --url https://citygrid.kjell.today   # eight clients, one hash
+node tools/gates.mjs room    --url https://citygrid.kjell.today   # eight browsers, one of them a phone
+```
+
+Nothing is spawned: the browsers open the origin, the scripted clients dial its
+`/ws` (`wss` under `https`), and a room is hosted the way a player hosts one. A
+checkout that is not the build the box serves is refused at the door and the
+gate says so. `room_soak` and `room_churn` print `n/a` there and mean it — they
+read the room inside the gate's own process.

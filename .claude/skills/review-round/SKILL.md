@@ -175,6 +175,18 @@ something an older fix removed, run the gate that caught the old defect, then fi
 rather than the symptom: the card is bounded by `--side-height` now so it cannot reach the rail at
 any text size.
 
+**Measure a renderer feature by removing it.** `sun_shots` judged the shadow by counting grass
+pixels darker than the commonest green — 114,882 of them in one frame, which is the far field and
+every slope away from the sun — and that median read 9% before and after the shadow was made half
+again as strong. Shoot the same frame twice, with the feature and with `?shadows=0`, and the pixels
+that changed ARE the feature: no hue rule, no threshold, and the count doubles as "is it drawn at
+all". If the feature has no switch, add one first (`a-fallback-needs-a-lever`).
+
+**And a knob can have a reader the API ignores.** `shadow.radius` was read, assigned to the light
+and dropped by `PCFSoftShadowMap`, which takes a fixed 3x3: three radii, three byte-identical
+frames. The censuses in `test/` catch a number nobody reads and cannot catch this one. After wiring
+a graphics parameter, change it and compare the pixels.
+
 **A shot aimed by a proxy photographs the proxy.** F2's first shot list picked its subjects with
 "the longest straight corridor", "the furthest house" and "near the centre of mass", and the
 storyboard came back with a sawtooth factory roof where the high street should be, a forest where
