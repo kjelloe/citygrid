@@ -410,12 +410,12 @@ test("the documents count the gate sets the runner actually has", () => {
   // the next time a set is added as well.
   const sets = Object.keys(SETS).filter((name) => name !== "all");
   const words = ["one", "two", "three", "four", "five", "six", "seven", "eight",
-    "nine", "ten", "eleven", "twelve", "thirteen", "fourteen"];
+    "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen"];
   const spelled = words[sets.length - 1];
   assert.ok(spelled, `${sets.length} sets, and nobody wrote a word for that many`);
   for (const doc of ["RELEASE.md", "README.md"]) {
     const text = readDoc(doc);
-    const claimed = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen)\s+(?:gate\s+)?sets\b/i
+    const claimed = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen)\s+(?:gate\s+)?sets\b/i
       .exec(text);
     assert.ok(claimed, `${doc} does not say how many gate sets there are`);
     assert.equal(claimed[1].toLowerCase(), spelled,

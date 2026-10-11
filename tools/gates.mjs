@@ -129,11 +129,33 @@ export const SETS = {
   // for city years is 81 s, which took `quick` to 578 s of a 540 s budget. M2's
   // rule is split rather than raise, and this is the split. It is in `room`,
   // beside the two soaks that need the same server.
+  // **Split three ways at M14** (2026-10-11), the sixth time M2's split-rather-
+  // than-raise rule has fired. `quick` measured **560 s of its 600** — K6a and
+  // the omissions round after it added four phone rows to `play_smoke` and a
+  // help-sheet check beside them — and M9 had already raised this one from 540
+  // to 600, which is the move the rule forbids twice.
+  //
+  // The line is the QUESTION each gate asks, and there are three of them:
+  //
+  //   quick   — does it boot, keep a city, and come back?   114 s
+  //   screens — does the interface work when it is driven?  276 s
+  //   access  — can everything be reached and read?         122 s
+  //
+  // Three rather than two on purpose: putting all four heavy gates in one set
+  // leaves 461 s of a 540 budget, which is the same trip one slice later. The
+  // second line was already there — driving the page and auditing it are
+  // different questions, and `reach_smoke` and `a11y_smoke` both census the
+  // whole interface rather than playing it.
   quick: [
-    "a11y_smoke", "client_smoke", "lobby_smoke", "offline_smoke", "play_smoke",
-    "reach_smoke", "save_smoke", "serve_smoke", "ui_smoke", "update_smoke",
-    "worker_smoke", "mvp_acceptance",
+    "client_smoke", "serve_smoke", "offline_smoke", "update_smoke",
+    "worker_smoke", "save_smoke", "lobby_smoke", "mvp_acceptance",
   ],
+  // The interface, driven: every button hit-tested, every overlay rendered,
+  // the pointer and the camera and the street. An interface slice runs this.
+  screens: ["ui_smoke", "play_smoke"],
+  // The interface, audited: every control clickable with nothing eating the
+  // map, 200% text, contrast, reduced motion, and a room's panels on a phone.
+  access: ["reach_smoke", "a11y_smoke"],
   // `budget_gate` moved here from `quick` in K1 (Q79 → A64). It is a renderer
   // MEASUREMENT — three tiers, two projections, four spans, and since D8 a
   // second viewport at a real desktop's pixel count — and it belongs with the
@@ -217,9 +239,9 @@ export const SETS = {
 // report two rows. No gate is in two sets today — the X4 review read the code
 // as paying twice and it never did — but the set list is a thing people add to,
 // and this is one line.
-SETS.all = [...new Set([...SETS.quick, ...SETS.render, ...SETS.lanes, ...SETS.budget, ...SETS.sim,
-  ...SETS.sweep, ...SETS.region, ...SETS.shots, ...SETS.transport, ...SETS.kits, ...SETS.film,
-  ...SETS.room, ...SETS.release])];
+SETS.all = [...new Set([...SETS.quick, ...SETS.screens, ...SETS.access, ...SETS.render,
+  ...SETS.lanes, ...SETS.budget, ...SETS.sim, ...SETS.sweep, ...SETS.region, ...SETS.shots,
+  ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room, ...SETS.release])];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -288,7 +310,17 @@ export const BUDGET_MS = {
   // 540 s, and `worker_smoke` (7 s, W2) fits inside it: the set was measured at
   // 494 s with the seam in place, which is 46 s of headroom and the reason this
   // gate went here rather than into a set of its own.
-  quick: 10 * 60 * 1000,
+  // **M14, measured 2026-10-11 on a quiet machine, one set at a time.** The
+  // eight that are left: lobby_smoke 38, mvp_acceptance 21, client_smoke 16,
+  // offline_smoke 12, save_smoke 9, worker_smoke 8, update_smoke 7,
+  // serve_smoke 3 — **114 s**. At two minutes this is the set every slice can
+  // afford to run, which is what `quick` was for and had stopped being.
+  quick: 3 * 60 * 1000,
+  // ui_smoke 175, play_smoke 101 — **276 s**.
+  screens: 6 * 60 * 1000,
+  // reach_smoke 70, a11y_smoke 52 — **122 s**. Both read higher inside the old
+  // `quick` (82 and 82): twelve gates in a row is a warmer machine than two.
+  access: 3.5 * 60 * 1000,
   // Measured after the split (B3a): walkthrough 2, passability 0, lanes_dump 60.
   // Restated at H7, when the FIXTURE changed: `saturatedCity` plays the deputy
   // now, so the lane graph is 7,694 links against 2,436 and the walk is 405 real

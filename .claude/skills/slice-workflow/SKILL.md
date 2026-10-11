@@ -137,7 +137,9 @@ produced — not "passed".
 time and writes it to `reports/gates-<date>.json`:
 
 ```sh
-node tools/gates.mjs quick     # after ANY change — 12 gates (worker_smoke since W2), ~9 min on SwiftShader
+node tools/gates.mjs quick     # after ANY change — does it boot, keep a city, come back? ~2 min (M14)
+node tools/gates.mjs screens   # an INTERFACE slice as well: ui_smoke and play_smoke driven, ~5 min
+node tools/gates.mjs access    # and whether it can be reached and read: reach_smoke, a11y_smoke, ~3 min
 node tools/gates.mjs render    # a renderer slice as well: the two walks and passability, ~9 s
 node tools/gates.mjs lanes     # the lane graph's own numbers — its own set since S18, ~4 min
 node tools/gates.mjs budget    # and the triangle budget — its own set since B3a, ~5 min
@@ -152,9 +154,12 @@ node tools/gates.mjs room      # the room: two soaks and five browsers — EIGHT
 node tools/gates.mjs release   # eight scripted clients on one region, one hash (X7), ~1 min
 ```
 
-Thirteen sets. `region` and `release` are the two newest and the two most often forgotten:
-**a rule that divides a region between seats cannot be measured at one seat** (X4g), and the wave's
-release claim is eight clients rather than two (X7).
+Fifteen sets. **`quick` is two minutes again since M14** — it had grown to 560 s of a 600 s budget,
+so the four heavy interface gates left it for `screens` (driven) and `access` (audited). A slice
+that touches the HUD, the lobby or the input layer runs `quick` AND `screens`; one that moves a
+control, a label or a colour runs `access` as well. `region` and `release` are the two most often
+forgotten: **a rule that divides a region between seats cannot be measured at one seat** (X4g), and
+the wave's release claim is eight clients rather than two (X7).
 
 **Do not edit source while a gate is running.** A browser gate reads the module tree as it goes for
 two to four minutes: `budget_gate` failed twice through the runner and passed four times standalone,

@@ -137,24 +137,47 @@ const NOT_IN_QUICK = {
     + "the same server.",
 };
 
-test("the browser smokes are all in `quick`, except the ones that cost a soak", () => {
+/** The three sets a browser smoke may be in since M14 — `quick` for the ones
+ * that ask whether the game boots and keeps a city, `screens` for the two that
+ * drive the interface, `access` for the two that audit it. The rule below is
+ * the same rule: a smoke belongs in one of the cheap sets unless it costs a
+ * soak, and the split did not change what a smoke costs. */
+const SMOKE_SETS = ["quick", "screens", "access"];
+
+test("every browser smoke is in a cheap set, except the ones that cost a soak", () => {
   // M2's own definition. A smoke that drives the real page is the cheapest
   // thing that can see a blank one (R2), so none of them belongs in a slow set
   // — until one of them is not cheap.
   const smokes = gateFiles().filter((n) => n.endsWith("_smoke.mjs")).map((n) => n.replace(/\.mjs$/, ""));
-  const quick = new Set(SETS.quick);
-  const late = smokes.filter((n) => !quick.has(n) && !Object.hasOwn(NOT_IN_QUICK, n));
-  assert.deepEqual(late, [], `browser smokes outside "quick": ${late.join(", ")}`);
+  const cheap = new Set(SMOKE_SETS.flatMap((set) => SETS[set]));
+  const late = smokes.filter((n) => !cheap.has(n) && !Object.hasOwn(NOT_IN_QUICK, n));
+  assert.deepEqual(late, [],
+    `browser smokes outside ${SMOKE_SETS.join("/")}: ${late.join(", ")}`);
 });
 
-test("a smoke excused from `quick` is in some other set, and says why", () => {
-  // The two ways this list could lie: an excuse for a gate that is now in
-  // `quick` after all, and an excuse that took a gate out of every set — which
+test("a smoke excused from the cheap sets is in some other set, and says why", () => {
+  // The two ways this list could lie: an excuse for a gate that is now in one
+  // of them after all, and an excuse that took a gate out of every set — which
   // is the thing "every gate file is in a set" exists to prevent.
   for (const [name, why] of Object.entries(NOT_IN_QUICK)) {
-    assert.equal(SETS.quick.includes(name), false, `${name} is excused from "quick" and is in it`);
-    assert.ok(named().has(name), `${name} is excused from "quick" and no set runs it`);
+    for (const set of SMOKE_SETS) {
+      assert.equal(SETS[set].includes(name), false, `${name} is excused and is in "${set}"`);
+    }
+    assert.ok(named().has(name), `${name} is excused from the cheap sets and no set runs it`);
     assert.ok(why.length > 40, `${name} is excused without saying what it costs`);
+  }
+});
+
+test("the three cheap sets are disjoint, and none of them is empty", () => {
+  // A gate in two sets pays for itself twice in `all` and reports two rows;
+  // an empty set is a name in the runner that answers no question (M14).
+  const seen = new Map();
+  for (const set of SMOKE_SETS) {
+    assert.ok(SETS[set].length > 0, `"${set}" has no gates in it`);
+    for (const gate of SETS[set]) {
+      assert.equal(seen.get(gate), undefined, `${gate} is in "${set}" and "${seen.get(gate)}"`);
+      seen.set(gate, set);
+    }
   }
 });
 

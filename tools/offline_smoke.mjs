@@ -11,7 +11,6 @@
 import { chromium } from "playwright";
 import { createServer } from "node:http";
 import { makeStatic } from "../server/static.js";
-import { join } from "node:path";
 
 import { settle } from "./lib/settle.mjs";
 

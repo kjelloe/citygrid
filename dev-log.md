@@ -15877,3 +15877,73 @@ rather than by anything going red.
 
 Suite **2,116 green twice** and no code changed in this round — the two edits
 to `tools/gates.mjs` and `test/gates.test.js` are a description and an excuse.
+
+## M13 and M14 — a property is not a use, and `quick` is two minutes again (2026-10-11)
+
+Two of the six unplanned items, built in the order that protects the rest.
+
+### M13 — the import census could not tell `path.join` from `Array#join`
+
+`test/unused-imports.test.js` asked whether a file mentions an imported NAME
+anywhere, so `rows.join(", ")` kept `import { join } from "node:path"` alive.
+The rule is now "a mention after a `.` is a property of something else" —
+`(?<![.\w$])\bname\b` — with one correction that matters more than the rule:
+**the spread operator**. `...name` has a dot in front of it and is a use, so
+`...` is flattened before the scan. Measured on the tree:
+
+- without the correction: **15 findings, 9 of them false** — `...hostOptions(choices)`,
+  `...OVERLAY_CHOICES`, `...buildHouseParts(spec)` and six more;
+- with it: **6 findings, none false**.
+
+All six are a dead `import { join } from "node:path"` — `budget_gate`,
+`lobby_smoke`, `offline_smoke`, `play_smoke`, `save_smoke`, `skin_shots` —
+every one a tool Q167 converted, where deleting the dead `const root` left
+`join` with nothing but `Array#join` behind it. That is the same finding as
+`a-dead-declaration-fences-dead-imports` seen from the other end: the fence
+came down and the census still could not see what was behind it.
+
+The dead-const census beside it takes the same rule, and all six tools were run
+by hand afterwards rather than trusted to the suite.
+
+### M14 — `quick` was 560 s of 600, and the line is the question each gate asks
+
+M9 raised this budget 540 → 600 in October; K6a and the omissions round after it
+added four phone rows to `play_smoke` and a help-sheet check beside them, and it
+reached **560 s**. M2's rule is split rather than raise, for the sixth time, and
+raising it twice is what the rule forbids.
+
+Three sets, each a question, measured on a quiet machine one at a time:
+
+| set | gates | measured | budget |
+|---|---|---|---|
+| `quick` — does it boot, keep a city, and come back? | 8 | **114 s** | 180 |
+| `screens` — does the interface work when it is driven? | 2 | **276 s** | 360 |
+| `access` — can everything be reached and read? | 2 | **122 s** | 210 |
+
+Three rather than two: putting all four heavy gates in one set leaves 461 s of a
+540 budget, which is the same trip one slice later. The second line was already
+there — `ui_smoke` and `play_smoke` DRIVE the page, `reach_smoke` and
+`a11y_smoke` audit it, and the two have never asked the same kind of question.
+
+**`quick` is two minutes again**, which is what it was for: the set a slice runs
+after a one-line change. A slice that touches the HUD, the lobby or the input
+layer runs `screens` with it; one that moves a control, a label or a colour runs
+`access` as well. The `slice-workflow` skill says so now.
+
+What moved with it: `test/gates.test.js`'s two `NOT_IN_QUICK` tests became
+"every browser smoke is in a CHEAP SET" over the three names, plus a third test
+that the three are disjoint and none is empty; `SETS.all` gains both; the docs
+count fifteen sets where they counted thirteen, and `test/docs.test.js` reads
+that count from `SETS` so it cannot drift.
+
+**And the split re-measured two gates downwards.** `reach_smoke` 82 → 70 and
+`a11y_smoke` 82 → 52, alone in a two-gate set rather than twelfth in a row of
+twelve. That is not the gates getting faster; it is `a-gate-run-is-exclusive`
+showing up inside a set as well as between runs.
+
+### Measured
+
+- Suite **2,117 green twice** (2,116 before: the third gate-set test).
+- `quick` 114/180, `screens` 276/360, `access` 122/210 — all green.
+- The six tools M13 touched, each run by hand: `budget_gate`, `lobby_smoke`,
+  `offline_smoke`, `play_smoke`, `save_smoke`, `skin_shots`, all ok.

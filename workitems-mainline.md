@@ -500,7 +500,7 @@ HTTP-only with its own upgrade map, no `grep -w ':port'`, and an rsync allowlist
 **Still owed by the box, not the code:** the first-time setup run once by hand, and `room_soak`
 against the deployed server (V4).
 
-## M13 — The import census cannot tell `path.join` from `Array#join` (XS, test) — found 2026-10-11, unplanned
+## ~~M13 — The import census cannot tell `path.join` from `Array#join`~~ (XS, test) — found and **built 2026-10-11**
 
 **What it misses.** `test/unused-imports.test.js` asks whether the file mentions an imported NAME
 anywhere, so `rows.join(", ")` keeps `import { join } from "node:path"` alive. Found when
@@ -527,7 +527,7 @@ finding list going from 0 to 6 and back to 0.
 **Size.** XS, ready to run. It is the kind of thing that should land beside whatever else touches
 `tools/`.
 
-## M14 — `quick` is 40 s from its budget, and the line is the question each gate asks (S, measurement) — found 2026-10-11, unplanned
+## ~~M14 — `quick` is 40 s from its budget, and the line is the question each gate asks~~ (S, measurement) — found and **built 2026-10-11**: `quick` 114/180, `screens` 276/360, `access` 122/210
 
 **Measured on a quiet machine, 2026-10-11**: `quick` is **560 s of 600**. M9 raised it 540 → 600
 in October and the set has grown since — K6a and the omissions round added four phone rows to

@@ -40,7 +40,7 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **2,116 tests**, green twice in a row on every slice (`./test.sh`), and **thirteen gate sets** —
+- **2,117 tests**, green twice in a row on every slice (`./test.sh`), and **fifteen gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
   `release`, `film` and `room` — every one of their budgets re-measured on a quiet machine at
   era 30 (M9), most of them downwards. `region` is era 31's: a four-seat city played five ways,
@@ -140,7 +140,9 @@ is only comparable within an era.
 
 | Set | Gates | Time | Budget | What it is |
 |---|---|---|---|---|
-| `quick` | 12 | **522 s** | 600 s | the eleven browser smokes and the §24 acceptance script |
+| `quick` | 8 | **114 s** | 180 s | does it boot, keep a city and come back — eight cheap smokes and the §24 script (M14) |
+| `screens` | 2 | **276 s** | 360 s | the interface driven: `ui_smoke`, `play_smoke` (M14) |
+| `access` | 2 | **122 s** | 210 s | the interface audited: `reach_smoke`, `a11y_smoke` (M14) |
 | `render` | 3 | **6 s** | 60 s | the two walks and `passability` |
 | `lanes` | 1 | **39 s** | 240 s | `lanes_dump` — 211 s at era 28; B14 shrank the hilly city under it |
 | `budget` | 1 | **277 s** | 330 s | `budget_gate` — three tiers, two projections, four spans, two viewports |
@@ -154,11 +156,11 @@ is only comparable within an era.
 | `room` | 3 | **269 s** | 600→300 s | eight browsers in one room, one of them a phone, and two `ws` clients on one hash |
 | `release` | 1 | **60 s** | 180 s | `room_soak --eight`: the scripted eight on one hash, the half of V4 that proves the HASH (X7) |
 
-**The times are era 30 and the sets have grown since** (2026-10-11): `quick` is **560 s** of its
-600 — four phone rows in `play_smoke`, a help-sheet check beside them — which is 40 s of room and
-is why **M14** proposes splitting it three ways. A whole-table re-measure belongs to that item;
-numbers from two eras in one table would be worse than one stale column
-(`every measured number belongs to an era`).
+**The first three rows are 2026-10-11 and the rest are era 30.** `quick` had reached **560 s of
+600** — four phone rows in `play_smoke` and a help-sheet check beside them — so **M14** split it
+three ways, each set a question, and re-measured those three one at a time. The rest of the table
+is still era 30's run; a whole-table re-measure is its own chore, and numbers from two eras in one
+column would be worse than one stale table (`every measured number belongs to an era`).
 
 Every budget on that table was re-measured at era 30 and **most of them came down** — `kits` by
 half, `film` to a third, `room` to a half. `sim` was split from `sweep` because one gate was two

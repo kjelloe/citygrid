@@ -59,12 +59,14 @@ Build a road, zone beside it, place a power plant and a pump, and watch it grow.
 One finger paints when a tool is selected and pans when none is; two fingers are
 always the camera. Tap with no tool to inspect a tile.
 
-**Gates.** One runner, thirteen sets, and a time budget each — a gate that grows past its share is
+**Gates.** One runner, fifteen sets, and a time budget each — a gate that grows past its share is
 a finding rather than a fact of life. Every gate that exists is in a set, and `test/gates.test.js`
 fails if one is not.
 
 ```sh
-node tools/gates.mjs quick    # the eleven browser smokes and the §24 acceptance script
+node tools/gates.mjs quick    # does it boot, keep a city, come back? two minutes, after any slice
+node tools/gates.mjs screens  # the interface driven: ui_smoke, play_smoke (M14)
+node tools/gates.mjs access   # the interface audited: reach_smoke, a11y_smoke (M14)
 node tools/gates.mjs render   # walkthrough, passability — nine seconds, after any renderer slice
 node tools/gates.mjs lanes    # lanes_dump, and node tools/gates.mjs budget for budget_gate (split at S18)
 node tools/gates.mjs sim      # the two soaks: disaster_soak, traffic_gate — six minutes
