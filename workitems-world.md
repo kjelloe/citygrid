@@ -718,7 +718,7 @@ light.
    is not the soft look `plain` was chosen for. The gate's floor is **12%** — under the measured
    14%, over the 8% this started from — and **Q171** carries the ladder to Kjell.
 
-## S8b — The terrace row photographs a region, not a facade (XS, measurement) — A147 (Q168) — with S22d
+## ~~S8b — The terrace row photographs a region, not a facade (XS, measurement) — A147 (Q168)~~ — **built 2026-10-11**
 
 *Written on 2026-10-11, for the same reason as S22d: named in the order since P120, no entry in a
 lane.*
@@ -743,6 +743,15 @@ model can be asked for). A row that is re-aimed and still photographs a lake has
 
 **Size.** XS, half a day, and it wants S22d's light to be in place first — a facade row shot under
 an invisible shadow would have to be taken twice.
+
+**Built 2026-10-11.** The focus was the finding: (29, 47) has three homes within three tiles and
+(47, 41) has thirteen, measured on the sheet's own recipe. And span 9 at 40° is still an aerial —
+the city camera floors at span 8 — so the row stands in the street now (`mode: "street"`,
+`street: "47,41"`), which is the camera a player looks at a house with. `yaw` is quarter turns
+there, not degrees. The old framing is kept as `terrace-as-it-was` for one sheet, and the test
+allows exactly one such row per reference. **The reference has no equivalent in this city**: it is
+an oblique over terraced housing and the deputy builds towers and detached houses, so there is no
+terrace street to photograph from the air — a content note for v1.1 rather than a camera fault.
 
 ## S22 — A sun that moves, and a moon that takes over (M, renderer) — A138 — **BUILT 2026-10-08 as `slice-S22`**
 

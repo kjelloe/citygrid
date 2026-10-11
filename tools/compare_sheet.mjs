@@ -63,10 +63,25 @@ export const VIEWS = [
     style: "plain", time: "day", size: 64, years: 40, frames: 240,
     note: "the town from above: roof colours, the street grid, and whether the centre reads as a centre",
   },
+  // **Re-framed in S8b** (A147 ← Q168). It read `span: 15, pitch: 26, fx: 29,
+  // fy: 47` and rendered a region to the horizon with a lake in it: a
+  // perspective camera at a shallow angle sees everything behind the near
+  // field, so the one row aimed at FACADES had never photographed any, and
+  // every facade decision this project has made was made from a picture of
+  // something else. The focus was a residential grid when it was chosen and
+  // the city has moved since — measured on the sheet's own recipe (seed 1003,
+  // 64 tiles, 40 years, the deputy): **(29, 47) has three homes within three
+  // tiles and (47, 41) has thirteen**, which is the densest residential block
+  // on the map and what the reference is a picture of.
   {
     id: "terrace",
     reference: "transport-world-3.png",
-    mode: "city", span: 15, pitch: 26, yaw: 20, fx: 29, fy: 47,
+    // The street itself, at eye height: `mode: "street"` with the tile to stand
+    // on. `span` and `fx/fy` stay for the tests that check a row fits its map,
+    // and the street camera ignores them. **`yaw` is QUARTER TURNS here**, not
+    // degrees — the walker turns to a compass point — so the 20 this row
+    // carried from its orbit days was 0 with extra steps.
+    mode: "street", street: "47,41", span: 9, pitch: 6, yaw: 0, fx: 47, fy: 41,
     style: "plain", time: "day", size: 64, years: 40, frames: 240,
     note: "close and low over a residential street — the zoom where facades, doors and front gardens have to carry it",
   },
@@ -79,16 +94,34 @@ export const VIEWS = [
   {
     id: "terrace-morning",
     reference: "transport-world-3.png",
-    mode: "city", span: 15, pitch: 26, yaw: 20, fx: 29, fy: 47,
+    // The street itself, at eye height: `mode: "street"` with the tile to stand
+    // on. `span` and `fx/fy` stay for the tests that check a row fits its map,
+    // and the street camera ignores them.
+    mode: "street", street: "47,41", span: 9, pitch: 6, yaw: 0, fx: 47, fy: 41,
     style: "plain", time: "day", hour: 0.06, size: 64, years: 40, frames: 240,
     note: "the same street early, with the sun at the start of its arc — with nothing baked, this is the light alone (S22c)",
   },
   {
     id: "terrace-dusk",
     reference: "transport-world-3.png",
-    mode: "city", span: 15, pitch: 26, yaw: 20, fx: 29, fy: 47,
+    // The street itself, at eye height: `mode: "street"` with the tile to stand
+    // on. `span` and `fx/fy` stay for the tests that check a row fits its map,
+    // and the street camera ignores them.
+    mode: "street", street: "47,41", span: 9, pitch: 6, yaw: 0, fx: 47, fy: 41,
     style: "plain", time: "sunset", hour: 0.58, size: 64, years: 40, frames: 240,
     note: "and at dusk, where the sun is lowest and the form is hardest to carry (S22c)",
+  },
+  // **The framing this replaced** (S8b), for one sheet, so the change is a
+  // PAIR rather than an assertion. It is the only row that may differ from its
+  // reference's others by the camera, and `wasFraming` is what says so to
+  // `test/compare-sheet.test.js`. Drop it once Kjell has seen the two.
+  {
+    id: "terrace-as-it-was",
+    reference: "transport-world-3.png",
+    wasFraming: true,
+    mode: "city", span: 15, pitch: 26, yaw: 20, fx: 29, fy: 47,
+    style: "plain", time: "day", size: 64, years: 40, frames: 240,
+    note: "the old framing, kept for this one sheet: span 15 at 26° over a block with three houses in it (Q168)",
   },
 ];
 
@@ -170,6 +203,13 @@ export async function compareSheet({ out = "reports/compare-transport-worlds.png
         out: file, seed: 1003, years: view.years, size: view.size,
         style: view.style, mode: view.mode, span: view.span, pitch: view.pitch,
         yaw: view.yaw, fx: view.fx, fy: view.fy, time: view.time,
+        // **A row may ask for the street** (S8b). The city camera floors at
+        // span 8 (`shot-camera-limits`), so "closer" has an end: at span 9 and
+        // 40° the terrace row was still a region seen from the air, which is
+        // what Q168 was about in the first place. A facade row stands in the
+        // street at eye height, which is the camera a player uses to look at
+        // one.
+        ...(view.street === undefined ? {} : { street: view.street }),
         // **The hour, where a row names one** (S22c). `time` is a PRESET name —
         // `day`, `sunset`, `night`, `rain` — and the sun's direction comes from
         // `hour`, which `shoot()` forwards through `extra`. The first version of

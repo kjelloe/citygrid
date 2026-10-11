@@ -46,7 +46,22 @@ test("two views of one reference differ by exactly one thing", () => {
     if (!byReference.has(view.reference)) byReference.set(view.reference, []);
     byReference.get(view.reference).push(view);
   }
-  for (const [reference, views] of byReference) {
+  for (const [reference, all] of byReference) {
+    let views = all;
+    if (views.length < 2) continue;
+    // **One exception, and it has to say so** (S8b): a row carrying
+    // `wasFraming` is the framing a re-aim replaced, kept beside the new one
+    // for a sheet so the change is a PAIR rather than an assertion. It is the
+    // only row allowed to differ by the camera, it is dropped once the pair
+    // has been looked at, and a sheet with two of them is a sheet comparing
+    // two old framings.
+    const olds = views.filter((v) => v.wasFraming);
+    assert.ok(olds.length <= 1, `${reference} keeps ${olds.length} old framings; one is the point`);
+    for (const old of olds) {
+      assert.match(old.note, /old framing|replaced|was/i,
+        `${old.id} is kept as the old framing and its note does not say so`);
+    }
+    views = views.filter((v) => !v.wasFraming);
     if (views.length < 2) continue;
     // The hour is TWO fields: `time` picks the colour preset and `hour` the
     // sun's place on its arc, because a preset name is not a time of day —
@@ -71,7 +86,19 @@ test("every view names a reference that is actually there", () => {
 test("the pitch is inside the camera's own limits", () => {
   // `client/render/camera.js` clamps to 12°–82°. A view outside that is not a
   // view, it is the clamp — and the sheet would report the angle it asked for.
+  //
+  // **The STREET camera is a different camera** (S8b): it stands on a tile at
+  // eye height and its pitch is the walker's, which looks level and a little
+  // up or down — the orbit clamp is not its clamp. `street_shots` and
+  // `bridge_shots` shoot at -4 and 6.
   for (const view of VIEWS) {
+    if (view.mode === "street") {
+      assert.ok(view.pitch >= -20 && view.pitch <= 20,
+        `${view.id}: a street camera at ${view.pitch}° is looking at the sky or at its shoes`);
+      assert.ok(/^\d+,\d+$/.test(view.street ?? ""),
+        `${view.id}: a street row needs the tile to stand on`);
+      continue;
+    }
     assert.ok(view.pitch >= 12 && view.pitch <= 82, `${view.id}: pitch ${view.pitch}`);
   }
 });
@@ -116,7 +143,9 @@ test("the views are the real camera's modes, styles and HOURS", () => {
   const hours = Object.keys(DEFAULTS.presets);
   assert.ok(hours.length >= 3, `only ${hours.join(", ")} — this is scanning nothing`);
   for (const view of VIEWS) {
-    assert.ok(["city", "ortho"].includes(view.mode), `${view.id}: mode ${view.mode}`);
+    // `street` since S8b: the facade row stands in one rather than flying over
+    // it, because the city camera floors at span 8 and "closer" has an end.
+    assert.ok(["city", "ortho", "street"].includes(view.mode), `${view.id}: mode ${view.mode}`);
     assert.ok(["plain", "painted", "pixel"].includes(view.style), `${view.id}: style ${view.style}`);
     assert.ok(hours.includes(view.time),
       `${view.id}: time "${view.time}" is not a preset — the presets are ${hours.join(", ")}`);

@@ -16103,3 +16103,52 @@ and drops a small shadow under the building.
 - `shots` 299/390 with `sun_shots` 28 s, `access` 126/210, `budget` 260/330,
   `kits` 402/480, `film` 116/180 — the two the item named as "must not move"
   (the overlay bands and the triangle budget) did not.
+
+## S8b — the terrace row, standing in the street (2026-10-11)
+
+A147 (Q168): the three terrace rows of the compare sheet share one camera at
+`span: 15, pitch: 26` and render a region to the horizon with a lake in it, so
+the one row captioned *"close and low over a residential street — the zoom where
+facades, doors and front gardens have to carry it"* had never photographed a
+facade. Re-aim it at the densest residential block, about span 9 at pitch 40,
+and keep the old framing for one sheet.
+
+**The focus was the finding, not the framing.** Measured on the sheet's own
+recipe — seed 1003, 64 tiles, 40 years, the deputy — the row's focus **(29, 47)
+has three homes within three tiles**. The densest block, **(47, 41), has
+thirteen**. The row had been pointed at a corner of the map that used to be a
+residential grid and is not one now; `an-item-can-be-wrong-about-the-city`, and
+the same shape as every "aim at the subject" lesson in this project.
+
+**And span 9 at 40° is still an aerial.** The city camera floors at span 8
+(`shot-camera-limits`), so "closer" has an end: re-shot at the dense block it
+was a district seen from the air with towers in it, which is the picture Q168
+complained about with a different centre. A facade row has to stand in the
+street, which is what `mode: "street"` is — the walker's eye on a tile, the
+camera a player uses to look at a house. The three rows take
+`street: "47,41"`, and the sheet now shows a residential street with windows,
+doors, a pavement, front gardens and parked cars, under three suns.
+
+Two smaller things came with it:
+
+- **`yaw` is quarter turns in street mode** and degrees in the orbit modes. The
+  rows carried `yaw: 20` from their orbit days, which is 0 with extra steps.
+- **The reference has no equivalent in our city.** `transport-world-3.png` is an
+  oblique over a district of terraced houses; this city's 66 residential
+  buildings are towers and detached houses scattered among civic and commercial
+  ground, and there is no terrace street anywhere on it to photograph from the
+  air. The row compares what the game HAS against what the reference shows,
+  which is the comparison the sheet is for — but the gap is about the deputy's
+  content rather than about a camera, and it belongs in v1.1's balance notes.
+
+`terrace-as-it-was` keeps the old framing for one sheet so the change is a pair
+rather than an assertion, and `test/compare-sheet.test.js` allows exactly one
+such row per reference — it must carry `wasFraming` and say so in its note, and
+two of them would be a sheet comparing two old framings.
+
+### Measured
+
+- Suite **2,120 green twice** (the compare sheet is not a gate; its test is).
+- The sheet: 6 rows at `71df76e`, `terrace` 65,840 triangles in city mode and
+  215,450 in the street — which is the street camera drawing facades that the
+  aerial never had to.
