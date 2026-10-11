@@ -377,7 +377,7 @@ or the row squeezes the labels instead of overflowing. The fade is conditional �
 against it, because a fade that is always on dims the last button of a rail that fits. The nine-
 button case is `room_smoke`'s phone client, the only phone this project has ever put in a room.
 
-### K6d — `--url` for the room gates (S)
+### ~~K6d — `--url` for the room gates (S)~~ — **built 2026-10-11**
 
 **What is missing.** `room_soak` and `room_smoke` spawn their own server; V4's "the gates against
 the deployed box once" has no command behind it.
@@ -389,6 +389,16 @@ check worth printing. `gates.mjs room --url …` and `release --url …` pass it
 unchanged.
 **Tests first.** `test/tools.test.js`: the argument parses and the default spawns; a run against
 the local server started by hand (`node server/index.js`) passes identically to the spawned one.
+
+**Built 2026-10-11.** `tools/lib/room-url.mjs` parses it, exit code 2 means "not applicable here"
+and the runner prints `n/a`. Four findings came out of the first run against a hand-started
+server, none of them about the flag: the clients ran on the engine's FALLBACK mirrors with no
+quests (all eight diverged from the room at the first month tick); a client kept the seat it asked
+for rather than the one the door gave it (`accepted 54/0/0/0/0/0/0/0`); the per-address socket cap
+was a literal **8**, exactly the number of players the release gate claims, and is
+`MAX_SOCKETS_PER_IP` now with the room's seat cap as its default; and the gate hosts the way a
+player does — `CREATE` from the first client, **Host** and **Start** in the browser — because a
+bare hosting socket takes a seat and a connection no player would.
 
 **Order inside K6:** a → c → b → d. **Done when** a phone guest can read how to move, read the
 whole advisor message, see every rail button, and be sent a link they can tap; and the release set

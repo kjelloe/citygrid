@@ -24,6 +24,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startServer } from "../server/index.js";
+import { roomTarget, remoteJitter } from "./lib/room-url.mjs";
+import { loadContent } from "./lib/content.mjs";
 import { createStore } from "../server/store.js";
 import { formatRoomCode } from "../shared/roomcode.js";
 import { createSimHost } from "../worker/sim-host.js";
@@ -69,8 +71,21 @@ function refusalFor(url, hello) {
   });
 }
 
-/** A client: a socket, a simulation of its own, and a mirror of it. */
-function connect(url, seat, code) {
+/** A client: a socket, a simulation of its own, and a mirror of it.
+ *
+ * **Everything inside reads `client.seat`, never the argument** (K6d). The
+ * argument is what this client ASKS for and `0` means "any" (X2b); the seat it
+ * gets comes back on the `WELCOME`. The first run against a box kept the
+ * argument and read `accepted 54/0/0/0/0/0/0/0`: seven clients that could not
+ * recognise their own commands in a frame, could not answer a request
+ * addressed to them, and said nothing about it.
+ *
+ * `create` (K6d) makes this client HOST the room rather than join one: the
+ * same `CREATE` the page sends, which is how a gate gets a room on a server it
+ * does not own. The code comes back on the `WELCOME`, and the creator holds the
+ * clock (X2d) — so against a box the speed is turned up by a client rather than
+ * by reaching into a room this process does not have. */
+function connect(url, seat, code, create) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
     const client = {
@@ -82,7 +97,7 @@ function connect(url, seat, code) {
       ask: (cells) => {
         client.asked += 1;
         client.send({ type: C2S.COMMAND, command: {
-          type: CMD_REQUEST_DEMOLITION, actor: seat, runs: encodeRuns(cells),
+          type: CMD_REQUEST_DEMOLITION, actor: client.seat, runs: encodeRuns(cells),
           title: "Your road crosses my line", reason: "I would rather run mine straight", offer: 100,
         } });
       },
@@ -92,25 +107,27 @@ function connect(url, seat, code) {
        * applied it, which is the whole point of running the same reducer. */
       answer: () => {
         for (const request of client.mirror.requests) {
-          if (request.status !== "pending" || request.to !== seat) continue;
+          if (request.status !== "pending" || request.to !== client.seat) continue;
           client.answered += 1;
           client.send({ type: C2S.COMMAND, command: {
-            type: CMD_RESOLVE_REQUEST, actor: seat, id: request.id, approve: true,
+            type: CMD_RESOLVE_REQUEST, actor: client.seat, id: request.id, approve: true,
           } });
           return;
         }
       },
       build: (cells) => {
         client.commands += 1;
-        client.send({ type: C2S.COMMAND, command: { type: CMD_PLACE_ROAD, actor: seat, runs: encodeRuns(cells) } });
+        client.send({ type: C2S.COMMAND, command: { type: CMD_PLACE_ROAD, actor: client.seat, runs: encodeRuns(cells) } });
       },
       close: () => socket.close(),
     };
 
-    socket.on("open", () => client.send({
-      type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat, name: `Soak ${seat}`,
-      room: code,
-    }));
+    socket.on("open", () => client.send(create
+      ? { type: C2S.CREATE, version: PROTOCOL_VERSION, build: buildHash(), name: `Soak host`, options: create }
+      : {
+        type: C2S.HELLO, version: PROTOCOL_VERSION, build: buildHash(), seat, name: `Soak ${seat}`,
+        room: code,
+      }));
     socket.on("error", reject);
     socket.on("message", (raw) => {
       // What the room costs a client on the wire (X7, plan §3.8). Counted here
@@ -122,6 +139,15 @@ function connect(url, seat, code) {
         const ready = client.host.handle({ type: "init", id: 0, save: message.save }).reply;
         if (ready.type !== "ready") { reject(new Error(`seat ${seat} could not start: ${ready.reason}`)); return; }
         client.mirror = createMirror(ready.patch);
+        // **The seat the door GAVE**, not the one asked for (K6d). A client
+        // that asks for 0 means "any" (X2b), and a client that kept the 0 would
+        // answer no request — `request.to !== seat` is never true of a seat
+        // nobody has — which is how the first box run read "9 asked, 0
+        // answered" with every inbox full.
+        client.seat = message.seat ?? seat;
+        client.room = message.room;
+        // A hosted room has not started (X2d): the clock waits for its host.
+        if (create) client.send({ type: C2S.START });
         resolve(client);
         return;
       }
@@ -146,7 +172,7 @@ function connect(url, seat, code) {
         // and the gate reported a busy city while that seat built nothing for
         // five years. A gate that cannot see a refusal measures its own
         // intentions.
-        if (entry.seat !== seat) continue;
+        if (entry.seat !== client.seat) continue;
         if (entry.result === "ok") client.accepted += 1;
         else client.refused.push(`${entry.command.type}: ${entry.result}`);
       }
@@ -222,22 +248,70 @@ const CHURN = process.argv.includes("--churn");
 const EIGHT = process.argv.includes("--eight");
 const CLIENTS = EIGHT ? 8 : 2;
 
-const server = await startServer({
-  heldForMs: CHURN ? 500 : undefined,
-  regencyAfterMs: CHURN ? 1500 : undefined,
-  port: 0,
-  store: createStore({ dir: roomDir }),
-  // A fresh region every run, for the same reason.
-  fresh: true,
-  tickMs: 10,                     // the soak's beat; the room still owes 2 ticks a beat at speed 1
-  options: { seed: 1003, width: SIZE, height: SIZE, seats: Math.max(4, CLIENTS) },
-  roomId: "soak",
-});
-const url = `ws://127.0.0.1:${server.port}/ws`;
+/** **A server somebody else is running** (K6d), or this gate's own.
+ *
+ * v1.0's V4 says the release set runs against the DEPLOYED box once, and until
+ * now there was no command behind that sentence. With `--url <origin>` nothing
+ * is spawned: the clients dial the box's `/ws`, a room is hosted over the wire
+ * the way a player's page hosts one, and the two checks that need a server
+ * inside this process say out loud that they were skipped. */
+const TARGET = roomTarget(process.argv);
+const OPTIONS = { seed: 1003, width: SIZE, height: SIZE, seats: Math.max(4, CLIENTS) };
+
+const server = TARGET.spawn
+  ? await startServer({
+    heldForMs: CHURN ? 500 : undefined,
+    regencyAfterMs: CHURN ? 1500 : undefined,
+    port: 0,
+    store: createStore({ dir: roomDir }),
+    // A fresh region every run, for the same reason.
+    fresh: true,
+    tickMs: 10,                   // the soak's beat; the room still owes 2 ticks a beat at speed 1
+    options: OPTIONS,
+    roomId: "soak",
+  })
+  : undefined;
+const url = server ? `ws://127.0.0.1:${server.port}/ws` : TARGET.ws;
 // The room's own code (X2a): the door asks which room, so the gate has to name
 // it like any other client would. Hoisted, because the restart check below
 // compares the room that comes back off the disk against it.
-const code = server.room.code();
+//
+// On a remote server the gate HOSTS one, which is the same `CREATE` the page
+// sends — and a box serving a different build refuses it, which is the most
+// useful thing a run against a deployed server can report.
+let hosted;
+if (!server && !EIGHT) {
+  // **`--url` runs the release gate and nothing else** (K6d). Everything below
+  // the eight-client block reads `server.room` — the resync, the regency, the
+  // restart off the disk — and those are questions about a room this process
+  // owns. Against a box the honest answer is to say so rather than to skip
+  // eleven checks quietly.
+  console.log("--url runs the release gate: add --eight (the two-client soak, the churn arm\n"
+    + "and the restart check all read the room inside this process).");
+  process.exit(2);
+}
+if (!server) {
+  console.log(`pointed at ${TARGET.origin} — nothing spawned`);
+  // **This process has to load the content too** (K6d). `startServer` calls
+  // `loadServerContent()`, so a local run gets the real rules, catalogue and
+  // quests for free — and a run against a box does not: the clients would
+  // simulate on `engine/`'s FALLBACK mirrors with no quests in them while the
+  // box plays the files, and every client would diverge from the room at the
+  // first month tick. Which is exactly what the first run against a box did:
+  // eight clients agreeing with each other and none of them with the room
+  // (`a-second-thread-needs-the-data-the-first-one-loaded`).
+  await loadContent();
+  // **The host is a PLAYER** (K6d), not a spare socket: the room's creator
+  // takes a seat, so a bare hosting socket would sit in one of the eight and
+  // the first scripted client would be refused `seatTaken` — which is what the
+  // first run against a box did.
+  hosted = await connect(url, 1, undefined, OPTIONS).catch((error) => {
+    console.log(`FAIL  the box would not host a room  (${error.message}`
+      + `${/buildMismatch/.test(error.message) ? " — this checkout is not the build the box serves" : ""})`);
+    process.exit(1);
+  });
+}
+const code = server ? server.room.code() : hosted.room;
 
 // **Eight clients, one region** (X7). Its own block rather than a parameter on
 // the one below: the two-client soak is X1's gate and has been measured at
@@ -245,15 +319,27 @@ const code = server.room.code();
 // choreography would make both runs harder to read for no gain.
 if (EIGHT) {
   const clients = [];
-  for (let seat = 1; seat <= CLIENTS; seat += 1) clients.push(await connect(url, seat, code));
+  if (hosted) {
+    // The host is one of the eight (K6d). The rest ask for seat 0 — "any" —
+    // because on a box the door is the only thing that knows which chairs are
+    // free, which is X2b's rule and the reason a page never names a seat.
+    clients.push(hosted);
+    for (let n = 2; n <= CLIENTS; n += 1) clients.push(await connect(url, 0, code));
+  } else {
+    for (let seat = 1; seat <= CLIENTS; seat += 1) clients.push(await connect(url, seat, code));
+  }
   check(`${CLIENTS} clients joined one room`,
     clients.every((c) => c.mirror !== undefined), `${clients.filter((c) => c.mirror).length} of ${CLIENTS}`);
 
-  server.room.setSpeed(3);
+  // The clock is the HOST's (X2d), which is how a client turns it up on a
+  // server it does not own: the same `SPEED` message the page's button sends.
+  if (server) server.room.setSpeed(3);
+  else hosted.send({ type: C2S.SPEED, speed: 3 });
   const ticksPerIteration = (LOOP_MS * TICKS_PER_SECOND_FAST) / 1000;
   const beats = Math.ceil((YEARS * TICKS_PER_YEAR) / ticksPerIteration);
   const BUILD_EVERY = Math.max(1, Math.round(beats / 52));
   const ASK_EVERY = Math.max(4, Math.round(beats / 10));
+  const ANSWER_AT = server ? 3 : Math.min(ASK_EVERY - 1, 100);
   console.log(`${CLIENTS} clients, ${beats} iterations of ${LOOP_MS} ms `
     + `≈ ${(beats * LOOP_MS / 1000).toFixed(0)} s for ${YEARS * TICKS_PER_YEAR} ticks`);
 
@@ -275,35 +361,52 @@ if (EIGHT) {
         if (theirs) clients[i].ask(theirs);
       }
     }
-    if (n % ASK_EVERY === 3) for (const c of clients) c.answer();
+    // **The answer waits for the request to ARRIVE** (K6d). Two iterations is
+    // 24 ms, which is plenty when the room is in this process and nothing at
+    // all when it is a box pumping at 100 ms: the first remote run read "9
+    // asked, 0 answered" with every inbox still empty when the answer pass
+    // ran. The local cadence is unchanged, so both arms measure one game.
+    if (n % ASK_EVERY === ANSWER_AT) for (const c of clients) c.answer();
     await new Promise((resolve) => setTimeout(resolve, LOOP_MS));
   }
   await new Promise((resolve) => setTimeout(resolve, 400));
 
   const hashes = clients.map((c) => c.hash());
-  const jitter = server.pump.jitter();
-  const cost = server.pump.cost();
+  // The pump's own numbers belong to the process running it; a box keeps them
+  // on `/healthz`, which is the other half of M12.
+  const jitter = server ? server.pump.jitter() : await remoteJitter(TARGET.origin);
+  const cost = server ? server.pump.cost() : undefined;
   const frames = clients.map((c) => c.frames);
   const bytes = clients.map((c) => c.bytes);
   const asked = clients.reduce((n, c) => n + c.asked, 0);
   const answered = clients.reduce((n, c) => n + c.answered, 0);
 
-  console.log(`\nroom at tick ${server.room.tick()}; frames ${Math.min(...frames)}–${Math.max(...frames)}; `
+  const roomTick = server ? server.room.tick() : Math.max(...clients.map((c) => c.mirror?.tick ?? 0));
+  console.log(`\nroom at tick ${roomTick}; frames ${Math.min(...frames)}–${Math.max(...frames)}; `
     + `${asked} requests asked, ${answered} answered`);
   console.log(`bytes a client: ${(Math.min(...bytes) / 1024).toFixed(0)}–`
     + `${(Math.max(...bytes) / 1024).toFixed(0)} KiB over ${YEARS} city years `
     + `(${(bytes.reduce((a, b) => a + b, 0) / 1024 / 1024).toFixed(2)} MiB from the room in total)`);
   console.log(`pump jitter p50 ${jitter?.p50Ms} ms p99 ${jitter?.p99Ms} ms max ${jitter?.maxMs} ms `
-    + `(${jitter?.latePct}% late); warm beat p50 ${cost?.p50Ms} ms p99 ${cost?.p99Ms} ms `
-    + `max ${cost?.maxMs} ms over ${cost?.n} beats`);
+    + `(${jitter?.latePct}% late)${cost ? `; warm beat p50 ${cost.p50Ms} ms p99 ${cost.p99Ms} ms `
+      + `max ${cost.maxMs} ms over ${cost.n} beats` : " — the rest is on /healthz"}`);
 
   check("the room played five city years",
-    server.room.tick() >= YEARS * TICKS_PER_YEAR * 0.9,
-    `tick ${server.room.tick()} of ${YEARS * TICKS_PER_YEAR}`);
+    roomTick >= YEARS * TICKS_PER_YEAR * 0.9,
+    `tick ${roomTick} of ${YEARS * TICKS_PER_YEAR}`);
   check(`all ${CLIENTS} clients are on one hash`, new Set(hashes).size === 1,
     hashes.map((h, i) => `${i + 1}:${h.slice(0, 8)}`).join(" "));
-  check("and it is the room's", hashes[0] === server.room.hash(),
-    `${hashes[0]} vs ${server.room.hash()}`);
+  // The room's own hash is a read into the process that owns it. Against a box
+  // what stands in for it is the per-month comparison every client has been
+  // making all run — the divergence count below is the same claim from the
+  // client's end, eight times over.
+  if (server) {
+    check("and it is the room's", hashes[0] === server.room.hash(),
+      `${hashes[0]} vs ${server.room.hash()}`);
+  } else {
+    console.log("note  the room's own hash is not readable from here; the divergence "
+      + "counts below are the same claim from the clients' end");
+  }
   for (const c of clients) {
     check(`seat ${c.seat} never diverged`, c.divergences.length === 0,
       c.divergences.slice(0, 2).map((d) => `tick ${d.tick}: ${d.mine} vs ${d.room}`).join("; "));
@@ -312,15 +415,19 @@ if (EIGHT) {
     clients.every((c) => c.checks >= YEARS * 8), clients.map((c) => c.checks).join(" "));
   // Requests both ways round the ring, which is the half of the release gate
   // that is about PLAYING rather than about agreeing.
+  // Counting what the ROOM made of it, not what the gate sent
+  // (`a-gate-that-counts-what-it-sent`): a refused request is not a request.
   check("requests were filed and answered in both directions", asked > 0 && answered > 0,
-    `${asked} asked, ${answered} answered`);
+    `${asked} asked, ${answered} answered; accepted ${clients.map((c) => c.accepted).join("/")}; refusals `
+    + `${JSON.stringify(clients.flatMap((c) => c.refused).slice(0, 4))}; `
+    + `pending ${clients[0].mirror?.requests?.length ?? "no mirror"}`);
   // §3.8's bound, and the one number a deployed server is judged on.
   check("the pump kept its beat under eight clients", (jitter?.p99Ms ?? 1e9) < 150,
     `p99 ${jitter?.p99Ms} ms against a 150 ms bound`);
 
   for (const c of clients) c.close();
   await new Promise((resolve) => setTimeout(resolve, 100));
-  await server.close();
+  if (server) await server.close();
   await rm(roomDir, { recursive: true, force: true });
   if (problems.length > 0) {
     console.error(`\n${problems.length} problem(s):`);

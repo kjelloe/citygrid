@@ -71,8 +71,6 @@ const QUEST_FREE = {
   "tools/model_cost.mjs": "a timing table; the city is the subject's size, not its economy",
   "tools/seam_cost.mjs": "the same, for the seam",
   "tools/where.mjs": "a probe that prints where something is",
-  "tools/room_soak.mjs": "its clients share the SERVER's process, and `server/content.js` is "
-    + "what loads the data there — the one place this was already right",
 };
 
 test("a tool that plays a city for a number loads the real content", () => {
@@ -137,4 +135,58 @@ test("and the shared handler is the one the server itself runs (Q167)", () => {
   const server = readFileSync(join(repoRoot, "server", "index.js"), "utf8");
   assert.match(server, /from "\.\/static\.js"/,
     "server/index.js does not use the handler the tools share");
+});
+
+// --- the room gates against another server (K6d) ------------------------------
+//
+// V4 says "the gates against the deployed box once" and there was no command
+// behind the sentence: `room_soak` and `room_smoke` start a server of their own
+// and have no way to be pointed at one. `--url <origin>` is that way, and this
+// is the half of it node can hold — the parsing, and that the DEFAULT is still
+// a server of the gate's own, because a flag that changes behaviour when it is
+// absent is a flag nobody can trust.
+
+test("the room gates take --url, and spawn their own server without it (K6d)", async () => {
+  const { roomTarget } = await import("../tools/lib/room-url.mjs");
+
+  const own = roomTarget(["node", "room_soak.mjs", "5"]);
+  assert.equal(own.spawn, true, "no --url has to mean the gate's own server");
+  assert.equal(own.origin, undefined);
+
+  const plain = roomTarget(["node", "x", "--url", "http://box.test:8123"]);
+  assert.deepEqual(plain, { spawn: false, origin: "http://box.test:8123", ws: "ws://box.test:8123/ws" });
+
+  // `wss` under `https`, which is the whole reason this is a function and not a
+  // string concatenation at the call site: a gate that dialled `ws://` at a
+  // TLS origin would be refused by the browser and by nginx, and the error it
+  // gives says nothing about why.
+  const secure = roomTarget(["node", "x", "--url", "https://citygrid.kjell.today"]);
+  assert.equal(secure.ws, "wss://citygrid.kjell.today/ws");
+  assert.equal(secure.origin, "https://citygrid.kjell.today");
+
+  // A trailing slash is what a person pastes out of a browser.
+  assert.equal(roomTarget(["node", "x", "--url", "https://box.test/"]).origin, "https://box.test");
+  assert.equal(roomTarget(["node", "x", "--url", "https://box.test/"]).ws, "wss://box.test/ws");
+});
+
+test("--url with nothing after it, or something that is not an origin, refuses (K6d)", () => {
+  // A gate pointed at nonsense must say so rather than fall back to spawning
+  // its own server and reporting a green run of the wrong thing — which is the
+  // `a-knob-you-turned-is-not-a-knob-it-read` shape, in a release gate.
+  return import("../tools/lib/room-url.mjs").then(({ roomTarget }) => {
+    for (const bad of [["--url"], ["--url", "--eight"], ["--url", "box.test"], ["--url", "ftp://box.test"]]) {
+      assert.throws(() => roomTarget(["node", "x", ...bad]), /--url/,
+        `${JSON.stringify(bad)} was accepted`);
+    }
+  });
+});
+
+test("both room gates and the runner read the same --url (K6d)", () => {
+  // The three places the flag has to exist, asserted as a set rather than
+  // trusted: a flag the runner passes to a gate that does not read it is a
+  // green run of the gate's own server.
+  for (const path of ["tools/room_soak.mjs", "tools/room_smoke.mjs", "tools/gates.mjs"]) {
+    const source = stripCommentsAndStrings(readFileSync(join(repoRoot, path), "utf8"));
+    assert.match(source, /roomTarget|--url|urlArg/, `${path} does not know about --url`);
+  }
 });

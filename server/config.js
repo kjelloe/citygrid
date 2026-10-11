@@ -22,6 +22,8 @@
 // is a test rather than a deployment (`test/server-config.test.js`).
 
 /** The port `run.sh` and the smokes have always used. */
+import { LIMITS } from "../shared/protocol.js";
+
 const DEFAULT_PORT = 8123;
 const DEFAULT_KEEP_DAYS = 30;
 
@@ -54,6 +56,14 @@ export function serverConfig(env = {}) {
     roomsDir: env.ROOMS_DIR ? env.ROOMS_DIR : "rooms",
     keepForDays: intOr(env.KEEP_FOR_DAYS, DEFAULT_KEEP_DAYS, { min: 1, max: 3650 }),
     trustProxy: flag(env.TRUST_PROXY),
+    // **Sockets from one address** (K6d). It was a literal 8 in `index.js`, and
+    // eight is the number of players the release gate claims — so a household,
+    // a café or an office with eight players behind one NAT was one short, and
+    // `room_smoke --url` with its own hosting socket was refused on the ninth.
+    // The ROOM's seat cap is the real limit on how many clients can be in one
+    // city (`LIMITS.SEATS_MAX`), so that is the default here; a box that wants
+    // it tighter sets `MAX_SOCKETS_PER_IP`.
+    maxSocketsPerIp: intOr(env.MAX_SOCKETS_PER_IP, LIMITS.SEATS_MAX, { min: 1, max: 1024 }),
     allowedOrigins: (env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
   };
 }

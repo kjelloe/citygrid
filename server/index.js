@@ -163,8 +163,12 @@ export async function startServer({
     const open = (perIp.get(ip) ?? 0) + 1;
     perIp.set(ip, open);
     // A connection cap per address, which is the cheapest half of §3.5's
-    // robustness and the half a single machine can actually exhaust.
-    if (open > 8) {
+    // robustness and the half a single machine can actually exhaust. **The
+    // number is config, not a literal** (K6d): it was 8, which is exactly the
+    // number of players the release gate claims, so eight people behind one
+    // NAT were one short of a room — and `room_smoke --url`, whose hosting
+    // socket is a ninth, was refused.
+    if (open > config.maxSocketsPerIp) {
       socket.send(JSON.stringify({ type: S2C.REFUSED, reason: REFUSAL.RATE_LIMIT }));
       socket.close();
       return;

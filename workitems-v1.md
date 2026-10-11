@@ -129,8 +129,10 @@ measured, and a dead constant that fences dead imports.*
 1. `DEPLOYING.md` "First-time box setup", steps 1–8, run in order on the shared box — claim the
    port, the user and Node, the unit, one deploy, nginx HTTP-only, the shared certificate
    lineage, the outside check and the neighbour sweep, the hosting document.
-2. `node tools/gates.mjs release --url https://citygrid.kjell.today` and `room --url …` once (the
-   switch is K6's), which is the deployed half of V4 the ally could not run.
+2. `node tools/gates.mjs release --url https://citygrid.kjell.today` and `room --url …` once —
+   **built as K6d on 2026-10-11** and measured against a hand-started server: eight clients on one
+   hash in 49 s, eight browsers on one hash in 79 s. `room_soak` and `room_churn` print `n/a`
+   there on purpose; they read the room inside the gate's own process.
 3. Open the address on a phone, scan the QR from a second device, host a room, invite at least
    three people, play an hour at the map's seat cap, lose a connection on purpose and come back,
    file and answer a request both ways, leave the room overnight and open it the next day.
@@ -150,10 +152,10 @@ Then **M7b**: the release page re-measured, `git tag v1.0`, `main` fast-forwarde
 - ~~**The phone's rail wraps to two rows**~~ — **built 2026-10-10 as K6c.** 94 px of a 44 px
   button before, 44 after, with a conditional fade at the edge a button is cut off at; `room_smoke`'s
   phone client measures the nine-button case. Icons are still an art decision and v1.1's. → K6.
-- **The deployed half of V4 cannot be run as written.** `room_soak` and `room_smoke` have no way to
-  be pointed at another server — they spawn their own — so "the gates against the box once" is a
-  sentence with no command behind it. A `--url` on both (the browsers open the given origin, the
-  scripted clients dial its `/ws`), and `gates.mjs release --url` passes it through. → K6.
+- ~~**The deployed half of V4 cannot be run as written.**~~ — **built 2026-10-11 as K6d.**
+  `gates.mjs release --url https://…` and `room --url …`, measured against a hand-started server:
+  eight clients on one hash in 49 s, eight browsers on one hash in 79 s, and the gates that read
+  the room inside this process print `n/a` rather than passing. → K6, done.
 - **The DNS record is step zero.** `DEPLOYING.md` assumes `citygrid.kjell.today` resolves; nothing
   says who creates the record or that certbot's challenge needs it live first. → V5's checklist.
 - **Checked and fine:** the join screen and roster strings exist in both catalogues (the parity

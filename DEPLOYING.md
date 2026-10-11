@@ -40,6 +40,7 @@ every document.
 | `HOST` | `0.0.0.0`, or `127.0.0.1` under `NODE_ENV=production` | The bind address. **Loopback on a shared box**: a `0.0.0.0` bind exposes the raw port through the firewall and bypasses TLS entirely |
 | `ROOMS_DIR` | `rooms` | Where hibernated rooms live. Point it **outside** the deployed tree so an allowlist rsync can neither skip them nor carry them |
 | `KEEP_FOR_DAYS` | `30` | How long a room nobody came back to is kept before `prune` takes it |
+| `MAX_SOCKETS_PER_IP` | `16` | How many sockets one address may hold open. It was a literal **8** until K6d — exactly the number of players the release gate claims — so eight people behind one NAT were one short of a room. The default is the room's own seat cap (`LIMITS.SEATS_MAX`), which is the real limit on how many clients a city can hold; set it lower on a box that wants it tighter |
 | `TRUST_PROXY` | off | Read `X-Forwarded-For` for the per-address connection cap. Behind nginx every socket's address is `127.0.0.1`, so without it the cap counts the internet as one client — and believed unconditionally it is a limit anybody can type their way around. Set it **only** where a proxy really sets the header |
 | `ALLOWED_ORIGINS` | *(empty)* | Comma-separated origins that may open a socket, exactly as a browser sends them. The browser's same-origin policy does **not** apply to `new WebSocket(...)`, so without this a page the player merely visits can open a socket into their room |
 

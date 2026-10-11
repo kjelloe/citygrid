@@ -15947,3 +15947,71 @@ showing up inside a set as well as between runs.
 - `quick` 114/180, `screens` 276/360, `access` 122/210 — all green.
 - The six tools M13 touched, each run by hand: `budget_gate`, `lobby_smoke`,
   `offline_smoke`, `play_smoke`, `save_smoke`, `skin_shots`, all ok.
+
+## K6d — the room gates against a server they do not own (2026-10-11)
+
+v1.0's V4 says *the gates against the deployed box once*, and until today that
+sentence had no command behind it: `room_soak` and `room_smoke` start a server
+of their own and had no way to be pointed at one. `--url <origin>` is the
+command. `tools/lib/room-url.mjs` parses it — `wss` under `https`, a trailing
+slash trimmed, and a refusal with a sentence rather than a stack for anything
+that is not an http(s) origin — and `gates.mjs room --url …` and `release --url
+…` pass it through.
+
+Measured against `node server/index.js 8211` started by hand:
+
+```
+release --url: room_eight ok 49 s   — 8 clients, one hash, p99 105 ms
+room    --url: room_smoke ok 79 s   — 8 browsers, one hash at tick 145
+               room_soak, room_churn  n/a (they read the room in this process)
+```
+
+**Exit code 2 means "not applicable here"**, and the runner prints it as `n/a `
+with the gate's own first line beside it. The two-client soak, the churn arm
+and the restart check all read `server.room` — they are questions about a room
+inside this process — and skipping them quietly would be a release set that
+reports green for the half it did not run.
+
+### Four findings, and none of them was the flag
+
+**The clients ran on the engine's fallback mirrors.** A local run gets the real
+rules, catalogue and quests because `startServer` loads them; a run against a
+box loads nothing, so eight clients simulated on `engine/`'s mirrors with **no
+quests in them** while the box played the files. Every client agreed with every
+other and **all eight diverged from the room at the first month tick**. That is
+`a-second-thread-needs-the-data-the-first-one-loaded`, exactly, in a new place —
+`tools/lib/content.mjs` is one line and the gate calls it now.
+
+**A client used the seat it asked for, not the seat it got.** Against a box the
+door hands out seats (X2b's "any"), and the gate kept the 0 it asked with: seven
+of eight clients could not recognise their own commands in a frame
+(`accepted 54/0/0/0/0/0/0/0`), could not answer a request addressed to them —
+*"9 asked, 0 answered"* with every inbox full — and said nothing about it.
+Everything inside `connect` reads `client.seat` now, which the `WELCOME` sets.
+
+**The per-address socket cap was exactly eight.** `server/index.js` refused the
+ninth socket from one address with `rateLimit`, and the release claim is **eight
+players**: a household, a café or an office with eight people behind one NAT was
+one short of a room, and a gate that hosts over its own socket was refused
+outright. It is `MAX_SOCKETS_PER_IP` now (documented in `DEPLOYING.md`), and its
+default is the room's own seat cap — `LIMITS.SEATS_MAX`, 16 — because the number
+of clients a city can hold is a property of the room and not of the address.
+
+**And the gate hosts the way a player does.** `hostRoom` existed for an
+afternoon and is deleted: a bare hosting socket takes a seat and a connection no
+player would. `room_soak`'s first client sends `CREATE` and then plays in the
+room it made; `room_smoke` presses **Host** on the page, then **Start** on the
+roster, then the speed button — the controls, not the wire.
+
+Two smaller things fell out: the answer pass waited two iterations (24 ms),
+which is nothing against a box pumping at 100 ms, so the remote arm answers a
+cycle later and the local cadence is untouched; and `CITY.hash()` crosses the
+seam and comes back as a promise, so the first remote hash comparison compared
+eight copies of `[object Promise]` and called them equal.
+
+### Measured
+
+- Suite **2,120 green twice**.
+- `room` 266/300 spawned, 79/300 against the box (two gates `n/a`).
+- `release` 48/180 spawned, 49/180 against the box.
+- `quick` 114/180 — unchanged by any of this.

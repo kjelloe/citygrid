@@ -21,6 +21,7 @@
 // finding which gate it is needs the count to exist first.
 
 import { spawn } from "node:child_process";
+import { roomTarget } from "./lib/room-url.mjs";
 import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -484,11 +485,18 @@ async function devLogEntriesAhead() {
   }
 }
 
-function runGate(name) {
+/** Gates that take `--url <origin>` and run against a server somebody else is
+ * running (K6d). The runner passes it through rather than guessing: a flag
+ * handed to a gate that does not read it is a green run of the gate's own
+ * server, which is exactly the thing v1.0's V4 is trying to stop. */
+const TAKES_URL = new Set(["room_soak", "room_churn", "room_eight", "room_smoke"]);
+
+function runGate(name, extra = []) {
   const gate = GATES[name];
+  const args = TAKES_URL.has(name) ? [...gate.args, ...extra] : gate.args;
   return new Promise((resolve) => {
     const started = Date.now();
-    const child = spawn(process.execPath, gate.args, { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(process.execPath, args, { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
     // ALL of it, kept, and written to a file per gate. The tail alone lost a
     // `budget_gate` failure after S2: twelve lines printed, piped through a
     // `tail` by the caller, and which check had failed was gone for good.
@@ -497,7 +505,13 @@ function runGate(name) {
     child.stdout.on("data", keep);
     child.stderr.on("data", keep);
     child.on("close", (code) => {
-      resolve({ name, ok: code === 0, ms: Date.now() - started, tail: output.slice(-4000), output });
+      // **2 is "not applicable here"** (K6d): a gate pointed at a box that can
+      // only answer part of its question says so with that code rather than
+      // failing, and the runner prints it as skipped. Anything else is a fail.
+      resolve({
+        name, ok: code === 0, skipped: code === 2, ms: Date.now() - started,
+        tail: output.slice(-4000), output,
+      });
     });
   });
 }
@@ -519,6 +533,29 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
 
   const names = gatesIn(set);
+  // **`--url <origin>`, passed through** (K6d): `gates.mjs release --url https://…`
+  // is the command behind v1.0's V4. `roomTarget` validates it here as well as
+  // in the gate, so a typo fails before anything is spawned.
+  const urlAt = process.argv.indexOf("--url");
+  const extra = urlAt < 0 ? [] : ["--url", process.argv[urlAt + 1]];
+  if (urlAt >= 0) {
+    // Validated here as well as in the gate, so a typo fails before anything
+    // is spawned — and as a MESSAGE rather than as a stack, because a release
+    // gate pointed at a box is run by somebody reading the terminal.
+    let target;
+    try {
+      target = roomTarget(process.argv);
+    } catch (error) {
+      console.log(error.message);
+      process.exit(2);
+    }
+    const takers = names.filter((n) => TAKES_URL.has(n));
+    if (takers.length === 0) {
+      console.log(`--url is for the room gates; "${set}" has none of them`);
+      process.exit(2);
+    }
+    console.log(`pointed at ${target.origin}: ${takers.join(", ")}`);
+  }
   const before = await browsersAlive();
   console.log(`gates: ${set} — ${names.length} of them, budget ${(BUDGET_MS[set] / 60000).toFixed(0)} min`);
   const others = await othersRunning();
@@ -539,12 +576,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const results = [];
   for (const name of names) {
     process.stdout.write(`  ${name.padEnd(16)} `);
-    const result = await runGate(name);
+    const result = await runGate(name, extra);
     results.push(result);
-    console.log(`${result.ok ? "ok  " : "FAIL"} ${(result.ms / 1000).toFixed(1)}s`);
+    console.log(`${result.ok ? "ok  " : result.skipped ? "n/a " : "FAIL"} ${(result.ms / 1000).toFixed(1)}s`
+      + (result.skipped ? `  ${result.output.trim().split("\n")[0]}` : ""));
     const log = join(logs, `${day}-${name}.log`);
     await writeFile(log, result.output);
-    if (!result.ok) {
+    if (!result.ok && !result.skipped) {
       // Every FAIL line first — the checks that failed, by name — then where
       // the whole run is.
       const fails = result.output.split("\n").filter((l) => /^\s*FAIL\b/.test(l));
@@ -557,7 +595,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
 
   const total = results.reduce((a, r) => a + r.ms, 0);
-  const failed = results.filter((r) => !r.ok);
+  const failed = results.filter((r) => !r.ok && !r.skipped);
   const slowest = [...results].sort((a, b) => b.ms - a.ms).slice(0, 3);
 
   console.log(`\ntotal ${(total / 1000).toFixed(0)}s of a ${(BUDGET_MS[set] / 1000).toFixed(0)}s budget`);

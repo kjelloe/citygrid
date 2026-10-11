@@ -25,6 +25,7 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startServer } from "../server/index.js";
+import { roomTarget } from "./lib/room-url.mjs";
 import { createStore } from "../server/store.js";
 import { formatRoomCode } from "../shared/roomcode.js";
 
@@ -64,22 +65,61 @@ async function until(page, what, read, arg, ms = 30_000) {
 }
 
 const roomDir = await mkdtemp(join(tmpdir(), "citygrid-room-smoke-"));
-const server = await startServer({
-  port: 0,
-  store: createStore({ dir: roomDir }),
-  fresh: true,
-  tickMs: 100,
-  roomId: "smoke",
-  // **Eight seats** (X7): the release gate `plan-v1.md` has named since August
-  // is eight players in one region, and a room with four of them cannot be
-  // asked the question.
-  options: { seed: 1003, width: SIZE, height: SIZE, seats: 8 },
-});
-const code = server.room.code();
-const origin = `http://127.0.0.1:${server.port}`;
-console.log(`room ${formatRoomCode(code)} at ${origin}`);
+/** **A box, or this gate's own server** (K6d). `--url <origin>` is the command
+ * behind v1.0's V4 — *the gates against the deployed box once* — and against a
+ * box this file runs ONE block: eight browsers, one of them a phone, joining a
+ * room hosted over the wire. Everything else here reads `server.room` or
+ * `server.rooms` twenty times over, and those are questions about a room
+ * inside this process; skipping them quietly would be a release gate that
+ * reports green for the half it did not run. */
+const TARGET = roomTarget(process.argv);
+const OPTIONS = { seed: 1003, width: SIZE, height: SIZE, seats: 8 };
+const server = TARGET.spawn
+  ? await startServer({
+    port: 0,
+    store: createStore({ dir: roomDir }),
+    fresh: true,
+    tickMs: 100,
+    roomId: "smoke",
+    // **Eight seats** (X7): the release gate `plan-v1.md` has named since
+    // August is eight players in one region, and a room with four of them
+    // cannot be asked the question.
+    options: OPTIONS,
+  })
+  : undefined;
+const origin = server ? `http://127.0.0.1:${server.port}` : TARGET.origin;
+if (!server) console.log(`pointed at ${origin} — nothing spawned`);
 
 const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
+
+/** The room's code. Against this gate's own server it is the one the process
+ * booted with; against a box (K6d) **a browser hosts it**, by pressing Host on
+ * the page like a player — which is also what keeps the connection count at
+ * eight. A scripted socket that hosted would be a ninth connection from this
+ * address, and the server caps sockets per address: the first run against a box
+ * was refused `rateLimit` on the ninth, with the cap at exactly the eight the
+ * release gate claims. That cap is `MAX_SOCKETS_PER_IP` now and defaults to the
+ * room's own seat cap, but the gate still hosts the way a player does. */
+async function hostInABrowser() {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+  await page.goto(`${origin}/?life=0`);
+  await page.waitForSelector("#host", { timeout: 30_000 });
+  await page.click("#host");
+  const made = await until(page, "the box's lobby never hosted a room", () => {
+    const city = globalThis.CITY;
+    if (!city || city.room === undefined) return { ok: false, why: city ? "no room" : "no CITY" };
+    return { ok: true, room: city.room, seat: city.seat };
+  });
+  return { ...made, page, context, errors };
+}
+
+const remoteHost = server ? undefined : await hostInABrowser();
+const code = server ? server.room.code() : remoteHost.room;
+if (!server) console.log(`room ${formatRoomCode(code)} hosted from a browser at ${origin}`);
+else console.log(`room ${formatRoomCode(code)} at ${origin}`);
 
 /** One client: its own context, so its storage and its service worker are its
  * own — two seats sharing a profile is one browser pretending to be two. */
@@ -92,13 +132,111 @@ async function openClient(seat, viewport = { width: 1280, height: 800 }) {
     if (message.type() === "error") errors.push(`console: ${message.text()}`);
   });
   await page.goto(`${origin}/?join=${code}&seat=${seat}&life=0`);
-  const joined = await until(page, `seat ${seat} never joined`, () => {
+  const joined = await until(page, `seat ${seat} never joined (${errors.slice(0, 2).join(" | ")})`, () => {
     const city = globalThis.CITY;
-    if (!city) return { ok: false, why: "no CITY" };
+    if (!city) {
+      const problem = document.querySelector(".lobby-join-problem");
+      return { ok: false, why: `no CITY — ${document.querySelector(".lobby") ? "on the lobby" : "no lobby"}`
+        + `, problem: ${problem?.hidden === false ? problem.textContent : "(none shown)"}` };
+    }
     if (city.room === undefined) return { ok: false, why: "no room on the session" };
     return { ok: true, room: city.room, seat: city.seat, width: city.state?.width };
   });
   return { seat, context, page, errors, joined };
+}
+
+// **The deployed half of V4** (K6d), and then nothing else: eight browsers on
+// the box, one of them a phone, agreeing with each other.
+if (!server) {
+  try {
+    // Eight browsers, and the HOST is one of them: a room's seats are eight and
+    // so are the connections, which is the shape of a real evening.
+    const clients = [{ ...remoteHost, joined: { room: remoteHost.room, seat: remoteHost.seat } }];
+    for (let n = 1; n < 8; n += 1) {
+      clients.push(await openClient(0, n === 7 ? { width: 390, height: 844 } : undefined));
+    }
+    check("eight browsers joined the box's room",
+      clients.every((c) => c.joined.room === code), clients.map((c) => c.joined.room).join(" "));
+    check("and every one of them took a seat of its own",
+      new Set(clients.map((c) => c.joined.seat)).size === clients.length,
+      clients.map((c) => c.joined.seat).join(" "));
+    // Long enough for the box's own clock to carry them somewhere together:
+    // the speed is the host's and the host here is the socket that made the
+    // room, so the gate turns it up the way the page's button does.
+    // **A hosted room has not started** (X2d): it waits in the lobby until the
+    // host presses Start, which is a button on the roster and not a message
+    // the gate may invent. The clock is the host's too, so the speed button is
+    // pressed the same way.
+    await remoteHost.page.click("#rail-roster");
+    await remoteHost.page.click(".roster-start");
+    const playing = await until(remoteHost.page, "the box's room never started", () => ({
+      ok: globalThis.CITY.state.tick > 0, tick: globalThis.CITY.state.tick,
+    }), undefined, 20_000).catch((error) => ({ ok: false, why: String(error.message ?? error) }));
+    check("the host's Start sets the box's clock going", playing.ok === true,
+      playing.why ?? JSON.stringify(playing));
+    await remoteHost.page.click("#speed");
+    await new Promise((resolve) => setTimeout(resolve, 20000));
+    const ticks = await Promise.all(clients.map(({ page }) =>
+      page.evaluate(() => globalThis.CITY?.state?.tick ?? -1)));
+    const settled = Math.min(...ticks);
+    for (const { page } of clients) {
+      await until(page, "a client never caught up", (want) => {
+        const city = globalThis.CITY;
+        return { ok: city.state.tick >= want && city.pending === 0, tick: city.state.tick };
+      }, settled, 25_000).catch(() => undefined);
+    }
+    // Back to paused, so the hashes below are compared on a city that has
+    // stopped moving (`a-gate-that-counts-what-it-sent`: stop the clock before
+    // comparing). The button cycles, so it takes as many presses as the row has.
+    for (let n = 0; n < 4; n += 1) {
+      const label = await remoteHost.page.textContent("#speed");
+      if (/pause/i.test(label ?? "")) break;
+      await remoteHost.page.click("#speed");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const hashes = await Promise.all(clients.map(({ page }) =>
+      page.evaluate(async () => ({
+        // `hash()` crosses the seam and comes back as a promise; a gate that
+        // forgot to await it compared eight copies of "[object Promise]" and
+        // called them equal.
+        hash: String(await globalThis.CITY?.hash?.() ?? "none"),
+        tick: globalThis.CITY.state.tick,
+      }))));
+    const agreed = hashes.filter((h) => h.tick === hashes[0].tick).map((h) => h.hash);
+    check("the box played the room forward", hashes[0].tick > 0, `tick ${hashes[0].tick}`);
+    check("and every browser on the same tick is on the same hash",
+      new Set(agreed).size === 1 && agreed.length > 1,
+      hashes.map((h, i) => `${i + 1}:${h.tick}/${String(h.hash).slice(0, 8)}`).join(" "));
+    const phone = clients.at(-1);
+    const panels = await phone.page.evaluate(async () => {
+      document.querySelector("#controls-dismiss")?.click();
+      const out = {};
+      for (const key of ["roster", "inbox", "chronicle"]) {
+        document.querySelector(`#rail-${key}`)?.click();
+        const rect = document.querySelector(`.hud-${key}`)?.getBoundingClientRect();
+        out[key] = rect ? Math.round(rect.width) : 0;
+      }
+      return out;
+    });
+    check("and the phone can open the room's panels on the box",
+      Object.values(panels).every((w) => w > 40), JSON.stringify(panels));
+    check("no client reported a page error",
+      clients.every((c) => c.errors.length === 0),
+      clients.flatMap((c) => c.errors).slice(0, 3).join(" | "));
+    for (const c of clients) await c.context.close();
+  } finally {
+    await browser.close();
+    await rm(roomDir, { recursive: true, force: true });
+  }
+  console.log("\nnote  --url runs the deployed half only: the hibernation, resync, kick, "
+    + "speed and stale-build rows all read the room inside this process");
+  if (problems.length > 0) {
+    console.error(`\n${problems.length} problem(s):`);
+    for (const problem of problems) console.error(`  - ${problem}`);
+    process.exit(1);
+  }
+  console.log("room smoke ok (against " + origin + ")");
+  process.exit(0);
 }
 
 try {
