@@ -79,7 +79,8 @@ send somebody the address bar, and have them join by code or watch without takin
 neighbour to clear ground or report a nuisance; answer from an inbox or set a standing answer and
 let the month do it; point at a tile; chat; see who is in the room; and leave, after which the seat
 is theirs for two minutes, then a deputy plays it, then the ground goes to the commons. A room
-nobody is in stops playing. `tools/room_smoke.mjs` drives **five browsers** through it and
+nobody is in stops playing. `tools/room_smoke.mjs` drives **eight browsers** through it — one of them a 390x844 phone, since
+X7 — and
 `room_churn` takes a seat away and gives it back with no divergence.
 
 What is left in that lane: the lobby's remaining rows (the QR, ready, joining a room that has

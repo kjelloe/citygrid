@@ -443,6 +443,55 @@ tool which loads them by accident.
 **Gate.** `soak` on three seeds with the quest count printed beside the population — the instrument
 first, since a probe that cannot see a quest fire would report zeros either way.
 
+## D10 — The street row is a percentile over 39 frames (S, measurement) — found 2026-10-11, unplanned
+
+**What the card says about itself.** `reports/perf/swiftshader.json`, street walk 60 m:
+`frames: 39`, `thinSample: true`, `settled: false` after 31 frames and 15.1 s, `p50: 399.9`,
+`p95: 466.7`, `worst: 3349.9`. Two runs on the same commit, same machine, minutes apart, read
+**p95 3966 ms at 393k triangles** and **p95 467 ms at 226k**. The row already carries every flag
+needed to know why — a percentile over 39 numbers, one of which is a 3.3-second bake, on a city
+that had not finished filling — and it prints the p95 anyway, in the same column as the other
+steps' p95 over hundreds of frames.
+
+**It is not the walk wandering.** The fixture is seed 1003 at 400 ticks and `streetTile()` aims at
+the corridor nearest the camera target, so the leg starts in the same place every run; the step
+stops at `wantedM: 60` and reported `walkedM: 68`. What moves is how much the baker got through
+inside the hold, which is `the-instrument-shares-a-budget-with-the-subject` in one row.
+
+**Do, in this order.**
+
+1. **Stop printing a percentile of a thin sample.** When `frames < 60` — the governor's own window
+   — the row prints `p50`, `worst` and the flag, and the p95 column reads `—`. A number that is
+   not a measurement should not be in the table at all
+   (`a-gate-number-can-move-because-the-picture-improved`).
+2. **Say where the walk was**, which no field records: the start tile, the end pose and the chunks
+   baked during the leg, beside the triangles. Two cards 167k triangles apart cannot be compared
+   today without them, and this is the cheap half.
+3. **Then decide whether to hold longer.** 60 frames at 400 ms is 24 s for that one step — a real
+   cost on a 70 s card — so the choice is the reader's: `?perfHold=` already exists, and the row
+   can say "held for N, sampled M" rather than the card silently taking a minute more.
+
+**Tests first.** `ui_smoke`'s perf-card row asserts the card parses and has a row per step; it
+gains the claim that **no row prints a p95 it does not have the sample for**, which is a pure
+check on the JSON and needs no second run.
+
+## D11 — `reports/region-era31.md` predates the firing table (XS, chore) — found 2026-10-11, unplanned
+
+Commit `7d7a279` taught `region_sweep` to print the rules that fired beside the city they fired in
+— the fix for era 30's report having held the answer to a question a whole round was argued over.
+The era-31 region report was written **before** that commit (2026-10-09 14:26 against 2026-10-10
+01:55), so its numbers are era 31 and valid and its arms have no firing rates: the thing that stops
+an arm being read as inert is missing from the one report that most needs it.
+
+**The cost, measured 2026-10-11:** four games take **59 s**, so 200 games per arm per
+configuration is about **50 minutes** on this machine. That is the whole of the chore — the tool
+and the numbers are unchanged.
+
+**Do.** Re-run `node tools/region_sweep.mjs` (defaults: 200 games, 25 years) in a quiet hour, let
+it overwrite `reports/region-era31.{md,json}`, and check the two agree
+(`a-report-written-in-two-places`). If era 32 is near, do it as part of that era instead and say so
+here — a report re-run for a table alone is still an era's worth of machine time.
+
 ## Order
 
 **Where this lane stands, 2026-10-08.** D1, D4, D6, D7 and D8 are built, with the desktop halves of

@@ -663,6 +663,73 @@ minutes it wants its census sampled or its own set — not a larger number.
   part, and life survives a build since B11). `workitems-multiplayer.md` says so and
   orders it before X3.
 
+## S22d — A shadow you can see (S, renderer) — A145 (Q170) — before V5
+
+*Written on 2026-10-11: the order has named this item since P120 and the lane had no entry for it,
+so the only description anywhere was the answer paragraph in `dev-questions.md`. This is it.*
+
+**What the gate measured.** `sun_shots` (S22b) is the only instrument that has ever looked at the
+GROUND rather than at the light, and at noon the shadow is **8% darker than the grass around it**
+— which is why nobody had seen one by eye, and why Q164 was argued for a whole round from frames
+that turned out to contain almost no shadow.
+
+**Where the numbers are now.** In code, which is the other half of the finding:
+`client/render/style-light.js` holds `shadowIntensity` (0.5 on `plain`, 0.72 on `pixel`),
+`shadowRadius` (5 / 2.5) and `shadowTint` as literals, and `data/cityviewer.json` carries only the
+per-tier `shadowMap` size and a `shadowTint` per skin. CLAUDE.md's rule is that numbers live in
+`data/*.json` and the mirror is the fallback; the shadow has never obeyed it.
+
+**Do** (A145, option A):
+
+1. A **`shadow` block in `data/cityviewer.json`** — `intensity`, `radius`, and the per-style tint
+   moved in beside them — with the matching block in `client/world/config.js` and the drift test
+   that keeps the two identical. `style-light.js` reads the config rather than its literals.
+2. **Intensity toward 0.8 and radius 3** (A145's direction), and the tint **cooler rather than the
+   ground darker**: a shadow that reads as a shadow is a hue change as much as a value change, and
+   dropping the ground's value alone is what makes a soft style look dirty.
+3. Re-take the four S22 frames **from the same spot, beside the old ones**, so the change is
+   visible as a pair rather than asserted.
+
+**Tests first.** `sun_shots` asserts the shadowed grass at noon is **at least 25% darker** than the
+lit grass — the rule it already uses (the commonest ground colour is the lit grass, a pixel of the
+same hue and meaningfully darker is shadow) with the threshold raised from "there is one at all" to
+"a person can see it". The config drift test is the second gate, and it is the one that catches a
+number put in one place and not the other.
+
+**And what must not move.** `a11y_smoke`'s overlay bands (a darker ground changes the contrast
+between washes) and `budget_gate` (a bigger shadow radius is a frame cost). Both are named in the
+order as unmoved; if either does move, that is the finding and the number goes in the dev-log
+beside the shots.
+
+**Size.** S, one day. Before V5, because the evening is the first time anybody plays under this
+light.
+
+## S8b — The terrace row photographs a region, not a facade (XS, measurement) — A147 (Q168) — with S22d
+
+*Written on 2026-10-11, for the same reason as S22d: named in the order since P120, no entry in a
+lane.*
+
+**What the sheet does.** `tools/compare_sheet.mjs`'s three terrace rows (day, morning, dusk) share
+one camera: `mode: "city"`, `span: 15`, `pitch: 26°`. A perspective camera at a shallow angle sees
+everything behind the near field, so the row captioned *"close and low over a residential street —
+the zoom where facades, doors and front gardens have to carry it"* renders a region to the horizon
+with a lake in it. It has been framed that way since the sheet was written, which means **the one
+row aimed at facades has never photographed any**, and every facade decision this project has made
+was made from a picture of something else.
+
+**Do** (A147): move the shared camera to about **span 9 at pitch 40°**, aimed down a residential
+street at the played city's **densest residential block** — the subject, asked of the fixture,
+rather than the middle of the map (`aim-a-shot-at-the-subject`). Keep the old framing as a **fourth
+row for this one sheet**, so the change is visible, and drop it afterwards.
+
+**Tests first.** The sheet is not a gate, so the check is the one `street_shots` and `sun_shots`
+already make: count the subject in frame before believing the picture — the new row must contain a
+measurable share of facade pixels (or, more simply, N houses within the near field, which the
+model can be asked for). A row that is re-aimed and still photographs a lake has to fail.
+
+**Size.** XS, half a day, and it wants S22d's light to be in place first — a facade row shot under
+an invisible shadow would have to be taken twice.
+
 ## S22 — A sun that moves, and a moon that takes over (M, renderer) — A138 — **BUILT 2026-10-08 as `slice-S22`**
 
 *As built: `client/world/sun.js` is pure and node-testable (nine tests), the arcs are data

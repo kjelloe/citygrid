@@ -15816,3 +15816,64 @@ It is filed as **K7** and `test/reachability.test.js` has a new census —
 allow-list naming what a phone player does instead. Ruling 027 says a control
 needs a screen; this is the same claim one step on: it needs a way to be ISSUED
 on the device the player has. Suite 2,116.
+
+## The planning round — six unplanned items written down, and what the sweep found (2026-10-11)
+
+Kjell: *"analyze, design and plan the unplanned items. Then look for omissions
+and things forgotten."* Nothing is built here; six items are written where the
+lane that owns them can be read, each with the measurement that justifies it.
+
+- **K7** (`workitems-navigation.md`) — a phone cannot load a save. Measured the
+  drawer on a 390×844 phone: 371×185 with six 36 px controls and about 60 px
+  spare — room for one more row and not two. Three designs, with the trade-off
+  each makes, and a recommendation (a **Load row**, slots `disabled` when empty
+  and saying why, because `aria-disabled` stops a gate clicking and `hidden`
+  fails `reach_smoke`).
+- **K8** (`workitems-navigation.md`) — **thirty-one controls smaller than this
+  project's own `--touch: 44px`**, measured on a phone: the two loan buttons at
+  **19 px**, five funding selects at 32, the save slots at 36, fourteen overlay
+  rows and three more at 40. The base rule is right and nine later, more
+  specific rules undercut it. Nothing has ever measured it.
+- **M13** (`workitems-mainline.md`) — the import census and `Array#join`. The
+  rule is a lookbehind, and the one correction that matters is the **spread
+  operator**: without it the stricter census reports 15 findings of which 9 are
+  `...name` spreads; with it, **6 findings and no false ones** — a dead
+  `import { join }` in six tools, every one of them converted in Q167.
+- **M14** (`workitems-mainline.md`) — `quick` at **560 s of 600**, with the
+  per-gate table and a three-way split where each set is a question: does it
+  boot and keep a city (115 s), does the interface work when driven (297 s),
+  can everything be reached and read (164 s). Three rather than two because a
+  two-way split leaves 461 s of a 540 budget, which trips one slice later.
+- **D10** (`workitems-measurement.md`) — the street row is a p95 over 39
+  frames on a city the card itself flags as unsettled. Not the walk wandering:
+  the fixture is fixed and the leg stops at 60 m. Stop printing a percentile
+  the sample cannot carry, record where the walk was, then decide about the
+  hold.
+- **D11** (`workitems-measurement.md`) — `reports/region-era31.md` predates the
+  firing table. Measured the cost rather than guessing it: four games take
+  **59 s**, so the 200-game re-run is about **50 minutes**.
+
+### And the sweep for things forgotten
+
+**S22d and S8b had no item in any lane.** The order has named them since P120
+and the only description anywhere was the answer paragraph in
+`dev-questions.md` — so the next person to open `workitems-world.md`, which is
+the document that owns how the world is built, would not have found them. Both
+are written now, with what the gate must assert and what must not move.
+
+**`RELEASE.md` disagreed with itself.** The count had been updated to *"0 open
+questions"* and the two bullets under it still described Q169 and Q168 as open,
+one of which was built the same night. It now says what happened to each of the
+four that left the list. Its test count was 2,087 against 2,116, and its gate
+table was missing the `release` set entirely.
+
+**"Five browsers" in ten places.** `room_smoke` has driven eight since X7, one
+of them a phone. `README.md`, `RELEASE.md` (three times), `plan-v1.md`,
+`workitems-v1.md`, `tools/gates.mjs`'s comment and its `--list` line, and
+`test/gates.test.js`'s excuse all said five. The historical entries in the
+dev-log and the multiplayer lane are left alone: they were true when written.
+This is `models-of-code-go-stale` found by reading the docs against the gate
+rather than by anything going red.
+
+Suite **2,116 green twice** and no code changed in this round — the two edits
+to `tools/gates.mjs` and `test/gates.test.js` are a description and an excuse.

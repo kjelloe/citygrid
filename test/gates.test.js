@@ -130,10 +130,11 @@ test("asking for a set that does not exist is refused, not silently empty", () =
  * anything.
  */
 const NOT_IN_QUICK = {
-  room_smoke: "five browsers against a real `ws` server and a room pumped for "
-    + "city years: 81 s of a 540 s budget, and `quick` measured 578 s with it in "
-    + "(X5 item 2, M9). It is in `room`, with the two soaks that need the same "
-    + "server.",
+  room_smoke: "eight browsers against a real `ws` server and a room pumped for "
+    + "city years — one of them a 390x844 phone since X7 — at 164 s. It was 81 s "
+    + "of a 540 s budget when this excuse was written and `quick` measured 578 s "
+    + "with it in (X5 item 2, M9). It is in `room`, with the two soaks that need "
+    + "the same server.",
 };
 
 test("the browser smokes are all in `quick`, except the ones that cost a soak", () => {

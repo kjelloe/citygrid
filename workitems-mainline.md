@@ -500,6 +500,82 @@ HTTP-only with its own upgrade map, no `grep -w ':port'`, and an rsync allowlist
 **Still owed by the box, not the code:** the first-time setup run once by hand, and `room_soak`
 against the deployed server (V4).
 
+## M13 — The import census cannot tell `path.join` from `Array#join` (XS, test) — found 2026-10-11, unplanned
+
+**What it misses.** `test/unused-imports.test.js` asks whether the file mentions an imported NAME
+anywhere, so `rows.join(", ")` keeps `import { join } from "node:path"` alive. Found when
+`worker_smoke` kept a dead `join` through a green census on the word alone (Q167's round) — the
+same shape as `a-grep-that-counts-a-comment`, one layer in.
+
+**The rule, and it is one line.** Reject a match preceded by a property access:
+`(?<![.\w$])\bname\b`. The one correction that matters is the **spread operator** — `...name` has
+a dot before it and is a use, not a property — so `...` is normalised away before the test. Run on
+the tree on 2026-10-11:
+
+- without the `...` correction: 15 findings, **9 of them false** (`...hostOptions(choices)`,
+  `...OVERLAY_CHOICES`, `...buildHouseParts(spec)` and six more spreads);
+- with it: **6 findings, 0 false** — a dead `import { join } from "node:path"` in `budget_gate`,
+  `lobby_smoke`, `offline_smoke`, `play_smoke`, `save_smoke` and `skin_shots`, every one of them a
+  tool Q167 converted, where deleting the dead `const root` left `join` with nothing but
+  `Array#join` behind it.
+
+**Do.** The stricter regex in both halves of that file (the import census and the dead-const
+census beside it), the six imports deleted, and the measurement above in the test's header so the
+next person knows what the lookbehind is for. **Tests first** is the test, so the gate is the
+finding list going from 0 to 6 and back to 0.
+
+**Size.** XS, ready to run. It is the kind of thing that should land beside whatever else touches
+`tools/`.
+
+## M14 — `quick` is 40 s from its budget, and the line is the question each gate asks (S, measurement) — found 2026-10-11, unplanned
+
+**Measured on a quiet machine, 2026-10-11**: `quick` is **560 s of 600**. M9 raised it 540 → 600
+in October and the set has grown since — K6a and the omissions round added four phone rows to
+`play_smoke` and a sheet check beside them — and M2's rule is **split rather than raise**, for the
+sixth time.
+
+| gate | s | what it answers |
+|---|---|---|
+| `ui_smoke` | 193 | the HUD, driven |
+| `play_smoke` | 104 | the pointer, the camera, the street |
+| `a11y_smoke` | 82 | 200% text, contrast, the room's panels |
+| `reach_smoke` | 82 | every control can be clicked |
+| `lobby_smoke` | 39 | the new-game screen and the help sheet |
+| `mvp_acceptance` | 21 | §24's thirteen criteria |
+| `client_smoke` | 16 | the page boots |
+| `offline_smoke` | 12 | the worker serves it with the network off |
+| `save_smoke` | 9 | a save survives a closed tab |
+| `worker_smoke` | 8 | the reducer in its thread |
+| `update_smoke` | 7 | a new build reaches a cached phone |
+| `serve_smoke` | 3 | the deployed server serves the real page |
+
+**The line.** Three sets, each one a question:
+
+- **`quick`** — *does it boot, keep a city, and come back?* `client_smoke`, `serve_smoke`,
+  `offline_smoke`, `update_smoke`, `worker_smoke`, `save_smoke`, `lobby_smoke`, `mvp_acceptance`.
+  **115 s measured, budget 150.** This is the set every slice runs, and at two minutes it is
+  genuinely quick again — which is what `quick` was for.
+- **`screens`** — *does the interface work when it is driven?* `ui_smoke`, `play_smoke`.
+  **297 s, budget 345.**
+- **`access`** — *can everything be reached and read?* `reach_smoke`, `a11y_smoke`. **164 s,
+  budget 195.**
+
+Three rather than two on purpose: a two-way split leaves the interface set at 461 s of a 540
+budget, which is the same trip one slice later. The second line was already there to be drawn —
+driving the page and auditing it are different questions, and `reach_smoke` and `a11y_smoke`
+already share a shape (both census the whole interface rather than playing it).
+
+**What else moves.** `test/gates.test.js`'s `NOT_IN_QUICK` says every browser smoke is in `quick`
+unless excused — that rule becomes "in `quick`, `screens` or `access`", and its two tests with it.
+`SETS.all` gains the two names. The three skills that tell a slice which set to run
+(`slice-workflow`, `review-round`, `sim-gate`) name `quick`; each needs the sentence that an
+interface slice also runs `screens`, and a control or contrast slice `access`. `README.md` and
+`plan-v1.md`'s gate table list the sets.
+
+**Measure after, not before.** Every budget above is this machine, alone, at this commit. The
+split's own gate is `gates.mjs quick`, `screens` and `access` run one at a time with the numbers
+written into `tools/gates.mjs` beside the totals, exactly as M9 did it.
+
 ## M7b — The v1.0 release (S) — v1.0's V6
 
 `RELEASE.md` re-measured at the release commit, `git tag v1.0`, `main` fast-forwarded, **pushed by

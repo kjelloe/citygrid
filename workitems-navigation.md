@@ -390,27 +390,76 @@ unchanged.
 **Tests first.** `test/tools.test.js`: the argument parses and the default spawns; a run against
 the local server started by hand (`node server/index.js`) passes identically to the spawned one.
 
-## K7 — A phone cannot load a save (XS) — found 2026-10-11, unplanned
-
-**What the code says.** `hud.js`: `if (event.shiftKey || slot === slots.auto) onLoad?.(slot)`. A
-save slot is saved to by tapping it and loaded from by **shift**-clicking it, and a phone has no
-shift. The only thing that says so is the button's `title`, which a touchscreen never shows. The
-lobby's **Continue** reaches the AUTOSAVE and nothing else, so a phone player who saved to slot 2
-cannot get back to it at all.
-
-**Why it is not fixed yet.** The fix is a touch control and there are three reasonable ones — a
-second button on a used slot, a Load row beside the save row, or a tap that opens a two-button
-choice — and which it is depends on how much room the saves drawer has on a phone. Kjell's call,
-or the reviewer's. It is XS whichever way it goes.
-
-**Held by a census meanwhile.** `test/reachability.test.js` — *"no control is issued only with a
-modifier key"* — lists `client/ui/hud.js` with what a phone player does instead, so a second one
-cannot appear quietly. Ruling 027 says a control needs a screen; this is the same claim one step
-on: it needs a way to be issued on the device the player has.
-
 **Order inside K6:** a → c → b → d. **Done when** a phone guest can read how to move, read the
 whole advisor message, see every rail button, and be sent a link they can tap; and the release set
 can be pointed at the box.
+
+## K7 — A phone cannot load a save (XS) — found 2026-10-11, unplanned
+
+*(The analysis below replaces the stub written when it was found: the design and the three options
+are here, the choice is Kjell's or the reviewer's.)*
+
+**What the code says.** `hud.js`: `if (event.shiftKey || slot === slots.auto) onLoad?.(slot)`. A
+slot is saved to by tapping it and loaded from by **shift**-clicking it; a phone has no shift. The
+only thing that says so is the button's `title`, which a touchscreen never shows. The lobby's
+**Continue** reaches the AUTOSAVE and nothing else, so a phone player who saved to slot 2 cannot
+get back to it at all.
+
+**Measured on a 390x844 phone** (2026-10-11): the saves drawer is 371x185 with six controls on two
+rows — Slot 1, Slot 2, Slot 3, Auto, Export, Import — each **36 px** high, with about 60 px of
+drawer left over. There is room for one more row and no room for two.
+
+**Three ways, and the trade-off.**
+
+1. **A Load row** *(recommended)*. The drawer becomes "Save to" — the three slots and Auto — and
+   "Load from" — the same slots, each `disabled` when empty with the reason on it. One tap per
+   action on every device, no new interaction language, and it makes the save/load asymmetry
+   visible instead of hiding it in a modifier. Costs a row of four buttons and about 44 px.
+   `aria-disabled` stops Playwright clicking and `hidden` fails `reach_smoke`
+   (`a-control-that-is-present-but-inert`), so an empty Load slot is `disabled` AND says why.
+2. **A tap on a used slot opens a two-button choice** (Save over it / Load it). No extra row, and
+   it answers the ambiguity a used slot already has — but it is an extra tap for every save, and a
+   popover over a drawer on a 390 px screen is the layout this project keeps getting wrong.
+3. **A Save/Load mode toggle** above the row. Fewest buttons; a hidden mode, and a mode that is
+   wrong when you come back to it loses a city. Rejected unless the drawer gets tighter.
+
+**Tests first, whichever it is.** `test/reachability.test.js` already holds the census
+*"no control is issued only with a modifier key"*, with `client/ui/hud.js` on its allow-list — the
+entry comes OFF the list in the same commit. `play_smoke`'s phone block saves to a slot, loads it
+back and asserts the city's hash is the one that was saved (`save_smoke` is the desktop shape to
+copy). And the desktop keeps shift-click as a shortcut only if `help-model.js` says so on the
+sheet, which on a phone it must not.
+
+## K8 — Thirty-one controls are smaller than this project's own touch target (S) — found 2026-10-11, unplanned
+
+**What the stylesheet says.** `:root { --touch: 44px }` and `button, [role="button"] { min-height:
+var(--touch) }` — and then nine later, more specific rules undercut it. Measured on a 390x844
+phone, every control visible in the HUD and its drawers:
+
+| control | height |
+|---|---|
+| `#loan-borrow`, `#loan-repay` | **19 px** |
+| the five `#funding-*` selects | 32 px |
+| the save slots, `#export`, `#import` | 36 px |
+| the fourteen overlay rows, `#speed`, `#new-city`, `.drawer-close` | 40 px |
+
+Thirty-one in all. Nothing measures it, which is why a rule the project wrote for itself has been
+quietly false for most of the interface since the HUD was built — and V5 is an evening on phones.
+
+**Do.** Delete the overrides rather than special-case a phone: a 44 px minimum is the rule, and the
+places that undercut it did so to fit a row that can wrap instead. The two 19 px loan buttons are
+the exception worth looking at first — they are inside a line of text, and the fix there is a row
+of their own. `--touch` stays the one number.
+
+**Tests first.** A census in `a11y_smoke`'s phone pass: every visible control in `#hud`, its
+drawers and its dialogs is at least `--touch` in both dimensions, with an allow-list where each
+entry names why (the pattern `QUEST_FREE` and `MODIFIER_ONLY` already use). Count the controls
+first — a pass over no controls is the `every-is-true-of-nothing` shape this file keeps finding —
+and read `--touch` from the stylesheet rather than writing 44 into the gate
+(`a-constant-tuned-to-a-gate`).
+
+**Size.** S for the census and the overrides; the loan row is XS on top. Before V5 if the evening
+is played on phones, because a 19 px button on a 390 px screen is not a control.
 
 ## Review after K3 (2026-09-11)
 

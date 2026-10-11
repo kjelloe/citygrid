@@ -18,7 +18,7 @@ untouched: no socket, offline as an installed app.
 **What is already true** (`workitems-multiplayer.md`, X0–X4h, eras 29–31): the room, the relay, the
 door, the lobby's host and join, ownership on screen, requests both ways, regency, the abandonment
 sweep, spectators, hibernation to disk, the history, the region's money and aid rules. `room_soak`,
-`room_churn` and `room_smoke` (five browsers) are green. `main` is merged to `28b7800`.
+`room_churn` and `room_smoke` (eight browsers, one of them a phone) are green. `main` is merged to `28b7800`.
 
 **What v1.0 still needs**, in order:
 
@@ -93,9 +93,10 @@ measured, and a dead constant that fences dead imports.*
   not a cap at all: a `top: 3.2rem` left over from an older layout moved the card's PAINT inside a
   column that clips, so 51 px of it were cut away. The card scrolls inside a cap bounded by the
   rail now, and `play_smoke` asserts both.
-- **Q170 — the sun's shadow is invisible** (8% darker than the ground, by the gate's own number).
-  Opened by the reviewer; a v1.1 picture item unless Kjell wants the evening played under visible
-  shadows.
+- ~~**Q170 — the sun's shadow is invisible**~~ (8% darker than the ground, by the gate's own
+  number) — **answered A145** and scheduled as **S22d**, before V5. The item is in
+  `workitems-world.md`, written on 2026-10-11: it had been named in the order since P120 with no
+  entry in any lane, and so had **S8b**.
 
 **Found on 2026-10-11, after K6a–K6c** (the omissions sweep on those slices):
 
@@ -107,8 +108,21 @@ measured, and a dead constant that fences dead imports.*
   is the path every phone at V5 takes and no gate machine has one; `room_smoke` installs it before
   the page loads and asserts the button hands it the invitation.
 - **K7 — a phone cannot load a save** (`workitems-navigation.md`): loading a slot is `shift`-click,
-  and the lobby's Continue reaches the autosave only. XS, but the touch control is a design call.
-  Before V5 if the evening is played on phones.
+  and the lobby's Continue reaches the autosave only. XS, but the touch control is a design call —
+  three options and a recommendation are in the item. Before V5 if the evening is played on phones.
+- **K8 — thirty-one controls are smaller than `--touch`** (`workitems-navigation.md`), measured on
+  a 390x844 phone: the two loan buttons are **19 px**, the funding selects 32, the save slots 36,
+  the overlay rows 40. The stylesheet sets `--touch: 44px` and nine later rules undercut it, and
+  nothing measures it. S, before V5 for the same reason.
+- **M13 — the import census cannot tell `path.join` from `Array#join`** (`workitems-mainline.md`):
+  one lookbehind, the spread operator corrected for, and six dead imports it finds today. XS.
+- **M14 — `quick` is 560 s of 600** (`workitems-mainline.md`): the split, three sets, each one a
+  question. S, and M2's rule says it is owed before the next browser row.
+- **D10 — the street row is a percentile over 39 frames** (`workitems-measurement.md`): the card
+  already flags `thinSample` and `settled: false` and prints the p95 anyway; two runs read 3966 ms
+  and 467 ms. S.
+- **D11 — `reports/region-era31.md` predates the firing table** (`workitems-measurement.md`): a
+  50-minute re-run, measured. XS.
 
 **V5, as a checklist for Kjell** (everything the ally cannot do):
 0. The DNS record for `citygrid.kjell.today` pointing at the box, live before certbot runs.

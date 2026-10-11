@@ -40,7 +40,7 @@ export const GATES = {
   reach_smoke: { args: ["tools/reach_smoke.mjs"], what: "every control clickable, nothing eating the map" },
   save_smoke: { args: ["tools/save_smoke.mjs"], what: "a city survives a closed tab, hash for hash" },
   serve_smoke: { args: ["tools/serve_smoke.mjs"], what: "the REAL server, so a CSP that blocks the importmap goes red" },
-  room_smoke: { args: ["tools/room_smoke.mjs"], what: "two browsers in one room, on one hash and one hour" },
+  room_smoke: { args: ["tools/room_smoke.mjs"], what: "eight browsers in one room, one of them a phone, on one hash — and the invitation copied, shared and opened" },
   skin_shots: { args: ["tools/skin_shots.mjs"], what: "the three interface skins, one city, for somebody to open" },
   ui_smoke: { args: ["tools/ui_smoke.mjs"], what: "every button hit-tested, every overlay rendered" },
   update_smoke: { args: ["tools/update_smoke.mjs"], what: "a new build reaches a returning player" },
@@ -124,7 +124,8 @@ export const GATES = {
 export const SETS = {
   // **`room_smoke` is NOT here** (X5 item 2). It was, by M2's own rule that a
   // smoke driving the real page is the cheapest thing that can see a blank one
-  // — and it is not cheap: five browsers, a real `ws` server and a room pumped
+  // — and it is not cheap: eight browsers (one of them a phone, X7), a real `ws` server and a
+  // room pumped
   // for city years is 81 s, which took `quick` to 578 s of a 540 s budget. M2's
   // rule is split rather than raise, and this is the split. It is in `room`,
   // beside the two soaks that need the same server.

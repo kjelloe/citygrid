@@ -40,7 +40,7 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **2,087 tests**, green twice in a row on every slice (`./test.sh`), and **thirteen gate sets** —
+- **2,116 tests**, green twice in a row on every slice (`./test.sh`), and **thirteen gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
   `release`, `film` and `room` — every one of their budgets re-measured on a quiet machine at
   era 30 (M9), most of them downwards. `region` is era 31's: a four-seat city played five ways,
@@ -93,7 +93,8 @@ vendored and pinned; `ws` is the server's only dependency.
   asks to clear your road, a standing answer so the month can answer for you, a ping, chat, a
   roster, and a seat that is still yours for two minutes after you close the tab — then the deputy
   plays it, then the ground goes to the commons. A room nobody is in stops playing.
-  `tools/room_smoke.mjs` drives **five browsers** through all of it on the real server;
+  `tools/room_smoke.mjs` drives **eight browsers** through all of it on the real server, one of
+  them a 390x844 phone (X7);
   `tools/room_soak.mjs` plays **five city years with two real `ws` clients and ends on one hash**,
   checked every sim-month, and `room_churn` takes a seat away and gives it back over 5,586 frames
   with nobody diverging. A demolition request is state, a command and a hash; a room survives a
@@ -150,7 +151,14 @@ is only comparable within an era.
 | `sim` | 2 | **354 s** | 450 s | `disaster_soak` and `traffic_gate` |
 | `sweep` | 1 | **628 s** | 780 s | the 200-game balance sweep, which is the only gate that writes a report |
 | `region` | 1 | **201 s** | 300 s | four seats, five arms: the sample that says every multiplayer rule still reaches a city (X4g) |
-| `room` | 3 | **187 s** | 600→300 s | five browsers in one room, and two `ws` clients on one hash |
+| `room` | 3 | **269 s** | 600→300 s | eight browsers in one room, one of them a phone, and two `ws` clients on one hash |
+| `release` | 1 | **60 s** | 180 s | `room_soak --eight`: the scripted eight on one hash, the half of V4 that proves the HASH (X7) |
+
+**The times are era 30 and the sets have grown since** (2026-10-11): `quick` is **560 s** of its
+600 — four phone rows in `play_smoke`, a help-sheet check beside them — which is 40 s of room and
+is why **M14** proposes splitting it three ways. A whole-table re-measure belongs to that item;
+numbers from two eras in one table would be worse than one stale column
+(`every measured number belongs to an era`).
 
 Every budget on that table was re-measured at era 30 and **most of them came down** — `kits` by
 half, `film` to a third, `room` to a half. `sim` was split from `sweep` because one gate was two
@@ -198,19 +206,18 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**0 open questions** are on the list (`dev-questions.md`, bottom section), neither blocking
-anything — both are instruments rather than rules, and both were found by looking at a picture.
-Q167 was the third and is **built** (2026-10-10, P116): one handler serves the tree, and all
-sixteen browser tools call it.
+**0 open questions** are on the list (`dev-questions.md`, bottom section). The four that were on
+it a week ago all left it, and what happened to each is the honest version of "nothing is blocked":
 
-- **Q169**: on a phone the advisor's message is cut off mid-sentence — the card ends and the rest
-  of the sentence spills over the map. It has been like that for as long as the phone shot has
-  existed, and it is the first thing anybody will see on a phone at V5.
-- **Q168**: the compare sheet's **terrace** row is captioned "close and low over a residential
-  street — the zoom where facades, doors and front gardens have to carry it", and what it renders
-  is a region to the horizon with a lake in it. `span: 15` at `pitch: 26°` is a perspective camera
-  at a shallow angle, so fifteen tiles across the near field still shows everything behind them.
-  The one row aimed at facades has never photographed any. Re-frame it, or is the wide view wanted?
+- **Q169** — the advisor's message cut off mid-sentence on a phone — answered **A146** and **built
+  in K6a** (2026-10-11). It was not a cap: a `top: 3.2rem` left over from an older layout moved
+  the card's paint inside a column that clips, so 51 px of it were cut away.
+- **Q167** — sixteen tools serving the tree their own way — **built** (2026-10-10, P116): one
+  handler, `server/static.js`, and all sixteen browser tools call it.
+- **Q170** — the sun's shadow invisible at 8% darker than the ground — answered **A145** and
+  scheduled as **S22d**, before V5.
+- **Q168** — the compare sheet's terrace row photographing a region rather than a facade —
+  answered **A147** and scheduled as **S8b**.
 
 **Q161–Q166 were answered on 2026-10-09 as A139–A144** (P114) and the work is done or scheduled:
 the sun stands further out (**S22b**, built — and the frames it was argued from turned out to have
@@ -289,7 +296,7 @@ Everything else on this list has been answered and built; the seven above replac
   city earns and are therefore a balance era; and the lobby's remaining rows (the QR code, ready,
   joining a room that has started). Since 2026-10-09 a room hibernates to the disk and wakes when
   somebody types its code (X4f), the city keeps a history that outlives the alert list (X4h), and
-  the host holds the clock and the door (X2d). The gap is not code — it is that **five browsers on
+  the host holds the clock and the door (X2d). The gap is not code — it is that **eight browsers on
   one machine driven by a gate is not eight people on an evening**, and the release gate for the
   wave says eight clients for an hour with a desync count of zero. That evening is Kjell's.
   Ruling 003 is unmoved either way: singleplayer opens no socket and `offline_smoke` asserts it.
