@@ -995,6 +995,23 @@ try {
   check("the card carries a row per sweep step",
     Array.isArray(parsed?.steps) && parsed.steps.length === SWEEP.length,
     `${parsed?.steps?.length} of ${SWEEP.length}`);
+  // **No row prints a percentile it has no sample for** (D10). The card flagged
+  // `thinSample` and printed the p95 anyway, in the same column as a p95 over
+  // hundreds of frames: two runs of the street step minutes apart on one commit
+  // read 3,966 ms and 467 ms from 39 samples with one 3.3-second bake in them.
+  // A pure check on the JSON — it needs no second run.
+  const thinWithP95 = (parsed?.steps ?? [])
+    .filter((row) => row.thinSample && row.p95 !== undefined)
+    .map((row) => `${row.step} (${row.frames} frames)`);
+  check("no row carries a p95 over a sample too thin to have one",
+    thinWithP95.length === 0, thinWithP95.join(", "));
+  // And a row that walked says where it walked, or two cards cannot be put
+  // side by side at all.
+  const walked = (parsed?.steps ?? []).filter((row) => row.wantedM > 0);
+  check("a walking row records where the leg started and ended",
+    walked.length > 0 && walked.every((row) => row.walkFrom && row.walkTo),
+    walked.map((row) => `${row.step}: ${row.walkFrom ?? "?"} → ${row.walkTo ?? "?"}`).join("; "));
+
   check("the card names the machine, not only the numbers",
     Boolean(parsed?.machine?.userAgent && parsed?.machine?.deviceClass && parsed?.machine?.tier),
     JSON.stringify(parsed?.machine ?? {}).slice(0, 60));

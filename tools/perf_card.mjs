@@ -107,8 +107,17 @@ for (const row of card.steps) {
   }
   if (row.thinSample) {
     console.warn(`  note  ${row.step}: only ${row.frames} frames in the hold — the governor's `
-      + `window is 60 and its floor is 10, so this row did not test it, and its p95 is `
-      + `a percentile over ${row.frames} numbers`);
+      + `window is 60 and its floor is 10, so this row did not test it, and it has no p95: `
+      + `a percentile over ${row.frames} numbers is a value with no error bar (D10). `
+      + `p50 ${row.p50} ms, worst ${row.worst} ms`);
+  }
+  // **Where the walk was**, which no field recorded until D10. Two cards 167k
+  // triangles apart cannot be compared without it: the leg starts at the
+  // corridor nearest the camera target and ends wherever 60 m of walking got
+  // to, and what the frame costs depends on which houses that is.
+  if (row.walkFrom) {
+    console.log(`  walk  ${row.step}: ${row.walkFrom} → ${row.walkTo}, `
+      + `${row.bakedChunks ?? 0} chunk(s) baked on the way`);
   }
   if (row.settled === false) {
     console.warn(`  note  ${row.step}: the city was still filling after `
@@ -125,7 +134,9 @@ const pad = (text, width) => String(text).padEnd(width);
 console.log(card.fixture);
 console.log(`${pad("step", 26)}${pad("p50", 8)}${pad("p95", 8)}${pad("tris", 9)}${pad("calls", 7)}${pad("water", 8)}lod`);
 for (const row of card.steps) {
-  console.log(`${pad(row.step, 26)}${pad(row.p50, 8)}${pad(row.p95, 8)}`
+  // A dash where there is no p95, rather than `undefined`: the column is a
+  // number or it is nothing, and `undefined` in a table reads as a bug.
+  console.log(`${pad(row.step, 26)}${pad(row.p50, 8)}${pad(row.p95 ?? "—", 8)}`
     + `${pad(row.triangles, 9)}${pad(row.drawCalls, 7)}${pad(row.waterTriangles, 8)}${row.lod}`);
 }
 console.log(`\n${card.machine.deviceClass}, tier ${card.machine.tier} — wrote ${out}`);

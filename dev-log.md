@@ -16274,3 +16274,34 @@ everything is on screen.
   `79f2f8edd4bff09d`, loaded back `256ae06f102ceb83`.
 - Suite **2,124 green twice**; `quick` 121/180, `access` 134/210,
   `screens` 279/360.
+
+## D10 — a percentile the sample cannot carry (2026-10-12)
+
+`reports/perf/swiftshader.json`, street walk 60 m: `frames: 39`,
+`thinSample: true`, `settled: false`, and a **p95 printed in the same column as
+a p95 over hundreds of frames**. Two runs minutes apart on one commit read
+**3,966 ms** and **467 ms**. The card had every flag needed to know why and
+printed the number anyway.
+
+A row with fewer than 60 frames — the governor's own window — has **no `p95`
+field** now, and the table prints a dash. `p50` and `worst` stay, because both
+are honest about what they are: the middle of what was measured, and the worst
+frame in it, which on this row is the chunk bake that makes the percentile
+swing. The note beside it says what it has instead.
+
+**And a walking row now says where it walked.** No field recorded it, so two
+cards 167k triangles apart could not be told apart from two cards of two
+different streets. `walkFrom` and `walkTo` are the walker's pose in metres —
+this run reads `950,978 → 1015,978`, 65 m along one street — and the tool prints
+them with the chunks baked on the way.
+
+`ui_smoke` asserts both as pure checks on the card's JSON, which need no second
+run: no row carries a p95 over a sample too thin to have one, and a row that
+walked records its two ends.
+
+### Measured
+
+- The card's eight slow rows lose their p95 and keep p50 and worst; the three
+  fast ones (`city 80t`, `city 120t`, `ortho 96t`) keep all three, which is the
+  line the governor's window draws.
+- Suite **2,124 green twice**; `ui_smoke` 223 checks.

@@ -165,6 +165,14 @@ function holdWalkKeys(down) {
 
 async function walkFor(renderer, seconds, wantedM) {
   const leg = legWatcher(renderer);
+  // **Where the leg started and ended** (D10). The fixture is fixed and the
+  // start is the corridor nearest the camera target, so two cards ought to walk
+  // the same ground — and two runs on one commit came back 167k triangles
+  // apart. Without these two points there is no way to tell a slow frame from
+  // a different street.
+  const from = renderer.walker?.pose ? {
+    x: Math.round(renderer.walker.pose.x), z: Math.round(renderer.walker.pose.z),
+  } : undefined;
   holdWalkKeys(true);
   const started = performance.now();
   const until = started + seconds * 1000;
@@ -185,11 +193,16 @@ async function walkFor(renderer, seconds, wantedM) {
   // The walker's own model is frame-rate independent — 60.0 m at 60 fps and
   // 60.4 at 10, measured in node over twelve starting points — so the answer is
   // in the session, not in the arithmetic, and these three numbers name it.
+  const to = renderer.walker?.pose ? {
+    x: Math.round(renderer.walker.pose.x), z: Math.round(renderer.walker.pose.z),
+  } : undefined;
   return {
     metres: leg.metres,
     seconds: Math.round((performance.now() - started) / 100) / 10,
     frames,
     blocked,
+    from,
+    to,
   };
 }
 
@@ -313,7 +326,14 @@ async function measure(step, session, play, hold) {
       frames: frames.length,
       ...(thin ? { thinSample: true } : {}),
       p50: percentile(sorted, 0.5),
-      p95: percentile(sorted, 0.95),
+      // **No p95 on a thin sample** (D10). The flag was there and the number
+      // was printed beside it, in the same column as a p95 over hundreds of
+      // frames — and two runs of the street step, minutes apart on one commit,
+      // read **3,966 ms and 467 ms** from 39 samples with one 3.3-second bake
+      // in them. A percentile of a handful of numbers is a value with no error
+      // bar and every appearance of one; `undefined` is the honest answer and
+      // the table prints a dash for it.
+      ...(thin ? {} : { p95: percentile(sorted, 0.95) }),
       worst: percentile(sorted, 1),
       triangles: s.triangles,
       estimate: s.estimate,
@@ -342,6 +362,9 @@ async function measure(step, session, play, hold) {
       ...(step.walkM > 0 ? {
         walkedM: walk.metres,
         wantedM: step.walkM,
+        // In metres, which is what the walker's pose is in (D10).
+        ...(walk.from ? { walkFrom: `${walk.from.x},${walk.from.z}` } : {}),
+        ...(walk.to ? { walkTo: `${walk.to.x},${walk.to.z}` } : {}),
         // Metres a second over the leg. Four means the walker ran, 1.6 that it
         // only walked, and anything under that with `walkBlocked` frames means
         // it was against something.
