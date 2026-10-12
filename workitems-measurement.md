@@ -443,7 +443,7 @@ tool which loads them by accident.
 **Gate.** `soak` on three seeds with the quest count printed beside the population — the instrument
 first, since a probe that cannot see a quest fire would report zeros either way.
 
-## D10 — The street row is a percentile over 39 frames (S, measurement) — found 2026-10-11, unplanned
+## ~~D10 — The street row is a percentile over 39 frames (S, measurement)~~ — found 2026-10-11, **built 2026-10-12**
 
 **What the card says about itself.** `reports/perf/swiftshader.json`, street walk 60 m:
 `frames: 39`, `thinSample: true`, `settled: false` after 31 frames and 15.1 s, `p50: 399.9`,

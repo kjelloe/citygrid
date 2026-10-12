@@ -404,7 +404,7 @@ bare hosting socket takes a seat and a connection no player would.
 whole advisor message, see every rail button, and be sent a link they can tap; and the release set
 can be pointed at the box.
 
-## K7 — A phone cannot load a save (XS) — found 2026-10-11, unplanned
+## ~~K7 — A phone cannot load a save (XS)~~ — found 2026-10-11, **built 2026-10-12**
 
 *(The analysis below replaces the stub written when it was found: the design and the three options
 are here, the choice is Kjell's or the reviewer's.)*
@@ -440,7 +440,15 @@ back and asserts the city's hash is the one that was saved (`save_smoke` is the 
 copy). And the desktop keeps shift-click as a shortcut only if `help-model.js` says so on the
 sheet, which on a phone it must not.
 
-## K8 — Thirty-one controls are smaller than this project's own touch target (S) — found 2026-10-11, unplanned
+**Built 2026-10-12, option 1.** Two rows — *Save to* with the three manual slots, *Load from* with
+those and the autosave — and the modifier is gone entirely rather than kept as a shortcut: one way
+to do a thing, and `MODIFIER_ONLY` is empty. An empty load slot is `disabled` with the reason on
+it. The gate went into `save_smoke`, which had driven `CITY.save`/`CITY.load` — the seam — which is
+how shift-click survived four waves; pressing the buttons found a second defect in the same minute,
+**`save()` never refreshed the slot list**, so the Load button stayed grey until the page was
+reloaded. And the first phone shot had *Auto* cut off behind the compass, so the rows wrap.
+
+## ~~K8 — Thirty-one controls are smaller than this project's own touch target (S)~~ — found 2026-10-11, **built 2026-10-12**
 
 **What the stylesheet says.** `:root { --touch: 44px }` and `button, [role="button"] { min-height:
 var(--touch) }` — and then nine later, more specific rules undercut it. Measured on a 390x844
@@ -470,6 +478,13 @@ and read `--touch` from the stylesheet rather than writing 44 into the gate
 
 **Size.** S for the census and the overrides; the loan row is XS on top. Before V5 if the evening
 is played on phones, because a 19 px button on a 390 px screen is not a control.
+
+**Built 2026-10-12.** One `@media (pointer: coarse)` block at the END of the stylesheet — a media
+query does not raise specificity, and the first cut sat two hundred lines above the rules it had to
+beat and lost every one of them. `.hud-drawer .hud-overlays button` needed its own two-class
+selector, which was fifteen of the thirty. The dense sizes stay on a mouse, where they were chosen,
+and the chrome is still **30% of a 390x844 screen**. `a11y_smoke` reads `--touch` off `:root` and
+counts 79 controls before saying anything is true of all of them.
 
 ## Review after K3 (2026-09-11)
 

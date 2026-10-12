@@ -107,20 +107,18 @@ measured, and a dead constant that fences dead imports.*
 - ~~**The share half of Copy link was never driven**~~ — **gated the same day.** `navigator.share`
   is the path every phone at V5 takes and no gate machine has one; `room_smoke` installs it before
   the page loads and asserts the button hands it the invitation.
-- **K7 — a phone cannot load a save** (`workitems-navigation.md`): loading a slot is `shift`-click,
-  and the lobby's Continue reaches the autosave only. XS, but the touch control is a design call —
-  three options and a recommendation are in the item. Before V5 if the evening is played on phones.
-- **K8 — thirty-one controls are smaller than `--touch`** (`workitems-navigation.md`), measured on
-  a 390x844 phone: the two loan buttons are **19 px**, the funding selects 32, the save slots 36,
-  the overlay rows 40. The stylesheet sets `--touch: 44px` and nine later rules undercut it, and
-  nothing measures it. S, before V5 for the same reason.
+- ~~**K7 — a phone cannot load a save**~~ — **built 2026-10-12**: two rows, *Save to* and *Load
+  from*, no modifier anywhere, and the gate that presses the buttons found that `save()` never
+  refreshed the slot list either.
+- ~~**K8 — thirty-one controls are smaller than `--touch`**~~ — **built 2026-10-12**: one
+  `@media (pointer: coarse)` block at the end of the stylesheet; 79 controls, none under 44 px, and
+  the chrome is still 30% of the screen.
 - ~~**M13 — the import census cannot tell `path.join` from `Array#join`**~~ — **built 2026-10-11**:
   the lookbehind, the spread corrected for, six dead imports gone.
 - ~~**M14 — `quick` is 560 s of 600**~~ — **built 2026-10-11**: three sets, each one a question —
   `quick` 114/180, `screens` 276/360, `access` 122/210.
-- **D10 — the street row is a percentile over 39 frames** (`workitems-measurement.md`): the card
-  already flags `thinSample` and `settled: false` and prints the p95 anyway; two runs read 3966 ms
-  and 467 ms. S.
+- ~~**D10 — the street row is a percentile over 39 frames**~~ — **built 2026-10-12**: a thin row
+  has no p95 at all now, and a walking row records where it walked.
 - **D11 — `reports/region-era31.md` predates the firing table** (`workitems-measurement.md`): a
   50-minute re-run, measured. XS.
 
