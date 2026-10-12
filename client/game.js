@@ -376,7 +376,19 @@ export async function startGame(root, given = {}) {
   }
 
   available().then((ok) => { if (!ok) hud.setStatus(t("status.noStorage")); });
-  listSaves().then((rows) => hud.setSlots(rows.map((r) => r.summary)));
+
+  /** What the saves drawer shows, re-read from the store (K7).
+   *
+   * It ran at boot and after a HUD rebuild, and NOT after a save — which was
+   * invisible while a slot was a button whose title went stale, and is not
+   * invisible now: the Load row's buttons are disabled until a slot has
+   * something in it, so a player who saved to slot 2 watched Load · Slot 2 stay
+   * grey until they reloaded the page. `save_smoke` presses the two buttons in
+   * order, which is what found it. */
+  function refreshSlots() {
+    return listSaves().then((rows) => hud.setSlots(rows.map((r) => r.summary)));
+  }
+  refreshSlots();
 
   function setSpeed(next) {
     // **In a room the clock is the room's** (X2d, plan.md §3.6). Asking is all
@@ -480,6 +492,7 @@ export async function startGame(root, given = {}) {
     };
     const stored = await putSave(record);
     hud.setStatus(stored === undefined ? t("status.noStorage") : t("status.saved", { slot }));
+    if (stored !== undefined) await refreshSlots();
     return stored !== undefined;
   }
 
@@ -658,7 +671,7 @@ export async function startGame(root, given = {}) {
       hud = createHud(hudRoot, hudOptions);
       minimap = makeMinimap();
       hud.setSpeedLabel(SPEEDS[speed].labelKey);
-      listSaves().then((rows) => hud.setSlots(rows.map((r) => r.summary)));
+      refreshSlots();
     },
     save, load, exportSave, importSave,
     // What is actually DRAWN. `overlay` here is only the last callback value;

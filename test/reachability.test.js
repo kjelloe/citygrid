@@ -220,12 +220,13 @@ test("every panel with a close button has a label for it", () => {
 // says so is a `title`, which a touchscreen never shows.
 
 /** Click handlers that read a modifier key, with what a touch player does
- * instead. An entry with no answer is a control a phone cannot reach. */
-const MODIFIER_ONLY = {
-  "client/ui/hud.js": "shift-click loads a save slot (K7, unplanned 2026-10-11): a phone can save "
-    + "and cannot load. The lobby's Continue reaches the AUTOSAVE only. Needs a touch control — "
-    + "a second button on a used slot, or a Load row — which is a design call, not a fix",
-};
+ * instead. An entry with no answer is a control a phone cannot reach.
+ *
+ * **Empty since K7** (2026-10-12), which is the point of it: `hud.js` loaded a
+ * save slot on `shift`-click, so a phone could save to a slot and never load
+ * one, and this list is what turned that from a note into work. The saves
+ * drawer is two rows now — Save to, Load from — one tap each on every device. */
+const MODIFIER_ONLY = {};
 
 test("no control is issued only with a modifier key", () => {
   const found = [];

@@ -605,7 +605,15 @@ button, [role="button"] {
 .budget-books[data-sign="positive"] { color: #2e7d4f; }
 .budget-books[data-sign="negative"] { color: #b3402c; }
 
-.hud-saves { display: flex; flex-wrap: nowrap; gap: 0.3rem; align-items: center; overflow-x: auto; scrollbar-width: thin; }
+/* **Two rows since K7**: Save to, Load from. The drawer is a column of rows and
+   each row scrolls on its own, so a narrow screen never wraps a row into two. */
+.hud-saves { display: flex; flex-direction: column; gap: 0.35rem; align-items: stretch; }
+/* The row WRAPS rather than scrolls: the drawer has vertical room and the rail
+   does not, which is why the rail got a fade (K6c) and this gets a second line.
+   A cut-off Auto button behind the compass was what the first K7 shot showed. */
+.saves-row { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.saves-label { flex: 0 0 auto; font-size: 0.78rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.03em; }
+.hud-saves .slot[disabled] { opacity: 0.45; cursor: default; }
 .hud-saves .slot {
   min-height: 36px;
   padding: 0 0.7rem;

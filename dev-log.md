@@ -16227,3 +16227,50 @@ because a pass over nothing is true of nothing (X7's 0×0 panels).
   41% ceiling the first playtest set is not touched, because nothing in the
   top bar or the bottom bar grew.
 - `screens` 281/360, suite **2,124 green twice**.
+
+## K7 — the save you could never load on a phone (2026-10-12)
+
+`hud.js`: `if (event.shiftKey || slot === slots.auto) onLoad?.(slot)`. A slot was
+saved to by tapping it and loaded from by **shift**-clicking it, and a phone has
+no shift — so a phone player could save to slot 2 and never get back to it, with
+the lobby's **Continue** reaching the autosave and nothing else. The only thing
+that said so was the button's `title`, which a touchscreen never shows.
+
+**Two rows, one tap each, the same on every device.** *Save to* carries the three
+manual slots; *Load from* carries those and the autosave, and an empty slot there
+is `disabled` with the reason on it rather than hidden — a hidden control fails
+`reach_smoke` and an `aria-disabled` one cannot be pressed by a gate at all
+(`a-control-that-is-present-but-inert`). The modifier is gone, and
+`test/reachability.test.js`'s `MODIFIER_ONLY` list is **empty**, which is what it
+was written for.
+
+### The gate found a second defect in the same minute
+
+`save_smoke` drove `CITY.save` and `CITY.load` — the seam — which is how the
+shift-click survived four waves without anybody noticing. The new block presses
+the buttons a player presses, and the first run hung on `#load-slot2` being
+disabled: **`save()` never refreshed the slot list.** It ran at boot and after a
+HUD rebuild, so a save left the drawer describing the store as it was when the
+page opened. Invisible while a slot was a button with a stale `title`; not
+invisible at all once the Load row's buttons are disabled until a slot has
+something in it — a player who saved to slot 2 would have watched *Load · Slot 2*
+stay grey until they reloaded the page.
+
+`refreshSlots()` runs after a successful write now, and the gate waits for the
+Load button to come alive rather than for a fixed pause — a gate that sleeps
+after a write it has not asked about is a gate measuring its own timing.
+
+### And the picture said the last thing
+
+The first phone shot had *Auto* cut off behind the compass: the rows scrolled
+like the rail does. The rail scrolls because it has no vertical room (K6c) and
+the drawer has plenty, so the rows **wrap** — Auto drops to a second line and
+everything is on screen.
+
+### Measured
+
+- `save_smoke` **19 checks**, including the round trip through the two buttons
+  with no keyboard: saved `256ae06f102ceb83`, the city moved to
+  `79f2f8edd4bff09d`, loaded back `256ae06f102ceb83`.
+- Suite **2,124 green twice**; `quick` 121/180, `access` 134/210,
+  `screens` 279/360.

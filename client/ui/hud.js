@@ -456,21 +456,47 @@ export function createHud(root, {
   saveBar.setAttribute("role", "toolbar");
   saveBar.setAttribute("aria-label", t("hud.saves"));
   const slotButtons = [];
-  for (const slot of [...(slots?.manual ?? []), slots?.auto].filter(Boolean)) {
-    const name = slot === slots.auto
-      ? t("hud.slot.auto")
-      : t("hud.slot.numbered", { number: slot.replace("slot", "") });
-    const button = el("button", "slot", name);
-    button.type = "button";
-    button.dataset.slot = slot;
-    button.title = t("hud.slot.hint");
-    button.addEventListener("click", (event) => {
-      if (event.shiftKey || slot === slots.auto) onLoad?.(slot);
-      else onSave?.(slot);
-    });
-    slotButtons.push(button);
-    saveBar.append(button);
+
+  /** One row of slots, with what pressing one does (K7).
+   *
+   * **It was one row and a modifier**: a tap saved and a `shift`-click loaded,
+   * so a phone could save to a slot and never load one — the lobby's
+   * **Continue** reaches the autosave and nothing else — and the only thing
+   * that said so was the button's `title`, which a touchscreen never shows.
+   * Ruling 027 says a control needs a screen; this is the same claim one step
+   * on, and `test/reachability.test.js` holds it now: no control is issued only
+   * with a modifier key.
+   *
+   * Two rows, one tap each, the same on every device. The load row's empty
+   * slots are `disabled` and say why rather than hidden: a hidden control fails
+   * `reach_smoke` and an `aria-disabled` one cannot be clicked by a gate at all
+   * (`a-control-that-is-present-but-inert`).
+   */
+  function slotRow(kind, wanted) {
+    const row = el("div", `saves-row saves-${kind}`);
+    row.append(el("span", "saves-label", t(kind === "save" ? "hud.saveTo" : "hud.loadFrom")));
+    for (const slot of wanted) {
+      const name = slot === slots.auto
+        ? t("hud.slot.auto")
+        : t("hud.slot.numbered", { number: slot.replace("slot", "") });
+      const button = el("button", "slot", name);
+      button.type = "button";
+      button.dataset.slot = slot;
+      button.dataset.kind = kind;
+      button.id = `${kind}-${slot}`;
+      button.addEventListener("click", () => (kind === "save" ? onSave?.(slot) : onLoad?.(slot)));
+      slotButtons.push(button);
+      row.append(button);
+    }
+    return row;
   }
+
+  // The autosave is on the LOAD row only: it is written by the clock and
+  // saving over it by hand would be a player taking the game's own backup away
+  // from it.
+  const manual = [...(slots?.manual ?? [])].filter(Boolean);
+  if (manual.length > 0) saveBar.append(slotRow("save", manual));
+  saveBar.append(slotRow("load", [...manual, slots?.auto].filter(Boolean)));
   const exportButton = el("button", "slot", t("hud.export"));
   exportButton.type = "button";
   exportButton.id = "export";
@@ -1475,10 +1501,22 @@ export function createHud(root, {
   function setSlots(summaries) {
     for (const button of slotButtons) {
       const summary = summaries.find((s) => s?.slot === button.dataset.slot);
-      button.dataset.used = String(Boolean(summary));
-      button.title = summary
-        ? `${t("hud.slot.summary", { year: summary.year, count: summary.population })} · ${t("hud.slot.hint")}`
+      const what = summary
+        ? t("hud.slot.summary", { year: summary.year, count: summary.population })
         : t("hud.slot.empty");
+      button.dataset.used = String(Boolean(summary));
+      // **An empty slot cannot be loaded, and says so** (K7). `disabled`, not
+      // `aria-disabled`: the second is a label on a button that still works,
+      // and a gate cannot tell a player's experience from it.
+      if (button.dataset.kind === "load") {
+        button.disabled = !summary;
+        button.title = summary ? what : t("hud.slot.loadEmpty");
+        button.setAttribute("aria-label",
+          `${t("hud.loadFrom")} ${button.textContent} — ${button.title}`);
+      } else {
+        button.title = what;
+        button.setAttribute("aria-label", `${t("hud.saveTo")} ${button.textContent} — ${what}`);
+      }
     }
   }
 

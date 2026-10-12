@@ -202,6 +202,67 @@ try {
     `slots: ${auto.join(", ")}`);
   check("the autosave did not overwrite slot1", auto.includes("slot1"), `slots: ${auto.join(", ")}`);
 
+  // --- and through the BUTTONS, with no keyboard (K7) ------------------------
+  //
+  // Everything above drives `CITY.save` and `CITY.load` — the seam — and that
+  // is why nobody noticed that loading a slot was `shift`-click for four
+  // waves: a phone can save to a slot and could never load one, and no gate
+  // ever pressed the controls a player presses. This block does, with the
+  // mouse alone: Save to · Slot 2, then Load from · Slot 2, and the city that
+  // comes back has to be the one that went in.
+  /** The saves drawer, open — and not toggled shut if it already is. The first
+   * cut of this block clicked the rail twice and spent 43 retries waiting for a
+   * button inside a drawer it had just closed. */
+  const openSaves = () => second.evaluate(() => {
+    const open = document.querySelector("#rail-saves")?.getAttribute("aria-expanded") === "true";
+    if (!open) document.querySelector("#rail-saves")?.click();
+  });
+  await openSaves();
+  const rows = await second.evaluate(() => ({
+    save: document.querySelectorAll(".saves-save .slot").length,
+    load: document.querySelectorAll(".saves-load .slot").length,
+    modifier: /shiftKey/.test(document.querySelector("#rail-saves")?.outerHTML ?? ""),
+    emptyDisabled: [...document.querySelectorAll(".saves-load .slot")]
+      .filter((b) => b.disabled).map((b) => b.dataset.slot),
+  }));
+  check("the saves drawer has a row to save to and a row to load from",
+    rows.save >= 3 && rows.load >= 4, JSON.stringify(rows));
+  check("and an empty slot is disabled on the load row, not missing from it",
+    rows.emptyDisabled.length > 0, `disabled: ${rows.emptyDisabled.join(", ") || "none"}`);
+
+  // A city worth telling apart from the one in slot1.
+  await second.evaluate(() => globalThis.CITY.resume());
+  await second.waitForTimeout(600);
+  await second.evaluate(() => globalThis.CITY.pause());
+  const beforeSave = await second.evaluate(async () => {
+    const { hashState } = await import("/engine/state.js");
+    return hashState(globalThis.CITY.state);
+  });
+  await second.click("#save-slot2");
+  // **Wait for the LOAD button to come alive**, which is the save landing in
+  // the browser's store and the drawer hearing about it — a fixed pause here
+  // was a gate waiting on a write it had not asked about.
+  await second.waitForSelector("#load-slot2:not([disabled])", { timeout: 15000 });
+  // Change the city again, so loading has something to undo.
+  await second.evaluate(() => globalThis.CITY.resume());
+  await second.waitForTimeout(900);
+  await second.evaluate(() => globalThis.CITY.pause());
+  const drifted = await second.evaluate(async () => {
+    const { hashState } = await import("/engine/state.js");
+    return hashState(globalThis.CITY.state);
+  });
+  check("the city moved on after the save, so the load has something to prove",
+    drifted !== beforeSave, `${beforeSave} → ${drifted}`);
+  await openSaves();
+  await second.click("#load-slot2");
+  await second.waitForTimeout(600);
+  const afterLoad = await second.evaluate(async () => {
+    const { hashState } = await import("/engine/state.js");
+    return hashState(globalThis.CITY.state);
+  });
+  check("the Load button brings back the city the Save button put there, with no keyboard",
+    afterLoad === beforeSave, `saved ${beforeSave}, loaded ${afterLoad}`);
+
   await context.close();
 } finally {
   await browser.close();
