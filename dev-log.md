@@ -16188,3 +16188,42 @@ writing down: **`shadow.tint` cannot reach the style the game ships with.**
 So A145's "cooler rather than darker" is a third option that needs a shader
 patch of its own, and Q171 says so now rather than leaving the next person to
 find it by changing the number and seeing nothing happen.
+
+## K8 — a finger's target (2026-10-12)
+
+`:root { --touch: 44px }` with `button { min-height: var(--touch) }` has been the
+rule since the HUD was built. Measured on a 390×844 phone for the first time:
+**thirty of seventy-nine controls were smaller than it** — the two loan
+`<select>`s at **19 px**, the five funding selects at 32, the save slots and the
+overlay rows at 36 and 40, the speed and New city buttons at 40. Nine later,
+more specific rules undercut the base rule, and the loan selects had no rule at
+all and fell back to the browser's own control.
+
+**The dense sizes stay on a mouse.** A 36 px overlay row is a deliberate density
+on a desktop and §13.3's chrome budget is measured on a phone, so one
+`@media (pointer: coarse)` block restores `--touch` for the fourteen selectors
+that undercut it — the same question `isCoarsePointer()` asks in
+`capabilities.js`, which K6a's gesture rows already read.
+
+Two CSS lessons, both found by the gate rather than by reading:
+
+- **A media query does not raise specificity.** The first cut sat where it read
+  well, two hundred lines above the rules it had to beat, and lost every one of
+  them. It is at the end of the file now.
+- **And `.hud-drawer .hud-overlays button` is two classes deep**, so the block
+  needs that selector too — fifteen of the thirty were still short after the
+  move, all of them overlay rows in a drawer.
+
+**The gate reads the number from the stylesheet.** `--touch` is taken off
+`:root` at run time rather than written into the gate, because a gate carrying
+its own copy of a constant eventually measures a different game
+(`a-constant-tuned-to-a-gate`), and it counts the controls first — 79 of them —
+because a pass over nothing is true of nothing (X7's 0×0 panels).
+
+### Measured
+
+- `a11y_smoke`: 79 controls, **none under 44 px**, where thirty were.
+- `play_smoke`: the chrome is **30% of a 390×844 screen**, unchanged — the
+  41% ceiling the first playtest set is not touched, because nothing in the
+  top bar or the bottom bar grew.
+- `screens` 281/360, suite **2,124 green twice**.

@@ -492,6 +492,69 @@ try {
     beforeModal === afterModal, `${beforeModal} → ${afterModal}`);
   await page.keyboard.press("Escape");
 
+  // --- a finger's target (K8) -----------------------------------------------
+  //
+  // `:root { --touch: 44px }` and `button { min-height: var(--touch) }` have
+  // been the rule since the HUD was built, and nine later, more specific rules
+  // undercut it: measured on a 390x844 phone, **thirty-one controls** were
+  // smaller than the project's own number, the two loan `<select>`s at **19 px**
+  // (no rule at all, so the browser's default) and the save slots at 36. Nothing
+  // had ever measured it, which is why a rule written for a phone was false on
+  // one for most of the interface.
+  //
+  // The number is read from the stylesheet rather than written here: a gate
+  // carrying its own copy of a constant is one that eventually measures a
+  // different game (`a-constant-tuned-to-a-gate`).
+  {
+    const touchCtx = await browser.newContext({
+      viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+    });
+    const touchPage = await touchCtx.newPage();
+    touchPage.on("pageerror", (e) => pageErrors.push(`touch targets: ${e.message}`));
+    await touchPage.goto(game);
+    await started(touchPage);
+    await touchPage.evaluate(() => document.querySelector("#controls-dismiss")?.click());
+    const small = await touchPage.evaluate(async () => {
+      const touch = Number.parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue("--touch"), 10);
+      const seen = new Map();
+      const look = () => {
+        for (const el of document.querySelectorAll(
+          "#hud button, #hud [role=button], #hud select, #hud input[type=checkbox], dialog button, dialog select")) {
+          const box = el.getBoundingClientRect();
+          if (box.width === 0 || box.height === 0) continue;       // not open
+          const key = `${el.id || el.className}:${(el.textContent ?? "").trim().slice(0, 14)}`;
+          if (!seen.has(key)) {
+            seen.set(key, { what: key, w: Math.round(box.width), h: Math.round(box.height) });
+          }
+        }
+      };
+      look();
+      // Every drawer and dialog, because most of the interface is behind one.
+      for (const id of ["rail-overlays", "rail-budget", "rail-saves", "rail-chronicle", "help", "settings"]) {
+        document.getElementById(id)?.click();
+        await new Promise((r) => setTimeout(r, 180));
+        look();
+        document.querySelector("dialog[open] .help-close, dialog[open] .settings-close")?.click();
+      }
+      const controls = [...seen.values()];
+      return {
+        touch,
+        controls: controls.length,
+        under: controls.filter((c) => c.h < touch || c.w < touch),
+      };
+    });
+    // The count first: a pass over no controls is true of nothing, which is the
+    // shape X7's 0x0 panels had.
+    check("the phone's controls were found at all", small.controls > 25, `${small.controls} controls`);
+    check("and the stylesheet still names a touch target", small.touch >= 40, `--touch: ${small.touch}px`);
+    check("every control on a phone is at least --touch in both directions",
+      small.under.length === 0,
+      small.under.slice(0, 8).map((c) => `${c.what} ${c.w}x${c.h}`).join(", ")
+      + (small.under.length > 8 ? ` …and ${small.under.length - 8} more` : ""));
+    await touchCtx.close();
+  }
+
   // --- 200% text ------------------------------------------------------------
   for (const [where, url] of [["the game", game], ["the new-game screen", base]]) {
     for (const [size, viewport] of [["desktop", { width: 1280, height: 900 }], ["phone", { width: 390, height: 844 }]]) {

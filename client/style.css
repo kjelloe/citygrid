@@ -587,7 +587,12 @@ button, [role="button"] {
 .budget-rate { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2.5rem; }
 .budget-books { opacity: 0.85; font-variant-numeric: tabular-nums; }
 .budget-funding { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; }
-.budget-funding select {
+.budget-funding select,
+/* **The loan's two selects had no rule at all** (K8) and fell back to the
+   browser's own control: 19 px high on a 390 px screen, a third of this
+   project's own touch target. They are the same kind of control as the funding
+   rows beside them and take the same rule. */
+.budget-loan select {
   min-height: 32px;
   padding: 0 0.3rem;
   border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
@@ -1494,3 +1499,37 @@ button, [role="button"] {
 }
 .hud-ask .ask-actions { display: flex; gap: 8px; }
 .hud-ask .ask-actions button { min-height: var(--touch); flex: 1; }
+
+/* **A finger's target** (K8). `--touch: 44px` and `button { min-height:
+   var(--touch) }` have been the rule since the HUD was built, and nine later,
+   more specific rules undercut it — measured on a 390x844 phone, **thirty
+   controls** were smaller than this project's own number, from the save slots
+   at 36 px to the loan selects at 19.
+
+   The dense sizes are kept for a MOUSE, where they were chosen: a 36 px overlay
+   row is a deliberate density on a desktop and the chrome budget (§13.3, under
+   41% of the screen) is measured on a phone, where these rules now stop
+   applying. `pointer: coarse` is the same question `isCoarsePointer()` asks in
+   `capabilities.js`, which is what K6a's gesture rows read. */
+@media (pointer: coarse) {
+  .hud-overlays button,
+  /* Two classes deep, because `.hud-drawer .hud-overlays button` is: a media
+     query does not raise specificity, and the first cut of this block lost to
+     the rule it was written to beat. */
+  .hud-drawer .hud-overlays button,
+  .hud-saves .slot,
+  .hud-saves button,
+  .budget-funding select,
+  .budget-loan select,
+  .minimap-toggle,
+  .drawer-close,
+  .hud-advisor .choice,
+  .lobby-settings, .hud-speed, .hud-newcity,
+  .lobby-another,
+  .camera-cluster button,
+  .roster-copy, .roster-start,
+  dialog button, dialog select {
+    min-height: var(--touch);
+  }
+  .camera-cluster button { min-width: var(--touch); }
+}

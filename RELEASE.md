@@ -208,18 +208,14 @@ flatten is counted as terrain and a lot the walker stands on top of is a buildin
 
 ## What is missing, and known to be
 
-**1 open question** is on the list (`dev-questions.md`, bottom section), raised by the slice that
-answered another one:
+**0 open questions** are on the list (`dev-questions.md`, bottom section). The last one was raised
+and answered inside two days: **Q171** asked whether to keep the soft light or re-balance it for
+A145's 25% shadow, and **A148** (2026-10-12) keeps the soft rig — the cast shadow reads **14%
+darker** where it read 8%, `sun_shots` holds a floor of 12%, and the ladder that prices the
+alternative is in the gate.
 
-- **Q171** — **A145 asked for a shadow a quarter darker than the ground beside it, and this light
-  cannot give one.** S22d measured the cast shadow properly for the first time (the same frame with
-  `?shadows=0`, and the pixels that darkened are the shadow): **8% → 14%**, with a ceiling near 16%
-  because the key light is a sixth of what lights the grass. The rig ladder reaches 22% at
-  key 1.8 / hemi 0.6 — a hard-lit city rather than the soft look `plain` was chosen for. The gate's
-  floor is 12% meanwhile, and V5 is played under this light.
-
-The four that were on the list a week ago all left it, and what happened to each is the honest
-version of "nothing is blocked":
+The four before it left the list the same week, and what happened to each is the honest version of
+"nothing is blocked":
 
 - **Q169** — the advisor's message cut off mid-sentence on a phone — answered **A146** and **built
   in K6a** (2026-10-11). It was not a cap: a `top: 3.2rem` left over from an older layout moved
