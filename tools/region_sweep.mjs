@@ -68,12 +68,27 @@ const SEATS = 4;
  * together measure their sum and nothing else.
  */
 const ARMS = [
-  { name: "null", what: "the defaults: shared treasury, aid on, disaster aid off", options: {},
-    subject: "residentsHoused" },
+  // **The default IS a split treasury divided equally** (A142 removed `shared`,
+  // which had always been a split in disguise), so the null arm's name says so
+  // rather than describing a value the engine no longer has.
+  { name: "null", what: "the defaults: a split treasury divided equally, aid on, disaster aid off",
+    options: {}, subject: "residentsHoused" },
   {
-    name: "split-equal",
-    what: "a split treasury on the rule it always used, which is the baseline the next arm moves",
-    options: { treasury: "split", splitRule: "equal" },
+    // **Was `split-equal` and that arm was the null arm with another name**
+    // (D11, 2026-10-12). `defaultOptions` reads anything that is not
+    // `separate` as `split` and anything that is not `population` as `equal`,
+    // so `{ treasury: "split", splitRule: "equal" }` is the default spelled
+    // out: the two arms came back byte-identical on both configurations —
+    // 3,905 residents and §6,181,849 each — and the sweep's own inert-arm
+    // check is what said so, the first time it ran at 200 games.
+    //
+    // What replaces it is the money rule nothing has ever measured: a
+    // treasury per seat, with no sharing at all. `TREASURY_SEPARATE` has
+    // existed since X4g and no arm, no gate and no lobby control has touched
+    // it.
+    name: "separate",
+    what: "a treasury per seat: no sharing at all, which is the other half of the money rule",
+    options: { treasury: "separate" },
     subject: "residentsHoused",
   },
   {

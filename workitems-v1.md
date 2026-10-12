@@ -98,6 +98,14 @@ measured, and a dead constant that fences dead imports.*
   `workitems-world.md`, written on 2026-10-11: it had been named in the order since P120 with no
   entry in any lane, and so had **S8b**.
 
+**Found on 2026-10-12, by re-running the region sweep (D11):**
+
+- **X8 — the three region rules have no control** (`workitems-multiplayer.md`). The sweep's
+  inert-arm check caught `split-equal` reading identically to `null` (the default IS a split
+  divided equally since A142), and fixing the arm asked the larger question: `splitRule`,
+  `mutualAid`, `disasterAid` and `treasury` are read by the reducer and offered by no screen, so
+  era 31 measured three rules a player cannot ask for. S, and it is what makes X4g reachable.
+
 **Found on 2026-10-11, after K6a–K6c** (the omissions sweep on those slices):
 
 - ~~**The help sheet offered a phone three sections of keys**~~ — **fixed the same day.** The rail's

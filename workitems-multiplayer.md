@@ -926,6 +926,36 @@ over forty years; a returning player finds treasury and land as the rules say. *
 `room_soak` in churn mode: seats join and leave at random ticks for forty city years, no
 divergence, no orphaned land, with the deputy on the server only.
 
+## X8 — The three region rules have no control (S) — found 2026-10-12, unplanned
+
+**What the sweep found by being re-run.** D11's 200-game re-run of the region sweep tripped its own
+inert-arm check: `null` and `split-equal` came back **byte-identical on both configurations** —
+3,905 residents and §6,181,849 each — because `defaultOptions` reads anything that is not
+`separate` as a split and anything that is not `population` as equal, so the arm was the null arm
+spelled out. Fixing the arm (it measures `treasury: "separate"` now, which nothing had ever
+measured) led to the larger question: **who chooses any of this?**
+
+**Nobody.** `splitRule`, `mutualAid`, `disasterAid` and `treasury` are read by the reducer — which
+is why they left `test/omissions.test.js`'s unread-options list in X4g — and `client/lobby/`
+mentions none of them. `hostOptions(choices)` builds a `CREATE` from the lobby's own rows, so a
+host cannot pick a money rule, cannot turn mutual aid off, and cannot turn disaster aid on. Era 31
+measured three rules a player has no way to ask for: *the no-control list is empty*, one layer
+along — the engine obeys an option and no screen offers it.
+
+**Do.** Three rows in the new-game screen's **Shared city** block, visible only when seats > 1:
+the money rule (equal / by residents / separate), mutual aid (on / off), disaster aid (off / on).
+Strings in both catalogues, and the defaults are what `defaultOptions` already says so a host who
+touches nothing gets the city era 31 measured.
+
+**Tests first.** `test/omissions.test.js` gains the other half of the options census — *every
+option the reducer reads is either on a screen or on a list that says why not* — which is the test
+that would have caught this at X4g. `test/lobby-model.test.js`: the three rows round-trip through
+`hostOptions`. `room_smoke`: a room hosted with the money rule set to `separate` reaches the seats
+as `separate` (the option crosses the wire and the city plays it).
+
+**Size.** S, and it is the half of X4g that makes the other half reachable. Before V5 if the
+evening is meant to try a money rule; after it otherwise — the defaults are the measured ones.
+
 ## The release gate — Multiplayer MVP
 
 Eight players build one Shared City region together across a session that spans a disconnect and
