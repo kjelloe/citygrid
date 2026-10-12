@@ -16323,3 +16323,52 @@ shift-click", and `main.js`'s note about a returning player having to shift-clic
 a slot. Both now say what the code does and when it stopped doing the other
 thing. `models-of-code-go-stale`, caught by grepping for the thing that was
 removed rather than by reading.
+
+## D11 — the re-run that found an arm measuring nothing (2026-10-12)
+
+`reports/region-era31.{md,json}` predated the firing table `7d7a279` added, so
+the chore was a 50-minute re-run. It cost that, and it found two things the
+first run could not have.
+
+**One of five arms was the null arm with another name.** `null` and
+`split-equal` came back **byte-identical on both configurations** — 3,905
+residents and §6,181,849 on demanding-64 — because `defaultOptions` reads
+anything that is not `separate` as a split and anything that is not `population`
+as equal. A142 removed the `shared` value on 2026-10-09, which is the day era
+31's report was written; the inert-arm check that says so was added on the 10th,
+so the first run of the sweep after both is the first run that could see it.
+
+The arm measures **`treasury: "separate"`** now — a purse per seat, no sharing
+at all — which has existed since X4g and which no arm, no gate and no lobby
+control had ever touched. It is not inert:
+
+| arm | treasury spread | relief paid |
+|---|---|---|
+| `null` (a split, divided equally) | 2% | 43 |
+| **`separate`** | **101%** | **179** |
+| `split-population` | 71% | 65 |
+| `no-mutual-aid` | 2% | 77 |
+| `disaster-aid` | 2% | 43 (99 levied) |
+
+*(demanding-64, 200 games an arm. On steady-64 `separate` reads 68% against 1%,
+with 5 relief payments against none.)*
+
+A seat with its own purse is **four times as likely to need relief** as a seat
+sharing one, and the region's money ends up as unequal as it can be — which is
+what the option means and the first time anybody has seen the number.
+
+**And the sweep measures three rules a player cannot choose.** `splitRule`,
+`mutualAid`, `disasterAid` and `treasury` are read by the reducer — which is how
+they left the unread-options census in X4g — and `client/lobby/` mentions none
+of them: `hostOptions(choices)` builds a `CREATE` from the lobby's rows, and
+there are no rows for these. Filed as **X8**, with the census that would have
+caught it: every option the reducer reads is either on a screen or on a list
+that says why not.
+
+### Measured
+
+- The report is re-written at era 31 with the firing table in it: 924 disasters
+  and 43 reliefs in 200 demanding games on the null arm, 99 levies on the
+  `disaster-aid` arm — the rates that stop an arm being read as inert.
+- `gates.mjs region` (the 10-game sample) **146 s of 300**, green with the new
+  arm: a sample small enough to be a gate still moves it.

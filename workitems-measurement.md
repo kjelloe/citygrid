@@ -475,7 +475,7 @@ inside the hold, which is `the-instrument-shares-a-budget-with-the-subject` in o
 gains the claim that **no row prints a p95 it does not have the sample for**, which is a pure
 check on the JSON and needs no second run.
 
-## D11 — `reports/region-era31.md` predates the firing table (XS, chore) — found 2026-10-11, unplanned
+## ~~D11 — `reports/region-era31.md` predates the firing table (XS, chore)~~ — found 2026-10-11, **done 2026-10-12** — and it found an inert arm
 
 Commit `7d7a279` taught `region_sweep` to print the rules that fired beside the city they fired in
 — the fix for era 30's report having held the answer to a question a whole round was argued over.
@@ -491,6 +491,12 @@ and the numbers are unchanged.
 it overwrite `reports/region-era31.{md,json}`, and check the two agree
 (`a-report-written-in-two-places`). If era 32 is near, do it as part of that era instead and say so
 here — a report re-run for a table alone is still an era's worth of machine time.
+
+**Done 2026-10-12, and it paid for itself.** The run tripped the sweep's own inert-arm check:
+`split-equal` was the null arm spelled out (A142 made a split divided equally the default), so two
+of five arms were one arm. It measures `treasury: "separate"` now — **101% treasury spread against
+2%, and 179 relief payments against 43** on demanding-64 — a rule nothing had ever measured. The
+larger finding is **X8**: the lobby offers no control for any of the three region rules.
 
 ## Order
 

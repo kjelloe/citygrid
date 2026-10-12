@@ -127,8 +127,9 @@ measured, and a dead constant that fences dead imports.*
   `quick` 114/180, `screens` 276/360, `access` 122/210.
 - ~~**D10 — the street row is a percentile over 39 frames**~~ — **built 2026-10-12**: a thin row
   has no p95 at all now, and a walking row records where it walked.
-- **D11 — `reports/region-era31.md` predates the firing table** (`workitems-measurement.md`): a
-  50-minute re-run, measured. XS.
+- ~~**D11 — `reports/region-era31.md` predates the firing table**~~ — **done 2026-10-12**: the
+  re-run found `split-equal` reading identically to `null`, and the arm now measures a separate
+  treasury (101% spread against 2%). It raised **X8**.
 
 **V5, as a checklist for Kjell** (everything the ally cannot do):
 0. The DNS record for `citygrid.kjell.today` pointing at the box, live before certbot runs.
