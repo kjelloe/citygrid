@@ -16305,3 +16305,21 @@ walked records its two ends.
   fast ones (`city 80t`, `city 120t`, `ortho 96t`) keep all three, which is the
   line the governor's window draws.
 - Suite **2,124 green twice**; `ui_smoke` 223 checks.
+
+### The round after K7, K8 and D10 (2026-10-12)
+
+**Memories.** One new — a media query does not raise specificity, which cost two
+runs of `a11y_smoke` to notice — and two extended: "gates drive the real page"
+gains K7's exception (`save_smoke` drove the seam for four waves, so the control
+behind it was never pressed), and "a gate number can move because the picture
+improved" gains D10's rule that a percentile needs a sample and the honest fix
+is to print nothing.
+
+**Omissions.** The sweep over the five changed files found no live code left
+behind — no `shiftKey` anywhere, no reader of the deleted `hud.slot.hint`, both
+catalogues carrying the three new strings — and two comments that described the
+interface as it was: `hud.js`'s "each a button that saves on click and loads on
+shift-click", and `main.js`'s note about a returning player having to shift-click
+a slot. Both now say what the code does and when it stopped doing the other
+thing. `models-of-code-go-stale`, caught by grepping for the thing that was
+removed rather than by reading.

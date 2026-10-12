@@ -359,7 +359,8 @@ async function boot() {
     const { createNewGame } = await import("./lobby/new-game.js");
     // The lobby has offered a Continue button since it was written and nobody
     // ever passed it one, so a returning player had to start a new city and
-    // shift-click a slot. Offered only when there is something to continue.
+    // load a slot by hand — which until K7 meant a shift-click, and on a phone
+    // meant nothing at all. Offered only when there is something to continue.
     const saved = await listSaves();
     const latest = saved.slice().sort((a, b) => (b.savedAt ?? 0) - (a.savedAt ?? 0))[0];
     createNewGame(app, {

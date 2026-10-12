@@ -448,10 +448,11 @@ export function createHud(root, {
 
   // --- saving ---------------------------------------------------------------
   //
-  // Three manual slots and the autosave, each a button that saves on click and
-  // loads on shift-click. Deliberately plain: a save dialog is a screen the
-  // player has to learn, and slice N5's job is that a session survives a closed
-  // tab, not that it has a file manager.
+  // Three manual slots and the autosave, in two rows: Save to, Load from (K7).
+  // It was one row of buttons that saved on click and loaded on SHIFT-click,
+  // which is a control a phone does not have. Still deliberately plain: a save
+  // dialog is a screen the player has to learn, and slice N5's job is that a
+  // session survives a closed tab, not that it has a file manager.
   const saveBar = el("div", "hud-saves");
   saveBar.setAttribute("role", "toolbar");
   saveBar.setAttribute("aria-label", t("hud.saves"));
