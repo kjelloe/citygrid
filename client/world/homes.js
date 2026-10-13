@@ -31,7 +31,12 @@ import { lotSpan, placeUnits } from "./sublots.js";
 export const HOUSE = { width: 13, depth: 9, gap: 3.5 };
 
 /** How deep the front garden is, as a share of the lot's depth. The path and
- * the hedge live here (V6), and it is what stops a house sitting on the kerb. */
+ * the hedge live here (V6), and it is what stops a house sitting on the kerb.
+ *
+ * Exported because it is a NUMBER somebody will want to read beside the kit's
+ * other spans, and read only here so far — the omissions sweep after S23 found
+ * it, and it stays exported with this line rather than being quietly unexported
+ * and re-exported by the next slice that wants it. */
 export const FRONT_GARDEN = 0.22;
 
 /** Which form a lot takes. Named rather than inferred, because the L2 box, the

@@ -753,7 +753,7 @@ allows exactly one such row per reference. **The reference has no equivalent in 
 an oblique over terraced housing and the deputy builds towers and detached houses, so there is no
 terrace street to photograph from the air — a content note for v1.1 rather than a camera fault.
 
-## S23 — A street of houses, not a row of sheds (M, renderer) — found 2026-10-11 by S8b, unplanned
+## ~~S23 — A street of houses, not a row of sheds (M, renderer)~~ — found 2026-10-11 by S8b, **built 2026-10-13**
 
 **What the reference is a picture of.** `debugging/transport-world-3.png` is an oblique over a
 district of **terraced housing**: houses sharing walls, one continuous roofline per block, front
@@ -763,8 +763,11 @@ of detached boxes with gaps between them.
 
 **Measured** on the sheet's recipe (seed 1003, 64 tiles, 40 years, the deputy): **66 residential
 buildings — 35 at level 1, 13 at 2, 7 at 3, 11 at 4** — on lots **one or two tiles wide**. Every
-one of them is a free-standing building on its own lot. The game has never had an attached house,
-so no amount of deputy or demand tuning will produce the picture: it is not a balance question.
+one of them is a free-standing building on its own lot, so no amount of deputy or demand tuning
+will produce the picture: it is not a balance question. *(This paragraph said "the game has never
+had an attached house" when it was written, and the build found that half wrong — the kit has drawn
+terraces since S16a and the FORM was chosen per lot. Kept as written, with the correction in the
+built note below, because what an item believed is worth as much as what it asked for.)*
 
 **Two ways, and the first one is a picture decision.**
 
@@ -784,7 +787,16 @@ so no amount of deputy or demand tuning will produce the picture: it is not a ba
 the city the game builds today, and this changes how every residential street in it looks — which
 is a thing to decide after somebody has played one, not three days before.
 
-## S22e — A shadow that is cooler, not just darker (S, renderer) — A145's third option, unplanned
+**Built 2026-10-13 as (1), and the premise was half wrong.** The kit has drawn terraces since S16a;
+what was missing is that the FORM was decided one lot at a time, and the house next door is on
+another lot. `client/world/rows.js` marks the runs — same corridor, same side, under 4 m between
+edges — and `formFor`/`homeForm` read them: a lot with a neighbour builds a terrace at level 1–2
+and reaches the lot's edge on the joined side. Measured on the sheet's city: **40 of 66 houses in a
+run (sizes 2, 3, 4), 29 drawing a shared wall, 22 of them at level 1**. `budget_gate` is unchanged
+— the same houses with their margins spent differently — and `street_shots` prints the count and
+fails three ways.
+
+## ~~S22e — A shadow that is cooler, not just darker (S, renderer)~~ — A145's third option, **built 2026-10-13**
 
 **What A145 asked for and what A148 kept.** "The tint cooler rather than the ground darker" was one
 of three things A145 asked for; S22d delivered the other two (the numbers as data, the shadow from
@@ -806,6 +818,15 @@ darker — the number and the hue are one claim.
 
 **Size.** S, and it is a LOOK, so it wants Kjell in front of it. After V5, with the evening's own
 answer about whether the light reads.
+
+**Built 2026-10-13, and it found that the TOON patch had never run.** `onBeforeCompile` is handed a
+shader whose `#include` directives are unresolved, so the toon tint's replace never matched — and
+its anchor was wrong anyway (three's line ends `* directLight.color`). The painted style's shadows
+have darkened rather than taken a colour for the whole life of the rig, with a `console.warn`
+nobody collected and a test that read the source for the right words.
+`client/render/shadow-shader.js` is pure, so `test/shadow-tint.test.js` drives the transforms over
+three's real chunks. Measured: **16% darker and 20 points cooler** (blue over red), against 14% and
+0 before.
 
 ## S22 — A sun that moves, and a moon that takes over (M, renderer) — A138 — **BUILT 2026-10-08 as `slice-S22`**
 

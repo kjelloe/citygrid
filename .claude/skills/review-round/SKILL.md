@@ -175,6 +175,18 @@ something an older fix removed, run the gate that caught the old defect, then fi
 rather than the symptom: the card is bounded by `--side-height` now so it cannot reach the rail at
 any text size.
 
+**A shader patch can be a no-op for years.** `onBeforeCompile` is handed a shader whose `#include`
+directives are UNRESOLVED — three splices the chunks in afterwards — so a replace aimed at a line
+inside a chunk never matches. City Grid's toon shadow tint did that for the life of the rig, warned
+once into a console no gate collected, and was held by a test that read the source for the anchor's
+name. Put the surgery in a pure module (`client/render/shadow-shader.js`), drive it over
+`THREE.ShaderChunk` in a node test, declare uniforms at `#include <common>` (a chunk inside `main()`
+cannot hold one), and return `undefined` for a shape you do not recognise.
+
+**And when a picture is wrong while every part of it is right, ask what SCALE the decision is made
+at.** The kit could draw a terrace all along; the form was chosen one lot at a time, and the house
+that shares your wall is on another lot (S23). The fix was one derived pass and two parameters.
+
 **Measure a renderer feature by removing it.** `sun_shots` judged the shadow by counting grass
 pixels darker than the commonest green — 114,882 of them in one frame, which is the far field and
 every slope away from the sun — and that median read 9% before and after the shadow was made half

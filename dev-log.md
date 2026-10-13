@@ -16594,3 +16594,28 @@ subject counted beside the failures.
 `kits` 430/480, `budget` 257/330 (**unchanged**: a terrace is the same houses
 with their margins spent differently), `shots`, `render` and `quick` green, suite
 **2,145 twice**.
+
+### The round after S22e and S23 (2026-10-13)
+
+**Tests.** `test/shadow-tint.test.js` (five) drives the shader transforms over
+three's real chunks, which is the only thing that could have caught a patch
+whose anchor was never in the shader it was handed. `test/rows.test.js` (seven)
+holds the run marking — a gap that breaks a row, a neighbour facing the other
+way, a shop between two houses — and the ladder reading it. `test/toon.test.js`'s
+old source-reading test is replaced by what it should have asked: that a failed
+patch is loud and that the transforms are the ones a test can drive.
+
+**Docs and skills.** Both items ticked in `workitems-world.md` with what the
+build found; the `review-round` skill gains the two lessons — a shader patch can
+be a no-op for years, and a picture that is wrong while every part of it is
+right is a decision made at the wrong scale. `RELEASE.md` is at 2,145 tests.
+
+**Memories.** Two: a patch that never ran, and the decision was at the wrong
+scale.
+
+**Omissions.** `FRONT_GARDEN` is exported and read only in its own module — left
+exported with a line saying so, because the next kit slice will want it and a
+quiet un-export is a thing somebody re-adds. And S23's item said in its premise
+that *"the game has never had an attached house"*, which the build proved half
+wrong; the paragraph keeps the sentence with the correction beside it, because
+what an item believed is worth as much as what it asked for.
