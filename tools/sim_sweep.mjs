@@ -58,7 +58,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const GAMES = Number(process.argv[2] ?? 200);
 const YEARS = Number(process.argv[3] ?? 25);
 
-const CONFIGS = [
+export const CONFIGS = [
   { name: "relaxed-64", difficulty: "relaxed", size: 64, disasters: true },
   { name: "steady-64", difficulty: "steady", size: 64, disasters: true },
   { name: "demanding-64", difficulty: "demanding", size: 64, disasters: true },

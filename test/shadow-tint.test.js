@@ -19,6 +19,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import * as THREE from "../vendor/three.module.js";
 import { normalisedTint, tintedToonChunk, tintedLambertChunk, tintedOutgoing,
   TOON_ANCHOR, LAMBERT_ANCHOR, OUTGOING_ANCHOR } from "../client/render/shadow-shader.js";
@@ -81,4 +82,26 @@ test("a tint that is only a hue: the shadow keeps its value", () => {
   assert.ok(tint.b > tint.r, "a cool tint has more blue in it than red");
   assert.deepEqual(normalisedTint({ r: 0, g: 0, b: 0 }), { r: 1, g: 1, b: 1 },
     "a black tint would divide by zero; white is the no-op");
+});
+
+test("every chunk the renderer patches by name is a chunk three has", () => {
+  // The whole renderer's shader patching, not just this module's. Both patching
+  // files anchor on `#include <…>` directives, which is the only anchor that
+  // survives `onBeforeCompile` — but a name three renames or drops in a version
+  // bump fails exactly as silently as S22e's wrong anchor did. `fs` here rather
+  // than an import because these modules import three themselves.
+  const dir = new URL("../client/render/", import.meta.url);
+  const named = new Map();
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith(".js")) continue;
+    const source = readFileSync(new URL(file, dir), "utf8");
+    for (const [, chunk] of source.matchAll(/#include <([a-z_]+)>/g)) {
+      if (!named.has(chunk)) named.set(chunk, file);
+    }
+  }
+  assert.ok(named.size >= 7, `only ${named.size} chunk names found; the scan is not reading the renderer`);
+  for (const [chunk, file] of named) {
+    assert.ok(THREE.ShaderChunk[chunk] !== undefined,
+      `${file} patches '#include <${chunk}>', which three has no chunk for`);
+  }
 });

@@ -16,6 +16,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ARMS, CONFIGS } from "../tools/region_sweep.mjs";
+import { CONFIGS as SIM_CONFIGS } from "../tools/sim_sweep.mjs";
+import { rules } from "../engine/rules.js";
 import { defaultOptions } from "../engine/options.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -99,5 +101,38 @@ test("neither sweep writes an era report from a sample", () => {
       `${name} writes ${writes} file(s) and only ${guarded} are behind the sample guard`);
     assert.match(source, /SAMPLE, not an era report/,
       `${name} does not say so when it refuses to write`);
+  }
+});
+
+// --- the other sweep's table (2026-10-14) -------------------------------------
+//
+// `sim_sweep` has no arms — it varies the CONFIGURATION, which is the same
+// table asked a different question. The noticed gap after D11: the arms test
+// read one of the two sweeps, so a config that is a twin of another, or names a
+// difficulty `balance.json` has never heard of, would print its own column and
+// read as steady's numbers. `a-list-a-test-invented`, one table over.
+
+test("every configuration the balance sweep measures is a different city", () => {
+  const seen = new Map();
+  for (const config of SIM_CONFIGS) {
+    const key = JSON.stringify({
+      difficulty: config.difficulty, size: config.size, disasters: config.disasters,
+    });
+    assert.equal(seen.get(key), undefined,
+      `"${config.name}" and "${seen.get(key)}" are the same configuration: ${key}`);
+    seen.set(key, config.name);
+    assert.ok(config.name, "a configuration with no name has no column");
+  }
+  assert.ok(SIM_CONFIGS.length >= 2, "one configuration proves one configuration (CLAUDE.md)");
+});
+
+test("every difficulty the balance sweep names is one balance.json has", () => {
+  // The lobby's own version of this test (P18) exists because a difficulty the
+  // data does not know falls silently back to steady — a sweep would then
+  // report two identical columns under two names.
+  const known = Object.keys(rules().difficulty);
+  for (const config of SIM_CONFIGS) {
+    assert.ok(known.includes(config.difficulty),
+      `${config.name} measures '${config.difficulty}', which balance.json has no row for`);
   }
 });

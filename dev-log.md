@@ -16619,3 +16619,41 @@ quiet un-export is a thing somebody re-adds. And S23's item said in its premise
 that *"the game has never had an attached house"*, which the build proved half
 wrong; the paragraph keeps the sentence with the correction beside it, because
 what an item believed is worth as much as what it asked for.
+
+### The round after the stale precache (2026-10-14)
+
+**Tests.** Two, both of the "a table nobody checked" shape.
+`test/shadow-tint.test.js` gains *every chunk the renderer patches by name is a
+chunk three has*: it scans `client/render/` for `#include <…>` anchors and
+asserts each name is a key of `THREE.ShaderChunk`. S22e's patch failed because
+its anchor was not in the shader it was handed; the remaining way to fail
+exactly as silently is a chunk three renames in a version bump, and nothing
+would have said so. `test/sweep-arms.test.js` gains the other sweep's table:
+`sim_sweep`'s `CONFIGS` is exported now, no two configurations resolve to the
+same city, and every difficulty they name has a row in `balance.json` — the
+lobby has had that second test since P18 for the same reason (an unknown
+difficulty falls back silently to steady, and the sweep would print two
+identical columns under two names).
+
+**Docs.** `RELEASE.md` is at **2,148 tests**.
+
+**Memories.** One, appended rather than new: the precache memory now says that
+`test/pwa.test.js` keys the version on a hash of the bytes, so the suite *does*
+catch a stale precache — and one still went in, because the suite's last run was
+before the last edit rather than after it.
+
+**Omissions.** Three threads, one finding.
+
+- *Other shader patches that may never run.* `grep -rln onBeforeCompile client/`
+  gives `motion-material.js`, `style-assets.js` and the new `shadow-shader.js`.
+  Both patching files anchor only on `#include <…>` directives, which is the one
+  anchor that survives an unresolved shader; `post-ink.js` writes its own
+  `ShaderMaterial` and patches nothing. **No second silent no-op exists** — and
+  the new test is what will keep saying so.
+- *Literal counts in gates.* After `lobby_smoke`'s `ROWS.length`, the only
+  remaining count-against-a-literal is `mvp_acceptance`'s four overlays, which
+  is the length of the list in the loop three lines above it — a self-consistency
+  check, not a claim about a model elsewhere. Left alone.
+- *The stale precache itself.* Admitted above: `1575ddb` carried a
+  `client/precache.json` that did not match its own tree, and `3834113` fixed it
+  the next commit. Nothing was wrong with the instrument.

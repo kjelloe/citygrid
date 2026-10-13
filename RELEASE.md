@@ -45,7 +45,7 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **2,145 tests**, green twice in a row on every slice (`./test.sh`), and **sixteen gate sets** —
+- **2,148 tests**, green twice in a row on every slice (`./test.sh`), and **sixteen gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
   `release`, `film` and `room` — every one of their budgets re-measured on a quiet machine at
   era 30 (M9), most of them downwards. `region` is era 31's: a four-seat city played five ways,
