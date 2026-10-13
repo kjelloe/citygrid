@@ -8,6 +8,7 @@
 // corridor, and one with no corridor at all faces north and says so.
 
 import { DIR4, tileAt, inBounds } from "../../shared/grid.js";
+import { markRows } from "./rows.js";
 import { NET_PRESENT } from "../constants-mirror.js";
 import { getConfig } from "./config.js";
 import { jitter } from "./hash.js";
@@ -112,6 +113,11 @@ export function deriveLots(state, network, ground) {
     lots.push(lot);
     byId.set(b.id, lot);
   }
+
+  // **Who is next door** (S23). One pass after the lots exist, because a run is
+  // a property of the street and not of a lot: a terrace's houses share walls
+  // with houses on other lots, and the form could not see them.
+  markRows(lots);
 
   function lotAt(x, z) {
     const tx = Math.floor(x / tileM);

@@ -52,9 +52,18 @@ function storeysFor(form, level) {
  * Level 4 and above is the block the kit already draws — a city needs
  * somewhere for density to go, and that is what the existing silhouettes are
  * good at. */
-export function formFor(widthM, level) {
+export function formFor(widthM, level, row) {
   if (level >= 4) return "block";
   if (level === 3) return "flats";
+  // **A house with a house next door is a terrace** (S23). The form was decided
+  // one lot at a time, so a street of ordinary lots came out as detached boxes
+  // with gaps however tightly it was packed — 66 residential buildings on the
+  // compare sheet's city, 35 of them at level 1, every one free-standing,
+  // against a reference that is a district of terraces. `row` is the RUN this
+  // lot is in (`client/world/rows.js`), and it only reaches here for levels 1
+  // and 2: above that the city needs somewhere for density to go, and flats and
+  // blocks are what the silhouettes are good at.
+  if (row && (row.left || row.right)) return "terrace";
   if (level === 2) return widthM >= 26 ? "terrace" : "semi";
   return "detached";
 }
@@ -67,8 +76,8 @@ export function formFor(widthM, level) {
  * have one, a detached house does not, and the renderer uses it to decide
  * whether there is a gap to see through.
  */
-export function homeForm(widthM, depthM, level) {
-  const form = formFor(widthM, level);
+export function homeForm(widthM, depthM, level, row) {
+  const form = formFor(widthM, level, row);
   const front = FRONT_GARDEN;
   const back = 0.06;
 
@@ -114,12 +123,21 @@ export function homeForm(widthM, depthM, level) {
       });
     }
   } else {
+    // **A run reaches the lot's edge on the side it is joined** (S23): the
+    // margin is a gable return, and a party wall does not have one. An end lot
+    // keeps its margin on the open side, which is what makes the end of a
+    // terrace read as the end of one.
     const margin = 1.5 / widthM;
-    const each = (1 - margin * 2) / count;
+    const left = row?.left ? 0 : margin;
+    const right = row?.right ? 1 : 1 - margin;
+    const each = (right - left) / count;
     for (let i = 0; i < count; i += 1) {
       houses.push({
-        u0: margin + i * each, u1: margin + (i + 1) * each,
+        u0: left + i * each, u1: left + (i + 1) * each,
         v0, v1, storeys: storeysFor(form, level), roof: "gable",
+        // The last house of a lot that is joined to the next lot shares a wall
+        // with a house the renderer draws from another lot entirely — which is
+        // the whole of S23 and the reason `party` is a per-house flag.
         party: true,
       });
     }
@@ -160,6 +178,6 @@ export function houseCount(widthM, depthM, level) {
  */
 export function houseLots(lot, level) {
   const { widthM, depthM } = lotSpan(lot);
-  const { form, houses } = homeForm(widthM, depthM, level);
+  const { form, houses } = homeForm(widthM, depthM, level, lot.row);
   return { form, lots: placeUnits(lot, houses) };
 }

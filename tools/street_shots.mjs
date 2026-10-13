@@ -25,6 +25,7 @@
 import { shoot } from "./screenshot.mjs";
 import { setConfig, DEFAULTS } from "../client/world/config.js";
 import { createModel } from "../client/world/model.js";
+import { unitsOf } from "../client/world/units.js";
 import { playedCity, standBack, frontageNormal, frontageMiddle, describe } from "./lib/aim.mjs";
 
 const SEED = 1003;
@@ -169,6 +170,30 @@ await shoot({ out: "reports/smoke-S3-city15.png", seed: SEED, years: YEARS, size
   writeFileSync("reports/smoke-S3-row3.png", await page.screenshot());
   await browser.close();
   console.log("reports/smoke-S3-row3.png — D4's row 3 reference beside the city 15 view of the same streets");
+}
+
+// **Houses that share a wall** (S23), counted in the model that drew the
+// pictures above. A terrace is a property of a RUN — the houses next door are
+// on other lots — and the form was decided one lot at a time until this slice,
+// so a street of ordinary lots came out as detached boxes with gaps however
+// tightly it was packed. The count is here rather than in a unit test because
+// the subject is a PLAYED city and this tool already has one.
+{
+  const homes = (model.lots ?? []).filter((lot) => lot.building?.zone === 1);
+  const inRuns = homes.filter((lot) => lot.row);
+  const sizes = [...new Set(inRuns.map((lot) => lot.row.size))].sort((a, b) => a - b);
+  const party = inRuns.filter((lot) => unitsOf(lot, "residential").some((unit) => unit.party !== false));
+  console.log(`\nterraces: ${inRuns.length} of ${homes.length} houses are in a run `
+    + `(sizes ${sizes.join(", ") || "none"}), ${party.length} of them drawing a shared wall`);
+  // Count the subject before asserting its quality: a city with no runs in it
+  // proves nothing about the drawing (`a-failure-counter-is-not-a-subject-counter`).
+  if (homes.length < 20) {
+    problems.push(`only ${homes.length} houses in this city — the terrace count means nothing`);
+  } else if (inRuns.length === 0) {
+    problems.push("no house in this city has a neighbour: the runs are not being marked");
+  } else if (party.length === 0) {
+    problems.push(`${inRuns.length} houses are in a run and none draws a party wall`);
+  }
 }
 
 if (problems.length > 0) {

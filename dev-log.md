@@ -16547,3 +16547,50 @@ noon: the cast shadow covers 84,639 px (9.2% of the frame),
 — a third of what was measured, which catches the patch falling off the way it
 fell off before. `shots` 304/390, `kits` green, `budget` 268/330, `quick`
 green, suite **2,139 twice**.
+
+## S23 — a street of houses, not a row of sheds (2026-10-13)
+
+S8b re-aimed the compare sheet's terrace row at the densest residential block
+this city has, and what it photographed was detached boxes with gaps — beside a
+reference that is a district of terraced housing. The item said the game had
+never had an attached house. It was half right, and the half that was wrong is
+the interesting one.
+
+**The kit has drawn terraces since S16a.** `formFor` returns `"terrace"` at
+level 2 on a lot 26 m wide, `homeForm` places the houses as one run, and
+`party: true` on a house is what tells the facade there is no gable return. The
+decision was made **one lot at a time** — and a terrace is a property of a RUN,
+because the house next door is on another lot. So a street of ordinary lots came
+out as free-standing boxes however tightly it was packed.
+
+`client/world/rows.js` marks the runs: residential lots that front the **same
+corridor on the same side** with less than 4 m between their edges — two 2 m
+setbacks and a little — become `lot.row = { left, right, size, index }`. The
+ladder reads it: a lot with a neighbour builds a terrace at level 1 and 2, and
+the houses reach the lot's edge on the joined side, where the 1.5 m margin is a
+gable return that a party wall does not have. Levels 3 and 4 are unchanged —
+flats and blocks are where the city's density goes, and the silhouettes are good
+at them.
+
+**Pure, derived, no hash.** The same city, drawn as the street it already is:
+`deriveLots` runs one more pass, nothing in `engine/` moved, no save migrated,
+no era.
+
+### Measured
+
+On the sheet's own city (seed 1003, 64 tiles, 40 years, the deputy):
+
+```
+terraces: 40 of 66 houses are in a run (sizes 2, 3, 4),
+          29 of them drawing a shared wall
+```
+
+Twenty-two of those forty are at level 1 — the ones that were detached boxes
+with gaps. `street_shots` prints that line and fails three ways: a city with
+fewer than 20 houses (the count means nothing), no runs at all (the pass is not
+running), or runs that draw no party wall (the ladder is not reading it) — the
+subject counted beside the failures.
+
+`kits` 430/480, `budget` 257/330 (**unchanged**: a terrace is the same houses
+with their margins spent differently), `shots`, `render` and `quick` green, suite
+**2,145 twice**.

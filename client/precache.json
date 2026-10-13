@@ -1,5 +1,5 @@
 {
- "version": "2988b84c79ed",
+ "version": "be2c6f94bc69",
  "build": "5cb894350203",
  "generated": "2026-10-13",
  "files": [
@@ -152,6 +152,7 @@
   "./client/world/rain.js",
   "./client/world/raymarch.js",
   "./client/world/retaining.js",
+  "./client/world/rows.js",
   "./client/world/rush.js",
   "./client/world/shop-spec.js",
   "./client/world/signals.js",
