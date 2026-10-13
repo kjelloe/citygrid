@@ -753,6 +753,60 @@ allows exactly one such row per reference. **The reference has no equivalent in 
 an oblique over terraced housing and the deputy builds towers and detached houses, so there is no
 terrace street to photograph from the air — a content note for v1.1 rather than a camera fault.
 
+## S23 — A street of houses, not a row of sheds (M, renderer) — found 2026-10-11 by S8b, unplanned
+
+**What the reference is a picture of.** `debugging/transport-world-3.png` is an oblique over a
+district of **terraced housing**: houses sharing walls, one continuous roofline per block, front
+gardens and fences between the pavement and the door. S8b re-aimed the compare sheet's terrace row
+at the densest residential block this project's own city has, and what it photographs is a street
+of detached boxes with gaps between them.
+
+**Measured** on the sheet's recipe (seed 1003, 64 tiles, 40 years, the deputy): **66 residential
+buildings — 35 at level 1, 13 at 2, 7 at 3, 11 at 4** — on lots **one or two tiles wide**. Every
+one of them is a free-standing building on its own lot. The game has never had an attached house,
+so no amount of deputy or demand tuning will produce the picture: it is not a balance question.
+
+**Two ways, and the first one is a picture decision.**
+
+1. *(recommended)* **A renderer rule: a run of adjacent small residential lots draws as a
+   terrace.** Where two or more lots at level 1–2 share a frontage on one corridor, the kit builds
+   them with party walls, one roofline across the run and per-house doors and windows — which is
+   what `unitsOf` (S16a) already divides a lot into, applied one level up. **No hash change, no
+   era**: the state is the same city and only the picture changes. The gate is the compare sheet's
+   terrace row beside the reference, plus a count — a street with N adjacent lots has to draw N-1
+   party walls rather than 2N gable ends.
+2. **An engine rule: a `rowHouse` catalogue definition** the development ladder picks on a narrow
+   lot whose neighbours are built. This is a hash change, an era and a balance question (a terrace
+   houses more people per tile than a detached house), and it is the honest way if Kjell wants
+   terraces to be a different THING rather than a different drawing.
+
+**Size.** M for (1), including the kit work and the shots. Not before V5: the evening is played in
+the city the game builds today, and this changes how every residential street in it looks — which
+is a thing to decide after somebody has played one, not three days before.
+
+## S22e — A shadow that is cooler, not just darker (S, renderer) — A145's third option, unplanned
+
+**What A145 asked for and what A148 kept.** "The tint cooler rather than the ground darker" was one
+of three things A145 asked for; S22d delivered the other two (the numbers as data, the shadow from
+8% to 14% of the ground's value) and A148 kept the soft rig at that. The tint is the part nobody
+has costed, and the reason is in the code: `tintShadows` patches a **toon** material's shader, which
+is what `painted` uses, and `plain` — the style the game ships with — is Lambert. So
+`data/cityviewer.json`'s `shadow.tint` reaches one style and not the one anybody plays.
+
+**Do.** The same `onBeforeCompile` patch for the Lambert path: mix the shadow tint into
+`lights_fragment_begin`'s direct light where the shadow term is below one, so a shadowed surface
+shifts toward the cool violet instead of only losing value. `style-assets.js`'s toon patch is the
+worked example, including the shape check that warns when three's chunk has changed rather than
+silently producing a shader that does nothing.
+
+**Tests first.** `sun_shots`' A/B measures the shadow's DEPTH; this needs its hue: the same two
+frames, and the shadowed pixels' hue has to move toward the tint while the value drop stays inside
+A148's floor. A shadow that is only cooler and no darker is as invisible as one that is only
+darker — the number and the hue are one claim.
+
+**Size.** S, and it is a LOOK, so it wants Kjell in front of it. After V5, with the evening's own
+answer about whether the light reads.
+
 ## S22 — A sun that moves, and a moon that takes over (M, renderer) — A138 — **BUILT 2026-10-08 as `slice-S22`**
 
 *As built: `client/world/sun.js` is pure and node-testable (nine tests), the arcs are data

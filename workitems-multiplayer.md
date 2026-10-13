@@ -926,7 +926,7 @@ over forty years; a returning player finds treasury and land as the rules say. *
 `room_soak` in churn mode: seats join and leave at random ticks for forty city years, no
 divergence, no orphaned land, with the deputy on the server only.
 
-## X8 — The three region rules have no control (S) — found 2026-10-12, unplanned
+## ~~X8 — The three region rules have no control (S)~~ — found 2026-10-12, **built 2026-10-13**
 
 **What the sweep found by being re-run.** D11's 200-game re-run of the region sweep tripped its own
 inert-arm check: `null` and `split-equal` came back **byte-identical on both configurations** —
@@ -955,6 +955,16 @@ as `separate` (the option crosses the wire and the city plays it).
 
 **Size.** S, and it is the half of X4g that makes the other half reachable. Before V5 if the
 evening is meant to try a money rule; after it otherwise — the defaults are the measured ones.
+
+**Built 2026-10-13.** A "Playing together" block that says when it applies, because the rules are
+identities at one seat. The money rule is one question with three answers — `sets: ["treasury",
+"splitRule"]` is how the census sees a row that decides a field that is not its own name — and the
+four entries left `NO_LOBBY_ROW`. `room_smoke` presses the rows, hosts, and reads the ROOM's
+options off the server, because a screen that collected three choices and sent none would look the
+same from the lobby's end. Three gate findings came with it: `room` went over budget and split into
+`room` (browsers) and `wire` (the scripted soaks), two gates were counting the lobby's rows against
+a literal 5, and the choice strip that is right for chips hangs a sentence off the edge of a
+phone.
 
 ## The release gate — Multiplayer MVP
 

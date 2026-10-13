@@ -385,8 +385,9 @@ Everything else in this file can wait for your answers.
 # Part 4 — The multiplayer evening (v1.0's V5)
 
 **Empty until it happens.** This is the other acceptance: Kjell and at least three people, on the
-deployed server, for an hour. Five browsers driven by a gate on one machine is not four people on
-an evening, and `workitems-v1.md` says so in the definition of done.
+deployed server, for an hour. **Eight** browsers driven by a gate on one machine — which is what
+`room_smoke` runs, one of them a 390x844 phone — is not four people on an evening, and
+`workitems-v1.md` says so in the definition of done.
 
 What to write down, in this order — the same shape Part 1 has, because the same thing makes it
 useful:
@@ -400,9 +401,15 @@ useful:
 4. **What did people do that the game did not expect?** Two players painting the same tile, a
    request nobody answered, somebody leaving for twenty minutes, somebody closing the tab and
    coming back. The history panel is supposed to answer the last one; find out whether it does.
-5. **Did anybody want something that is not there?** Chat off by default, no room list, no QR yet,
-   no ready button — all deliberate, all cheap to add if the evening asks.
-6. **The desync count.** It must read zero, and the server's `/health` is where to look.
+5. **Did anybody want something that is not there?** No room list and no master index (v1.2), chat
+   off by default, `lateJoin` always on — all deliberate, all cheap to add if the evening asks. The
+   QR and the ready button are built (X2d); whether anybody USED them is a note worth having.
+6. **Try a money rule.** The new-game screen's *Playing together* block (X8) offers the three rules
+   era 31 measured: shared and split equally (the default), shared by residents, or every mayor
+   their own — plus services across borders and who pays for disasters. The sweep says a separate
+   purse takes the spread between mayors from 2% to 101% and quadruples the rescues; whether that
+   is a better EVENING is the one thing 200 games cannot say.
+7. **The desync count.** It must read zero, and the server's `/health` is where to look.
 
 A note that says "it worked" is worth less than a note that says what somebody said while it was
 working.

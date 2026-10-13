@@ -100,11 +100,10 @@ measured, and a dead constant that fences dead imports.*
 
 **Found on 2026-10-12, by re-running the region sweep (D11):**
 
-- **X8 — the three region rules have no control** (`workitems-multiplayer.md`). The sweep's
-  inert-arm check caught `split-equal` reading identically to `null` (the default IS a split
-  divided equally since A142), and fixing the arm asked the larger question: `splitRule`,
-  `mutualAid`, `disasterAid` and `treasury` are read by the reducer and offered by no screen, so
-  era 31 measured three rules a player cannot ask for. S, and it is what makes X4g reachable.
+- ~~**X8 — the three region rules have no control**~~ — **built 2026-10-13**: a "Playing
+  together" block on the new-game screen, the money rule as one question with three answers, and
+  `room_smoke` reading the hosted room's options off the server. The `room` set split in two on the
+  way (`room` for browsers, `wire` for the scripted soaks).
 
 **Found on 2026-10-11, after K6a–K6c** (the omissions sweep on those slices):
 
