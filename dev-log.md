@@ -16466,3 +16466,25 @@ timestamp to say it had happened — and `region_sweep` has refused to write bel
 Both tools carry the guard now, and `test/sweep-arms.test.js` holds it: every
 `writeFile` in either sweep is inside the `GAMES >= 200` test, and both say so
 when they refuse. The era-31 report I overwrote came back out of git.
+
+### The round after X8 (2026-10-13)
+
+**Tests.** `test/lobby.test.js` walks every region choice into the options
+record the way it already walked sizes and difficulties — nine more values
+through `defaultOptions`, including the money rule's two-field expansion. That
+also gave the three new choice tables a reader outside their own module, which
+is the rule the rest of the file follows.
+
+**Docs.** `RELEASE.md`'s staleness guard fired at **51 commits** past its named
+one — the tripwire M7 wrote working exactly as intended — so the page names this
+commit, says what v1.0 is bar the evening, and carries 2,133 tests and the
+sixteen sets.
+
+**Memories.** One: a sample must not overwrite the measurement. And the
+"option the engine obeys" memory gains how X8 was actually built.
+
+**Omissions.** The sweep over the eight changed files found the three choice
+tables exported with no reader outside `options-model.js`, which the test above
+fixes rather than the export being deleted — the convention the file already
+had. Nothing else: `playtest-notes.md` is the one document that mattered and it
+is Part 4's turn now.

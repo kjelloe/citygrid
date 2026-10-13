@@ -9,7 +9,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SIZES, DIFFICULTIES, TERRAINS, WATERS, DISASTERS, ROWS, GROUPS, rowsIn,
+  SIZES, DIFFICULTIES, TERRAINS, WATERS, DISASTERS, MONEY, MUTUAL_AID, DISASTER_AID, ROWS, GROUPS, rowsIn,
   defaultChoices, sanitiseChoices, optionsFor, choicesFromParams, paramsForChoices, NAME_MAX,
 } from "../client/lobby/options-model.js";
 import { defaultOptions, OPTION_FIELDS } from "../engine/options.js";
@@ -35,6 +35,25 @@ test("every choice the screen offers survives into the options record", () => {
   for (const water of WATERS) {
     assert.equal(defaultOptions(optionsFor({ ...defaultChoices(), waterStyle: water.value })).waterStyle,
       water.value);
+  }
+  // The region rules the same way (X8): every value of every row, through the
+  // engine's own `defaultOptions`, because a choice the screen offers and the
+  // options record drops is a control that lies.
+  for (const money of MONEY) {
+    const options = defaultOptions(optionsFor({ ...defaultChoices(), money: money.value }));
+    const wanted = money.value === "separate"
+      ? { treasury: "separate", splitRule: "equal" }
+      : { treasury: "split", splitRule: money.value === "population" ? "population" : "equal" };
+    assert.equal(options.treasury, wanted.treasury, `${money.value} did not reach the treasury rule`);
+    assert.equal(options.splitRule, wanted.splitRule, `${money.value} did not reach the split rule`);
+  }
+  for (const aid of MUTUAL_AID) {
+    assert.equal(defaultOptions(optionsFor({ ...defaultChoices(), mutualAid: aid.value })).mutualAid,
+      aid.value, `mutual aid ${aid.value} did not reach the options record`);
+  }
+  for (const relief of DISASTER_AID) {
+    assert.equal(defaultOptions(optionsFor({ ...defaultChoices(), disasterAid: relief.value })).disasterAid,
+      relief.value, `disaster aid ${relief.value} did not reach the options record`);
   }
   for (const disasters of DISASTERS) {
     assert.equal(defaultOptions(optionsFor({ ...defaultChoices(), disasters: disasters.value })).disasters,

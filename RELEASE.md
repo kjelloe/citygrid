@@ -4,15 +4,16 @@
 other document in this repository says what the game is meant to be. This one says what was
 measured when somebody last looked, which is a different claim and the only one you can check.*
 
-- **Commit:** `3d86c6e` on `dev_night`, after **a multiplayer room a player can host, join and
-  play in** (X0 through X4e), **a sun that crosses the sky** (S22), the price of clearing ground and
-  the quests the tools had never loaded (era 30), the model's dirty set, the request commands and
-  borrowing — which is what the numbers below were measured at. **`main` is the release and
-  `dev_night` carries what has landed since.** `main` was last pushed on 2026-10-05 at `6b89a6f`;
-  this page named a commit **129 behind** until 2026-10-04, with every number on it measured against
-  a game that no longer existed, so `test/docs.test.js` fails past fifty commits of drift rather
-  than printing a note nobody reads (M7).
-- **Date:** 2026-10-08
+- **Commit:** `4d4bacd` on `dev_night`, after **the whole of v1.0 bar the evening**: the room a
+  player can host, join and play in (X0–X4i), the deployed server and its gates (M12, K6d), **the
+  phone before the evening** (K6a–d, K7, K8 — gestures instead of key names, one rail, Copy link,
+  a save a finger can load, every control at 44 px), a shadow you can see (S22d), and the rules a
+  region plays by on a screen (X8). **`main` is the release and `dev_night` carries what has landed
+  since.** `main` was last pushed on 2026-10-05 at `6b89a6f`; this page named a commit **129
+  behind** until 2026-10-04, with every number on it measured against a game that no longer
+  existed, so `test/docs.test.js` fails past fifty commits of drift rather than printing a note
+  nobody reads (M7).
+- **Date:** 2026-10-13
 - **Balance era:** era 31 (`reports/balance-era31.md` and `reports/region-era31.md`), measured
   2026-10-09. X4g made the three multiplayer options that divide a region into rules — `splitRule`,
   `mutualAid`, `disasterAid` — which **no single-seat sweep could have measured**, because at one
@@ -44,7 +45,7 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **2,132 tests**, green twice in a row on every slice (`./test.sh`), and **sixteen gate sets** —
+- **2,133 tests**, green twice in a row on every slice (`./test.sh`), and **sixteen gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
   `release`, `film` and `room` — every one of their budgets re-measured on a quiet machine at
   era 30 (M9), most of them downwards. `region` is era 31's: a four-seat city played five ways,
