@@ -131,10 +131,10 @@ test("asking for a set that does not exist is refused, not silently empty", () =
  */
 const NOT_IN_QUICK = {
   room_smoke: "eight browsers against a real `ws` server and a room pumped for "
-    + "city years — one of them a 390x844 phone since X7 — at 164 s. It was 81 s "
+    + "city years — one of them a 390x844 phone since X7 — at 167 s. It was 81 s "
     + "of a 540 s budget when this excuse was written and `quick` measured 578 s "
-    + "with it in (X5 item 2, M9). It is in `room`, with the two soaks that need "
-    + "the same server.",
+    + "with it in (X5 item 2, M9). It IS `room` since X8 split that set: the two "
+    + "scripted soaks are `wire` now, and this gate is the room as a page.",
 };
 
 /** The three sets a browser smoke may be in since M14 — `quick` for the ones
@@ -262,4 +262,28 @@ test("the runner counts the node processes that are not itself", () => {
   // that into zero — but a trailing newline is the normal case and must not
   // become a NaN in the list.
   assert.deepEqual(otherPidsIn("4321\n9999\n", 1234), [4321, 9999]);
+});
+
+test("every set has a budget, and no gate is in two of them", () => {
+  // Two cheap invariants that have each been true by habit and never asserted —
+  // and X8 added the sixteenth set, which is the moment habit runs out. A set
+  // with no budget divides by `undefined` and prints `NaN min`; a gate in two
+  // sets pays for itself twice in `all` and reports two rows.
+  const names = Object.keys(SETS).filter((name) => name !== "all");
+  assert.ok(names.length >= 10, `${names.length} sets is not this runner`);
+  for (const name of names) {
+    assert.equal(typeof BUDGET_MS[name], "number", `"${name}" has no budget`);
+    assert.ok(BUDGET_MS[name] > 0, `"${name}" has a budget of ${BUDGET_MS[name]}`);
+  }
+  const owner = new Map();
+  for (const name of names) {
+    for (const gate of SETS[name]) {
+      assert.equal(owner.get(gate), undefined,
+        `${gate} is in "${name}" and in "${owner.get(gate)}"`);
+      owner.set(gate, name);
+    }
+  }
+  // And `all` is exactly the union, which is what makes one run of it a run of
+  // everything.
+  assert.deepEqual([...SETS.all].sort(), [...owner.keys()].sort());
 });
