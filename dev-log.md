@@ -16372,3 +16372,40 @@ that says why not.
   `disaster-aid` arm — the rates that stop an arm being read as inert.
 - `gates.mjs region` (the 10-game sample) **146 s of 300**, green with the new
   arm: a sample small enough to be a gate still moves it.
+
+## The round after D11 (2026-10-13)
+
+**Tests.** Two files, both about the thing a 50-minute run found:
+
+- `test/sweep-arms.test.js` resolves every region arm's options through
+  `defaultOptions` and asserts no two are the same, that the null arm carries
+  none, and that every other arm moves **one** field. Checked against the arm it
+  was written for: restored to `{ treasury: "split", splitRule: "equal" }`, the
+  test says *"split-equal and null are the same configuration"* in a
+  millisecond. `region_sweep.mjs` gained the main-module guard `gates.mjs` has
+  had since M2 — without it, importing the table runs the sweep.
+- `test/omissions.test.js` gained the other half of the options census: **every
+  option the engine obeys is on a screen, or on a list that says who sets it.**
+  Twenty-two entries, each naming a setter — a re-roll button, a value derived
+  from `size` or `difficulty`, an environment variable on the box, or a slice
+  that will add it — and four of them say **X8**, which is the finding this
+  holds: `treasury`, `splitRule`, `mutualAid` and `disasterAid` are measured by
+  an era and offered by nothing.
+
+**Docs and skills.** The `sim-gate` skill's arm guidance said to keep a
+`split-equal` arm between the null and `split-population`; it now says what
+happened to that arm and tells the reader to check the table before spending
+fifty minutes on it. `RELEASE.md` carries the re-run, the separate-treasury
+numbers and X8, and is at 2,128 tests.
+
+**Memories.** Two: an arm that is the default spelled out, and an option the
+engine obeys that no screen offers.
+
+**Omissions.** `tools/sim_sweep.mjs` has no main-module guard either — nothing
+imports it today, and it is a ten-minute sweep if anything ever does. Left as a
+note rather than changed, because `region_sweep` needed one for a test and this
+one does not. Everything else the sweep touched is consistent: the two halves of
+`region-era31` agree (the docs test compares the treasury spread per arm against
+the JSON), the `region` gate's ten-game sample is green with the new arm at
+146 s of 300, and no document still describes the arm that was removed except
+where it is telling that story.

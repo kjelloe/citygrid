@@ -67,7 +67,7 @@ const SEATS = 4;
  * `constraint-concentrates-the-agent` both arrived at: two rules changed
  * together measure their sum and nothing else.
  */
-const ARMS = [
+export const ARMS = [
   // **The default IS a split treasury divided equally** (A142 removed `shared`,
   // which had always been a split in disguise), so the null arm's name says so
   // rather than describing a value the engine no longer has.
@@ -135,7 +135,7 @@ const ARMS = [
  * `demanding` is where all three rules bite: a disaster one month in 59, a
  * starting treasury of 12,000, and 120% build costs.
  */
-const CONFIGS = [
+export const CONFIGS = [
   { name: "steady-64", difficulty: "steady", size: 64, disasters: true },
   { name: "demanding-64", difficulty: "demanding", size: 64, disasters: true },
 ];
@@ -254,166 +254,176 @@ function say(text = "") {
   console.log(text);
 }
 
-say(`# Region sweep — era ${rules().era}`);
-say();
-say(`${GAMES} games per arm per configuration, ${YEARS} years each, **${SEATS} seats** and one`);
-say("deputy per seat on one map. Numbers below belong to **era " + rules().era + "**; numbers from");
-say("a previous era are void, not roughly comparable (CLAUDE.md).");
-say();
-say("**What this sweep searches for:** the spread between seats, as a percentage of the mean —");
-say("treasury, residents and land. The totals say whether the region is alive; only the spread");
-say("says whether it is fair, and fairness is the whole of what these three options change.");
-say();
-for (const arm of ARMS) say(`- \`${arm.name}\` — ${arm.what}`);
-say();
-
-for (const config of CONFIGS) {
-  say(`## ${config.name}`);
+/** Everything below runs only when this file IS the command (D11's round).
+ *
+ * The tables above are data and a test has to be able to read them: an arm that
+ * resolves to the same options as another measures nothing, and the only thing
+ * that caught the last one was a **50-minute** run at 200 games. Without this
+ * guard, importing the tables runs the sweep.
+ *
+ * `tools/gates.mjs` has carried the same guard since M2, for the same reason. */
+if (import.meta.url === `file://${process.argv[1]}`) {
+  say(`# Region sweep — era ${rules().era}`);
   say();
-  say("| arm | alive | population | treasury total | treasury spread | residents spread | land spread | seats with nobody | relief paid | levied |");
-  say("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
-  for (const arm of ARMS) {
-    const rows = [];
-    for (let game = 0; game < GAMES; game += 1) {
-      const row = play(config, arm, 700000 + game);
-      if (row) rows.push(row);
-    }
-    const live = rows.filter((r) => r.population > 0);
-    const pick = (key) => live.map((r) => r[key]);
-    const summary = {
-      games: rows.length,
-      livingCities: live.length,
-      population: quantile(pick("population"), 0.5),
-      treasuryTotal: quantile(pick("treasuryTotal"), 0.5),
-      treasurySpread: quantile(pick("treasurySpread"), 0.5),
-      residentsSpread: quantile(pick("residentsSpread"), 0.5),
-      landSpread: quantile(pick("landSpread"), 0.5),
-      poorestSeat: quantile(pick("poorestSeat"), 0.5),
-      residentsHoused: quantile(pick("residentsHoused"), 0.5),
-      stations: quantile(pick("stations"), 0.5),
-      // Totals, not medians: these are what says the rule was REACHED, and a
-      // median of 0 over 200 games hides 23 payments in the tail.
-      reliefPaid: live.reduce((sum, r) => sum + r.reliefPaid, 0),
-      disastersStruck: live.reduce((sum, r) => sum + r.disastersStruck, 0),
-      levyCount: live.reduce((sum, r) => sum + r.levyCount, 0),
-      levied: live.reduce((sum, r) => sum + r.levied, 0),
-      emptySeats: quantile(pick("emptySeats"), 0.5),
-      crime: quantile(pick("crime"), 0.5),
-      landValue: quantile(pick("landValue"), 0.5),
-      powerStarved: quantile(pick("powerStarved"), 0.5),
-    };
-    report.configs[`${config.name}/${arm.name}`] = { config, arm, summary, rows };
-    say(`| \`${arm.name}\` | ${summary.livingCities} of ${summary.games} | ${summary.population} `
-      + `| ${summary.treasuryTotal} | ${summary.treasurySpread}% | ${summary.residentsSpread}% `
-      + `| ${summary.landSpread}% | ${summary.emptySeats} | ${summary.reliefPaid} `
-      + `| ${summary.levied} |`);
-  }
+  say(`${GAMES} games per arm per configuration, ${YEARS} years each, **${SEATS} seats** and one`);
+  say("deputy per seat on one map. Numbers below belong to **era " + rules().era + "**; numbers from");
+  say("a previous era are void, not roughly comparable (CLAUDE.md).");
   say();
-}
+  say("**What this sweep searches for:** the spread between seats, as a percentage of the mean —");
+  say("treasury, residents and land. The totals say whether the region is alive; only the spread");
+  say("says whether it is fair, and fairness is the whole of what these three options change.");
+  say();
+  for (const arm of ARMS) say(`- \`${arm.name}\` — ${arm.what}`);
+  say();
 
-// The same reading `sim_sweep` prints, for the same reason: an arm measured on
-// a configuration where its rule never fires can only come back inert, and the
-// count is what tells that apart from a rule that does nothing.
-say("## Rules that fired");
-say();
-say("| arm | disasters | relief | levies | configuration |");
-say("| --- | --- | --- | --- | --- |");
-for (const config of CONFIGS) {
-  for (const arm of ARMS) {
-    const got = report.configs[`${config.name}/${arm.name}`].summary;
-    say(`| \`${arm.name}\` | ${got.disastersStruck} | ${got.reliefPaid} | ${got.levyCount} `
-      + `| ${config.name} |`);
-  }
-}
-say();
-
-say("## What moved");
-say();
-const base = report.configs["steady-64/null"].summary;
-for (const arm of ARMS.slice(1)) {
-  const got = report.configs[`steady-64/${arm.name}`].summary;
-  const delta = (key, unit = "") => {
-    const was = base[key];
-    const now = got[key];
-    const sign = now === was ? "=" : now > was ? "+" : "";
-    return `${key} ${was}${unit} → ${now}${unit} (${sign}${now - was}${unit})`;
-  };
-  say(`- **\`${arm.name}\`**: ${delta("population")}, ${delta("treasuryTotal")}, `
-    + `${delta("treasurySpread", "%")}, ${delta("residentsSpread", "%")}`);
-}
-say();
-
-// **An arm that changes nothing is an option nobody reads.** The null-arm
-// discipline from `one-deputy-turn-moves-the-sweep`, pointed the other way:
-// this sweep exists because three options were declared and unread, and the
-// cheapest way to go back to that state is for a rule to be wired to something
-// no city ever reaches. Measured on the arm's OWN configuration, and `=` on
-// every column is the failure.
-const MEASURES = ["population", "treasuryTotal", "treasurySpread", "residentsSpread", "landSpread",
-  "poorestSeat", "crime", "landValue", "reliefPaid", "levied"];
-const inert = [];
-const unreached = [];
-say("## Does every arm reach a city");
-say();
-say("| arm | moved | its subject | how much of it this sample had |");
-say("| --- | --- | --- | --- |");
-for (const arm of ARMS.slice(1)) {
-  const moved = [];
-  let subject = 0;
   for (const config of CONFIGS) {
-    const got = report.configs[`${config.name}/${arm.name}`].summary;
-    const was = report.configs[`${config.name}/null`].summary;
-    subject += Math.max(got[arm.subject], was[arm.subject]);
-    for (const key of MEASURES) if (got[key] !== was[key]) moved.push(`${config.name}/${key}`);
+    say(`## ${config.name}`);
+    say();
+    say("| arm | alive | population | treasury total | treasury spread | residents spread | land spread | seats with nobody | relief paid | levied |");
+    say("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+    for (const arm of ARMS) {
+      const rows = [];
+      for (let game = 0; game < GAMES; game += 1) {
+        const row = play(config, arm, 700000 + game);
+        if (row) rows.push(row);
+      }
+      const live = rows.filter((r) => r.population > 0);
+      const pick = (key) => live.map((r) => r[key]);
+      const summary = {
+        games: rows.length,
+        livingCities: live.length,
+        population: quantile(pick("population"), 0.5),
+        treasuryTotal: quantile(pick("treasuryTotal"), 0.5),
+        treasurySpread: quantile(pick("treasurySpread"), 0.5),
+        residentsSpread: quantile(pick("residentsSpread"), 0.5),
+        landSpread: quantile(pick("landSpread"), 0.5),
+        poorestSeat: quantile(pick("poorestSeat"), 0.5),
+        residentsHoused: quantile(pick("residentsHoused"), 0.5),
+        stations: quantile(pick("stations"), 0.5),
+        // Totals, not medians: these are what says the rule was REACHED, and a
+        // median of 0 over 200 games hides 23 payments in the tail.
+        reliefPaid: live.reduce((sum, r) => sum + r.reliefPaid, 0),
+        disastersStruck: live.reduce((sum, r) => sum + r.disastersStruck, 0),
+        levyCount: live.reduce((sum, r) => sum + r.levyCount, 0),
+        levied: live.reduce((sum, r) => sum + r.levied, 0),
+        emptySeats: quantile(pick("emptySeats"), 0.5),
+        crime: quantile(pick("crime"), 0.5),
+        landValue: quantile(pick("landValue"), 0.5),
+        powerStarved: quantile(pick("powerStarved"), 0.5),
+      };
+      report.configs[`${config.name}/${arm.name}`] = { config, arm, summary, rows };
+      say(`| \`${arm.name}\` | ${summary.livingCities} of ${summary.games} | ${summary.population} `
+        + `| ${summary.treasuryTotal} | ${summary.treasurySpread}% | ${summary.residentsSpread}% `
+        + `| ${summary.landSpread}% | ${summary.emptySeats} | ${summary.reliefPaid} `
+        + `| ${summary.levied} |`);
+    }
+    say();
   }
-  say(`| \`${arm.name}\` | ${moved.length === 0 ? "**nothing**" : `${moved.length} measure(s)`} `
-    + `| \`${arm.subject}\` | ${subject} of the ${arm.needs ?? 1} it takes to tell |`);
-  // **A sample too small to reach the rule is not a broken rule.** The two
-  // failures look identical in a flat table and are opposite problems, so the
-  // subject count is what tells them apart — `a-failure-counter-is-not-a-
-  // subject-counter`, which is the lesson that three crossing counters read 0
-  // because no gate city had a crossing.
-  if (moved.length > 0) continue;
-  const needs = arm.needs ?? 1;
-  if (subject < needs) {
-    unreached.push(`${arm.name} (${subject} ${arm.subject}, and it takes ${needs} to tell)`);
+
+  // The same reading `sim_sweep` prints, for the same reason: an arm measured on
+  // a configuration where its rule never fires can only come back inert, and the
+  // count is what tells that apart from a rule that does nothing.
+  say("## Rules that fired");
+  say();
+  say("| arm | disasters | relief | levies | configuration |");
+  say("| --- | --- | --- | --- | --- |");
+  for (const config of CONFIGS) {
+    for (const arm of ARMS) {
+      const got = report.configs[`${config.name}/${arm.name}`].summary;
+      say(`| \`${arm.name}\` | ${got.disastersStruck} | ${got.reliefPaid} | ${got.levyCount} `
+        + `| ${config.name} |`);
+    }
+  }
+  say();
+
+  say("## What moved");
+  say();
+  const base = report.configs["steady-64/null"].summary;
+  for (const arm of ARMS.slice(1)) {
+    const got = report.configs[`steady-64/${arm.name}`].summary;
+    const delta = (key, unit = "") => {
+      const was = base[key];
+      const now = got[key];
+      const sign = now === was ? "=" : now > was ? "+" : "";
+      return `${key} ${was}${unit} → ${now}${unit} (${sign}${now - was}${unit})`;
+    };
+    say(`- **\`${arm.name}\`**: ${delta("population")}, ${delta("treasuryTotal")}, `
+      + `${delta("treasurySpread", "%")}, ${delta("residentsSpread", "%")}`);
+  }
+  say();
+
+  // **An arm that changes nothing is an option nobody reads.** The null-arm
+  // discipline from `one-deputy-turn-moves-the-sweep`, pointed the other way:
+  // this sweep exists because three options were declared and unread, and the
+  // cheapest way to go back to that state is for a rule to be wired to something
+  // no city ever reaches. Measured on the arm's OWN configuration, and `=` on
+  // every column is the failure.
+  const MEASURES = ["population", "treasuryTotal", "treasurySpread", "residentsSpread", "landSpread",
+    "poorestSeat", "crime", "landValue", "reliefPaid", "levied"];
+  const inert = [];
+  const unreached = [];
+  say("## Does every arm reach a city");
+  say();
+  say("| arm | moved | its subject | how much of it this sample had |");
+  say("| --- | --- | --- | --- |");
+  for (const arm of ARMS.slice(1)) {
+    const moved = [];
+    let subject = 0;
+    for (const config of CONFIGS) {
+      const got = report.configs[`${config.name}/${arm.name}`].summary;
+      const was = report.configs[`${config.name}/null`].summary;
+      subject += Math.max(got[arm.subject], was[arm.subject]);
+      for (const key of MEASURES) if (got[key] !== was[key]) moved.push(`${config.name}/${key}`);
+    }
+    say(`| \`${arm.name}\` | ${moved.length === 0 ? "**nothing**" : `${moved.length} measure(s)`} `
+      + `| \`${arm.subject}\` | ${subject} of the ${arm.needs ?? 1} it takes to tell |`);
+    // **A sample too small to reach the rule is not a broken rule.** The two
+    // failures look identical in a flat table and are opposite problems, so the
+    // subject count is what tells them apart — `a-failure-counter-is-not-a-
+    // subject-counter`, which is the lesson that three crossing counters read 0
+    // because no gate city had a crossing.
+    if (moved.length > 0) continue;
+    const needs = arm.needs ?? 1;
+    if (subject < needs) {
+      unreached.push(`${arm.name} (${subject} ${arm.subject}, and it takes ${needs} to tell)`);
+    } else {
+      inert.push(`${arm.name} (${subject} ${arm.subject} and nothing moved)`);
+    }
+  }
+  say();
+  if (inert.length === 0 && unreached.length === 0) {
+    say(`All ${ARMS.length - 1} arms moved at least one measure on at least one configuration.`);
+  }
+  if (unreached.length > 0) {
+    say(`**${unreached.length} arm(s) never reached the thing they are about: ${unreached.join(", ")}.**`);
+    say("That is a statement about this sample's size, not about the rule — the era report runs 200");
+    say("games per arm and `demanding-64` is the configuration where relief fires at all (era 30");
+    say("counted it 23 times in 200 demanding games and 0 in 200 steady).");
+  }
+  if (inert.length > 0) {
+    say(`**${inert.length} arm(s) had their subject and changed nothing: ${inert.join(", ")}.** An`);
+    say("option wired to a rule no city reaches is an unread option with extra steps — which is what");
+    say("this era was for.");
+  }
+  say();
+
+  // **A sample is not an era report.** The gate runs this tool with a small
+  // `games` so it can afford to, and a 40-game table written over
+  // `reports/region-era31.md` would replace the era's authority with a tripwire's
+  // output — `a-report-written-in-two-places`, from the direction where the two
+  // places are the same place at two sizes.
+  await mkdir(join(root, "reports"), { recursive: true });
+  if (GAMES >= 200) {
+    await writeFile(join(root, "reports", `region-era${rules().era}.md`), lines.join("\n") + "\n");
+    await writeFile(join(root, "reports", `region-era${rules().era}.json`), JSON.stringify(report, undefined, 1));
+    console.log(`\nwrote reports/region-era${rules().era}.md and .json`);
   } else {
-    inert.push(`${arm.name} (${subject} ${arm.subject} and nothing moved)`);
+    console.log(`\n${GAMES} games is a SAMPLE, not an era report (200+ per CLAUDE.md): nothing written.`);
   }
-}
-say();
-if (inert.length === 0 && unreached.length === 0) {
-  say(`All ${ARMS.length - 1} arms moved at least one measure on at least one configuration.`);
-}
-if (unreached.length > 0) {
-  say(`**${unreached.length} arm(s) never reached the thing they are about: ${unreached.join(", ")}.**`);
-  say("That is a statement about this sample's size, not about the rule — the era report runs 200");
-  say("games per arm and `demanding-64` is the configuration where relief fires at all (era 30");
-  say("counted it 23 times in 200 demanding games and 0 in 200 steady).");
-}
-if (inert.length > 0) {
-  say(`**${inert.length} arm(s) had their subject and changed nothing: ${inert.join(", ")}.** An`);
-  say("option wired to a rule no city reaches is an unread option with extra steps — which is what");
-  say("this era was for.");
-}
-say();
 
-// **A sample is not an era report.** The gate runs this tool with a small
-// `games` so it can afford to, and a 40-game table written over
-// `reports/region-era31.md` would replace the era's authority with a tripwire's
-// output — `a-report-written-in-two-places`, from the direction where the two
-// places are the same place at two sizes.
-await mkdir(join(root, "reports"), { recursive: true });
-if (GAMES >= 200) {
-  await writeFile(join(root, "reports", `region-era${rules().era}.md`), lines.join("\n") + "\n");
-  await writeFile(join(root, "reports", `region-era${rules().era}.json`), JSON.stringify(report, undefined, 1));
-  console.log(`\nwrote reports/region-era${rules().era}.md and .json`);
-} else {
-  console.log(`\n${GAMES} games is a SAMPLE, not an era report (200+ per CLAUDE.md): nothing written.`);
+  if (inert.length > 0) {
+    console.error(`\nregion sweep FAILED: ${inert.length} inert arm(s): ${inert.join(", ")}`);
+    process.exit(1);
+  }
+  console.log("region sweep ok");
 }
-
-if (inert.length > 0) {
-  console.error(`\nregion sweep FAILED: ${inert.length} inert arm(s): ${inert.join(", ")}`);
-  process.exit(1);
-}
-console.log("region sweep ok");

@@ -16,6 +16,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { OPTION_FIELDS } from "../engine/options.js";
+import { ROWS as LOBBY_ROWS } from "../client/lobby/options-model.js";
 import { repoRoot, jsFilesIn, stripCommentsAndStrings } from "./helpers/sources.js";
 import { knownCommands } from "../engine/reducer.js";
 import { C2S, S2C } from "../shared/protocol.js";
@@ -406,6 +407,70 @@ test("the options the project declares and nothing reads are exactly these (Q148
   // and X4a holds their seat on purpose.
   assert.deepEqual(unread.sort(), ["privacy", "seasonYears"],
     "the set of declared-but-unread options moved — wire it, delete it, or pin it here on purpose");
+});
+
+/**
+ * Options the engine obeys that no screen offers, each with the reason (X8,
+ * 2026-10-13).
+ *
+ * The census above asks whether anything READS an option — which is why
+ * `splitRule`, `mutualAid` and `disasterAid` left it in X4g, the moment the
+ * reducer began obeying them. This one asks the other half: can a player ask
+ * for it? Era 31 measured three region rules in 200 games an arm and the lobby
+ * has no row for any of them, so the sweep priced a city nobody can choose.
+ * *The no-control list is empty*, one layer along.
+ *
+ * An entry here is a promise about WHO sets it instead, not an excuse.
+ */
+const NO_LOBBY_ROW = {
+  // Set by the screen, through something that is not an options row.
+  seed: "the region preview's re-roll button, which is what choosing a map IS",
+  cityName: "a text field on the new-game screen (`lobby.cityName`)",
+  // Derived from a row rather than offered beside it.
+  width: "derived from `size`",
+  height: "derived from `size`",
+  seats: "derived from `size` by `seatsForSize` — a bigger region holds more players",
+  startingTreasury: "derived from `difficulty`",
+  quests: "derived from `difficulty`",
+  // A rule with one value today.
+  mode: "`MODE_SHARED_CITY` is the only mode; districts and the rest are Wave 6.1",
+  openBorders: "Wave 6.1, with the districts it is about",
+  seasonYears: "Wave 6.2, with the seasons",
+  // The room's policy rather than the city's: a host sets these on the SERVER,
+  // and a row for them would be a lobby pretending to own a deployment.
+  keepForDays: "`KEEP_FOR_DAYS` on the box (M12, DEPLOYING.md)",
+  chatEnabled: "the room's, not the city's — `server/chat.js` reads it off the room",
+  privacy: "needs a room list to mean anything (v1.2)",
+  lateJoin: "a restriction nobody has asked for; the default lets a late player in",
+  // Balance numbers the sweep tunes and a player does not.
+  treeDensity: "worldgen, tuned by the era rather than chosen",
+  derelictYears: "era 0's five years, a balance number (ruling P8)",
+  abandonYears: "the same, for the abandonment sweep (X4c)",
+  requestExpiryMonths: "X3a's lifetime for a request, a balance number",
+  freeTextReasons: "a safety switch for player-authored text, not a game rule",
+  // **The four X8 is about.** Every one of them changes what a region earns,
+  // every one was measured at 200 games an arm in era 31, and none of them can
+  // be asked for.
+  treasury: "X8 — the money rule has no row; era 31 measured `separate` at 101% treasury spread",
+  splitRule: "X8 — equal or by residents, measured in era 31, offered nowhere",
+  mutualAid: "X8 — era 31 reads -175 residents and -1.1M treasury with it off",
+  disasterAid: "X8 — era 31 reads 99 levies on demanding-64 with it on",
+};
+
+test("every option the engine obeys is on a screen, or on a list that says who sets it", () => {
+  const offered = new Set(LOBBY_ROWS.map((row) => row.field));
+  const missing = OPTION_FIELDS.filter((name) => !offered.has(name) && !Object.hasOwn(NO_LOBBY_ROW, name));
+  assert.deepEqual(missing.sort(), [],
+    `options the reducer obeys and no screen offers: ${missing.join(", ")} — give each a row, `
+    + "or an entry in NO_LOBBY_ROW naming who sets it instead");
+  // And the list cannot outlive what it excuses.
+  const stale = Object.keys(NO_LOBBY_ROW)
+    .filter((name) => offered.has(name) || !OPTION_FIELDS.includes(name));
+  assert.deepEqual(stale.sort(), [],
+    `NO_LOBBY_ROW names options that are offered or gone: ${stale.join(", ")}`);
+  for (const [name, why] of Object.entries(NO_LOBBY_ROW)) {
+    assert.ok(why.length > 15, `${name} is excused without saying who sets it`);
+  }
 });
 
 test("every module the client imports actually exists", () => {

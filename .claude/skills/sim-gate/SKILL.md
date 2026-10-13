@@ -322,14 +322,24 @@ things in its shape are the reusable part.
   not the spread has not done the thing it was turned on for. Relative rather than absolute,
   because an absolute gap grows with the city and would call every era less fair than the last
   (A119).
-- **One arm per rule, and a `split-equal` arm between the null and `split-population`.** The
-  equal-split arm is what proves the baseline: it came out +38 on the whole region's treasury,
-  which is the rounding remainder and nothing else — so `TREASURY_SHARED` and `TREASURY_SPLIT`
-  were the same arithmetic, and the population rule is measured against the right zero.
+- **One arm per rule.** There WAS a `split-equal` arm between the null and `split-population`, and
+  it proved the baseline until A142 made a split divided equally the default — at which point it
+  became the null arm with another name and nobody noticed for three days. Era 31's re-run (D11)
+  caught it: both arms returned **3,905 residents and §6,181,849** on demanding-64, byte for byte.
+  It measures `treasury: "separate"` now — a purse per seat, **101% treasury spread against 2%**,
+  and four times the relief payments — which no arm, gate or lobby control had ever touched.
+- **Check the arms before spending fifty minutes on them.** `test/sweep-arms.test.js` resolves each
+  arm's options through `defaultOptions` and asserts they differ, that the null arm carries none,
+  and that every other arm moves exactly one field. The 200-game run is what FOUND the identity
+  arm; a unit test is what stops the next one, and it costs a millisecond.
 - **An arm that changes nothing fails the gate.** The tool compares every arm against the null on
   eight measures and exits non-zero if one moved none of them. Three of these options were
   declared and unread for five waves; a rule wired to something no city reaches is that state
   again with extra steps, and the only instrument that can see it is an arm.
+- **And ask who can CHOOSE the rule an arm measures.** Era 31 priced three region rules at 200
+  games an arm and the lobby offers a row for none of them (X8): the reducer reading an option is
+  the half a census can see, and the control is a different layer. `test/omissions.test.js` has
+  both halves since 2026-10-13.
 
 ## The sweep is its own set (M9, 2026-10-08)
 

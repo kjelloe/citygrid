@@ -22,6 +22,10 @@ measured when somebody last looked, which is a different claim and the only one 
   4.1% of its people** and leaves it less fair as well as poorer; `disasterAid` pays relief 43
   times against 13 and changes nothing else at all. Singleplayer is **byte-identical to era 30** in
   every population and treasury quantile, bar five relief payments of 200 demanding games.
+  **Re-run on 2026-10-12** (D11) with the firing rates in the report: one of the five arms turned
+  out to be the null arm with another name, because A142 had made a split divided equally the
+  default. It measures a **separate** treasury now — a purse per seat, 101% spread against 2%, and
+  four times the relief payments — and the lobby still offers a row for none of these rules (X8).
   Era 30 was L2 and D8b, with **two arms beside it** (`balance-era30-arm-{bulldoze,quests}`)
   because two rules moved at once. Era 30 is L2's price for clearing ground — a bulldoze costs 5 before
   difficulty scaling, so **relaxed 3, steady 4, demanding 6**, where it was 0, 0 and 1 — and D8b's
@@ -40,7 +44,7 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **2,124 tests**, green twice in a row on every slice (`./test.sh`), and **fifteen gate sets** —
+- **2,128 tests**, green twice in a row on every slice (`./test.sh`), and **fifteen gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
   `release`, `film` and `room` — every one of their budgets re-measured on a quiet machine at
   era 30 (M9), most of them downwards. `region` is era 31's: a four-seat city played five ways,
@@ -152,7 +156,7 @@ is only comparable within an era.
 | `film` | 1 | **116 s** | 180 s | the sixty-second storyboard, every frame counted for triangles and for life |
 | `sim` | 2 | **354 s** | 450 s | `disaster_soak` and `traffic_gate` |
 | `sweep` | 1 | **628 s** | 780 s | the 200-game balance sweep, which is the only gate that writes a report |
-| `region` | 1 | **201 s** | 300 s | four seats, five arms: the sample that says every multiplayer rule still reaches a city (X4g) |
+| `region` | 1 | **146 s** | 300 s | four seats, five arms: the sample that says every multiplayer rule still reaches a city (X4g) |
 | `room` | 3 | **269 s** | 600→300 s | eight browsers in one room, one of them a phone, and two `ws` clients on one hash |
 | `release` | 1 | **60 s** | 180 s | `room_soak --eight`: the scripted eight on one hash, the half of V4 that proves the HASH (X7) |
 
