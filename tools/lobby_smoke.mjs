@@ -13,6 +13,7 @@
 //   node tools/lobby_smoke.mjs
 
 import { chromium } from "playwright";
+import { ROWS } from "../client/lobby/options-model.js";
 import { makeStatic } from "../server/static.js";
 import { createServer } from "node:http";
 
@@ -58,8 +59,15 @@ try {
       facts: document.querySelector(".region-facts")?.textContent ?? "",
       started: globalThis.CITY !== undefined,
     }));
+    // **A row per row in the MODEL**, not a number written here (X8 added three
+    // and both this gate and `offline_smoke` said 5). The claim is that the
+    // screen renders what `options-model.js` declares, which is the thing that
+    // can break; a literal is a transcription of the table and protects
+    // whatever the table got wrong.
     check(`${label}: a URL with no seed opens the new-game screen`,
-      shown.rows.length === 5 && !shown.started, shown.rows.join(", "));
+      shown.rows.length === ROWS.length
+      && ROWS.every((row) => shown.rows.includes(row.field)) && !shown.started,
+      `${shown.rows.join(", ")} against ${ROWS.map((r) => r.field).join(", ")}`);
 
     // The engine has emitted `region.<shape>.<feature>` since worldgen was
     // written and nothing ever rendered one. An untranslated key renders as

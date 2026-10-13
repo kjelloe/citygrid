@@ -150,11 +150,14 @@ node tools/gates.mjs sweep     # and the 200-game balance sweep when the slice i
 node tools/gates.mjs region    # four seats, five arms — a multiplayer RULE needs this one (X4g), ~3 min
 node tools/gates.mjs kits      # one picture per catalogue definition and per kit, ~6 min
 node tools/gates.mjs film      # the sixty-second storyboard, every frame counted, ~5 min (F2)
-node tools/gates.mjs room      # the room: two soaks and five browsers — EIGHT since X7, ~4.5 min
+node tools/gates.mjs room      # the room as a PAGE: eight browsers, one of them a phone, ~3 min
+node tools/gates.mjs wire      # and over time: room_soak and room_churn, one order and one hash, ~2 min
 node tools/gates.mjs release   # eight scripted clients on one region, one hash (X7), ~1 min
 ```
 
-Fifteen sets. **`quick` is two minutes again since M14** — it had grown to 560 s of a 600 s budget,
+Sixteen sets. **`room` split at X8** (2026-10-13), the seventh time M2's rule has fired: it hit
+305 s of a 300 s budget when X8 gave `room_smoke` three more clicks, so the browsers kept the name
+and the two scripted soaks became `wire`. **`quick` is two minutes again since M14** — it had grown to 560 s of a 600 s budget,
 so the four heavy interface gates left it for `screens` (driven) and `access` (audited). A slice
 that touches the HUD, the lobby or the input layer runs `quick` AND `screens`; one that moves a
 control, a label or a colour runs `access` as well. `region` and `release` are the two most often

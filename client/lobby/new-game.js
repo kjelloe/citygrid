@@ -112,6 +112,10 @@ export function createNewGame(root, { choices: initial, onStart, onContinue, onS
     const box = el("section", "lobby-block");
     box.dataset.group = group.key;
     box.append(el("h2", undefined, t(group.labelKey)));
+    // **A block may say when it applies** (X8): the region rules are identities
+    // at one seat, so the block says so rather than the screen hiding it until
+    // a decision the player has not made yet.
+    if (group.hintKey) box.append(el("p", "lobby-block-hint", t(group.hintKey)));
     groupBoxes.set(group.key, box);
     form.append(box);
   }

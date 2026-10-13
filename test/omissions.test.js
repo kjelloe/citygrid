@@ -92,7 +92,15 @@ test("nothing on the not-built list has a control in the client", () => {
   };
   walk(join(repoRoot, "client"));
   const text = sources.join("\n");
-  const wired = Object.keys(NOT_BUILT).filter((type) => text.includes(`"${type}"`));
+  // **As a COMMAND, not as a word** (X8). `CMD_MUTUAL_AID` is `"mutualAid"` and
+  // so is the lobby's row for the mutual-aid OPTION — one is a command seat 1
+  // will send seat 2 in Wave 6.1, the other is a rule the region plays by, and
+  // a bare string match called the second one the first. The client sends a
+  // command as `type:` or through a `CMD_` constant, so that is what is looked
+  // for.
+  const wired = Object.keys(NOT_BUILT).filter((type) =>
+    new RegExp(`type:\\s*["']${type}["']|CMD_${type.replace(/([A-Z])/g, "_$1").toUpperCase()}\\b`)
+      .test(text));
   assert.deepEqual(wired, [], `the client sends unimplemented commands: ${wired.join(", ")}`);
 });
 
@@ -451,14 +459,17 @@ const NO_LOBBY_ROW = {
   // **The four X8 is about.** Every one of them changes what a region earns,
   // every one was measured at 200 games an arm in era 31, and none of them can
   // be asked for.
-  treasury: "X8 — the money rule has no row; era 31 measured `separate` at 101% treasury spread",
-  splitRule: "X8 — equal or by residents, measured in era 31, offered nowhere",
-  mutualAid: "X8 — era 31 reads -175 residents and -1.1M treasury with it off",
-  disasterAid: "X8 — era 31 reads 99 levies on demanding-64 with it on",
+  // **The four X8 was about left this list on 2026-10-13**, which is the rule
+  // working in the direction that means somebody did the work: the lobby's
+  // "Playing together" block carries the money rule (one question over
+  // `treasury` and `splitRule`, declared in the row's `sets`), mutual aid and
+  // disaster relief.
 };
 
 test("every option the engine obeys is on a screen, or on a list that says who sets it", () => {
-  const offered = new Set(LOBBY_ROWS.map((row) => row.field));
+  // A row decides its own field, and may decide others it names in `sets`: the
+  // money row is one question over `treasury` and `splitRule` (X8).
+  const offered = new Set(LOBBY_ROWS.flatMap((row) => [row.field, ...(row.sets ?? [])]));
   const missing = OPTION_FIELDS.filter((name) => !offered.has(name) && !Object.hasOwn(NO_LOBBY_ROW, name));
   assert.deepEqual(missing.sort(), [],
     `options the reducer obeys and no screen offers: ${missing.join(", ")} — give each a row, `

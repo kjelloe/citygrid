@@ -59,7 +59,7 @@ Build a road, zone beside it, place a power plant and a pump, and watch it grow.
 One finger paints when a tool is selected and pans when none is; two fingers are
 always the camera. Tap with no tool to inspect a tile.
 
-**Gates.** One runner, fifteen sets, and a time budget each — a gate that grows past its share is
+**Gates.** One runner, sixteen sets, and a time budget each — a gate that grows past its share is
 a finding rather than a fact of life. Every gate that exists is in a set, and `test/gates.test.js`
 fails if one is not.
 
@@ -71,7 +71,8 @@ node tools/gates.mjs render   # walkthrough, passability — nine seconds, after
 node tools/gates.mjs lanes    # lanes_dump, and node tools/gates.mjs budget for budget_gate (split at S18)
 node tools/gates.mjs sim      # the two soaks: disaster_soak, traffic_gate — six minutes
 node tools/gates.mjs sweep    # the balance sweep alone, which writes reports/balance-eraN.md
-node tools/gates.mjs room     # eight browsers in one room (one a phone), two ws clients on one hash
+node tools/gates.mjs room     # eight browsers in one room, one of them a phone
+node tools/gates.mjs wire     # the soaks: one order, one hash, a seat left and taken back
 node tools/gates.mjs all      # everything
 node tools/gates.mjs --list   # every gate, which sets run it, and what it checks
 ```

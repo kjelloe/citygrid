@@ -58,12 +58,46 @@ export const DISASTERS = [
   { value: false, labelKey: "lobby.disasters.off" },
 ];
 
+/** **How a region's money works** (X8). One question with three answers, not
+ * two rows: `treasury` and `splitRule` are two option fields and one decision,
+ * and a split rule means nothing when every seat has its own purse.
+ *
+ * Era 31 measured all three at 200 games an arm — an equal split is the default
+ * and the sweep's null arm, by residents takes the treasury spread between
+ * seats from 1% to 70%, and a separate purse takes it to 101% on a demanding
+ * map with four times the relief payments. Until this row existed a player
+ * could not ask for any of them (X8). */
+export const MONEY = [
+  { value: "equal", labelKey: "lobby.money.equal", hintKey: "lobby.money.equal.hint" },
+  { value: "population", labelKey: "lobby.money.population", hintKey: "lobby.money.population.hint" },
+  { value: "separate", labelKey: "lobby.money.separate", hintKey: "lobby.money.separate.hint" },
+];
+
+/** Ruling 001: services and aid cross a border by default — a neighbour should
+ * be worth having before they are worth resenting. Era 31: withholding it costs
+ * the region 10.5% of its money and 4.1% of its people. */
+export const MUTUAL_AID = [
+  { value: true, labelKey: "lobby.aid.on", hintKey: "lobby.aid.on.hint" },
+  { value: false, labelKey: "lobby.aid.off", hintKey: "lobby.aid.off.hint" },
+];
+
+/** Who pays for a seat's emergency relief: the faucet, or the solvent seats. */
+export const DISASTER_AID = [
+  { value: false, labelKey: "lobby.relief.faucet", hintKey: "lobby.relief.faucet.hint" },
+  { value: true, labelKey: "lobby.relief.seats", hintKey: "lobby.relief.seats.hint" },
+];
+
 /** The two things a player is choosing between: **where** they will build, and
  * **how hard** it will be. Rows are grouped so the screen reads as two
  * decisions rather than five dropdowns in a column. */
 export const GROUPS = [
   { key: "place", labelKey: "lobby.group.place" },
   { key: "play", labelKey: "lobby.group.play" },
+  // **Shown always, and it says when it applies** (X8). The rules below are
+  // identities at one seat — which is why nobody noticed they had no control
+  // for a month — so the block's own hint says "only in a shared city" rather
+  // than the screen hiding it until a decision the player has not made yet.
+  { key: "region", labelKey: "lobby.group.region", hintKey: "lobby.group.region.hint" },
 ];
 
 /** The rows the screen renders, in order. A row is a name, a field, a group and
@@ -74,6 +108,13 @@ export const ROWS = [
   { field: "waterStyle", group: "place", labelKey: "lobby.water", choices: WATERS },
   { field: "difficulty", group: "play", labelKey: "lobby.difficulty", choices: DIFFICULTIES },
   { field: "disasters", group: "play", labelKey: "lobby.disasters", choices: DISASTERS },
+  // `sets` names the OPTION fields a row decides, where that is not its own
+  // name: the money row is one question over `treasury` and `splitRule`, and
+  // `test/omissions.test.js`'s "who sets it" census reads this.
+  { field: "money", group: "region", labelKey: "lobby.money", choices: MONEY,
+    sets: ["treasury", "splitRule"] },
+  { field: "mutualAid", group: "region", labelKey: "lobby.aid", choices: MUTUAL_AID },
+  { field: "disasterAid", group: "region", labelKey: "lobby.relief", choices: DISASTER_AID },
 ];
 
 export function rowsIn(group) {
@@ -106,6 +147,12 @@ export function defaultChoices() {
     // Disasters ON for the game a player opens. `defaultOptions()` defaults
     // them off because free-build is a mode, not because this is.
     disasters: true,
+    // The engine's own defaults, which are the null arm era 31 measured: a
+    // split treasury divided equally, aid across borders, relief from the
+    // faucet (X8).
+    money: "equal",
+    mutualAid: true,
+    disasterAid: false,
   };
 }
 
@@ -135,6 +182,9 @@ export function sanitiseChoices(given = {}) {
     terrainStyle: pick(TERRAINS, given.terrainStyle, base.terrainStyle),
     waterStyle: pick(WATERS, given.waterStyle, base.waterStyle),
     disasters: pick(DISASTERS, given.disasters, base.disasters),
+    money: pick(MONEY, given.money, base.money),
+    mutualAid: pick(MUTUAL_AID, given.mutualAid, base.mutualAid),
+    disasterAid: pick(DISASTER_AID, given.disasterAid, base.disasterAid),
   };
 }
 
@@ -156,6 +206,14 @@ export function optionsFor(choices, seats = 1) {
     waterStyle: c.waterStyle,
     disasters: c.disasters,
     quests: true,
+    // **One choice, two fields** (X8). `defaultOptions` reads anything that is
+    // not `separate` as a split and anything that is not `population` as equal,
+    // so a separate purse still carries a legal split rule — and `equal` is
+    // what the engine would have read anyway.
+    treasury: c.money === "separate" ? "separate" : "split",
+    splitRule: c.money === "population" ? "population" : "equal",
+    mutualAid: c.mutualAid,
+    disasterAid: c.disasterAid,
   };
 }
 
@@ -183,6 +241,11 @@ export function choicesFromParams(params) {
     terrainStyle: params.get("terrain") ?? undefined,
     waterStyle: params.get("water") ?? undefined,
     disasters: flag("disasters"),
+    // The region rules in a link, which is how a gate asks for one and how a
+    // host shares what a room is playing (X8).
+    money: params.get("money") ?? undefined,
+    mutualAid: flag("aid"),
+    disasterAid: flag("relief"),
     cityName: params.get("city") ?? undefined,
   });
 }
@@ -201,5 +264,11 @@ export function paramsForChoices(choices) {
   if (c.terrainStyle !== base.terrainStyle) params.set("terrain", c.terrainStyle);
   if (c.waterStyle !== base.waterStyle) params.set("water", c.waterStyle);
   if (c.disasters !== base.disasters) params.set("disasters", c.disasters ? "1" : "0");
+  // The region rules, where they are not the defaults (X8). Same rule as the
+  // rest: a link carries what was CHOSEN, so a shared link is short and says
+  // what is unusual about the city.
+  if (c.money !== base.money) params.set("money", c.money);
+  if (c.mutualAid !== base.mutualAid) params.set("aid", c.mutualAid ? "1" : "0");
+  if (c.disasterAid !== base.disasterAid) params.set("relief", c.disasterAid ? "1" : "0");
   return params.toString();
 }

@@ -234,7 +234,17 @@ export const SETS = {
   // `room_smoke` is here and nowhere else since X5: see `quick` above for why
   // it left, and `test/gates.test.js`'s `NOT_IN_QUICK` for the rule that keeps
   // the exception honest.
-  room: ["room_soak", "room_churn", "room_smoke"],
+  // **Split at X8** (2026-10-13), the seventh time M2's rule has fired. The set
+  // reached **305 s of a 300 s budget** the moment X8 added three clicks and
+  // two reads to `room_smoke` — 186 s of it alone, re-measured — and raising
+  // the budget to fit is what the rule forbids.
+  //
+  // The line is the question again: `room` is the room in BROWSERS, which is
+  // what a player's page does in one, and `wire` is the room over TIME with
+  // scripted clients — one order, one hash, a seat left and taken back. A
+  // multiplayer slice runs both; a slice that touches the page runs `room`.
+  room: ["room_smoke"],
+  wire: ["room_soak", "room_churn"],
 };
 // Deduped because a gate in two sets would pay for itself twice in `all` and
 // report two rows. No gate is in two sets today — the X4 review read the code
@@ -242,7 +252,7 @@ export const SETS = {
 // and this is one line.
 SETS.all = [...new Set([...SETS.quick, ...SETS.screens, ...SETS.access, ...SETS.render,
   ...SETS.lanes, ...SETS.budget, ...SETS.sim, ...SETS.sweep, ...SETS.region, ...SETS.shots,
-  ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room, ...SETS.release])];
+  ...SETS.transport, ...SETS.kits, ...SETS.film, ...SETS.room, ...SETS.wire, ...SETS.release])];
 
 /**
  * The first measured run, era `476c69c` on SwiftShader, 2026-09-08.
@@ -373,7 +383,12 @@ export const BUDGET_MS = {
   // soak's pump runs at 10 ms where a real room's is 100. `room_smoke` joined
   // it at X1c and brings two browsers with it — measured at 41 s, so the
   // budget is unchanged.
-  room: 5 * 60 * 1000,
+  // **X8's split.** Measured alone on 2026-10-13, one set at a time:
+  // `room` 167 s, `wire` 106 s — and 305 s together in the run that tripped
+  // the budget, which is `a-gate-run-is-exclusive` showing up inside a set for
+  // the second time this week (M14 saw it in `access`).
+  room: 4 * 60 * 1000,
+  wire: 3 * 60 * 1000,
   // Measured at T4b: quick 411 s, render 62, budget 274, sim 628, shots 210,
   // transport 187 — which is where 35 minutes came from, and `kits` (365 s) was
   // added to `all` in P94 without it. Restated from the contents at P96, the

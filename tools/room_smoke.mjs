@@ -1002,6 +1002,24 @@ try {
   });
   await hostPage.goto(`${origin}/?life=0`);
   await hostPage.waitForSelector("#host", { timeout: 30_000 });
+  // **The region rules, chosen the way a host chooses them** (X8). Era 31
+  // priced three of them at 200 games an arm and the lobby had a row for none
+  // — so this presses the rows, hosts, and asks the ROOM what it is playing.
+  // Pressed rather than passed in a URL: the control is the thing that was
+  // missing, and `?money=` would prove the parameter and not the screen.
+  const regionRows = await hostPage.evaluate(() => ({
+    block: document.querySelector('.lobby-block[data-group="region"]') !== null,
+    hint: document.querySelector('.lobby-block[data-group="region"] .lobby-block-hint')?.textContent ?? "",
+    fields: [...document.querySelectorAll('.lobby-block[data-group="region"] .lobby-row')]
+      .map((row) => row.dataset.field),
+  }));
+  check("the new-game screen offers the rules a region plays by",
+    regionRows.block && ["money", "mutualAid", "disasterAid"].every((f) => regionRows.fields.includes(f)),
+    JSON.stringify(regionRows));
+  check("and says when they apply", regionRows.hint.length > 10, regionRows.hint);
+  await hostPage.click('.lobby-choice[data-field="money"][data-value="population"]');
+  await hostPage.click('.lobby-choice[data-field="mutualAid"][data-value="false"]');
+  await hostPage.click('.lobby-choice[data-field="disasterAid"][data-value="true"]');
   await hostPage.click("#host");
   const hosted = await until(hostPage, "the lobby never hosted a room", () => {
     const city = globalThis.CITY;
@@ -1019,6 +1037,16 @@ try {
     String(hosted.url));
   check("the hosting browser reported no page or console errors", hostErrors.length === 0,
     hostErrors.slice(0, 3).join(" | "));
+
+  // **What the ROOM is playing** (X8), read off the server rather than off the
+  // page that asked for it: the options cross the wire in a `CREATE`, and a
+  // screen that collected three choices and sent none would look identical
+  // from the lobby's end.
+  const rules = server.rooms.get(hosted.room)?.state?.options;
+  check("the room plays the rules the host chose",
+    rules?.splitRule === "population" && rules?.mutualAid === false && rules?.disasterAid === true,
+    JSON.stringify({ treasury: rules?.treasury, splitRule: rules?.splitRule,
+      mutualAid: rules?.mutualAid, disasterAid: rules?.disasterAid }));
 
   // And somebody joins THAT room by typing its code, which is the pair of
   // slices end to end: X2c made it, X2b gets into it.

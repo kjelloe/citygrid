@@ -9,6 +9,7 @@
 //   node tools/offline_smoke.mjs
 
 import { chromium } from "playwright";
+import { ROWS } from "../client/lobby/options-model.js";
 import { createServer } from "node:http";
 import { makeStatic } from "../server/static.js";
 
@@ -79,10 +80,12 @@ try {
     rows: document.querySelectorAll(".lobby-row").length,
     start: document.querySelector(".lobby-start")?.textContent ?? "",
   }));
+  // The row count comes from the model, not from a literal here: X8 added three
+  // rows and this gate said 5 (see `lobby_smoke` for the same lesson).
   check("the new-game screen opens offline, with its strings",
-    screen.rows === 5 && screen.region.length > 0 && !screen.region.includes("region.")
+    screen.rows === ROWS.length && screen.region.length > 0 && !screen.region.includes("region.")
     && screen.start.length > 0,
-    JSON.stringify(screen));
+    JSON.stringify({ ...screen, wanted: ROWS.length }));
 
   await offline.click("#start");
   await offline.waitForFunction(() => globalThis.CITY !== undefined, undefined, { timeout: 60000 });

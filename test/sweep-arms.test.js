@@ -17,6 +17,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ARMS, CONFIGS } from "../tools/region_sweep.mjs";
 import { defaultOptions } from "../engine/options.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { repoRoot } from "./helpers/sources.js";
 
 /** What the engine will actually play, for one arm. */
 function resolved(arm) {
@@ -70,4 +73,31 @@ test("every arm says what it is and what it would prove", () => {
     assert.ok(arm.subject, `${arm.name} names no subject to count`);
   }
   assert.ok(CONFIGS.length >= 2, "one configuration proves one configuration (CLAUDE.md)");
+});
+
+// --- a sample is not an era report (2026-10-13) -------------------------------
+//
+// `region_sweep` has refused to write below 200 games since X4g; `sim_sweep`
+// did not, and `node tools/sim_sweep.mjs 3 3` wrote three games of three years
+// straight over `reports/balance-era31.md` — 200 games of measurement replaced
+// by a smoke test, with nothing but a timestamp to say so. Found by running
+// exactly that while checking a main-module guard.
+//
+// A source check rather than a run, because the alternative is a ten-minute
+// gate: what is asserted is that the write is INSIDE a games test, which is the
+// shape both tools now share.
+
+test("neither sweep writes an era report from a sample", () => {
+  for (const name of ["sim_sweep", "region_sweep"]) {
+    const source = readFileSync(join(repoRoot, "tools", `${name}.mjs`), "utf8");
+    const guard = /if \(GAMES >= 200\) \{([\s\S]*?)\n  \}/.exec(source);
+    assert.ok(guard, `${name} has no "200 games or it is a sample" guard`);
+    assert.match(guard[1], /writeFile/, `${name}'s guard does not wrap the write`);
+    const writes = [...source.matchAll(/await writeFile\(/g)].length;
+    const guarded = [...guard[1].matchAll(/await writeFile\(/g)].length;
+    assert.equal(writes, guarded,
+      `${name} writes ${writes} file(s) and only ${guarded} are behind the sample guard`);
+    assert.match(source, /SAMPLE, not an era report/,
+      `${name} does not say so when it refuses to write`);
+  }
 });

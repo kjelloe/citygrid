@@ -14,6 +14,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { joinReady, JOIN_FIELD_MAX, hostOptions, REFUSAL_LABELS, refusalKey,
   reloadFor, RELOAD_NOTICE, invitationUrl } from "../client/lobby/join-model.js";
+import { ROWS, defaultChoices, choicesFromParams } from "../client/lobby/options-model.js";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -207,4 +208,59 @@ test("a room with no code has no invitation", () => {
   assert.equal(invitationUrl({ origin: "https://x.test", pathname: "/" }, ""), undefined);
   assert.equal(invitationUrl({ origin: "https://x.test", pathname: "/" }, "nope"), undefined);
   assert.equal(invitationUrl(undefined, "Y9NDDG"), undefined);
+});
+
+// --- the rules that divide a region (X8) --------------------------------------
+//
+// X4g made `splitRule`, `mutualAid` and `disasterAid` into rules the reducer
+// obeys, and era 31 priced all three at 200 games an arm — while the lobby
+// offered a row for none of them, so a host could not ask for any of it. The
+// money rule is TWO option fields and one decision, which is why the row is a
+// single question with three answers rather than two dropdowns where one of
+// them is meaningless half the time.
+
+test("the money row's three answers are the three money rules", () => {
+  const money = ROWS.find((row) => row.field === "money");
+  assert.ok(money, "there is no money row");
+  assert.deepEqual(money.choices.map((c) => c.value).sort(), ["equal", "population", "separate"]);
+  assert.deepEqual(money.sets?.slice().sort(), ["splitRule", "treasury"],
+    "the row has to declare the option fields it sets, or the options census cannot see it");
+
+  const asked = (value) => {
+    const options = hostOptions({ ...defaultChoices(), size: 64, money: value });
+    return `${options.treasury}/${options.splitRule}`;
+  };
+  assert.equal(asked("equal"), "split/equal", "an equal split is the default rule spelled out");
+  assert.equal(asked("population"), "split/population");
+  assert.equal(asked("separate"), "separate/equal",
+    "a separate treasury keeps a legal split rule: the engine reads one when the treasury is split");
+});
+
+test("the region rows carry the engine's own defaults", () => {
+  // A host who touches nothing gets the city era 31 measured — which is the
+  // null arm, and the only defensible default for a number a sweep priced.
+  const options = hostOptions({ size: 64 });
+  assert.equal(options.treasury, "split");
+  assert.equal(options.splitRule, "equal");
+  assert.equal(options.mutualAid, true, "ruling 001: aid crosses borders by default");
+  assert.equal(options.disasterAid, false);
+});
+
+test("mutual aid and disaster relief are rows a host can turn", () => {
+  const aid = hostOptions({ size: 64, mutualAid: false });
+  assert.equal(aid.mutualAid, false, "era 31: -175 residents and -1.1M treasury with it off");
+  const relief = hostOptions({ size: 64, disasterAid: true });
+  assert.equal(relief.disasterAid, true, "era 31: 99 levies on demanding-64 with it on");
+});
+
+test("a link carries the region rules, and nonsense in one falls back", () => {
+  // `?money=` is how a gate asks for a rule and how a host shares a room's
+  // settings; a bad value starts a game rather than refusing one (the rule the
+  // rest of `sanitiseChoices` already follows).
+  const params = new URLSearchParams("money=separate&aid=0&relief=1");
+  const picked = choicesFromParams(params);
+  assert.equal(picked.money, "separate");
+  assert.equal(picked.mutualAid, false);
+  assert.equal(picked.disasterAid, true);
+  assert.equal(choicesFromParams(new URLSearchParams("money=nonsense")).money, "equal");
 });

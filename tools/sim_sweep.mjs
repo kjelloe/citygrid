@@ -171,150 +171,172 @@ function say(text = "") {
   console.log(text);
 }
 
-say(`# Balance sweep — era ${rules().era}`);
-say();
-say(`${GAMES} games per configuration, ${YEARS} years each.`);
-say();
-say("Numbers below belong to **era " + rules().era + "**. Numbers from a previous era are void,");
-say("not roughly comparable (CLAUDE.md).");
-say();
+/** Everything below runs only when this file IS the command.
+ *
+ * The same guard `gates.mjs` has had since M2 and `region_sweep.mjs` since
+ * D11's round: the tables above are data a test may want to read — the
+ * configurations, the watched rules — and without this, importing one runs a
+ * ten-minute sweep. Nothing imports this file today; that is exactly when the
+ * guard is free. */
+if (import.meta.url === `file://${process.argv[1]}`) {
+  say(`# Balance sweep — era ${rules().era}`);
+  say();
+  say(`${GAMES} games per configuration, ${YEARS} years each.`);
+  say();
+  say("Numbers below belong to **era " + rules().era + "**. Numbers from a previous era are void,");
+  say("not roughly comparable (CLAUDE.md).");
+  say();
 
-for (const config of CONFIGS) {
-  const rows = [];
-  for (let game = 0; game < GAMES; game += 1) {
-    const row = play(config, 500000 + game);
-    if (row) rows.push(row);
+  for (const config of CONFIGS) {
+    const rows = [];
+    for (let game = 0; game < GAMES; game += 1) {
+      const row = play(config, 500000 + game);
+      if (row) rows.push(row);
+    }
+    const live = rows.filter((r) => r.peakPopulation > 0);
+    const pick = (key) => live.map((r) => r[key]);
+
+    const summary = {
+      games: rows.length,
+      livingCities: live.length,
+      population: [quantile(pick("population"), 0.25), quantile(pick("population"), 0.5), quantile(pick("population"), 0.75)],
+      peakPopulation: quantile(pick("peakPopulation"), 0.5),
+      treasury: [quantile(pick("treasury"), 0.25), quantile(pick("treasury"), 0.5), quantile(pick("treasury"), 0.75)],
+      peakTreasury: [quantile(pick("peakTreasury"), 0.5), quantile(pick("peakTreasury"), 0.95)],
+      demandI: [quantile(pick("demandI"), 0.5), quantile(pick("demandI"), 0.95)],
+      demandR: quantile(pick("demandR"), 0.5),
+      pollutionDeveloped: quantile(pick("pollutionDeveloped"), 0.5),
+      pollutionRegional: quantile(pick("pollutionRegional"), 0.5),
+      crime: quantile(pick("crime"), 0.5),
+      // Land value, for G3's gate (era 16): `landValueBonus` is a deposit onto
+      // this field and `crimePass` reads it, so the two belong side by side. The
+      // rows have carried it since era 1 and nothing printed it, which is why
+      // era 15's before had to be recovered from the JSON.
+      landValue: [quantile(pick("landValue"), 0.25), quantile(pick("landValue"), 0.5), quantile(pick("landValue"), 0.75)],
+      congested: quantile(pick("congested"), 0.5),
+      stranded: quantile(pick("stranded"), 0.5),
+      powerComponents: quantile(pick("powerComponents"), 0.5),
+      powerStarved: [quantile(pick("powerStarved"), 0.5), quantile(pick("powerStarved"), 0.95)],
+      waterStarved: [quantile(pick("waterStarved"), 0.5), quantile(pick("waterStarved"), 0.95)],
+      shortfalls: live.filter((r) => r.shortfall === 1).length,
+      emptied: rows.filter((r) => r.population === 0 && r.peakPopulation > 100).length,
+      // **How often each RULE fired**, not only what the city came out at
+      // (2026-10-10). Era 30's report held the answer to a question a whole
+      // round was argued over — `disasterRelief` fires 0 times in 200 relaxed
+      // games, 0 in 200 steady and 23 in 200 demanding — and nobody read it
+      // that way, because the counts were in the JSON and the prose printed
+      // populations. A rule that fires in one configuration of four is a fact
+      // about the sweep as much as about the rule: an arm measured on the other
+      // three can only come back inert.
+      fired: Object.fromEntries(WATCHED
+        .map((kind) => [kind, rows.reduce((n, r) => n + (r.events[kind] ?? 0), 0)])),
+    };
+    report.configs[config.name] = { config, summary, rows };
+
+    say(`## ${config.name}`);
+    say();
+    say(`| measure | p25 | median | p75 |`);
+    say(`| --- | --- | --- | --- |`);
+    say(`| population | ${summary.population[0]} | ${summary.population[1]} | ${summary.population[2]} |`);
+    say(`| treasury | ${summary.treasury[0]} | ${summary.treasury[1]} | ${summary.treasury[2]} |`);
+    say();
+    say(`- living cities: ${summary.livingCities} of ${summary.games}`);
+    say(`- cities that reached 100+ residents and ended empty: **${summary.emptied}**`);
+    say(`- peak treasury median ${summary.peakTreasury[0]}, p95 **${summary.peakTreasury[1]}**`);
+    say(`- industrial demand median ${summary.demandI[0]}, p95 **${summary.demandI[1]}**`);
+    say(`- residential demand median ${summary.demandR}`);
+    say(`- pollution over developed land ${summary.pollutionDeveloped}, over the whole region ${summary.pollutionRegional}`);
+    say(`- crime ${summary.crime}, congested tiles ${summary.congested}, stranded homes ${summary.stranded}`);
+    say(`- land value over developed land: p25 ${summary.landValue[0]}, median **${summary.landValue[1]}**, p75 ${summary.landValue[2]}`);
+    say(`- rules that fired, over all ${summary.games} games: `
+      + WATCHED.map((kind) => `${kind} ${summary.fired[kind]}`).join(", ")
+      + ` — a rule reading 0 here cannot be measured in this configuration, whatever an arm says`);
+    say(`- power grid ${summary.powerComponents} components; dark buildings: power median `
+      + `${summary.powerStarved[0]} p95 ${summary.powerStarved[1]}, water median ${summary.waterStarved[0]} `
+      + `p95 ${summary.waterStarved[1]} — in ${summary.shortfalls} of ${summary.livingCities} cities the `
+      + `demand genuinely exceeded the capacity`);
+    say();
   }
-  const live = rows.filter((r) => r.peakPopulation > 0);
-  const pick = (key) => live.map((r) => r[key]);
 
-  const summary = {
-    games: rows.length,
-    livingCities: live.length,
-    population: [quantile(pick("population"), 0.25), quantile(pick("population"), 0.5), quantile(pick("population"), 0.75)],
-    peakPopulation: quantile(pick("peakPopulation"), 0.5),
-    treasury: [quantile(pick("treasury"), 0.25), quantile(pick("treasury"), 0.5), quantile(pick("treasury"), 0.75)],
-    peakTreasury: [quantile(pick("peakTreasury"), 0.5), quantile(pick("peakTreasury"), 0.95)],
-    demandI: [quantile(pick("demandI"), 0.5), quantile(pick("demandI"), 0.95)],
-    demandR: quantile(pick("demandR"), 0.5),
-    pollutionDeveloped: quantile(pick("pollutionDeveloped"), 0.5),
-    pollutionRegional: quantile(pick("pollutionRegional"), 0.5),
-    crime: quantile(pick("crime"), 0.5),
-    // Land value, for G3's gate (era 16): `landValueBonus` is a deposit onto
-    // this field and `crimePass` reads it, so the two belong side by side. The
-    // rows have carried it since era 1 and nothing printed it, which is why
-    // era 15's before had to be recovered from the JSON.
-    landValue: [quantile(pick("landValue"), 0.25), quantile(pick("landValue"), 0.5), quantile(pick("landValue"), 0.75)],
-    congested: quantile(pick("congested"), 0.5),
-    stranded: quantile(pick("stranded"), 0.5),
-    powerComponents: quantile(pick("powerComponents"), 0.5),
-    powerStarved: [quantile(pick("powerStarved"), 0.5), quantile(pick("powerStarved"), 0.95)],
-    waterStarved: [quantile(pick("waterStarved"), 0.5), quantile(pick("waterStarved"), 0.95)],
-    shortfalls: live.filter((r) => r.shortfall === 1).length,
-    emptied: rows.filter((r) => r.population === 0 && r.peakPopulation > 100).length,
-    // **How often each RULE fired**, not only what the city came out at
-    // (2026-10-10). Era 30's report held the answer to a question a whole
-    // round was argued over — `disasterRelief` fires 0 times in 200 relaxed
-    // games, 0 in 200 steady and 23 in 200 demanding — and nobody read it
-    // that way, because the counts were in the JSON and the prose printed
-    // populations. A rule that fires in one configuration of four is a fact
-    // about the sweep as much as about the rule: an arm measured on the other
-    // three can only come back inert.
-    fired: Object.fromEntries(WATCHED
-      .map((kind) => [kind, rows.reduce((n, r) => n + (r.events[kind] ?? 0), 0)])),
-  };
-  report.configs[config.name] = { config, summary, rows };
+  // --- the three debts --------------------------------------------------------
 
-  say(`## ${config.name}`);
+  const steady = report.configs["steady-64"].summary;
+  say("## The three logged debts");
   say();
-  say(`| measure | p25 | median | p75 |`);
-  say(`| --- | --- | --- | --- |`);
-  say(`| population | ${summary.population[0]} | ${summary.population[1]} | ${summary.population[2]} |`);
-  say(`| treasury | ${summary.treasury[0]} | ${summary.treasury[1]} | ${summary.treasury[2]} |`);
+
+  const debts = [];
+
+  // 1. Runaway treasuries.
+  const treasuryCap = 1000000;
+  say(`### 1. Runaway treasuries`);
   say();
-  say(`- living cities: ${summary.livingCities} of ${summary.games}`);
-  say(`- cities that reached 100+ residents and ended empty: **${summary.emptied}**`);
-  say(`- peak treasury median ${summary.peakTreasury[0]}, p95 **${summary.peakTreasury[1]}**`);
-  say(`- industrial demand median ${summary.demandI[0]}, p95 **${summary.demandI[1]}**`);
-  say(`- residential demand median ${summary.demandR}`);
-  say(`- pollution over developed land ${summary.pollutionDeveloped}, over the whole region ${summary.pollutionRegional}`);
-  say(`- crime ${summary.crime}, congested tiles ${summary.congested}, stranded homes ${summary.stranded}`);
-  say(`- land value over developed land: p25 ${summary.landValue[0]}, median **${summary.landValue[1]}**, p75 ${summary.landValue[2]}`);
-  say(`- rules that fired, over all ${summary.games} games: `
-    + WATCHED.map((kind) => `${kind} ${summary.fired[kind]}`).join(", ")
-    + ` — a rule reading 0 here cannot be measured in this configuration, whatever an arm says`);
-  say(`- power grid ${summary.powerComponents} components; dark buildings: power median `
-    + `${summary.powerStarved[0]} p95 ${summary.powerStarved[1]}, water median ${summary.waterStarved[0]} `
-    + `p95 ${summary.waterStarved[1]} — in ${summary.shortfalls} of ${summary.livingCities} cities the `
-    + `demand genuinely exceeded the capacity`);
+  say(`Peak treasury p95 is **${steady.peakTreasury[1]}** on steady-64.`);
+  if (steady.peakTreasury[1] > treasuryCap) {
+    say();
+    say(`**Still open.** Above the ${treasuryCap} line where money stops being a constraint.`);
+    debts.push("runaway treasuries");
+  } else {
+    say();
+    say(`**Settled.** Below ${treasuryCap}, so money is still a constraint at 25 years.`);
+  }
   say();
+
+  // 2. Runaway industrial demand.
+  const demandCap = rules().demand.industrialCap;
+  say(`### 2. Runaway industrial demand`);
+  say();
+  say(`Industrial demand p95 is **${steady.demandI[1]}** against a cap of ${demandCap}.`);
+  if (steady.demandI[1] >= demandCap) {
+    say();
+    say(`**Still open.** Sitting at the cap means the cap is doing the work, not the model.`);
+    debts.push("runaway industrial demand");
+  } else {
+    say();
+    say(`**Settled.** Below the cap, so the demand model is what is deciding.`);
+  }
+  say();
+
+  // 3. Pollution average.
+  say(`### 3. Pollution averaged over the region`);
+  say();
+  say(`Over developed land: **${steady.pollutionDeveloped}**. Over the whole region: ${steady.pollutionRegional}.`);
+  if (steady.pollutionRegional === 0 && steady.pollutionDeveloped > 0) {
+    say();
+    say(`**Confirmed and measured.** The regional average is 0 while developed land reads`);
+    say(`${steady.pollutionDeveloped} — exactly the failure logged: a real number divided into`);
+    say(`invisibility by thousands of empty tiles. \`civic.pollutionAverage\` cannot drive anything`);
+    say(`until it is an average over developed land.`);
+    debts.push("pollution averaged over the region");
+  } else {
+    say();
+    say(`**Settled.** The regional average carries signal.`);
+  }
+  say();
+
+  say("## Verdict");
+  say();
+  if (debts.length === 0) {
+    say("All three debts settled by measurement.");
+  } else {
+    say(`${debts.length} debt(s) still open after this sweep: ${debts.join(", ")}.`);
+    say("Each is recorded above with the number that says so, which is the point of the sweep.");
+  }
+
+  // **A sample is not an era report** — the rule `region_sweep` has had since
+  // X4g and this one did not. `node tools/sim_sweep.mjs 3 3` is three games of
+  // three years, and it wrote that table straight over
+  // `reports/balance-era31.md`: 200 games of measurement replaced by a smoke
+  // test, with nothing to say it had happened but the file's timestamp. Found
+  // on 2026-10-13 by running exactly that, while checking something else.
+  //
+  // CLAUDE.md's rule is the reason: five seeds tell you a system fires, 200+
+  // tell you what is fair, and only the second is an era's authority.
+  await mkdir(join(root, "reports"), { recursive: true });
+  if (GAMES >= 200) {
+    await writeFile(join(root, "reports", `balance-era${rules().era}.md`), lines.join("\n") + "\n");
+    await writeFile(join(root, "reports", `balance-era${rules().era}.json`), JSON.stringify(report, undefined, 1));
+    console.log(`\nwrote reports/balance-era${rules().era}.md and .json`);
+  } else {
+    console.log(`\n${GAMES} games is a SAMPLE, not an era report (200+ per CLAUDE.md): nothing written.`);
+  }
 }
-
-// --- the three debts --------------------------------------------------------
-
-const steady = report.configs["steady-64"].summary;
-say("## The three logged debts");
-say();
-
-const debts = [];
-
-// 1. Runaway treasuries.
-const treasuryCap = 1000000;
-say(`### 1. Runaway treasuries`);
-say();
-say(`Peak treasury p95 is **${steady.peakTreasury[1]}** on steady-64.`);
-if (steady.peakTreasury[1] > treasuryCap) {
-  say();
-  say(`**Still open.** Above the ${treasuryCap} line where money stops being a constraint.`);
-  debts.push("runaway treasuries");
-} else {
-  say();
-  say(`**Settled.** Below ${treasuryCap}, so money is still a constraint at 25 years.`);
-}
-say();
-
-// 2. Runaway industrial demand.
-const demandCap = rules().demand.industrialCap;
-say(`### 2. Runaway industrial demand`);
-say();
-say(`Industrial demand p95 is **${steady.demandI[1]}** against a cap of ${demandCap}.`);
-if (steady.demandI[1] >= demandCap) {
-  say();
-  say(`**Still open.** Sitting at the cap means the cap is doing the work, not the model.`);
-  debts.push("runaway industrial demand");
-} else {
-  say();
-  say(`**Settled.** Below the cap, so the demand model is what is deciding.`);
-}
-say();
-
-// 3. Pollution average.
-say(`### 3. Pollution averaged over the region`);
-say();
-say(`Over developed land: **${steady.pollutionDeveloped}**. Over the whole region: ${steady.pollutionRegional}.`);
-if (steady.pollutionRegional === 0 && steady.pollutionDeveloped > 0) {
-  say();
-  say(`**Confirmed and measured.** The regional average is 0 while developed land reads`);
-  say(`${steady.pollutionDeveloped} — exactly the failure logged: a real number divided into`);
-  say(`invisibility by thousands of empty tiles. \`civic.pollutionAverage\` cannot drive anything`);
-  say(`until it is an average over developed land.`);
-  debts.push("pollution averaged over the region");
-} else {
-  say();
-  say(`**Settled.** The regional average carries signal.`);
-}
-say();
-
-say("## Verdict");
-say();
-if (debts.length === 0) {
-  say("All three debts settled by measurement.");
-} else {
-  say(`${debts.length} debt(s) still open after this sweep: ${debts.join(", ")}.`);
-  say("Each is recorded above with the number that says so, which is the point of the sweep.");
-}
-
-await mkdir(join(root, "reports"), { recursive: true });
-await writeFile(join(root, "reports", `balance-era${rules().era}.md`), lines.join("\n") + "\n");
-await writeFile(join(root, "reports", `balance-era${rules().era}.json`), JSON.stringify(report, undefined, 1));
-console.log(`\nwrote reports/balance-era${rules().era}.md and .json`);

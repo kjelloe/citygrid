@@ -1102,6 +1102,13 @@ button, [role="button"] {
 .lobby-choice:hover { border-color: color-mix(in srgb, var(--fg) 45%, transparent); }
 .lobby-choice:active { transform: translateY(1px); }
 .lobby-choice small { font-size: 0.72rem; opacity: 0.6; }
+/* **A choice is as wide as the screen, at most** (X8). The hints under the
+   region rules are sentences — "No sharing at all — a mayor who runs out is on
+   their own" — and a button wider than its row does not wrap, it hangs off the
+   edge: the first phone shot of the new block had the second choice of every
+   row cut in half. The text wraps inside the button now. */
+.lobby-choice { max-width: 100%; }
+.lobby-choice span, .lobby-choice small { overflow-wrap: anywhere; text-align: start; }
 .lobby-choice small.advice { color: #b58a1e; opacity: 0.95; }
 .lobby-choice[aria-pressed="true"] {
   background: var(--fg);
@@ -1234,6 +1241,13 @@ button, [role="button"] {
   }
   .lobby-choices { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 0.2rem; }
   .lobby-choice { flex: 0 0 auto; }
+  /* **Except where a choice is a sentence** (X8). The strip is right for chips
+     — Small, Standard, Large, Region — and wrong for "No sharing at all, a
+     mayor who runs out is on their own": the region rules' buttons are 193 and
+     219 px wide on a 390 px screen, so the second one hung off the edge with
+     nothing to say there was a third. These rows wrap; the chips still scroll. */
+  .lobby-block[data-group="region"] .lobby-choices { flex-wrap: wrap; overflow-x: visible; }
+  .lobby-block[data-group="region"] .lobby-choice { flex: 1 1 100%; }
   .lobby-actions { margin-inline: -1rem; padding-inline: 1rem; }
 }
 
@@ -1507,6 +1521,10 @@ button, [role="button"] {
 }
 .hud-ask .ask-actions { display: flex; gap: 8px; }
 .hud-ask .ask-actions button { min-height: var(--touch); flex: 1; }
+
+/* The hint under a lobby block's title (X8): what the block is for, when that
+   is not obvious from its name. */
+.lobby-block-hint { margin: -0.2rem 0 0.6rem; font-size: 0.85rem; opacity: 0.75; }
 
 /* **A finger's target** (K8). `--touch: 44px` and `button { min-height:
    var(--touch) }` have been the rule since the HUD was built, and nine later,

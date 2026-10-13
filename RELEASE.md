@@ -44,7 +44,7 @@ measured when somebody last looked, which is a different claim and the only one 
 - **310 commits**, one per slice, no squash and no merge commits. Twenty-two of them were
   reconstructed in one sitting from two days of uncommitted work, which is a thing this page records
   rather than hides: see `dev-log.md`, "The two days, committed".
-- **2,128 tests**, green twice in a row on every slice (`./test.sh`), and **fifteen gate sets** —
+- **2,132 tests**, green twice in a row on every slice (`./test.sh`), and **sixteen gate sets** —
   `quick`, `render`, `lanes`, `budget`, `shots`, `transport`, `kits`, `sim`, `sweep`, `region`,
   `release`, `film` and `room` — every one of their budgets re-measured on a quiet machine at
   era 30 (M9), most of them downwards. `region` is era 31's: a four-seat city played five ways,
@@ -157,7 +157,8 @@ is only comparable within an era.
 | `sim` | 2 | **354 s** | 450 s | `disaster_soak` and `traffic_gate` |
 | `sweep` | 1 | **628 s** | 780 s | the 200-game balance sweep, which is the only gate that writes a report |
 | `region` | 1 | **146 s** | 300 s | four seats, five arms: the sample that says every multiplayer rule still reaches a city (X4g) |
-| `room` | 3 | **269 s** | 600→300 s | eight browsers in one room, one of them a phone, and two `ws` clients on one hash |
+| `room` | 1 | **167 s** | 240 s | eight browsers in one room, one of them a phone — the room as a PAGE (X8's split) |
+| `wire` | 2 | **106 s** | 180 s | `room_soak` and `room_churn`: one order, one hash, a seat left and taken back |
 | `release` | 1 | **60 s** | 180 s | `room_soak --eight`: the scripted eight on one hash, the half of V4 that proves the HASH (X7) |
 
 **The first three rows are 2026-10-11 and the rest are era 30.** `quick` had reached **560 s of

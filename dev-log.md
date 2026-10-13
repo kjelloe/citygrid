@@ -16409,3 +16409,60 @@ one does not. Everything else the sweep touched is consistent: the two halves of
 the JSON), the `region` gate's ten-game sample is green with the new arm at
 146 s of 300, and no document still describes the arm that was removed except
 where it is telling that story.
+
+## X8 — the rules a region plays by, on a screen (2026-10-13)
+
+X4g made `splitRule`, `mutualAid` and `disasterAid` into rules the reducer
+obeys, and era 31 priced all three at 200 games an arm. The lobby offered a row
+for none of them: `hostOptions(choices)` builds a hosted room's `CREATE` from
+the screen's rows, so **a host could not ask for any of it** and the sweep
+measured a city the game could not be set to. *The no-control list is empty*,
+one layer along — there a command had no button, here an option had no row.
+
+**A "Playing together" block, shown always and saying when it applies.** The
+rules are identities at one seat, which is exactly why nobody noticed; hiding
+the block until a decision the player has not made yet would be worse, so the
+block carries the hint *"Only matters in a shared city — one player's choices
+are the region's rules"*.
+
+**The money rule is one question with three answers**, not two rows: `treasury`
+and `splitRule` are two option fields and one decision, and a split rule means
+nothing when every seat has its own purse. Shared and split equally (the
+default, and era 31's null arm), shared by residents (treasury spread 1% → 70%),
+or every mayor their own (101% spread and four times the relief payments). The
+row declares `sets: ["treasury", "splitRule"]`, which is how the options census
+knows a row can decide a field that is not its own name.
+
+### Three things the gates said
+
+- **`room` went over budget**, 305 s of 300, because `room_smoke` grew three
+  clicks and two reads. M2's rule is split rather than raise, for the seventh
+  time: `room` is the room in BROWSERS (167 s alone) and **`wire`** is the room
+  over time with scripted clients (106 s) — `room_soak` and `room_churn`, one
+  order and one hash and a seat left and taken back. Sixteen sets.
+- **Two gates said "5 rows"**, which is what a literal does when a table grows:
+  `lobby_smoke` and `offline_smoke` both counted the lobby's option rows against
+  a number written in the gate. They count `ROWS.length` now and assert that
+  every field in the model is on the screen — the claim that can actually break.
+- **And the phone shot had every second choice hanging off the edge.** The
+  lobby's choice rows are a scrolling strip on a phone (right for chips —
+  Small, Standard, Large, Region) and these choices are sentences. The region
+  block's rows wrap; the chips still scroll.
+
+The wire half is gated in `room_smoke`: the host presses the three rows, hosts,
+and the gate reads the ROOM's options off the server — a screen that collected
+three choices and sent none would look identical from the lobby's end.
+
+## And two sweeps that could overwrite an era (2026-10-13)
+
+`tools/sim_sweep.mjs` had no main-module guard, so importing it would run a
+ten-minute sweep; `region_sweep` got one in D11's round and this is the same
+foot-gun. Adding it found something worse by accident: **`node tools/sim_sweep.mjs 3 3`
+wrote three games of three years straight over `reports/balance-era31.md`.**
+200 games of measurement replaced by a smoke test, with nothing but a file
+timestamp to say it had happened — and `region_sweep` has refused to write below
+200 games since X4g for exactly this reason.
+
+Both tools carry the guard now, and `test/sweep-arms.test.js` holds it: every
+`writeFile` in either sweep is inside the `GAMES >= 200` test, and both say so
+when they refuse. The era-31 report I overwrote came back out of git.

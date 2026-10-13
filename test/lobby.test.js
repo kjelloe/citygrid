@@ -66,6 +66,14 @@ test("every row's field is a real option, and every choice has a label key", () 
   // choice that lands nowhere.
   for (const row of ROWS) {
     if (row.field === "size") continue;
+    // A row may decide option fields that are not its own name — `money` is one
+    // question over `treasury` and `splitRule` (X8) — and says so in `sets`.
+    if (row.sets) {
+      for (const field of row.sets) {
+        assert.ok(OPTION_FIELDS.includes(field), `${row.field} sets ${field}, which is not an option`);
+      }
+      continue;
+    }
     assert.ok(OPTION_FIELDS.includes(row.field), `${row.field} is not an option field`);
   }
 });
@@ -77,10 +85,15 @@ test("a hand-edited URL starts a game rather than being refused", () => {
 });
 
 test("choices survive a round trip through the URL", () => {
+  // Every choice the screen has, including the three region rules X8 added —
+  // written out rather than spread from `defaultChoices()`, because a round
+  // trip that only carries the defaults proves nothing about the fields a
+  // player actually changed.
   const chosen = {
     seed: 424242, size: 128, difficulty: "demanding",
     terrainStyle: "hilly", waterStyle: "archipelago", disasters: false,
     cityName: "Ny Bergen", mayorName: "",
+    money: "separate", mutualAid: false, disasterAid: true,
   };
   const params = new URLSearchParams(paramsForChoices(chosen));
   assert.deepEqual(choicesFromParams(params), chosen);
