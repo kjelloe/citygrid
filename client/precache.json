@@ -1,5 +1,5 @@
 {
- "version": "9708272128c9",
+ "version": "2988b84c79ed",
  "build": "5cb894350203",
  "generated": "2026-10-13",
  "files": [
@@ -67,6 +67,7 @@
   "./client/render/ribbon.js",
   "./client/render/roof-kit.js",
   "./client/render/scene.js",
+  "./client/render/shadow-shader.js",
   "./client/render/signs.js",
   "./client/render/sky.js",
   "./client/render/solid.js",

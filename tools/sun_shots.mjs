@@ -416,6 +416,7 @@ if (cfg.sun.arcSteps > 0) {
       const shaded = await load(a);
       const lit = await load(b);
       const drops = [];
+      const coolings = [];
       let n = 0;
       let sx = 0;
       let sy = 0;
@@ -425,12 +426,23 @@ if (cfg.sun.arcSteps > 0) {
         // Two levels, so the compression and the dither are not a shadow.
         if (litLum <= 0 || litLum - shadedLum < 2) continue;
         drops.push(1 - shadedLum / litLum);
+        // Blue against red, before and after: the shadow's hue, in the units
+        // the picture is in.
+        coolings.push((shaded.data[i + 2] - shaded.data[i]) - (lit.data[i + 2] - lit.data[i]));
         const px = (i / 4) % shaded.width;
         n += 1; sx += px; sy += Math.floor((i / 4) / shaded.width);
       }
       drops.sort((p, q) => p - q);
+      coolings.sort((p, q) => p - q);
       return {
         pixels: n,
+        // **How much COOLER, not only how much darker** (S22e, A145's third
+        // option). The shadow tint is normalised to luminance 1, so what it
+        // does is shift hue: blue up against red, in the same pixels. A shadow
+        // that is only darker is a shadow with no colour in it, which is what
+        // `plain` had — `tintShadows` patched a toon material and `plain` is
+        // Lambert.
+        cooling: coolings.length ? Math.round(coolings[coolings.length >> 1] * 10) / 10 : 0,
         share: Math.round((n / (shaded.width * shaded.height)) * 1000) / 10,
         median: drops.length ? Math.round(drops[drops.length >> 1] * 1000) / 1000 : 0,
         deepest: drops.length ? Math.round(drops[Math.floor(drops.length * 0.95)] * 1000) / 1000 : 0,
@@ -441,7 +453,8 @@ if (cfg.sun.arcSteps > 0) {
       b: (await readFile(without.file)).toString("base64"),
     });
     console.log(`${label}: the cast shadow covers ${depth.pixels} px (${depth.share}% of the frame), `
-      + `median ${(depth.median * 100).toFixed(0)}% darker, deepest ${(depth.deepest * 100).toFixed(0)}%, `
+      + `median ${(depth.median * 100).toFixed(0)}% darker and ${depth.cooling} cooler `
+      + `(blue over red, 0-255), deepest ${(depth.deepest * 100).toFixed(0)}%, `
       + `centred at (${depth.x}, ${depth.y})`);
     return depth;
   };
@@ -464,6 +477,15 @@ if (cfg.sun.arcSteps > 0) {
   if (cast.pixels < 2000) {
     problems.push(`the cast shadow covers ${cast.pixels} px: with shadows off the frame is the `
       + "same picture, so nothing is casting one");
+  } else if (cast.cooling < 6) {
+    // **A shadow with no colour in it** (S22e). The tint is normalised to
+    // luminance 1, so its whole job is hue: measured at **20** points of blue
+    // over red on the grass at noon, against **0** before the Lambert path had
+    // a patch at all. Six is a third of that — a floor that catches the patch
+    // silently falling off (which is exactly how it spent its first life: an
+    // anchor that never matched and a `console.warn` nobody collected).
+    problems.push(`the cast shadow is ${cast.cooling} points cooler than the ground around it `
+      + "(blue over red); the tint is not reaching the shader");
   } else if (cast.median < 0.12) {
     problems.push(`the cast shadow is ${(cast.median * 100).toFixed(0)}% darker than the same `
       + `ground without it (deepest ${(cast.deepest * 100).toFixed(0)}%); the floor is 12%`);

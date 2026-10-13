@@ -16488,3 +16488,62 @@ tables exported with no reader outside `options-model.js`, which the test above
 fixes rather than the export being deleted — the convention the file already
 had. Nothing else: `playtest-notes.md` is the one document that mattered and it
 is Part 4's turn now.
+
+## S22e — the shadow's colour, and the patch that never ran (2026-10-13)
+
+A145 asked for three things and S22d delivered two: the numbers as data, and a
+shadow 14% darker where it was 8%. The third was *"the tint cooler rather than
+the ground darker"*, which S22d could not do because `tintShadows` patches a
+**toon** material and `plain` — the style the game ships with — is Lambert.
+
+Wiring the Lambert path found that the toon one had never worked either.
+
+### Two mistakes, one silence
+
+`onBeforeCompile` is handed a shader whose **`#include <…>` directives are not
+yet resolved**: three splices the chunks in afterwards, inside `WebGLProgram`.
+The toon patch replaced a line from *inside* `lights_toon_pars_fragment`, so the
+replace never matched. And the anchor was wrong anyway — three's line ends
+`* directLight.color` and the constant did not.
+
+So **the painted style's shadows have darkened rather than taken a colour for
+the whole life of the rig** — spec §7.2's temperature split, the thing the whole
+anime rig is about, silently absent. The patch even warned, once, with
+`console.warn`, into a console no gate collects. And the test that was supposed
+to hold it — *"the toon patch checks the chunk it is patching"* — read the
+SOURCE for the words `getGradientIrradiance`, `includes(` and `warn`. All three
+were there. `a-test-that-transcribes-a-line`, paid for again.
+
+### What it is now
+
+`client/render/shadow-shader.js` is pure — chunk text in, patched text out — so
+`test/shadow-tint.test.js` drives the real transforms over **three's real
+chunks** in node, which is the only thing that could have caught this. Each
+transform returns `undefined` for a chunk it does not recognise, and the caller
+warns once.
+
+- **Toon**: the chunk is expanded by the patch and `irradiance` is mixed toward
+  the tint where the ramp is dark.
+- **Lambert**: a surface in shadow has simply *lost* the key light by the time
+  the colour is assembled, so the shadow is remembered where it is computed —
+  `cgShadow` — and spent on `outgoingLight`, which lives in the fragment
+  shader's own source rather than in a chunk.
+- **The uniform is declared at `#include <common>`**, because
+  `lights_fragment_begin` sits inside `main()` and a uniform there is a shader
+  that will not compile. That was the first run's console error.
+- **The tint is normalised to luminance 1**, so multiplying by it shifts hue and
+  not value: "cooler rather than darker", in arithmetic.
+
+### Measured
+
+`sun_shots`' A/B now reports both halves of the claim:
+
+```
+noon: the cast shadow covers 84,639 px (9.2% of the frame),
+      median 16% darker and 20 cooler (blue over red, 0-255)
+```
+
+14% → **16% darker** and **0 → 20 points cooler**, with a floor of 6 in the gate
+— a third of what was measured, which catches the patch falling off the way it
+fell off before. `shots` 304/390, `kits` green, `budget` 268/330, `quick`
+green, suite **2,139 twice**.

@@ -181,17 +181,20 @@ test("the shadow camera follows the target and snaps to a texel", () => {
 
 // --- the shadow tint ---------------------------------------------------------
 
-test("the toon patch checks the chunk it is patching", () => {
-  // `onBeforeCompile` string surgery on three's own shader is the most brittle
-  // thing in the renderer: a version bump changes a chunk and the patch either
-  // does nothing or produces a shader that will not compile. It has to look
-  // before it leaps, and say so when the shape is not what it expected.
-  // The whole helper, not just from `onBeforeCompile`: the anchor it looks for
-  // is a constant declared above it.
-  const patch = assets.slice(assets.indexOf("const TOON_ANCHOR"), assets.indexOf("export function makeMaterial"));
-  assert.match(patch, /getGradientIrradiance/, "the patch does not name what it is replacing");
-  assert.match(patch, /includes\(|indexOf\(/, "the patch does not check the chunk first");
-  assert.match(patch, /warn/, "a failed patch is silent");
+test("the toon patch says so when it cannot patch", () => {
+  // **This test used to read the source for an anchor name and a `warn`, and
+  // it passed for the whole life of a patch that did nothing** (S22e): the
+  // anchor was a line three does not have, and `onBeforeCompile` is handed a
+  // shader whose includes are unresolved, so the replace could never match.
+  // What the patch DOES is driven in `test/shadow-tint.test.js` now, over
+  // three's real chunks; what is left here is the half that is about this file
+  // — a failed patch has to be loud enough to find.
+  const patch = assets.slice(assets.indexOf("function warnOnce"), assets.indexOf("export function makeMaterial"));
+  assert.match(patch, /warnOnce\(/, "a failed patch is silent");
+  assert.match(patch, /tintedToonChunk|tintedLambertChunk/,
+    "the patch no longer goes through the transforms a test can drive");
+  assert.doesNotMatch(patch, /#include <lights_fragment_begin>", `uniform/,
+    "a uniform declared inside main() is a shader that will not compile");
 });
 
 // --- the painted palette -----------------------------------------------------

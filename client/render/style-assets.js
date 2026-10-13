@@ -13,6 +13,8 @@
 import * as THREE from "three";
 import { PALETTES } from "./palettes.js";
 import { faceContrastFor, lightingFor } from "./style-light.js";
+import { normalisedTint, tintedToonChunk, tintedLambertChunk, tintedOutgoing } from "./shadow-shader.js";
+import { getConfig } from "../world/config.js";
 import { STYLES } from "./style-table.js";
 import { rampBytes } from "./ramps.js";
 
@@ -134,37 +136,65 @@ function gradientMap(kind) {
  * does nothing or produces a shader that will not compile. So it looks before
  * it leaps and says so when the shape is not what it expected.
  */
-const TOON_ANCHOR = "vec3 irradiance = getGradientIrradiance( geometryNormal, directLight.direction );";
-let warnedAboutToon = false;
+let warnedAboutTint = false;
 
-function tintShadows(material, tint) {
+/** Says once, and only once, that a patch could not find its anchor.
+ *
+ * Not an exception: a style that loses its shadow tint looks slightly wrong and
+ * a renderer that will not start is a game nobody can play. **But a warning is
+ * not a gate** — this one fired on every run for the life of the toon patch and
+ * nothing collected it (S22e), so `client_smoke` reads the console now. */
+function warnOnce(what) {
+  if (warnedAboutTint) return;
+  warnedAboutTint = true;
+  console.warn(`shadow tint: three's ${what} has changed shape; shadows will darken `
+    + "rather than take a colour");
+}
+
+/**
+ * The shadow's colour, for a toon material (`painted`) or a Lambert one
+ * (`plain`).
+ *
+ * **It patches by EXPANDING the chunk.** `onBeforeCompile` is handed a shader
+ * whose `#include <…>` directives are not yet resolved, so a replace aimed at a
+ * line inside one never matches — which is what the toon patch did for its
+ * whole life, warning once into a console nobody read while spec §7.2's
+ * temperature split was silently absent (S22e). The transforms are in
+ * `shadow-shader.js`, which is pure, so a node test can drive them over three's
+ * real chunks rather than reading this file for the word "warn".
+ */
+function tintShadows(material, tint, shading) {
   material.userData.shadowTint = tint;
+  const colour = normalisedTint(new THREE.Color(tint));
   material.onBeforeCompile = (shader) => {
-    shader.uniforms.uShadowTint = { value: new THREE.Color(tint) };
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <lights_toon_pars_fragment>",
-      "uniform vec3 uShadowTint;\n#include <lights_toon_pars_fragment>",
+    shader.uniforms.uShadowTint = { value: new THREE.Color(colour.r, colour.g, colour.b) };
+    // **The uniform is declared at GLOBAL scope**, which is what `#include
+    // <common>` is and what `lights_fragment_begin` is not: it sits inside
+    // `main()`, and declaring a uniform there is a shader that will not
+    // compile — "only allowed at global scope", which is what the first run of
+    // this patch said in a console error.
+    const declare = (source) => source.replace(
+      "#include <common>", "uniform vec3 uShadowTint;\n#include <common>",
     );
-    if (!shader.fragmentShader.includes(TOON_ANCHOR)) {
-      if (!warnedAboutToon) {
-        warnedAboutToon = true;
-        // Not an exception: a style that loses its shadow tint is a style that
-        // looks slightly wrong, and a renderer that will not start is a game
-        // nobody can play.
-        console.warn("toon shadow tint: three's lights_toon_pars_fragment has changed shape; "
-          + "shadows will darken rather than take a colour");
-      }
+    if (shading === "toon") {
+      const chunk = tintedToonChunk(THREE.ShaderChunk.lights_toon_pars_fragment);
+      if (!chunk) { warnOnce("lights_toon_pars_fragment"); return; }
+      shader.fragmentShader = declare(shader.fragmentShader)
+        .replace("#include <lights_toon_pars_fragment>", chunk);
       return;
     }
-    shader.fragmentShader = shader.fragmentShader.replace(
-      TOON_ANCHOR,
-      `${TOON_ANCHOR}
-      irradiance = mix( uShadowTint * ( 1.0 - irradiance.r ), irradiance, irradiance.r );`,
-    );
+    // Lambert: the shadow has to be remembered where it is computed, because a
+    // surface in shadow has simply lost the key light by the time the colour is
+    // assembled (S22e).
+    const lighting = tintedLambertChunk(THREE.ShaderChunk.lights_fragment_begin);
+    const outgoing = tintedOutgoing(shader.fragmentShader);
+    if (!lighting || !outgoing) { warnOnce(lighting ? "the fragment shader" : "lights_fragment_begin"); return; }
+    shader.fragmentShader = declare(outgoing)
+      .replace("#include <lights_fragment_begin>", lighting);
   };
   // Two materials that differ only in a uniform still share a program; one that
   // differs in its SOURCE must not.
-  material.customProgramCacheKey = () => `toon-tint-${tint}`;
+  material.customProgramCacheKey = () => `${shading}-tint-${tint}`;
   return material;
 }
 
@@ -252,7 +282,14 @@ export function makeMaterial(styleName, colour) {
       vertexColors: true,
       gradientMap: gradientMap(style.ramp ?? "3"),
     });
-    return tintShadows(material, lightingFor(styleName).shadowTint ?? 0x6a6ea8);
+    return tintShadows(material, lightingFor(styleName).shadowTint ?? 0x6a6ea8, "toon");
   }
-  return new THREE.MeshLambertMaterial({ color: colour, vertexColors: true });
+  // **And the Lambert path too** (S22e). A145 asked for "the tint cooler rather
+  // than the ground darker" and S22d could only give the second half, because
+  // this was the branch with no patch at all — `plain` is the style the game
+  // ships with.
+  return tintShadows(
+    new THREE.MeshLambertMaterial({ color: colour, vertexColors: true }),
+    lightingFor(styleName).shadowTint ?? getConfig().shadow.tint, "lambert",
+  );
 }
