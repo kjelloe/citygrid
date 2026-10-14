@@ -77,7 +77,9 @@ convention — one path a monitoring sweep hits across every port on the machine
 
 **`ops/` is a symlink to the private ops repo** (`game-ops/citygrid/`), as it is
 for every sibling game on this box — `game-ops/README.md` is the mapping. It
-holds three files: `citygrid.service`, `nginx.conf` and **`ssh-deploy.sh`**. They
+holds four files — `citygrid.service`, **`citygrid.nginx.conf`**, **`site.conf`**
+and **`ssh-deploy.sh`** — plus its own `README.md`. The vhost and `site.conf` are
+what `box/nginx-site.sh` installs; the unit and the script are what the box runs. They
 are not in this repo and never should be: between them they carry the host's
 identity and they are the only files on a developer's machine that can change a
 live box. `ops` is gitignored here, and a clean checkout simply has no `ops/` —
@@ -85,8 +87,8 @@ live box. `ops` is gitignored here, and a clean checkout simply has no `ops/` �
 
 ## The templates
 
-`ops/citygrid.service` and `ops/nginx.conf`, both commented with the reason for
-every line. Two of those reasons are worth repeating here because they take down
+`ops/citygrid.service`, `ops/citygrid.nginx.conf` and `ops/site.conf`, each
+commented with the reason for every line. Two of those reasons are worth repeating here because they take down
 **every** site on the box rather than only this one:
 
 - **`MemoryMax` AND `--max-old-space-size` ~25% under it.** V8 cannot see the
@@ -144,28 +146,47 @@ Written as the steps to run, in order. Each one is verifiable before the next.
 4. **Prove the process:** `curl http://127.0.0.1:8136/healthz` **on the box**.
    The script does this itself and fails the deploy if it does not answer; doing
    it by hand once is how you learn what the body looks like.
-5. **nginx, HTTP-only:** copy `ops/nginx.conf`, link it with the
-   `ln … ; nginx -t || rm …` form above, reload, and verify
-   `curl http://citygrid.kjell.today/healthz` **from outside**.
-6. **TLS:** extend the box's **shared** certificate lineage rather than minting
-   a new one. Transcribe the existing `-d` list exactly from
-   `sudo certbot certificates`, then add ours:
+5. **The vhost, HTTP-only — by the helper, not by hand:**
    ```bash
-   sudo certbot certonly --nginx --cert-name <lineage> -d <every existing name> -d citygrid.kjell.today
+   cd ~/GIT/game-ops && box/nginx-site.sh citygrid          # --dry first
    ```
-   A failed certbot run leaves the old certificate intact; a wrong `-d` list is
-   the real risk. The TLS block then points at the **lineage's** path, not at
-   `/etc/letsencrypt/live/citygrid.../`.
-7. **Verify like you mean it:** `curl https://citygrid.kjell.today/healthz` from
-   outside, then sweep the neighbours, because the failure mode is that our site
-   is perfect while a neighbour serves the wrong chain:
+   It lints `ops/citygrid.nginx.conf` before it contacts the box (exactly one
+   `listen 80;`, nothing on 443, no `http2`, no `default_server`, no bare
+   `$connection_upgrade`, `server_name` exactly the host), refuses if another
+   vhost already serves the name, shows the diff, backs the old file up, writes,
+   runs `nginx -t`, **rolls back byte for byte on a refusal**, and only then
+   reloads. Then it checks that `VERIFY_PATH` carries `VERIFY_EXPECT` and that
+   every other name the box served before still answers.
+6. **TLS:** extend the box's **shared** lineage, again by helper, because the
+   `-d` list used to be transcribed by hand and that is the step that kept
+   failing:
    ```bash
-   for h in multiciv aworldbegun pitfall retromulticiv games fireline servers.multiciv; do
-     echo -n "$h: "; curl -sI --max-time 10 "https://$h.kjell.today" | head -1
-   done
+   box/expand-cert.sh citygrid.kjell.today
+   box/nginx-site.sh citygrid              # the SAME command as step 5
    ```
-   **A 404 can be a pass** — any HTTP status proves the TLS chain worked,
-   because a bad certificate fails as a curl *error*, not a status code.
+   `expand-cert.sh` refuses unless every name on the order — the existing ones
+   included — resolves to the box on both resolvers, and it rehearses against the
+   staging CA before placing the real order. The second line is step 5 again on
+   purpose: the helper asks the box whether a lineage lists the hostname and
+   renders the form that fits, so there is no flag to get wrong and no order in
+   which a 443 block can be installed without a certificate.
+7. **Verify like you mean it**, from outside, neighbours included — the failure
+   mode is that our site is perfect while a neighbour serves the wrong chain:
+   ```bash
+   box/check.sh --outside        # every name on the shared certificate
+   cd ~/GIT/citygrid && ./ops/ssh-deploy.sh --neighbours
+   ```
+   `check.sh --outside` needs no key: what resolves here, what answers, which
+   certificate each name is served and how long it has left — under 21 days means
+   renewal has been failing for over a week, which is the warning nothing else
+   gives. **A 404 can be a pass**: any HTTP status proves the TLS chain, because
+   a bad certificate fails as a curl *error*, not a status code.
+
+   The `ln … ; nginx -t || rm …` form above is still the reason the helper
+   exists. `ln -sf` *then* `nginx -t` leaves a broken file live: nginx keeps
+   serving the old config from memory so nothing looks wrong, and every future
+   reload on the box fails — a neighbour's deploy, certbot's renewal. The helper
+   does it in the safe order every time, and `box/SPEC.md` is what it promises.
 8. **Record it:** the port row in the hosting document (done — **8136**), City
    Grid's row in the games index (`kjelloe/gamesindex`, whose `games.json` also
    carries the down-alert topic), any new lesson back into the dos-and-donts

@@ -16819,3 +16819,70 @@ one line that matters.
 
 Suite **2,153 twice**. `client/precache.json` regenerated (only its date moved —
 `LICENSE` is not something the page fetches, so the build hash did not move).
+
+### slice-M12b: the box's own shape (2026-10-15)
+
+P122's review read `game-ops/` beside `DEPLOYING.md` and found the first deploy
+would have been run by hand against a box that retired hand-running it. `box/`
+has two helpers every sibling uses — `nginx-site.sh` installs a vhost with a
+rollback and **renders the TLS half itself** once the certificate covers the
+name, `expand-cert.sh` extends the shared lineage from the list the box holds —
+and they exist because the three hand steps "each broke a deploy at least once".
+Step 6 as written ran `certbot certonly`, which issues a certificate and writes
+**no** 443 block: the site would have come up HTTP-only with
+`ALLOWED_ORIGINS=https://citygrid.kjell.today`, which refuses every socket.
+
+**What was built.** `ops/citygrid.nginx.conf` — the proxy block with exactly one
+`listen 80;` (the `[::]:80` line is a second `listen` and the lint refuses it
+before the box is contacted), `X-Forwarded-Proto` as the siblings send it, our
+own `$citygrid_connection_upgrade` map, `proxy_pass` to 8136. `ops/site.conf` —
+`VERIFY_PATH=/` with `VERIFY_EXPECT='<title>City Grid</title>'`, because the
+box's default vhost answers any unknown name with a neighbour's page *and* a
+neighbour's health body, so a 200 proves nothing and even `ok` is not ours; the
+title is, and unlike the build hash it does not move between deploys. No
+`DRAFT`, and **no `CSP_FROM`**: `server/static.js` computes the page's policy,
+inline-importmap hash included, from the page it serves — the 2026-09-27 draft
+needed the placeholder because nginx served the files itself. `ops/nginx.conf`
+is gone, `ops/README.md` is written (folding the draft README's three
+"what this game can get wrong that the siblings cannot"), and `DEPLOYING.md`
+steps 5–7 are the helpers' commands plus `box/check.sh --outside` and the
+neighbour sweep, with the `ln … ; nginx -t || rm …` prose kept as the reason the
+helper exists rather than as an instruction.
+
+**Tests.** `test/deploy.test.js` mirrors the helper's lint offline — exactly one
+`listen` and it is `listen 80;`, no 443, no `ssl_certificate`, no
+`default_server`, no bare `$connection_upgrade`, `server_name` exactly
+`site.conf`'s `HOST`, and the `CSP_FROM`/placeholder pair together or not at all
+— so a refusal arrives in the suite rather than at the box. `site.conf` is
+**sourced in a subshell** and its five values read back, because what matters is
+what `sh` makes of a file another repo's script sources, not what it looks like;
+the marker is checked against `index.html`. Driven: putting `listen [::]:80;`
+back reddens three checks and prints `["80","[::]:80"]`.
+
+**Measured.** `game-ops/test.sh`: every citygrid check green — the lint, the HTTP
+and TLS renders, the TLS form on the lineage path, one loopback port, 8136
+against the ledger row, its own upgrade map. `box/nginx-site.sh citygrid --dry`
+prints `lint: ok` and stops at the ssh key, which lives on the deploy machine;
+the rendering is what the suite proves, both forms, from the real source.
+
+**The suite's one red is the finding.** *`no other game in the repo claims
+citygrid.kjell.today (2 do)`*, twice: `CityGrid/` is the 2026-09-27 draft and
+`citygrid/` is the symlink's target. It goes green when the draft does — and
+**removing the draft alone is not free**, which only showed up by doing it in a
+copy: `box/tests/run-tests.sh` borrows that directory as its DRAFT fixture *and*
+as the only game carrying `CSP_FROM`, so `git rm -r CityGrid/` breaks `reset()`
+outright and silently retires the `@CSP_SCRIPT_HASHES@` render path. A fixture
+that is a live game's directory stops being a fixture the day that game ships.
+`ops/box-tests-draft-fixture.patch` gives the suite a synthetic `DraftGame`
+instead: **314 + 138 green, 0 failed** with the draft gone. Not applied here —
+`box/` is shared infrastructure and game-ops's own rules want the half-hour
+mutation run before a test change is called done.
+
+**Also in the round, both from the third omissions pass.** `tools/.probe8.mjs`,
+a scratch probe committed with S22d, is deleted. And `test/docs.test.js`'s
+open-question count read `dev-questions.md` unconditionally, so **a clean
+checkout's suite was red by exactly one test** — the release has been claiming
+"green twice" from the one tree that has the file. It skips the way
+`test/deploy.test.js` skips without `ops/`. Verified on a detached worktree with
+no `ops/` and no `dev-questions.md`: **2,155, 17 skips, 0 failures, twice**; here
+2,155 with 3 skips, twice.

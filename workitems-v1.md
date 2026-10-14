@@ -7,16 +7,17 @@ milestone and v1.2 if needed." This re-cuts `plan-v1.md`'s "What Version 1 is": 
 v1.2; **v1.0 is the Multiplayer MVP, deployed, played once by people**. Every item here points at a
 lane file for its tests and gates; this file owns only the definition of done and the order.*
 
-**Status 2026-10-14 — v1.0 is code-complete bar M12b, found by the review the same evening. Three things are left, and the middle one is Kjell's.**
+**Status 2026-10-15 — v1.0 is code-complete. Two things are left, and the first one is Kjell's.**
 
 | | What | Who | Where |
 |---|---|---|---|
-| **M12b** | the ops directory in the box's shape (`site.conf`, `citygrid.nginx.conf`) and `DEPLOYING.md` steps 5–7 replaced by `game-ops/box/`'s three commands — step 6 as written issues a certificate and installs no TLS block | the ally | `workitems-mainline.md` |
+| ~~**M12b**~~ | ~~the ops directory in the box's shape~~ — **built 2026-10-15**: `site.conf` and `citygrid.nginx.conf` pass `box/nginx-site.sh`'s lint and render both forms, `DEPLOYING.md` steps 5–7 are the helpers' commands, and two things wait on Kjell in `game-ops` — the `git rm -r CityGrid/` and `ops/box-tests-draft-fixture.patch` beside it | the ally | `workitems-mainline.md` |
 | **V5** | one real evening on the deployed box: DNS, `DEPLOYING.md` steps 1–8, both gate sets against the deployed server, an hour with three or more people and a phone among them, notes into `playtest-notes.md` Part 4 | **Kjell** | the checklist below |
 | **M7b** | the release: `RELEASE.md` re-measured, `git tag v1.0`, `main` fast-forwarded and **pushed** | the ally writes it, Kjell pushes | `workitems-mainline.md` |
 
 Everything else in every lane is either built or deliberately in v1.1 — `dev_night` carries the
-whole game, the suite is **2,148 tests green twice**, and there are **sixteen gate sets**. The open
+whole game, the suite is **2,155 tests green twice — on a clean worktree as well as here**, and
+there are **sixteen gate sets**. The open
 items per lane are listed in the status block at the top of each lane file; nothing open is in
 v1.0's way. The tables below are kept as written: they are the record of how v1.0 was cut and what
 each pass found.
@@ -149,9 +150,10 @@ measured, and a dead constant that fences dead imports.*
 0. The DNS record for `citygrid.kjell.today` pointing at the box, live before certbot runs.
 1. `DEPLOYING.md` "First-time box setup", steps 1–8, run in order on the shared box — the port
    (claimed: 8136), the user and Node, `./ops/ssh-deploy.sh --bootstrap --first`, the loopback
-   `/healthz`, then **after M12b** the three `game-ops/box/` commands (vhost, certificate, vhost
-   again) and `box/check.sh --outside`, the neighbour sweep, the games index and the siblings'
-   `NEIGHBOURS` once the name answers.
+   `/healthz`, then the three `game-ops/box/` commands (vhost, certificate, vhost again, written
+   out in steps 5 and 6) and `box/check.sh --outside`, the neighbour sweep, the games index and the
+   siblings' `NEIGHBOURS` once the name answers. **Two `game-ops` commits come first**, both in
+   M12b's entry: the draft directory's `git rm` and the box suite's fixture patch.
 2. `node tools/gates.mjs release --url https://citygrid.kjell.today` and `room --url …` once —
    **built as K6d on 2026-10-11** and measured against a hand-started server: eight clients on one
    hash in 49 s, eight browsers on one hash in 79 s. `room_soak` and `room_churn` print `n/a`
@@ -198,16 +200,20 @@ player's installed app and the room alike.*
   `listen 80;` and a `site.conf` with a marker only this game serves. `ops/` has `nginx.conf` with
   two `listen` lines and no `site.conf`, and `DEPLOYING.md` step 6 runs `certbot certonly`, which
   writes no 443 block — the site would come up HTTP-only with an origin allowlist that only admits
-  `https`. → **M12b**, before V5.
+  `https`. → **M12b**, **built 2026-10-15**.
 - **Two directories for one game in `game-ops/`.** `CityGrid/` is the 2026-09-27 draft for the
   static game, still marked `DRAFT`; `citygrid/` is live and the symlink's target; the README's
-  mapping names the first. → M12b hands Kjell the `git mv`.
-- **`tools/.probe8.mjs` is a committed scratch probe** (S22d's shadow-rig reader). → M12b.
+  mapping names the first. → M12b hands Kjell the `git rm`, **and the patch the box suite needs beside it**: that
+  draft directory is the suite's DRAFT and `CSP_FROM` fixture, so removing it alone turns
+  `game-ops/test.sh` red and retires the CSP-hash render path. `ops/box-tests-draft-fixture.patch`
+  gives the suite a synthetic draft game instead; 314 + 138 green in a copy.
+- ~~**`tools/.probe8.mjs` is a committed scratch probe**~~ (S22d's shadow-rig reader). → M12b, deleted.
 - **A clean checkout's suite is red by one test.** `dev-questions.md` is untracked (it is Kjell's
   file), and `test/docs.test.js`'s count check reads it unconditionally: on the reviewer's worktree
   of `3247e46` the suite is 2,141 of 2,156 with that one failure and 14 skips. The release
-  claims "green twice" from a tree that has the file. → M12b: skip the way `deploy.test.js` skips
-  without `ops/`.
+  claims "green twice" from a tree that has the file. → M12b, **done**: it skips the way
+  `deploy.test.js` skips without `ops/`, and a clean worktree now runs 2,155 with 17 skips and no
+  failures.
 - **Checked and fine, for the single player:** every one of the 220 precache entries is under a
   directory the deploy's rsync allowlist carries (`client`, `data`, `engine`, `shared`, `vendor`,
   `worker`, `index.html`, `manifest.webmanifest`); `sw.js` and every file are served `no-cache`
@@ -266,9 +272,9 @@ noticed in the rounds after 2026-10-10.
 
 ~~V1 → V2 → V3 → V4~~ built 2026-10-09. ~~K6 (a → c → b → d)~~ 2026-10-10/11, ~~S22d~~ and ~~S8b~~
 2026-10-11, ~~K7~~ and ~~K8~~ 2026-10-12, ~~X8~~ and ~~S23~~ and ~~S22e~~ 2026-10-13. **What is left
-is M12b → V5 (Kjell) → M7b**, and then v1.1 from the evening's notes.
+is V5 (Kjell) → M7b**, and then v1.1 from the evening's notes.
 
-**M12b (2026-10-14) goes before V5** — the review after P122 found it. P120 (2026-10-10) answered Q168–Q170 as recommended, which is what put S22d and S8b ahead of the
+~~**M12b**~~ went before V5, as the review after P122 asked — **built 2026-10-15**. P120 (2026-10-10) answered Q168–Q170 as recommended, which is what put S22d and S8b ahead of the
 evening; P121's round (2026-10-13) answered Q171 as **A148 — keep the soft rig**, and the ladder
 that would price a harder light is in `sun_shots` rather than in a scratch script. **There are no
 open questions.**

@@ -546,7 +546,8 @@ test("the release page carries the numbers a reader would otherwise have to run"
   }
 });
 
-test("the release page's open-question count matches dev-questions.md", () => {
+test("the release page's open-question count matches dev-questions.md",
+  { skip: haveLocalDocs ? false : "dev-questions.md is local and not in this checkout" }, () => {
   // The one number on the page that rots silently: "what is known to be
   // missing" is a count of the open list, and the open list grows every slice.
   const open = (readDoc("dev-questions.md").split("# OPEN QUESTIONS")[1]

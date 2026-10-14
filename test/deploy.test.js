@@ -31,7 +31,8 @@ const haveOps = existsSync(join(root, SCRIPT));
 const noOps = haveOps ? false : "ops/ is a symlink to the private ops repo and is not in this checkout";
 
 const unit = haveOps ? read("ops/citygrid.service") : "";
-const nginx = haveOps ? read("ops/nginx.conf") : "";
+const nginx = haveOps ? read("ops/citygrid.nginx.conf") : "";
+const siteConf = haveOps ? read("ops/site.conf") : "";
 const script = haveOps ? read(SCRIPT) : "";
 const playbook = read("DEPLOYING.md");
 
@@ -171,12 +172,65 @@ test("V8's heap cap sits a quarter under the unit's memory cap, and the other ca
   assert.match(unit, /TasksMax=\d+/, "no TasksMax: a fork bomb in a dependency takes the box");
 });
 
-test("the nginx template is HTTP-only and owns its upgrade map", { skip: noOps }, () => {
+test("the vhost source passes the helper's lint, mirrored offline", { skip: noOps }, () => {
+  // `box/nginx-site.sh` lints the source before it contacts the box and renders
+  // the TLS half itself (`box/SPEC.md`, "The lint"). Mirrored here because the
+  // helper lives in another repo and its refusal arrives at deploy time: this
+  // one arrives in the suite. **The file had two `listen` lines until M12b** —
+  // `listen 80;` and `listen [::]:80;` — which is "more than one `listen`" and
+  // would have been refused before the box was contacted.
+  const live = code(nginx);
+  const listens = [...live.matchAll(/^\s*listen\s+([^;]+);/gm)].map((m) => m[1].trim());
+  assert.deepEqual(listens, ["80"],
+    `the source must carry exactly one \`listen 80;\` and has ${JSON.stringify(listens)}`);
+  assert.equal(/ssl_certificate/.test(live), false, "the TLS half is rendered, never written");
+  assert.equal(/default_server/.test(live), false, "the vhost would answer every unknown name");
+  // A bare `$connection_upgrade` is not defined on this box; ours is named.
+  assert.equal(/\$connection_upgrade\b/.test(live), false,
+    "a bare $connection_upgrade fails nginx -t box-wide");
+  // `server_name` has to be exactly the host `site.conf` names.
+  const host = /^HOST=(\S+)/m.exec(siteConf)?.[1];
+  assert.ok(host, "site.conf names no HOST");
+  const names = [...live.matchAll(/^\s*server_name\s+([^;]+);/gm)].map((m) => m[1].trim());
+  assert.deepEqual(names, [host], `server_name must be exactly ${host}`);
+  // The pair the lint refuses one half of.
+  assert.equal(/CSP_FROM/.test(code(siteConf)), /@CSP_SCRIPT_HASHES@/.test(live),
+    "CSP_FROM and the @CSP_SCRIPT_HASHES@ placeholder go together or not at all");
+});
+
+test("site.conf sources to the values the helper reads, and names a file that exists", { skip: noOps }, () => {
+  // It is sourced as bash by a script in another repo, so what matters is what
+  // `sh` makes of it — not what it looks like. Driven: source it in a subshell
+  // and print what came out.
+  const got = Object.fromEntries(execFileSync("bash", ["-c",
+    `set -euo pipefail; cd ${JSON.stringify(join(root, "ops"))}; . ./site.conf;`
+    + ` for v in SITE HOST VHOST VERIFY_PATH VERIFY_EXPECT DRAFT CSP_FROM; do`
+    + ` printf '%s=%s\n' "$v" "\${!v:-}"; done`],
+    { encoding: "utf8" }).trim().split("\n").map((line) => {
+      const at = line.indexOf("=");
+      return [line.slice(0, at), line.slice(at + 1)];
+    }));
+  assert.equal(got.SITE, "citygrid");
+  assert.equal(got.HOST, "citygrid.kjell.today");
+  assert.equal(got.VHOST, "citygrid.nginx.conf");
+  assert.equal(got.VERIFY_PATH, "/");
+  // The marker has to be a string only this game serves, and it has to be in
+  // the page the box will actually hand a visitor.
+  assert.equal(got.VERIFY_EXPECT, "<title>City Grid</title>");
+  assert.ok(read("index.html").includes(got.VERIFY_EXPECT),
+    "the marker the helper verifies is not in index.html");
+  // A DRAFT line makes the helper refuse to install. City Grid ships this one.
+  assert.equal(got.DRAFT, "", "site.conf still carries a DRAFT fence");
+  assert.equal(got.CSP_FROM, "", "the server sends its own policy; CSP_FROM would be a second answer");
+  assert.ok(existsSync(join(root, "ops", got.VHOST)), `site.conf names ${got.VHOST}, which is not there`);
+});
+
+test("the vhost is a proxy to the unit's port, and owns its upgrade map", { skip: noOps }, () => {
   // `listen 443 ssl` with no certificate fails the WHOLE config, and certbot
   // runs `nginx -t` before it does anything — so it cannot fix what blocks it.
   const live = code(nginx);
   assert.equal(/listen\s+443/.test(live), false,
-    "ship the block HTTP-only and let certbot add the TLS half");
+    "ship the block HTTP-only and let the helper render the TLS half");
   // `http2` is a per-socket property and the box already logs
   // "protocol options redefined" from one site declaring it.
   assert.equal(/http2/.test(live), false, "do not add a third voice to someone else's warning");

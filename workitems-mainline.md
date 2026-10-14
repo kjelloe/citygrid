@@ -8,13 +8,19 @@ film, the worker — should land on `main`. Same rules as the cityviewer hand-of
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
 
-**Status 2026-10-14 — 16 items, 14 built, 2 open.** M7 merged `main` and Kjell pushed it; M9 and
-M14 re-cut the gate sets (sixteen of them now); M10 was closed by A137; M11, M12, M13 are built.
+**Status 2026-10-15 — 16 items, 15 built, 1 open.** M7 merged `main` and Kjell pushed it; M9 and
+M14 re-cut the gate sets (sixteen of them now); M10 was closed by A137; M11, M12, M13 are built,
+and **M12b** put the ops directory in the box's shape on 2026-10-15.
 
 | Open | What it is | Waiting on |
 | --- | --- | --- |
-| **M12b** | the box's own shape — `site.conf` and `citygrid.nginx.conf` so `game-ops/box/nginx-site.sh` and `expand-cert.sh` do nginx and TLS, and `DEPLOYING.md` steps 5–7 become those three commands | nothing; **before V5**, since step 6 as written installs no TLS block |
 | **M7b** | the v1.0 release — `RELEASE.md` re-measured at the tag, `git tag v1.0`, `main` fast-forwarded and **pushed**, the README leading with how to host a room | **V5**, Kjell's evening on the deployed box (`workitems-v1.md`) |
+
+**Two things M12b left for Kjell**, because `game-ops` is his to commit: the `git rm -r CityGrid/`
+of the 2026-09-27 draft with the README's mapping line, and `ops/box-tests-draft-fixture.patch` —
+the box suite used that draft directory as its DRAFT and `CSP_FROM` fixture, so removing it alone
+turns `game-ops/test.sh` red and takes the CSP-hash render path's only exercise with it. The patch
+gives the suite a synthetic draft game of its own; measured green in a copy.
 
 *How to read this file: a built item keeps two headings — the outcome first, the item as written
 below it. Every number belongs to the era named beside it.*
@@ -611,7 +617,33 @@ interface slice also runs `screens`, and a control or contrast slice `access`. `
 split's own gate is `gates.mjs quick`, `screens` and `access` run one at a time with the numbers
 written into `tools/gates.mjs` beside the totals, exactly as M9 did it.
 
-## M12b — The box's own shape (S) — before V5 (P122, 2026-10-14)
+## M12b — The box's own shape (S) — before V5 (P122, 2026-10-14) — **built 2026-10-15**
+
+**Built.** `ops/citygrid.nginx.conf` (one `listen 80;`, `X-Forwarded-Proto`, our own map name,
+`proxy_pass` to 8136) and `ops/site.conf` (`VERIFY_PATH=/`, `VERIFY_EXPECT='<title>City Grid</title>'`,
+no `DRAFT`, no `CSP_FROM` — the server computes the page's policy itself); `ops/nginx.conf` deleted;
+`ops/README.md` written, folding what was still true from the draft's; `DEPLOYING.md` steps 5–7 are
+the three helper commands plus `box/check.sh --outside` and the neighbour sweep, with the
+`ln … ; nginx -t || rm …` prose kept as the reason the helper exists; `tools/.probe8.mjs` deleted;
+`test/docs.test.js`'s open-question count skips without `dev-questions.md`, which is what made a
+clean worktree's suite red.
+
+**Measured.** `game-ops/test.sh`: every citygrid check green — the lint, both rendered forms, the
+TLS form on the lineage path, one loopback port 8136, 8136 against the ledger row, its own upgrade
+map. `box/nginx-site.sh citygrid --dry` prints **`lint: ok`** and then stops at the ssh key, which
+is on the deploy machine and not this one; the rendering is what the suite proves, both forms, from
+the real checked-in source. The suite's only red is **`no other game in the repo claims
+citygrid.kjell.today (2 do)`**, twice — `CityGrid/` and `citygrid/` — which is the finding, not a
+regression: it goes green the moment the draft directory does, and that is Kjell's `git rm`.
+
+**What the removal costs, found by doing it in a copy.** `box/tests/run-tests.sh` borrows
+`CityGrid/` as its DRAFT fixture *and* as the only game with `CSP_FROM`, so `git rm -r CityGrid/`
+alone breaks `reset()` outright and silently retires the `@CSP_SCRIPT_HASHES@` render path.
+`ops/box-tests-draft-fixture.patch` gives the suite a `DraftGame` of its own instead — a fixture
+that is a live game's directory stops being a fixture the day that game ships. **314 + 138 green,
+0 failed** with the draft gone and the patch applied. It is not applied here: `box/` is shared
+infrastructure, and game-ops's own rules want the half-hour mutation run before a test change is
+called done.
 
 **Found by reading `game-ops/` beside `DEPLOYING.md`.** The box has two helpers every game uses
 (`game-ops/box/README.md`, `CLAUDE.md`'s "Where things are"): `nginx-site.sh <GameDir>` installs a
