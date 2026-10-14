@@ -16751,4 +16751,16 @@ and throttling it adds jitter, which is the number `/healthz` publishes.
 
 `tools/ssh-deploy.sh` and `tools/deploy.env.example` are deleted; `ops` is
 gitignored; `DEPLOYING.md` carries the flag table and "what it checks, and when
-it fails". Suite **2,151 twice**.
+it fails".
+
+**And the strongest check was written wrong first.** The public verification
+matched the body with a shell glob for `"build":"<hash>"` — and `server/static.js`
+serves it as `JSON.stringify(health(), undefined, 1)`, one space of indentation,
+so the glob could never match: the check would have passed every deploy for ever
+while proving nothing, which is exactly what it exists to prevent somewhere else.
+Found by starting the real server and curling it rather than by reading the
+handler. It parses now, and all four paths are driven — our build, another
+build, a leaked room code, nginx's default page. `test/deploy.test.js` reads the
+indentation out of `server/static.js` and demands a parser while it is there.
+
+Suite **2,151 twice**.
