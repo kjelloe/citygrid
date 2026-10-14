@@ -7,28 +7,39 @@
 // Three of the checks below are the sibling box's rules in executable form
 // (`../Fireline/deploy-new-sibling-game-in-box-dos-and-donts.md`), because each
 // of those takes down EVERY site on the host rather than only this one.
+//
+// **`ops/` is a symlink to the private ops repo** since 2026-10-14 (the host's
+// identity, the unit, the nginx block and `ssh-deploy.sh` all live there, as
+// they do for every sibling game). So these tests skip on a checkout that has no
+// `ops/` — and run on the machine that can actually deploy, which is the one
+// where being wrong costs something.
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync, symlinkSync, rmSync, copyFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { serverConfig } from "../server/config.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (name) => readFileSync(join(root, name), "utf8");
 
-const unit = read("ops/citygrid.service");
-const nginx = read("ops/nginx.conf");
-const script = read("tools/ssh-deploy.sh");
-const example = read("tools/deploy.env.example");
+const SCRIPT = "ops/ssh-deploy.sh";
+const haveOps = existsSync(join(root, SCRIPT));
+const noOps = haveOps ? false : "ops/ is a symlink to the private ops repo and is not in this checkout";
+
+const unit = haveOps ? read("ops/citygrid.service") : "";
+const nginx = haveOps ? read("ops/nginx.conf") : "";
+const script = haveOps ? read(SCRIPT) : "";
 const playbook = read("DEPLOYING.md");
 
 /** A file with its `#` comment lines removed.
  *
  * Every "this must not appear" check below needs it, and the first run of this
  * file proved why: these templates are commented with the exact strings they
- * forbid — `listen 443`, `http2`, `grep -w ':8133'` — because the comment is
+ * forbid — `listen 443`, `http2`, `grep -w ':8136'` — because the comment is
  * where the reason lives. `a-grep-that-counts-a-comment`, in the test that was
  * written to hold a comment's promise. */
 const code = (text) => text.split("\n").filter((line) => !line.trimStart().startsWith("#")).join("\n");
@@ -46,27 +57,94 @@ test("every variable the server reads is documented, and every documented one is
   assert.deepEqual(missing, [], `DEPLOYING.md documents no ${missing.join(", ")}`);
 });
 
-test("the unit, the nginx block and the deploy script agree on one port", () => {
-  // Three files and one number. The classic way this breaks is a port claimed
-  // in the hosting document, written into the unit, and left at the old value
-  // in the proxy — which answers 502 while the service is perfectly healthy.
+test("the unit, the nginx block and the deploy script agree on one port", { skip: noOps }, () => {
+  // Four files and one number, and it has already been wrong: the templates
+  // claimed **8133 from M12 until 2026-10-14**, and 8133 is Sunset Runner's
+  // live port on the same box — the first `systemctl start` would have fought a
+  // running neighbour for the socket. The number had been written down and
+  // never checked against the hosting table that decides it.
   const ports = {
     unit: /Environment=PORT=(\d+)/.exec(unit)?.[1],
     nginxProxy: /proxy_pass http:\/\/127\.0\.0\.1:(\d+);/.exec(nginx)?.[1],
-    exampleEnv: /PORT="(\d+)"/.exec(example)?.[1],
+    scriptDefault: /GAME_PORT="\$\{GAME_HTTP_PORT:-(\d+)\}"/.exec(script)?.[1],
   };
   for (const [where, value] of Object.entries(ports)) {
     assert.ok(value, `no port found in ${where}`);
   }
   assert.equal(new Set(Object.values(ports)).size, 1,
-    `three files, ${new Set(Object.values(ports)).size} ports: ${JSON.stringify(ports)}`);
+    `${Object.keys(ports).length} files, ${new Set(Object.values(ports)).size} ports: ${JSON.stringify(ports)}`);
   // And it is not the development default, or a box would collide with a
   // developer's habit the first time somebody ran both.
   assert.notEqual(ports.unit, String(serverConfig({}).port),
     "the deployed port is the dev default, so a box and a laptop cannot be told apart");
+  // The script reads the unit's port and refuses to run on a disagreement,
+  // which is the only check that survives somebody editing one file.
+  assert.match(script, /UNIT_PORT=\$\(sed .* "\$SERVICE_FILE"/,
+    "the script does not read the port out of the unit it deploys");
 });
 
-test("V8's heap cap sits a quarter under the unit's memory cap", () => {
+test("the script refuses a wrong cwd and a port the unit does not agree with", { skip: noOps }, () => {
+  // The behavioural half, in a throwaway repo: the two prerequisites that can
+  // be driven without a box. Running `ssh-deploy.sh` from inside the ops repo
+  // lands cwd in game-ops/, where the rsync allowlist matches nothing and npm
+  // on the box dies on a missing package.json (measured in Sunset Runner). The
+  // port guard is the one above, exercised rather than read.
+  const dir = join(tmpdir(), `citygrid-deploy-test-${process.pid}`);
+  rmSync(dir, { recursive: true, force: true });
+  for (const sub of ["repo/server", "repo/engine", "repo/client", "opsdir"]) {
+    mkdirSync(join(dir, sub), { recursive: true });
+  }
+  writeFileSync(join(dir, "repo/package.json"), "{}");
+  symlinkSync("../opsdir", join(dir, "repo/ops"));
+  copyFileSync(join(root, SCRIPT), join(dir, "opsdir/ssh-deploy.sh"));
+
+  const run = (cwd, path = "./ops/ssh-deploy.sh") => {
+    try {
+      execFileSync("bash", [path, "--dry"], { cwd, encoding: "utf8", stdio: "pipe" });
+      return { status: 0, out: "" };
+    } catch (error) {
+      return { status: error.status, out: `${error.stdout ?? ""}${error.stderr ?? ""}` };
+    }
+  };
+
+  // No unit at all: the ops symlink is there and empty, which is the broken
+  // symlink case and must not be read as "fine".
+  let result = run(join(dir, "repo"));
+  assert.equal(result.status, 1, "a missing systemd unit did not stop the deploy");
+  assert.match(result.out, /is missing/);
+
+  // A unit on another port: the mismatch the real templates had.
+  writeFileSync(join(dir, "opsdir/citygrid.service"), "Environment=PORT=8133\n");
+  result = run(join(dir, "repo"));
+  assert.equal(result.status, 1, "a port the unit does not agree with did not stop the deploy");
+  assert.match(result.out, /the unit says PORT=8133/);
+  assert.match(result.out, /multi-game-hosting\.md/, "the refusal does not name what settles it");
+
+  // And the cwd guard, from the ops directory itself.
+  result = run(join(dir, "opsdir"), "./ssh-deploy.sh");
+  assert.equal(result.status, 1, "running from the ops repo did not stop the deploy");
+  assert.match(result.out, /is not the City Grid repo root/);
+
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("a failed check reaches the exit code", { skip: noOps }, () => {
+  // The script's promise, and the reason it is a promise: a deploy that prints
+  // `!!` eight times and exits 0 is a deploy somebody walks away from. Every
+  // non-fatal problem goes through `fail`, which collects, and the tail exits 1
+  // if anything collected. The two guards above are this behaviour driven; this
+  // is the half that needs a box to reach.
+  assert.match(script, /^fail\(\) \{.*FAILURES\+=/m, "there is no collecting fail()");
+  assert.match(script, /if \[ \$\{#FAILURES\[@\]\} -gt 0 \]; then[\s\S]*?exit 1/,
+    "the failures are collected and never spent on the exit code");
+  // The checks that must not be advisory: each of these is a thing you cannot
+  // see from the outside and must not walk away from.
+  for (const must of ["is not installed on the box", "nothing is listening on", "serves build"]) {
+    assert.ok(script.includes(must), `no check mentions "${must}"`);
+  }
+});
+
+test("V8's heap cap sits a quarter under the unit's memory cap, and the other caps exist", { skip: noOps }, () => {
   // V8 cannot see the cgroup. Without `--max-old-space-size` BELOW `MemoryMax`
   // the first sign of memory pressure is a SIGKILL from the OOM reaper — no GC
   // pressure, no stack trace, possibly mid-write of a room's checkpoint. This
@@ -77,9 +155,17 @@ test("V8's heap cap sits a quarter under the unit's memory cap", () => {
   assert.ok(heap <= memoryMax * 0.8,
     `the heap cap ${heap}M is not under the ${memoryMax}M unit cap by enough`);
   assert.ok(heap >= memoryMax * 0.5, `${heap}M of ${memoryMax}M wastes most of the cap`);
+  // The box's own rule: a leak in one game must not take the neighbours down.
+  // The CPU cap is deliberately a WHOLE core rather than the template's half —
+  // a room's pump is a single-threaded clock and throttling it adds jitter,
+  // which is the number `/healthz` publishes — so what is asserted is that a
+  // cap exists and is at least one core, not that it is any particular number.
+  const cpu = Number(/CPUQuota=(\d+)%/.exec(unit)?.[1]);
+  assert.ok(cpu >= 50, `CPUQuota=${cpu}% — a runaway process has no cap at all`);
+  assert.match(unit, /TasksMax=\d+/, "no TasksMax: a fork bomb in a dependency takes the box");
 });
 
-test("the nginx template is HTTP-only and owns its upgrade map", () => {
+test("the nginx template is HTTP-only and owns its upgrade map", { skip: noOps }, () => {
   // `listen 443 ssl` with no certificate fails the WHOLE config, and certbot
   // runs `nginx -t` before it does anything — so it cannot fix what blocks it.
   const live = code(nginx);
@@ -98,7 +184,7 @@ test("the nginx template is HTTP-only and owns its upgrade map", () => {
     "the map is defined and a different variable is used");
 });
 
-test("the deploy script's allowlist covers everything the page is told to cache", () => {
+test("the deploy script's allowlist covers everything the page is told to cache", { skip: noOps }, () => {
   // Derived rather than transcribed: `client/precache.json` is what the service
   // worker fetches, so its top-level directories are exactly what a player's
   // browser will ask the box for. A file the page caches and the rsync skips is
@@ -118,9 +204,13 @@ test("the deploy script's allowlist covers everything the page is told to cache"
     assert.equal(new RegExp(`--include '/${kept}`).test(script), false,
       `${kept}/ is in the allowlist and should not leave the dev machine`);
   }
+  // And a developer's own cities must not land on the box: `rooms/` is state,
+  // it is where `ROOMS_DIR` defaults when nothing sets it, and the allowlist
+  // excludes it explicitly rather than relying on nobody naming it.
+  assert.match(script, /--exclude '\/rooms\/\*\*\*'/, "a local rooms/ could be synced over the box's");
 });
 
-test("the deploy guard curls a path the server actually serves", () => {
+test("the deploy guard curls a path the server actually serves", { skip: noOps }, () => {
   // A deploy guard is only a guard if the thing it curls exists. `/healthz` is
   // the box-wide convention and `server/index.js` answers both it and `/health`.
   assert.ok(script.includes("/healthz"), "the script checks no health path");
@@ -134,10 +224,17 @@ test("the deploy guard curls a path the server actually serves", () => {
   // crash-loops; the sleep is the whole point of the guard.
   assert.ok(/systemctl restart/.test(script) && /sleep 3/.test(script) && /is-active/.test(script),
     "restart, sleep, is-active: the deploy guard is not all three");
+  // And the strongest check the script has: /healthz reports the build hash read
+  // from `client/precache.json`, so the box can be asked whether it is serving
+  // the build this deploy just made. Anything else is an old unit, a second
+  // process, or a sync that did not land.
+  assert.ok(script.includes("LOCAL_BUILD"), "nothing compares the served build with the synced one");
+  assert.ok(read("server/index.js").includes("build: buildHash()"),
+    "/healthz does not report the build the script compares");
 });
 
-test("the port check uses ss's own filter, not grep -w", () => {
-  // `grep -w ':8133'` NEVER matches `127.0.0.1:8133`, because a colon preceded
+test("the port check uses ss's own filter, not grep -w", { skip: noOps }, () => {
+  // `grep -w ':8136'` NEVER matches `127.0.0.1:8136`, because a colon preceded
   // by a digit is not a word boundary — so the check reports every port free,
   // for ever. This bug shipped in two deploy scripts on this box before it was
   // caught, and it is the reason this test exists rather than a comment.
@@ -145,11 +242,15 @@ test("the port check uses ss's own filter, not grep -w", () => {
   assert.ok(/ss -ltnpH .*sport = :/.test(script), "the port check does not use ss's sport filter");
 });
 
-test("the host's identity is never in the repo", () => {
-  const ignored = read(".gitignore");
-  assert.ok(ignored.split("\n").some((line) => line.trim() === "tools/deploy.env"),
-    "tools/deploy.env is not gitignored, so a key and a hostname can be committed");
-  assert.ok(script.includes("tools/deploy.env"), "the script reads no env file");
-  // And the example must not carry a real key path by accident.
-  assert.equal(/BEGIN [A-Z ]*PRIVATE KEY/.test(example), false);
+test("the host's identity is never in this repo", () => {
+  // It moved to the private ops repo on 2026-10-14. What this repo must carry is
+  // the IGNORE — a symlinked `ops/` that is not ignored is a private repo's
+  // contents staged by the next `git add -A`.
+  const ignored = read(".gitignore").split("\n").map((line) => line.trim());
+  assert.ok(ignored.includes("ops"), "ops/ is not gitignored, so the private ops repo can be committed");
+  const tracked = execFileSync("git", ["ls-files", "ops", "tools/deploy.env", "tools/ssh-deploy.sh"],
+    { cwd: root, encoding: "utf8" }).trim();
+  assert.equal(tracked, "", `these are tracked and should not be: ${tracked.split("\n").join(", ")}`);
+  // The playbook may name the public hostname — it is public — but never a key.
+  assert.equal(/BEGIN [A-Z ]*PRIVATE KEY/.test(playbook), false);
 });

@@ -16692,3 +16692,63 @@ V1; `DEPLOYING.md` has existed since M12. `specs/gamedesign.md` §34 and `playte
 already current, and `workitems-v1.md`'s bullet saying they were not is ticked.
 
 Suite **2,149 twice**. No code changed.
+
+### The ops move, and the port that was a neighbour's (2026-10-14)
+
+Kjell moved `ops/` into the private ops repo and symlinked it
+(`ops -> ../game-ops/citygrid/`), the way every sibling game on the box does, and
+asked for `ssh-deploy.sh` to be re-cut from the newest sibling —
+`game-ops/CarrierDominion/ssh-deploy.sh` — with the host checks made real:
+prerequisites, ports, neighbours, install, and **an error for any error**.
+
+**The finding is the port.** `ops/citygrid.service` has said `PORT=8133` since
+M12, and 8133 is **Sunset Runner's live port on the same box**. The first
+`systemctl start` would have fought a running neighbour for the socket and
+whichever lost would have been down until somebody read a journal. Nothing could
+have caught it: `test/deploy.test.js` checked that the unit, the nginx block and
+the deploy script agreed on **one** number, and they did — the number was copied
+from a sibling's unit instead of claimed in
+`game-ops/RetroMultiCiv/multi-game-hosting.md`, which is the table that decides
+it. City Grid is **8136** now, claimed in that table with the next free port
+moved to 8137, and the hosting document carries the paragraph saying why.
+
+**The new script** (`ops/ssh-deploy.sh`, 330 lines, shellcheck clean) keeps
+CarrierDominion's shape — composable flags, one multiplexed connection, bootstrap,
+unit-drift detection by hash, allowlist rsync, the restart/sleep/is-active/curl
+guard — and adds what this game needs:
+
+- **Prerequisites before anything is touched**: six tools on `PATH`, a readable
+  key (`GAME_SSH_KEY` overrides), the unit present (which is how a broken ops
+  symlink is caught), and **the unit's `PORT`, nginx's `proxy_pass` port and the
+  script's own port all the same number** — it refuses otherwise and names the
+  hosting document.
+- **The precache manifest**, refreshed before the sync and *compared after it*:
+  `/healthz` reports the build hash read from `client/precache.json`, so the box
+  can be asked whether it serves the build this deploy just made. That one check
+  catches an old unit, a second process and a sync that did not land, and the
+  public check is matched on the build rather than on `ok` — every health
+  endpoint on this box says `ok`, so `ok` cannot tell our site from a neighbour
+  answering our name.
+- **The rooms directory**: present and writable by the service user before the
+  restart, because without `ROOMS_DIR` the rooms fall back *inside* the synced
+  tree; and `--exclude '/rooms/***'` so a developer's local cities can never go
+  up.
+- **Who is in the city**: `/healthz`'s seat count is read before the restart and
+  prompts, because during V5's evening a restart drops three people.
+- **One exit code.** Every non-fatal problem goes through a collecting `fail()`,
+  and the tail prints `FAILED (n)` and exits 1. A deploy that prints `!!` eight
+  times and exits 0 is a deploy somebody walks away from.
+
+**Driven, not read.** `test/deploy.test.js` runs the script in a throwaway repo
+and asserts the three refusals it can reach without a box: a missing unit, a unit
+on another port (the mismatch the real templates had), and the cwd guard from
+inside the ops directory. The whole file skips itself when `ops/` is absent, so a
+clean checkout stays green and the machine that can deploy is the one that
+checks. The unit also gained `CPUQuota=100%` and `TasksMax=256` — the box's rule
+is that a leak must not take the neighbours down, and the quota is a whole core
+rather than the template's half because a room's pump is a single-threaded clock
+and throttling it adds jitter, which is the number `/healthz` publishes.
+
+`tools/ssh-deploy.sh` and `tools/deploy.env.example` are deleted; `ops` is
+gitignored; `DEPLOYING.md` carries the flag table and "what it checks, and when
+it fails". Suite **2,151 twice**.

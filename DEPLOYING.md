@@ -68,6 +68,16 @@ convention — one path a monitoring sweep hits across every port on the machine
   a resync request is what a client sends when it finds one, which is the
   server-side shadow of the same event.
 
+## Where the deploy files live
+
+**`ops/` is a symlink to the private ops repo** (`game-ops/citygrid/`), as it is
+for every sibling game on this box — `game-ops/README.md` is the mapping. It
+holds three files: `citygrid.service`, `nginx.conf` and **`ssh-deploy.sh`**. They
+are not in this repo and never should be: between them they carry the host's
+identity and they are the only files on a developer's machine that can change a
+live box. `ops` is gitignored here, and a clean checkout simply has no `ops/` —
+`test/deploy.test.js` skips itself there and runs on the machine that can deploy.
+
 ## The templates
 
 `ops/citygrid.service` and `ops/nginx.conf`, both commented with the reason for
@@ -99,21 +109,34 @@ and redeclaring the shared one is itself a config error.
 
 Written as the steps to run, in order. Each one is verifiable before the next.
 
-1. **Claim the port** in the box's hosting document (`multiciv/ops/multi-game-hosting.md`),
-   one row, one port, loopback-bound.
+1. **Claim the port** in the box's hosting document
+   (`game-ops/RetroMultiCiv/multi-game-hosting.md`), one row, one port,
+   loopback-bound. **City Grid is 8136.** It was written down as 8133 from M12
+   until 2026-10-14, and 8133 is Sunset Runner's live port on this same box: the
+   first `systemctl start` would have fought a running neighbour for the socket.
+   The number had been copied from a sibling's unit rather than claimed in the
+   table. `ops/ssh-deploy.sh` now reads the port out of the unit and refuses to
+   run when the two disagree — but only this table can catch the wrong row.
 2. **Node 22+ and a user:**
    ```bash
    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs
    sudo useradd -r -m -d /opt/citygrid citygrid
    sudo mkdir -p /var/lib/citygrid/rooms && sudo chown -R citygrid: /var/lib/citygrid
    ```
-3. **The unit:** copy `ops/citygrid.service`, set `User`, `WorkingDirectory`,
-   `PORT`, `ROOMS_DIR` and `ALLOWED_ORIGINS`, then
-   `sudo systemctl daemon-reload && sudo systemctl enable citygrid`.
-4. **Deploy once:** `cp tools/deploy.env.example tools/deploy.env`, fill it in,
-   `bash tools/ssh-deploy.sh`. Then
-   `curl http://127.0.0.1:8133/healthz` **on the box** — the loopback check
-   proves the process, nothing more.
+3. **The unit and the first deploy, in one command:**
+   ```bash
+   cd ~/GIT/citygrid && ./ops/ssh-deploy.sh --bootstrap --first
+   ```
+   `--bootstrap` creates the system user, `/opt/citygrid`,
+   `/var/lib/citygrid/rooms` and their ownership, then installs and **enables**
+   (does not start) `/etc/systemd/system/citygrid.service` from
+   `ops/citygrid.service` — so step 2's `useradd`/`mkdir` are only there for
+   anybody doing it by hand. `--first` says nginx and TLS are not up yet, which
+   turns the public check from an error into a note. Add `--dry` to see every
+   change first.
+4. **Prove the process:** `curl http://127.0.0.1:8136/healthz` **on the box**.
+   The script does this itself and fails the deploy if it does not answer; doing
+   it by hand once is how you learn what the body looks like.
 5. **nginx, HTTP-only:** copy `ops/nginx.conf`, link it with the
    `ln … ; nginx -t || rm …` form above, reload, and verify
    `curl http://citygrid.kjell.today/healthz` **from outside**.
@@ -141,10 +164,57 @@ Written as the steps to run, in order. Each one is verifiable before the next.
 
 ## Deploying again
 
-`bash tools/ssh-deploy.sh` (or `--yes` to skip the dirty-tree prompt). It
-refreshes `client/precache.json` first, because the build hash the join
+```bash
+cd ~/GIT/citygrid && ./ops/ssh-deploy.sh
+```
+
+| flag | what it does |
+|---|---|
+| *(none)* | check, sync, install, restart, verify |
+| `--dry` | print what would sync and change nothing, on the box or here |
+| `--yes` | skip the prompts: an uncommitted tree, and a city with players in it |
+| `--unit` | also install `ops/citygrid.service` when the box's copy differs |
+| `--bootstrap` | first run: user, directories, unit (then carries on and deploys) |
+| `--first` | nginx/TLS not set up yet — the public check becomes a note |
+| `--neighbours` | only curl the other sites on the box; needs no ssh key |
+
+It refreshes `client/precache.json` first, because the build hash the join
 handshake compares is read from it — a deploy with a stale manifest refuses
-every client that has the new code.
+every client that has the new code, and every installed browser keeps the old
+cache for ever.
+
+### What it checks, and when it fails
+
+**The exit code is the whole point: 0 only when every check passed.** Anything
+that failed is listed under `FAILED` at the end and exits 1, because a deploy
+that prints `!!` eight times and exits 0 is a deploy somebody walks away from.
+
+*Before anything is touched, on this machine:* `ssh`, `rsync`, `curl`, `git`,
+`node` and `sha1sum` on `PATH`; the deploy key readable (`GAME_SSH_KEY`
+overrides the path); `ops/citygrid.service` present, which is how a broken
+symlink is caught; **the unit's `PORT`, nginx's `proxy_pass` port and the
+script's own port all the same number**; the branch, the commit and how many
+tracked changes are about to become public.
+
+*On the box, while the old process is still serving:* `nginx -t` (a neighbour's
+broken config becomes our outage at the next reload); who owns our port, and a
+refusal if it is anybody but node; a `0.0.0.0` bind; `node` present and 22+;
+`npm` present; `/var/lib/citygrid/rooms` present and writable by the service
+user (without it the rooms fall back **inside** the synced tree); disk and
+memory headroom; what `/healthz` says is running — build, uptime, rss, rooms,
+**seats**, jitter and resyncs — and a prompt if anybody is in a city, because a
+restart drops them even though the room is checkpointed and comes back; whether
+the installed unit still matches `ops/citygrid.service`.
+
+*After the restart:* `systemctl is-active`, then the loopback `/healthz`, then a
+hash of `package.json`, `data/balance.json`, `engine/reducer.js` and
+`client/precache.json` on both sides — a half-finished rsync leaves a tree that
+serves; then the bind address (loopback only); then **the build hash the box
+reports against the one this deploy just made**, which catches an old unit, a
+second process and a sync that did not land; then the public endpoint, matched
+on **our build** rather than on `ok` (every health endpoint on this box says
+ok, so `ok` cannot tell our site from a neighbour answering our name); then
+every neighbour on the box.
 
 ## Operations
 

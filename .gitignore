@@ -59,5 +59,11 @@ reports/.*.png
 # per-view captures. What a film DELIVERS is F3's `media/`, which is committed.
 reports/storyboard/
 
-# The box and the key (M12). The template is tools/deploy.env.example.
+# The box, the key and the deploy script (M12, moved out 2026-10-14). `ops/` is a
+# SYMLINK to the private ops repo (game-ops/citygrid/), which holds the systemd
+# unit, the nginx block and ssh-deploy.sh — the host's identity and the only
+# files on this machine that can change a live box. Every sibling game does the
+# same; game-ops/README.md is the mapping. Nothing in `ops/` is ever committed
+# here, and a clean checkout simply has no `ops/` at all.
+ops
 tools/deploy.env
