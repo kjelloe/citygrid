@@ -104,6 +104,19 @@ test("ALLOWED_ORIGINS is the list a proxy needs, and it is exact", () => {
   assert.equal(originAllowed("https://other.example", config, "127.0.0.1:8123"), false);
   // And the same-host rule still applies, so a direct hit keeps working.
   assert.equal(originAllowed("http://127.0.0.1:8123", config, "127.0.0.1:8123"), true);
+
+  // **The case the box actually produces** (M12b's sweep, 2026-10-15). Our
+  // vhost sends `Host $host`, so behind nginx the Host IS the public name — and
+  // then the same-host rule admits the origin whatever its scheme, because it
+  // compares hosts. Between first-time steps 5 and 6 the site is HTTP-only, and
+  // this is why a room still works there: the M12b item assumed an https-only
+  // allowlist would "refuse every socket", and it does not. Pinned because the
+  // next person to narrow this rule would be changing that answer.
+  assert.equal(originAllowed("http://city.example", config, "city.example"), true,
+    "behind a proxy that forwards Host, an http page on our own name is same-host");
+  assert.equal(originAllowed("https://city.example", config, "city.example"), true);
+  assert.equal(originAllowed("http://evil.example", config, "city.example"), false,
+    "and nothing else gets in by dropping the scheme");
 });
 
 // --- the client's address ----------------------------------------------------

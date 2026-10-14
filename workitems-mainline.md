@@ -656,7 +656,11 @@ vhost with a rollback and renders the TLS half itself once the certificate cover
 the three hand-run steps — write the vhost, transcribe the `-d` list, hand-write the 443 block —
 "each broke a deploy at least once". `DEPLOYING.md` steps 5–7 are those three hand-run steps, and
 step 6 uses `certbot certonly`, which issues the certificate and writes **no** 443 block: run as
-written, the site stays HTTP-only and `ALLOWED_ORIGINS=https://…` refuses every socket. The
+written, **the site stays HTTP-only for ever**. (The item said "and `ALLOWED_ORIGINS=https://…`
+refuses every socket" — measured in the sweep afterwards and false: the vhost forwards `Host $host`,
+so the Host the server sees is the public name and `originAllowed`'s same-host rule admits an
+`http://` origin on our own name. A room between steps 5 and 6 works. The item was right to exist
+and wrong about why, which is worth as much as the half it got right.) The
 helpers also will not take what `ops/` holds today: `nginx.conf` has two `listen` lines
 (`80` and `[::]:80`) where the lint wants exactly `listen 80;`, it is not named
 `<game>.nginx.conf`, and there is no `site.conf`. Beside it, `game-ops/CityGrid/` is still the

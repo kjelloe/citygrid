@@ -16948,6 +16948,20 @@ already caught: `tmp/` is untracked (the files stay on disk), gitignored, and in
 `SCRATCH` beside the other two. The probe deleted yesterday was the same class
 and this sweep should have asked the question then.
 
+**And the item's own premise, measured.** M12b's entry — and the omissions pass
+that raised it — said that step 6 writing no 443 block would leave the site
+HTTP-only "and `ALLOWED_ORIGINS=https://…` refuses every socket". The first half
+is the finding; the second is **false**, and a four-line node check says so: the
+vhost forwards `Host $host`, so behind nginx the Host the server sees is the
+public name, and `originAllowed`'s same-host rule compares HOSTS — an `http://`
+origin on our own name is admitted whatever the allowlist holds. A room between
+first-time steps 5 and 6 works; the site simply never reaches TLS. Both files are
+corrected, and `test/server-config.test.js` pins the case the box actually
+produces, which the existing assertions had not: they tested the Host a server
+sees with **no** proxy rewriting it (`127.0.0.1:8123`), where the scheme does
+decide. *An item can be wrong about the city* — this one was right to exist and
+wrong about why.
+
 **M15, filed not built: the deploy script is read, not driven.**
 `game-ops/PENDING.md` asked for "`ssh-deploy.sh` rebuilt on Carrier Dominion's,
 **with a test suite**" — and the handover note written an hour earlier ticked that

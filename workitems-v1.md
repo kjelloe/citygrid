@@ -200,8 +200,12 @@ player's installed app and the room alike.*
   vhost and its name on the shared certificate; they want `<game>.nginx.conf` with exactly one
   `listen 80;` and a `site.conf` with a marker only this game serves. `ops/` has `nginx.conf` with
   two `listen` lines and no `site.conf`, and `DEPLOYING.md` step 6 runs `certbot certonly`, which
-  writes no 443 block — the site would come up HTTP-only with an origin allowlist that only admits
-  `https`. → **M12b**, **built 2026-10-15**.
+  writes no 443 block — **the site would have stayed HTTP-only for ever**, which is the finding. The
+  second half of the sentence as first written — "with an origin allowlist that only admits `https`"
+  — was **measured and is wrong** (M12b's sweep): our vhost forwards `Host $host`, so behind nginx
+  the Host IS the public name and `originAllowed`'s same-host rule admits an `http://` origin on our
+  own name whatever the allowlist says. A room between steps 5 and 6 works; the site simply never
+  reaches TLS. `test/server-config.test.js` pins it. → **M12b**, **built 2026-10-15**.
 - **Two directories for one game in `game-ops/`.** `CityGrid/` is the 2026-09-27 draft for the
   static game, still marked `DRAFT`; `citygrid/` is live and the symlink's target; the README's
   mapping names the first. → M12b hands Kjell the `git rm`, **and the patch the box suite needs beside it**: that
