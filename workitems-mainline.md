@@ -16,11 +16,12 @@ and **M12b** put the ops directory in the box's shape on 2026-10-15.
 | --- | --- | --- |
 | **M7b** | the v1.0 release — `RELEASE.md` re-measured at the tag, `git tag v1.0`, `main` fast-forwarded and **pushed**, the README leading with how to host a room | **V5**, Kjell's evening on the deployed box (`workitems-v1.md`) |
 
-**Two things M12b left for Kjell**, because `game-ops` is his to commit: the `git rm -r CityGrid/`
-of the 2026-09-27 draft with the README's mapping line, and `ops/box-tests-draft-fixture.patch` —
-the box suite used that draft directory as its DRAFT and `CSP_FROM` fixture, so removing it alone
-turns `game-ops/test.sh` red and takes the CSP-hash render path's only exercise with it. The patch
-gives the suite a synthetic draft game of its own; measured green in a copy.
+**What M12b left for Kjell**, because `game-ops` is his to commit — and half of it has landed:
+`ebaa43c` removed the 2026-09-27 draft and took in everything prepared under `citygrid/`. The patch
+beside it was committed as a **file** and not applied, so `game-ops/test.sh` is red on
+`sed: can't read …/games/CityGrid/site.conf` until it is: the box suite used that draft directory as
+its DRAFT and `CSP_FROM` fixture. `ops/HANDOVER-M12b.md` is the one command, with the README's
+mapping line, which still names the directory the commit removed.
 
 *How to read this file: a built item keeps two headings — the outcome first, the item as written
 below it. Every number belongs to the era named beside it.*
@@ -508,7 +509,9 @@ one handler reporting `rssMb`, the worst room's jitter and `resyncs` — not des
 monthly hash is compared on the client and the server cannot count them. **`tools/serve.mjs` is
 deleted**: `run.sh`, `serve_smoke`, `reach_smoke` and `a11y_smoke` all spawn `server/index.js`, and
 unifying them found a live CSP bug in one run (the policy is per page now). A143's code index is in
-(`rooms.claimCodes` from the store's file names at boot). `ops/citygrid.service`, `ops/nginx.conf`,
+(`rooms.claimCodes` from the store's file names at boot). `ops/citygrid.service`, `ops/nginx.conf`
+(**renamed `ops/citygrid.nginx.conf` in M12b**, and the two `tools/` files below are deleted — this
+paragraph is what M12 built, not what the tree holds today),
 `tools/ssh-deploy.sh`, `tools/deploy.env.example` and `DEPLOYING.md`, with `test/deploy.test.js`
 parsing all of them — three files one port, the heap cap under the unit cap, the nginx block
 HTTP-only with its own upgrade map, no `grep -w ':port'`, and an rsync allowlist **derived from

@@ -93,7 +93,7 @@ test("the local documents stay out of git", () => {
  * nobody meant to keep: gate transcripts and the scratch captures a slice takes
  * while it is looking at something. The artefacts a slice DELIVERS — the perf
  * cards, the compare sheet, the overlay shots, `i18n-review.md` — stay. */
-const SCRATCH = ["reports/review*.log", "reports/tmp/"];
+const SCRATCH = ["reports/review*.log", "reports/tmp/", "tmp/"];
 
 test("the reviewer's scratch stays out of git", () => {
   // Same argument as the local documents above and a different shape of leak:
@@ -102,6 +102,12 @@ test("the reviewer's scratch stays out of git", () => {
   // `git add -A` at the end of a long session (M5). Patterns rather than names,
   // because the next review round writes `review4-` and would slip through a
   // list.
+  //
+  // **`tmp/` was added in M12b's sweep, and it had four more PNGs in it.** The
+  // guard named `reports/tmp/` — the place the leak had been found — and the
+  // same probe output one directory up was tracked for eleven days (committed
+  // with `slice-S20`). A pattern list that describes WHERE is a list that
+  // catches the leak it already caught.
   if (!existsSync(join(repoRoot, ".git"))) return;   // a tarball, not a checkout
   const tracked = execFileSync("git", ["ls-files", "--", ...SCRATCH], {
     cwd: repoRoot, encoding: "utf8",

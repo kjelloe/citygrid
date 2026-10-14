@@ -209,7 +209,7 @@ cd ~/GIT/citygrid && ./ops/ssh-deploy.sh
 | `--yes` | skip the prompts: an uncommitted tree, and a city with players in it |
 | `--unit` | also install `ops/citygrid.service` when the box's copy differs |
 | `--bootstrap` | first run: user, directories, unit (then carries on and deploys) |
-| `--first` | nginx/TLS not set up yet — the public check becomes a note |
+| `--first` | nginx/TLS not set up yet — the public check becomes a note. Use it for every deploy between first-time steps 3 and 6, and **drop it the moment step 6 is done**: it is the flag that makes the public check meaningless, and a deploy that cannot see its own public endpoint is the one that needs to |
 | `--neighbours` | only curl the other sites on the box; needs no ssh key |
 
 It refreshes `client/precache.json` first, because the build hash the join

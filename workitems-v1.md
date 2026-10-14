@@ -11,7 +11,7 @@ lane file for its tests and gates; this file owns only the definition of done an
 
 | | What | Who | Where |
 |---|---|---|---|
-| ~~**M12b**~~ | ~~the ops directory in the box's shape~~ — **built 2026-10-15**: `site.conf` and `citygrid.nginx.conf` pass `box/nginx-site.sh`'s lint and render both forms, `DEPLOYING.md` steps 5–7 are the helpers' commands, and two things wait on Kjell in `game-ops` — the `git rm -r CityGrid/` and `ops/box-tests-draft-fixture.patch` beside it | the ally | `workitems-mainline.md` |
+| ~~**M12b**~~ | ~~the ops directory in the box's shape~~ — **built 2026-10-15**: `site.conf` and `citygrid.nginx.conf` pass `box/nginx-site.sh`'s lint and render both forms, `DEPLOYING.md` steps 5–7 are the helpers' commands, and `game-ops` took it in at `ebaa43c`; one command is left there, `git apply citygrid/box-tests-draft-fixture.patch`, because the draft directory it removed was the box suite's own DRAFT fixture (`ops/HANDOVER-M12b.md`) | the ally | `workitems-mainline.md` |
 | **V5** | one real evening on the deployed box: DNS, `DEPLOYING.md` steps 1–8, both gate sets against the deployed server, an hour with three or more people and a phone among them, notes into `playtest-notes.md` Part 4 | **Kjell** | the checklist below |
 | **M7b** | the release: `RELEASE.md` re-measured, `git tag v1.0`, `main` fast-forwarded and **pushed** | the ally writes it, Kjell pushes | `workitems-mainline.md` |
 
@@ -152,8 +152,9 @@ measured, and a dead constant that fences dead imports.*
    (claimed: 8136), the user and Node, `./ops/ssh-deploy.sh --bootstrap --first`, the loopback
    `/healthz`, then the three `game-ops/box/` commands (vhost, certificate, vhost again, written
    out in steps 5 and 6) and `box/check.sh --outside`, the neighbour sweep, the games index and the
-   siblings' `NEIGHBOURS` once the name answers. **Two `game-ops` commits come first**, both in
-   M12b's entry: the draft directory's `git rm` and the box suite's fixture patch.
+   siblings' `NEIGHBOURS` once the name answers. **One `game-ops` commit comes first**: the box
+   suite's fixture patch, which `ops/HANDOVER-M12b.md` spells out — the draft directory's removal
+   is already in at `ebaa43c`.
 2. `node tools/gates.mjs release --url https://citygrid.kjell.today` and `room --url …` once —
    **built as K6d on 2026-10-11** and measured against a hand-started server: eight clients on one
    hash in 49 s, eight browsers on one hash in 79 s. `room_soak` and `room_churn` print `n/a`

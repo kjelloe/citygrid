@@ -16,6 +16,10 @@ reports/smoke-*.png
 # through one `git add -A` (M5). The artefacts a slice DELIVERS are not here.
 reports/review*.log
 reports/tmp/
+# And the same scratch one directory up: four PNGs a probe wrote during S20 were
+# committed here and tracked for eleven days, because the guard named the place
+# the leak had been found rather than the shape of it (M12b's sweep).
+tmp/
 reports/.photo-smoke.png
 # `house_shots.mjs` opens a 320x240 page to ask where the houses are before it
 # aims the real shots. The answer is the point; the picture is scratch (S9).

@@ -16886,3 +16886,68 @@ checkout's suite was red by exactly one test** — the release has been claiming
 `test/deploy.test.js` skips without `ops/`. Verified on a detached worktree with
 no `ops/` and no `dev-questions.md`: **2,155, 17 skips, 0 failures, twice**; here
 2,155 with 3 skips, twice.
+
+### The omissions sweep on M12b (2026-10-15)
+
+Six things, and the two that matter were comments that described behaviour this
+server does not have. Both were found by **looking at the rendered file and then
+checking its claims against the code**, which is the whole of the lesson:
+`box/nginx-site.sh` copies the source's comment header into
+`/etc/nginx/sites-available/citygrid`, so every word written there ships to the
+box and will be read by somebody debugging at the wrong hour.
+
+- **"A room's socket is idle between frames when the clock is paused"** — it is
+  not. `room.beat()` ends in `broadcast(frame)` and the pump steps every 100 ms,
+  so a frame goes out ten times a second whether or not the clock runs: before
+  the host presses Start, and while every seat is in regency. The comment had
+  been borrowed from Carrier Dominion, whose lobby *is* event-driven and sends
+  nothing while a table talks — which is why its vhost carries a **seven-day**
+  read timeout and ours does not need to. Ten minutes stands, for a phone radio
+  waking from power-save; the reason beside it is now the true one.
+- **"The page builds `wss://` from `location.protocol`, and the server is behind
+  TLS it cannot see"** — an invented reader. Nothing in City Grid reads
+  `X-Forwarded-Proto`; `server/config.js` reads only `X-Forwarded-For`, and the
+  page builds its socket URL from its own `location`. It is sent because every
+  sibling sends it and because the first thing that needs it will look here, and
+  the comment says exactly that now. `X-Real-IP` gets the same honesty.
+- **An AAAA record would have stopped the deploy halfway.** `expand-cert.sh`
+  refuses an order where any name — the existing ones included — has an AAAA
+  record, so a stray IPv6 record on `citygrid.kjell.today` would have refused the
+  certificate *after* the vhost was installed. Checked: `A=5.75.211.6`, **no
+  AAAA**, exactly as the live sibling. That is also why dropping `listen [::]:80;`
+  costs nothing, and the vhost now says so where somebody would otherwise add it
+  back.
+- **`--first` had no end.** The flag makes the public check advisory, which is
+  right between first-time steps 3 and 6 and wrong for ever after: a deploy that
+  cannot see its own public endpoint is the one that needs to. The flag table
+  says to drop it the moment step 6 is done.
+- **The vhost is the one thing the deploy script installs nothing of**, so a
+  source edited here and never re-rendered on the box is invisible to it. The
+  script's closing lines now name `box/nginx-site.sh citygrid --check` (0 same,
+  6 differs, 7 absent) beside the journal command.
+- **M12's own paragraph listed files that no longer exist under those names.**
+  It is a record of what M12 built, and it now says so.
+
+**And the ground moved under the round.** Kjell's `ebaa43c` landed mid-sweep: it
+removed `game-ops/CityGrid/` and took in everything prepared under `citygrid/` —
+but the fixture patch was committed as a *file* rather than applied, so
+`game-ops/test.sh` is red on `sed: can't read …/games/CityGrid/site.conf` until
+`git apply citygrid/box-tests-draft-fixture.patch` runs. `git apply --check`
+passes against `ebaa43c`; `ops/HANDOVER-M12b.md` was rewritten to the one command
+that is left, with the README mapping line that still names the removed
+directory. This session cannot write shared files in `game-ops` — the sandbox
+refuses it and `game-ops/CLAUDE.md` says the owner commits — so it is handed over
+rather than done.
+
+**And `.probe8.mjs` had four siblings.** The scratch guard in
+`test/docs.test.js` has watched `reports/review*.log` and `reports/tmp/` since
+M5 — and four PNGs a probe wrote during S20 were committed to **`tmp/`**, one
+directory up, where no pattern looked. Tracked for eleven days. A pattern list
+that describes *where* a leak was found is a list that catches the leak it
+already caught: `tmp/` is untracked (the files stay on disk), gitignored, and in
+`SCRATCH` beside the other two. The probe deleted yesterday was the same class
+and this sweep should have asked the question then.
+
+Measured: `box/nginx-site.sh citygrid --dry` prints `lint: ok` after every edit
+above; the box suite on a copy at `ebaa43c` with the patch applied is **314 + 138
+green**; the game suite is **2,155 twice**.
