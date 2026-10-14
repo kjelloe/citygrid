@@ -193,7 +193,10 @@ that prints `!!` eight times and exits 0 is a deploy somebody walks away from.
 `node` and `sha1sum` on `PATH`; the deploy key readable (`GAME_SSH_KEY`
 overrides the path); `ops/citygrid.service` present, which is how a broken
 symlink is caught; **the unit's `PORT`, nginx's `proxy_pass` port and the
-script's own port all the same number**; the branch, the commit and how many
+script's own port all the same number**; **DNS** — `citygrid.kjell.today` has to
+resolve, and to the same address as a live neighbour, because step zero's missing
+A record otherwise shows up as the public check failing at the very end of a
+deploy and reads like an nginx problem; the branch, the commit and how many
 tracked changes are about to become public.
 
 *On the box, while the old process is still serving:* `nginx -t` (a neighbour's

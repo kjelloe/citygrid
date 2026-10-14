@@ -16753,6 +16753,15 @@ and throttling it adds jitter, which is the number `/healthz` publishes.
 gitignored; `DEPLOYING.md` carries the flag table and "what it checks, and when
 it fails".
 
+**DNS is step zero and nothing checked it.** `DEPLOYING.md` has said since M12
+that the A record must exist before certbot runs, and the symptom of a missing
+one was the public check failing at the very end of a deploy — which reads like
+an nginx problem. Every game on this box shares one address, so the script
+resolves our name and a live neighbour's and compares: that catches a record
+nobody created and one still pointing at an old box. Run today it reads
+**citygrid.kjell.today -> 5.75.211.6, the same box as fireline.kjell.today** —
+so V5's step 0 is already done.
+
 **And the strongest check was written wrong first.** The public verification
 matched the body with a shell glob for `"build":"<hash>"` — and `server/static.js`
 serves it as `JSON.stringify(health(), undefined, 1)`, one space of indentation,
