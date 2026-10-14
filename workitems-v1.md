@@ -255,7 +255,8 @@ noticed in the rounds after 2026-10-10.
 | **The stall** | W6c the graph that is not rebuilt — only if V5 felt the hitch (A134) | worker | L |
 | **Modes** (Wave 6.1) | `data/modes.json`, district claiming, the commons band, open borders, supply contracts, shared civic projects, the multi-seat demand allocation | new lane | L |
 | **Rivals** (Wave 6.2) | per-seat scoring and per-seat rank (A129), season markers, the recap | new lane | L |
-| **The instruments** | *(new)* the gate-set budgets after X8 split `room` from `wire` — `room` was at 97% before it, and every new browser row eats `quick`, `screens` and `access` | measurement | S |
+| **The instruments** | *(new 2026-10-15)* **M15** — City Grid's `ssh-deploy.sh` has no test suite, where the sibling's has 138 checks and its own mutations; everything past the first connection is asserted from source text | mainline | M |
+| | *(new)* the gate-set budgets after X8 split `room` from `wire` — `room` was at 97% before it, and every new browser row eats `quick`, `screens` and `access` | measurement | S |
 | | *(new)* `a-gate-run-is-exclusive` as a rule the runner enforces rather than a lesson: a set measured beside another reads 10–30% high | measurement | S |
 | **Hardware** | D2 a phone card · D3 the tier retune · D5's rest · F3 the film | measurement, film | needs a phone |
 

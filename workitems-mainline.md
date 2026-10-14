@@ -8,12 +8,13 @@ film, the worker — should land on `main`. Same rules as the cityviewer hand-of
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
 
-**Status 2026-10-15 — 16 items, 15 built, 1 open.** M7 merged `main` and Kjell pushed it; M9 and
+**Status 2026-10-15 — 17 items, 15 built, 2 open.** M7 merged `main` and Kjell pushed it; M9 and
 M14 re-cut the gate sets (sixteen of them now); M10 was closed by A137; M11, M12, M13 are built,
 and **M12b** put the ops directory in the box's shape on 2026-10-15.
 
 | Open | What it is | Waiting on |
 | --- | --- | --- |
+| **M15** | the deploy script is read, not driven — `citygrid/tests/run-tests.sh` with the sibling's four fakes, and its mutations. What covers it today is a lint mirror, three driven refusals and source-text assertions for everything past the first connection | **v1.1**, after the tag |
 | **M7b** | the v1.0 release — `RELEASE.md` re-measured at the tag, `git tag v1.0`, `main` fast-forwarded and **pushed**, the README leading with how to host a room | **V5**, Kjell's evening on the deployed box (`workitems-v1.md`) |
 
 **What M12b left for Kjell**, because `game-ops` is his to commit — and half of it has landed:
@@ -688,6 +689,38 @@ and not on the box; `proxy_pass` port equals the unit's. `game-ops/test.sh` gree
 **Done when** `box/nginx-site.sh citygrid --dry` renders the HTTP form without a complaint, and
 `DEPLOYING.md`'s first-time steps are eight commands a person can run in order with nothing
 transcribed by hand.
+
+## M15 — The deploy script is read, not driven (M, ops) — found 2026-10-15, **v1.1**
+
+**What the sweep after M12b found.** `game-ops/PENDING.md` asked for
+"`ssh-deploy.sh` rebuilt on Carrier Dominion's, **with a test suite**". It is
+rebuilt; there is no suite. `CarrierDominion/tests/run-tests.sh` drives its own
+script entirely offline — fakes for `ssh`, `sudo`, `systemctl` and `curl`, 17
+sections, **138 checks** — and `box/tests/mutations.sh carrier` breaks each of its
+promises in a copy and expects red: the allowlist failing open, the autosave
+shipping, `--dry` carrying on, the unit installed unasked, a public miss passing.
+
+**What covers ours today** is `test/deploy.test.js` in this repo: the helper's
+lint mirrored, `site.conf` sourced in a subshell, the allowlist derived from
+`client/precache.json`, the health body held against the playbook, and **three
+refusals driven** in a throwaway repo (a missing unit, a unit on another port,
+the cwd guard). Everything the script does once it has a connection — the
+precache refresh and its staleness warning, the seat prompt before a restart that
+drops players, the unit-drift hash, the rooms-dir check, the build-hash compare,
+the loopback-bind check, the public verdict's four paths, the collecting `fail()`
+and the exit code — is **asserted from the source text, not executed**. A
+source-text assertion pins the line that is there; it cannot say the branch runs.
+
+**Do.** `citygrid/tests/run-tests.sh` in the ops repo, modelled on the sibling's
+(the fakes are the same four, and the box suite's own fakes show the shape), plus
+its mutations in `box/tests/mutations.sh`. The first mutations worth writing are
+the ones whose failure is silent: `fail()` that does not collect, the exit that
+ignores the collection, the build compare that always matches, the allowlist's
+final `--exclude '*'` removed.
+
+**Why v1.1 and not before V5.** The evening needs the script to work once, with
+Kjell watching it, and the three refusals it can reach without a box are driven.
+A suite is what makes the fourth change to it safe, and that is after the tag.
 
 ## M7b — The v1.0 release (S) — v1.0's V6
 

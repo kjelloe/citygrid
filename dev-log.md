@@ -16948,6 +16948,22 @@ already caught: `tmp/` is untracked (the files stay on disk), gitignored, and in
 `SCRATCH` beside the other two. The probe deleted yesterday was the same class
 and this sweep should have asked the question then.
 
+**M15, filed not built: the deploy script is read, not driven.**
+`game-ops/PENDING.md` asked for "`ssh-deploy.sh` rebuilt on Carrier Dominion's,
+**with a test suite**" — and the handover note written an hour earlier ticked that
+line, which was half wrong and is corrected. The sibling's
+`CarrierDominion/tests/run-tests.sh` drives its whole script offline with fakes
+for `ssh`, `sudo`, `systemctl` and `curl`: 17 sections, **138 checks**, each
+promise broken in turn by `mutations.sh carrier`. Ours has a lint mirror, a
+sourced `site.conf`, an allowlist derived from the precache, a health body held
+against the playbook, and **three refusals actually driven** in a throwaway repo
+— and everything past the first connection, the precache staleness warning, the
+seat prompt, the unit-drift hash, the rooms-dir check, the build compare, the
+public verdict's four paths and the exit code, is asserted from source text. A
+source-text assertion pins the line; it cannot say the branch runs. **M15**, v1.1,
+after the tag: the evening needs the script to work once with Kjell watching, and
+a suite is what makes the fourth change to it safe.
+
 Measured: `box/nginx-site.sh citygrid --dry` prints `lint: ok` after every edit
 above; the box suite on a copy at `ebaa43c` with the patch applied is **314 + 138
 green**; the game suite is **2,155 twice**.
