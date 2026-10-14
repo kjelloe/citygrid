@@ -8,11 +8,12 @@ film, the worker — should land on `main`. Same rules as the cityviewer hand-of
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
 
-**Status 2026-10-14 — 15 items, 14 built, 1 open.** M7 merged `main` and Kjell pushed it; M9 and
+**Status 2026-10-14 — 16 items, 14 built, 2 open.** M7 merged `main` and Kjell pushed it; M9 and
 M14 re-cut the gate sets (sixteen of them now); M10 was closed by A137; M11, M12, M13 are built.
 
 | Open | What it is | Waiting on |
 | --- | --- | --- |
+| **M12b** | the box's own shape — `site.conf` and `citygrid.nginx.conf` so `game-ops/box/nginx-site.sh` and `expand-cert.sh` do nginx and TLS, and `DEPLOYING.md` steps 5–7 become those three commands | nothing; **before V5**, since step 6 as written installs no TLS block |
 | **M7b** | the v1.0 release — `RELEASE.md` re-measured at the tag, `git tag v1.0`, `main` fast-forwarded and **pushed**, the README leading with how to host a room | **V5**, Kjell's evening on the deployed box (`workitems-v1.md`) |
 
 *How to read this file: a built item keeps two headings — the outcome first, the item as written
@@ -609,6 +610,49 @@ interface slice also runs `screens`, and a control or contrast slice `access`. `
 **Measure after, not before.** Every budget above is this machine, alone, at this commit. The
 split's own gate is `gates.mjs quick`, `screens` and `access` run one at a time with the numbers
 written into `tools/gates.mjs` beside the totals, exactly as M9 did it.
+
+## M12b — The box's own shape (S) — before V5 (P122, 2026-10-14)
+
+**Found by reading `game-ops/` beside `DEPLOYING.md`.** The box has two helpers every game uses
+(`game-ops/box/README.md`, `CLAUDE.md`'s "Where things are"): `nginx-site.sh <GameDir>` installs a
+vhost with a rollback and renders the TLS half itself once the certificate covers the name, and
+`expand-cert.sh <host>` extends the shared lineage from the list the BOX holds. They exist because
+the three hand-run steps — write the vhost, transcribe the `-d` list, hand-write the 443 block —
+"each broke a deploy at least once". `DEPLOYING.md` steps 5–7 are those three hand-run steps, and
+step 6 uses `certbot certonly`, which issues the certificate and writes **no** 443 block: run as
+written, the site stays HTTP-only and `ALLOWED_ORIGINS=https://…` refuses every socket. The
+helpers also will not take what `ops/` holds today: `nginx.conf` has two `listen` lines
+(`80` and `[::]:80`) where the lint wants exactly `listen 80;`, it is not named
+`<game>.nginx.conf`, and there is no `site.conf`. Beside it, `game-ops/CityGrid/` is still the
+2026-09-27 **DRAFT** for the static game (its `site.conf` carries `DRAFT=`), and
+`game-ops/README.md` names the directory `CityGrid (repo: citygrid)` while the symlink points at
+`citygrid/`.
+
+**Do.** In `ops/` (the symlink; Kjell commits `game-ops`, per its `CLAUDE.md`):
+- `citygrid.nginx.conf` — the current block with one `listen 80;`, the `[::]:80` line gone (the
+  helper's rendered form is the box's convention), `X-Forwarded-Proto` added as the siblings have
+  it, the upgrade map under our name kept; `nginx.conf` goes.
+- `site.conf` — `SITE=citygrid`, `HOST=citygrid.kjell.today`, `VHOST=citygrid.nginx.conf`,
+  `VERIFY_PATH=/` and `VERIFY_EXPECT='<title>City Grid</title>'` (the default vhost answers any
+  name with a neighbour's `ok`, so the health body is not a marker; the title is only ours). No
+  `DRAFT=` line.
+- The draft directory: fold anything still worth keeping from `CityGrid/README.md` into
+  `citygrid/`, and hand Kjell the `git mv`/`git rm` to run — the README's mapping line says the
+  one name that is left.
+- `DEPLOYING.md`: "Where the deploy files live" lists the four files; steps 5–7 become
+  `cd ~/GIT/game-ops && box/nginx-site.sh citygrid`, `box/expand-cert.sh citygrid.kjell.today`,
+  `box/nginx-site.sh citygrid` again, then `box/check.sh --outside`; the neighbour sweep stays as
+  the last line of step 7 because the helper's own exit 4 is that sweep. The dos-and-donts prose
+  about `ln … ; nginx -t || rm …` stays as the reason the helper exists.
+- `tools/.probe8.mjs` — a scratch probe committed with S22d, deleted.
+
+**Tests first.** `test/deploy.test.js`, where `ops/` is present: `site.conf` sources to those five
+values and names a file that exists; the vhost has exactly one `listen` and it is `listen 80;`,
+no `443`, no `ssl_certificate`, no `http2` — the helper's lint, mirrored offline so it fails here
+and not on the box; `proxy_pass` port equals the unit's. `game-ops/test.sh` green (it is offline).
+**Done when** `box/nginx-site.sh citygrid --dry` renders the HTTP form without a complaint, and
+`DEPLOYING.md`'s first-time steps are eight commands a person can run in order with nothing
+transcribed by hand.
 
 ## M7b — The v1.0 release (S) — v1.0's V6
 
