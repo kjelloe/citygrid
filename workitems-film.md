@@ -14,6 +14,17 @@ do not. Two things the measurement lane left for this one: `tools/shoot.html` ad
 frame has traffic in it; and **Q73** — three-quarters of a played city's zoned ground is empty
 and reads as a grey slab — is a picture problem that the photo mode is the first instrument for.*
 
+**Status 2026-10-14 — 4 items, 2 built, 1 open, 1 a note.** F1 (photo mode) and F2 (the shot list
+and the storyboard) are built; the `film` gate set runs them at ~119 s of 180.
+
+| Open | What it is | Waiting on |
+| --- | --- | --- |
+| **F3** | encode and publish — `tools/film_encode.mjs`, `media/` committed, the README leading with the preview | a phone card (D2) for the hardware claim the README would make; v1.1 |
+| **F4** | photographs of a real place | nothing — it is a note, not scheduled |
+
+*How to read this file: a built item keeps two headings — the outcome first, the item as written
+below it. Every number belongs to the era named beside it.*
+
 ## F1 — Photo mode (M) — plan.md §10 bonus 4 — **done 2026-09-10 as `slice-F1`**
 
 `P` or the button; WASD flies, Shift is faster, drag looks, Escape leaves. The HUD gets out of the
@@ -37,8 +48,6 @@ height, whose near plane is the tell — an orthographic fall-through would clip
 the estimate and the renderer disagreeing about which modes plan per chunk (which emptied the
 street frame), a way out that hid itself, and a gate step that flew the camera 69 tiles away and
 did not put it back.
-
-
 
 **Goal.** A player frames a shot and saves it. Free camera, hidden HUD, chosen hour and style,
 PNG export.
@@ -101,8 +110,6 @@ served as `application/octet-stream`, so the page never loaded at all; `setTime`
 that only a running clock arrives at, so the "night" street was rendered in daylight; and `dt: 0`
 on every draw, so the first storyboard had no car and nobody on it — `life/` takes its time from
 the caller, which is the fourth time that has cost this project a picture.
-
-
 
 **Goal.** A film is a list of shots the tool can render one frame per second in a minute, so
 the framing is decided by looking at a storyboard rather than by rendering the film.

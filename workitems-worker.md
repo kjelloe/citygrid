@@ -11,6 +11,19 @@ four lanes and the one with the most ways to break determinism, so it goes **las
 `workitems-cityviewer.md` §0, plus CLAUDE.md's determinism machinery: **no hash may move**,
 and the hash is what proves the worker runs the same game.*
 
+**Status 2026-10-14 — 8 items, 7 built, 1 held.** W1–W5, W6a, W6b and W6d are done: the session
+seam, the Web Worker, the renderer off the tick, the server on the same seam, the gates on the
+shipped configuration, and a build action at **28.6 ms median** down from 98.3 warm. W6d was closed
+by A141 (it stays as built).
+
+| Held | What it is | Trigger |
+| --- | --- | --- |
+| **W6c** | the graph that is not rebuilt — stable handles and in-place array patching, to get a build action inside one 16.7 ms frame | **A134**: scheduled only if V5's evening feels the hitch, or a client's frame p95 in `room_smoke` crosses 33 ms during a build burst. Nothing is blocked on it |
+
+*How to read this file: a built item keeps two headings — the outcome first, the item as written
+below it. Every number belongs to the era named beside it, and a phase timed cold is a different
+number from the same phase timed warm.*
+
 ## The shape
 
 ```
@@ -65,8 +78,6 @@ is the point of doing it empty-handed first.
 THROUGH the seam with every pinned hash, result and event matching — `tools/fixtures.mjs`'s `replay`
 takes a `through` for exactly that.
 
-
-
 **Goal.** `client/session.js` with `session.state`, `session.apply(command)`,
 `session.onChange`, `session.hash()`, wrapping the reducer on the same thread. Every caller of
 `apply` in `client/` goes through it. Nothing else changes and every gate stays green.
@@ -112,8 +123,6 @@ replays both generated fixtures through the simulation and checks the mirror's h
 writing to a copy the next patch overwrote. The UI gates go through the seam (`CITY.apply`,
 `CITY.tick`, and `?funds=` for the treasury they used to poke); the measurement harnesses take
 `?worker=0` and say why; the pointer gates wait on `tools/lib/settle.mjs`.
-
-
 
 **Goal.** `worker/sim-worker.js` owns the state and runs the reducer; `client/session.js`
 becomes the mirror side of the seam; `client/session-local.js` (the W1 wrapper) stays as the
@@ -477,8 +486,10 @@ statement after the click that changed it.
 
 **Where this lane stands, 2026-10-08.** W1–W5, W6a and W6b are built. A build action is **28.6 ms
 median / 20.3 best**, down from 98.3 warm, and B11 means the city no longer blinks through it.
-**W6c** — stable handles and in-place array patching, to get inside a 16.7 ms frame — is **Q156**
-and nothing is blocked on it.
+**W6c** — stable handles and in-place array patching, to get inside a 16.7 ms frame — is **Q156**,
+**held by A134** (2026-10-09): it is scheduled only if V5's evening feels the hitch, or if a
+client's frame p95 in `room_smoke` crosses 33 ms during a build burst. Nothing is blocked on it.
+**W6d** was closed on 2026-10-09 (A141): it stays as built.
 
 W1 → W2 → W3 → W4, with **W5** any time after W2 and **W6** when Kjell wants the stall gone (it is a gate repair, not a feature). **W6d** is independent of all of it — one function in `pedestrians.js` — and its gate already reads the number. W1 is safe
 and cheap and makes W2 a swap rather than a rewrite; W3 is a measurement with an optional second

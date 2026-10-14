@@ -14,6 +14,23 @@ half — because it adds a directory and a dependency and changes nothing a sing
 touches. X1's client half, X2, X3 and X4 wait for the playtest.** W6's second half runs beside
 X1 and lands before X3 (A126).
 
+**Status 2026-10-14 — every item in this lane is built; nothing here is open.** X0–X4i, X5, X6, X7,
+X2d and X8: a room a player can host and join by code or QR, ownership and territory on screen,
+requests both ways with an inbox and standing answers, regency and the abandonment sweep,
+spectators, hibernation to disk and the history that outlives the alert list, era 31's money and
+aid rules, and a lobby that can now ask for them. The stale client is refused and told to reload
+(X6); the release gate runs at eight (X7) as two sets — `room` (browsers, 167 s of 240) and `wire`
+(the scripted soaks, 106 s of 180).
+
+**What is left of multiplayer is not an item in this file.** It is **V5** — one real evening on the
+deployed server with real people — and then **M7b**, the tag. Both are in `workitems-v1.md`.
+`privacy` is the one option still unread, and it cannot mean anything until there is a room list
+(v1.2).
+
+*How to read this file: a built item keeps two headings — the outcome first, the item as written
+below it. The dated review and omissions sections are kept as they were written; their numbers
+belong to the day and the era they name.*
+
 ## Review after X4e (2026-10-08) — P110
 
 *Read on `dev_night` with the committed tree at `1f13ee7` (B14, 2026-10-06) and the working tree
@@ -975,8 +992,8 @@ singleplayer playtest was.
 
 ## Order
 
-**Everything in this lane is built except one item**, and it is the lobby's remaining rows. As of
-2026-10-09, in the order it happened:
+**Everything in this lane is built.** X2d's last rows landed on 2026-10-09, X6 and X7 with them,
+and X8 on 2026-10-13. In the order it happened:
 
 ~~X0~~ → ~~X1's room half~~ → ~~X1b~~ → ~~X3a~~ → ~~X3c~~ → ~~X3d~~ → ~~X2a~~ → ~~X1c~~ →
 ~~X1d~~ → ~~X2b~~ → ~~X2c~~ → ~~X3b~~ → ~~X4a~~ → ~~X4b~~ → ~~X4c~~ → ~~X4d~~ → ~~X4e~~ →
@@ -1017,9 +1034,11 @@ what was built, and it is on screen.
 
 ### What is left
 
-| | What | Why it is left |
+**Nothing in this lane.** The table below is kept as the record of the last two items that were.
+
+| | What | How it ended |
 |---|---|---|
-| **X2d** | The lobby's remaining rows | ~~the door's refusals in words~~ · ~~spectate as a lobby choice~~ (X4e) · ~~the host's speed~~ (2026-10-09: `C2S.SPEED`, the host is the first seat in, the guest gets no button) · ~~the host's kick~~ (2026-10-09, with the session-ended path nothing had) · ~~hosting from a save~~ (2026-10-09 — one line at the door, and it found a frame size that killed the server) · ~~the QR (Q5)~~ (2026-10-09: hand-rolled in `shared/qr.js`, byte mode at level M, verified by a decoder written from the spec plus the Reed-Solomon syndromes — and `reports/lobby-qr.png` for a real phone) · ~~ready~~ (2026-10-09: the roster IS the lobby before the clock runs, and `started` is room metadata like `speed`) · ~~joining a room that has started~~ (2026-10-09: `lateJoin: false` refuses a seat that has NEVER played, because a player whose train went into a tunnel is not a late joiner — `REFUSAL.ROOM_STARTED`, its own sentence) · ~~the treasury's redundant value~~ (A142, `SAVE_VERSION` 7 → 8). One unread option is left of its two: `privacy`, which cannot mean anything until there is a room list (v1.2). `lateJoin` got its mechanism on 2026-10-09 |
+| ~~**X2d**~~ | The lobby's remaining rows | ~~the door's refusals in words~~ · ~~spectate as a lobby choice~~ (X4e) · ~~the host's speed~~ (2026-10-09: `C2S.SPEED`, the host is the first seat in, the guest gets no button) · ~~the host's kick~~ (2026-10-09, with the session-ended path nothing had) · ~~hosting from a save~~ (2026-10-09 — one line at the door, and it found a frame size that killed the server) · ~~the QR (Q5)~~ (2026-10-09: hand-rolled in `shared/qr.js`, byte mode at level M, verified by a decoder written from the spec plus the Reed-Solomon syndromes — and `reports/lobby-qr.png` for a real phone) · ~~ready~~ (2026-10-09: the roster IS the lobby before the clock runs, and `started` is room metadata like `speed`) · ~~joining a room that has started~~ (2026-10-09: `lateJoin: false` refuses a seat that has NEVER played, because a player whose train went into a tunnel is not a late joiner — `REFUSAL.ROOM_STARTED`, its own sentence) · ~~the treasury's redundant value~~ (A142, `SAVE_VERSION` 7 → 8). One unread option is left of its two: `privacy`, which cannot mean anything until there is a room list (v1.2). `lateJoin` got its mechanism on 2026-10-09 |
 | ~~**X4i**~~ | ~~`absenceYears`, which X4b superseded~~ — **deleted 2026-10-09**, riding X4h's `SAVE_VERSION` 6 → 7 | A decision that lived in a test comment, which is nowhere: X4b built regency on a WALL clock (`regencyAfterMs`) because a person's absence is real time, not sim time, so `absenceYears` was not merely unread but **answered in the other direction**. It was never free — `options` is a hashed field and `OPTION_FIELDS` is its field list — which is why it waited for a migration rather than being its own slice |
 
 Wave 6 (modes, seasons, scale to sixteen, operations) is not in this file and does not start until
@@ -1036,8 +1055,13 @@ person who wrote it down.
 
 ### The release gate, measured so far
 
-`room_soak` plays five city years with two clients on one hash; `room_churn` takes a seat away,
-gives it to a deputy and gives it back with **0 divergences over 5,586 frames**; `room_smoke` drives
-**five browsers** through hosting, joining, watching, the inbox, pings, chat and the roster. What
-the gate still asks for and nobody has done: **eight** clients, and one real evening with real
-people — the second is Kjell's, as the singleplayer playtest was.
+**As of 2026-10-13.** `room_soak` plays five city years with two clients on one hash; `room_churn`
+takes a seat away, gives it to a deputy and gives it back with **0 divergences over 5,586 frames**;
+`room_smoke` drives **eight browsers** — one of them a 390×844 phone — through hosting, joining by
+code and by QR, watching, the inbox, pings, chat, the roster, the money rule and the share sheet,
+and `release` holds **eight scripted clients on one hash** (49 s; the browsers 79 s). The sets split
+in X8's round: `room` is the browsers (167 s of 240), `wire` the scripted soaks (106 s of 180).
+
+What the gate still asks for and nobody has done: the same two sets **against the deployed server**,
+and **one real evening with real people**. Both are V5, and V5 is Kjell's, as the singleplayer
+playtest was.

@@ -7,6 +7,21 @@ and neither has drawn a frame. This lane puts real numbers under those decisions
 one gate the lane started from and never built: the picture beside the reference shots. Same
 rules as `workitems-cityviewer.md` §0. Do it after `workitems-mainline.md`.*
 
+**Status 2026-10-14 — 12 items, 8 built, 4 open.** D1, D4, D6, D7, D8, D9, D10 and D11 are built,
+with the desktop halves of D2 and D5. **Every open item here either needs a phone or moves every
+number in `reports/`.**
+
+| Open | What it is | Waiting on |
+| --- | --- | --- |
+| **D2** | the phone performance card — two desktop cards are in, no phone has ever run this game | Kjell's hardware |
+| **D3** | the tiers re-tuned from the cards | D2 |
+| **D5**, the phone half | the governor validated on a device that is not a 4090 | D2 |
+| **D8b**, what is left | the picture tools still build quest-free cities (`playedCity` and every `_shots` gate through it, named in `test/tools.test.js`'s `QUEST_FREE`), and **D8c** — no fixture pins a quest in a city that grows | v1.1; the first is its own re-shoot, the second its own fixture |
+
+*How to read this file: a built item keeps two headings — the outcome first, the item as written
+below it. Every number belongs to the era named beside it, and a set measured beside another
+measures the machine.*
+
 ## D1 — The performance card (S) — **done 2026-09-08 as `slice-D1`**
 
 `?perf=1` boots the real page into the sweep and ends with a JSON card and a Copy button;
@@ -100,7 +115,6 @@ how `high.frameMs` came to be 16 ms in the first place (D5).
 Two things are ready for it when it does start: `reports/perf/README.md` folds every card into one
 table per map, and **Q77** names the `budget_gate` row that has to exist first — a viewport at a
 real desktop's pixel count, where the street chunks become resolvable at city zoom.
-
 
 **Goal.** The tier table in `data/cityviewer.json` says what the devices measured, not what V2
 guessed.
@@ -388,7 +402,6 @@ SwiftShader costs a minute to assert the same number.
 were trimmed (64 tiles, 240 ticks, 30 settle frames) rather than moved to `render`. `budget_gate`
 goes 101 s → 150 s.
 
-
 **Goal.** The most expensive thing the renderer builds appears in a city-zoom measurement on
 SwiftShader, so a regression in it goes red before a person sees it.
 
@@ -500,7 +513,11 @@ larger finding is **X8**: the lobby offers no control for any of the three regio
 
 ## Order
 
-**Where this lane stands, 2026-10-08.** D1, D4, D6, D7 and D8 are built, with the desktop halves of
+**Where this lane stands, 2026-10-14.** **D10** (the street row's percentile over 39 frames) and
+**D11** (the era-31 re-run, which found an inert arm and raised X8) were found and built on
+2026-10-11/12. Everything else is as the paragraph below leaves it.
+
+**Where it stood on 2026-10-08.** D1, D4, D6, D7 and D8 are built, with the desktop halves of
 D2 and D5. **Everything still open in this lane needs a phone** — D3 and the rest of D5 — except
 ~~**D8b**~~ (Q158 → A136), **built 2026-10-08 as part of era 30**: nothing in `tools/` had ever
 loaded the quest catalogue, so every era number in `reports/` was a city where no quest could fire

@@ -16,6 +16,18 @@ it opened era 3.*
 **Two invariants from D7, kept by test:** life fills and moves at a rate per second scaled by
 `dt`, never per frame; and the population of cars and people is never a function of the camera.
 
+**Status 2026-10-14 — 15 items, 13 built, 2 open.** Eras 3, 4, 27 and 29 are this lane's.
+
+| Open | What it is | Waiting on |
+| --- | --- | --- |
+| **B15** | count B14's refusals — `blockTiles: 3` changes what the deputy paves and nothing counts how often it fires (a failure counter is not a subject counter) | v1.1 |
+| **B6**, the rain | the overcast hour shipped as B6a; the falling streaks, the wet road and the puddles did not | v1.1 |
+
+*How to read this file: a built item keeps two headings — the outcome first (**built `<date>` as
+`slice-X`**), the item as written below it — so what was decided sits beside what was asked for. A
+struck-through heading is an item found and closed inside one round. Every number belongs to the
+era named beside it.*
+
 ## B10 — The pavement nobody is standing on (M) — **done 2026-10-04 as `slice-B10`**
 
 `tools/crowd_probe.mjs` answered it in one run: not one posed person within eighty metres of a
@@ -234,7 +246,7 @@ the population invariant (D7) still holds with vehicles included. **Gate.** `lan
 row (engines, patrols, trucks) on the deputy city with a fire lit; `budget_gate` car rows
 re-baselined with the truck variant's triangles; `reports/smoke-B3-{engine,patrol,trucks}.png`.
 
-## B4 — Traffic that reads as traffic (M) — **Q86 answered 2026-09-10 (A63)**
+## B4 — Traffic that reads as traffic (M) — **Q86 answered 2026-09-10 (A63)** — the answer
 
 The hour is **shared within a game hour** once a room has more than one seat, rather than a free
 per-client choice: *"same hour approx so not exact but within a game time hour."* Two players
@@ -292,7 +304,7 @@ the graph; a shopper never enters a residential door; the population invariant h
 `budget_gate`'s crowd row unchanged (same cap, same triangles); a histogram of role by hour in
 `lanes_dump`; `reports/smoke-B5-{morning,noon}.png`.
 
-## B6 — Weather (M) — plan.md §10 bonus 5, Q84 — **Kjell ruled 2026-09-10 (A61)**
+## B6 — Weather (M) — plan.md §10 bonus 5, Q84 — **Kjell ruled 2026-09-10 (A61)** — the ruling
 
 **Renderer only, as this item already assumed** — and the coupling is now named rather than open:
 *"may add a lightning storm starting a fire or a big downpour causing flood of sewer system. random
@@ -407,7 +419,6 @@ is re-seated **geometrically** — nearest lane heading the same way, nearest pa
 whose road is really gone is dropped; and the browser check lives in `budget_gate` rather than
 `play_smoke`, because `play_smoke`'s city has no commuter load and its car count is zero before and
 after, which is a check that cannot fail.
-
 
 **Goal.** Laying a road does not restart the city. Today every accepted build action throws away
 every car, person, train, boat and aircraft and settles them again, because their link and edge
@@ -542,7 +553,6 @@ without; a downpour floods only over-capacity pipes; neither fires with disaster
 out of this lane and becomes **its own lane after this one**: a command, a layer bit, a catalogue
 entry, a fixture re-pin through `/fixture-repin` and a re-baseline of every gate that counts
 capacity. The renderer half — ribbon width, lane count, markings — is about a day of it.
-
 
 - **Road hierarchy** (Q83): one road kind, one width, one capacity. A second kind (avenue: two
   lanes each way, higher capacity, a median) is a command, a layer bit, a catalogue entry and a

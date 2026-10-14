@@ -16,6 +16,17 @@ the cluster is built for four modes rather than retrofitted for the fourth.*
 share (playtest §2: 41% at 390×844 — this lane may not raise it). **Assert the effect, not the
 setting**: every gate row that presses a control reads the camera or the walker afterwards.
 
+**Status 2026-10-14 — 8 items, all built, nothing open.** K1–K5 put the camera on the screen and on
+the two mouse buttons (ruling 042); K6a–K6d, K7 and K8 are the phone's four defects, the save rows
+and the touch targets, all found by rehearsing V5 on paper and all built before it. 79 controls on
+a coarse pointer, none under 44 px; the chrome is 30% of a 390×844 screen.
+
+*What the lane leaves to the evening:* icons on the rail instead of words (v1.1, an art decision),
+and the first-run card read by somebody who has never seen the game.
+
+*How to read this file: a built item keeps two headings — the outcome first, the item as written
+below it. Every number belongs to the era named beside it.*
+
 ## K1 — The camera cluster on screen (M) — **done 2026-09-10 as `slice-K1`**
 
 `client/ui/camera-model.js` is the table: buttons as pure data, with the i18n key, the keyboard
@@ -41,8 +52,6 @@ of four build buttons, and a phone-only opener that was unreachable on the deskt
 mid-press); `reach_smoke` ok; `a11y_smoke` ok with no new gate code, because the cluster is a
 `role="toolbar"` on the shared `makeRoving`; `play_smoke` the phone chrome at **36% against the 41%
 ceiling**, the cluster contributing 44×44. Screenshots in `reports/smoke-K1-{desktop,phone,street}.png`.
-
-
 
 **Goal.** Every camera movement has a button, in one place, that works by mouse, touch and
 keyboard, in every mode.
@@ -168,8 +177,6 @@ booted High and perspective until they opened the settings panel. `test/render.t
 the broken line as source text and stayed green over it. Fixed, and `play_smoke` now stores a
 preference, reloads, and asserts the boot honoured it.
 
-
-
 **Kjell answered Q81 and Q82 on 2026-09-10 (P60), and both change this item.**
 
 **Looking does not need a button held (A58).** Pointer Lock in street and photo mode, which is what
@@ -186,7 +193,6 @@ preference, not state.
 **Edge scrolling is on for a mouse (A59)**, not an opt-in row — and touch gets its own gesture: a
 drag that *starts* at the border pans. The settings row stays as an **off** switch, because a
 trackpad is what made this a question.
-
 
 **Goal.** Left and right, alone and together, move the player through the world in every mode,
 and the help card says so in one line.
@@ -507,7 +513,12 @@ play_smoke 69, a11y_smoke 46); `render` 3 of 3 in **169 s of 300** (budget_gate 
 
 ## Order
 
-**The navigation lane is done (K1 2026-09-10; K3, K2, K4 and K5 2026-09-11).** Next is
+**The navigation lane is done.** K1 2026-09-10; K3, K2, K4 and K5 2026-09-11; **K6a** 2026-10-10,
+**K6b** and **K6c** 2026-10-10, **K6d** 2026-10-11, **K7** and **K8** 2026-10-12 — the phone's four
+defects, the save rows and the touch targets, all before V5 and all found by rehearsing the evening
+on paper rather than by a gate.
+
+**What it was, before the phone items.** Next is
 `workitems-world.md` and `workitems-behaviour.md`, interleaved as their Order sections say — S9
 first, per the review after K3.
 

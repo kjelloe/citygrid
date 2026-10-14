@@ -7,6 +7,19 @@ milestone and v1.2 if needed." This re-cuts `plan-v1.md`'s "What Version 1 is": 
 v1.2; **v1.0 is the Multiplayer MVP, deployed, played once by people**. Every item here points at a
 lane file for its tests and gates; this file owns only the definition of done and the order.*
 
+**Status 2026-10-14 — v1.0 is code-complete. Two things are left, and the first one is Kjell's.**
+
+| | What | Who | Where |
+|---|---|---|---|
+| **V5** | one real evening on the deployed box: DNS, `DEPLOYING.md` steps 1–8, both gate sets against the deployed server, an hour with three or more people and a phone among them, notes into `playtest-notes.md` Part 4 | **Kjell** | the checklist below |
+| **M7b** | the release: `RELEASE.md` re-measured, `git tag v1.0`, `main` fast-forwarded and **pushed** | the ally writes it, Kjell pushes | `workitems-mainline.md` |
+
+Everything else in every lane is either built or deliberately in v1.1 — `dev_night` carries the
+whole game, the suite is **2,148 tests green twice**, and there are **sixteen gate sets**. The open
+items per lane are listed in the status block at the top of each lane file; nothing open is in
+v1.0's way. The tables below are kept as written: they are the record of how v1.0 was cut and what
+each pass found.
+
 ## v1.0 — ready to play
 
 **Definition of done.** Somebody with the address can open it on a phone or a desktop, host a
@@ -26,7 +39,7 @@ sweep, spectators, hibernation to disk, the history, the region's money and aid 
 |---|---|---|---|
 | ~~V1~~ | ~~**The server you can run on a box**~~ — **built 2026-10-09**, bar running the steps on the box itself — plus the omissions below: an `Origin` check, `X-Forwarded-For` behind a trusted proxy, and `server/index.js` as the one server the smokes drive, **and the hibernated rooms' codes indexed at boot so `freeCode()` never hands one out (A143)** — `HOST` honoured (loopback by default when `NODE_ENV=production`), `PORT`, a data directory for rooms outside the repo, a systemd unit template with `MemoryMax` and `--max-old-space-size` a quarter under it, an nginx server block shipped HTTP-only with its own upgrade map, `tools/ssh-deploy.sh` reading a gitignored `deploy.env`, and `DEPLOYING.md` — all adapted from `../Fireline/DEPLOYING.md` and `../CarrierDominion/DEPLOYING.md`, with the shared-box rules in `../Fireline/deploy-new-sibling-game-in-box-dos-and-donts.md` followed to the letter (claim a port, bind loopback, `ln … ; nginx -t \|\| rm …`). `/health` with the pump's jitter and the room count, because the unit's restart policy needs something to read | `workitems-mainline.md` **M12** | M |
 | ~~V2~~ | ~~**The stale client is told to reload**~~ — **built 2026-10-09 as X6**, with the gate row in `room_smoke` (the path needs a real room to be refused by) and `?build=` as the lever that makes a client stale. `compatible()` refuses a build mismatch and the join screen has the words; the page must then actually update — `skipWaiting` on the explicit reload, never mid-room (plan §3.9) — and `update_smoke` proves a client on the old build is refused, reloads, and joins. Without this the first deploy after v1.0 desyncs every cached phone | `workitems-multiplayer.md` **X6** | S |
-| V3 | **The lobby's last rows** — ~~ready~~, ~~joining a started room~~, ~~`lateJoin`~~ and ~~the treasury value~~ all built 2026-10-09; ~~**the QR**~~ built 2026-10-09 — **V3 is done**, bar a phone actually scanning `reports/lobby-qr.png` at V5: the join code as a QR (Q5, a hand-rolled encoder under `shared/`, no dependency), *ready* before the host starts, joining a room that has started, and `lateJoin` meaning something. `privacy` stays unread until a room list exists (v1.2); **and the treasury option loses its redundant `shared` value (A142)** — the lobby offers an equal split and a split by residents, an old save naming `shared` loads as `equal` | `workitems-multiplayer.md` **X2d** | S |
+| ~~V3~~ | ~~**The lobby's last rows**~~ — **done 2026-10-09**: ~~ready~~, ~~joining a started room~~, ~~`lateJoin`~~ and ~~the treasury value~~ all built 2026-10-09; ~~**the QR**~~ built 2026-10-09 — **V3 is done**, bar a phone actually scanning `reports/lobby-qr.png` at V5: the join code as a QR (Q5, a hand-rolled encoder under `shared/`, no dependency), *ready* before the host starts, joining a room that has started, and `lateJoin` meaning something. `privacy` stays unread until a room list exists (v1.2); **and the treasury option loses its redundant `shared` value (A142)** — the lobby offers an equal split and a split by residents, an old save naming `shared` loads as `equal` | `workitems-multiplayer.md` **X2d** | S |
 | ~~V4~~ | ~~**The release gate at eight**~~ — **built 2026-10-09** as two gates (`release` is the scripted eight, `room` holds eight browsers with a phone among them), and the room rows found three phone defects in one run; what is left is running both against the DEPLOYED server, which is V5's evening — plus a 390×844 context in `room_smoke` and a room row in `reach_smoke` and `a11y_smoke`, because no room has ever been seen on a phone: `room_soak` with eight scripted clients and `room_smoke` with eight browsers (or four, if the gate machine cannot hold eight, and the number written down), across a disconnect and a reconnect, requests resolved both ways — the gate `plan-v1.md` has named since August | `workitems-multiplayer.md` **X7** | S |
 | V5 | **One real evening.** Kjell and at least three people, on the deployed server, for an hour: a notes file in `playtest-notes.md`'s shape, every refusal they hit, every "what is this", every hitch (A134's trigger for W6c is read here). This is the acceptance; nothing in a gate replaces it | **Kjell** | — |
 | V6 | **The release**: `RELEASE.md` re-measured at the tag, `git tag v1.0`, `main` fast-forwarded and **pushed**, and the README leading with how to host a room | `workitems-mainline.md` **M7b** | S |
@@ -55,10 +68,11 @@ room list; a phone performance card; every picture question in Q161–Q166.
 - ~~**A resync is silent to the player.**~~ **Built in X6** — `CLIENT_KINDS` is the alert list's second source, because a resync is not an engine event and must not become one. Originally: `session.js` counts desyncs and asks the transport to
   resync; nothing on screen says "the room re-sent the city". A short status line, in both
   catalogues, in X6.
-- **`plan-v1.md`'s Wave 5 rows were unticked** while the lane was built; ticked in this pass.
-  `specs/gamedesign.md` §34's as-built table has no multiplayer rows, and `playtest-notes.md` still
-  opens with "Wave 5 has not been started" — both are the ally's next docs round, and the
-  playtest file is where V5's notes go.
+- ~~**`plan-v1.md`'s Wave 5 rows were unticked**~~ while the lane was built; ticked in this pass.
+  ~~`specs/gamedesign.md` §34's as-built table has no multiplayer rows~~ — **ten were added the same
+  day**, the multiplayer half of §25 and §26 as it was actually built — and ~~`playtest-notes.md`
+  still opens with "Wave 5 has not been started"~~, which it no longer does: it opens with the two
+  halves it has now, and **Part 4 is where V5's notes go**.
 - **Checked and fine:** `wss:` follows the page's protocol (`session.js`); chat, names and reasons
   go through the reducer's sanitiser with `LIMITS`; the host-only speed is enforced on the server;
   the per-seat command rate is enforced; the stale-client reload path exists on `controllerchange`
@@ -170,14 +184,17 @@ Then **M7b**: the release page re-measured, `git tag v1.0`, `main` fast-forwarde
 
 ## v1.1 — the remaining details and the balance
 
-**The top of this list is written on the night of V5.** Below it, everything open in every lane
-on 2026-10-10, gathered into one table so nothing has to be found by reading ten files. Cheapest
-first within each group; sizes as the lane files have them.
+**The top of this list is written on the night of V5.** Below it, everything open in every lane,
+gathered into one table so nothing has to be found by reading ten files. Cheapest first within each
+group; sizes as the lane files have them. **Re-checked 2026-10-14** against each lane's status
+block: no row below has been built since it was written, and the three rows marked *(new)* were
+noticed in the rounds after 2026-10-10.
 
 | Group | Item | Lane | Size |
 |---|---|---|---|
 | **Kjell's looks** | Q157/A135 the deputy's spacing, re-read with the evening's notes | behaviour | — |
 | **The world** | S19b a station faces its track | world | S |
+| | *(new)* the compare sheet's terrace row, re-shot now S23 draws terraces — and `terrace-as-it-was` dropped after one more sheet | world (S8) | XS |
 | | S18's shore line | world | XS |
 | | S20's subject counts in the picture gates | world | S |
 | | S15b the lit response · S15c the road is the largest colour | world | M + M |
@@ -190,6 +207,8 @@ first within each group; sizes as the lane files have them.
 | **The stall** | W6c the graph that is not rebuilt — only if V5 felt the hitch (A134) | worker | L |
 | **Modes** (Wave 6.1) | `data/modes.json`, district claiming, the commons band, open borders, supply contracts, shared civic projects, the multi-seat demand allocation | new lane | L |
 | **Rivals** (Wave 6.2) | per-seat scoring and per-seat rank (A129), season markers, the recap | new lane | L |
+| **The instruments** | *(new)* the gate-set budgets after X8 split `room` from `wire` — `room` was at 97% before it, and every new browser row eats `quick`, `screens` and `access` | measurement | S |
+| | *(new)* `a-gate-run-is-exclusive` as a rule the runner enforces rather than a lesson: a set measured beside another reads 10–30% high | measurement | S |
 | **Hardware** | D2 a phone card · D3 the tier retune · D5's rest · F3 the film | measurement, film | needs a phone |
 
 ## v1.2 — scale and operations, if needed
@@ -204,6 +223,11 @@ first within each group; sizes as the lane files have them.
 
 ## Order
 
-~~V1 → V2 → V3 → V4~~ built 2026-10-09. **K6 (a → c → b → d) → S22d → S8b → V5 (Kjell) → M7b.**
-Then v1.1 from the notes. P120 (2026-10-10) answered Q168–Q170 as recommended, which is what put S22d
-and S8b ahead of the evening.
+~~V1 → V2 → V3 → V4~~ built 2026-10-09. ~~K6 (a → c → b → d)~~ 2026-10-10/11, ~~S22d~~ and ~~S8b~~
+2026-10-11, ~~K7~~ and ~~K8~~ 2026-10-12, ~~X8~~ and ~~S23~~ and ~~S22e~~ 2026-10-13. **What is left
+is V5 (Kjell) → M7b**, and then v1.1 from the evening's notes.
+
+P120 (2026-10-10) answered Q168–Q170 as recommended, which is what put S22d and S8b ahead of the
+evening; P121's round (2026-10-13) answered Q171 as **A148 — keep the soft rig**, and the ladder
+that would price a harder light is in `sun_shots` rather than in a scratch script. **There are no
+open questions.**

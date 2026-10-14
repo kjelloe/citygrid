@@ -8,6 +8,16 @@ film, the worker — should land on `main`. Same rules as the cityviewer hand-of
 workflow, tests first, green twice, a dev-log entry with numbers, commit as `slice-<id>` only
 when asked.*
 
+**Status 2026-10-14 — 15 items, 14 built, 1 open.** M7 merged `main` and Kjell pushed it; M9 and
+M14 re-cut the gate sets (sixteen of them now); M10 was closed by A137; M11, M12, M13 are built.
+
+| Open | What it is | Waiting on |
+| --- | --- | --- |
+| **M7b** | the v1.0 release — `RELEASE.md` re-measured at the tag, `git tag v1.0`, `main` fast-forwarded and **pushed**, the README leading with how to host a room | **V5**, Kjell's evening on the deployed box (`workitems-v1.md`) |
+
+*How to read this file: a built item keeps two headings — the outcome first, the item as written
+below it. Every number belongs to the era named beside it.*
+
 ## M1 — Merge `dev_night` into `main` (S, needs Kjell) — **done 2026-09-08; pushed**
 
 `main` fast-forwarded from `491f9bf` to `9339ba4`: 55 commits, no squash, no rebase, no merge
@@ -583,7 +593,12 @@ Kjell**, and the README leading with the room. After V5's evening, not before.
 
 ## Order
 
-**Where this lane stands, 2026-10-08.** M1–M6, M8 and M9 are built, and **M7 is done bar Kjell's
+**Where this lane stands, 2026-10-14.** Everything is built except **M7b**, which waits on V5 —
+the status block at the top of this file is the current truth, and what follows is the record.
+M11 (the plural machinery) was built 2026-10-10, M12 (the box) 2026-10-09, M13 (the import census)
+and M14 (the three gate sets out of `quick`) 2026-10-11.
+
+**Where it stood on 2026-10-08.** M1–M6, M8 and M9 are built, and **M7 is done bar Kjell's
 push** — `main` is fast-forwarded to `dev_night` with all 43 gates green on it. What is open: ~~**M9**~~ (built 2026-10-08: every set re-measured quiet, most budgets DOWN, `sim` split from
 `sweep`, and the sweep's growth attributed to the city rather than to the code), **M10** (the three
 interface skins exist and nobody has looked at them — **Q159**, answered as **A137**: `retro` stays

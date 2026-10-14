@@ -24,12 +24,19 @@ refuses a CLIMB), and J2's "absorbed into the junction" read as "dropped", which
 with no way between them. The ratifications (A107, A110) and the re-scope (A111) are in the files
 they belong to.*
 
-
-
 *Written 2026-10-03 from P99, where Kjell took every recommendation on the seven questions the second
 round raised. Two are ratifications with no code (A107's gate criterion, A110's lane point) and one
 is a re-scope of a slice that has not started (A111 → `workitems-world.md` S13). The four that are
 work are below, cheapest first; two of them are deputy-and-reducer changes and therefore two eras.*
+
+**Status 2026-10-14 — 19 items, all built, nothing open.** G1–G5, H1–H8, J1–J4, L1 and L2 are
+eras 12–30. The lane closed on 2026-10-08 with L2 (the price of clearing ground, with D8b's quest
+catalogue folded into the same era and an arm for each).
+
+*How to read this file: a built item keeps two headings — the outcome first (**BUILT `<date>` as
+era N**), the item as written below it — so what was decided sits beside what was asked for. Every
+number belongs to the era named beside it; numbers from a previous era are void, not roughly
+comparable.*
 
 ## J1 — A zoning stroke knows what it will cost and why it will be refused (S) — A108 (Q136) — **BUILT 2026-10-03**
 
@@ -44,7 +51,7 @@ now.*
 copy of era 20's slope refusal in `build-commands.js` would have been the client's rule rather than
 the reducer's.*
 
-## J1 — A zoning stroke knows what it will cost and why it will be refused (S) — A108 (Q136)
+## J1 — A zoning stroke knows what it will cost and why it will be refused (S) — A108 (Q136) — the item as written
 
 **Goal.** The ghost turns red before the click, not after it.
 
@@ -73,7 +80,7 @@ most of the junction. `lanes_dump`: links under 4.5 m went 4 of 7,694 to **0**, 
 into `lanes.js`, because the kit is where a van's length is decided and a second copy would be the
 lane graph's own idea of a car.*
 
-## J2 — A block shorter than a car is part of its junction (S) — A109 (Q138)
+## J2 — A block shorter than a car is part of its junction (S) — A109 (Q138) — the item as written
 
 **Goal.** Every link in the lane graph can hold the car that drives on it.
 
@@ -105,7 +112,7 @@ ungradeable against 218 of 612, steepest street 33.3% against 500%. `walkthrough
 1,342 at 14), because a deputy that stops at the foot of a hill builds where the city can be served
 instead of spending streets on ground that can never hold a lot.*
 
-## J3 — A road refuses the ground a lot refuses (M) — A112 (Q140)
+## J3 — A road refuses the ground a lot refuses (M) — A112 (Q140) — the item as written
 
 **Goal.** `walkthrough 128 hilly` green, which is the last piece of Q134 and S11's own done-when.
 
@@ -133,7 +140,7 @@ treasuries. Nobody dies anywhere. The lever's far end is measured too: 12/25/45/
 every squeeze tried, including 100/100, which is where this stops being a tuning question and starts
 being a different economy.*
 
-## J4 — Demanding's margin, re-cut against a real expense (M) — A106 (Q141)
+## J4 — Demanding's margin, re-cut against a real expense (M) — A106 (Q141) — the item as written
 
 **Goal.** The economy becomes tunable: a service cost worth having that demanding can survive.
 
@@ -161,8 +168,6 @@ sweeps; what it bought is above each item. What it FOUND is the part worth readi
 questions, every one of them measured: Q136 to Q141 and the three the played fixture turned up in an
 afternoon.*
 
-
-
 *Written 2026-10-03 from P97, where Kjell took every recommendation in one batch. Four of them are
 **deputy changes** — a deputy change voids every sweep number in the project (CLAUDE.md), so they are
 four items and four eras, one at a time, exactly as G1–G4 were. The order below is cheapest-first,
@@ -178,7 +183,7 @@ the lowest rank-granting population is at or below the best configuration's medi
 reaches the airport) and the highest is above it (there is something left to play for), both read
 from `reports/balance-era<N>.json` so they move when the simulation does.*
 
-## H1 — The quest ladder asks for a city that happens (XS) — A102 (Q129)
+## H1 — The quest ladder asks for a city that happens (XS) — A102 (Q129) — the item as written
 
 **Goal.** A ladder somebody climbs.
 
@@ -195,7 +200,7 @@ goes stale the next time the sweep moves.
 
 *As built: `specs/gamedesign.md` §11's table carries the distinction with the measurement beside it.*
 
-## H2 — A park's two routes, written down (XS) — A98 (Q132)
+## H2 — A park's two routes, written down (XS) — A98 (Q132) — the item as written
 
 **Goal.** The distinction is a design statement, not a comment in `civic.js`.
 
@@ -220,7 +225,7 @@ original objection to the park).*
 because a town wants a fire service from its first house and T7's bankruptcy came from a row that
 cost a hundred a month, not two.*
 
-## H3 — The mayor plants parks and builds police stations (S) — A99 (Q133, Q111)
+## H3 — The mayor plants parks and builds police stations (S) — A99 (Q133, Q111) — the item as written
 
 **Goal.** Every balance number in this project is measured on a city that has both.
 
@@ -244,7 +249,7 @@ caller nobody thought of. The rail station's access road and the ferry terminal'
 went in the same commit: no caller anywhere, superseded by the search, and it called `apply()`
 directly rather than `issue()`, so it would not have counted its own refusals.*
 
-## H4 — The deputy dezones what it paves (S) — A97 (Q131)
+## H4 — The deputy dezones what it paves (S) — A97 (Q131) — the item as written
 
 **Goal.** 639 of 1,646 zoned tiles a city stop being zoning that can never develop.
 
@@ -270,7 +275,7 @@ can legitimately do nothing has to say so: `connectToNetwork` returns whether it
 *The guard that matters is "only when the city HAS the capacity" — a brown-out is a shortfall to
 build out of, not a grid to re-stitch, and `keepSupplied` runs first for exactly that reason.*
 
-## H5 — The deputy repairs a grid a disaster cut in two (S) — A96 (Q130)
+## H5 — The deputy repairs a grid a disaster cut in two (S) — A96 (Q130) — the item as written
 
 **Goal.** A component that loses its producer stops being dark for the rest of the game.
 
@@ -300,7 +305,7 @@ because the zoning that goes down is zoning that can be reached and served. `rol
 transaction, so one steep tile in a strip would refuse the whole block and a `hilly` deputy would zone
 nothing at all.*
 
-## H6 — Ground too steep to build on is not zoned (M) — A100 (Q134)
+## H6 — Ground too steep to build on is not zoned (M) — A100 (Q134) — the item as written
 
 **Goal.** `walkthrough 128 hilly` green, which is S11's done-when and the whole point of a `hilly`
 map.
@@ -333,7 +338,7 @@ short to hold a car** (Q138), a **turn's lane 0.38 m off the ground** where two 
 different heights (Q139), and the two gate criteria that were a MAXIMUM over a sample that has now
 grown tenfold (A89's lesson, re-applied).*
 
-## H7 — The saturated fixture becomes a played city (M) — A105 (Q72)
+## H7 — The saturated fixture becomes a played city (M) — A105 (Q72) — the item as written
 
 **Goal.** Four gates stop measuring a mature city on 1,129 copies of one house.
 
@@ -384,7 +389,7 @@ margin.** At 6/12/22/35 nobody dies and the demanding treasury halves; one rung 
 lever's useful range is bounded by a difficulty curve that was tuned when a lot cost nothing — Q141,
 and the economy cannot be tuned further until it is answered.*
 
-## H8 — Money means something (L) — A101 (Q118)
+## H8 — Money means something (L) — A101 (Q118) — the item as written
 
 **Goal.** Any income term this project adds stops being decoration.
 
@@ -411,7 +416,7 @@ city: 295 buildings to 238 on the eight-seed mean. The `founding` fixture's wire
 through its coal plant and had to be rerouted — and the first reroute split the grid in two, which
 the fixture's `expect` block caught and no hash would have.*
 
-## G1 — A network refuses a building (S) — A85 (Q116)
+## G1 — A network refuses a building (S) — A85 (Q116) — the item as written
 
 **Goal.** One rule across four networks instead of three-and-a-half.
 
@@ -445,7 +450,7 @@ how all three hid: a carrier run that finds no route issues no command and earns
 every one of them was silent. `deputy.unconnected` counts them now, and it is the assertion the
 test leads with. Full measurement in the dev-log.*
 
-## G2 — The deputy's carriers reach a live grid (S) — A86 (Q117)
+## G2 — The deputy's carriers reach a live grid (S) — A86 (Q117) — the item as written
 
 **Goal.** Ten starved buildings a city, fixed everywhere rather than for the rail station.
 
@@ -475,7 +480,7 @@ whether it should (Q132). And **the sweep cannot see this rule**: the deputy bui
 carriers a city and has never built a park (Q133), so era 16's gate is a null result with a
 mechanism probe beside it — the same town, 40 seeds, with and without parks.*
 
-## G3 — A park is worth living next to (M) — A88, A91 (Q119, Q123, Q127)
+## G3 — A park is worth living next to (M) — A88, A91 (Q119, Q123, Q127) — the item as written
 
 **Goal.** The oldest dead field in the catalogue becomes the rule it has always looked like.
 
@@ -501,7 +506,7 @@ scored when the scan cursor reaches its slice, so the calendar rate is one in
 `scanSlices × decayOneIn` and not one in `decayOneIn`. The first cut asserted the second, read 3%
 against an expected 17%, and would have been "fixed" by loosening the bound.*
 
-## G4 — Decay rolls like growth (S) — A92 (Q124)
+## G4 — Decay rolls like growth (S) — A92 (Q124) — the item as written
 
 **Goal.** Decline stops being three times as fast as growth by accident.
 

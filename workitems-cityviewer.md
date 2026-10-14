@@ -11,6 +11,14 @@ is what the author of this file will check.*
 table of what each one measured; §2b, §2d and §2e are the three review rounds it went through;
 §2c indexes every question it raised. What follows it is `workitems-mainline.md`.
 
+**Status 2026-10-14 — the lane is closed and nothing in it is open.** E0–E8, R1–R5, V1–V8, P1, P2
+and T1 built the renderer this project still runs: a derived model, a chunk baker, four fidelity
+levels, the painted style and the gates that watch them. It closed on 2026-09-07; the content that
+followed is `workitems-world.md`, and §0 below is still the working protocol every lane cites.
+
+*Kept as history. Read §0 (how to work) and §4 (what the lane leaves behind); the rest is the
+record of how it was built.*
+
 ## 0. How to work
 
 - **Follow `.claude/skills/slice-workflow/SKILL.md`** to the letter: orient, tests first,

@@ -402,6 +402,34 @@ test("every lane file on disk is one this list knows about", () => {
     `these lanes exist and REQUIRED_DOCS does not name them: ${unlisted.join(", ")}`);
 });
 
+test("every lane file says where it stands, and names open items it actually has", () => {
+  // Written 2026-10-14. A lane file is between 180 and 1,500 lines and the
+  // status of an item is in its HEADING, so the question a reader actually
+  // arrives with — is anything open in here, and what — could only be answered
+  // by scanning the whole file. Each lane now opens with a status block; this
+  // keeps the convention alive (`an-authored-convention-needs-a-test`) and
+  // checks the one thing in it that can rot silently: an open item named in the
+  // block but not in the file, which is how an item quietly moves lane.
+  const lanes = readdirSync(repoRoot).filter((name) => /^workitems-.*\.md$/.test(name)).sort();
+  for (const lane of lanes) {
+    const text = readDoc(lane);
+    const block = /^\*\*Status (\d{4}-\d{2}-\d{2})[^\n]*\n([\s\S]*?)(?=\n## )/m.exec(text);
+    assert.ok(block, `${lane} has no "**Status <date>" block above its first item`);
+    assert.ok(block.index < text.indexOf("\n## "),
+      `${lane}'s status block is not above the first item`);
+    // `workitems-v1.md` is the milestone index: its rows are V-numbers that live
+    // in a table rather than in headings, and cityviewer's lane is closed.
+    if (lane === "workitems-v1.md") continue;
+    const rows = block[2].split("\n").filter((line) => line.startsWith("| **"));
+    for (const row of rows) {
+      const id = /^\| \*\*([A-Z]\d+[a-z]?)\*\*/.exec(row);
+      assert.ok(id, `${lane}: an open row does not start with an item id: ${row.slice(0, 60)}`);
+      assert.match(text, new RegExp(`^#+ ~{0,2}${id[1]}[~ ]`, "m"),
+        `${lane} lists ${id[1]} as open and has no heading for it`);
+    }
+  }
+});
+
 test("the documents count the gate sets the runner actually has", () => {
   // Prose that carries a NUMBER about the code is prose that goes stale in
   // silence: `RELEASE.md` and `README.md` both said "ten gate sets" an hour

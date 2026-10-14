@@ -15,6 +15,13 @@ deputy places every new building (plan §10 bonus 1) or the soak never measures 
 renderer-local (ruling 037); the permission matrix gains a row per command; every new string has
 both catalogue entries and a screen (ruling 027); the inspector says why a dead gate is dead.
 
+**Status 2026-10-14 — 7 items, all built, nothing open.** T1–T7 are eras 5–11: the avenue, rail and
+the station, the water bodies with the marina, the ferry and the port, ranks and the airport,
+leisure and education coverage, and the cheap rows. The lane closed on 2026-10-08.
+
+*How to read this file: a built item keeps two headings — the outcome first, the item as written
+below it. Every number belongs to the era named beside it.*
+
 ## T1 — The avenue (L) — A60 — **BUILT 2026-09-24**: `slice-T1a` (engine, era 5), `slice-T1b` (picture)
 
 *As built: `NET_AVENUE` on the road layer (a `u8`, so 64 and 128 are still free), carried through
@@ -226,7 +233,7 @@ build menu's greying of a sea gate on a `lakes` map: a gate on a lake is a legal
 the UI has no business refusing what the reducer allows (ruling 026's sibling). The inspector row
 is the warning, and T4b can put it in front of the money.*
 
-## T4 — Water bodies, the marina, the ferry and the port (M engine, M renderer) — A67, A68
+## T4 — Water bodies, the marina, the ferry and the port (M engine, M renderer) — A67, A68 — the item as written
 
 **Goal.** A lake is a lake, a shore can hold a harbour, and a body that touches the edge brings
 people and freight.
@@ -359,7 +366,7 @@ own stream, so every deputy city moved. Three 60-game arms say it was not this s
 without T5a are byte-identical, and the tree that wrote era 8's report is not. Era **9**,
 `reports/balance-era9.md`, 200 games a configuration.*
 
-## T5 — Ranks read, city hall, the airport (M engine, M renderer) — A69
+## T5 — Ranks read, city hall, the airport (M engine, M renderer) — A69 — the item as written
 
 **Goal.** The unlock field means something, and the top of the progression is a building.
 
@@ -407,7 +414,7 @@ design statement. The two new ones are the only overlays where MORE is better, s
 `plenty()` rather than `severity()` — written out rather than inverting the other helper, because a
 reader of a band table should not have to invert anything in their head.*
 
-## T6 — Leisure and education coverage (L) — A67, A70
+## T6 — Leisure and education coverage (L) — A67, A70 — the item as written
 
 **Goal.** Two systems the landmark table keeps asking for, in the fire/police/health shape.
 
@@ -445,7 +452,7 @@ name, because `civic_shots` owns the per-definition picture and T7 taught it to 
 was placed. It had been photographing an empty road for every 1×1 definition since T2 put rock on
 seed 1003's x = 5.*
 
-## T7 — The cheap rows (S engine, M renderer) — A70
+## T7 — The cheap rows (S engine, M renderer) — A70 — the item as written
 
 **Goal.** Content that costs a row and a kit each.
 

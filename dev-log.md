@@ -16657,3 +16657,38 @@ before the last edit rather than after it.
 - *The stale precache itself.* Admitted above: `1575ddb` carried a
   `client/precache.json` that did not match its own tree, and `3834113` fixed it
   the next commit. Nothing was wrong with the instrument.
+
+### The work-item round (2026-10-14)
+
+Kjell: *"Please update workitems* with latest status and clean them up for both architect and human
+that will go through them."* Twelve lane files, 8,664 lines, and the status of any item lived in its
+own heading — so the question a reader actually arrives with (**is anything open in here, and
+what?**) could only be answered by reading the file.
+
+**Every lane file now opens with a status block**: the count built against the count open, a table
+of the open items with what each is and what it waits on, and three lines on how to read the file
+(a built item keeps two headings — the outcome first, the item as written below it). Totals:
+behaviour 13 of 15, film 2 of 4 (one open, one a note), mainline 14 of 15, measurement 8 of 12,
+multiplayer all 16 plus X5–X8, navigation all 8, rules all 19, transport all 7, worker 7 of 8 with
+W6c held, world 32 of 39, cityviewer closed. **`workitems-v1.md` says it in one table**: v1.0 is
+code-complete and what is left is V5, which is Kjell's, and M7b after it.
+
+**The cleanup, besides.** Twenty-one duplicate item headings — the record of a built item and the
+item as written, under the same id — now say which is which. Six `Order` sections dated 2026-10-08
+claimed a lane state that four days of building had moved; each keeps its old paragraph, dated, with
+the current one above it. Multiplayer's tail still read *"everything is built except one item"*
+(X2d, built 2026-10-09) and *"`room_smoke` drives five browsers"* (eight since X7).
+
+**The test.** `test/docs.test.js`: *every lane file says where it stands, and names open items it
+actually has* — the block exists, it is above the first item, and **every id listed as open has a
+heading in that file**, which is how an item quietly moving lane would show up. An authored
+convention needs a test; this is the fourth one in the file.
+
+**Omissions, outward.** `plan-v1.md` carried a second copy of every lane's status, four days stale,
+and a flat *"Wave 5 has NOT been started, deliberately"* — the table is re-cut, the paragraph is
+dated and says A131 lifted the hold on 2026-10-07, and the lane table now says that each lane's own
+status block is the authority. `README.md` told a reader to look up deployment in `workitems-v1.md`
+V1; `DEPLOYING.md` has existed since M12. `specs/gamedesign.md` §34 and `playtest-notes.md` were
+already current, and `workitems-v1.md`'s bullet saying they were not is ticked.
+
+Suite **2,149 twice**. No code changed.

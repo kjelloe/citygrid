@@ -18,6 +18,26 @@ per-tier budgets in `data/cityviewer.json` or an amendment to ruling 040 with th
 fixture hash moves. **Detail goes where the eye is**: the street camera and `city 20t` first
 (D8's rows), silhouettes only at `city 80t`.
 
+**Status 2026-10-14 — 39 items, 32 built, 7 open.** Everything the evening is played under is
+built: the kits, the ground, the streets, the water and the bridge, the windows and interiors, the
+density ladder, the movers, the bridge wall, the sun that moves (S22, S22b, S22c), the shadow you
+can see and the shadow that is cooler (S22d, S22e), and the terrace (S23).
+
+| Open | What it is | Waiting on |
+| --- | --- | --- |
+| **S19b** | a station faces its track, not its street | v1.1 — cheapest open item in the lane |
+| **S18**, the shore line | the pale line where water meets land, the one bullet S18 closed without | v1.1 |
+| **S20**, the second half | the five shot gates print what they are aimed at; the item asks them to count their subject's own features **in frame** | v1.1 |
+| **S15b** | the lit response — a material raised by 60 arrives raised by 25 | v1.1 |
+| **S15c** | the road is the largest colour — road width and the grey unbuilt lot | v1.1 |
+| **S14** | the embankment's batter: tried and reverted (Q145), and the fix belongs to the picture layer, not the ground — **close it or re-scope it** | a decision, not a build |
+| **S8** | the compare sheet row by row — the tool is built; the **judgement is Kjell's**, and the terrace row wants re-shooting now S23 draws terraces | Kjell |
+
+*How to read this file: a built item keeps two headings — the outcome first (**built `<date>` as
+`slice-X`**), the item as written below it — so what was decided sits beside what was asked for. A
+struck-through heading is an item found and closed inside one round. Every number belongs to the
+era named beside it, and a picture claim belongs to the city it was shot on.*
+
 ## S1 — Civic buildings drawn as what they are (M) — **done 2026-09-11 as `slice-S1`, with B2**
 
 **Goal.** A coal plant looks like a coal plant. Twelve catalogue definitions, twelve kits.
@@ -381,7 +401,7 @@ choice between a deeper cut, a steeper street and worldgen refusing to zone the 
 *On `rolling` 96 — the terrain every other gate measures — the rule is a clear win and no regression:
 ungradeable 8 → 0, samples over 15% 220 → 46, steepest street unchanged at 18.8%, cliffs still 0.*
 
-## S11 — Steep ground you can play on — Q80 (A57), **and Kjell confirmed it is wanted** (A87: Q64, Q74)
+## S11 — Steep ground you can play on — Q80 (A57), **and Kjell confirmed it is wanted** (A87: Q64, Q74) — the item as written
 
 Kjell: *"whichever is easiest, allow steep ground."* So `hilly` stops being scenery and the cheap
 route is the renderer's: **a junction's height may move within the grade limit**, iterated in
@@ -1273,7 +1293,7 @@ written is below.
 a floor and a ceiling on triangles, every level reachable. **Gate.** `role_shots` and
 `street_shots` on a played city, looked at; `budget_gate` re-measured; the chunk bake under 8 ms.
 
-## S17 — Movers you can tell apart (M)
+## S17 — Movers you can tell apart (M) — the item as written
 
 **Goal.** A boat is a boat, a train is a train, an aircraft is an aircraft.
 
@@ -1470,7 +1490,12 @@ porch, and `test/house-spec.test.js` has a floor as well as a ceiling.
 
 ## Order
 
-**Where this lane stands, 2026-10-08.** S1–S14 and S16–S18 are built, with S18 closed bar one
+**Where this lane stands, 2026-10-14.** The status block at the top of this file is the current
+truth: 32 of 39 built, seven open, none of them in v1.0's way. Built since the paragraph below was
+written: **S22b** and **S22c** (2026-10-09), **S22d** and **S8b** (2026-10-11), **S23** and
+**S22e** (2026-10-13).
+
+**Where it stood on 2026-10-08.** S1–S14 and S16–S18 are built, with S18 closed bar one
 bullet. What is open, cheapest first: **S19b** (a station faces its track), **S18's pale shore
 line**, **S20's second half** (the shot gates count their subject's features in frame, not chunks),
 **S15b** (the lit response — a material raised by 60 arrives raised by 25), **S15c** (road width and

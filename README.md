@@ -53,7 +53,8 @@ node server/index.js 8123   # the same page, plus a room on /ws for the headless
 
 The second one is the room server (X1–X4): the same page, plus **Host a room** and **Join** on the
 new-game screen and `/ws` behind them. Singleplayer still opens no socket. How to run it on a box
-is `workitems-v1.md` V1 and, once built, `DEPLOYING.md`.
+is **`DEPLOYING.md`**, built as M12 — first-time setup in eight steps, the systemd unit, the nginx
+block and `tools/ssh-deploy.sh`.
 
 Build a road, zone beside it, place a power plant and a pump, and watch it grow.
 One finger paints when a tool is selected and pans when none is; two fingers are
