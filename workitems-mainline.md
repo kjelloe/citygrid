@@ -510,6 +510,30 @@ HTTP-only with its own upgrade map, no `grep -w ':port'`, and an rsync allowlist
 **Still owed by the box, not the code:** the first-time setup run once by hand, and `room_soak`
 against the deployed server (V4).
 
+**Re-cut 2026-10-14, when Kjell moved `ops/` into the private ops repo** (`ops` is a symlink to
+`game-ops/citygrid/` and is gitignored, as it is for every sibling game on the box). The deploy
+script went with it: **`ops/ssh-deploy.sh`**, re-based on the newest sibling's
+(`game-ops/CarrierDominion/ssh-deploy.sh`), and `tools/ssh-deploy.sh` and `tools/deploy.env.example`
+are deleted — the identity is in the private repo now rather than in a gitignored env file, which is
+what every other game does.
+
+**And it found the one thing M12's own test could not see: the port was a neighbour's.** This item
+wrote `PORT=8133` into the unit, the nginx block and the script, and `test/deploy.test.js` asserted
+all three carried **one** number — they did. 8133 is **Sunset Runner's live port on the same box**:
+the first `systemctl start` would have fought a running neighbour for the socket. City Grid is
+**8136**, claimed in `game-ops/RetroMultiCiv/multi-game-hosting.md` (next free 8137), and the script
+now reads the port out of the unit it deploys and refuses to run when they disagree. The lesson is
+its own memory: *agreement is not authority* — a cross-file consistency test measures copying.
+
+The script also gained what the host checks were missing: prerequisites before anything is touched
+(six tools, the key, the unit present, the three ports agreeing, **DNS resolving to the same address
+as a live neighbour**), node 22+ and npm on the box, the rooms directory present and writable by the
+service user, the seat count read before a restart that would drop players, the **build hash
+`/healthz` reports compared with the one the deploy just made**, a public check matched on that build
+rather than on `ok`, every neighbour curled, and **one exit code** — every non-fatal problem goes
+through a collecting `fail()` and the tail exits 1. `test/deploy.test.js` runs the script in a
+throwaway repo and drives three of its refusals; the whole file skips where `ops/` is absent.
+
 ## ~~M13 — The import census cannot tell `path.join` from `Array#join`~~ (XS, test) — found and **built 2026-10-11**
 
 **What it misses.** `test/unused-imports.test.js` asks whether the file mentions an imported NAME
@@ -590,6 +614,23 @@ written into `tools/gates.mjs` beside the totals, exactly as M9 did it.
 
 `RELEASE.md` re-measured at the release commit, `git tag v1.0`, `main` fast-forwarded, **pushed by
 Kjell**, and the README leading with the room. After V5's evening, not before.
+
+**Two things the tag needs that nothing else will do** (found in the omissions sweep of
+2026-10-14):
+
+- **`package.json` says `"version": "0.0.0"`.** It has since the first commit, and a tag called
+  v1.0 beside a manifest that says 0.0.0 is two answers to one question. Bump it in the release
+  commit, with `RELEASE.md`; nothing reads it at runtime, which is exactly why it was never noticed.
+- ~~**No `LICENSE` file**~~ — **added 2026-10-14.** `package.json` declared `"license": "MIT"` from
+  the first commit and `README.md` said the text would arrive "with the first code". It did not, for
+  the life of the project, and v1.0 is public. `test/docs.test.js` now refuses a declared licence
+  with no text and no named holder.
+- **The box's registers** are the other half of the release and they are not in this repo: the port
+  row (done, 8136), City Grid's row in the games index (`kjelloe/gamesindex`, whose `games.json`
+  also carries the down-alert topic), and — **the day the name answers** — City Grid added to the
+  other games' `NEIGHBOURS` arrays, so a sibling's deploy notices when ours is down. A name that is
+  listed before it is live trains everybody to ignore the one line that matters, which is why that
+  one waits for V5.
 
 ## Order
 

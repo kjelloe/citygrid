@@ -63,6 +63,11 @@ convention — one path a monitoring sweep hits across every port on the machine
   before the OOM reaper acts.
 - **`jitter`** is the **worst** room's, not an average over rooms: one city
   stalling is the thing worth seeing, and averaging it away is how a stall hides.
+- **What it does not carry, on purpose:** no room code, no player name, no
+  token. `/healthz` is curlable by anyone on the internet, and a room code is a
+  seat in somebody's city. `test/deploy.test.js` holds the body against the
+  sample above — same keys, and nothing whose name looks private — because the
+  deploy script's own tripwire reads it *after* a deploy, which is the wrong end.
 - **`resyncs` must be 0.** The monthly state hash is compared on the client —
   the only place that holds both numbers — so the server cannot count desyncs;
   a resync request is what a client sends when it finds one, which is the
@@ -117,7 +122,9 @@ Written as the steps to run, in order. Each one is verifiable before the next.
    The number had been copied from a sibling's unit rather than claimed in the
    table. `ops/ssh-deploy.sh` now reads the port out of the unit and refuses to
    run when the two disagree — but only this table can catch the wrong row.
-2. **Node 22+ and a user:**
+2. **Node and a user.** The floor is `package.json`'s `engines.node` (20) and
+   the box runs **22**, which is what the deploy script checks against — it reads
+   the floor out of the manifest rather than carrying its own number:
    ```bash
    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs
    sudo useradd -r -m -d /opt/citygrid citygrid
@@ -159,8 +166,14 @@ Written as the steps to run, in order. Each one is verifiable before the next.
    ```
    **A 404 can be a pass** — any HTTP status proves the TLS chain worked,
    because a bad certificate fails as a curl *error*, not a status code.
-8. **Record it:** the port row in the hosting document, City Grid in the games
-   index, and any new lesson back into the dos-and-donts file.
+8. **Record it:** the port row in the hosting document (done — **8136**), City
+   Grid's row in the games index (`kjelloe/gamesindex`, whose `games.json` also
+   carries the down-alert topic), any new lesson back into the dos-and-donts
+   file, and — **once the name answers** — City Grid added to the other games'
+   `NEIGHBOURS` arrays in their deploy scripts, so a sibling's deploy notices
+   when ours is down. That last one waits for the site to be live: a name listed
+   before it answers prints NO ANSWER on every deploy and trains everybody to
+   ignore the one line that matters.
 
 ## Deploying again
 

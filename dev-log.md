@@ -16773,3 +16773,49 @@ build, a leaked room code, nginx's default page. `test/deploy.test.js` reads the
 indentation out of `server/static.js` and demands a parser while it is there.
 
 Suite **2,151 twice**.
+
+### The omissions sweep on the ops move (2026-10-14)
+
+Kjell: *"Please review and look for omissions things left out or forgotten."* Four
+things, and the first one had been missing for the life of the project.
+
+**There was no `LICENSE` file.** `package.json` has carried `"license": "MIT"`
+since the first commit; `README.md`'s licence section said *"MIT (to be added
+with the first code)"* — and the first code arrived in August. v1.0 is a public
+release served to players from a public host, so a licence field with nothing
+behind it is a claim with nothing behind it: the same shape as a port three files
+agreed on and nobody had claimed. `LICENSE` (MIT, 2026 Kjell Erichsen) is in, the
+README points at it and names three.js's own MIT header as the vendored
+dependency's attribution, and the rsync allowlist's `--include '/LICENSE'` —
+which had been a dead entry — now carries something. `test/docs.test.js` refuses
+a declared licence with no text or no named holder.
+
+**`/healthz` is public and nothing in the suite had ever read its body.** The
+deploy script's own tripwire looks for a leaked room code *after* a deploy, which
+is the wrong end. `test/deploy.test.js` now parses the sample in `DEPLOYING.md`'s
+`/healthz` section and the object literal `health()` returns, asserts they are
+the same eight keys, and refuses any key whose name matches
+`code|token|secret|password|name`. Driven: adding `roomCode: "ABC123"` to
+`health()` reddens it twice over.
+
+**Two numbers for one question, again.** The deploy script demanded node 22 of
+the box while `package.json`'s `engines.node` says `>=20` — too high fails a
+perfectly good box and too low lets a bad one serve. It reads the floor out of
+the manifest now, and the test refuses `NODE_MIN=<digits>`. Moving that read
+also had to wait for the cwd guard: derived at the top of the file it crashed
+with a module-resolution error from the wrong directory, which is a worse message
+than the guard's own.
+
+**The items still described what was deleted.** M12's entry named
+`tools/ssh-deploy.sh` and a gitignored `tools/deploy.env`, both gone; it carries
+the ops move, the port correction and what the script checks now. **M7b gained
+the two things only the tag can do**: bump `package.json`'s `"version": "0.0.0"`
+in the release commit — a tag called v1.0 beside a manifest that says 0.0.0 is
+two answers to one question, and nothing reads it at runtime, which is why nobody
+noticed — and the box's registers, including **City Grid in the siblings'
+`NEIGHBOURS` arrays the day the name answers**, not before: a name listed before
+it is live prints NO ANSWER on every deploy and trains everybody to ignore the
+one line that matters.
+
+Suite **2,153 twice**. `client/precache.json` regenerated (only its date moved —
+`LICENSE` is not something the page fetches, so the build hash did not move).

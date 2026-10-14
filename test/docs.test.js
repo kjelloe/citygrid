@@ -402,6 +402,21 @@ test("every lane file on disk is one this list knows about", () => {
     `these lanes exist and REQUIRED_DOCS does not name them: ${unlisted.join(", ")}`);
 });
 
+test("a declared licence has its text, and the text names a holder", () => {
+  // `package.json` has carried `"license": "MIT"` since the first commit;
+  // `README.md` said the text would arrive "with the first code" and it never
+  // did — for the life of the project, with v1.0 about to be a public release.
+  // A licence field with no file is a claim with nothing behind it, which is the
+  // same shape as a port three files agreed on and nobody had claimed.
+  const manifest = JSON.parse(readDoc("package.json"));
+  assert.ok(manifest.license, "package.json declares no licence");
+  const text = readDoc("LICENSE");
+  assert.ok(text.includes(manifest.license),
+    `package.json says ${manifest.license} and LICENSE does not mention it`);
+  assert.match(text, /Copyright \(c\) \d{4} \S/, "the licence names no copyright holder");
+  assert.ok(readDoc("README.md").includes("LICENSE"), "the README does not point at the licence");
+});
+
 test("every lane file says where it stands, and names open items it actually has", () => {
   // Written 2026-10-14. A lane file is between 180 and 1,500 lines and the
   // status of an item is in its HEADING, so the question a reader actually

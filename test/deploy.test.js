@@ -81,6 +81,12 @@ test("the unit, the nginx block and the deploy script agree on one port", { skip
   // which is the only check that survives somebody editing one file.
   assert.match(script, /UNIT_PORT=\$\(sed .* "\$SERVICE_FILE"/,
     "the script does not read the port out of the unit it deploys");
+  // Same rule for the node floor it demands of the box: `package.json`'s
+  // `engines.node` is what the project claims to run on, and a number typed
+  // into the script is a second answer to one question — too high fails a good
+  // box, too low lets a bad one serve.
+  assert.equal(/NODE_MIN=\d/.test(script), false, "the node floor is typed into the deploy script");
+  assert.match(script, /NODE_MIN=\$\(node -e .*engines/, "the script does not read engines.node");
 });
 
 test("the script refuses a wrong cwd and a port the unit does not agree with", { skip: noOps }, () => {
@@ -231,6 +237,35 @@ test("the deploy guard curls a path the server actually serves", { skip: noOps }
   assert.ok(script.includes("LOCAL_BUILD"), "nothing compares the served build with the synced one");
   assert.ok(read("server/index.js").includes("build: buildHash()"),
     "/healthz does not report the build the script compares");
+});
+
+test("the public health body is the one the playbook documents, and names nothing private", () => {
+  // `/healthz` is curlable by anyone on the internet, and it is the one endpoint
+  // whose body nothing in the suite had ever looked at: the deploy script's
+  // tripwire reads it AFTER a deploy, which is the wrong end. The playbook
+  // documents the body; the code builds it. A field added to a public endpoint
+  // without anybody writing it down is how a room code gets published — and a
+  // room code is a seat in somebody's city (`a-token-handed-out-and-never-checked`,
+  // from the other side).
+  const documented = Object.keys(JSON.parse(
+    /```json\n([\s\S]*?)```/.exec(playbook.split("## `/healthz`")[1])[1]));
+  // The object literal `health()` returns, read at brace depth 1.
+  const body = read("server/index.js").split("function health() {")[1];
+  const open = body.indexOf("return {");
+  let depth = 0, end = -1;
+  for (let i = open + "return ".length; i < body.length; i += 1) {
+    if (body[i] === "{") depth += 1;
+    else if (body[i] === "}") { depth -= 1; if (depth === 0) { end = i; break; } }
+  }
+  assert.ok(end > 0, "could not find the object health() returns");
+  const built = [...body.slice(open, end).matchAll(/^ {6}([a-zA-Z_]+):/gm)].map((m) => m[1]);
+  assert.ok(built.length >= 6, `only read ${built.join(", ")} out of health() — the scan is wrong`);
+  assert.deepEqual(built.sort(), documented.sort(),
+    "the body /healthz returns and the body DEPLOYING.md documents are different objects");
+  // And none of it may be a secret, whatever it is called.
+  const private_ = built.filter((key) => /code|token|secret|password|name/i.test(key));
+  assert.deepEqual(private_, [],
+    `/healthz is public and would be naming ${private_.join(", ")}`);
 });
 
 test("the port check uses ss's own filter, not grep -w", { skip: noOps }, () => {

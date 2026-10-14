@@ -146,4 +146,9 @@ reference projects in `../Fireline` and `../Retrogradegames` paid for them.
 
 ## Licence
 
-MIT (to be added with the first code).
+**MIT** — `LICENSE`. `package.json` has said `"license": "MIT"` since the first
+commit and this file said the text would arrive "with the first code"; it did not,
+for the life of the project, and v1.0 is a public release. Added 2026-10-14.
+
+The one vendored dependency, `vendor/three.module.js`, is three.js — MIT as well,
+and its `@license` header travels with the file, which is the attribution.
