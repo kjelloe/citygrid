@@ -16981,3 +16981,14 @@ a suite is what makes the fourth change to it safe.
 Measured: `box/nginx-site.sh citygrid --dry` prints `lint: ok` after every edit
 above; the box suite on a copy at `ebaa43c` with the patch applied is **314 + 138
 green**; the game suite is **2,155 twice**.
+
+**The mutation run finished: 54 caught, 0 survived, 0 stale** (77 minutes on this
+machine, not the half-hour the README quotes). That is game-ops's own "done
+means" for a change to a test, and the number is only worth anything because the
+baseline was checked green on the same copy **before and after** the run — `mut`
+counts `FAIL` lines and never establishes a baseline of its own, so a red one
+would make every mutation read as caught for free. Both runs: 314 + 138, ALL
+GREEN. Two of the 54 are the ones the new fixture has to keep alive —
+`cert-aaaa-unchecked` and `cert-dns-unchecked` — and the DRAFT pair
+(`check.sh` skipping a draft, and a draft being served) is caught through
+`DraftGame` rather than through a game that has shipped.
